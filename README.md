@@ -1,3 +1,19 @@
+<!--
+ Copyright (C) 2024 Snowflake Computing Inc.
+ 
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+ 
+      http://www.apache.org/licenses/LICENSE-2.0
+ 
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+
 # Polaris Catalog
 
 <a href="https://snowflake.com/blog/introducing-polaris-catalog/" target="_blank">Polaris Catalog</a> is an open source catalog for Apache Iceberg. Polaris Catalog implements Iceberg’s open <a href="https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml" target="_blank">REST API</a> for multi-engine interoperability with Apache Doris, Apache Flink, Apache Spark, PyIceberg, StarRocks and Trino. 
