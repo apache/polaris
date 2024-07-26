@@ -1,0 +1,8 @@
+rootProject.name = 'polaris'
+
+include 'polaris-core'
+include 'polaris-service'
+include 'extension:persistence:hibernate'
+include 'extension:persistence:eclipselink'
+
+project(":extension:persistence:eclipselink").name = "polaris-eclipselink"

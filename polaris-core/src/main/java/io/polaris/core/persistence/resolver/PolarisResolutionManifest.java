@@ -1,0 +1,394 @@
+package io.polaris.core.persistence.resolver;
+
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
+import io.polaris.core.PolarisDiagnostics;
+import io.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import io.polaris.core.context.CallContext;
+import io.polaris.core.entity.PolarisBaseEntity;
+import io.polaris.core.entity.PolarisEntityConstants;
+import io.polaris.core.entity.PolarisEntitySubType;
+import io.polaris.core.entity.PolarisEntityType;
+import io.polaris.core.entity.PrincipalRoleEntity;
+import io.polaris.core.persistence.PolarisEntityManager;
+import io.polaris.core.persistence.PolarisResolvedPathWrapper;
+import io.polaris.core.persistence.ResolvedPolarisEntity;
+import io.polaris.core.persistence.cache.EntityCacheEntry;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Holds a collection of related resolved PolarisEntity and associated grants including caller
+ * Principal/PrincipalRoles/CatalogRoles and target securables that will participate in any given
+ * operation.
+ *
+ * <p>Implemented as a wrapper around a Resolver with helper methods and book-keeping to better
+ * function as a lookup manifest for downstream callers.
+ */
+public class PolarisResolutionManifest implements PolarisResolutionManifestCatalogView {
+  private static final Logger LOG = LoggerFactory.getLogger(PolarisResolutionManifest.class);
+
+  private final PolarisEntityManager entityManager;
+  private final CallContext callContext;
+  private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
+  private final String catalogName;
+  private final Resolver primaryResolver;
+  private final PolarisDiagnostics diagnostics;
+
+  private final Map<Object, Integer> pathLookup = new HashMap<>();
+  private final List<ResolverPath> addedPaths = new ArrayList<>();
+  private final Multimap<String, PolarisEntityType> addedTopLevelNames = HashMultimap.create();
+
+  private final Map<Object, ResolverPath> passthroughPaths = new HashMap<>();
+
+  // For applicable operations, this represents the topmost root entity which services as an
+  // authorization parent for all other entities that reside at the root level, such as
+  // Catalog, Principal, and PrincipalRole.
+  // This simulated entity will be used if the actual resolver fails to resolve the rootContainer
+  // on the backend due to compatibility mismatches.
+  private ResolvedPolarisEntity simulatedResolvedRootContainerEntity = null;
+
+  private int currentPathIndex = 0;
+
+  // Set when resolveAll is called
+  private ResolverStatus primaryResolverStatus = null;
+
+  public PolarisResolutionManifest(
+      CallContext callContext,
+      PolarisEntityManager entityManager,
+      AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      String catalogName) {
+    this.entityManager = entityManager;
+    this.callContext = callContext;
+    this.authenticatedPrincipal = authenticatedPrincipal;
+    this.catalogName = catalogName;
+    this.primaryResolver =
+        entityManager.prepareResolver(callContext, authenticatedPrincipal, catalogName);
+    this.diagnostics = callContext.getPolarisCallContext().getDiagServices();
+
+    // TODO: Make the rootContainer lookup no longer optional in the persistence store.
+    // For now, we'll try to resolve the rootContainer as "optional", and only if we fail to find
+    // it, we'll use the "simulated" rootContainer entity.
+    addTopLevelName(PolarisEntityConstants.getRootContainerName(), PolarisEntityType.ROOT, true);
+  }
+
+  /** Adds a name of a top-level entity (Catalog, Principal, PrincipalRole) to be resolved. */
+  public void addTopLevelName(String entityName, PolarisEntityType entityType, boolean isOptional) {
+    addedTopLevelNames.put(entityName, entityType);
+    if (isOptional) {
+      primaryResolver.addOptionalEntityByName(entityType, entityName);
+    } else {
+      primaryResolver.addEntityByName(entityType, entityName);
+    }
+  }
+
+  /**
+   * Adds a path that will be statically resolved with the primary Resolver when resolveAll() is
+   * called, and which contributes to the resolution status of whether all paths have successfully
+   * resolved.
+   *
+   * @param key the friendly lookup key for retrieving resolvedPaths after resolveAll(); typically
+   *     might be a Namespace or TableIdentifier object.
+   */
+  public void addPath(ResolverPath path, Object key) {
+    primaryResolver.addPath(path);
+    pathLookup.put(key, currentPathIndex);
+    addedPaths.add(path);
+    ++currentPathIndex;
+  }
+
+  /**
+   * Adds a path that is allowed to be dynamically resolved with a new Resolver when
+   * getPassthroughResolvedPath is called. These paths are also included in the primary static
+   * resolution set resolved during resolveAll().
+   */
+  public void addPassthroughPath(ResolverPath path, Object key) {
+    addPath(path, key);
+    passthroughPaths.put(key, path);
+  }
+
+  public ResolverStatus resolveAll() {
+    primaryResolverStatus = primaryResolver.resolveAll();
+    // TODO: This could be a race condition where a Principal is dropped after initial authn
+    // but before the resolution attempt; consider whether 403 forbidden is more appropriate.
+    diagnostics.check(
+        primaryResolverStatus.getStatus()
+            != ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST,
+        "caller_principal_does_not_exist_at_resolution_time");
+
+    // activated principal roles are known, add them to the call context
+    if (primaryResolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
+      List<PrincipalRoleEntity> activatedPrincipalRoles =
+          primaryResolver.getResolvedCallerPrincipalRoles().stream()
+              .map(ce -> PrincipalRoleEntity.of(ce.getEntity()))
+              .collect(Collectors.toList());
+      this.authenticatedPrincipal.setActivatedPrincipalRoles(activatedPrincipalRoles);
+    }
+    return primaryResolverStatus;
+  }
+
+  @Override
+  public PolarisResolvedPathWrapper getResolvedReferenceCatalogEntity() {
+    return getResolvedReferenceCatalogEntity(false);
+  }
+
+  /**
+   * @param key the key associated with the path to retrieve that was specified in addPath
+   * @return null if the path resolved for {@code key} isn't fully-resolved when specified as
+   *     "optional"
+   */
+  @Override
+  public PolarisResolvedPathWrapper getResolvedPath(Object key) {
+    return getResolvedPath(key, false);
+  }
+
+  /**
+   * @return null if the path resolved for {@code key} isn't fully-resolved when specified as
+   *     "optional", or if it was resolved but the subType doesn't match the specified subType.
+   */
+  @Override
+  public PolarisResolvedPathWrapper getResolvedPath(Object key, PolarisEntitySubType subType) {
+    return getResolvedPath(key, subType, false);
+  }
+
+  /**
+   * @param key the key associated with the path to retrieve that was specified in addPath
+   * @return null if the path resolved for {@code key} isn't fully-resolved when specified as
+   *     "optional"
+   */
+  @Override
+  public PolarisResolvedPathWrapper getPassthroughResolvedPath(Object key) {
+    diagnostics.check(
+        passthroughPaths.containsKey(key),
+        "invalid_key_for_passthrough_resolved_path",
+        "key={} passthroughPaths={}",
+        key,
+        passthroughPaths);
+    ResolverPath requestedPath = passthroughPaths.get(key);
+
+    // Run a single-use Resolver for this path.
+    Resolver passthroughResolver =
+        entityManager.prepareResolver(callContext, authenticatedPrincipal, catalogName);
+    passthroughResolver.addPath(requestedPath);
+    ResolverStatus status = passthroughResolver.resolveAll();
+
+    if (status.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+      LOG.debug("Returning null for key {} due to resolver status {}", key, status.getStatus());
+      return null;
+    }
+
+    List<EntityCacheEntry> resolvedPath = passthroughResolver.getResolvedPath();
+    if (requestedPath.isOptional()) {
+      if (resolvedPath.size() != requestedPath.getEntityNames().size()) {
+        LOG.debug(
+            "Returning null for key {} due to size mismatch from getPassthroughResolvedPath "
+                + "resolvedPath: {}, requestedPath.getEntityNames(): {}",
+            key,
+            resolvedPath.stream().map(ResolvedPolarisEntity::new).toList(),
+            requestedPath.getEntityNames());
+        return null;
+      }
+    }
+
+    List<ResolvedPolarisEntity> resolvedEntities = new ArrayList<>();
+    resolvedEntities.add(
+        new ResolvedPolarisEntity(passthroughResolver.getResolvedReferenceCatalog()));
+    resolvedPath.stream()
+        .forEach(cacheEntry -> resolvedEntities.add(new ResolvedPolarisEntity(cacheEntry)));
+    LOG.debug("Returning resolvedEntities from getPassthroughResolvedPath: {}", resolvedEntities);
+    return new PolarisResolvedPathWrapper(resolvedEntities);
+  }
+
+  /**
+   * @return null if the path resolved for {@code key} isn't fully-resolved when specified as
+   *     "optional", or if it was resolved but the subType doesn't match the specified subType.
+   */
+  @Override
+  public PolarisResolvedPathWrapper getPassthroughResolvedPath(
+      Object key, PolarisEntitySubType subType) {
+    PolarisResolvedPathWrapper resolvedPath = getPassthroughResolvedPath(key);
+    if (resolvedPath == null) {
+      return null;
+    }
+    if (resolvedPath.getRawLeafEntity() != null
+        && subType != PolarisEntitySubType.ANY_SUBTYPE
+        && resolvedPath.getRawLeafEntity().getSubType() != subType) {
+      return null;
+    }
+    return resolvedPath;
+  }
+
+  public Set<Long> getAllActivatedCatalogRoleAndPrincipalRoleIds() {
+    Set<Long> activatedIds = new HashSet<>();
+    primaryResolver.getResolvedCallerPrincipalRoles().stream()
+        .map(EntityCacheEntry::getEntity)
+        .map(PolarisBaseEntity::getId)
+        .forEach(activatedIds::add);
+    if (primaryResolver.getResolvedCatalogRoles() != null) {
+      primaryResolver.getResolvedCatalogRoles().values().stream()
+          .map(EntityCacheEntry::getEntity)
+          .map(PolarisBaseEntity::getId)
+          .forEach(activatedIds::add);
+    }
+    return activatedIds;
+  }
+
+  public Set<Long> getAllActivatedPrincipalRoleIds() {
+    Set<Long> activatedIds = new HashSet<>();
+    primaryResolver.getResolvedCallerPrincipalRoles().stream()
+        .map(EntityCacheEntry::getEntity)
+        .map(PolarisBaseEntity::getId)
+        .forEach(activatedIds::add);
+    return activatedIds;
+  }
+
+  public void setSimulatedResolvedRootContainerEntity(
+      ResolvedPolarisEntity simulatedResolvedRootContainerEntity) {
+    this.simulatedResolvedRootContainerEntity = simulatedResolvedRootContainerEntity;
+  }
+
+  private ResolvedPolarisEntity getResolvedRootContainerEntity() {
+    if (primaryResolverStatus.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+      return null;
+    }
+    EntityCacheEntry resolvedCacheEntry =
+        primaryResolver.getResolvedEntity(
+            PolarisEntityType.ROOT, PolarisEntityConstants.getRootContainerName());
+    if (resolvedCacheEntry == null) {
+      LOG.debug("Failed to find rootContainer, so using simulated rootContainer instead.");
+      return simulatedResolvedRootContainerEntity;
+    }
+    return new ResolvedPolarisEntity(resolvedCacheEntry);
+  }
+
+  public PolarisResolvedPathWrapper getResolvedRootContainerEntityAsPath() {
+    return new PolarisResolvedPathWrapper(List.of(getResolvedRootContainerEntity()));
+  }
+
+  public PolarisResolvedPathWrapper getResolvedReferenceCatalogEntity(
+      boolean prependRootContainer) {
+    // This is a server error instead of being able to legitimately return null, since this means
+    // a callsite failed to incorporate a reference catalog into its authorization flow but is
+    // still trying to perform operations on the (nonexistence) reference catalog.
+    diagnostics.checkNotNull(catalogName, "null_catalog_name_for_resolved_reference_catalog");
+    EntityCacheEntry resolvedCachedCatalog = primaryResolver.getResolvedReferenceCatalog();
+    if (resolvedCachedCatalog == null) {
+      return null;
+    }
+    if (prependRootContainer) {
+      // Operations directly on Catalogs also consider the root container to be a parent of its
+      // authorization chain.
+      // TODO: Throw appropriate Catalog NOT_FOUND exception before any call to
+      // getResolvedReferenceCatalogEntity().
+      return new PolarisResolvedPathWrapper(
+          List.of(
+              getResolvedRootContainerEntity(), new ResolvedPolarisEntity(resolvedCachedCatalog)));
+    } else {
+      return new PolarisResolvedPathWrapper(
+          List.of(new ResolvedPolarisEntity(resolvedCachedCatalog)));
+    }
+  }
+
+  public PolarisEntitySubType getLeafSubType(Object key) {
+    diagnostics.check(
+        pathLookup.containsKey(key),
+        "never_registered_key_for_resolved_path",
+        "key={} pathLookup={}",
+        key,
+        pathLookup);
+    int index = pathLookup.get(key);
+    List<EntityCacheEntry> resolved = primaryResolver.getResolvedPaths().get(index);
+    if (resolved.size() == 0) {
+      return PolarisEntitySubType.NULL_SUBTYPE;
+    }
+    return resolved.get(resolved.size() - 1).getEntity().getSubType();
+  }
+
+  /**
+   * @param key the key associated with the path to retrieve that was specified in addPath
+   * @param prependRootContainer if true, also includes the rootContainer as the first element of
+   *     the path; otherwise, the first element begins with the referenceCatalog.
+   * @return null if the path resolved for {@code key} isn't fully-resolved when specified as
+   *     "optional"
+   */
+  public PolarisResolvedPathWrapper getResolvedPath(Object key, boolean prependRootContainer) {
+    diagnostics.check(
+        pathLookup.containsKey(key),
+        "never_registered_key_for_resolved_path",
+        "key={} pathLookup={}",
+        key,
+        pathLookup);
+
+    if (primaryResolverStatus.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+      return null;
+    }
+    int index = pathLookup.get(key);
+
+    // Return null for a partially-resolved "optional" path.
+    ResolverPath requestedPath = addedPaths.get(index);
+    List<EntityCacheEntry> resolvedPath = primaryResolver.getResolvedPaths().get(index);
+    if (requestedPath.isOptional()) {
+      if (resolvedPath.size() != requestedPath.getEntityNames().size()) {
+        return null;
+      }
+    }
+
+    List<ResolvedPolarisEntity> resolvedEntities = new ArrayList<>();
+    if (prependRootContainer) {
+      resolvedEntities.add(getResolvedRootContainerEntity());
+    }
+    resolvedEntities.add(new ResolvedPolarisEntity(primaryResolver.getResolvedReferenceCatalog()));
+    resolvedPath.stream()
+        .forEach(cacheEntry -> resolvedEntities.add(new ResolvedPolarisEntity(cacheEntry)));
+    return new PolarisResolvedPathWrapper(resolvedEntities);
+  }
+
+  /**
+   * @return null if the path resolved for {@code key} isn't fully-resolved when specified as
+   *     "optional", or if it was resolved but the subType doesn't match the specified subType.
+   */
+  public PolarisResolvedPathWrapper getResolvedPath(
+      Object key, PolarisEntitySubType subType, boolean prependRootContainer) {
+    PolarisResolvedPathWrapper resolvedPath = getResolvedPath(key, prependRootContainer);
+    if (resolvedPath == null) {
+      return null;
+    }
+    if (resolvedPath.getRawLeafEntity() != null
+        && subType != PolarisEntitySubType.ANY_SUBTYPE
+        && resolvedPath.getRawLeafEntity().getSubType() != subType) {
+      return null;
+    }
+    return resolvedPath;
+  }
+
+  public PolarisResolvedPathWrapper getResolvedTopLevelEntity(
+      String entityName, PolarisEntityType entityType) {
+    // For now, all top-level entities will have the root container prepended so we don't have
+    // a variation of this method that allows specifying whether to prepend the root container.
+    diagnostics.check(
+        addedTopLevelNames.containsEntry(entityName, entityType),
+        "never_registered_top_level_name_and_type_for_resolved_entity",
+        "entityName={} entityType={} addedTopLevelNames={}",
+        entityName,
+        entityType,
+        addedTopLevelNames);
+
+    if (primaryResolverStatus.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
+      return null;
+    }
+
+    EntityCacheEntry resolvedCacheEntry = primaryResolver.getResolvedEntity(entityType, entityName);
+    if (resolvedCacheEntry == null) {
+      return null;
+    }
+    return new PolarisResolvedPathWrapper(
+        List.of(getResolvedRootContainerEntity(), new ResolvedPolarisEntity(resolvedCacheEntry)));
+  }
+}

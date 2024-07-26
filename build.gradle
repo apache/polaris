@@ -1,0 +1,96 @@
+buildscript {
+    repositories {
+        maven {
+            url 'https://plugins.gradle.org/m2/'
+        }
+    }
+    dependencies {
+        classpath 'com.diffplug.spotless:spotless-plugin-gradle:6.25.0'
+    }
+}
+
+plugins {
+    id 'idea'
+}
+
+allprojects {
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+    idea {
+        module {
+            downloadJavadoc = true
+            downloadSources = true
+        }
+    }
+}
+
+subprojects {
+    apply plugin: 'jacoco'
+    apply plugin: 'java'
+    apply plugin: 'com.diffplug.spotless'
+    apply plugin: 'jacoco-report-aggregation'
+    apply plugin: 'groovy'
+    ext {
+        jacksonVersion = '2.17.1'
+        icebergVersion = '1.5.0'
+        hadoopVersion = '3.3.6'
+        dropwizardVersion = '4.0.7'
+        assertJVersion = '3.25.3'
+    }
+
+    tasks.withType(JavaCompile) {
+        options.compilerArgs << '-Xlint:unchecked'
+        options.compilerArgs << '-Xlint:deprecation'
+    }
+
+    project(':polaris-service') {
+        apply plugin: 'application'
+    }
+
+    project(':polaris-core') {
+        apply plugin: 'java-library'
+    }
+
+    dependencies {
+        implementation "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
+        implementation 'com.google.guava:guava:33.0.0-jre'
+        implementation "org.jetbrains:annotations:24.0.0"
+        implementation 'org.slf4j:slf4j-api:2.0.12'
+        compileOnly "com.github.spotbugs:spotbugs-annotations:4.8.5"
+
+        testImplementation 'org.junit.jupiter:junit-jupiter:5.7.1'
+        testImplementation 'org.assertj:assertj-core:3.25.3'
+        testImplementation "org.mockito:mockito-core:5.11.0"
+
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+
+    task format {
+        dependsOn 'spotlessApply'
+    }
+
+    test {
+        useJUnitPlatform()
+    }
+
+    spotless {
+        def disallowWildcardImports = {
+            String text = it
+            def regex = ~/import .*\.\*;/
+            def m = regex.matcher(text)
+            if (m.find()) {
+                throw new AssertionError("Wildcard imports disallowed - ${m.findAll()}")
+            }
+        }
+        java {
+            target 'src/main/java/**/*.java', 'src/testFixtures/java/**/*.java', 'src/test/java/**/*.java'
+            googleJavaFormat()
+            indentWithSpaces(2)
+            removeUnusedImports()
+            endWithNewline()
+            custom 'disallowWildcardImports', disallowWildcardImports
+        }
+    }
+}

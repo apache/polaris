@@ -1,0 +1,41 @@
+services:
+  polaris:
+    build:
+      context: ../iceberg-rest-server
+      network: host
+    ports:
+      - "8181:8181"
+      - "8182"
+    environment:
+      AWS_REGION: us-west-2
+      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8182/healthcheck"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+  jupyter:
+    build:
+      context: ..
+      dockerfile: ../notebooks/Dockerfile
+      network: host
+    ports:
+      - "8888:8888"
+    depends_on:
+      polaris:
+        condition: service_healthy
+    environment:
+      AWS_REGION: us-west-2
+      POLARIS_HOST: polaris
+    volumes:
+      - notebooks:/home/jovyan/notebooks
+
+volumes:
+  notebooks:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ./notebooks

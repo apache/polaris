@@ -1,0 +1,49 @@
+# TableUpdate
+
+
+## Properties
+
+Name | Type | Description | Notes
+------------ | ------------- | ------------- | -------------
+**action** | **str** |  | 
+**format_version** | **int** |  | 
+**var_schema** | [**ModelSchema**](ModelSchema.md) |  | 
+**last_column_id** | **int** | The highest assigned column ID for the table. This is used to ensure columns are always assigned an unused ID when evolving schemas. When omitted, it will be computed on the server side. | [optional] 
+**schema_id** | **int** | Schema ID to set as current, or -1 to set last added schema | 
+**spec** | [**PartitionSpec**](PartitionSpec.md) |  | 
+**spec_id** | **int** | Partition spec ID to set as the default, or -1 to set last added spec | 
+**sort_order** | [**SortOrder**](SortOrder.md) |  | 
+**sort_order_id** | **int** | Sort order ID to set as the default, or -1 to set last added sort order | 
+**snapshot** | [**Snapshot**](Snapshot.md) |  | 
+**ref_name** | **str** |  | 
+**type** | **str** |  | 
+**snapshot_id** | **int** |  | 
+**max_ref_age_ms** | **int** |  | [optional] 
+**max_snapshot_age_ms** | **int** |  | [optional] 
+**min_snapshots_to_keep** | **int** |  | [optional] 
+**snapshot_ids** | **List[int]** |  | 
+**location** | **str** |  | 
+**updates** | **Dict[str, str]** |  | 
+**removals** | **List[str]** |  | 
+**statistics** | [**StatisticsFile**](StatisticsFile.md) |  | 
+
+## Example
+
+```python
+from polaris.catalog.models.table_update import TableUpdate
+
+# TODO update the JSON string below
+json = "{}"
+# create an instance of TableUpdate from a JSON string
+table_update_instance = TableUpdate.from_json(json)
+# print the JSON string representation of the object
+print(TableUpdate.to_json())
+
+# convert the object into a dict
+table_update_dict = table_update_instance.to_dict()
+# create an instance of TableUpdate from a dict
+table_update_from_dict = TableUpdate.from_dict(table_update_dict)
+```
+[[Back to Model list]](../README.md#documentation-for-models) [[Back to API list]](../README.md#documentation-for-api-endpoints) [[Back to README]](../README.md)
+
+

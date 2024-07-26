@@ -1,0 +1,3 @@
+com.snowflake.polaris.auth.SnowflakeOAuth2TokenBrokerFactory
+io.polaris.service.auth.JWTRSAKeyPairFactory
+io.polaris.service.auth.JWTSymmetricKeyFactory

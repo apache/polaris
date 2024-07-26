@@ -1,0 +1,97 @@
+package io.polaris.core.persistence.cache;
+
+import io.polaris.core.entity.PolarisBaseEntity;
+import io.polaris.core.entity.PolarisEntityConstants;
+import io.polaris.core.entity.PolarisEntityType;
+import java.util.Objects;
+
+/** Key on the name of an entity */
+public class EntityCacheByNameKey {
+
+  // id of the catalog where this entity resides
+  private final long catalogId;
+
+  // id of the parent of that entity
+  private final long parentId;
+
+  // entity type code
+  private final int typeCode;
+
+  // entity name
+  private final String name;
+
+  /**
+   * Constructor for a top-level service entity (principal, principal role or catalog)
+   *
+   * @param type entity type
+   * @param name name of that entity
+   */
+  public EntityCacheByNameKey(PolarisEntityType type, String name) {
+    this.catalogId = PolarisEntityConstants.getNullId();
+    this.parentId = PolarisEntityConstants.getRootEntityId();
+    this.typeCode = type.getCode();
+    this.name = name;
+  }
+
+  /**
+   * Constructor for a non-top-level entity
+   *
+   * @param catalogId id of the catalog where this entity is located
+   * @param parentId id of the parent of this entity
+   * @param type entity type
+   * @param name name of that entity
+   */
+  public EntityCacheByNameKey(long catalogId, long parentId, PolarisEntityType type, String name) {
+    this.catalogId = catalogId;
+    this.parentId = parentId;
+    this.typeCode = type.getCode();
+    this.name = name;
+  }
+
+  /**
+   * Constructor of a key from an existing base entity
+   *
+   * @param baseEntity base entity
+   */
+  public EntityCacheByNameKey(PolarisBaseEntity baseEntity) {
+    this.catalogId = baseEntity.getCatalogId();
+    this.parentId = baseEntity.getParentId();
+    this.typeCode = baseEntity.getTypeCode();
+    this.name = baseEntity.getName();
+  }
+
+  public long getCatalogId() {
+    return catalogId;
+  }
+
+  public long getParentId() {
+    return parentId;
+  }
+
+  public int getTypeCode() {
+    return typeCode;
+  }
+
+  public PolarisEntityType getType() {
+    return PolarisEntityType.fromCode(typeCode);
+  }
+
+  public String getName() {
+    return name;
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    EntityCacheByNameKey that = (EntityCacheByNameKey) o;
+    return parentId == that.parentId
+        && typeCode == that.typeCode
+        && Objects.equals(name, that.name);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(parentId, typeCode, name);
+  }
+}

@@ -1,0 +1,2 @@
+io.polaris.service.auth.TestOAuth2ApiService
+io.polaris.service.auth.DefaultOAuth2ApiService
