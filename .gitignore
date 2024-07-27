@@ -1,11 +1,11 @@
 polaris-service/logs/
-regtests/derby.log
-regtests/metastore_db
 regtests/output/
+
+# Notebooks
 notebooks/.ipynb_checkpoints/
-.gradle
-**/build/
-!src/**/build/
+
+# Metastore
+metastore_db/
 
 # Ignore Gradle GUI config
 gradle-app.setting
@@ -26,4 +26,35 @@ gradle-app.setting
 .classpath
 .env
 .java-version
-**/*.iml
+
+# IntelliJ
+/.idea
+*.iml
+*.ipr
+*.iws
+
+# Gradle
+/.gradle
+**/build/
+!src/**/build/
+
+# jenv
+.java-version
+
+# Log files
+*.log
+logs/
+
+# binary files
+*.class
+*.jar
+*.zip
+*.tar.gz
+*.tgz
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+
+# macOS
+*.DS_Store
+.DS_Store
