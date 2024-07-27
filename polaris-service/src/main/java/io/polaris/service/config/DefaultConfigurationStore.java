@@ -12,6 +12,7 @@ public class DefaultConfigurationStore implements PolarisConfigurationStore {
     this.properties = properties;
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
     return (T) properties.get(configName);
