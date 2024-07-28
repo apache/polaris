@@ -27,6 +27,7 @@ buildscript {
 
 plugins {
     id 'idea'
+    id 'eclipse'
 }
 
 allprojects {
@@ -110,3 +111,16 @@ subprojects {
         }
     }
 }
+
+def projectName = rootProject.file("ide-name.txt").text.trim()
+def ideName = "$projectName ${rootProject.version.toString().replace("^([0-9.]+).*", "\1")}"
+
+if (System.getProperty("idea.sync.active").asBoolean()) {
+    // There's no proper way to set the name of the IDEA project (when "just importing" or
+    // syncing the Gradle project)
+    def ideaDir = rootProject.layout.projectDirectory.dir(".idea")
+    ideaDir.asFile.mkdirs()
+    ideaDir.file(".name").asFile.text = ideName
+}
+
+eclipse { project { name = ideName } }
