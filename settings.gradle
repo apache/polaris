@@ -14,6 +14,17 @@
  * limitations under the License.
  */
 
+if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
+    throw new GradleException("""
+
+        Build aborted...
+
+        The Apache Polaris build requires Java 21.
+
+
+        """)
+}
+
 rootProject.name = 'polaris'
 
 include 'polaris-core'

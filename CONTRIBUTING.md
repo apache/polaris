@@ -55,6 +55,13 @@ git push GitHubUser my-branch --force
 * Test that your changes works by adapting or adding tests. Verify the build passes (see `README.md` for build instructions).
 * If your Pull Request has conflicts with the `main` branch, please rebase and fix the conflicts.
 
+## Java version requirements
+
+The Polaris build currently requires Java 21 or later. There are a few tools that help you running the right Java version:
+
+* [SDKMAN!](https://sdkman.io/) follow the installation instructions, then run `sdk list java` to see the available distributions and versions, then run `sdk install java <identifer from list>` using the identifier for the distribution and version (>= 21) of your choice.
+* [jenv](https://www.jenv.be/) If on a Mac you can use jenv to set the appropriate SDK.
+
 ## License
 
 When contributing to this project, you agree that your contributions use the Apache License version 2. Please ensure you have permission to do this if required by your employer.
