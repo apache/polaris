@@ -102,10 +102,9 @@ subprojects {
             }
         }
         java {
-            target 'src/main/java/**/*.java', 'src/testFixtures/java/**/*.java', 'src/test/java/**/*.java'
+            target 'src/*/java/**/*.java'
+            targetExclude 'build/**'
             googleJavaFormat()
-            indentWithSpaces(2)
-            removeUnusedImports()
             endWithNewline()
             custom 'disallowWildcardImports', disallowWildcardImports
         }
