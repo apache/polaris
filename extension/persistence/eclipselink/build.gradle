@@ -17,9 +17,10 @@
 dependencies {
     implementation(project(":polaris-core"))
     implementation(project(":polaris-service"))
-    implementation("org.eclipse.persistence:eclipselink:4.0.3")
-    implementation("io.dropwizard:dropwizard-jackson:${dropwizardVersion}")
+    implementation(libs.eclipselink)
+    implementation(platform(libs.dropwizard.bom))
+    implementation("io.dropwizard:dropwizard-jackson")
 
-    testImplementation("com.h2database:h2:2.2.224")
+    testImplementation(libs.h2)
     testImplementation(testFixtures(project(":polaris-core")))
 }
