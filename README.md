@@ -51,7 +51,7 @@ docker run -p 8080:80 -v ${PWD}:/spec redocly/cli build-docs spec/rest-catalog-o
 ## Requirements / Setup
 
 - Java JDK >= 21, see [CONTRIBUTING.md](./CONTRIBUTING.md#java-version-requirements). 
-- Gradle 8.6 - This is included in the project and can be run using `./gradlew` in the project root.
+- Gradle - This is included in the project and can be run using `./gradlew` in the project root.
 - Docker - If you want to run the project in a containerized environment.
 
 Command-Line getting started
