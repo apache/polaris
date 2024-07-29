@@ -50,7 +50,7 @@ subprojects {
     apply plugin: 'jacoco-report-aggregation'
     apply plugin: 'groovy'
     ext {
-        jacksonVersion = '2.17.1'
+        jacksonVersion = '2.17.2'
         icebergVersion = '1.5.0'
         hadoopVersion = '3.3.6'
         dropwizardVersion = '4.0.7'
