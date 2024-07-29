@@ -51,18 +51,13 @@ subprojects {
     apply plugin: "jacoco-report-aggregation"
     apply plugin: "groovy"
 
-    tasks.withType(JavaCompile) {
+    tasks.withType(JavaCompile).configureEach {
         options.compilerArgs << "-Xlint:unchecked"
         options.compilerArgs << "-Xlint:deprecation"
     }
 
-    project(":polaris-service") {
-        apply plugin: "application"
-    }
-
-    project(":polaris-core") {
-        apply plugin: "java-library"
-    }
+    // Note: polaris-core seemed to be for Java 11, but uses functions that are introduced in later Java versions
+    tasks.withType(JavaCompile).configureEach { options.release = 21 }
 
     project(":polaris-eclipselink") {
         apply plugin: "java-library"
@@ -84,11 +79,9 @@ subprojects {
         testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     }
 
-    task format {
-        dependsOn "spotlessApply"
-    }
+    tasks.register("format").configure {dependsOn("spotlessApply") }
 
-    test {
+    tasks.named("test", Test).configure {
         useJUnitPlatform()
         jvmArgs += [ '-Duser.language=en' ]
     }
