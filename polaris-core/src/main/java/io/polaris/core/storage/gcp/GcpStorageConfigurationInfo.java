@@ -60,8 +60,8 @@ public class GcpStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
-        .add("storageType", storageType)
-        .add("allowedLocation", allowedLocations)
+        .add("storageType", getStorageType())
+        .add("allowedLocation", getAllowedLocations())
         .add("gcpServiceAccount", gcpServiceAccount)
         .toString();
   }

@@ -25,6 +25,9 @@ public class TableLikeEntity extends PolarisEntity {
   // of the internalProperties JSON file.
   public static final String METADATA_LOCATION_KEY = "metadata-location";
 
+  public static final String USER_SPECIFIED_WRITE_DATA_LOCATION_KEY = "write.data.path";
+  public static final String USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY = "write.metadata.path";
+
   public TableLikeEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
   }
@@ -57,6 +60,11 @@ public class TableLikeEntity extends PolarisEntity {
     return getInternalPropertiesAsMap().get(METADATA_LOCATION_KEY);
   }
 
+  @JsonIgnore
+  public String getBaseLocation() {
+    return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+  }
+
   public static class Builder extends PolarisEntity.BaseBuilder<TableLikeEntity, Builder> {
     public Builder(TableIdentifier identifier, String metadataLocation) {
       super();
@@ -85,6 +93,11 @@ public class TableLikeEntity extends PolarisEntity {
         internalProperties.put(
             NamespaceEntity.PARENT_NAMESPACE_KEY, RESTUtil.encodeNamespace(namespace));
       }
+      return this;
+    }
+
+    public Builder setBaseLocation(String location) {
+      properties.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, location);
       return this;
     }
 

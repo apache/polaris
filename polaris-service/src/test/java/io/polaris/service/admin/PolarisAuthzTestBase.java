@@ -54,7 +54,6 @@ import io.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import io.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import java.io.IOException;
 import java.time.Clock;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -146,13 +145,15 @@ public abstract class PolarisAuthzTestBase {
     PolarisTreeMapStore backingStore = new PolarisTreeMapStore(diagServices);
     InMemoryPolarisMetaStoreManagerFactory managerFactory =
         new InMemoryPolarisMetaStoreManagerFactory();
-    managerFactory.setStorageIntegrationProvider(new PolarisStorageIntegrationProviderImpl());
+    managerFactory.setStorageIntegrationProvider(
+        new PolarisStorageIntegrationProviderImpl(Mockito::mock));
     RealmContext realmContext = () -> "realm";
     PolarisMetaStoreManager metaStoreManager =
         managerFactory.getOrCreateMetaStoreManager(realmContext);
 
-    Map<String, Object> configMap = new HashMap<>();
-    configMap.put("ALLOW_SPECIFYING_FILE_IO_IMPL", true);
+    Map<String, Object> configMap =
+        Map.of(
+            "ALLOW_SPECIFYING_FILE_IO_IMPL", true, "ALLOW_EXTERNAL_METADATA_FILE_LOCATION", true);
     PolarisCallContext polarisContext =
         new PolarisCallContext(
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -197,11 +198,11 @@ public abstract class PolarisAuthzTestBase {
     this.adminService =
         new PolarisAdminService(callContext, entityManager, authenticatedRoot, polarisAuthorizer);
 
-    String storageLocation = "file:///tmp";
+    String storageLocation = "file:///tmp/authz";
     FileStorageConfigInfo storageConfigModel =
         FileStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-            .setAllowedLocations(List.of(storageLocation, "file:///tmp"))
+            .setAllowedLocations(List.of(storageLocation, "file:///tmp/authz"))
             .build();
     catalogEntity =
         adminService.createCatalog(
@@ -350,7 +351,8 @@ public abstract class PolarisAuthzTestBase {
         new PolarisPassthroughResolutionView(
             callContext, entityManager, authenticatedRoot, CATALOG_NAME);
     this.baseCatalog =
-        new BasePolarisCatalog(entityManager, callContext, passthroughView, Mockito.mock());
+        new BasePolarisCatalog(
+            entityManager, callContext, passthroughView, authenticatedRoot, Mockito.mock());
     this.baseCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -371,10 +373,13 @@ public abstract class PolarisAuthzTestBase {
 
     @Override
     public Catalog createCallContextCatalog(
-        CallContext context, final PolarisResolutionManifest resolvedManifest) {
+        CallContext context,
+        AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+        final PolarisResolutionManifest resolvedManifest) {
       // This depends on the BasePolarisCatalog allowing calling initialize multiple times
       // to override the previous config.
-      Catalog catalog = super.createCallContextCatalog(context, resolvedManifest);
+      Catalog catalog =
+          super.createCallContextCatalog(context, authenticatedPolarisPrincipal, resolvedManifest);
       catalog.initialize(
           CATALOG_NAME,
           ImmutableMap.of(

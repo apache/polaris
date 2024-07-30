@@ -32,12 +32,18 @@ import java.io.IOException;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import software.amazon.awssdk.services.sts.StsClient;
 
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
-  public PolarisStorageIntegrationProviderImpl() {}
+
+  private final Supplier<StsClient> stsClientSupplier;
+
+  public PolarisStorageIntegrationProviderImpl(Supplier<StsClient> stsClientSupplier) {
+    this.stsClientSupplier = stsClientSupplier;
+  }
 
   @Override
   @SuppressWarnings("unchecked")
@@ -51,7 +57,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
     switch (polarisStorageConfigurationInfo.getStorageType()) {
       case S3:
         storageIntegration =
-            (PolarisStorageIntegration<T>) new AwsCredentialsStorageIntegration(StsClient.create());
+            (PolarisStorageIntegration<T>)
+                new AwsCredentialsStorageIntegration(stsClientSupplier.get());
         break;
       case GCS:
         try {

@@ -136,7 +136,9 @@ public class PolarisCatalogHandlerWrapper {
   }
 
   private void initializeCatalog() {
-    this.baseCatalog = catalogFactory.createCallContextCatalog(callContext, resolutionManifest);
+    this.baseCatalog =
+        catalogFactory.createCallContextCatalog(
+            callContext, authenticatedPrincipal, resolutionManifest);
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
     this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
@@ -589,18 +591,20 @@ public class PolarisCatalogHandlerWrapper {
             LoadTableResponse.Builder responseBuilder =
                 LoadTableResponse.builder().withTableMetadata(tableMetadata);
             if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-              LOG.atDebug()
-                  .addKeyValue("tableIdentifier", tableIdentifier)
-                  .addKeyValue("tableLocation", tableMetadata.location())
-                  .log("Fetching client credentials for table");
-              responseBuilder.addAllConfig(
-                  credentialDelegation.getCredentialConfig(
-                      tableIdentifier,
-                      tableMetadata,
-                      Set.of(
-                          PolarisStorageActions.READ,
-                          PolarisStorageActions.WRITE,
-                          PolarisStorageActions.LIST)));
+              try {
+                Set<PolarisStorageActions> actionsRequested =
+                    getValidTableActionsOrThrow(tableIdentifier);
+
+                LOG.atDebug()
+                    .addKeyValue("tableIdentifier", tableIdentifier)
+                    .addKeyValue("tableLocation", tableMetadata.location())
+                    .log("Fetching client credentials for table");
+                responseBuilder.addAllConfig(
+                    credentialDelegation.getCredentialConfig(
+                        tableIdentifier, tableMetadata, actionsRequested));
+              } catch (ForbiddenException | NoSuchTableException e) {
+                // No privileges available
+              }
             }
             return responseBuilder.build();
           } else if (table instanceof BaseMetadataTable) {
@@ -702,13 +706,18 @@ public class PolarisCatalogHandlerWrapper {
               LoadTableResponse.builder().withTableMetadata(metadata);
 
           if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-            LOG.atDebug()
-                .addKeyValue("tableIdentifier", ident)
-                .addKeyValue("tableLocation", metadata.location())
-                .log("Fetching client credentials for table");
-            responseBuilder.addAllConfig(
-                credentialDelegation.getCredentialConfig(
-                    ident, metadata, Set.of(PolarisStorageActions.ALL)));
+            try {
+              Set<PolarisStorageActions> actionsRequested = getValidTableActionsOrThrow(ident);
+
+              LOG.atDebug()
+                  .addKeyValue("tableIdentifier", ident)
+                  .addKeyValue("tableLocation", metadata.location())
+                  .log("Fetching client credentials for table");
+              responseBuilder.addAllConfig(
+                  credentialDelegation.getCredentialConfig(ident, metadata, actionsRequested));
+            } catch (ForbiddenException | NoSuchTableException e) {
+              // No privileges available
+            }
           }
           return responseBuilder.build();
         });
@@ -770,6 +779,27 @@ public class PolarisCatalogHandlerWrapper {
     return doCatalogOperation(() -> CatalogHandlers.loadTable(baseCatalog, tableIdentifier));
   }
 
+  private Set<PolarisStorageActions> getValidTableActionsOrThrow(TableIdentifier tableIdentifier) {
+    PolarisAuthorizableOperation read =
+        PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION;
+    PolarisAuthorizableOperation write =
+        PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
+    Set<PolarisStorageActions> actionsRequested =
+        new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+    try {
+      // TODO: Refactor to have a boolean-return version of the helpers so we can fallthrough
+      // easily.
+      authorizeBasicTableLikeOperationOrThrow(write, PolarisEntitySubType.TABLE, tableIdentifier);
+      actionsRequested.add(PolarisStorageActions.WRITE);
+    } catch (ForbiddenException | NoSuchTableException e) {
+      LOG.atDebug()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .log("Authz failed for LOAD_TABLE_WITH_WRITE_DELEGATION so attempting READ only");
+      authorizeBasicTableLikeOperationOrThrow(read, PolarisEntitySubType.TABLE, tableIdentifier);
+    }
+    return actionsRequested;
+  }
+
   public LoadTableResponse loadTableWithAccessDelegation(
       TableIdentifier tableIdentifier, String xIcebergAccessDelegation, String snapshots) {
     // Here we have a single method that falls through multiple candidate
@@ -777,26 +807,10 @@ public class PolarisCatalogHandlerWrapper {
     // and
     // failing the authz check if grants aren't found, we find the first most-privileged authz match
     // and respond according to that.
-    PolarisAuthorizableOperation op1 = PolarisAuthorizableOperation.LOAD_TABLE_WITH_READ_DELEGATION;
-    PolarisAuthorizableOperation op2 =
-        PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
-
-    Set<PolarisStorageActions> actionsRequested =
-        new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
-    try {
-      // TODO: Refactor to have a boolean-return version of the helpers so we can fallthrough
-      // easily.
-      authorizeBasicTableLikeOperationOrThrow(op2, PolarisEntitySubType.TABLE, tableIdentifier);
-      actionsRequested.add(PolarisStorageActions.WRITE);
-    } catch (ForbiddenException e) {
-      LOG.atDebug()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .log("Authz failed for LOAD_TABLE_WITH_WRITE_DELEGATION so attempting READ only");
-      authorizeBasicTableLikeOperationOrThrow(op1, PolarisEntitySubType.TABLE, tableIdentifier);
-    }
 
     // TODO: Find a way for the configuration or caller to better express whether to fail or omit
     // when data-access is specified but access delegation grants are not found.
+    Set<PolarisStorageActions> actionsRequested = getValidTableActionsOrThrow(tableIdentifier);
 
     return doCatalogOperation(
         () -> {

@@ -169,6 +169,12 @@ paths:
         Clients may also use the token exchange flow to refresh a token that is about to expire by
         sending a token exchange request (3). The request's "subject" token should be the expiring
         token. This request should use the subject token in the "Authorization" header.
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          required: false
       requestBody:
         required: true
         content:

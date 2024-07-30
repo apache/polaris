@@ -40,10 +40,15 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.PartitionSpec;
+import org.apache.iceberg.SortOrder;
+import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -688,14 +693,15 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         .isTrue();
 
     // To get a handy metadata file we can use one from another table.
+    // to avoid overlapping directories, drop the original table and recreate it via registerTable
     final String metadataLocation = newWrapper().loadTable(TABLE_NS1_1, "all").metadataLocation();
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
 
-    final TableIdentifier newtable = TableIdentifier.of(NS2, "newtable");
     final RegisterTableRequest registerRequest =
         new RegisterTableRequest() {
           @Override
           public String name() {
-            return "newtable";
+            return TABLE_NS1_1.name();
           }
 
           @Override
@@ -711,10 +717,10 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_FULL_METADATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
         () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).registerTable(NS2, registerRequest);
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).registerTable(NS1, registerRequest);
         },
         () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(newtable);
+          newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithoutPurge(TABLE_NS1_1);
         });
   }
 
@@ -1541,12 +1547,12 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
   @Test
   public void testSendNotificationSufficientPrivileges() {
     String externalCatalog = "externalCatalog";
+    String storageLocation =
+        "file:///tmp/send_notification_sufficient_privileges_" + System.currentTimeMillis();
 
-    String storageLocation = "file:///tmp";
     FileStorageConfigInfo storageConfigModel =
         FileStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-            .setAllowedLocations(List.of(storageLocation, "file:///tmp"))
             .build();
     adminService.createCatalog(
         new CatalogEntity.Builder()
@@ -1580,7 +1586,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     NotificationRequest request = new NotificationRequest();
     request.setNotificationType(NotificationType.CREATE);
     TableUpdateNotification update = new TableUpdateNotification();
-    update.setMetadataLocation("file:///tmp/bucket/table/metadata/v1.metadata.json");
+    update.setMetadataLocation(
+        String.format("%s/bucket/table/metadata/v1.metadata.json", storageLocation));
     update.setTableName(table.name());
     update.setTableUuid(tableUuid);
     update.setTimestamp(230950845L);
@@ -1589,7 +1596,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     NotificationRequest request2 = new NotificationRequest();
     request2.setNotificationType(NotificationType.UPDATE);
     TableUpdateNotification update2 = new TableUpdateNotification();
-    update2.setMetadataLocation("file:///tmp/bucket/table/metadata/v2.metadata.json");
+    update2.setMetadataLocation(
+        String.format("%s/bucket/table/metadata/v2.metadata.json", storageLocation));
     update2.setTableName(table.name());
     update2.setTableUuid(tableUuid);
     update2.setTimestamp(330950845L);
@@ -1614,12 +1622,31 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             Mockito.mock()) {
           @Override
           public Catalog createCallContextCatalog(
-              CallContext context, PolarisResolutionManifest resolvedManifest) {
-            Catalog catalog = super.createCallContextCatalog(context, resolvedManifest);
+              CallContext context,
+              AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+              PolarisResolutionManifest resolvedManifest) {
+            Catalog catalog =
+                super.createCallContextCatalog(
+                    context, authenticatedPolarisPrincipal, resolvedManifest);
             catalog.initialize(
                 externalCatalog,
                 ImmutableMap.of(
                     CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+            FileIO fileIO = ((BasePolarisCatalog) catalog).newTableOps(table).io();
+            TableMetadata tableMetadata =
+                TableMetadata.buildFromEmpty()
+                    .addSchema(SCHEMA, SCHEMA.highestFieldId())
+                    .setLocation(
+                        String.format("%s/bucket/table/metadata/v1.metadata.json", storageLocation))
+                    .addPartitionSpec(PartitionSpec.unpartitioned())
+                    .addSortOrder(SortOrder.unsorted())
+                    .assignUUID()
+                    .build();
+            TableMetadataParser.overwrite(
+                tableMetadata, fileIO.newOutputFile(update.getMetadataLocation()));
+            TableMetadataParser.overwrite(
+                tableMetadata, fileIO.newOutputFile(update2.getMetadataLocation()));
             return catalog;
           }
         };

@@ -17,8 +17,8 @@ package io.polaris.core.persistence;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.dropwizard.jackson.Discoverable;
-import io.micrometer.core.instrument.MeterRegistry;
 import io.polaris.core.context.RealmContext;
+import io.polaris.core.monitor.PolarisMetricRegistry;
 import io.polaris.core.storage.PolarisStorageIntegrationProvider;
 import io.polaris.core.storage.cache.StorageCredentialCache;
 import java.util.List;
@@ -40,7 +40,7 @@ public interface MetaStoreManagerFactory extends Discoverable {
 
   void setStorageIntegrationProvider(PolarisStorageIntegrationProvider storageIntegrationProvider);
 
-  void setMetricRegistry(MeterRegistry metricRegistry);
+  void setMetricRegistry(PolarisMetricRegistry metricRegistry);
 
   Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> bootstrapRealms(List<String> realms);
 }

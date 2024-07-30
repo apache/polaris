@@ -60,6 +60,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.RESTException;
@@ -396,7 +397,11 @@ public class PolarisApplicationIntegrationTest {
       List<Namespace> namespaces = sessionCatalog.listNamespaces(sessionContext);
       assertThat(namespaces).isNotNull().hasSize(1).containsExactly(ns);
       Map<String, String> metadata = sessionCatalog.loadNamespaceMetadata(sessionContext, ns);
-      assertThat(metadata).isNotNull().isEmpty();
+      assertThat(metadata)
+          .isNotNull()
+          .isNotEmpty()
+          .containsEntry(
+              PolarisEntityConstants.ENTITY_BASE_LOCATION, "s3://my-bucket/path/to/data/db1");
     }
   }
 
@@ -440,6 +445,57 @@ public class PolarisApplicationIntegrationTest {
             .withPartitionSpec(PartitionSpec.unpartitioned())
             .create();
         Assertions.fail("Expected failure calling create table in external catalog");
+      } catch (BadRequestException e) {
+        LOGGER.info("Received expected exception " + e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  public void testIcebergCreateTablesWithWritePathBlocked(TestInfo testInfo) throws IOException {
+    String catalogName = testInfo.getTestMethod().get().getName() + "Internal";
+    createCatalog(catalogName, Catalog.TypeEnum.INTERNAL, PRINCIPAL_ROLE_NAME);
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
+      SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
+      Namespace ns = Namespace.of("db1");
+      sessionCatalog.createNamespace(sessionContext, ns);
+      try {
+        Assertions.assertThatThrownBy(
+                () ->
+                    sessionCatalog
+                        .buildTable(
+                            sessionContext,
+                            TableIdentifier.of(ns, "the_table"),
+                            new Schema(
+                                List.of(
+                                    Types.NestedField.of(
+                                        1, false, "theField", Types.StringType.get()))))
+                        .withSortOrder(SortOrder.unsorted())
+                        .withPartitionSpec(PartitionSpec.unpartitioned())
+                        .withProperties(Map.of("write.data.path", "s3://my-bucket/path/to/data"))
+                        .create())
+            .isInstanceOf(ForbiddenException.class)
+            .hasMessage(
+                "Forbidden: Delegate access to table with user-specified write location is temporarily not supported.");
+
+        Assertions.assertThatThrownBy(
+                () ->
+                    sessionCatalog
+                        .buildTable(
+                            sessionContext,
+                            TableIdentifier.of(ns, "the_table"),
+                            new Schema(
+                                List.of(
+                                    Types.NestedField.of(
+                                        1, false, "theField", Types.StringType.get()))))
+                        .withSortOrder(SortOrder.unsorted())
+                        .withPartitionSpec(PartitionSpec.unpartitioned())
+                        .withProperties(
+                            Map.of("write.metadata.path", "s3://my-bucket/path/to/data"))
+                        .create())
+            .isInstanceOf(ForbiddenException.class)
+            .hasMessage(
+                "Forbidden: Delegate access to table with user-specified write location is temporarily not supported.");
       } catch (BadRequestException e) {
         LOGGER.info("Received expected exception " + e.getMessage());
       }

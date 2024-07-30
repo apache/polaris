@@ -16,10 +16,9 @@
 package io.polaris.service;
 
 import com.google.common.base.Stopwatch;
-import io.micrometer.core.instrument.MeterRegistry;
 import io.polaris.core.context.CallContext;
 import io.polaris.core.monitor.PolarisMetricRegistry;
-import io.polaris.service.resource.TimedApi;
+import io.polaris.core.resource.TimedApi;
 import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.ext.Provider;
@@ -29,9 +28,9 @@ import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.glassfish.jersey.server.monitoring.RequestEventListener;
 
 /**
- * An ApplicationEventListener that supports timing of resource method execution and error counting.
- * It uses Micrometer for metrics collection and provides detailed metrics tagged with realm
- * identifiers and distinguishes between successful executions and errors.
+ * An ApplicationEventListener that supports timing and error counting of Jersey resource methods
+ * annotated by {@link TimedApi}. It uses the {@link PolarisMetricRegistry} for metric collection
+ * and properly times the resource on success and increments the error counter on failure.
  */
 @Provider
 public class TimedApplicationEventListener implements ApplicationEventListener {
@@ -39,8 +38,8 @@ public class TimedApplicationEventListener implements ApplicationEventListener {
   // The PolarisMetricRegistry instance used for recording metrics and error counters.
   private final PolarisMetricRegistry polarisMetricRegistry;
 
-  public TimedApplicationEventListener(MeterRegistry meterRegistry) {
-    this.polarisMetricRegistry = new PolarisMetricRegistry(meterRegistry);
+  public TimedApplicationEventListener(PolarisMetricRegistry polarisMetricRegistry) {
+    this.polarisMetricRegistry = polarisMetricRegistry;
   }
 
   @Override
@@ -63,6 +62,7 @@ public class TimedApplicationEventListener implements ApplicationEventListener {
     /** Handles various types of RequestEvents to start timing, stop timing, and record metrics. */
     @Override
     public void onEvent(RequestEvent event) {
+      String realmId = CallContext.getCurrentContext().getRealmContext().getRealmIdentifier();
       if (event.getType() == RequestEvent.Type.RESOURCE_METHOD_START) {
         Method method =
             event.getUriInfo().getMatchedResourceMethod().getInvocable().getHandlingMethod();
@@ -70,10 +70,10 @@ public class TimedApplicationEventListener implements ApplicationEventListener {
           TimedApi timedApi = method.getAnnotation(TimedApi.class);
           metric = timedApi.value();
           sw = Stopwatch.createStarted();
+          polarisMetricRegistry.incrementCounter(metric, realmId);
         }
 
       } else if (event.getType() == RequestEvent.Type.FINISHED && metric != null) {
-        String realmId = CallContext.getCurrentContext().getRealmContext().getRealmIdentifier();
         if (event.isSuccess()) {
           sw.stop();
           polarisMetricRegistry.recordTimer(metric, sw.elapsed(TimeUnit.MILLISECONDS), realmId);

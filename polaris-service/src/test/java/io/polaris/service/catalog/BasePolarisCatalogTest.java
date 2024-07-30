@@ -20,8 +20,8 @@ import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
-import io.micrometer.core.instrument.MeterRegistry;
 import io.polaris.core.PolarisCallContext;
+import io.polaris.core.PolarisConfiguration;
 import io.polaris.core.PolarisConfigurationStore;
 import io.polaris.core.PolarisDefaultDiagServiceImpl;
 import io.polaris.core.PolarisDiagnostics;
@@ -38,12 +38,12 @@ import io.polaris.core.entity.PolarisEntitySubType;
 import io.polaris.core.entity.PolarisEntityType;
 import io.polaris.core.entity.PrincipalEntity;
 import io.polaris.core.entity.TaskEntity;
+import io.polaris.core.monitor.PolarisMetricRegistry;
 import io.polaris.core.persistence.MetaStoreManagerFactory;
 import io.polaris.core.persistence.PolarisEntityManager;
 import io.polaris.core.persistence.PolarisMetaStoreManager;
 import io.polaris.core.persistence.PolarisMetaStoreSession;
 import io.polaris.core.storage.PolarisCredentialProperty;
-import io.polaris.core.storage.PolarisStorageActions;
 import io.polaris.core.storage.PolarisStorageIntegration;
 import io.polaris.core.storage.PolarisStorageIntegrationProvider;
 import io.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
@@ -72,6 +72,7 @@ import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
@@ -79,6 +80,7 @@ import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
@@ -117,6 +119,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   private PolarisAdminService adminService;
   private PolarisEntityManager entityManager;
   private AuthenticatedPolarisPrincipal authenticatedRoot;
+  private PolarisEntity catalogEntity;
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -178,12 +181,14 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
             .build();
-    PolarisEntity catalogEntity =
+    catalogEntity =
         adminService.createCatalog(
             new CatalogEntity.Builder()
                 .setName(CATALOG_NAME)
                 .setDefaultBaseLocation(storageLocation)
                 .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+                .addProperty(PolarisConfiguration.CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION, "true")
+                .addProperty(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "true")
                 .setStorageConfigurationInfo(storageConfigModel, storageLocation)
                 .build());
 
@@ -192,7 +197,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             callContext, entityManager, authenticatedRoot, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     this.catalog =
-        new BasePolarisCatalog(entityManager, callContext, passthroughView, taskExecutor);
+        new BasePolarisCatalog(
+            entityManager, callContext, passthroughView, authenticatedRoot, taskExecutor);
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -385,6 +391,191 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   }
 
   @Test
+  public void testCreateNotificationCreateTableInExternalLocation() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    // The location of the metadata JSON file specified is outside of the table's base location
+    // according to the
+    // metadata. We assume this is fraudulent and disallowed
+    final String tableLocation = "s3://my-bucket/path/to/data/my_table/";
+    final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
+    final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table/";
+
+    entityManager
+        .getMetaStoreManager()
+        .updateEntityPropertiesIfNotChanged(
+            polarisContext,
+            List.of(PolarisEntity.toCore(catalogEntity)),
+            new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
+                .addProperty(PolarisConfiguration.CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION, "false")
+                .addProperty(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "true")
+                .build());
+    BasePolarisCatalog catalog = catalog();
+    TableMetadata tableMetadata =
+        TableMetadata.buildFromEmpty()
+            .assignUUID()
+            .setLocation(anotherTableLocation)
+            .addSchema(SCHEMA, 4)
+            .addPartitionSpec(PartitionSpec.unpartitioned())
+            .addSortOrder(SortOrder.unsorted())
+            .build();
+    TableMetadataParser.write(tableMetadata, catalog.getIo().newOutputFile(tableMetadataLocation));
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    TableIdentifier table = TableIdentifier.of(namespace, "my_table");
+
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.CREATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(tableMetadataLocation);
+    update.setTableName(table.name());
+    update.setTableUuid(UUID.randomUUID().toString());
+    update.setTimestamp(230950845L);
+    request.setPayload(update);
+
+    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("is not allowed outside of table location");
+  }
+
+  @Test
+  public void testCreateNotificationCreateTableOutsideOfMetadataLocation() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    // The location of the metadata JSON file specified is outside of the table's metadata directory
+    // according to the
+    // metadata. We assume this is fraudulent and disallowed
+    final String tableLocation = "s3://my-bucket/path/to/data/my_table/";
+    final String tableMetadataLocation = tableLocation + "metadata/v3.metadata.json";
+
+    // this passes the first validation, since it's within the namespace subdirectory, but
+    // the location is in another table's subdirectory
+    final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table";
+
+    entityManager
+        .getMetaStoreManager()
+        .updateEntityPropertiesIfNotChanged(
+            polarisContext,
+            List.of(PolarisEntity.toCore(catalogEntity)),
+            new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
+                .addProperty(PolarisConfiguration.CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION, "false")
+                .addProperty(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "true")
+                .build());
+    BasePolarisCatalog catalog = catalog();
+    TableMetadata tableMetadata =
+        TableMetadata.buildFromEmpty()
+            .assignUUID()
+            .setLocation(anotherTableLocation)
+            .addSchema(SCHEMA, 4)
+            .addPartitionSpec(PartitionSpec.unpartitioned())
+            .addSortOrder(SortOrder.unsorted())
+            .build();
+    TableMetadataParser.write(tableMetadata, catalog.getIo().newOutputFile(tableMetadataLocation));
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    TableIdentifier table = TableIdentifier.of(namespace, "my_table");
+
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.CREATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(tableMetadataLocation);
+    update.setTableName(table.name());
+    update.setTableUuid(UUID.randomUUID().toString());
+    update.setTimestamp(230950845L);
+    request.setPayload(update);
+
+    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("is not allowed outside of table location");
+  }
+
+  @Test
+  public void testUpdateNotificationCreateTableInExternalLocation() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    // The location of the metadata JSON file specified is outside of the table's base location
+    // according to the
+    // metadata. We assume this is fraudulent and disallowed
+    final String tableLocation = "s3://my-bucket/path/to/data/my_table/";
+    final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
+    final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table/";
+
+    entityManager
+        .getMetaStoreManager()
+        .updateEntityPropertiesIfNotChanged(
+            polarisContext,
+            List.of(PolarisEntity.toCore(catalogEntity)),
+            new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
+                .addProperty(PolarisConfiguration.CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION, "false")
+                .addProperty(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "true")
+                .build());
+    BasePolarisCatalog catalog = catalog();
+    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+
+    fileIO.addFile(
+        tableMetadataLocation,
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes());
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    TableIdentifier table = TableIdentifier.of(namespace, "my_table");
+
+    NotificationRequest createRequest = new NotificationRequest();
+    createRequest.setNotificationType(NotificationType.CREATE);
+    TableUpdateNotification create = new TableUpdateNotification();
+    create.setMetadataLocation(tableMetadataLocation);
+    create.setTableName(table.name());
+    create.setTableUuid(UUID.randomUUID().toString());
+    create.setTimestamp(230950845L);
+    createRequest.setPayload(create);
+
+    // the create should succeed
+    catalog.sendNotification(table, createRequest);
+
+    // now craft the malicious metadata file
+    final String maliciousMetadataFile = tableLocation + "metadata/v2.metadata.json";
+    TableMetadata tableMetadata =
+        TableMetadata.buildFromEmpty()
+            .assignUUID()
+            .setLocation(anotherTableLocation)
+            .addSchema(SCHEMA, 4)
+            .addPartitionSpec(PartitionSpec.unpartitioned())
+            .addSortOrder(SortOrder.unsorted())
+            .build();
+    TableMetadataParser.write(tableMetadata, catalog.getIo().newOutputFile(maliciousMetadataFile));
+
+    NotificationRequest updateRequest = new NotificationRequest();
+    updateRequest.setNotificationType(NotificationType.UPDATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(maliciousMetadataFile);
+    update.setTableName(table.name());
+    update.setTableUuid(UUID.randomUUID().toString());
+    update.setTimestamp(230950845L);
+    updateRequest.setPayload(update);
+
+    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, updateRequest))
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("is not allowed outside of table location");
+  }
+
+  @Test
   public void testUpdateNotificationCreateTableWithLocalFilePrefix() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
@@ -399,7 +590,10 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     String catalogWithoutStorage = "catalogWithoutStorage";
     PolarisEntity catalogEntity =
         adminService.createCatalog(
-            new CatalogEntity.Builder().setName(catalogWithoutStorage).build());
+            new CatalogEntity.Builder()
+                .setDefaultBaseLocation("file://")
+                .setName(catalogWithoutStorage)
+                .build());
 
     CallContext callContext = CallContext.getCurrentContext();
     PolarisPassthroughResolutionView passthroughView =
@@ -407,7 +601,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             callContext, entityManager, authenticatedRoot, catalogWithoutStorage);
     TaskExecutor taskExecutor = Mockito.mock();
     BasePolarisCatalog catalog =
-        new BasePolarisCatalog(entityManager, callContext, passthroughView, taskExecutor);
+        new BasePolarisCatalog(
+            entityManager, callContext, passthroughView, authenticatedRoot, taskExecutor);
     catalog.initialize(
         catalogWithoutStorage,
         ImmutableMap.of(
@@ -448,7 +643,11 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     String catalogName = "catalogForMaliciousDomain";
     PolarisEntity catalogEntity =
-        adminService.createCatalog(new CatalogEntity.Builder().setName(catalogName).build());
+        adminService.createCatalog(
+            new CatalogEntity.Builder()
+                .setDefaultBaseLocation("http://maliciousdomain.com")
+                .setName(catalogName)
+                .build());
 
     CallContext callContext = CallContext.getCurrentContext();
     PolarisPassthroughResolutionView passthroughView =
@@ -456,7 +655,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             callContext, entityManager, authenticatedRoot, catalogName);
     TaskExecutor taskExecutor = Mockito.mock();
     BasePolarisCatalog catalog =
-        new BasePolarisCatalog(entityManager, callContext, passthroughView, taskExecutor);
+        new BasePolarisCatalog(
+            entityManager, callContext, passthroughView, authenticatedRoot, taskExecutor);
     catalog.initialize(
         catalogName,
         ImmutableMap.of(
@@ -691,17 +891,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         createSampleTableMetadata("s3://forbidden-table-location/table/");
     fileIO.addFile(tableMetadataLocation, TableMetadataParser.toJson(forbiddenMetadata).getBytes());
 
-    // TODO: Once we prefetch or prevalidate json contents, we should perform location validation
-    // proactively and this sendNotification should throw. For now, if we only validate the path
-    // later when trying to read it, we'll wait until something tries to get a credential to error
-    // out.
-    Assertions.assertThat(catalog.sendNotification(table, request))
-        .as("Notification should be sent successfully")
-        .isTrue();
-    Assertions.assertThatThrownBy(
-            () ->
-                catalog.getCredentialConfig(
-                    table, forbiddenMetadata, Set.of(PolarisStorageActions.READ)))
+    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Invalid location");
   }
@@ -905,7 +1095,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                   }
 
                   @Override
-                  public void setMetricRegistry(MeterRegistry metricRegistry) {}
+                  public void setMetricRegistry(PolarisMetricRegistry metricRegistry) {}
 
                   @Override
                   public Map<String, PolarisMetaStoreManager.PrincipalSecretsResult>

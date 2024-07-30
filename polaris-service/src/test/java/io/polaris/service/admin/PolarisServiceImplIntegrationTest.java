@@ -1305,7 +1305,7 @@ public class PolarisServiceImplIntegrationTest {
             .setStorageConfigInfo(
                 new AwsStorageConfigInfo(
                     "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
-            .setProperties(new CatalogProperties("s3://required/base/location"))
+            .setProperties(new CatalogProperties("s3://required/base/other_location"))
             .build();
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs")

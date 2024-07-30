@@ -19,6 +19,7 @@ import io.polaris.core.PolarisDiagnostics;
 import io.polaris.core.storage.InMemoryStorageIntegration;
 import io.polaris.core.storage.PolarisCredentialProperty;
 import io.polaris.core.storage.PolarisStorageConfigurationInfo;
+import io.polaris.core.storage.StorageUtil;
 import java.net.URI;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -109,7 +110,8 @@ public class AwsCredentialsStorageIntegration
               URI uri = URI.create(location);
               allowGetObjectStatementBuilder.addResource(
                   // TODO add support for CN and GOV
-                  IamResource.create(arnPrefix + parseS3Path(uri) + "/*"));
+                  IamResource.create(
+                      arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
               if (allowList) {
                 bucketListStatmentBuilder
                     .computeIfAbsent(
@@ -122,7 +124,7 @@ public class AwsCredentialsStorageIntegration
                     .addCondition(
                         IamConditionOperator.STRING_LIKE,
                         "s3:prefix",
-                        trimLeadingSlash(uri.getPath()) + "/*");
+                        StorageUtil.concatFilePrefixes(trimLeadingSlash(uri.getPath()), "*", "/"));
               }
             });
 
@@ -137,7 +139,8 @@ public class AwsCredentialsStorageIntegration
             URI uri = URI.create(location);
             // TODO add support for CN and GOV
             allowPutObjectStatementBuilder.addResource(
-                IamResource.create(arnPrefix + parseS3Path(uri) + "/*"));
+                IamResource.create(
+                    arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
           });
       policyBuilder.addStatement(allowPutObjectStatementBuilder.build());
     }

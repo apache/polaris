@@ -15,6 +15,7 @@
  */
 package io.polaris.core.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.RESTUtil;
@@ -56,6 +57,11 @@ public class NamespaceEntity extends PolarisEntity {
     return Namespace.of(levels);
   }
 
+  @JsonIgnore
+  public String getBaseLocation() {
+    return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+  }
+
   public static class Builder extends PolarisEntity.BaseBuilder<NamespaceEntity, Builder> {
     public Builder(Namespace namespace) {
       super();
@@ -64,8 +70,9 @@ public class NamespaceEntity extends PolarisEntity {
       setName(namespace.level(namespace.length() - 1));
     }
 
-    public NamespaceEntity build() {
-      return new NamespaceEntity(buildBase());
+    public Builder setBaseLocation(String baseLocation) {
+      properties.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, baseLocation);
+      return this;
     }
 
     public Builder setParentNamespace(Namespace namespace) {
@@ -73,6 +80,10 @@ public class NamespaceEntity extends PolarisEntity {
         internalProperties.put(PARENT_NAMESPACE_KEY, RESTUtil.encodeNamespace(namespace));
       }
       return this;
+    }
+
+    public NamespaceEntity build() {
+      return new NamespaceEntity(buildBase());
     }
   }
 }

@@ -23,6 +23,7 @@ import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import io.polaris.core.PolarisConfiguration;
 import io.polaris.core.admin.model.AwsStorageConfigInfo;
 import io.polaris.core.admin.model.Catalog;
 import io.polaris.core.admin.model.CatalogGrant;
@@ -149,10 +150,16 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
                       .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
                       .build();
               io.polaris.core.admin.model.CatalogProperties props =
-                  new io.polaris.core.admin.model.CatalogProperties(
-                      S3_BUCKET_BASE + "/" + System.getenv("USER") + "/path/to/data");
-              props.put(
-                  CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
+                  io.polaris.core.admin.model.CatalogProperties.builder(
+                          S3_BUCKET_BASE + "/" + System.getenv("USER") + "/path/to/data")
+                      .addProperty(
+                          CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY,
+                          "file:")
+                      .addProperty(
+                          PolarisConfiguration.CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION, "true")
+                      .addProperty(
+                          PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "true")
+                      .build();
               Catalog catalog =
                   PolarisCatalog.builder()
                       .setType(Catalog.TypeEnum.INTERNAL)

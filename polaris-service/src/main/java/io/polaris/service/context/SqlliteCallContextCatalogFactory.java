@@ -15,6 +15,7 @@
  */
 package io.polaris.service.context;
 
+import io.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import io.polaris.core.context.CallContext;
 import io.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import java.io.IOException;
@@ -55,7 +56,9 @@ public class SqlliteCallContextCatalogFactory implements CallContextCatalogFacto
 
   @Override
   public Catalog createCallContextCatalog(
-      CallContext context, PolarisResolutionManifest resolvedManifest) {
+      CallContext context,
+      AuthenticatedPolarisPrincipal polarisPrincipal,
+      PolarisResolutionManifest resolvedManifest) {
     String catalogName =
         resolvedManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity().getName();
     if (catalogName == null) {

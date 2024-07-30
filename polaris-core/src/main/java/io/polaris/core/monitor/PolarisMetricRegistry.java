@@ -18,26 +18,55 @@ package io.polaris.core.monitor;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import io.polaris.core.resource.TimedApi;
+import java.lang.reflect.Method;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Manages metrics for Polaris applications, providing functionality to record timers and increment
- * error counters. Also records the same for a realm-specific metric by appending a suffix and
- * tagging with the realm ID. Utilizes Micrometer for metrics collection.
+ * Wrapper around the Micrometer {@link MeterRegistry} providing additional metric management
+ * functions for the Polaris application. Implements in-memory caching of timers and counters.
+ * Records two metrics for each instrument with one tagged by the realm ID (realm-specific metric)
+ * and one without. The realm-specific metric is suffixed with ".realm".
  */
 public class PolarisMetricRegistry {
   private final MeterRegistry meterRegistry;
   private final ConcurrentMap<String, Timer> timers = new ConcurrentHashMap<>();
-  private final ConcurrentMap<String, Counter> errorCounters = new ConcurrentHashMap<>();
+  private final ConcurrentMap<String, Counter> counters = new ConcurrentHashMap<>();
   private static final String TAG_REALM = "REALM_ID";
   private static final String TAG_RESP_CODE = "HTTP_RESPONSE_CODE";
+  private static final String SUFFIX_COUNTER = ".count";
   private static final String SUFFIX_ERROR = ".error";
   private static final String SUFFIX_REALM = ".realm";
 
   public PolarisMetricRegistry(MeterRegistry meterRegistry) {
     this.meterRegistry = meterRegistry;
+  }
+
+  public MeterRegistry getMeterRegistry() {
+    return meterRegistry;
+  }
+
+  public void init(Class<?>... classes) {
+    for (Class<?> clazz : classes) {
+      Method[] methods = clazz.getDeclaredMethods();
+      for (Method method : methods) {
+        if (method.isAnnotationPresent(TimedApi.class)) {
+          TimedApi timedApi = method.getAnnotation(TimedApi.class);
+          String metric = timedApi.value();
+          timers.put(metric, Timer.builder(metric).register(meterRegistry));
+          counters.put(
+              metric + SUFFIX_COUNTER,
+              Counter.builder(metric + SUFFIX_COUNTER).register(meterRegistry));
+
+          // Error counters contain the HTTP response code in a tag, thus caching them would not be
+          // meaningful.
+          Counter.builder(metric + SUFFIX_ERROR).tags(TAG_RESP_CODE, "400").register(meterRegistry);
+          Counter.builder(metric + SUFFIX_ERROR).tags(TAG_RESP_CODE, "500").register(meterRegistry);
+        }
+      }
+    }
   }
 
   public void recordTimer(String metric, long elapsedTimeMs, String realmId) {
@@ -55,25 +84,34 @@ public class PolarisMetricRegistry {
     timerRealm.record(elapsedTimeMs, TimeUnit.MILLISECONDS);
   }
 
-  public void incrementErrorCounter(String metric, int statusCode, String realmId) {
-    String errorMetric = metric + SUFFIX_ERROR;
-    Counter errorCounter =
-        errorCounters.computeIfAbsent(
-            errorMetric,
-            m ->
-                Counter.builder(errorMetric)
-                    .tag(TAG_RESP_CODE, String.valueOf(statusCode))
-                    .register(meterRegistry));
-    errorCounter.increment();
+  public void incrementCounter(String metric, String realmId) {
+    String counterMetric = metric + SUFFIX_COUNTER;
+    Counter counter =
+        counters.computeIfAbsent(
+            counterMetric, m -> Counter.builder(counterMetric).register(meterRegistry));
+    counter.increment();
 
-    Counter errorCounterRealm =
-        errorCounters.computeIfAbsent(
-            errorMetric + SUFFIX_REALM,
+    Counter counterRealm =
+        counters.computeIfAbsent(
+            counterMetric + SUFFIX_REALM,
             m ->
-                Counter.builder(errorMetric + SUFFIX_REALM)
-                    .tag(TAG_RESP_CODE, String.valueOf(statusCode))
+                Counter.builder(counterMetric + SUFFIX_REALM)
                     .tag(TAG_REALM, realmId)
                     .register(meterRegistry));
-    errorCounterRealm.increment();
+    counterRealm.increment();
+  }
+
+  public void incrementErrorCounter(String metric, int statusCode, String realmId) {
+    String errorMetric = metric + SUFFIX_ERROR;
+    Counter.builder(errorMetric)
+        .tag(TAG_RESP_CODE, String.valueOf(statusCode))
+        .register(meterRegistry)
+        .increment();
+
+    Counter.builder(errorMetric + SUFFIX_REALM)
+        .tag(TAG_RESP_CODE, String.valueOf(statusCode))
+        .tag(TAG_REALM, realmId)
+        .register(meterRegistry)
+        .increment();
   }
 }

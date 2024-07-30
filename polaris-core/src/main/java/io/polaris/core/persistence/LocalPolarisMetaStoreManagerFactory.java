@@ -15,7 +15,6 @@
  */
 package io.polaris.core.persistence;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import io.polaris.core.PolarisCallContext;
 import io.polaris.core.PolarisDefaultDiagServiceImpl;
 import io.polaris.core.PolarisDiagnostics;
@@ -26,6 +25,7 @@ import io.polaris.core.entity.PolarisEntityConstants;
 import io.polaris.core.entity.PolarisEntitySubType;
 import io.polaris.core.entity.PolarisEntityType;
 import io.polaris.core.entity.PolarisPrincipalSecrets;
+import io.polaris.core.monitor.PolarisMetricRegistry;
 import io.polaris.core.storage.PolarisStorageIntegrationProvider;
 import io.polaris.core.storage.cache.StorageCredentialCache;
 import java.util.HashMap;
@@ -124,7 +124,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<
   }
 
   @Override
-  public void setMetricRegistry(MeterRegistry metricRegistry) {
+  public void setMetricRegistry(PolarisMetricRegistry metricRegistry) {
     // no-op
   }
 

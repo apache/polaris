@@ -400,6 +400,11 @@ public class PolarisEntity extends PolarisBaseEntity {
       return (B) this;
     }
 
+    public B addProperty(String key, String value) {
+      this.properties.put(key, value);
+      return (B) this;
+    }
+
     public B setInternalProperties(Map<String, String> internalProperties) {
       this.internalProperties = new HashMap<>(internalProperties);
       return (B) this;

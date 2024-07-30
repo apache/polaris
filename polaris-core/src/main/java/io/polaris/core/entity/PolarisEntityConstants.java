@@ -17,6 +17,7 @@ package io.polaris.core.entity;
 
 public class PolarisEntityConstants {
 
+  public static final String ENTITY_BASE_LOCATION = "location";
   // the key for the client_id property associated with a principal
   private static final String CLIENT_ID_PROPERTY_NAME = "client_id";
 

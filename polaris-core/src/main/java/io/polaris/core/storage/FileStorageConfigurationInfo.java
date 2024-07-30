@@ -38,16 +38,14 @@ public class FileStorageConfigurationInfo extends PolarisStorageConfigurationInf
   }
 
   @Override
-  public void validatePrefixForStorageType() {
-    this.allowedLocations.forEach(
-        loc -> {
-          if (!loc.startsWith(storageType.getPrefix())
-              && !loc.startsWith("/")
-              && !loc.equals("*")) {
-            throw new IllegalArgumentException(
-                String.format(
-                    "Location prefix not allowed: '%s', expected prefix: file:// or / or *", loc));
-          }
-        });
+  public void validatePrefixForStorageType(String loc) {
+    if (!loc.startsWith(getStorageType().getPrefix())
+        && !loc.startsWith("file:/")
+        && !loc.startsWith("/")
+        && !loc.equals("*")) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Location prefix not allowed: '%s', expected prefix: file:// or / or *", loc));
+    }
   }
 }

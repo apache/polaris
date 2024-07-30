@@ -23,8 +23,14 @@ import io.polaris.service.config.RealmEntityManagerFactory;
 import io.polaris.service.types.TokenType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import java.net.URLDecoder;
+import java.nio.charset.Charset;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.hdfs.web.oauth2.OAuth2Constants;
+import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Default implementation of the {@link OAuth2ApiService} that generates a JWT token for the client
@@ -32,12 +38,14 @@ import org.apache.iceberg.rest.responses.OAuthTokenResponse;
  */
 @JsonTypeName("default")
 public class DefaultOAuth2ApiService implements OAuth2ApiService, HasEntityManagerFactory {
+  public static final Logger LOGGER = LoggerFactory.getLogger(DefaultOAuth2ApiService.class);
   private TokenBrokerFactory tokenBrokerFactory;
 
   public DefaultOAuth2ApiService() {}
 
   @Override
   public Response getToken(
+      String authHeader,
       String grantType,
       String scope,
       String clientId,
@@ -57,6 +65,19 @@ public class DefaultOAuth2ApiService implements OAuth2ApiService, HasEntityManag
     if (!tokenBroker.supportsRequestedTokenType(requestedTokenType)) {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
     }
+    if (authHeader == null && clientId == null) {
+      return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_client);
+    }
+    if (authHeader != null && clientId == null && authHeader.startsWith("Basic ")) {
+      String credentials = new String(Base64.decodeBase64(authHeader.substring(6)));
+      if (!credentials.contains(":")) {
+        return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_client);
+      }
+      LOGGER.debug("Found credentials in auth header - treating as client_credentials");
+      String[] parts = credentials.split(":", 2);
+      clientId = URLDecoder.decode(parts[0], Charset.defaultCharset());
+      clientSecret = URLDecoder.decode(parts[1], Charset.defaultCharset());
+    }
     TokenResponse tokenResponse =
         switch (subjectTokenType) {
           case TokenType.ID_TOKEN,
@@ -65,11 +86,25 @@ public class DefaultOAuth2ApiService implements OAuth2ApiService, HasEntityManag
                   TokenType.SAML1,
                   TokenType.SAML2 ->
               new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
-          case TokenType.ACCESS_TOKEN ->
-              tokenBroker.generateFromToken(subjectTokenType, subjectToken, grantType, scope);
+          case TokenType.ACCESS_TOKEN -> {
+            // token exchange with client id and client secret means the client has previously
+            // attempted to refresh
+            // an access token, but refreshing was not supported by the token broker. Accept the
+            // client id and
+            // secret and treat it as a new token request
+            if (clientId != null && clientSecret != null) {
+              yield tokenBroker.generateFromClientSecrets(
+                  clientId, clientSecret, OAuth2Constants.CLIENT_CREDENTIALS, scope);
+            } else {
+              yield tokenBroker.generateFromToken(subjectTokenType, subjectToken, grantType, scope);
+            }
+          }
           case null ->
               tokenBroker.generateFromClientSecrets(clientId, clientSecret, grantType, scope);
         };
+    if (tokenResponse == null) {
+      return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.unsupported_grant_type);
+    }
     if (!tokenResponse.isValid()) {
       return OAuthUtils.getResponseFromError(tokenResponse.getError());
     }
@@ -77,6 +112,7 @@ public class DefaultOAuth2ApiService implements OAuth2ApiService, HasEntityManag
             OAuthTokenResponse.builder()
                 .withToken(tokenResponse.getAccessToken())
                 .withTokenType(OAuth2Constants.BEARER)
+                .withIssuedTokenType(OAuth2Properties.ACCESS_TOKEN_TYPE)
                 .setExpirationInSeconds(tokenResponse.getExpiresIn())
                 .build())
         .build();

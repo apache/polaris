@@ -21,6 +21,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import io.polaris.core.storage.PolarisStorageConfigurationInfo;
 import java.util.List;
+import java.util.Objects;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -79,16 +80,18 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
-        .add("storageType", storageType)
+        .add("storageType", getStorageType())
         .add("tenantId", tenantId)
-        .add("allowedLocation", allowedLocations)
+        .add("allowedLocation", getAllowedLocations())
         .add("multiTenantAppName", multiTenantAppName)
         .add("consentUrl", consentUrl)
         .toString();
   }
 
   @Override
-  public void validatePrefixForStorageType() {
-    this.allowedLocations.forEach(AzureLocation::new);
+  public void validatePrefixForStorageType(String loc) {
+    AzureLocation location = new AzureLocation(loc);
+    Objects.requireNonNull(
+        location); // do something with the variable so the JVM doesn't optimize out the check
   }
 }

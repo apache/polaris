@@ -107,12 +107,12 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
-        .add("storageType", storageType)
-        .add("storageType", storageType.name())
+        .add("storageType", getStorageType())
+        .add("storageType", getStorageType().name())
         .add("roleARN", roleARN)
         .add("userARN", userARN)
         .add("externalId", externalId)
-        .add("allowedLocation", allowedLocations)
+        .add("allowedLocation", getAllowedLocations())
         .toString();
   }
 }

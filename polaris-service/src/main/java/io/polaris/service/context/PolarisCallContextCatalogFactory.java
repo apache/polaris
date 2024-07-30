@@ -15,6 +15,7 @@
  */
 package io.polaris.service.context;
 
+import io.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import io.polaris.core.context.CallContext;
 import io.polaris.core.entity.CatalogEntity;
 import io.polaris.core.entity.PolarisBaseEntity;
@@ -48,7 +49,9 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
 
   @Override
   public Catalog createCallContextCatalog(
-      CallContext context, final PolarisResolutionManifest resolvedManifest) {
+      CallContext context,
+      AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      final PolarisResolutionManifest resolvedManifest) {
     PolarisBaseEntity baseCatalogEntity =
         resolvedManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity();
     String catalogName = baseCatalogEntity.getName();
@@ -61,7 +64,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
         entityManagerFactory.getOrCreateEntityManager(context.getRealmContext());
 
     BasePolarisCatalog catalogInstance =
-        new BasePolarisCatalog(entityManager, context, resolvedManifest, taskExecutor);
+        new BasePolarisCatalog(
+            entityManager, context, resolvedManifest, authenticatedPrincipal, taskExecutor);
 
     context.contextVariables().put(CallContext.REQUEST_PATH_CATALOG_INSTANCE_KEY, catalogInstance);
 

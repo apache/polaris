@@ -70,7 +70,7 @@ else
   echo 'Verified azure bundle jar already installed'
 fi
 if ! [ -f ${SPARK_HOME}/jars/iceberg-gcp-bundle-1.5.2.jar  ]; then
-    echo 'Download azure bundle jar...'
+    echo 'Download gcp bundle jar...'
     wget -O ${SPARK_HOME}/jars/iceberg-gcp-bundle-1.5.2.jar https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-gcp-bundle/1.5.2/iceberg-gcp-bundle-1.5.2.jar
     if ! [ -f ${SPARK_HOME}/jars/iceberg-gcp-bundle-1.5.2.jar  ]; then
       if [[ "${OSTYPE}" == "darwin"* ]]; then

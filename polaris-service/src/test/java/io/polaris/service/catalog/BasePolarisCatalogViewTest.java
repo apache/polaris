@@ -17,6 +17,7 @@ package io.polaris.service.catalog;
 
 import com.google.common.collect.ImmutableMap;
 import io.polaris.core.PolarisCallContext;
+import io.polaris.core.PolarisConfiguration;
 import io.polaris.core.PolarisConfigurationStore;
 import io.polaris.core.PolarisDefaultDiagServiceImpl;
 import io.polaris.core.PolarisDiagnostics;
@@ -60,7 +61,8 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     RealmContext realmContext = () -> "realm";
     InMemoryPolarisMetaStoreManagerFactory managerFactory =
         new InMemoryPolarisMetaStoreManagerFactory();
-    managerFactory.setStorageIntegrationProvider(new PolarisStorageIntegrationProviderImpl());
+    managerFactory.setStorageIntegrationProvider(
+        new PolarisStorageIntegrationProviderImpl(Mockito::mock));
     PolarisMetaStoreManager metaStoreManager =
         managerFactory.getOrCreateMetaStoreManager(realmContext);
     Map<String, Object> configMap = new HashMap<>();
@@ -110,6 +112,9 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
         adminService.createCatalog(
             new CatalogEntity.Builder()
                 .setName(CATALOG_NAME)
+                .addProperty(PolarisConfiguration.CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION, "true")
+                .addProperty(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "true")
+                .setDefaultBaseLocation("file://tmp")
                 .setStorageConfigurationInfo(
                     new FileStorageConfigInfo(
                         StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
@@ -120,7 +125,8 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
         new PolarisPassthroughResolutionView(
             callContext, entityManager, authenticatedRoot, CATALOG_NAME);
     this.catalog =
-        new BasePolarisCatalog(entityManager, callContext, passthroughView, Mockito.mock());
+        new BasePolarisCatalog(
+            entityManager, callContext, passthroughView, authenticatedRoot, Mockito.mock());
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

@@ -18,12 +18,14 @@ package io.polaris.service.catalog;
 import static io.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import io.polaris.core.PolarisConfiguration;
 import io.polaris.core.admin.model.AwsStorageConfigInfo;
 import io.polaris.core.admin.model.Catalog;
 import io.polaris.core.admin.model.CatalogGrant;
@@ -38,9 +40,11 @@ import io.polaris.core.admin.model.PolarisCatalog;
 import io.polaris.core.admin.model.StorageConfigInfo;
 import io.polaris.core.admin.model.TableGrant;
 import io.polaris.core.admin.model.TablePrivilege;
+import io.polaris.core.admin.model.UpdateCatalogRequest;
 import io.polaris.core.admin.model.ViewGrant;
 import io.polaris.core.admin.model.ViewPrivilege;
 import io.polaris.core.entity.CatalogEntity;
+import io.polaris.core.entity.PolarisEntityConstants;
 import io.polaris.service.PolarisApplication;
 import io.polaris.service.auth.BasePolarisAuthenticator;
 import io.polaris.service.auth.TokenUtils;
@@ -58,20 +62,27 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.types.Types;
+import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -112,6 +123,9 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private String currentCatalogName;
   private String userToken;
   private static String realm;
+
+  private final String catalogBaseLocation =
+      S3_BUCKET_BASE + "/" + System.getenv("USER") + "/path/to/data";
 
   @BeforeAll
   public static void setup() throws IOException {
@@ -161,18 +175,21 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                       .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
                       .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
                       .build();
+              io.polaris.core.admin.model.CatalogProperties.Builder catalogPropsBuilder =
+                  io.polaris.core.admin.model.CatalogProperties.builder(catalogBaseLocation)
+                      .addProperty(
+                          PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "true")
+                      .addProperty(
+                          PolarisConfiguration.CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION, "true");
+              if (!S3_BUCKET_BASE.startsWith("file:/")) {
+                catalogPropsBuilder.addProperty(
+                    CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
+              }
               Catalog catalog =
                   PolarisCatalog.builder()
                       .setType(Catalog.TypeEnum.INTERNAL)
                       .setName(currentCatalogName)
-                      .setProperties(
-                          io.polaris.core.admin.model.CatalogProperties.builder(
-                                  S3_BUCKET_BASE + "/" + System.getenv("USER") + "/path/to/data")
-                              .addProperty(
-                                  CatalogEntity
-                                      .REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY,
-                                  "file:")
-                              .build())
+                      .setProperties(catalogPropsBuilder.build())
                       .setStorageConfigInfo(
                           S3_BUCKET_BASE.startsWith("file:/")
                               ? new FileStorageConfigInfo(
@@ -559,6 +576,179 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
           .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
           .containsExactly(expectedGrant);
     }
+  }
+
+  @Test
+  public void testCreateTableWithOverriddenBaseLocation(PolarisToken adminToken) {
+    try (Response response =
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/management/v1/catalogs/%s",
+                    EXT.getLocalPort(), currentCatalogName))
+            .request("application/json")
+            .header("Authorization", "Bearer " + adminToken.token())
+            .header(REALM_PROPERTY_KEY, realm)
+            .get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog catalog = response.readEntity(Catalog.class);
+      Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
+      catalogProps.put(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "false");
+      try (Response updateResponse =
+          EXT.client()
+              .target(
+                  String.format(
+                      "http://localhost:%d/api/management/v1/catalogs/%s",
+                      EXT.getLocalPort(), catalog.getName()))
+              .request("application/json")
+              .header("Authorization", "Bearer " + adminToken.token())
+              .header(REALM_PROPERTY_KEY, realm)
+              .put(
+                  Entity.json(
+                      new UpdateCatalogRequest(
+                          catalog.getEntityVersion(),
+                          catalogProps,
+                          catalog.getStorageConfigInfo())))) {
+        assertThat(updateResponse).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      }
+    }
+
+    restCatalog.createNamespace(Namespace.of("ns1"));
+    restCatalog.createNamespace(
+        Namespace.of("ns1", "ns1a"),
+        ImmutableMap.of(
+            PolarisEntityConstants.ENTITY_BASE_LOCATION,
+            catalogBaseLocation + "/ns1/ns1a-override"));
+
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("ns1", "ns1a"), "tbl1");
+    restCatalog
+        .buildTable(tableIdentifier, SCHEMA)
+        .withLocation(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override")
+        .create();
+    Table table = restCatalog.loadTable(tableIdentifier);
+    assertThat(table)
+        .isNotNull()
+        .isInstanceOf(BaseTable.class)
+        .asInstanceOf(InstanceOfAssertFactories.type(BaseTable.class))
+        .returns(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override", BaseTable::location);
+  }
+
+  @Test
+  public void testCreateTableWithOverriddenBaseLocationCannotOverlapSibling(
+      PolarisToken adminToken) {
+    try (Response response =
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/management/v1/catalogs/%s",
+                    EXT.getLocalPort(), currentCatalogName))
+            .request("application/json")
+            .header("Authorization", "Bearer " + adminToken.token())
+            .header(REALM_PROPERTY_KEY, realm)
+            .get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog catalog = response.readEntity(Catalog.class);
+      Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
+      catalogProps.put(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "false");
+      try (Response updateResponse =
+          EXT.client()
+              .target(
+                  String.format(
+                      "http://localhost:%d/api/management/v1/catalogs/%s",
+                      EXT.getLocalPort(), catalog.getName()))
+              .request("application/json")
+              .header("Authorization", "Bearer " + adminToken.token())
+              .header(REALM_PROPERTY_KEY, realm)
+              .put(
+                  Entity.json(
+                      new UpdateCatalogRequest(
+                          catalog.getEntityVersion(),
+                          catalogProps,
+                          catalog.getStorageConfigInfo())))) {
+        assertThat(updateResponse).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      }
+    }
+
+    restCatalog.createNamespace(Namespace.of("ns1"));
+    restCatalog.createNamespace(
+        Namespace.of("ns1", "ns1a"),
+        ImmutableMap.of(
+            PolarisEntityConstants.ENTITY_BASE_LOCATION,
+            catalogBaseLocation + "/ns1/ns1a-override"));
+
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("ns1", "ns1a"), "tbl1");
+    restCatalog
+        .buildTable(tableIdentifier, SCHEMA)
+        .withLocation(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override")
+        .create();
+    Table table = restCatalog.loadTable(tableIdentifier);
+    assertThat(table)
+        .isNotNull()
+        .isInstanceOf(BaseTable.class)
+        .asInstanceOf(InstanceOfAssertFactories.type(BaseTable.class))
+        .returns(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override", BaseTable::location);
+
+    Assertions.assertThatThrownBy(
+            () ->
+                restCatalog
+                    .buildTable(TableIdentifier.of(Namespace.of("ns1", "ns1a"), "tbl2"), SCHEMA)
+                    .withLocation(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override")
+                    .create())
+        .isInstanceOf(BadRequestException.class)
+        .hasMessageContaining("because it conflicts with existing table or namespace");
+  }
+
+  @Test
+  public void testCreateTableWithOverriddenBaseLocationMustResideInNsDirectory(
+      PolarisToken adminToken) {
+    try (Response response =
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/management/v1/catalogs/%s",
+                    EXT.getLocalPort(), currentCatalogName))
+            .request("application/json")
+            .header("Authorization", "Bearer " + adminToken.token())
+            .header(REALM_PROPERTY_KEY, realm)
+            .get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog catalog = response.readEntity(Catalog.class);
+      Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
+      catalogProps.put(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "false");
+      try (Response updateResponse =
+          EXT.client()
+              .target(
+                  String.format(
+                      "http://localhost:%d/api/management/v1/catalogs/%s",
+                      EXT.getLocalPort(), catalog.getName()))
+              .request("application/json")
+              .header("Authorization", "Bearer " + adminToken.token())
+              .header(REALM_PROPERTY_KEY, realm)
+              .put(
+                  Entity.json(
+                      new UpdateCatalogRequest(
+                          catalog.getEntityVersion(),
+                          catalogProps,
+                          catalog.getStorageConfigInfo())))) {
+        assertThat(updateResponse).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      }
+    }
+
+    restCatalog.createNamespace(Namespace.of("ns1"));
+    restCatalog.createNamespace(
+        Namespace.of("ns1", "ns1a"),
+        ImmutableMap.of(
+            PolarisEntityConstants.ENTITY_BASE_LOCATION,
+            catalogBaseLocation + "/ns1/ns1a-override"));
+
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("ns1", "ns1a"), "tbl1");
+    assertThatThrownBy(
+            () ->
+                restCatalog
+                    .buildTable(tableIdentifier, SCHEMA)
+                    .withLocation(catalogBaseLocation + "/ns1/ns1a/tbl1-override")
+                    .create())
+        .isInstanceOf(ForbiddenException.class);
   }
 
   @Test

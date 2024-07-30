@@ -24,12 +24,18 @@ services:
       - "8182"
     environment:
       AWS_REGION: us-west-2
-      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
-      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
       GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS
       AZURE_TENANT_ID: $AZURE_TENANT_ID
       AZURE_CLIENT_ID: $AZURE_CLIENT_ID
       AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET
+    command: # override the command to specify aws keys as dropwizard config
+      - java
+      - -Ddw.awsAccessKey=$AWS_ACCESS_KEY_ID
+      - -Ddw.awsSecretKey=$AWS_SECRET_ACCESS_KEY
+      - -jar
+      - /app/polaris-service-1.0.0-all.jar
+      - server
+      - polaris-server.yml
     volumes:
       - credentials:/tmp/credentials/
 

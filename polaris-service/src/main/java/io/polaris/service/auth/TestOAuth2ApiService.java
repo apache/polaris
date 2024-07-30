@@ -42,6 +42,7 @@ public class TestOAuth2ApiService implements OAuth2ApiService, HasEntityManagerF
 
   @Override
   public Response getToken(
+      String authHeader,
       String grantType,
       String scope,
       String clientId,

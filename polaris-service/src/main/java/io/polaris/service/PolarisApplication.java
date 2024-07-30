@@ -46,6 +46,7 @@ import io.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import io.polaris.core.auth.PolarisAuthorizer;
 import io.polaris.core.context.CallContext;
 import io.polaris.core.context.RealmContext;
+import io.polaris.core.monitor.PolarisMetricRegistry;
 import io.polaris.core.persistence.MetaStoreManagerFactory;
 import io.polaris.service.admin.PolarisServiceImpl;
 import io.polaris.service.admin.api.PolarisCatalogsApi;
@@ -100,6 +101,9 @@ import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.StsClientBuilder;
 
 public class PolarisApplication extends Application<PolarisApplicationConfig> {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisApplication.class);
@@ -151,11 +155,17 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     // PolarisEntityManager will be used for Management APIs and optionally the core Catalog APIs
     // depending on the value of the baseCatalogType config.
     MetaStoreManagerFactory metaStoreManagerFactory = configuration.getMetaStoreManagerFactory();
+    StsClientBuilder stsClientBuilder = StsClient.builder();
+    AwsCredentialsProvider awsCredentialsProvider = configuration.credentialsProvider();
+    if (awsCredentialsProvider != null) {
+      stsClientBuilder.credentialsProvider(awsCredentialsProvider);
+    }
     metaStoreManagerFactory.setStorageIntegrationProvider(
-        new PolarisStorageIntegrationProviderImpl());
+        new PolarisStorageIntegrationProviderImpl(stsClientBuilder::build));
 
-    PrometheusMeterRegistry meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
-    metaStoreManagerFactory.setMetricRegistry(meterRegistry);
+    PolarisMetricRegistry polarisMetricRegistry =
+        new PolarisMetricRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
+    metaStoreManagerFactory.setMetricRegistry(polarisMetricRegistry);
 
     OpenTelemetry openTelemetry = setupTracing();
     if (metaStoreManagerFactory instanceof OpenTelemetryAware otAware) {
@@ -270,11 +280,23 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     Serializers.registerSerializers(objectMapper);
     environment.jersey().register(new IcebergJsonProcessingExceptionMapper());
     environment.jersey().register(new IcebergJerseyViolationExceptionMapper());
-    environment.jersey().register(new TimedApplicationEventListener(meterRegistry));
+    environment.jersey().register(new TimedApplicationEventListener(polarisMetricRegistry));
+
+    polarisMetricRegistry.init(
+        IcebergRestCatalogApi.class,
+        IcebergRestConfigurationApi.class,
+        IcebergRestOAuth2Api.class,
+        PolarisCatalogsApi.class,
+        PolarisPrincipalsApi.class,
+        PolarisPrincipalRolesApi.class);
 
     environment
         .admin()
-        .addServlet("metrics", new PrometheusMetricsServlet(meterRegistry.getPrometheusRegistry()))
+        .addServlet(
+            "metrics",
+            new PrometheusMetricsServlet(
+                ((PrometheusMeterRegistry) polarisMetricRegistry.getMeterRegistry())
+                    .getPrometheusRegistry()))
         .addMapping("/metrics");
 
     // For in-memory metastore we need to bootstrap Service and Service principal at startup (for

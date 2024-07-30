@@ -26,6 +26,11 @@ import io.polaris.service.context.RealmContextResolver;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 
 /**
  * Configuration specific to a Polaris REST Service. Place these entries in a YML file for them to
@@ -45,6 +50,8 @@ public class PolarisApplicationConfig extends Configuration {
   private PolarisConfigurationStore configurationStore =
       new DefaultConfigurationStore(new HashMap<>());
   private List<String> defaultRealms;
+  private String awsAccessKey;
+  private String awsSecretKey;
 
   public Map<String, String> getSqlLiteCatalogDirs() {
     return sqlLiteCatalogDirs;
@@ -151,6 +158,24 @@ public class PolarisApplicationConfig extends Configuration {
 
   public List<String> getDefaultRealms() {
     return defaultRealms;
+  }
+
+  public AwsCredentialsProvider credentialsProvider() {
+    if (StringUtils.isNotBlank(awsAccessKey) && StringUtils.isNotBlank(awsSecretKey)) {
+      LoggerFactory.getLogger(PolarisApplicationConfig.class)
+          .warn("Using hard-coded AWS credentials - this is not recommended for production");
+      return StaticCredentialsProvider.create(
+          AwsBasicCredentials.create(awsAccessKey, awsSecretKey));
+    }
+    return null;
+  }
+
+  public void setAwsAccessKey(String awsAccessKey) {
+    this.awsAccessKey = awsAccessKey;
+  }
+
+  public void setAwsSecretKey(String awsSecretKey) {
+    this.awsSecretKey = awsSecretKey;
   }
 
   public void setDefaultRealms(List<String> defaultRealms) {

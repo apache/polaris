@@ -22,12 +22,20 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.polaris.core.PolarisConfiguration;
 import io.polaris.core.PolarisDiagnostics;
+import io.polaris.core.admin.model.Catalog;
+import io.polaris.core.entity.CatalogEntity;
+import io.polaris.core.entity.PolarisEntity;
+import io.polaris.core.entity.PolarisEntityConstants;
 import io.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import io.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import io.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import java.util.List;
+import java.util.Optional;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The polaris storage configuration information, is part of a polaris entity's internal property,
@@ -47,19 +55,29 @@ import org.jetbrains.annotations.NotNull;
 })
 public abstract class PolarisStorageConfigurationInfo {
 
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(PolarisStorageConfigurationInfo.class);
+
   // a list of allowed locations
-  public List<String> allowedLocations;
+  private final List<String> allowedLocations;
 
   // storage type
-  public StorageType storageType;
+  private final StorageType storageType;
 
   public PolarisStorageConfigurationInfo(
       @JsonProperty(value = "storageType", required = true) @NotNull StorageType storageType,
       @JsonProperty(value = "allowedLocations", required = true) @NotNull
           List<String> allowedLocations) {
+    this(storageType, allowedLocations, true);
+  }
+
+  protected PolarisStorageConfigurationInfo(
+      StorageType storageType, List<String> allowedLocations, boolean validatePrefix) {
     this.allowedLocations = allowedLocations;
     this.storageType = storageType;
-    this.validatePrefixForStorageType();
+    if (validatePrefix) {
+      allowedLocations.forEach(this::validatePrefixForStorageType);
+    }
   }
 
   public List<String> getAllowedLocations() {
@@ -104,20 +122,76 @@ public abstract class PolarisStorageConfigurationInfo {
     return null;
   }
 
+  public static Optional<PolarisStorageConfigurationInfo> forEntityPath(
+      PolarisDiagnostics diagnostics, List<PolarisEntity> entityPath) {
+    return findStorageInfoFromHierarchy(entityPath)
+        .map(
+            storageInfo ->
+                deserialize(
+                    diagnostics,
+                    storageInfo
+                        .getInternalPropertiesAsMap()
+                        .get(PolarisEntityConstants.getStorageConfigInfoPropertyName())))
+        .map(
+            configInfo -> {
+              String baseLocation =
+                  entityPath.reversed().stream()
+                      .flatMap(
+                          e ->
+                              Optional.ofNullable(
+                                  e.getPropertiesAsMap()
+                                      .get(PolarisEntityConstants.ENTITY_BASE_LOCATION))
+                                  .stream())
+                      .findFirst()
+                      .orElse(null);
+              CatalogEntity catalog = CatalogEntity.of(entityPath.get(0));
+              boolean allowEscape =
+                  Optional.ofNullable(
+                          catalog
+                              .getPropertiesAsMap()
+                              .get(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION))
+                      .map(
+                          val -> {
+                            LOGGER.debug(
+                                "Found catalog level property to allow unstructured table location: {}",
+                                val);
+                            return Boolean.parseBoolean(val);
+                          })
+                      .orElseGet(() -> Catalog.TypeEnum.EXTERNAL.equals(catalog.getCatalogType()));
+              if (!allowEscape && baseLocation != null) {
+                LOGGER.debug(
+                    "Not allowing unstructured table location for entity: {}",
+                    entityPath.getLast().getName());
+                return new StorageConfigurationOverride(configInfo, List.of(baseLocation));
+              } else {
+                LOGGER.debug(
+                    "Allowing unstructured table location for entity: {}",
+                    entityPath.getLast().getName());
+                return configInfo;
+              }
+            });
+  }
+
+  private static @NotNull Optional<PolarisEntity> findStorageInfoFromHierarchy(
+      List<PolarisEntity> entityPath) {
+    return entityPath.reversed().stream()
+        .filter(
+            e ->
+                e.getInternalPropertiesAsMap()
+                    .containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
+        .findFirst();
+  }
+
   /** Subclasses must provide the Iceberg FileIO impl associated with their type in this method. */
   public abstract String getFileIoImplClassName();
 
   /** Validate if the provided allowed locations are valid for the storage type */
-  public void validatePrefixForStorageType() {
-    this.allowedLocations.forEach(
-        loc -> {
-          if (!loc.toLowerCase().startsWith(storageType.prefix)) {
-            throw new IllegalArgumentException(
-                String.format(
-                    "Location prefix not allowed: '%s', expected prefix: '%s'",
-                    loc, storageType.prefix));
-          }
-        });
+  protected void validatePrefixForStorageType(String loc) {
+    if (!loc.toLowerCase().startsWith(storageType.prefix)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Location prefix not allowed: '%s', expected prefix: '%s'", loc, storageType.prefix));
+    }
   }
 
   /** Validate the number of allowed locations not exceeding the max value. */

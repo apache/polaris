@@ -16,6 +16,7 @@
 package io.polaris.service.admin;
 
 import io.polaris.core.PolarisCallContext;
+import io.polaris.core.PolarisConfiguration;
 import io.polaris.core.admin.model.CatalogGrant;
 import io.polaris.core.admin.model.CatalogPrivilege;
 import io.polaris.core.admin.model.GrantResource;
@@ -60,9 +61,11 @@ import io.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import io.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -73,6 +76,7 @@ import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.iceberg.exceptions.ValidationException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -462,9 +466,81 @@ public class PolarisAdminService {
         catalogRoleWrapper);
   }
 
+  /** Get all locations where data for a `CatalogEntity` may be stored */
+  private Set<String> getCatalogLocations(CatalogEntity catalogEntity) {
+    HashSet<String> catalogLocations = new HashSet<>();
+    catalogLocations.add(terminateWithSlash(catalogEntity.getDefaultBaseLocation()));
+    if (catalogEntity.getStorageConfigurationInfo() != null) {
+      catalogLocations.addAll(
+          catalogEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
+              .map(this::terminateWithSlash)
+              .toList());
+    }
+    return catalogLocations;
+  }
+
+  /** Ensure a path is terminated with a `/` */
+  private String terminateWithSlash(String path) {
+    if (path == null) {
+      return null;
+    } else if (path.endsWith("/")) {
+      return path;
+    }
+    return path + "/";
+  }
+
+  /**
+   * True if the `CatalogEntity` has a default base location or allowed location that overlaps with
+   * that of any existing catalog. If `ALLOW_OVERLAPPING_CATALOG_URLS` is set to true, this check
+   * will be skipped.
+   */
+  private boolean catalogOverlapsWithExistingCatalog(CatalogEntity catalogEntity) {
+    boolean allowOverlappingCatalogUrls =
+        Boolean.parseBoolean(
+            String.valueOf(
+                getCurrentPolarisContext()
+                    .getConfigurationStore()
+                    .getConfiguration(
+                        getCurrentPolarisContext(),
+                        PolarisConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS,
+                        PolarisConfiguration.DEFAULT_ALLOW_OVERLAPPING_CATALOG_URLS)));
+
+    if (allowOverlappingCatalogUrls) {
+      return false;
+    }
+
+    Set<String> newCatalogLocations = getCatalogLocations(catalogEntity);
+    return listCatalogsUnsafe().stream()
+        .map(CatalogEntity::new)
+        .anyMatch(
+            existingCatalog -> {
+              if (existingCatalog.getName().equals(catalogEntity.getName())) {
+                return false;
+              }
+              return getCatalogLocations(existingCatalog).stream()
+                  .anyMatch(
+                      existingLocation ->
+                          newCatalogLocations.stream()
+                              .anyMatch(
+                                  newLocation -> {
+                                    if (newLocation == null || existingLocation == null) {
+                                      return false;
+                                    }
+                                    return newLocation.startsWith(existingLocation)
+                                        || existingLocation.startsWith(newLocation);
+                                  }));
+            });
+  }
+
   public PolarisEntity createCatalog(PolarisEntity entity) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG;
     authorizeBasicRootOperationOrThrow(op);
+
+    if (catalogOverlapsWithExistingCatalog((CatalogEntity) entity)) {
+      throw new ValidationException(
+          "Cannot create Catalog %s. One or more of its locations overlaps with an existing catalog",
+          entity.getName());
+    }
 
     long id =
         entity.getId() <= 0
@@ -623,6 +699,12 @@ public class PolarisAdminService {
 
     validateUpdateCatalogDiffOrThrow(currentCatalogEntity, updatedEntity);
 
+    if (catalogOverlapsWithExistingCatalog(updatedEntity)) {
+      throw new ValidationException(
+          "Cannot update Catalog %s. One or more of its new locations overlaps with an existing catalog",
+          updatedEntity.getName());
+    }
+
     CatalogEntity returnedEntity =
         Optional.ofNullable(
                 CatalogEntity.of(
@@ -639,9 +721,12 @@ public class PolarisAdminService {
   }
 
   public List<PolarisEntity> listCatalogs() {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_CATALOGS;
-    authorizeBasicRootOperationOrThrow(op);
+    authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation.LIST_CATALOGS);
+    return listCatalogsUnsafe();
+  }
 
+  /** List all catalogs without checking for permission */
+  private List<PolarisEntity> listCatalogsUnsafe() {
     return entityManager
         .getMetaStoreManager()
         .listEntities(

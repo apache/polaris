@@ -1,4 +1,5 @@
-polaris-service/logs/
+regtests/derby.log
+regtests/metastore_db
 regtests/output/
 
 # Notebooks
@@ -6,6 +7,10 @@ notebooks/.ipynb_checkpoints/
 
 # Metastore
 metastore_db/
+
+.gradle
+**/build/
+!src/**/build/
 
 # Ignore Gradle GUI config
 gradle-app.setting
