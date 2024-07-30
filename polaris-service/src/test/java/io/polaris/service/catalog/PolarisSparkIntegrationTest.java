@@ -252,6 +252,22 @@ public class PolarisSparkIntegrationTest {
   }
 
   @Test
+  public void testCreateViewTable() {
+    long namespaceCount = spark.sql("SHOW NAMESPACES").count();
+    assertThat(namespaceCount).isEqualTo(0L);
+
+    spark.sql("CREATE NAMESPACE ns1");
+    spark.sql("USE ns1");
+    spark.sql("CREATE TABLE tb1 (col1 integer, col2 string)");
+    spark.sql("INSERT INTO tb1 VALUES (1, 'a'), (2, 'b'), (3, 'c')");
+    long recordCount = spark.sql("SELECT * FROM tb1").count();
+    assertThat(recordCount).isEqualTo(3);
+
+    spark.sql("CREATE VIEW v1 AS SELECT MAX(col1) FROM tb1");
+    spark.sql("SELECT * FROM v1");
+  }
+
+  @Test
   public void testCreateAndUpdateExternalTable() {
     long namespaceCount = spark.sql("SHOW NAMESPACES").count();
     assertThat(namespaceCount).isEqualTo(0L);
