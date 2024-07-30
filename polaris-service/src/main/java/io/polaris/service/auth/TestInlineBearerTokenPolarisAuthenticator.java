@@ -22,9 +22,11 @@ import io.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import io.polaris.core.context.CallContext;
 import io.polaris.core.entity.PolarisPrincipalSecrets;
 import io.polaris.core.persistence.PolarisMetaStoreManager;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +61,12 @@ public class TestInlineBearerTokenPolarisAuthenticator extends BasePolarisAuthen
 
     TokenInfoExchangeResponse tokenInfo = new TokenInfoExchangeResponse();
     tokenInfo.setSub(principal);
-    tokenInfo.setScope(properties.get("role"));
+    if (properties.get("role") != null) {
+      tokenInfo.setScope(
+          Arrays.stream(properties.get("role").split(" "))
+              .map(r -> PRINCIPAL_ROLE_PREFIX + r)
+              .collect(Collectors.joining(" ")));
+    }
 
     PolarisPrincipalSecrets secrets =
         metaStoreManager.loadPrincipalSecrets(callContext, principal).getPrincipalSecrets();

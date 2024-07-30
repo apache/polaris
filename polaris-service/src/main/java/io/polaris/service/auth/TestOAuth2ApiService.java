@@ -30,6 +30,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,10 +63,12 @@ public class TestOAuth2ApiService implements OAuth2ApiService, HasEntityManagerF
             + ";password:"
             + clientSecret
             + ";realm:"
-            + CallContext.getCurrentContext().getRealmContext().getRealmIdentifier());
+            + CallContext.getCurrentContext().getRealmContext().getRealmIdentifier()
+            + ";role:"
+            + scope.replaceAll(BasePolarisAuthenticator.PRINCIPAL_ROLE_PREFIX, ""));
     response.put("token_type", "bearer");
     response.put("expires_in", 3600);
-    response.put("scope", "catalog");
+    response.put("scope", Objects.requireNonNullElse(scope, "catalog"));
     return Response.ok(response).build();
   }
 

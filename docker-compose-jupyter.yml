@@ -17,7 +17,7 @@
 services:
   polaris:
     build:
-      context: ../iceberg-rest-server
+      context: .
       network: host
     ports:
       - "8181:8181"
@@ -34,8 +34,8 @@ services:
       retries: 5
   jupyter:
     build:
-      context: ..
-      dockerfile: ../notebooks/Dockerfile
+      context: .
+      dockerfile: ./notebooks/Dockerfile
       network: host
     ports:
       - "8888:8888"
