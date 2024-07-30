@@ -147,7 +147,7 @@ principal:
 ```bash
 curl -i -X POST \
   http://localhost:8181/api/catalog/v1/oauth/tokens \
-  -d 'grant_type=client_credentials&client_id=<principalClientId>=&client_secret=<mainSecret>=&scope=PRINCIPAL_ROLE:ALL'
+  -d 'grant_type=client_credentials&client_id=<principalClientId>&client_secret=<mainSecret>&scope=PRINCIPAL_ROLE:ALL'
 ```
 
 The response output will contain an access token:
