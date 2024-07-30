@@ -25,11 +25,14 @@ if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
         """)
 }
 
-rootProject.name = 'polaris'
+rootProject.name = "polaris"
 
-include 'polaris-core'
-include 'polaris-service'
-include 'extension:persistence:hibernate'
-include 'extension:persistence:eclipselink'
-
-project(":extension:persistence:eclipselink").name = "polaris-eclipselink"
+Properties projects = new Properties()
+file("gradle/projects.main.properties").withInputStream { projects.load(it) }
+projects.entrySet().forEach {
+    final def name = it.key as String
+    include(name)
+    final def prj = project(":${name}")
+    prj.name = name
+    prj.projectDir = file(it.value)
+}
