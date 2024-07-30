@@ -83,6 +83,12 @@ git pull --rebase
 git push GitHubUser my-branch --force
 ```
 
+  Ensure the code is properly formatted:
+
+```bash
+./gradlew format
+```
+
 * Pull Requests should be based on the `main` branch.
 * Test that your changes works by adapting or adding tests. Verify the build passes (see `README.md` for build instructions).
 * If your Pull Request has conflicts with the `main` branch, please rebase and fix the conflicts.

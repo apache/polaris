@@ -28,6 +28,7 @@ buildscript {
 plugins {
     id "idea"
     id "eclipse"
+    id "org.jetbrains.gradle.plugin.idea-ext" version "1.1.8"
 }
 
 allprojects {
@@ -103,12 +104,23 @@ subprojects {
                 throw new AssertionError("Wildcard imports disallowed - ${m.findAll()}")
             }
         }
-        java {
-            target 'src/*/java/**/*.java'
-            targetExclude 'build/**'
-            googleJavaFormat()
-            endWithNewline()
-            custom "disallowWildcardImports", disallowWildcardImports
+        format("xml") {
+            target("src/**/*.xml", "src/**/*.xsd")
+            targetExclude("codestyle/copyright-header.xml")
+            eclipseWtp(com.diffplug.spotless.extra.wtp.EclipseWtpFormatterStep.XML)
+                    .configFile(rootProject.file("codestyle/org.eclipse.wst.xml.core.prefs"))
+            // getting the license-header delimiter right is a bit tricky.
+            //licenseHeaderFile(rootProject.file("codestyle/copyright-header.xml"), '<^[!?].*$')
+        }
+        if (project.plugins.hasPlugin("java-base")) {
+            java {
+                target "src/*/java/**/*.java"
+                targetExclude "build/**"
+                licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
+                googleJavaFormat()
+                endWithNewline()
+                custom "disallowWildcardImports", disallowWildcardImports
+            }
         }
     }
 }
@@ -126,6 +138,28 @@ if (System.getProperty("idea.sync.active").asBoolean()) {
     if (!icon.exists()) {
         def img = new URI("https://avatars.githubusercontent.com/u/173406119?s=200&v=4").toURL().openConnection().getInputStream().bytes
         ideaDir.file("icon.png").asFile.newOutputStream().with { out -> out.write(img) }
+    }
+
+    idea {
+        module {
+            name = ideName
+            downloadSources = true // this is the default BTW
+            inheritOutputDirs = true
+        }
+    }
+
+    idea.project.settings {
+        copyright {
+            useDefault = "ApacheLicense-v2"
+            profiles.create("ApacheLicense-v2") {
+                // strip trailing LF
+                def copyrightText = rootProject.file("codestyle/copyright-header.txt").text
+                notice = copyrightText
+            }
+        }
+
+        encodings.encoding = "UTF-8"
+        encodings.properties.encoding = "UTF-8"
     }
 }
 

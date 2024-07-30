@@ -16,9 +16,9 @@
  limitations under the License.
 
 -->
-<persistence version="2.0"
-             xmlns="http://java.sun.com/xml/ns/persistence" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-             xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd">
+<persistence version="2.0" xmlns="http://java.sun.com/xml/ns/persistence"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd">
 
   <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
     <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
@@ -31,13 +31,14 @@
     <class>io.polaris.core.persistence.models.ModelSequenceId</class>
     <shared-cache-mode>NONE</shared-cache-mode>
     <properties>
-      <property name="jakarta.persistence.jdbc.url" value="jdbc:h2:file:/tmp/eclipseLink/{realm}" />
-      <property name="jakarta.persistence.jdbc.user" value="sa" />
-      <property name="jakarta.persistence.jdbc.password" value="" />
-      <property name="jakarta.persistence.schema-generation.database.action"  value="create"/>
+      <property name="jakarta.persistence.jdbc.url"
+        value="jdbc:h2:file:/tmp/eclipseLink/{realm}"/>
+      <property name="jakarta.persistence.jdbc.user" value="sa"/>
+      <property name="jakarta.persistence.jdbc.password" value=""/>
+      <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
       <property name="eclipselink.logging.level.sql" value="FINE"/>
       <property name="eclipselink.logging.parameters" value="true"/>
-      <property name="eclipselink.persistence-context.flush-mode" value="auto" />
+      <property name="eclipselink.persistence-context.flush-mode" value="auto"/>
     </properties>
   </persistence-unit>
 </persistence>
