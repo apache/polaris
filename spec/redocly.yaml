@@ -1,0 +1,11 @@
+theme:
+  openapi:
+    theme:
+      typography:
+        fontFamily: 'Roboto, sans-serif'
+      logo:
+        gutter: '15px'
+
+seo:
+  title: Polaris Catalog Documentation
+  description: Learn how to work with the Open Source Polaris Catalog for Apache Iceberg

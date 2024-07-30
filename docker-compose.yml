@@ -1,0 +1,89 @@
+#
+# Copyright (c) 2024 Snowflake Computing Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+services:
+  polaris:
+    build:
+      context: .
+      network: host
+    ports:
+      - "8181:8181"
+      - "8182"
+    environment:
+      AWS_REGION: us-west-2
+      GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS
+      AZURE_TENANT_ID: $AZURE_TENANT_ID
+      AZURE_CLIENT_ID: $AZURE_CLIENT_ID
+      AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET
+    command: # override the command to specify aws keys as dropwizard config
+      - java
+      - -Ddw.awsAccessKey=$AWS_ACCESS_KEY_ID
+      - -Ddw.awsSecretKey=$AWS_SECRET_ACCESS_KEY
+      - -jar
+      - /app/polaris-service-1.0.0-all.jar
+      - server
+      - polaris-server.yml
+    volumes:
+      - credentials:/tmp/credentials/
+
+    healthcheck:
+      test: ["CMD", "curl", "http://localhost:8182/healthcheck"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+  regtest:
+    build:
+      context: regtests
+      network: host
+      args:
+        POLARIS_HOST: polaris
+    depends_on:
+      polaris:
+        condition: service_healthy
+    environment:
+      AWS_TEST_ENABLED: $AWS_TEST_ENABLED
+      AWS_STORAGE_BUCKET: $AWS_STORAGE_BUCKET
+      AWS_ROLE_ARN: $AWS_ROLE_ARN
+      AWS_TEST_BASE: $AWS_TEST_BASE
+      GCS_TEST_ENABLED: $GCS_TEST_ENABLED
+      GCS_TEST_BASE: $GCS_TEST_BASE
+      GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS
+      AZURE_TEST_ENABLED: $AZURE_TEST_ENABLED
+      AZURE_TENANT_ID: $AZURE_TENANT_ID
+      AZURE_DFS_TEST_BASE: $AZURE_DFS_TEST_BASE
+      AZURE_BLOB_TEST_BASE: $AZURE_BLOB_TEST_BASE
+      AZURE_CLIENT_ID: $AZURE_CLIENT_ID
+      AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET
+      AWS_CROSS_REGION_TEST_ENABLED: $AWS_CROSS_REGION_TEST_ENABLED
+      AWS_CROSS_REGION_BUCKET: $AWS_CROSS_REGION_BUCKET
+      AWS_ROLE_FOR_CROSS_REGION_BUCKET: $AWS_ROLE_FOR_CROSS_REGION_BUCKET
+    volumes:
+      - local_output:/tmp/polaris-regtests/
+      - credentials:/tmp/credentials/
+
+volumes:
+  local_output:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ./regtests/output
+  credentials:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ./regtests/credentials

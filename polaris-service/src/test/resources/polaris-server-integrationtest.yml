@@ -1,0 +1,167 @@
+#
+# Copyright (c) 2024 Snowflake Computing Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+server:
+  # Maximum number of threads.
+  maxThreads: 200
+
+  # Minimum number of thread to keep alive.
+  minThreads: 10
+  applicationConnectors:
+    # HTTP-specific options.
+    - type: http
+
+      # The port on which the HTTP server listens for service requests.
+      port: 8181
+
+  adminConnectors:
+    - type: http
+      port: 8182
+
+  # The hostname of the interface to which the HTTP server socket wil be found. If omitted, the
+  # socket will listen on all interfaces.
+  #bindHost: localhost
+
+  #  ssl:
+  #    keyStore: ./example.keystore
+  #    keyStorePassword: example
+  #
+  #    keyStoreType: JKS # (optional, JKS is default)
+
+  # HTTP request log settings
+  requestLog:
+    appenders:
+      # Settings for logging to stdout.
+      - type: console
+
+      # Settings for logging to a file.
+      - type: file
+
+        # The file to which statements will be logged.
+        currentLogFilename: ./logs/request.log
+
+        #  When the log file rolls over, the file will be archived to requests-2012-03-15.log.gz,
+        # requests.log will be truncated, and new statements written to it.
+        archivedLogFilenamePattern: ./logs/requests-%d.log.gz
+
+        # The maximum number of log files to archive.
+        archivedFileCount: 14
+
+        # Enable archiving if the request log entries go to the their own file
+        archive: true
+
+# Either 'jdbc' or 'polaris'; specifies the underlying delegate catalog
+baseCatalogType: "polaris"
+
+featureConfiguration:
+  ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: true
+  DISABLE_TOKEN_GENERATION_FOR_USER_PRINCIPALS: true
+  ALLOW_WILDCARD_LOCATION: true
+  ALLOW_SPECIFYING_FILE_IO_IMPL: true
+  ALLOW_OVERLAPPING_CATALOG_URLS: true
+  SUPPORTED_CATALOG_STORAGE_TYPES:
+    - FILE
+    - S3
+    - GCS
+    - AZURE
+
+sqlLiteCatalogDirs:
+  default-realm: ./build/test_data/iceberg
+
+metaStoreManager:
+  type: in-memory
+#  type: remote
+#  url: http://sdp-devvm-mcollado:8080
+
+oauth2:
+  type: default
+  tokenBroker:
+    type: symmetric-key
+    secret: polaris
+#  type: snowflake
+#  clientId: ${GS_POLARIS_SERVICE_CLIENT_ID}
+#  clientSecret: ${GS_POLARIS_SERVICE_CLIENT_SECRET}
+#  clientSecret2: ${GS_POLARIS_SERVICE_CLIENT_SECRET2}
+
+authenticator:
+  class: io.polaris.service.auth.DefaultPolarisAuthenticator
+  tokenBroker:
+    type: symmetric-key
+    secret: polaris
+
+
+callContextResolver:
+  type: default
+#  type: snowflake
+#  account: ${SNOWFLAKE_ACCOUNT:-SNOWFLAKE}
+#  scheme: ${GS_SCHEME:-http}
+#  host: ${GS_HOST:-localhost}
+#  port: ${GS_PORT:-8080}
+
+realmContextResolver:
+  type: default
+#  type: snowflake
+#  account: ${SNOWFLAKE_ACCOUNT:-SNOWFLAKE}
+#  scheme: ${GS_SCHEME:-http}
+#  host: ${GS_HOST:-localhost}
+#  port: ${GS_PORT:-8080}
+
+defaultRealm: SNOWFLAKE
+
+cors:
+  allowed-origins:
+    - snowflake.com
+
+  # Logging settings.
+logging:
+
+  # The default level of all loggers. Can be OFF, ERROR, WARN, INFO, DEBUG, TRACE, or ALL.
+  level: INFO
+
+  # Logger-specific levels.
+  loggers:
+    io.polaris: DEBUG
+
+  appenders:
+
+    - type: console
+      # If true, write log statements to stdout.
+      #      enabled: true
+      # Do not display log statements below this threshold to stdout.
+      threshold: ALL
+      # Custom Logback PatternLayout with threadname.
+      logFormat: "%-5p [%d{ISO8601} - %-6r] [%t] [%X{aid}%X{sid}%X{tid}%X{wid}%X{oid}%X{srv}%X{job}%X{rid}] %c{30}: %m %kvp%n%ex"
+
+    # Settings for logging to a file.
+    - type: file
+      # If true, write log statements to a file.
+      #      enabled: true
+      # Do not write log statements below this threshold to the file.
+      threshold: ALL
+      # Custom Logback PatternLayout with threadname.
+      logFormat: "%-5p [%d{ISO8601} - %-6r] [%t] [%X{aid}%X{sid}%X{tid}%X{wid}%X{oid}%X{srv}%X{job}%X{rid}] %c: %m %kvp%n%ex"
+
+      # when using json logging, you must use a format like this, else the
+      # mdc section of the json log will be incorrect
+      #    logFormat: "%-5p [%d{ISO8601} - %-6r] [%t] [%X] %c: %m%n%ex"
+
+      # The file to which statements will be logged.
+      currentLogFilename: ./logs/iceberg-rest.log
+      #  When the log file rolls over, the file will be archived to snowflake-2012-03-15.log.gz,
+      # snowflake.log will be truncated, and new statements written to it.
+      archivedLogFilenamePattern: ./logs/iceberg-rest-%d.log.gz
+      # The maximum number of log files to archive.
+      archivedFileCount: 14

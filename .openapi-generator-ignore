@@ -1,0 +1,7 @@
+src/main/webapp/**
+build.gradle
+pom.xml
+README.md
+settings.gradle
+.openapi-generator-ignore
+src/main/java/org/**
