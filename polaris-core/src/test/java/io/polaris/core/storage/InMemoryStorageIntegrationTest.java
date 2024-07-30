@@ -79,6 +79,7 @@ class InMemoryStorageIntegrationTest {
             Mockito.mock(),
             new PolarisDefaultDiagServiceImpl(),
             new PolarisConfigurationStore() {
+              @SuppressWarnings("unchecked")
               @Override
               public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
                 return (T) config.get(configName);
