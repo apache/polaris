@@ -169,10 +169,10 @@ $ export PRINCIPAL_TOKEN=ver:1-hint:1036-ETMsDgAAAY/GPANareallyverylongstringtha
 
 $ curl -i -X PUT -H "Authorization: Bearer $PRINCIPAL_TOKEN" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/v1/catalogs \
-  -d '{"name": "snowflake", "id": 100, "type": "INTERNAL", "readOnly": false}'
+  -d '{"name": "polaris", "id": 100, "type": "INTERNAL", "readOnly": false}'
 ```
 
-This creates a catalog called `snowflake`. From here, you can use Spark to create namespaces, tables, etc.
+This creates a catalog called `polaris`. From here, you can use Spark to create namespaces, tables, etc.
 
 You must run the following as the first query in your spark-sql shell to actually use Polaris:
 
