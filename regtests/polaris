@@ -1,0 +1,38 @@
+#!/bin/bash
+
+################################################
+# This is a modified copy of the script in the #
+# parent directory, used for regression tests. #
+################################################
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
+  echo "Performing first-time setup for the Python client..."
+  python3 -m venv ${SCRIPT_DIR}/polaris-venv
+  . ${SCRIPT_DIR}/polaris-venv/bin/activate
+  pip install poetry==1.5.0
+
+  cp ${SCRIPT_DIR}/regtests/client/python/pyproject.toml ${SCRIPT_DIR}
+
+  # Save the current directory
+  CURRENT_DIR=$(pwd)
+  cd $SCRIPT_DIR && poetry install
+  cd $CURRENT_DIR
+
+  deactivate
+  echo "First time setup complete."
+fi
+
+# Save the current directory
+CURRENT_DIR=$(pwd)
+cd $SCRIPT_DIR > /dev/null
+PYTHONPATH=regtests/client/python ${SCRIPT_DIR}/polaris-venv/bin/python3 regtests/client/python/cli/polaris_cli.py "$@"
+status=$?
+cd $CURRENT_DIR > /dev/null
+
+if [ $status -ne 0 ]; then
+  exit 1
+fi
+
+exit 0
