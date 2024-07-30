@@ -32,6 +32,7 @@ import io.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import io.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import io.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -187,7 +188,7 @@ public abstract class PolarisStorageConfigurationInfo {
 
   /** Validate if the provided allowed locations are valid for the storage type */
   protected void validatePrefixForStorageType(String loc) {
-    if (!loc.toLowerCase().startsWith(storageType.prefix)) {
+    if (!loc.toLowerCase(Locale.ROOT).startsWith(storageType.prefix)) {
       throw new IllegalArgumentException(
           String.format(
               "Location prefix not allowed: '%s', expected prefix: '%s'", loc, storageType.prefix));
