@@ -15,7 +15,7 @@
  */
 
 plugins {
-    id 'org.openapi.generator' version '7.6.0'
+    id "org.openapi.generator" version "7.6.0"
     id("java-library")
     id("java-test-fixtures")
 }
@@ -26,92 +26,97 @@ compileJava {
 }
 
 dependencies {
-    implementation "org.apache.iceberg:iceberg-api:${icebergVersion}"
-    implementation "org.apache.iceberg:iceberg-core:${icebergVersion}"
+    implementation(platform("org.apache.iceberg:iceberg-bom:${icebergVersion}"))
+    implementation("org.apache.iceberg:iceberg-api:${icebergVersion}")
+    implementation("org.apache.iceberg:iceberg-core:${icebergVersion}")
     constraints {
         implementation("io.airlift:aircompressor:0.27") {
-            because 'Vulnerability detected in 0.25'
+            because "Vulnerability detected in 0.25"
         }
     }
     // TODO - this is only here for the Discoverable interface
     // We should use a different mechanism to discover the plugin implementations
-    implementation "io.dropwizard:dropwizard-jackson:${dropwizardVersion}"
+    implementation("io.dropwizard:dropwizard-jackson:${dropwizardVersion}")
 
-    implementation "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
-    implementation "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
-    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
-    implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
-    implementation 'org.apache.commons:commons-lang3:3.14.0'
-    implementation 'commons-codec:commons-codec:1.17.0'
+    implementation(platform("com.fasterxml.jackson:jackson-bom:${jacksonVersion}"))
+    implementation("com.fasterxml.jackson.core:jackson-annotations")
+    implementation("com.fasterxml.jackson.core:jackson-core")
+    implementation("com.fasterxml.jackson.core:jackson-databind")
+    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
+    implementation("org.apache.commons:commons-lang3:3.14.0")
+    implementation("commons-codec:commons-codec:1.17.0")
 
     implementation("org.apache.hadoop:hadoop-common:${hadoopVersion}") {
-        exclude group: 'org.slf4j', module: 'slf4j-reload4j'
-        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
-        exclude group: 'ch.qos.reload4j', module: 'reload4j'
-        exclude group: 'log4j', module: 'log4j'
-        exclude group: 'org.apache.zookeeper', module: 'zookeeper'
+        exclude group: "org.slf4j", module: "slf4j-reload4j"
+        exclude group: "org.slf4j", module: "slf4j-log4j12"
+        exclude group: "ch.qos.reload4j", module: "reload4j"
+        exclude group: "log4j", module: "log4j"
+        exclude group: "org.apache.zookeeper", module: "zookeeper"
     }
     constraints {
         implementation("org.xerial.snappy:snappy-java:1.1.10.4") {
-            because 'Vulnerability detected in 1.1.8.2'
+            because "Vulnerability detected in 1.1.8.2"
         }
         implementation("org.codehaus.jettison:jettison:1.5.4") {
-            because 'Vulnerability detected in 1.1'
+            because "Vulnerability detected in 1.1"
         }
         implementation("org.apache.commons:commons-configuration2:2.10.1") {
-            because 'Vulnerability detected in 2.8.0'
+            because "Vulnerability detected in 2.8.0"
         }
         implementation("org.apache.commons:commons-compress:1.26.0") {
-            because 'Vulnerability detected in 1.21'
+            because "Vulnerability detected in 1.21"
         }
         implementation("com.nimbusds:nimbus-jose-jwt:9.37.2") {
-            because 'Vulnerability detected in 9.8.1'
+            because "Vulnerability detected in 9.8.1"
         }
 
     }
-    implementation "org.apache.hadoop:hadoop-hdfs-client:${hadoopVersion}"
+    implementation("org.apache.hadoop:hadoop-hdfs-client:${hadoopVersion}")
 
-    implementation "javax.inject:javax.inject:1"
-    implementation "io.swagger:swagger-annotations:1.6.14"
-    implementation "io.swagger:swagger-jaxrs:1.6.14"
-    implementation "jakarta.validation:jakarta.validation-api:3.0.2"
+    implementation("javax.inject:javax.inject:1")
+    implementation("io.swagger:swagger-annotations:1.6.14")
+    implementation("io.swagger:swagger-jaxrs:1.6.14")
+    implementation("jakarta.validation:jakarta.validation-api:3.0.2")
 
-    implementation "org.apache.iceberg:iceberg-aws:${icebergVersion}"
-    implementation "software.amazon.awssdk:sts:2.25.61"
-    implementation "software.amazon.awssdk:iam-policy-builder:2.25.61"
-    implementation "software.amazon.awssdk:s3:2.25.61"
+    implementation("org.apache.iceberg:iceberg-aws")
+    implementation(platform("software.amazon.awssdk:bom:2.26.25"))
+    implementation("software.amazon.awssdk:sts")
+    implementation("software.amazon.awssdk:iam-policy-builder")
+    implementation("software.amazon.awssdk:s3")
 
-    implementation "org.apache.iceberg:iceberg-azure:${icebergVersion}"
-    implementation "com.azure:azure-storage-blob:12.18.0"
-    implementation "com.azure:azure-storage-common:12.14.2"
-    implementation "com.azure:azure-identity:1.12.2"
-    implementation "com.azure:azure-storage-file-datalake:12.19.0"
+    implementation("org.apache.iceberg:iceberg-azure")
+    implementation("com.azure:azure-storage-blob:12.18.0")
+    implementation("com.azure:azure-storage-common:12.14.2")
+    implementation("com.azure:azure-identity:1.12.2")
+    implementation("com.azure:azure-storage-file-datalake:12.19.0")
     constraints {
         implementation("io.netty:netty-codec-http2:4.1.100") {
-            because 'Vulnerability detected in 4.1.72'
+            because "Vulnerability detected in 4.1.72"
         }
         implementation("io.projectreactor.netty:reactor-netty-http:1.1.13") {
-            because 'Vulnerability detected in 1.0.45'
+            because "Vulnerability detected in 1.0.45"
         }
     }
 
-    implementation "org.apache.iceberg:iceberg-gcp:${icebergVersion}"
-    implementation "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
-    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
-    implementation "com.google.cloud:google-cloud-storage:2.39.0"
+    implementation("org.apache.iceberg:iceberg-gcp")
+    implementation(platform("com.google.cloud:google-cloud-storage-bom:2.39.0"))
+    implementation("com.google.cloud:google-cloud-storage")
 
-    implementation 'io.micrometer:micrometer-core:1.13.2'
+    implementation(platform("io.micrometer:micrometer-bom:1.13.2"))
+    implementation("io.micrometer:micrometer-core")
 
-    testFixturesApi 'org.junit.jupiter:junit-jupiter:5.7.1'
-    testFixturesApi 'org.assertj:assertj-core:3.25.3'
-    testFixturesApi "org.mockito:mockito-core:5.11.0"
-    testFixturesApi "com.fasterxml.jackson.core:jackson-core:${jacksonVersion}"
-    testFixturesApi "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
-    testFixturesApi 'org.apache.commons:commons-lang3:3.14.0'
-    testFixturesApi "org.jetbrains:annotations:24.0.0"
+    testFixturesApi(platform("org.junit:junit-bom:5.10.3"))
+    testFixturesApi("org.junit.jupiter:junit-jupiter")
+    testFixturesApi("org.assertj:assertj-core:3.25.3")
+    testFixturesApi("org.mockito:mockito-core:5.11.0")
+    testFixturesApi("com.fasterxml.jackson.core:jackson-core")
+    testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
+    testFixturesApi("org.apache.commons:commons-lang3:3.14.0")
+    testFixturesApi("org.jetbrains:annotations:24.0.0")
+    testFixturesApi(platform("com.fasterxml.jackson:jackson-bom:${jacksonVersion}"))
 
-    compileOnly "jakarta.annotation:jakarta.annotation-api:2.1.1"
-    compileOnly "jakarta.persistence:jakarta.persistence-api:3.1.0"
+    compileOnly("jakarta.annotation:jakarta.annotation-api:2.1.1")
+    compileOnly("jakarta.persistence:jakarta.persistence-api:3.1.0")
 }
 
 openApiValidate {

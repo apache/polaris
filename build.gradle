@@ -17,17 +17,17 @@
 buildscript {
     repositories {
         maven {
-            url 'https://plugins.gradle.org/m2/'
+            url "https://plugins.gradle.org/m2/"
         }
     }
     dependencies {
-        classpath 'com.diffplug.spotless:spotless-plugin-gradle:6.25.0'
+        classpath "com.diffplug.spotless:spotless-plugin-gradle:6.25.0"
     }
 }
 
 plugins {
-    id 'idea'
-    id 'eclipse'
+    id "idea"
+    id "eclipse"
 }
 
 allprojects {
@@ -44,48 +44,50 @@ allprojects {
 }
 
 subprojects {
-    apply plugin: 'jacoco'
-    apply plugin: 'java'
-    apply plugin: 'com.diffplug.spotless'
-    apply plugin: 'jacoco-report-aggregation'
-    apply plugin: 'groovy'
+    apply plugin: "jacoco"
+    apply plugin: "java"
+    apply plugin: "com.diffplug.spotless"
+    apply plugin: "jacoco-report-aggregation"
+    apply plugin: "groovy"
     ext {
-        jacksonVersion = '2.17.2'
-        icebergVersion = '1.5.0'
-        hadoopVersion = '3.3.6'
-        dropwizardVersion = '4.0.7'
-        assertJVersion = '3.25.3'
+        jacksonVersion = "2.17.2"
+        icebergVersion = "1.5.0"
+        hadoopVersion = "3.3.6"
+        dropwizardVersion = "4.0.7"
+        assertJVersion = "3.25.3"
     }
 
     tasks.withType(JavaCompile) {
-        options.compilerArgs << '-Xlint:unchecked'
-        options.compilerArgs << '-Xlint:deprecation'
+        options.compilerArgs << "-Xlint:unchecked"
+        options.compilerArgs << "-Xlint:deprecation"
     }
 
-    project(':polaris-service') {
-        apply plugin: 'application'
+    project(":polaris-service") {
+        apply plugin: "application"
     }
 
-    project(':polaris-core') {
-        apply plugin: 'java-library'
+    project(":polaris-core") {
+        apply plugin: "java-library"
     }
 
     dependencies {
-        implementation "com.fasterxml.jackson.core:jackson-annotations:${jacksonVersion}"
-        implementation 'com.google.guava:guava:33.0.0-jre'
-        implementation "org.jetbrains:annotations:24.0.0"
-        implementation 'org.slf4j:slf4j-api:2.0.12'
-        compileOnly "com.github.spotbugs:spotbugs-annotations:4.8.5"
+        implementation(platform("com.fasterxml.jackson:jackson-bom:${jacksonVersion}"))
+        implementation("com.fasterxml.jackson.core:jackson-annotations")
+        implementation("com.google.guava:guava:33.0.0-jre")
+        implementation("org.jetbrains:annotations:24.0.0")
+        implementation("org.slf4j:slf4j-api:2.0.12")
+        compileOnly("com.github.spotbugs:spotbugs-annotations:4.8.5")
 
-        testImplementation 'org.junit.jupiter:junit-jupiter:5.7.1'
-        testImplementation 'org.assertj:assertj-core:3.25.3'
-        testImplementation "org.mockito:mockito-core:5.11.0"
+        testImplementation(platform("org.junit:junit-bom:5.10.3"))
+        testImplementation("org.junit.jupiter:junit-jupiter")
+        testImplementation("org.assertj:assertj-core:3.26.3")
+        testImplementation("org.mockito:mockito-core:5.11.0")
 
-        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+        testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     }
 
     task format {
-        dependsOn 'spotlessApply'
+        dependsOn "spotlessApply"
     }
 
     test {
@@ -106,7 +108,7 @@ subprojects {
             targetExclude 'build/**'
             googleJavaFormat()
             endWithNewline()
-            custom 'disallowWildcardImports', disallowWildcardImports
+            custom "disallowWildcardImports", disallowWildcardImports
         }
     }
 }

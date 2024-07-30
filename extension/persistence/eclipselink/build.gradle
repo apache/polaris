@@ -13,12 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-dependencies {
-    implementation project(":polaris-core")
-    implementation project(":polaris-service")
-    implementation "org.eclipse.persistence:eclipselink:4.0.3"
-    implementation "io.dropwizard:dropwizard-jackson:${dropwizardVersion}"
 
-    testImplementation 'com.h2database:h2:2.2.224'
+dependencies {
+    implementation(project(":polaris-core"))
+    implementation(project(":polaris-service"))
+    implementation("org.eclipse.persistence:eclipselink:4.0.3")
+    implementation("io.dropwizard:dropwizard-jackson:${dropwizardVersion}")
+
+    testImplementation("com.h2database:h2:2.2.224")
     testImplementation(testFixtures(project(":polaris-core")))
 }

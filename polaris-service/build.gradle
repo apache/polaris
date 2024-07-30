@@ -15,71 +15,76 @@
  */
 
 plugins {
-    id 'com.github.johnrengelman.shadow' version '8.1.1'
-    id 'org.openapi.generator' version '7.6.0'
+    id "com.github.johnrengelman.shadow" version "8.1.1"
+    id "org.openapi.generator" version "7.6.0"
 }
 
 dependencies {
-    implementation project(':polaris-core')
+    implementation(project(":polaris-core"))
 
-    implementation "org.apache.iceberg:iceberg-api:${icebergVersion}"
-    implementation "org.apache.iceberg:iceberg-core:${icebergVersion}"
-    implementation "org.apache.iceberg:iceberg-aws:${icebergVersion}"
+    implementation(platform("org.apache.iceberg:iceberg-bom:${icebergVersion}"))
+    implementation("org.apache.iceberg:iceberg-api")
+    implementation("org.apache.iceberg:iceberg-core")
+    implementation("org.apache.iceberg:iceberg-aws")
 
-    implementation "io.dropwizard:dropwizard-core:${dropwizardVersion}"
-    implementation "io.dropwizard:dropwizard-auth:${dropwizardVersion}"
-    implementation "io.dropwizard:dropwizard-json-logging:${dropwizardVersion}"
+    implementation(platform("io.dropwizard:dropwizard-bom:${dropwizardVersion}"))
+    implementation("io.dropwizard:dropwizard-core")
+    implementation("io.dropwizard:dropwizard-auth")
+    implementation("io.dropwizard:dropwizard-json-logging")
 
-    implementation 'com.fasterxml.jackson.dataformat:jackson-dataformat-xml:2.16.2'
+    implementation(platform("com.fasterxml.jackson:jackson-bom:${jacksonVersion}"))
+    implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
 
-    implementation "io.opentelemetry:opentelemetry-api:1.38.0"
-    implementation "io.opentelemetry:opentelemetry-sdk-trace:1.38.0"
-    implementation "io.opentelemetry:opentelemetry-exporter-logging:1.38.0";
-    implementation "io.opentelemetry.semconv:opentelemetry-semconv:1.25.0-alpha";
+    implementation(platform("io.opentelemetry:opentelemetry-bom:1.38.0"))
+    implementation("io.opentelemetry:opentelemetry-api")
+    implementation("io.opentelemetry:opentelemetry-sdk-trace")
+    implementation("io.opentelemetry:opentelemetry-exporter-logging")
+    implementation("io.opentelemetry.semconv:opentelemetry-semconv:1.25.0-alpha")
 
-    implementation 'com.github.ben-manes.caffeine:caffeine:3.1.8'
+    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
 
-    implementation 'io.prometheus:prometheus-metrics-exporter-servlet-jakarta:1.3.0'
-    implementation 'io.micrometer:micrometer-core:1.13.2'
-    implementation 'io.micrometer:micrometer-registry-prometheus:1.13.2'
+    implementation("io.prometheus:prometheus-metrics-exporter-servlet-jakarta:1.3.0")
+    implementation(platform("io.micrometer:micrometer-bom:1.13.2"))
+    implementation("io.micrometer:micrometer-core")
+    implementation("io.micrometer:micrometer-registry-prometheus")
 
-    implementation "io.swagger:swagger-annotations:1.6.14"
-    implementation "io.swagger:swagger-jaxrs:1.6.14"
-    implementation "javax.annotation:javax.annotation-api:1.3.2"
+    implementation("io.swagger:swagger-annotations:1.6.14")
+    implementation("io.swagger:swagger-jaxrs:1.6.14")
+    implementation("javax.annotation:javax.annotation-api:1.3.2")
 
-    implementation "org.apache.hadoop:hadoop-client-api:${hadoopVersion}"
+    implementation("org.apache.hadoop:hadoop-client-api:${hadoopVersion}")
 
-    implementation 'org.xerial:sqlite-jdbc:3.45.1.0'
-    implementation 'com.auth0:java-jwt:4.2.1'
+    implementation("org.xerial:sqlite-jdbc:3.45.1.0")
+    implementation("com.auth0:java-jwt:4.2.1")
 
-    implementation "ch.qos.logback:logback-core:1.4.14"
-    implementation group: 'org.bouncycastle', name: 'bcprov-jdk18on', version: '1.78'
+    implementation("ch.qos.logback:logback-core:1.4.14")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.78")
 
-    implementation "com.google.cloud:google-cloud-storage:2.39.0"
-    implementation "software.amazon.awssdk:sts:2.25.61"
-    implementation "software.amazon.awssdk:sts:2.25.61"
-    implementation "software.amazon.awssdk:iam-policy-builder:2.25.61"
-    implementation "software.amazon.awssdk:s3:2.25.61"
+    implementation("com.google.cloud:google-cloud-storage:2.39.0")
+    implementation(platform("software.amazon.awssdk:bom:2.26.25"))
+    implementation("software.amazon.awssdk:sts")
+    implementation("software.amazon.awssdk:sts")
+    implementation("software.amazon.awssdk:iam-policy-builder")
+    implementation("software.amazon.awssdk:s3")
 
+    testImplementation("org.apache.iceberg:iceberg-api:${icebergVersion}:tests")
+    testImplementation("org.apache.iceberg:iceberg-core:${icebergVersion}:tests")
+    testImplementation("io.dropwizard:dropwizard-testing")
+    testImplementation("org.testcontainers:testcontainers:1.19.8")
+    testImplementation("com.adobe.testing:s3mock-testcontainers:3.9.1")
 
-    testImplementation "org.apache.iceberg:iceberg-api:${icebergVersion}:tests"
-    testImplementation "org.apache.iceberg:iceberg-core:${icebergVersion}:tests"
-    testImplementation "io.dropwizard:dropwizard-testing:${dropwizardVersion}"
-    testImplementation "org.testcontainers:testcontainers:1.19.8"
-    testImplementation "com.adobe.testing:s3mock-testcontainers:3.9.1"
-
-    testImplementation "org.apache.iceberg:iceberg-spark-3.5_2.12:1.5.0"
-    testImplementation "org.apache.iceberg:iceberg-spark-extensions-3.5_2.12:1.5.0"
+    testImplementation("org.apache.iceberg:iceberg-spark-3.5_2.12")
+    testImplementation("org.apache.iceberg:iceberg-spark-extensions-3.5_2.12")
     testImplementation("org.apache.spark:spark-sql_2.12:3.5.1") {
         // exclude log4j dependencies
-        exclude group: 'org.apache.logging.log4j', module: 'log4j-slf4j2-impl'
-        exclude group: 'org.apache.logging.log4j', module: 'log4j-api'
-        exclude group: 'org.apache.logging.log4j', module: 'log4j-1.2-api'
+        exclude group: "org.apache.logging.log4j", module: "log4j-slf4j2-impl"
+        exclude group: "org.apache.logging.log4j", module: "log4j-api"
+        exclude group: "org.apache.logging.log4j", module: "log4j-1.2-api"
     }
 
-    testImplementation "software.amazon.awssdk:glue:2.25.61"
-    testImplementation "software.amazon.awssdk:kms:2.25.61"
-    testImplementation "software.amazon.awssdk:dynamodb:2.25.61"
+    testImplementation("software.amazon.awssdk:glue")
+    testImplementation("software.amazon.awssdk:kms")
+    testImplementation("software.amazon.awssdk:dynamodb")
 }
 
 openApiGenerate {
@@ -171,35 +176,35 @@ compileJava.dependsOn tasks.openApiGenerate, tasks.generatePolarisService
 sourceSets.main.java.srcDirs += ["$buildDir/generated/src/main/java"]
 
 test {
-    if (System.getenv('AWS_REGION') == null) {
-        environment 'AWS_REGION', 'us-west-2'
+    if (System.getenv("AWS_REGION") == null) {
+        environment "AWS_REGION", "us-west-2"
     }
-    jvmArgs '--add-exports', 'java.base/sun.nio.ch=ALL-UNNAMED'
+    jvmArgs "--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED"
     useJUnitPlatform()
     maxParallelForks = 4
 }
 
 task runApp(type: JavaExec) {
-    if (System.getenv('AWS_REGION') == null) {
-        environment 'AWS_REGION', 'us-west-2'
+    if (System.getenv("AWS_REGION") == null) {
+        environment "AWS_REGION", "us-west-2"
     }
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'io.polaris.service.PolarisApplication'
-    args 'server', "$rootDir/polaris-server.yml"
+    mainClass = "io.polaris.service.PolarisApplication"
+    args "server", "$rootDir/polaris-server.yml"
 }
 
 application {
-    mainClass = 'io.polaris.service.PolarisApplication'
+    mainClass = "io.polaris.service.PolarisApplication"
 }
 
 jar {
     manifest {
-        attributes 'Main-Class': 'io.polaris.service.PolarisApplication'
+        attributes "Main-Class": "io.polaris.service.PolarisApplication"
     }
 }
 
 shadowJar {
-    mainClassName = 'io.polaris.service.PolarisApplication'
+    mainClassName = "io.polaris.service.PolarisApplication"
     mergeServiceFiles()
     zip64 true
 }
