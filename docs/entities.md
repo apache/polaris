@@ -14,8 +14,6 @@
  limitations under the License.
 -->
 
-# Polaris Entities
-
 This page documents various entities that can be managed in Polaris.
 
 ## Catalog
