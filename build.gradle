@@ -136,7 +136,7 @@ if (System.getProperty("idea.sync.active").asBoolean()) {
     ideaDir.file(".name").asFile.text = ideName
     def icon = ideaDir.file("icon.png").asFile
     if (!icon.exists()) {
-        def img = new URI("https://avatars.githubusercontent.com/u/173406119?s=200&v=4").toURL().openConnection().getInputStream().bytes
+        def img = new URI("https://raw.githubusercontent.com/polaris-catalog/polaris/main/docs/img/logos/polaris-brandmark.png").toURL().openConnection().getInputStream().bytes
         ideaDir.file("icon.png").asFile.newOutputStream().with { out -> out.write(img) }
     }
 
