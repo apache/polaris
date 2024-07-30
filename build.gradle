@@ -122,6 +122,11 @@ if (System.getProperty("idea.sync.active").asBoolean()) {
     def ideaDir = rootProject.layout.projectDirectory.dir(".idea")
     ideaDir.asFile.mkdirs()
     ideaDir.file(".name").asFile.text = ideName
+    def icon = ideaDir.file("icon.png").asFile
+    if (!icon.exists()) {
+        def img = new URI("https://avatars.githubusercontent.com/u/173406119?s=200&v=4").toURL().openConnection().getInputStream().bytes
+        ideaDir.file("icon.png").asFile.newOutputStream().with { out -> out.write(img) }
+    }
 }
 
 eclipse { project { name = ideName } }
