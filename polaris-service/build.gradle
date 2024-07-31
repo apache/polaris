@@ -63,7 +63,6 @@ dependencies {
     implementation("com.google.cloud:google-cloud-storage:2.39.0")
     implementation(platform("software.amazon.awssdk:bom:2.26.25"))
     implementation("software.amazon.awssdk:sts")
-    implementation("software.amazon.awssdk:sts")
     implementation("software.amazon.awssdk:iam-policy-builder")
     implementation("software.amazon.awssdk:s3")
 
