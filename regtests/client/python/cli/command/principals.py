@@ -20,8 +20,7 @@ from pydantic import StrictStr
 
 from cli.command import Command
 from cli.constants import Subcommands
-from polaris.management import PolarisDefaultApi, CreatePrincipalRequest, Principal, UpdatePrincipalRequest, \
-    GrantPrincipalRoleRequest, PrincipalRole
+from polaris.management import PolarisDefaultApi, CreatePrincipalRequest, Principal, UpdatePrincipalRequest
 
 
 @dataclass
