@@ -123,12 +123,12 @@ At this point, Polaris is running.
 
 ## Bootstrapping Polaris
 
-For this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. It also means that Polaris will automatically bootstrap itself with root credentials. For more information on how to configure Polaris for production usage, see the [docs](./configuring-polaris-for-production.md).
+For this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. It also means that Polaris will automatically bootstrap itself with root credentials.
 
 When Polaris is launched using in-memory mode the root `CLIENT_ID` and `CLIENT_SECRET` can be found in stdout on initial startup. For example:
 
 ```
-Bootstrapped with credentials: {"client-id": "XXXX", "client-secret": "YYYY"}
+realm: default-realm root principal credentials: <CLIENT_ID>:<CLIENT_SECRET>
 ```
 
 Be sure to note of these credentials as we'll be using them below.
