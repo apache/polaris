@@ -35,6 +35,7 @@ from polaris.management import ApiClient as ManagementApiClient
 from polaris.management import PolarisDefaultApi, Principal, PrincipalRole, CatalogRole, \
   CatalogGrant, CatalogPrivilege, ApiException, CreateCatalogRoleRequest, CreatePrincipalRoleRequest, \
   CreatePrincipalRequest, AddGrantRequest, GrantCatalogRoleRequest, GrantPrincipalRoleRequest
+from polaris.management.exceptions import ForbiddenException
 
 
 @pytest.fixture
@@ -761,11 +762,11 @@ def test_spark_credentials_s3_direct_without_read(
             var_schema=ModelSchema(
                   type = 'struct',
                   fields = [],
-            )g
+            )
         )
     )
-  except ApiException as e:
-    assert 'ForbiddenException' in str(e)
+  except Exception as e:
+    assert 'CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION' in str(e)
 
   snowman_catalog_client.drop_namespace(
     prefix=snowflake_catalog.name,
