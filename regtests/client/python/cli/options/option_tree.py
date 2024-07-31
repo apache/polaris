@@ -98,7 +98,7 @@ class OptionTree:
                     Argument(Arguments.PRINCIPAL_ROLE, str, Hints.PrincipalRoles.PRINCIPAL_ROLE)
                 ]),
                 Option(Subcommands.UPDATE, args=[
-                    Argument(Arguments.DEFAULT_BASE_LOCATION, str, Hints.Catalogs.Create.DEFAULT_BASE_LOCATION),
+                    Argument(Arguments.DEFAULT_BASE_LOCATION, str, Hints.Catalogs.Update.DEFAULT_BASE_LOCATION),
                     Argument(Arguments.ALLOWED_LOCATION, str, Hints.Catalogs.Create.ALLOWED_LOCATION,
                              allow_repeats=True),
                     Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True),

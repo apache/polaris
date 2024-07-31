@@ -26,7 +26,7 @@ from typing import Callable
 
 CLI_PYTHONPATH = f'{os.path.dirname(os.path.abspath(__file__))}/../../client/python'
 ROLE_ARN = 'arn:aws:iam::123456789012:role/my-role'
-
+POLARIS_URL = 'http://polaris:8181/api/catalog/v1/oauth/tokens'
 
 def get_salt(length=8) -> str:
     characters = string.ascii_letters + string.digits
@@ -74,7 +74,6 @@ def check_exception(f, exception_str):
 
 
 def get_token(client_id, client_secret):
-    url = 'http://polaris:8181/api/catalog/v1/oauth/tokens'
     data = {
         'grant_type': 'client_credentials',
         'client_id': client_id,
@@ -82,7 +81,7 @@ def get_token(client_id, client_secret):
         'scope': 'PRINCIPAL_ROLE:ALL'
     }
 
-    response = requests.post(url, data=data)
+    response = requests.post(POLARIS_URL, data=data)
 
     if response.status_code != 200 or 'access_token' not in response.json():
         raise Exception("Failed to retrieve token")

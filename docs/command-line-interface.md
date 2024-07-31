@@ -160,8 +160,6 @@ options:
 
 ```
 polaris catalogs delete some_catalog
-
-polaris catalogs delete another_catalog
 ```
 
 #### get

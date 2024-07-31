@@ -159,6 +159,9 @@ class Hints:
 
             SERVICE_ACCOUNT = '(Only for GCS) The service account to use when connecting to GCS'
 
+        class Update:
+            DEFAULT_BASE_LOCATION = 'A new default base location for the catalog'
+
     class Principals:
         class Create:
             TYPE = 'The type of principal to create in [SERVICE]'
