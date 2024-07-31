@@ -588,11 +588,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
 
     final TableIdentifier newtable = TableIdentifier.of(NS2, "newtable");
     final CreateTableRequest createDirectWithWriteDelegationRequest =
-        CreateTableRequest.builder()
-            .withName("newtable")
-            .withSchema(SCHEMA)
-            .stageCreate()
-            .build();
+        CreateTableRequest.builder().withName("newtable").withSchema(SCHEMA).stageCreate().build();
 
     doTestSufficientPrivilegeSets(
         List.of(
@@ -600,8 +596,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createTableDirectWithWriteDelegation(
-                  NS2, createDirectWithWriteDelegationRequest);
+              .createTableDirectWithWriteDelegation(NS2, createDirectWithWriteDelegationRequest);
         },
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable);
