@@ -742,8 +742,7 @@ def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalo
 def test_spark_credentials_s3_direct_without_read(
         snowflake_catalog, snowman_catalog_client, creator_catalog_client, test_bucket):
   """
-  Create a table using `creator`, which does not have TABLE_READ_DATA and ensure that credentials to read the table
-  are not vended.
+  Create a table using `creator`, which does not have TABLE_READ_DATA and expect a `ForbiddenException`
   """
   snowman_catalog_client.create_namespace(
       prefix=snowflake_catalog.name,
@@ -752,26 +751,22 @@ def test_spark_credentials_s3_direct_without_read(
       )
   )
 
-  response = creator_catalog_client.create_table(
-      prefix=snowflake_catalog.name,
-      namespace="some_schema",
-      x_iceberg_access_delegation="true",
-      create_table_request=CreateTableRequest(
-          name="some_table",
-          var_schema=ModelSchema(
-                type = 'struct',
-                fields = [],
-          )
-      )
-  )
+  try:
+    creator_catalog_client.create_table(
+        prefix=snowflake_catalog.name,
+        namespace="some_schema",
+        x_iceberg_access_delegation="true",
+        create_table_request=CreateTableRequest(
+            name="some_table",
+            var_schema=ModelSchema(
+                  type = 'struct',
+                  fields = [],
+            )g
+        )
+    )
+  except ApiException as e:
+    assert 'ForbiddenException' in str(e)
 
-  assert not response.config
-
-  snowman_catalog_client.drop_table(
-    prefix=snowflake_catalog.name,
-    namespace="some_schema",
-    table="some_table"
-  )
   snowman_catalog_client.drop_namespace(
     prefix=snowflake_catalog.name,
     namespace="some_schema"
