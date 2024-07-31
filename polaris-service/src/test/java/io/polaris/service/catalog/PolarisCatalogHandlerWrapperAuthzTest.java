@@ -597,8 +597,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_LIST),
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createTableDirectWithWriteDelegation(
-                  NS2, createDirectWithWriteDelegationRequest);
+              .createTableDirectWithWriteDelegation(NS2, createDirectWithWriteDelegationRequest);
         });
   }
 
