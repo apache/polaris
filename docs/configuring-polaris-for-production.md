@@ -53,7 +53,7 @@ To use [EclipseLink](https://eclipse.dev/eclipselink/) for metastore management,
 
 ### Bootstrapping
 
-Before using Polaris when using a metastore manager other than `in-memory`, you must **bootstrap** the metastore manager. This is a manual operation that must be performed once in order to prepare the metastore manager to integrate with Polaris. When the metastore manager is bootstrapped, any existing Polaris entities in the metastore manager may be purged.
+Before using Polaris when using a metastore manager other than `in-memory`, you must **bootstrap** the metastore manager. This is a manual operation that must be performed **only once** in order to prepare the metastore manager to integrate with Polaris. When the metastore manager is bootstrapped, any existing Polaris entities in the metastore manager may be **purged**.
 
 To bootstrap Polaris, run a command like the following:
 
