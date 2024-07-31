@@ -35,7 +35,21 @@ There are many Polaris configurations that should be adjusted to ensure a secure
 * **authenticator.tokenBroker**
   - Ensure that this setting reflects the token broker specified in **oauth2** above
 
+* **cors**
+  - Use settings like **cors.allowed-origins** to control what connections your Polaris service will accept
 
+
+## Metastore Management
+
+Use the configuration `metaStoreManager` to configure a [MetastoreManager](https://github.com/polaris-catalog/polaris/blob/627dc602eb15a3258dcc32babf8def34cf6de0e9/polaris-core/src/main/java/io/polaris/core/persistence/PolarisMetaStoreManager.java#L47) implementation where Polaris entities will be persisted. 
+
+The default `in-memory` implementation is meant for testing and not suitable for production usage. Instead, consider an implementation such as `eclipse-link` which allows you to store metadata in a remote database.
+
+Credentials and metadata will be stored in the metastore manager, and so be sure that your metastore manager is accordingly secured.
+
+### Configuring EclipseLink
+
+To use [EclipseLink](https://eclipse.dev/eclipselink/) for metastore management, specify the configuration `metaStoreManager.conf-file` to point to an [EclipseLink `persistence.xml` file](https://eclipse.dev/eclipselink/documentation/2.5/solutions/testingjpa002.htm). This file, local to the Polaris service, will contain information on what database to use for metastore management and how to connect to it.
 
 ## Other Configurations
 
