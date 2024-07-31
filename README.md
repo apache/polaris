@@ -71,7 +71,7 @@ Build the binary (first time may require installing new JDK version). This build
 To skip tests.
 
 ```
-./gradlew build -x test
+./gradlew assemble
 ```
 
 Run the Polaris server locally on localhost:8181
