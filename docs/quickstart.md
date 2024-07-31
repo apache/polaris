@@ -383,3 +383,32 @@ spark.sql("SELECT * FROM quickstart_table").show(false)
 
 org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated ids '[6, 7]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION
 ```
+
+### Connecting with Trino
+
+To use a Polaris-managed catalog in [Trino](https://trino.io/), you can
+configure Trino to use the Iceberg REST API.
+
+You'll need to have Trino installed, so download the [latest version of Trino](https://trino.io/download),
+and you can follow [the Trino docs](https://trino.io/docs/current/installation.html)
+to install it. You'll also need to create a catalog per the instructions above
+and generate and export a `PRINCIPAL_TOKEN` per the
+[README](/README.md#creating-a-catalog-manually).
+
+Once Trino is installed and you have your `PRINCIPAL_TOKEN`, create a catalog
+properties file, `polaris.properties`, in the `etc/catalog/` directory of your
+Trino installation. This is the file where you can configure Trino's Iceberg
+connector. Edit it to:
+
+```
+connector.name=iceberg
+iceberg.catalog.type=rest
+iceberg.rest-catalog.security=OAUTH2
+iceberg.rest-catalog.oauth2.token={the value of your PRINCIPAL_TOKEN}
+iceberg.rest-catalog.warehouse={your catalog name}
+iceberg.rest-catalog.uri=http://localhost:8181/api/catalog
+```
+
+Start (or restart) Trino, and `SHOW CATALOGS` should show the Polaris catalog.
+You can then run `USE catalogname.schemaname` to access, query, or write to
+Polaris.
