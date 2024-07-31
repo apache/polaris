@@ -39,7 +39,8 @@ COPY ./polaris /home/spark
 RUN python3 -m venv /home/spark/polaris-venv && \
     . /home/spark/polaris-venv/bin/activate && \
     pip install poetry==1.5.0 && \
-    deactivate
+    deactivate \
+RUN ./setup.sh
 
 COPY --chown=spark . /home/spark/regtests
 
