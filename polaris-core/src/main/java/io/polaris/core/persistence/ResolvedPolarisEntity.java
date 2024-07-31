@@ -15,6 +15,7 @@
  */
 package io.polaris.core.persistence;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import io.polaris.core.entity.PolarisEntity;
 import io.polaris.core.entity.PolarisGrantRecord;
@@ -45,6 +46,7 @@ public class ResolvedPolarisEntity {
   }
 
   public ResolvedPolarisEntity(EntityCacheEntry cacheEntry) {
+    Preconditions.checkNotNull(cacheEntry, "An entity cache can't be null.");
     this.entity = PolarisEntity.of(cacheEntry.getEntity());
     this.grantRecordsAsGrantee = ImmutableList.copyOf(cacheEntry.getGrantRecordsAsGrantee());
     this.grantRecordsAsSecurable = ImmutableList.copyOf(cacheEntry.getGrantRecordsAsSecurable());

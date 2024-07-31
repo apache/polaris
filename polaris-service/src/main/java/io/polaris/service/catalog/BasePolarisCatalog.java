@@ -1320,7 +1320,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     return storageInfoEntity;
   }
 
-  private class BasePolarisViewOperations extends BaseViewOperations {
+  protected class BasePolarisViewOperations extends BaseViewOperations {
     private final TableIdentifier identifier;
     private final String fullViewName;
     private FileIO viewFileIO;
