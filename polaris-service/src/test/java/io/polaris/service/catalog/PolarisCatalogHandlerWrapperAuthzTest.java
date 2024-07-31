@@ -579,7 +579,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
   public void testCreateTableDirectWithWriteDelegationInsufficientPermissions() {
     final CreateTableRequest createDirectWithWriteDelegationRequest =
         CreateTableRequest.builder()
-            .withName("stagetable")
+            .withName("directtable")
             .withSchema(SCHEMA)
             .stageCreate()
             .build();
