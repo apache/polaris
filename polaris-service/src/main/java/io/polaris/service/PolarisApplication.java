@@ -114,28 +114,27 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
   }
 
   private static void printAsciiArt() {
-    String bannerArt =
-        String.join(
-            "\n",
-            " @@@@   @@@  @       @    @@@@   @  @@@@    @@@@    @  @@@@@  @    @     @@@   @@@@ ",
-            " @   @ @   @ @      @ @   @   @  @  @@     @       @ @   @   @ @   @    @   @ @     ",
-            " @@@@  @   @ @     @@@@@  @@@@   @    @@   @      @@@@@  @  @@@@@  @    @   @ @  @@@",
-            " @      @@@  @@@@ @     @ @  @@  @  @@@@    @@@@ @     @ @ @@   @@ @@@@  @@@   @@@@ ",
-            "                                                                                    ",
-            "                                                                                    ",
-            "                                                                                    ",
-            "                                                                                    ",
-            "                                      /////|                                        ",
-            "                                   //||///T|||                                      ",
-            "                                ///|||////||||||                                    ",
-            "                               //||||T////|||||||||                                 ",
-            "                          /T| //|||||T///T||//T||||||                               ",
-            "                        //|||/////T||////||/////|||||||  //||                       ",
-            "                     //||||||T///////////////////T|||||||T|||||                     ",
-            "                  //||||/////T|//////////|///////T|||||T||||||||                    ",
-            "                 //|||||/////|||T////////////////||||||/|||||||||                   ",
-            ",,..,,,..,,,..,//||||////////||||||||||/////////|||||///||||||||||,,,..,,..,,,..,,,.",
-            ",,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,.,,,..,,,..,");
+    String bannerArt = String.join(
+        "\n",
+        " @@@@   @@@  @       @    @@@@   @  @@@@    @@@@    @  @@@@@  @    @     @@@   @@@@ ",
+        " @   @ @   @ @      @ @   @   @  @  @@     @       @ @   @   @ @   @    @   @ @     ",
+        " @@@@  @   @ @     @@@@@  @@@@   @    @@   @      @@@@@  @  @@@@@  @    @   @ @  @@@",
+        " @      @@@  @@@@ @     @ @  @@  @  @@@@    @@@@ @     @ @ @@   @@ @@@@  @@@   @@@@ ",
+        "                                                                                    ",
+        "                                                                                    ",
+        "                                                                                    ",
+        "                                                                                    ",
+        "                                      /////|                                        ",
+        "                                   //||///T|||                                      ",
+        "                                ///|||////||||||                                    ",
+        "                               //||||T////|||||||||                                 ",
+        "                          /T| //|||||T///T||//T||||||                               ",
+        "                        //|||/////T||////||/////|||||||  //||                       ",
+        "                     //||||||T///////////////////T|||||||T|||||                     ",
+        "                  //||||/////T|//////////|///////T|||||T||||||||                    ",
+        "                 //|||||/////|||T////////////////||||||/|||||||||                   ",
+        ",,..,,,..,,,..,//||||////////||||||||||/////////|||||///||||||||||,,,..,,..,,,..,,,.",
+        ",,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,.,,,..,,,..,");
     System.out.println(bannerArt.replaceAll("\\|", "\\\\"));
   }
 
@@ -143,8 +142,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
   public void initialize(Bootstrap<PolarisApplicationConfig> bootstrap) {
     // Enable variable substitution with environment variables
     EnvironmentVariableSubstitutor substitutor = new EnvironmentVariableSubstitutor(false);
-    SubstitutingSourceProvider provider =
-        new SubstitutingSourceProvider(bootstrap.getConfigurationSourceProvider(), substitutor);
+    SubstitutingSourceProvider provider = new SubstitutingSourceProvider(bootstrap.getConfigurationSourceProvider(),
+        substitutor);
     bootstrap.setConfigurationSourceProvider(provider);
 
     bootstrap.addCommand(new BootstrapRealmsCommand());
@@ -152,7 +151,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
 
   @Override
   public void run(PolarisApplicationConfig configuration, Environment environment) {
-    // PolarisEntityManager will be used for Management APIs and optionally the core Catalog APIs
+    // PolarisEntityManager will be used for Management APIs and optionally the core
+    // Catalog APIs
     // depending on the value of the baseCatalogType config.
     MetaStoreManagerFactory metaStoreManagerFactory = configuration.getMetaStoreManagerFactory();
     StsClientBuilder stsClientBuilder = StsClient.builder();
@@ -163,8 +163,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     metaStoreManagerFactory.setStorageIntegrationProvider(
         new PolarisStorageIntegrationProviderImpl(stsClientBuilder::build));
 
-    PolarisMetricRegistry polarisMetricRegistry =
-        new PolarisMetricRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
+    PolarisMetricRegistry polarisMetricRegistry = new PolarisMetricRegistry(
+        new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
     metaStoreManagerFactory.setMetricRegistry(polarisMetricRegistry);
 
     OpenTelemetry openTelemetry = setupTracing();
@@ -175,8 +175,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     if (metaStoreManagerFactory instanceof ConfigurationStoreAware) {
       ((ConfigurationStoreAware) metaStoreManagerFactory).setConfigurationStore(configurationStore);
     }
-    RealmEntityManagerFactory entityManagerFactory =
-        new RealmEntityManagerFactory(metaStoreManagerFactory);
+    RealmEntityManagerFactory entityManagerFactory = new RealmEntityManagerFactory(metaStoreManagerFactory);
     CallContextResolver callContextResolver = configuration.getCallContextResolver();
     callContextResolver.setEntityManagerFactory(entityManagerFactory);
     if (callContextResolver instanceof ConfigurationStoreAware csa) {
@@ -192,8 +191,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
 
     TaskHandlerConfiguration taskConfig = configuration.getTaskHandler();
-    TaskExecutorImpl taskExecutor =
-        new TaskExecutorImpl(taskConfig.executorService(), metaStoreManagerFactory);
+    TaskExecutorImpl taskExecutor = new TaskExecutorImpl(taskConfig.executorService(), metaStoreManagerFactory);
     TaskFileIOSupplier fileIOSupplier = new TaskFileIOSupplier(metaStoreManagerFactory);
     taskExecutor.addTaskHandler(
         new TableCleanupTaskHandler(taskExecutor, metaStoreManagerFactory, fileIOSupplier));
@@ -219,13 +217,11 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     }
 
     PolarisAuthorizer authorizer = new PolarisAuthorizer(configurationStore);
-    IcebergCatalogAdapter catalogAdapter =
-        new IcebergCatalogAdapter(catalogFactory, entityManagerFactory, authorizer);
+    IcebergCatalogAdapter catalogAdapter = new IcebergCatalogAdapter(catalogFactory, entityManagerFactory, authorizer);
     environment.jersey().register(new IcebergRestCatalogApi(catalogAdapter));
     environment.jersey().register(new IcebergRestConfigurationApi(catalogAdapter));
 
-    FilterRegistration.Dynamic corsRegistration =
-        environment.servlets().addFilter("CORS", CrossOriginFilter.class);
+    FilterRegistration.Dynamic corsRegistration = environment.servlets().addFilter("CORS", CrossOriginFilter.class);
     corsRegistration.setInitParameter(
         CrossOriginFilter.ALLOWED_ORIGINS_PARAM,
         String.join(",", configuration.getCorsConfiguration().getAllowedOrigins()));
@@ -252,14 +248,13 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         .servlets()
         .addFilter("tracing", new TracingFilter(openTelemetry))
         .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
-    DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> authenticator =
-        configuration.getPolarisAuthenticator();
+    DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> authenticator = configuration
+        .getPolarisAuthenticator();
     authenticator.setEntityManagerFactory(entityManagerFactory);
-    AuthFilter<String, AuthenticatedPolarisPrincipal> oauthCredentialAuthFilter =
-        new OAuthCredentialAuthFilter.Builder<AuthenticatedPolarisPrincipal>()
-            .setAuthenticator(authenticator)
-            .setPrefix("Bearer")
-            .buildAuthFilter();
+    AuthFilter<String, AuthenticatedPolarisPrincipal> oauthCredentialAuthFilter = new OAuthCredentialAuthFilter.Builder<AuthenticatedPolarisPrincipal>()
+        .setAuthenticator(authenticator)
+        .setPrefix("Bearer")
+        .buildAuthFilter();
     environment.jersey().register(new AuthDynamicFeature(oauthCredentialAuthFilter));
     environment.healthChecks().register("polaris", new PolarisHealthCheck());
     OAuth2ApiService oauth2Service = configuration.getOauth2Service();
@@ -299,27 +294,28 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                     .getPrometheusRegistry()))
         .addMapping("/metrics");
 
-    // For in-memory metastore we need to bootstrap Service and Service principal at startup (for
+    // For in-memory metastore we need to bootstrap Service and Service principal at
+    // startup (for
     // default realm)
-    // We can not utilize dropwizard Bootstrap command as command and server will be running two
+    // We can not utilize dropwizard Bootstrap command as command and server will be
+    // running two
     // different processes
-    // and in-memory state will be lost b/w invocation of bootstrap command and running a server
+    // and in-memory state will be lost b/w invocation of bootstrap command and
+    // running a server
     if (metaStoreManagerFactory instanceof InMemoryPolarisMetaStoreManagerFactory) {
       metaStoreManagerFactory.getOrCreateMetaStoreManager(configuration::getDefaultRealm);
     }
   }
 
   private static OpenTelemetry setupTracing() {
-    Resource resource =
-        Resource.getDefault().toBuilder()
-            .put(ServiceAttributes.SERVICE_NAME, "polaris")
-            .put(ServiceAttributes.SERVICE_VERSION, "0.1.0")
-            .build();
-    SdkTracerProvider sdkTracerProvider =
-        SdkTracerProvider.builder()
-            .addSpanProcessor(SimpleSpanProcessor.create(LoggingSpanExporter.create()))
-            .setResource(resource)
-            .build();
+    Resource resource = Resource.getDefault().toBuilder()
+        .put(ServiceAttributes.SERVICE_NAME, "polaris")
+        .put(ServiceAttributes.SERVICE_VERSION, "0.1.0")
+        .build();
+    SdkTracerProvider sdkTracerProvider = SdkTracerProvider.builder()
+        .addSpanProcessor(SimpleSpanProcessor.create(LoggingSpanExporter.create()))
+        .setResource(resource)
+        .build();
     return OpenTelemetrySdk.builder()
         .setTracerProvider(sdkTracerProvider)
         .setPropagators(
@@ -329,7 +325,10 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         .build();
   }
 
-  /** Resolves and sets ThreadLocal CallContext/RealmContext based on the request contents. */
+  /**
+   * Resolves and sets ThreadLocal CallContext/RealmContext based on the request
+   * contents.
+   */
   private static class ContextResolverFilter implements Filter {
     private final RealmContextResolver realmContextResolver;
     private final CallContextResolver callContextResolver;
@@ -345,37 +344,31 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         throws IOException, ServletException {
       HttpServletRequest httpRequest = (HttpServletRequest) request;
       Stream<String> headerNames = Collections.list(httpRequest.getHeaderNames()).stream();
-      Map<String, String> headers =
-          headerNames.collect(Collectors.toMap(Function.identity(), httpRequest::getHeader));
-      RealmContext currentRealmContext =
-          realmContextResolver.resolveRealmContext(
-              httpRequest.getRequestURL().toString(),
-              httpRequest.getMethod(),
-              httpRequest.getRequestURI().substring(1),
-              request.getParameterMap().entrySet().stream()
-                  .collect(
-                      Collectors.toMap(Map.Entry::getKey, (e) -> ((String[]) e.getValue())[0])),
-              headers);
-      CallContext currentCallContext =
-          callContextResolver.resolveCallContext(
-              currentRealmContext,
-              httpRequest.getMethod(),
-              httpRequest.getRequestURI().substring(1),
-              request.getParameterMap().entrySet().stream()
-                  .collect(
-                      Collectors.toMap(Map.Entry::getKey, (e) -> ((String[]) e.getValue())[0])),
-              headers);
+      Map<String, String> headers = headerNames.collect(Collectors.toMap(Function.identity(), httpRequest::getHeader));
+      RealmContext currentRealmContext = realmContextResolver.resolveRealmContext(
+          httpRequest.getRequestURL().toString(),
+          httpRequest.getMethod(),
+          httpRequest.getRequestURI().substring(1),
+          request.getParameterMap().entrySet().stream()
+              .collect(
+                  Collectors.toMap(Map.Entry::getKey, (e) -> ((String[]) e.getValue())[0])),
+          headers);
+      CallContext currentCallContext = callContextResolver.resolveCallContext(
+          currentRealmContext,
+          httpRequest.getMethod(),
+          httpRequest.getRequestURI().substring(1),
+          request.getParameterMap().entrySet().stream()
+              .collect(
+                  Collectors.toMap(Map.Entry::getKey, (e) -> ((String[]) e.getValue())[0])),
+          headers);
       CallContext.setCurrentContext(currentCallContext);
-      try (MDC.MDCCloseable context =
-              MDC.putCloseable("realm", currentRealmContext.getRealmIdentifier());
-          MDC.MDCCloseable requestId =
-              MDC.putCloseable("request_id", httpRequest.getHeader("request_id"))) {
+      try (MDC.MDCCloseable context = MDC.putCloseable("realm", currentRealmContext.getRealmIdentifier());
+          MDC.MDCCloseable requestId = MDC.putCloseable("request_id", httpRequest.getHeader("request_id"))) {
         chain.doFilter(request, response);
       } finally {
-        Object contextCatalog =
-            currentCallContext
-                .contextVariables()
-                .get(CallContext.REQUEST_PATH_CATALOG_INSTANCE_KEY);
+        Object contextCatalog = currentCallContext
+            .contextVariables()
+            .get(CallContext.REQUEST_PATH_CATALOG_INSTANCE_KEY);
         if (contextCatalog != null && contextCatalog instanceof Closeable) {
           ((Closeable) contextCatalog).close();
         }
