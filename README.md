@@ -56,6 +56,9 @@ docker run -p 8080:80 -v ${PWD}:/spec redocly/cli build-docs spec/index.yaml --o
 
 Command-Line getting started
 -------------------
+
+_For an end-to-end tutorial on building, deploying, and managing entities in a local Polaris instance see the [quickstart guide](./docs/quickstart.md)._
+
 Polaris is a multi-module project with three modules:
 
 - `polaris-core` - The main Polaris entity definitions and core business logic
