@@ -765,6 +765,7 @@ def test_spark_credentials_s3_direct_without_read(
             )
         )
     )
+    pytest.fail("Expected exception when creating a table without TABLE_WRITE")
   except Exception as e:
     assert 'CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION' in str(e)
 
