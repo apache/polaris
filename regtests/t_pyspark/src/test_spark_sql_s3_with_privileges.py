@@ -883,6 +883,32 @@ def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, sno
         spark.sql('DROP NAMESPACE db1.schema')
         spark.sql('DROP NAMESPACE db1')
 
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
+def test_spark_ctas(snowflake_catalog, polaris_catalog_url, snowman):
+    """
+    Create a table using CTAS and ensure that credentials are vended
+    :param root_client:
+    :param snowflake_catalog:
+    :return:
+    """
+    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+                             catalog_name=snowflake_catalog.name,
+                             polaris_url=polaris_catalog_url) as spark:
+        table_name = f'iceberg_test_table_{str(uuid.uuid4())[-10:]}'
+        spark.sql(f'USE {snowflake_catalog.name}')
+        spark.sql('CREATE NAMESPACE db1')
+        spark.sql('CREATE NAMESPACE db1.schema')
+        spark.sql('USE db1.schema')
+        spark.sql(f'CREATE TABLE {table_name}_t1 (col1 int)')
+        spark.sql('SHOW TABLES')
+
+        # Insert some data
+        spark.sql(f"INSERT INTO {table_name}_t1 VALUES (10)")
+
+        # Run CTAS
+        spark.sql(f"CREATE TABLE {table_name}_t2 AS SELECT * FROM {table_name}_t1")
+
+
 def create_catalog_role(api, catalog, role_name):
   catalog_role = CatalogRole(name=role_name)
   try:
