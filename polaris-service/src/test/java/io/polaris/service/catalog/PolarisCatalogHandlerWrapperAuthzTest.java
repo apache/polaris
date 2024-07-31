@@ -576,6 +576,33 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
   }
 
   @Test
+  public void testCreateTableDirectWithWriteDelegationInsufficientPermissions() {
+    final CreateTableRequest createDirectWithWriteDelegationRequest =
+        CreateTableRequest.builder()
+            .withName("stagetable")
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_DROP,
+            PolarisPrivilege.TABLE_CREATE, // TABLE_CREATE itself is insufficient for delegation
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_LIST),
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1))
+              .createTableDirectWithWriteDelegation(
+                  NS2, createDirectWithWriteDelegationRequest);
+        });
+  }
+
+  @Test
   public void testCreateTableStagedAllSufficientPrivileges() {
     Assertions.assertThat(
             adminService.grantPrivilegeOnCatalogToRole(
