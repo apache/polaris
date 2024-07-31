@@ -74,7 +74,6 @@ featureConfiguration:
     - AZURE
     - FILE
 
-
 # Whether we want to enable Snowflake OAuth locally. Setting this to true requires
 # that you go through the setup outlined in the `README.md` file, specifically the
 # `OAuth + Snowflake: Local Testing And Then Some` section
@@ -88,7 +87,7 @@ defaultRealms:
   - default-realm
 
 metaStoreManager:
-  type: in-memory
+  type: eclipse-link
 
 # TODO - avoid duplicating token broker config
 oauth2:
@@ -126,7 +125,6 @@ cors:
 # Logging settings.
 
 logging:
-
   # The default level of all loggers. Can be OFF, ERROR, WARN, INFO, DEBUG, TRACE, or ALL.
   level: INFO
 
@@ -136,7 +134,6 @@ logging:
     io.polaris: DEBUG
 
   appenders:
-
     - type: console
       # If true, write log statements to stdout.
       #      enabled: true

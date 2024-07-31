@@ -21,6 +21,7 @@ plugins {
 
 dependencies {
     implementation(project(":polaris-core"))
+    runtimeOnly(project(":polaris-eclipselink"))
 
     implementation(platform("org.apache.iceberg:iceberg-bom:${icebergVersion}"))
     implementation("org.apache.iceberg:iceberg-api")
@@ -191,6 +192,15 @@ task runApp(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = "io.polaris.service.PolarisApplication"
     args "server", "$rootDir/polaris-server.yml"
+}
+
+task runBootstrap(type: JavaExec) {
+    if (System.getenv("AWS_REGION") == null) {
+        environment "AWS_REGION", "us-west-2"
+    }
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = "io.polaris.service.PolarisApplication"
+    args "bootstrap", "$rootDir/polaris-server.yml"
 }
 
 application {
