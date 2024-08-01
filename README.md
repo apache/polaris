@@ -182,4 +182,4 @@ use polaris;
 
 ### Trademark Attribution 
 
-_Apache Iceberg, Apache Spark, Apache Flink and Apache Doris are trademarks of The Apache Software Foundation._
+_Apache Iceberg, Iceberg, Apache Spark, Spark, Apache Flink, Flink, Apache Doris, Doris, Apache, the Apache feather logo, the Apache Iceberg project logo, the Apache Spark project logo, the Apache Flink project logo, and the Apache Doris project logo are either registered trademarks or trademarks of The Apache Software Foundation. Copyright © 2024 The Apache Software Foundation._
