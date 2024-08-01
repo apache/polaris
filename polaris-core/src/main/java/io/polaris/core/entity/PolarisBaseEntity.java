@@ -113,6 +113,10 @@ public class PolarisBaseEntity extends PolarisEntityCore {
     return properties != null ? properties : EMPTY_MAP_STRING;
   }
 
+  public String getLocation() {
+    return null;
+  }
+
   @JsonIgnore
   public Map<String, String> getPropertiesAsMap() {
     if (properties == null) {

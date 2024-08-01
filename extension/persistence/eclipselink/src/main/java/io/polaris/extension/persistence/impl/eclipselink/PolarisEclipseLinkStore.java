@@ -409,4 +409,23 @@ public class PolarisEclipseLinkStore {
 
     session.remove(modelPrincipalSecrets);
   }
+
+  boolean locationOverlapsWithExistingEntity(EntityManager session, String location) {
+    diagnosticServices.check(session != null, "session_is_null");
+
+    return session
+        .createQuery(
+            """
+                SELECT
+                    m
+                FROM ModelEntityActive m 
+                WHERE m.location=:catalogId and m.id=:id
+            """,
+            ModelEntityDropped.class)
+        .setParameter("catalogId", catalogId)
+        .setParameter("id", entityId)
+        .getResultStream()
+        .findFirst()
+        .orElse(null);
+  }
 }
