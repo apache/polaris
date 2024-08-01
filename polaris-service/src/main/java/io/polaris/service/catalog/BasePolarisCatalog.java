@@ -428,7 +428,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             .setParentId(resolvedParent.getRawLeafEntity().getId())
             .setProperties(metadata)
             .setCreateTimestamp(System.currentTimeMillis())
-            .setBaseLocation(baseLocation)
+            .setLocation(baseLocation)
             .build();
     if (!callContext
         .getPolarisCallContext()
@@ -1235,7 +1235,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             new TableLikeEntity.Builder(tableIdentifier, newLocation)
                 .setCatalogId(getCatalogId())
                 .setSubType(PolarisEntitySubType.TABLE)
-                .setBaseLocation(metadata.location())
+                .setLocation(metadata.location())
                 .setId(
                     entityManager
                         .getMetaStoreManager()
@@ -1246,7 +1246,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         existingLocation = entity.getMetadataLocation();
         entity =
             new TableLikeEntity.Builder(entity)
-                .setBaseLocation(metadata.location())
+                .setLocation(metadata.location())
                 .setMetadataLocation(newLocation)
                 .build();
       }

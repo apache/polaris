@@ -113,13 +113,19 @@ public class TableLikeEntity extends PolarisEntity {
       return this;
     }
 
-    public Builder setBaseLocation(String location) {
+    private Builder setBaseLocation(String location) {
       properties.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, location);
       return this;
     }
 
     public Builder setMetadataLocation(String location) {
       internalProperties.put(METADATA_LOCATION_KEY, location);
+      return this;
+    }
+
+    public Builder setLocation(String location) {
+      super.setLocation(location);
+      setBaseLocation(location);
       return this;
     }
   }

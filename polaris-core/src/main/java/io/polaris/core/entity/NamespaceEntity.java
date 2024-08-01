@@ -70,7 +70,7 @@ public class NamespaceEntity extends PolarisEntity {
       setName(namespace.level(namespace.length() - 1));
     }
 
-    public Builder setBaseLocation(String baseLocation) {
+    private Builder setBaseLocation(String baseLocation) {
       properties.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, baseLocation);
       return this;
     }
@@ -79,6 +79,12 @@ public class NamespaceEntity extends PolarisEntity {
       if (namespace != null && !namespace.isEmpty()) {
         internalProperties.put(PARENT_NAMESPACE_KEY, RESTUtil.encodeNamespace(namespace));
       }
+      return this;
+    }
+
+    public Builder setLocation(String location) {
+      super.setLocation(location);
+      setBaseLocation(location);
       return this;
     }
 
