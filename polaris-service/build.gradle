@@ -21,7 +21,8 @@ plugins {
 
 dependencies {
     implementation(project(":polaris-core"))
-
+    runtimeOnly(project(":polaris-eclipselink"))
+    
     implementation(platform("org.apache.iceberg:iceberg-bom:${icebergVersion}"))
     implementation("org.apache.iceberg:iceberg-api")
     implementation("org.apache.iceberg:iceberg-core")
