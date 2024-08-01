@@ -23,5 +23,6 @@ dependencies {
   implementation(gradleKotlinDsl())
   implementation(baselibs.errorprone)
   implementation(baselibs.idea.ext)
+  implementation(baselibs.license.report)
   implementation(baselibs.spotless)
 }
