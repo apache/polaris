@@ -866,7 +866,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                     .getConfiguration(
                         getCurrentPolarisContext(),
                         PolarisConfiguration.ENFORCE_TABLE_LOCATIONS_INSIDE_NAMESPACE_LOCATIONS,
-                        PolarisConfiguration.DEFAULT_ENFORCE_TABLE_LOCATIONS_INSIDE_NAMESPACE_LOCATIONS)));
+                        PolarisConfiguration
+                            .DEFAULT_ENFORCE_TABLE_LOCATIONS_INSIDE_NAMESPACE_LOCATIONS)));
 
     Optional<PolarisStorageConfigurationInfo> optStorageConfiguration = Optional.empty();
     if (enforceTableLocationsInsideNamespaceLocations) {
@@ -875,9 +876,12 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               callContext.getPolarisCallContext().getDiagServices(),
               resolvedStorageEntity.getRawFullPath());
     } else {
-      optStorageConfiguration = findStorageInfoFromHierarchy(resolvedStorageEntity).map(storageInfoHolderEntity -> {
-        return new CatalogEntity(storageInfoHolderEntity).getStorageConfigurationInfo();
-      });
+      optStorageConfiguration =
+          findStorageInfoFromHierarchy(resolvedStorageEntity)
+              .map(
+                  storageInfoHolderEntity -> {
+                    return new CatalogEntity(storageInfoHolderEntity).getStorageConfigurationInfo();
+                  });
     }
 
     optStorageConfiguration.ifPresentOrElse(

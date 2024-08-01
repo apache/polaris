@@ -34,7 +34,6 @@ import io.polaris.service.test.PolarisConnectionExtension;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
-
 import java.util.List;
 import java.util.UUID;
 import org.apache.iceberg.catalog.Namespace;
@@ -76,10 +75,10 @@ public class PolarisOverlappingTableTest {
               ConfigOverride.config(
                   "featureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP", "true"),
               ConfigOverride.config(
-                "featureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION", "true"),
+                  "featureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION", "true"),
               ConfigOverride.config(
-                "featureConfiguration.ENFORCE_TABLE_LOCATIONS_INSIDE_NAMESPACE_LOCATIONS", "false")
-          );
+                  "featureConfiguration.ENFORCE_TABLE_LOCATIONS_INSIDE_NAMESPACE_LOCATIONS",
+                  "false"));
 
   private static String userToken;
   private static String realm;
@@ -92,41 +91,43 @@ public class PolarisOverlappingTableTest {
     userToken = adminToken.token();
     realm = PolarisConnectionExtension.getTestRealm(PolarisServiceImplIntegrationTest.class);
     catalog = String.format("catalog_%s", UUID.randomUUID().toString());
-    List.of(BASE_EXT, NO_NAMESPACE_ENFORCEMENT_EXT).forEach(EXT -> {
-      StorageConfigInfo config =
-          FileStorageConfigInfo.builder()
-              .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-              .build();
-      Catalog catalogObject =
-          new Catalog(
-              Catalog.TypeEnum.INTERNAL,
-              catalog,
-              new CatalogProperties(String.format("%s/%s", baseLocation, catalog)),
-              System.currentTimeMillis(),
-              System.currentTimeMillis(),
-              1,
-              config);
-      try (Response response =
-               request(EXT, "management/v1/catalogs")
-                   .post(Entity.json(new CreateCatalogRequest(catalogObject)))) {
-        if (response.getStatus() != Response.Status.CREATED.getStatusCode()) {
-          throw new IllegalStateException(
-              "Failed to create catalog: " + response.readEntity(String.class));
-        }
-      }
+    List.of(BASE_EXT, NO_NAMESPACE_ENFORCEMENT_EXT)
+        .forEach(
+            EXT -> {
+              StorageConfigInfo config =
+                  FileStorageConfigInfo.builder()
+                      .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+                      .build();
+              Catalog catalogObject =
+                  new Catalog(
+                      Catalog.TypeEnum.INTERNAL,
+                      catalog,
+                      new CatalogProperties(String.format("%s/%s", baseLocation, catalog)),
+                      System.currentTimeMillis(),
+                      System.currentTimeMillis(),
+                      1,
+                      config);
+              try (Response response =
+                  request(EXT, "management/v1/catalogs")
+                      .post(Entity.json(new CreateCatalogRequest(catalogObject)))) {
+                if (response.getStatus() != Response.Status.CREATED.getStatusCode()) {
+                  throw new IllegalStateException(
+                      "Failed to create catalog: " + response.readEntity(String.class));
+                }
+              }
 
-      namespace = "ns";
-      CreateNamespaceRequest createNamespaceRequest =
-          CreateNamespaceRequest.builder().withNamespace(Namespace.of(namespace)).build();
-      try (Response response =
-               request(EXT, String.format("catalog/v1/%s/namespaces", catalog))
-                   .post(Entity.json(createNamespaceRequest))) {
-        if (response.getStatus() != Response.Status.OK.getStatusCode()) {
-          throw new IllegalStateException(
-              "Failed to create namespace: " + response.readEntity(String.class));
-        }
-      }
-    });
+              namespace = "ns";
+              CreateNamespaceRequest createNamespaceRequest =
+                  CreateNamespaceRequest.builder().withNamespace(Namespace.of(namespace)).build();
+              try (Response response =
+                  request(EXT, String.format("catalog/v1/%s/namespaces", catalog))
+                      .post(Entity.json(createNamespaceRequest))) {
+                if (response.getStatus() != Response.Status.OK.getStatusCode()) {
+                  throw new IllegalStateException(
+                      "Failed to create namespace: " + response.readEntity(String.class));
+                }
+              }
+            });
   }
 
   private Response createTable(
@@ -139,7 +140,6 @@ public class PolarisOverlappingTableTest {
             .build();
     String prefix = String.format("catalog/v1/%s/namespaces/%s/tables", catalog, namespace);
     try (Response response = request(extension, prefix).post(Entity.json(createTableRequest))) {
-      String responseBody = response.readEntity(String.class);
       return response;
     }
   }
@@ -202,17 +202,30 @@ public class PolarisOverlappingTableTest {
 
   @Test
   public void testOverlappingTablesNoNamespaceEnforcement() {
-        // Original table
-        assertThat(createTable(NO_NAMESPACE_ENFORCEMENT_EXT, String.format("%s/%s/%s/table_1", baseLocation, catalog,
-     namespace)))
-            .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    // Original table
+    assertThat(
+            createTable(
+                NO_NAMESPACE_ENFORCEMENT_EXT,
+                String.format("%s/%s/%s/table_1", baseLocation, catalog, namespace)))
+        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
 
-        // Outside the namespace
-        assertThat(createTable(NO_NAMESPACE_ENFORCEMENT_EXT, String.format("%s/%s/table_foo", baseLocation, catalog)))
-            .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-    //
-    //    // Outside the catalog
-    //    assertThat(createTable(BASE_EXT, String.format("%s/table_bar", baseLocation)))
-    //        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    // Outside the namespace
+    assertThat(
+            createTable(
+                NO_NAMESPACE_ENFORCEMENT_EXT,
+                String.format("%s/%s/table_foo", baseLocation, catalog)))
+        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+
+    // Outside the catalog, still forbidden
+    assertThat(
+            createTable(NO_NAMESPACE_ENFORCEMENT_EXT, String.format("%s/table_bar", baseLocation)))
+        .returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
+
+    // Creating a table directly in the namespace fails due to existing table in the namespace
+    assertThat(
+            createTable(
+                NO_NAMESPACE_ENFORCEMENT_EXT,
+                String.format("%s/%s/%s", baseLocation, catalog, namespace)))
+        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
   }
 }
