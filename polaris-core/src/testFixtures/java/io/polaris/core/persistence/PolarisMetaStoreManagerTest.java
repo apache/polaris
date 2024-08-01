@@ -137,14 +137,16 @@ public abstract class PolarisMetaStoreManagerTest {
                   task1.getParentId(),
                   task1.getName(),
                   task1.getTypeCode(),
-                  task1.getSubTypeCode()),
+                  task1.getSubTypeCode(),
+                  task1.getLocation()),
               new PolarisEntityActiveRecord(
                   task2.getCatalogId(),
                   task2.getId(),
                   task2.getParentId(),
                   task2.getName(),
                   task2.getTypeCode(),
-                  task2.getSubTypeCode()));
+                  task2.getSubTypeCode(),
+                  task2.getLocation()));
     }
   }
 

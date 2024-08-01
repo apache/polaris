@@ -63,7 +63,9 @@ public class PolarisSparkIntegrationTest {
               "server.applicationConnectors[0].port",
               "0"), // Bind to random port to support parallelism
           ConfigOverride.config(
-              "server.adminConnectors[0].port", "0")); // Bind to random port to support parallelism
+              "server.adminConnectors[0].port", "0"), // Bind to random port to support parallelism
+          ConfigOverride.config(
+              "featureConfiguration.ENFORCE_GLOBALLY_UNIQUE_TABLE_LOCATIONS", "false"));
 
   public static final String CATALOG_NAME = "mycatalog";
   public static final String EXTERNAL_CATALOG_NAME = "external_catalog";
@@ -290,6 +292,7 @@ public class PolarisSparkIntegrationTest {
                         .name("mytb1")
                         .metadataLocation(tableResponse.metadataLocation())
                         .build()))) {
+      String reponseBody = registerResponse.readEntity(String.class); // todo remove this
       assertThat(registerResponse).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
     }
 

@@ -415,7 +415,6 @@ public class PolarisEclipseLinkStore {
       return false;
     }
     diagnosticServices.check(session != null, "session_is_null");
-    // TODO sanitize `location`
 
     return session
         .createQuery(
