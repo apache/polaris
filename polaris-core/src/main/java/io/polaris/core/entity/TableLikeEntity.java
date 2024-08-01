@@ -20,6 +20,9 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
 
+import java.util.Map;
+import java.util.Optional;
+
 public class TableLikeEntity extends PolarisEntity {
   // For applicable types, this key on the "internalProperties" map will return the location
   // of the internalProperties JSON file.
@@ -63,6 +66,20 @@ public class TableLikeEntity extends PolarisEntity {
   @JsonIgnore
   public String getBaseLocation() {
     return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+  }
+
+  @Override
+  public String getLocation() {
+    return Optional.ofNullable(super.location).orElse(this.getBaseLocation());
+  }
+
+  @Override
+  public void setLocation(String location) {
+    super.setLocation(location);
+
+    Map<String, String> propertiesMap = this.getPropertiesAsMap();
+    propertiesMap.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, location);
+    this.setPropertiesAsMap(propertiesMap);
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<TableLikeEntity, Builder> {

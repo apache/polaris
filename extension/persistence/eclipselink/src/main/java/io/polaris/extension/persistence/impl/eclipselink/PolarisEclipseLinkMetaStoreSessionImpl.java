@@ -461,7 +461,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
                 entity.getParentId(),
                 entity.getName(),
                 entity.getTypeCode(),
-                entity.getSubTypeCode()));
+                entity.getSubTypeCode(),
+                entity.getLocation()));
   }
 
   @Override
@@ -689,5 +690,10 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
     if (session != null) {
       session.getTransaction().rollback();
     }
+  }
+
+  @Override
+  public boolean locationOverlapsWithExistingEntity(@NotNull PolarisCallContext callContext, String location) {
+    return this.store.locationOverlapsWithExistingEntity(localSession.get(), location);
   }
 }

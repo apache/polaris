@@ -521,4 +521,13 @@ public interface PolarisMetaStoreSession {
 
   /** Rollback the current transaction */
   void rollback();
+
+  /**
+   * Check if the given location overlaps with any existing entity
+   *
+   * @param callContext the polaris call context
+   * @param location the location to check existing entities against
+   * @return true if any entity's location overlaps with the specified location
+   */
+  boolean locationOverlapsWithExistingEntity(@NotNull PolarisCallContext callContext, String location);
 }

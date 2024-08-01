@@ -61,6 +61,9 @@ public class PolarisBaseEntity extends PolarisEntityCore {
   // current version for that entity, will be monotonically incremented
   protected int grantRecordsVersion;
 
+  // The location of the entity
+  protected String location;
+
   public int getSubTypeCode() {
     return subTypeCode;
   }
@@ -114,7 +117,11 @@ public class PolarisBaseEntity extends PolarisEntityCore {
   }
 
   public String getLocation() {
-    return null;
+    return this.location;
+  }
+
+  public void setLocation(String location) {
+    this.location = location;
   }
 
   @JsonIgnore
