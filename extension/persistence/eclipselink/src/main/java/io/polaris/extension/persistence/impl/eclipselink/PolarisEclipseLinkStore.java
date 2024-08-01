@@ -426,6 +426,7 @@ public class PolarisEclipseLinkStore {
                     ModelEntityActive
                 WHERE
                     location IS NOT NULL
+                    AND typeCode = :table_code
                     AND (
                         location LIKE CONCAT(:location, '%')
                         OR :location LIKE CONCAT(location, '%')
@@ -433,6 +434,7 @@ public class PolarisEclipseLinkStore {
             """,
             ModelEntityDropped.class)
         .setParameter("location", location)
+        .setParameter("table_code", PolarisEntityType.TABLE_LIKE.getCode())
         .getResultStream()
         .findFirst()
         .isPresent();

@@ -572,10 +572,13 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   public boolean locationOverlapsWithExistingEntity(@NotNull PolarisCallContext callContext, String location) {
     return this.store.getSliceEntitiesActive().valueExists(polarisBaseEntity -> {
       return
-          location != null && polarisBaseEntity.getLocation() != null && (
-              polarisBaseEntity.getLocation().startsWith(location) ||
-                  location.startsWith(polarisBaseEntity.getLocation())
-              );
+          location != null &&
+          polarisBaseEntity.getLocation() != null &&
+          polarisBaseEntity.getType() == PolarisEntityType.TABLE_LIKE &&
+          (
+            polarisBaseEntity.getLocation().startsWith(location) ||
+            location.startsWith(polarisBaseEntity.getLocation())
+          );
     });
   }
 }

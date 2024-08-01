@@ -250,6 +250,7 @@ public class PolarisBaseEntity extends PolarisEntityCore {
     this.properties = entity.getProperties();
     this.internalProperties = entity.getInternalProperties();
     this.grantRecordsVersion = entity.getGrantRecordsVersion();
+    this.location = entity.getLocation();
   }
 
   /** Build the DTO for a new entity */
