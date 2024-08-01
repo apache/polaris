@@ -73,7 +73,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<
 
   @Override
   public synchronized Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> bootstrapRealms(
-      List<String> realms) {
+      List<String> realms, boolean overwrite) {
     Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> results = new HashMap<>();
 
     for (String realm : realms) {
@@ -82,7 +82,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<
         initializeForRealm(realmContext);
         PolarisMetaStoreManager.PrincipalSecretsResult secretsResult =
             bootstrapServiceAndCreatePolarisPrincipalForRealm(
-                realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
+                realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()), overwrite);
         results.put(realmContext.getRealmIdentifier(), secretsResult);
       }
     }
@@ -143,13 +143,34 @@ public abstract class LocalPolarisMetaStoreManagerFactory<
    */
   private PolarisMetaStoreManager.PrincipalSecretsResult
       bootstrapServiceAndCreatePolarisPrincipalForRealm(
-          RealmContext realmContext, PolarisMetaStoreManager metaStoreManager) {
+          RealmContext realmContext,
+          PolarisMetaStoreManager metaStoreManager,
+          boolean overwrite) {
     // While bootstrapping we need to act as a fake privileged context since the real
     // CallContext hasn't even been resolved yet.
     PolarisCallContext polarisContext =
         new PolarisCallContext(
             sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(), diagServices);
     CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
+
+    if (!overwrite) {
+      PolarisMetaStoreManager.EntityResult preliminaryRootPrincipalLookup =
+          metaStoreManager.readEntityByName(
+              polarisContext,
+              null,
+              PolarisEntityType.PRINCIPAL,
+              PolarisEntitySubType.NULL_SUBTYPE,
+              PolarisEntityConstants.getRootPrincipalName());
+      if (preliminaryRootPrincipalLookup.isSuccess()) {
+        String overrideMessage = "It appears this metastore manager has already been bootstrapped." +
+            " To continue bootstrapping and purge any existing Polaris entities from the metastore manager, please" +
+            " re-run this command with the flag `--overwrite`.";
+        logger.error(
+            "\n\n {} \n\n",
+            overrideMessage);
+        throw new IllegalArgumentException(overrideMessage);
+      }
+    }
 
     metaStoreManager.bootstrapPolarisService(polarisContext);
 

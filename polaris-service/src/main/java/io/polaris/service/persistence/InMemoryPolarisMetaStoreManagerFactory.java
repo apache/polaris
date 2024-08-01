@@ -69,7 +69,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
 
   private void bootstrapRealmAndPrintCredentials(String realmId) {
     Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> results =
-        this.bootstrapRealms(Arrays.asList(realmId));
+        this.bootstrapRealms(Arrays.asList(realmId), false);
     bootstrappedRealms.add(realmId);
 
     PolarisMetaStoreManager.PrincipalSecretsResult principalSecrets = results.get(realmId);

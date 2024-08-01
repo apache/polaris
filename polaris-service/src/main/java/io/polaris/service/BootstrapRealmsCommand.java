@@ -23,7 +23,9 @@ import io.polaris.service.config.ConfigurationStoreAware;
 import io.polaris.service.config.PolarisApplicationConfig;
 import io.polaris.service.config.RealmEntityManagerFactory;
 import io.polaris.service.context.CallContextResolver;
+import net.sourceforge.argparse4j.impl.Arguments;
 import net.sourceforge.argparse4j.inf.Namespace;
+import net.sourceforge.argparse4j.inf.Subparser;
 
 /**
  * Command for bootstrapping root level service principals for each realm. This command will invoke
@@ -36,11 +38,21 @@ public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplication
   }
 
   @Override
+  public void configure(Subparser subparser) {
+    super.configure(subparser);
+    subparser.addArgument("--overwrite")
+        .action(Arguments.storeTrue())
+        .help("If set, overwrite existing entities during bootstrapping. This may be irreversible.");
+  }
+
+  @Override
   protected void run(
       Bootstrap<PolarisApplicationConfig> bootstrap,
       Namespace namespace,
       PolarisApplicationConfig configuration)
       throws Exception {
+    boolean overwrite = namespace.getBoolean("overwrite");
+
     MetaStoreManagerFactory metaStoreManagerFactory = configuration.getMetaStoreManagerFactory();
 
     PolarisConfigurationStore configurationStore = configuration.getConfigurationStore();
@@ -55,6 +67,6 @@ public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplication
       csa.setConfigurationStore(configurationStore);
     }
 
-    metaStoreManagerFactory.bootstrapRealms(configuration.getDefaultRealms());
+    metaStoreManagerFactory.bootstrapRealms(configuration.getDefaultRealms(), overwrite);
   }
 }

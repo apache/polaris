@@ -42,5 +42,5 @@ public interface MetaStoreManagerFactory extends Discoverable {
 
   void setMetricRegistry(PolarisMetricRegistry metricRegistry);
 
-  Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> bootstrapRealms(List<String> realms);
+  Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> bootstrapRealms(List<String> realms, boolean overwrite);
 }
