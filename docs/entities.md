@@ -39,13 +39,13 @@ For information on managing namespaces with the REST API or for more information
 
 ## Table
 
-Polaris tables are entites that map to [Apache Iceberg tables](https://iceberg.apache.org/docs/nightly/configuration/).
+Polaris tables are entities that map to [Apache Iceberg tables](https://iceberg.apache.org/docs/nightly/configuration/).
 
 For information on managing tables with the REST API or for more information on what data can be associated with a table, see [the API docs](../regtests/client/python/docs/CreateTableRequest.md).
 
 ## View
 
-Polaris views are entites that map to [Apache Iceberg views](https://iceberg.apache.org/view-spec/).
+Polaris views are entities that map to [Apache Iceberg views](https://iceberg.apache.org/view-spec/).
 
 For information on managing views with the REST API or for more information on what data can be associated with a view, see [the API docs](../regtests/client/python/docs/CreateViewRequest.md).
 
