@@ -405,6 +405,9 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     }
 
     ResolvedPolarisEntity resolvedRootContainerEntity = getResolvedRootContainerEntity();
-    return resolvedRootContainerEntity == null ? new PolarisResolvedPathWrapper(List.of(new ResolvedPolarisEntity(resolvedCacheEntry))):new PolarisResolvedPathWrapper(List.of(resolvedRootContainerEntity, new ResolvedPolarisEntity(resolvedCacheEntry))) ;
+    return resolvedRootContainerEntity == null
+        ? new PolarisResolvedPathWrapper(List.of(new ResolvedPolarisEntity(resolvedCacheEntry)))
+        : new PolarisResolvedPathWrapper(
+            List.of(resolvedRootContainerEntity, new ResolvedPolarisEntity(resolvedCacheEntry)));
   }
 }
