@@ -173,9 +173,9 @@ api:
 ```bash
 $ export PRINCIPAL_TOKEN=ver:1-hint:1036-ETMsDgAAAY/GPANareallyverylongstringthatissecret
 
-$ curl -i -X PUT -H "Authorization: Bearer $PRINCIPAL_TOKEN" -H 'Accept: application/json' -H 'Content-Type: application/json' \
-  http://${POLARIS_HOST:-localhost}:8181/api/v1/catalogs \
-  -d '{"name": "polaris", "id": 100, "type": "INTERNAL", "readOnly": false}'
+$ curl -i -X POST -H "Authorization: Bearer $PRINCIPAL_TOKEN" -H 'Accept: application/json' -H 'Content-Type: application/json' \
+  http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
+  -d '{"name": "polaris", "id": 100, "type": "INTERNAL", "readOnly": false, "storageConfigInfo": {"storageType": "FILE"}, "properties": {"default-base-location": "file:///tmp/polaris"}}'
 ```
 
 This creates a catalog called `polaris`. From here, you can use Spark to create namespaces, tables, etc.
