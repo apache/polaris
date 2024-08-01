@@ -87,7 +87,8 @@ public class PolarisEntity extends PolarisBaseEntity {
       @JsonProperty("properties") String properties,
       @JsonProperty("internalProperties") String internalProperties,
       @JsonProperty("entityVersion") int entityVersion,
-      @JsonProperty("grantRecordsVersion") int grantRecordsVersion) {
+      @JsonProperty("grantRecordsVersion") int grantRecordsVersion,
+      @JsonProperty("location") String location) {
     super(catalogId, id, type, subType, parentId, name);
     this.createTimestamp = createTimestamp;
     this.dropTimestamp = dropTimestamp;
@@ -97,6 +98,7 @@ public class PolarisEntity extends PolarisBaseEntity {
     this.internalProperties = internalProperties;
     this.entityVersion = entityVersion;
     this.grantRecordsVersion = grantRecordsVersion;
+    this.location = location;
   }
 
   public PolarisEntity(
@@ -113,7 +115,7 @@ public class PolarisEntity extends PolarisBaseEntity {
       Map<String, String> properties,
       Map<String, String> internalProperties,
       int entityVersion,
-      int grantRecordsVersion) {
+      int grantRecordsVersion, String location) {
     super(catalogId, id, type, subType, parentId, name);
     this.createTimestamp = createTimestamp;
     this.dropTimestamp = dropTimestamp;
@@ -123,6 +125,7 @@ public class PolarisEntity extends PolarisBaseEntity {
     this.setInternalPropertiesAsMap(internalProperties);
     this.entityVersion = entityVersion;
     this.grantRecordsVersion = grantRecordsVersion;
+    this.location = location;
   }
 
   public static PolarisEntity of(PolarisBaseEntity sourceEntity) {
@@ -184,6 +187,7 @@ public class PolarisEntity extends PolarisBaseEntity {
     this.internalProperties = sourceEntity.getInternalProperties();
     this.entityVersion = sourceEntity.getEntityVersion();
     this.grantRecordsVersion = sourceEntity.getGrantRecordsVersion();
+    this.location = sourceEntity.getLocation();
   }
 
   @JsonIgnore
@@ -201,6 +205,11 @@ public class PolarisEntity extends PolarisBaseEntity {
     return new NameAndId(name, id);
   }
 
+  @JsonIgnore
+  public String getLocation() {
+    return location;
+  }
+
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
@@ -211,6 +220,7 @@ public class PolarisEntity extends PolarisBaseEntity {
     sb.append(";type=" + getType());
     sb.append(";subType=" + getSubType());
     sb.append(";internalProperties=" + getInternalPropertiesAsMap());
+    sb.append(";location=" + getLocation());
     return sb.toString();
   }
 
@@ -232,7 +242,8 @@ public class PolarisEntity extends PolarisBaseEntity {
         && subTypeCode == that.subTypeCode
         && Objects.equals(name, that.name)
         && Objects.equals(properties, that.properties)
-        && Objects.equals(internalProperties, that.internalProperties);
+        && Objects.equals(internalProperties, that.internalProperties)
+        && Objects.equals(location, that.location);
   }
 
   @Override
@@ -251,7 +262,8 @@ public class PolarisEntity extends PolarisBaseEntity {
         properties,
         internalProperties,
         entityVersion,
-        grantRecordsVersion);
+        grantRecordsVersion,
+        location);
   }
 
   public static class Builder extends BaseBuilder<PolarisEntity, Builder> {
@@ -284,6 +296,7 @@ public class PolarisEntity extends PolarisBaseEntity {
     protected Map<String, String> internalProperties;
     protected int entityVersion;
     protected int grantRecordsVersion;
+    protected String location;
 
     protected BaseBuilder() {
       this.catalogId = -1;
@@ -300,6 +313,7 @@ public class PolarisEntity extends PolarisBaseEntity {
       this.internalProperties = new HashMap<>();
       this.entityVersion = 1;
       this.grantRecordsVersion = 1;
+      this.location = null;
     }
 
     protected BaseBuilder(T original) {
@@ -317,6 +331,7 @@ public class PolarisEntity extends PolarisBaseEntity {
       this.internalProperties = new HashMap<>(original.getInternalPropertiesAsMap());
       this.entityVersion = original.entityVersion;
       this.grantRecordsVersion = original.grantRecordsVersion;
+      this.location = original.location;
     }
 
     public abstract T build();
@@ -338,7 +353,8 @@ public class PolarisEntity extends PolarisBaseEntity {
           properties,
           internalProperties,
           entityVersion,
-          grantRecordsVersion);
+          grantRecordsVersion,
+          location);
     }
 
     public B setCatalogId(long catalogId) {
@@ -417,6 +433,11 @@ public class PolarisEntity extends PolarisBaseEntity {
 
     public B setGrantRecordsVersion(int grantRecordsVersion) {
       this.grantRecordsVersion = grantRecordsVersion;
+      return (B) this;
+    }
+
+    public B setLocation(String location) {
+      this.location = location;
       return (B) this;
     }
   }
