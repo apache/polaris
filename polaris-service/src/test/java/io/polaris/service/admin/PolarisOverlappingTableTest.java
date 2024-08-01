@@ -112,7 +112,6 @@ public class PolarisOverlappingTableTest {
             .build();
     String prefix = String.format("catalog/v1/%s/namespaces/%s/tables", catalog, namespace);
     try (Response response = request(prefix).post(Entity.json(createTableRequest))) {
-      String responseBody = response.readEntity(String.class);
       return response;
     }
   }
@@ -127,7 +126,20 @@ public class PolarisOverlappingTableTest {
 
   @Test
   public void testBasicOverlappingTables() {
+    // Original table
     assertThat(createTable(String.format("%s/%s/%s/table_1", baseLocation, catalog, namespace)))
-        .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+
+    // Unrelated path
+    assertThat(createTable(String.format("%s/%s/%s/table_2", baseLocation, catalog, namespace)))
+        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+
+    // Trailing slash makes this not overlap with table_1
+    assertThat(createTable(String.format("%s/%s/%s/table_100", baseLocation, catalog, namespace)))
+        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+
+    // Repeat location
+    assertThat(createTable(String.format("%s/%s/%s/table_100", baseLocation, catalog, namespace)))
+        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
   }
 }
