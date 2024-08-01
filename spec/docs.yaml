@@ -24,4 +24,7 @@ tags:
   - name: Access Control
     description:
       $ref: ../docs/access-control.md
+  - name: Configuring Polaris for Production
+    description:
+      $ref: ../docs/configuring-polaris-for-production.md
         
