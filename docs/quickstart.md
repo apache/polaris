@@ -56,7 +56,7 @@ Polaris is built using [gradle](https://gradle.org/) and is compatible with Java
 ```
 cd ~/polaris
 jenv local 21
-brew install openjdk@21 gradle@8 jenv
+brew install openjdk@21 jenv
 jenv add $(brew --prefix openjdk@21)
 jenv local 21
 ```
