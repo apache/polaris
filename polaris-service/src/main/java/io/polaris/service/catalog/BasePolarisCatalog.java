@@ -1685,6 +1685,22 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
 
+    if (callContext
+        .getPolarisCallContext()
+        .getConfigurationStore()
+        .getConfiguration(
+            callContext.getPolarisCallContext(),
+            PolarisConfiguration.ENFORCE_GLOBALLY_UNIQUE_TABLE_LOCATIONS,
+            PolarisConfiguration.DEFAULT_ENFORCE_GLOBALLY_UNIQUE_TABLE_LOCATIONS)) {
+      if (entityManager.getMetaStoreManager().locationOverlapsWithExistingEntity(
+            callContext.getPolarisCallContext(),
+            entity.getLocation())) {
+        throw new org.apache.iceberg.exceptions.BadRequestException(
+            "Unable to create table at location '%s' because it conflicts with the location of an existing entity",
+            entity.getLocation());
+      }
+    }
+
     if (entity.getParentId() <= 0) {
       // TODO: Validate catalogPath size is at least 1 for catalog entity?
       entity =

@@ -21,6 +21,7 @@ import io.polaris.core.entity.PolarisEntityType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
 /**
@@ -28,7 +29,9 @@ import jakarta.persistence.Table;
  * entity information with ENTITIES_ACTIVE table
  */
 @Entity
-@Table(name = "ENTITIES_ACTIVE")
+@Table(name = "ENTITIES_ACTIVE", indexes = {
+    @Index(name = "idx_location", columnList = "location")
+})
 public class ModelEntityActive {
   // entity catalog id
   @Id private long catalogId;
