@@ -25,6 +25,8 @@ public class PolarisConfiguration {
       "ALLOW_EXTERNAL_METADATA_FILE_LOCATION";
   public static final String ENFORCE_GLOBALLY_UNIQUE_TABLE_LOCATIONS =
       "ENFORCE_GLOBALLY_UNIQUE_TABLE_LOCATIONS";
+  public static final String ENFORCE_TABLE_LOCATIONS_INSIDE_NAMESPACE_LOCATIONS =
+      "ENFORCE_TABLE_LOCATIONS_INSIDE_NAMESPACE_LOCATIONS";
 
   public static final String ALLOW_OVERLAPPING_CATALOG_URLS = "ALLOW_OVERLAPPING_CATALOG_URLS";
 
@@ -42,6 +44,7 @@ public class PolarisConfiguration {
   public static final boolean DEFAULT_ALLOW_EXTERNAL_METADATA_FILE_LOCATION = false;
   public static final boolean DEFAULT_ALLOW_NAMESPACE_LOCATION_OVERLAP = false;
   public static final boolean DEFAULT_ENFORCE_GLOBALLY_UNIQUE_TABLE_LOCATIONS = false;
+  public static final boolean DEFAULT_ENFORCE_TABLE_LOCATIONS_INSIDE_NAMESPACE_LOCATIONS = true;
 
   private PolarisConfiguration() {}
 }

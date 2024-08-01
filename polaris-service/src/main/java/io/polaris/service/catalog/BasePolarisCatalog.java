@@ -430,13 +430,17 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             .setCreateTimestamp(System.currentTimeMillis())
             .setLocation(baseLocation)
             .build();
-    if (!callContext
-        .getPolarisCallContext()
-        .getConfigurationStore()
-        .getConfiguration(
-            callContext.getPolarisCallContext(),
-            PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP,
-            PolarisConfiguration.DEFAULT_ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+    boolean allowNamespaceLocationOverlap =
+        Boolean.parseBoolean(
+            String.valueOf(
+                callContext
+                    .getPolarisCallContext()
+                    .getConfigurationStore()
+                    .getConfiguration(
+                        callContext.getPolarisCallContext(),
+                        PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP,
+                        PolarisConfiguration.DEFAULT_ALLOW_NAMESPACE_LOCATION_OVERLAP)));
+    if (!allowNamespaceLocationOverlap) {
       LOG.debug("Validating no overlap for {} with sibling tables or namespaces", namespace);
       validateNoLocationOverlap(
           entity.getBaseLocation(), resolvedParent.getRawFullPath(), entity.getName());
@@ -854,10 +858,27 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       TableIdentifier identifier,
       String location,
       PolarisResolvedPathWrapper resolvedStorageEntity) {
-    Optional<PolarisStorageConfigurationInfo> optStorageConfiguration =
-        PolarisStorageConfigurationInfo.forEntityPath(
-            callContext.getPolarisCallContext().getDiagServices(),
-            resolvedStorageEntity.getRawFullPath());
+    boolean enforceTableLocationsInsideNamespaceLocations =
+        Boolean.parseBoolean(
+            String.valueOf(
+                getCurrentPolarisContext()
+                    .getConfigurationStore()
+                    .getConfiguration(
+                        getCurrentPolarisContext(),
+                        PolarisConfiguration.ENFORCE_TABLE_LOCATIONS_INSIDE_NAMESPACE_LOCATIONS,
+                        PolarisConfiguration.DEFAULT_ENFORCE_TABLE_LOCATIONS_INSIDE_NAMESPACE_LOCATIONS)));
+
+    Optional<PolarisStorageConfigurationInfo> optStorageConfiguration = Optional.empty();
+    if (enforceTableLocationsInsideNamespaceLocations) {
+      optStorageConfiguration =
+          PolarisStorageConfigurationInfo.forEntityPath(
+              callContext.getPolarisCallContext().getDiagServices(),
+              resolvedStorageEntity.getRawFullPath());
+    } else {
+      optStorageConfiguration = findStorageInfoFromHierarchy(resolvedStorageEntity).map(storageInfoHolderEntity -> {
+        return new CatalogEntity(storageInfoHolderEntity).getStorageConfigurationInfo();
+      });
+    }
 
     optStorageConfiguration.ifPresentOrElse(
         storageConfigInfo -> {
@@ -916,10 +937,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   /**
    * Validates the table location has no overlap with other entities after checking the
    * configuration of the service
-   *
-   * @param identifier
-   * @param resolvedNamespace
-   * @param location
    */
   private void validateNoLocationOverlap(
       TableIdentifier identifier, List<PolarisEntity> resolvedNamespace, String location) {
