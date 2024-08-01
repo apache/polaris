@@ -923,13 +923,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    */
   private void validateNoLocationOverlap(
       TableIdentifier identifier, List<PolarisEntity> resolvedNamespace, String location) {
-    if (callContext
-        .getPolarisCallContext()
-        .getConfigurationStore()
-        .getConfiguration(
-            callContext.getPolarisCallContext(),
-            PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP,
-            PolarisConfiguration.DEFAULT_ALLOW_TABLE_LOCATION_OVERLAP)) {
+    boolean allowLocalTableLocationOverlap =
+        Boolean.parseBoolean(
+            String.valueOf(
+                getCurrentPolarisContext()
+                    .getConfigurationStore()
+                    .getConfiguration(
+                        getCurrentPolarisContext(),
+                        PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP,
+                        PolarisConfiguration.DEFAULT_ALLOW_TABLE_LOCATION_OVERLAP)));
+    if (allowLocalTableLocationOverlap) {
       LOG.debug("Skipping location overlap validation for identifier '{}'", identifier);
     } else { // if (entity.getSubType().equals(PolarisEntitySubType.TABLE)) {
       // TODO - is this necessary for views? overlapping views do not expose subdirectories via the
@@ -1685,16 +1688,21 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
 
-    if (callContext
-        .getPolarisCallContext()
-        .getConfigurationStore()
-        .getConfiguration(
-            callContext.getPolarisCallContext(),
-            PolarisConfiguration.ENFORCE_GLOBALLY_UNIQUE_TABLE_LOCATIONS,
-            PolarisConfiguration.DEFAULT_ENFORCE_GLOBALLY_UNIQUE_TABLE_LOCATIONS)) {
-      if (entityManager.getMetaStoreManager().locationOverlapsWithExistingEntity(
-            callContext.getPolarisCallContext(),
-            entity.getLocation())) {
+    boolean enforceGloballyUniqueTableLocation =
+        Boolean.parseBoolean(
+            String.valueOf(
+                getCurrentPolarisContext()
+                    .getConfigurationStore()
+                    .getConfiguration(
+                        getCurrentPolarisContext(),
+                        PolarisConfiguration.ENFORCE_GLOBALLY_UNIQUE_TABLE_LOCATIONS,
+                        PolarisConfiguration.DEFAULT_ENFORCE_GLOBALLY_UNIQUE_TABLE_LOCATIONS)));
+
+    if (enforceGloballyUniqueTableLocation) {
+      if (entityManager
+          .getMetaStoreManager()
+          .locationOverlapsWithExistingEntity(
+              callContext.getPolarisCallContext(), entity.getLocation())) {
         throw new org.apache.iceberg.exceptions.BadRequestException(
             "Unable to create table at location '%s' because it conflicts with the location of an existing entity",
             entity.getLocation());

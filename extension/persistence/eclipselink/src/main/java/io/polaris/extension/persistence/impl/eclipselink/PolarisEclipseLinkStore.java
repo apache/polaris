@@ -411,6 +411,9 @@ public class PolarisEclipseLinkStore {
   }
 
   boolean locationOverlapsWithExistingEntity(EntityManager session, String location) {
+    if (location == null) {
+      return false;
+    }
     diagnosticServices.check(session != null, "session_is_null");
     // TODO sanitize `location`
 
@@ -422,8 +425,11 @@ public class PolarisEclipseLinkStore {
                 FROM
                     ModelEntityActive
                 WHERE
-                    location LIKE CONCAT(:location, '%')
-                    OR :location LIKE CONCAT(location, '%')
+                    location IS NOT NULL
+                    AND (
+                        location LIKE CONCAT(:location, '%')
+                        OR :location LIKE CONCAT(location, '%')
+                    )
             """,
             ModelEntityDropped.class)
         .setParameter("location", location)
