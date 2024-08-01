@@ -1701,7 +1701,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     if (enforceGloballyUniqueTableLocation) {
       if (entityManager
           .getMetaStoreManager()
-          .locationOverlapsWithExistingEntity(
+          .locationOverlapsWithExistingTableLike(
               callContext.getPolarisCallContext(), entity.getLocation())) {
         throw new org.apache.iceberg.exceptions.BadRequestException(
             "Unable to create table at location '%s' because it conflicts with the location of an existing entity",

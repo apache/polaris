@@ -2411,12 +2411,12 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
                 entityId));
   }
 
-  public boolean locationOverlapsWithExistingEntity(
+  public boolean locationOverlapsWithExistingTableLike(
       @NotNull PolarisCallContext callCtx,
       @NotNull String location) {
     // get metastore we should be using
     PolarisMetaStoreSession ms = callCtx.getMetaStore();
 
-    return ms.locationOverlapsWithExistingEntity(callCtx, location);
+    return ms.locationOverlapsWithExistingTableLike(callCtx, location);
   }
 }

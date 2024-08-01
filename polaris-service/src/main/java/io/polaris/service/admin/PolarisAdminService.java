@@ -17,6 +17,7 @@ package io.polaris.service.admin;
 
 import io.polaris.core.PolarisCallContext;
 import io.polaris.core.PolarisConfiguration;
+import io.polaris.core.PolarisUtils;
 import io.polaris.core.admin.model.CatalogGrant;
 import io.polaris.core.admin.model.CatalogPrivilege;
 import io.polaris.core.admin.model.GrantResource;
@@ -469,24 +470,14 @@ public class PolarisAdminService {
   /** Get all locations where data for a `CatalogEntity` may be stored */
   private Set<String> getCatalogLocations(CatalogEntity catalogEntity) {
     HashSet<String> catalogLocations = new HashSet<>();
-    catalogLocations.add(terminateWithSlash(catalogEntity.getDefaultBaseLocation()));
+    catalogLocations.add(PolarisUtils.terminateWithSlash(catalogEntity.getDefaultBaseLocation()));
     if (catalogEntity.getStorageConfigurationInfo() != null) {
       catalogLocations.addAll(
           catalogEntity.getStorageConfigurationInfo().getAllowedLocations().stream()
-              .map(this::terminateWithSlash)
+              .map(PolarisUtils::terminateWithSlash)
               .toList());
     }
     return catalogLocations;
-  }
-
-  /** Ensure a path is terminated with a `/` */
-  private String terminateWithSlash(String path) {
-    if (path == null) {
-      return null;
-    } else if (path.endsWith("/")) {
-      return path;
-    }
-    return path + "/";
   }
 
   /**

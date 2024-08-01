@@ -569,7 +569,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   }
 
   @Override
-  public boolean locationOverlapsWithExistingEntity(@NotNull PolarisCallContext callContext, String location) {
+  public boolean locationOverlapsWithExistingTableLike(@NotNull PolarisCallContext callContext, String location) {
     return this.store.getSliceEntitiesActive().valueExists(polarisBaseEntity -> {
       return
           location != null &&

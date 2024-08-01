@@ -16,6 +16,7 @@
 package io.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.polaris.core.PolarisUtils;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
@@ -75,10 +76,11 @@ public class TableLikeEntity extends PolarisEntity {
 
   @Override
   public void setLocation(String location) {
-    super.setLocation(location);
+    String terminatedLocation = PolarisUtils.terminateWithSlash(location);
+    super.setLocation(terminatedLocation);
 
     Map<String, String> propertiesMap = this.getPropertiesAsMap();
-    propertiesMap.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, location);
+    propertiesMap.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, terminatedLocation);
     this.setPropertiesAsMap(propertiesMap);
   }
 
@@ -124,8 +126,10 @@ public class TableLikeEntity extends PolarisEntity {
     }
 
     public Builder setLocation(String location) {
-      super.setLocation(location);
-      setBaseLocation(location);
+      String terminatedLocation = PolarisUtils.terminateWithSlash(location);
+
+      super.setLocation(terminatedLocation);
+      setBaseLocation(terminatedLocation);
       return this;
     }
   }

@@ -693,7 +693,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   }
 
   @Override
-  public boolean locationOverlapsWithExistingEntity(@NotNull PolarisCallContext callContext, String location) {
-    return this.store.locationOverlapsWithExistingEntity(localSession.get(), location);
+  public boolean locationOverlapsWithExistingTableLike(@NotNull PolarisCallContext callContext, String location) {
+    return this.store.locationOverlapsWithExistingTableLike(localSession.get(), location);
   }
 }

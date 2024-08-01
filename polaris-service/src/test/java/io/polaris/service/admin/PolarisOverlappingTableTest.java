@@ -128,42 +128,35 @@ public class PolarisOverlappingTableTest {
   @Test
   public void testBasicOverlappingTables() {
     // Original table
-    assertThat(createTable(String.format("%s/%s/%s/table_1/", baseLocation, catalog, namespace)))
+    assertThat(createTable(String.format("%s/%s/%s/table_1", baseLocation, catalog, namespace)))
         .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
 
     // Unrelated path
-    assertThat(createTable(String.format("%s/%s/%s/table_2/", baseLocation, catalog, namespace)))
+    assertThat(createTable(String.format("%s/%s/%s/table_2", baseLocation, catalog, namespace)))
         .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
 
     // Trailing slash makes this not overlap with table_1
-    assertThat(createTable(String.format("%s/%s/%s/table_100/", baseLocation, catalog, namespace)))
+    assertThat(createTable(String.format("%s/%s/%s/table_100", baseLocation, catalog, namespace)))
         .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
 
     // Repeat location
-    assertThat(createTable(String.format("%s/%s/%s/table_100/", baseLocation, catalog, namespace)))
+    assertThat(createTable(String.format("%s/%s/%s/table_100", baseLocation, catalog, namespace)))
         .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
 
     // Parent of existing location
-    assertThat(createTable(String.format("%s/%s/%s/", baseLocation, catalog, namespace)))
+    assertThat(createTable(String.format("%s/%s/%s", baseLocation, catalog, namespace)))
         .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
 
     // Child of existing location
-    assertThat(createTable(String.format("%s/%s/%s/table_100/child/", baseLocation, catalog, namespace)))
+    assertThat(createTable(String.format("%s/%s/%s/table_100/child", baseLocation, catalog, namespace)))
         .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
 
-    // Ancestor of existing location
-    assertThat(createTable(String.format("%s/", baseLocation)))
-        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
-  }
+    // Outside the namespace
+    assertThat(createTable(String.format("%s/%s", baseLocation, catalog)))
+        .returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
 
-  @Test
-  public void testNoTrailingSlashOverlappingTables() {
-    // Original table
-    assertThat(createTable(String.format("%s/%s/%s/a", baseLocation, catalog, namespace)))
-        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-
-    // Starts with the previous table as a prefix
-    assertThat(createTable(String.format("%s/%s/%s/aardvark", baseLocation, catalog, namespace)))
-        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    // Outside the catalog
+    assertThat(createTable(String.format("%s", baseLocation)))
+        .returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
   }
 }

@@ -410,7 +410,7 @@ public class PolarisEclipseLinkStore {
     session.remove(modelPrincipalSecrets);
   }
 
-  boolean locationOverlapsWithExistingEntity(EntityManager session, String location) {
+  boolean locationOverlapsWithExistingTableLike(EntityManager session, String location) {
     if (location == null) {
       return false;
     }
