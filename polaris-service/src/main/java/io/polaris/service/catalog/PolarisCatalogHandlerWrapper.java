@@ -938,7 +938,9 @@ public class PolarisCatalogHandlerWrapper {
     authorizeCollectionOfTableLikeOperationOrThrow(
         op,
         PolarisEntitySubType.TABLE,
-        commitTransactionRequest.tableChanges().stream().map(t -> t.identifier()).toList());
+        commitTransactionRequest.tableChanges().stream()
+            .map(UpdateTableRequest::identifier)
+            .toList());
     CatalogEntity catalog =
         CatalogEntity.of(
             resolutionManifest

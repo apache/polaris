@@ -373,7 +373,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   public @NotNull List<PolarisBaseEntity> lookupEntities(
       @NotNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     return this.store.lookupEntities(localSession.get(), entityIds).stream()
-        .map(model -> ModelEntity.toEntity(model))
+        .map(ModelEntity::toEntity)
         .toList();
   }
 
@@ -477,7 +477,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
     return this.store
         .lookupFullEntitiesActive(localSession.get(), catalogId, parentId, entityType)
         .stream()
-        .map(model -> ModelEntity.toEntity(model))
+        .map(ModelEntity::toEntity)
         .filter(entityFilter)
         .limit(limit)
         .map(transformer)
@@ -534,7 +534,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
     return this.store
         .lookupAllGrantRecordsOnSecurable(localSession.get(), securableCatalogId, securableId)
         .stream()
-        .map(model -> ModelGrantRecord.toGrantRecord(model))
+        .map(ModelGrantRecord::toGrantRecord)
         .toList();
   }
 
@@ -546,7 +546,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
     return this.store
         .lookupGrantRecordsOnGrantee(localSession.get(), granteeCatalogId, granteeId)
         .stream()
-        .map(model -> ModelGrantRecord.toGrantRecord(model))
+        .map(ModelGrantRecord::toGrantRecord)
         .toList();
   }
 

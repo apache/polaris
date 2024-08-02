@@ -150,7 +150,7 @@ public class StorageCredentialCache {
 
   public Map<String, String> getIfPresent(StorageCredentialCacheKey key) {
     return Optional.ofNullable(cache.getIfPresent(key))
-        .map(value -> value.convertToMapOfString())
+        .map(StorageCredentialCacheEntry::convertToMapOfString)
         .orElse(null);
   }
 

@@ -54,7 +54,7 @@ public class PolarisResolvedPathWrapper {
     if (resolvedPath == null) {
       return null;
     }
-    return resolvedPath.stream().map(resolved -> resolved.getEntity()).toList();
+    return resolvedPath.stream().map(ResolvedPolarisEntity::getEntity).toList();
   }
 
   public List<ResolvedPolarisEntity> getResolvedParentPath() {
@@ -68,7 +68,7 @@ public class PolarisResolvedPathWrapper {
     if (resolvedPath == null) {
       return null;
     }
-    return getResolvedParentPath().stream().map(resolved -> resolved.getEntity()).toList();
+    return getResolvedParentPath().stream().map(ResolvedPolarisEntity::getEntity).toList();
   }
 
   @Override
