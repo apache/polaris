@@ -55,7 +55,7 @@ open -a Docker
 
 If you plan to build Polaris from source yourself, you will need to satisfy a few prerequisites first.
 
-Polaris is built using [gradle](https://gradle.org/) and is compatible with Java 21. We recommend the use of [jenv](https://www.jenv.be/) to manage multiple Java versions. For example, to install Java 21 via [homebre]w(https://brew.sh/) and configure it with jenv: 
+Polaris is built using [gradle](https://gradle.org/) and is compatible with Java 21. We recommend the use of [jenv](https://www.jenv.be/) to manage multiple Java versions. For example, to install Java 21 via [homebrew](https://brew.sh/) and configure it with jenv: 
 
 ```
 cd ~/polaris
