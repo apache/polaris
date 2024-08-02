@@ -262,10 +262,10 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** {@inheritDoc} */
   @Override
-  public void persistStorageIntegrationIfNeeded(
+  public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
       @NotNull PolarisCallContext callContext,
       @NotNull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration storageIntegration) {
+      @Nullable PolarisStorageIntegration<T> storageIntegration) {
     // not implemented for eclipselink store
   }
 
