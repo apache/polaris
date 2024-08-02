@@ -80,6 +80,14 @@ Run the Polaris server locally on localhost:8181
 ./gradlew runApp
 ```
 
+The server will start using the in-memory mode, and it will print its auto-generated credentials to STDOUT in a message like the following:
+
+```text
+realm: default-realm root principal credentials: <id>:<secret>
+```
+
+These credentials can be used as "Client ID" and "Client Secret" in OAuth2 requests (e.g. the `curl` command below).
+
 While the Polaris server is running, run regression tests, or end-to-end tests in another terminal
 
 ```
