@@ -981,7 +981,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                       .collect(Collectors.toList());
                 })
             .orElse(List.of());
-    ;
 
     List<Namespace> siblingNamespaces =
         siblingNamespacesResult.getEntities().stream()
@@ -1802,7 +1801,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
       TableOperations tableOperations = newTableOps(tableIdentifier);
       String locationDir = newLocation.substring(0, newLocation.lastIndexOf("/"));
-      ;
+
       FileIO fileIO =
           refreshIOWithCredentials(
               tableIdentifier,
