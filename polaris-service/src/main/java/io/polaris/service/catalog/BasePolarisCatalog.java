@@ -526,11 +526,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public boolean namespaceExists(Namespace namespace) {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
-    if (resolvedEntities == null) {
-      return false;
-    }
-    return true;
+    return resolvedEntityView.getResolvedPath(namespace) != null;
   }
 
   @Override
