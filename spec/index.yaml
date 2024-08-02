@@ -1031,7 +1031,8 @@ tags:
 
       ```bash
 
-      java jar /app/snowflake-polaris-all.jar bootstrap polaris-server.yml
+      java -jar /path/to/jar/snowflake-polaris-all.jar bootstrap
+      polaris-server.yml
 
       ```
 
@@ -1042,7 +1043,7 @@ tags:
 
       ```bash
 
-      java jar /app/snowflake-polaris-all.jar server polaris-server.yml
+      java -jar /path/to/jar/snowflake-polaris-all.jar server polaris-server.yml
 
       ```
 
