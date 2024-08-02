@@ -73,9 +73,6 @@ public class PolarisResolvedPathWrapper {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("resolvedPath:");
-    sb.append(resolvedPath);
-    return sb.toString();
+    return "resolvedPath:" + resolvedPath;
   }
 }
