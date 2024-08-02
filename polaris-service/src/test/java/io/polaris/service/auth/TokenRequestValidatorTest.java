@@ -15,9 +15,10 @@
  */
 package io.polaris.service.auth;
 
-import java.util.Arrays;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class TokenRequestValidatorTest {
   @Test
@@ -63,17 +64,15 @@ public class TokenRequestValidatorTest {
         .isEqualTo(OAuthTokenErrorResponse.Error.invalid_grant);
   }
 
-  @Test
-  public void testValidateForClientCredentialsFlowInvalidScope() {
-    for (String scope :
-        Arrays.asList("null", "", ",", "ALL", "PRINCIPAL_ROLE:", "PRINCIPAL_ROLE")) {
-      Assertions.assertThat(
-              new TokenRequestValidator()
-                  .validateForClientCredentialsFlow(
-                      "client-id", "client-secret", "client_credentials", scope)
-                  .get())
-          .isEqualTo(OAuthTokenErrorResponse.Error.invalid_scope);
-    }
+  @ParameterizedTest
+  @ValueSource(strings = {"null", "", ",", "ALL", "PRINCIPAL_ROLE:", "PRINCIPAL_ROLE"})
+  public void testValidateForClientCredentialsFlowInvalidScope(String scope) {
+    Assertions.assertThat(
+            new TokenRequestValidator()
+                .validateForClientCredentialsFlow(
+                    "client-id", "client-secret", "client_credentials", scope)
+                .get())
+        .isEqualTo(OAuthTokenErrorResponse.Error.invalid_scope);
   }
 
   @Test
