@@ -93,6 +93,7 @@ subprojects {
 
     test {
         useJUnitPlatform()
+        jvmArgs += [ '-Duser.language=en' ]
     }
 
     spotless {
