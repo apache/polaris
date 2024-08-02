@@ -629,11 +629,8 @@ public class PolarisAdminService {
           currentStorageConfig, newStorageConfig);
     }
 
-    if (currentStorageConfig instanceof AwsStorageConfigurationInfo
-        && newStorageConfig instanceof AwsStorageConfigurationInfo) {
-      AwsStorageConfigurationInfo currentAwsConfig =
-          (AwsStorageConfigurationInfo) currentStorageConfig;
-      AwsStorageConfigurationInfo newAwsConfig = (AwsStorageConfigurationInfo) newStorageConfig;
+    if (currentStorageConfig instanceof AwsStorageConfigurationInfo currentAwsConfig
+        && newStorageConfig instanceof AwsStorageConfigurationInfo newAwsConfig) {
 
       if ((currentAwsConfig.getRoleARN() != null
               && !currentAwsConfig.getRoleARN().equals(newAwsConfig.getRoleARN()))
@@ -652,12 +649,8 @@ public class PolarisAdminService {
             "Cannot modify ExternalId in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
       }
-    } else if (currentStorageConfig instanceof AzureStorageConfigurationInfo
-        && newStorageConfig instanceof AzureStorageConfigurationInfo) {
-      AzureStorageConfigurationInfo currentAzureConfig =
-          (AzureStorageConfigurationInfo) currentStorageConfig;
-      AzureStorageConfigurationInfo newAzureConfig =
-          (AzureStorageConfigurationInfo) newStorageConfig;
+    } else if (currentStorageConfig instanceof AzureStorageConfigurationInfo currentAzureConfig
+        && newStorageConfig instanceof AzureStorageConfigurationInfo newAzureConfig) {
 
       if ((currentAzureConfig.getTenantId() != null
               && !currentAzureConfig.getTenantId().equals(newAzureConfig.getTenantId()))

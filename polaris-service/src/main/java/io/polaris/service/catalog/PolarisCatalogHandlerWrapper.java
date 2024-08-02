@@ -753,11 +753,8 @@ public class PolarisCatalogHandlerWrapper {
           .log("Attempted notification on internal catalog");
       throw new BadRequestException("Cannot update internal catalog via notifications");
     }
-    if (!(baseCatalog instanceof SupportsNotifications)) {
-      return false;
-    }
-    SupportsNotifications notificationCatalog = (SupportsNotifications) baseCatalog;
-    return notificationCatalog.sendNotification(identifier, request);
+    return baseCatalog instanceof SupportsNotifications notificationCatalog
+        && notificationCatalog.sendNotification(identifier, request);
   }
 
   public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
