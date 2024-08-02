@@ -58,13 +58,13 @@ Before using Polaris when using a metastore manager other than `in-memory`, you 
 To bootstrap Polaris, run a command like the following:
 
 ```bash
-java jar /app/snowflake-polaris-all.jar bootstrap polaris-server.yml
+java -jar /path/to/jar/snowflake-polaris-all.jar bootstrap polaris-server.yml
 ```
 
 Afterwards, you can launch Polaris normally with a command like the following:
 
 ```bash
-java jar /app/snowflake-polaris-all.jar server polaris-server.yml
+java -jar /path/to/jar/snowflake-polaris-all.jar server polaris-server.yml
 ```
 
 ## Other Configurations
