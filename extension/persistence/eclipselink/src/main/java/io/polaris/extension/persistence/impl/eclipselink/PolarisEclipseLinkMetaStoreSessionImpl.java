@@ -47,6 +47,9 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.Persistence;
+
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
@@ -117,6 +120,15 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
     this.storageIntegrationProvider = storageIntegrationProvider;
   }
 
+  private InputStream loadFile(String path) throws FileNotFoundException {
+    InputStream input = null;
+    input = this.getClass().getClassLoader().getResourceAsStream(path);
+    if (input == null) {
+      input = new FileInputStream(path);
+    }
+    return input;
+  }
+
   /** Load the persistence unit properties from a given configuration file */
   private Map<String, String> loadProperties(String confFile, String persistenceUnitName) {
     if (this.properties != null) {
@@ -124,7 +136,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
     }
 
     try {
-      InputStream input = this.getClass().getClassLoader().getResourceAsStream(confFile);
+      InputStream input = loadFile(confFile);
       DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
       DocumentBuilder builder = factory.newDocumentBuilder();
       Document doc = builder.parse(input);
