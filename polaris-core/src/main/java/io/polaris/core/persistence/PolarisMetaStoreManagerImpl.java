@@ -1163,6 +1163,8 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     // get metastore we should be using
     PolarisMetaStoreSession ms = callCtx.getMetaStore();
 
+    // TODO remove this comment
+
     // need to run inside a read/write transaction
     return ms.runInTransaction(
         callCtx,
