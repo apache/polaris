@@ -79,7 +79,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
         break;
       case FILE:
         storageIntegration =
-            new PolarisStorageIntegration<T>("file") {
+            new PolarisStorageIntegration<>("file") {
               @Override
               public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
                   @NotNull PolarisDiagnostics diagnostics,

@@ -117,19 +117,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private static final int MAX_RETRIES = 12;
 
   static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
-      new Predicate<Exception>() {
-        @Override
-        public boolean test(Exception ex) {
-          // Default arguments from BaseMetastoreTableOperation only stop retries on
-          // NotFoundException. We should more carefully identify the set of retriable
-          // and non-retriable exceptions here.
-          return !(ex instanceof NotFoundException)
-              && !(ex instanceof IllegalArgumentException)
-              && !(ex instanceof AlreadyExistsException)
-              && !(ex instanceof ForbiddenException)
-              && !(ex instanceof UnprocessableEntityException)
-              && isStorageProviderRetryableException(ex);
-        }
+      ex -> {
+        // Default arguments from BaseMetastoreTableOperation only stop retries on
+        // NotFoundException. We should more carefully identify the set of retriable
+        // and non-retriable exceptions here.
+        return !(ex instanceof NotFoundException)
+            && !(ex instanceof IllegalArgumentException)
+            && !(ex instanceof AlreadyExistsException)
+            && !(ex instanceof ForbiddenException)
+            && !(ex instanceof UnprocessableEntityException)
+            && isStorageProviderRetryableException(ex);
       };
   public static final String CLEANUP_ON_NAMESPACE_DROP = "CLEANUP_ON_NAMESPACE_DROP";
 
