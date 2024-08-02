@@ -1817,7 +1817,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
       // finally, validate that the metadata file is within the table directory
       validateMetadataFileInTableDir(
-          tableIdentifier, tableMetadata, CatalogEntity.of(resolvedParent.getRawFullPath().getFirst()));
+          tableIdentifier,
+          tableMetadata,
+          CatalogEntity.of(resolvedParent.getRawFullPath().getFirst()));
 
       // TODO: These might fail due to concurrent update; we need to do a retry in those cases.
       if (null == existingLocation) {
