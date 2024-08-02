@@ -54,8 +54,6 @@ public class TaskExecutorImpl implements TaskExecutor {
    * Add a {@link TaskHandler}. {@link TaskEntity}s will be tested against the {@link
    * TaskHandler#canHandleTask(TaskEntity)} method and will be handled by the first handler that
    * responds true.
-   *
-   * @param taskHandler
    */
   public void addTaskHandler(TaskHandler taskHandler) {
     taskHandlers.add(taskHandler);
@@ -64,9 +62,6 @@ public class TaskExecutorImpl implements TaskExecutor {
   /**
    * Register a {@link CallContext} for a specific task id. That task will be loaded and executed
    * asynchronously with a clone of the provided {@link CallContext}.
-   *
-   * @param taskEntityId
-   * @param callContext
    */
   @Override
   public void addTaskHandlerContext(long taskEntityId, CallContext callContext) {

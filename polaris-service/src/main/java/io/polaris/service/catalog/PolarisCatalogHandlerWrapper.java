@@ -468,10 +468,6 @@ public class PolarisCatalogHandlerWrapper {
   /**
    * Execute a catalog function and ensure we close the BaseCatalog afterward. This will typically
    * ensure the underlying FileIO is closed
-   *
-   * @param handler
-   * @return
-   * @param <T>
    */
   private <T> T doCatalogOperation(Supplier<T> handler) {
     try {
