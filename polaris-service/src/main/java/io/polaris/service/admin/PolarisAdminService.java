@@ -632,10 +632,8 @@ public class PolarisAdminService {
     if (currentStorageConfig instanceof AwsStorageConfigurationInfo currentAwsConfig
         && newStorageConfig instanceof AwsStorageConfigurationInfo newAwsConfig) {
 
-      if ((currentAwsConfig.getRoleARN() != null
-              && !currentAwsConfig.getRoleARN().equals(newAwsConfig.getRoleARN()))
-          || (newAwsConfig.getRoleARN() != null
-              && !newAwsConfig.getRoleARN().equals(currentAwsConfig.getRoleARN()))) {
+      if (!currentAwsConfig.getRoleARN().equals(newAwsConfig.getRoleARN())
+          || !newAwsConfig.getRoleARN().equals(currentAwsConfig.getRoleARN())) {
         throw new BadRequestException(
             "Cannot modify Role ARN in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
@@ -652,10 +650,8 @@ public class PolarisAdminService {
     } else if (currentStorageConfig instanceof AzureStorageConfigurationInfo currentAzureConfig
         && newStorageConfig instanceof AzureStorageConfigurationInfo newAzureConfig) {
 
-      if ((currentAzureConfig.getTenantId() != null
-              && !currentAzureConfig.getTenantId().equals(newAzureConfig.getTenantId()))
-          || (newAzureConfig.getTenantId() != null
-              && !newAzureConfig.getTenantId().equals(currentAzureConfig.getTenantId()))) {
+      if (!currentAzureConfig.getTenantId().equals(newAzureConfig.getTenantId())
+          || !newAzureConfig.getTenantId().equals(currentAzureConfig.getTenantId())) {
         throw new BadRequestException(
             "Cannot modify TenantId in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
