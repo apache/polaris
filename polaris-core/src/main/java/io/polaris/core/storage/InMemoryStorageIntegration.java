@@ -30,8 +30,8 @@ import org.jetbrains.annotations.NotNull;
  * Base class for in-memory implementations of {@link PolarisStorageIntegration}. A basic
  * implementation of {@link #validateAccessToLocations(PolarisStorageConfigurationInfo, Set, Set)}
  * is provided that checks to see that the list of locations being accessed is among the list of
- * {@link PolarisStorageConfigurationInfo#allowedLocations}. Locations being accessed must be equal
- * to or a subdirectory of at least one of the allowed locations.
+ * {@link PolarisStorageConfigurationInfo#getAllowedLocations()}. Locations being accessed must be
+ * equal to or a subdirectory of at least one of the allowed locations.
  *
  * @param <T>
  */
@@ -44,7 +44,7 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
 
   /**
    * Check that the locations being accessed are all equal to or subdirectories of at least one of
-   * the {@link PolarisStorageConfigurationInfo#allowedLocations}.
+   * the {@link PolarisStorageConfigurationInfo#getAllowedLocations}.
    *
    * @param storageConfig
    * @param actions a set of operation actions to validate, like LIST/READ/DELETE/WRITE/ALL
