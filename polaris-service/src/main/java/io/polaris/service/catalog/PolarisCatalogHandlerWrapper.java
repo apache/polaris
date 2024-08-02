@@ -418,7 +418,7 @@ public class PolarisCatalogHandlerWrapper {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_NAMESPACE;
 
     Namespace namespace = request.namespace();
-    if (namespace.length() == 0) {
+    if (namespace.isEmpty()) {
       throw new AlreadyExistsException(
           "Cannot create root namespace, as it already exists implicitly.");
     }

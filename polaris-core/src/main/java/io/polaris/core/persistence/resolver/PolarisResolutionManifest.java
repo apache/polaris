@@ -319,7 +319,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
         pathLookup);
     int index = pathLookup.get(key);
     List<EntityCacheEntry> resolved = primaryResolver.getResolvedPaths().get(index);
-    if (resolved.size() == 0) {
+    if (resolved.isEmpty()) {
       return PolarisEntitySubType.NULL_SUBTYPE;
     }
     return resolved.get(resolved.size() - 1).getEntity().getSubType();
