@@ -215,8 +215,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     List<ResolvedPolarisEntity> resolvedEntities = new ArrayList<>();
     resolvedEntities.add(
         new ResolvedPolarisEntity(passthroughResolver.getResolvedReferenceCatalog()));
-    resolvedPath.stream()
-        .forEach(cacheEntry -> resolvedEntities.add(new ResolvedPolarisEntity(cacheEntry)));
+    resolvedPath.forEach(cacheEntry -> resolvedEntities.add(new ResolvedPolarisEntity(cacheEntry)));
     LOG.debug("Returning resolvedEntities from getPassthroughResolvedPath: {}", resolvedEntities);
     return new PolarisResolvedPathWrapper(resolvedEntities);
   }
@@ -360,8 +359,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
       resolvedEntities.add(getResolvedRootContainerEntity());
     }
     resolvedEntities.add(new ResolvedPolarisEntity(primaryResolver.getResolvedReferenceCatalog()));
-    resolvedPath.stream()
-        .forEach(cacheEntry -> resolvedEntities.add(new ResolvedPolarisEntity(cacheEntry)));
+    resolvedPath.forEach(cacheEntry -> resolvedEntities.add(new ResolvedPolarisEntity(cacheEntry)));
     return new PolarisResolvedPathWrapper(resolvedEntities);
   }
 

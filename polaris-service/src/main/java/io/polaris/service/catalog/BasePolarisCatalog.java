@@ -1002,7 +1002,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                   newLevels[nsLevels.length] = ns.getName();
                   return Namespace.of(newLevels);
                 })
-            .collect(Collectors.toList());
+            .toList();
     LOG.debug(
         "Resolving {} sibling entities to validate location",
         siblingTables.size() + siblingNamespaces.size());
@@ -1849,11 +1849,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // Pre-create namespaces if they don't exist
     for (int i = 1; i <= namespace.length(); i++) {
       Namespace nsLevel =
-          Namespace.of(
-              Arrays.stream(namespace.levels())
-                  .limit(i)
-                  .collect(Collectors.toList())
-                  .toArray(String[]::new));
+          Namespace.of(Arrays.stream(namespace.levels()).limit(i).toList().toArray(String[]::new));
       if (resolvedEntityView.getPassthroughResolvedPath(nsLevel) == null) {
         Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(nsLevel);
         PolarisResolvedPathWrapper resolvedParent =

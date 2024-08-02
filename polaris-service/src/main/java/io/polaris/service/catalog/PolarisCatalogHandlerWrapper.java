@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.BaseTransaction;
@@ -301,14 +300,13 @@ public class PolarisCatalogHandlerWrapper {
       List<TableIdentifier> ids) {
     resolutionManifest =
         entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
-    ids.stream()
-        .forEach(
-            identifier ->
-                resolutionManifest.addPassthroughPath(
-                    new ResolverPath(
-                        PolarisCatalogHelpers.tableIdentifierToList(identifier),
-                        PolarisEntityType.TABLE_LIKE),
-                    identifier));
+    ids.forEach(
+        identifier ->
+            resolutionManifest.addPassthroughPath(
+                new ResolverPath(
+                    PolarisCatalogHelpers.tableIdentifierToList(identifier),
+                    PolarisEntityType.TABLE_LIKE),
+                identifier));
 
     ResolverStatus status = resolutionManifest.resolveAll();
 
@@ -735,7 +733,7 @@ public class PolarisCatalogHandlerWrapper {
           Namespace.of(
               Arrays.stream(identifier.namespace().levels())
                   .limit(i)
-                  .collect(Collectors.toList())
+                  .toList()
                   .toArray(String[]::new));
       extraPassthroughNamespaces.add(nsLevel);
     }
