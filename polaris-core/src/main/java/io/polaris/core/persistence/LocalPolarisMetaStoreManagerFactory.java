@@ -40,8 +40,7 @@ import org.slf4j.Logger;
  * PolarisMetaStoreManager} using an underlying meta store to store and retrieve all Polaris
  * metadata.
  */
-public abstract class LocalPolarisMetaStoreManagerFactory<
-        StoreType, SessionType extends PolarisMetaStoreSession>
+public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     implements MetaStoreManagerFactory {
 
   Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
