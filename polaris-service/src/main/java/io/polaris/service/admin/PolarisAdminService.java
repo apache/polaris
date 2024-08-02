@@ -97,7 +97,7 @@ public class PolarisAdminService {
   public static final String CLEANUP_ON_CATALOG_DROP = "CLEANUP_ON_CATALOG_DROP";
 
   private final CallContext callContext;
-  private PolarisEntityManager entityManager;
+  private final PolarisEntityManager entityManager;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final PolarisAuthorizer authorizer;
 

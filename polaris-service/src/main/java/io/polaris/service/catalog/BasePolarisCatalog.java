@@ -141,7 +141,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private String ioImplClassName;
   private FileIO catalogFileIO;
-  private String catalogName;
+  private final String catalogName;
   private long catalogId = -1;
   private String defaultBaseLocation;
   private CloseableGroup closeableGroup;

@@ -76,8 +76,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   private static final Logger LOG =
       LoggerFactory.getLogger(PolarisEclipseLinkMetaStoreSessionImpl.class);
 
-  private EntityManagerFactory emf;
-  private ThreadLocal<EntityManager> localSession = new ThreadLocal<>();
+  private final EntityManagerFactory emf;
+  private final ThreadLocal<EntityManager> localSession = new ThreadLocal<>();
   private final PolarisEclipseLinkStore store;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private static volatile Map<String, String> properties;

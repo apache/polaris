@@ -33,7 +33,7 @@ import org.jetbrains.annotations.NotNull;
 @JsonTypeName("in-memory")
 public class InMemoryPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
-  Set<String> bootstrappedRealms = new HashSet<>();
+  final Set<String> bootstrappedRealms = new HashSet<>();
 
   @Override
   protected PolarisTreeMapStore createBackingStore(@NotNull PolarisDiagnostics diagnostics) {

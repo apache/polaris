@@ -48,7 +48,7 @@ public class PolarisEclipseLinkStore {
   private static final Logger LOG = LoggerFactory.getLogger(PolarisEclipseLinkStore.class);
 
   // diagnostic services
-  private PolarisDiagnostics diagnosticServices;
+  private final PolarisDiagnostics diagnosticServices;
 
   /**
    * Constructor, allocate everything at once

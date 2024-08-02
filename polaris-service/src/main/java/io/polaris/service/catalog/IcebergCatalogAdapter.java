@@ -74,7 +74,7 @@ public class IcebergCatalogAdapter
 
   private final CallContextCatalogFactory catalogFactory;
   private final RealmEntityManagerFactory entityManagerFactory;
-  private PolarisAuthorizer polarisAuthorizer;
+  private final PolarisAuthorizer polarisAuthorizer;
 
   public IcebergCatalogAdapter(
       CallContextCatalogFactory catalogFactory,
