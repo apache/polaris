@@ -20,6 +20,7 @@ dependencies {
     implementation(libs.eclipselink)
     implementation(platform(libs.dropwizard.bom))
     implementation("io.dropwizard:dropwizard-jackson")
+    implementation(libs.h2) // Different dependencies will be needed for different backend databases
 
     testImplementation(libs.h2)
     testImplementation(testFixtures(project(":polaris-core")))
