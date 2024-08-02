@@ -119,8 +119,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** Load the persistence unit properties from a given configuration file */
   private Map<String, String> loadProperties(String confFile, String persistenceUnitName) {
-    if (this.properties != null) {
-      return this.properties;
+    if (properties != null) {
+      return properties;
     }
 
     try {
@@ -141,7 +141,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
             nodeMap.getNamedItem("value").getNodeValue());
       }
 
-      this.properties = properties;
+      PolarisEclipseLinkMetaStoreSessionImpl.properties = properties;
       return properties;
     } catch (Exception e) {
       LOG.warn(
