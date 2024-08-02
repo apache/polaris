@@ -40,9 +40,11 @@ public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplication
   @Override
   public void configure(Subparser subparser) {
     super.configure(subparser);
-    subparser.addArgument("--overwrite")
+    subparser
+        .addArgument("--overwrite")
         .action(Arguments.storeTrue())
-        .help("If set, overwrite existing entities during bootstrapping. This may be irreversible.");
+        .help(
+            "If set, overwrite existing entities during bootstrapping. This may be irreversible.");
   }
 
   @Override
