@@ -15,6 +15,9 @@
  */
 package io.polaris.service;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Objects.requireNonNull;
+
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -88,6 +91,8 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
@@ -113,30 +118,14 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     printAsciiArt();
   }
 
-  private static void printAsciiArt() {
-    String bannerArt =
-        String.join(
-            "\n",
-            " @@@@   @@@  @       @    @@@@   @  @@@@    @@@@    @  @@@@@  @    @     @@@   @@@@ ",
-            " @   @ @   @ @      @ @   @   @  @  @@     @       @ @   @   @ @   @    @   @ @     ",
-            " @@@@  @   @ @     @@@@@  @@@@   @    @@   @      @@@@@  @  @@@@@  @    @   @ @  @@@",
-            " @      @@@  @@@@ @     @ @  @@  @  @@@@    @@@@ @     @ @ @@   @@ @@@@  @@@   @@@@ ",
-            "                                                                                    ",
-            "                                                                                    ",
-            "                                                                                    ",
-            "                                                                                    ",
-            "                                      /////|                                        ",
-            "                                   //||///T|||                                      ",
-            "                                ///|||////||||||                                    ",
-            "                               //||||T////|||||||||                                 ",
-            "                          /T| //|||||T///T||//T||||||                               ",
-            "                        //|||/////T||////||/////|||||||  //||                       ",
-            "                     //||||||T///////////////////T|||||||T|||||                     ",
-            "                  //||||/////T|//////////|///////T|||||T||||||||                    ",
-            "                 //|||||/////|||T////////////////||||||/|||||||||                   ",
-            ",,..,,,..,,,..,//||||////////||||||||||/////////|||||///||||||||||,,,..,,..,,,..,,,.",
-            ",,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,.,,,..,,,..,");
-    System.out.println(bannerArt.replaceAll("\\|", "\\\\"));
+  private static void printAsciiArt() throws IOException {
+    URL url = PolarisApplication.class.getResource("banner.txt");
+    try (InputStream in =
+        requireNonNull(url, "banner.txt not found on classpath")
+            .openConnection()
+            .getInputStream()) {
+      System.out.println(new String(in.readAllBytes(), UTF_8));
+    }
   }
 
   @Override
