@@ -956,7 +956,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // namespaces
     Optional<NamespaceEntity> parentNamespace =
         parentPath.size() > 1
-            ? Optional.of(NamespaceEntity.of(parentPath.get(parentPath.size() - 1)))
+            ? Optional.of(NamespaceEntity.of(parentPath.getLast()))
             : Optional.empty();
 
     List<TableIdentifier> siblingTables =
@@ -1001,7 +1001,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         siblingTables.size() + siblingNamespaces.size());
     PolarisResolutionManifest resolutionManifest =
         new PolarisResolutionManifest(
-            callContext, entityManager, authenticatedPrincipal, parentPath.get(0).getName());
+            callContext, entityManager, authenticatedPrincipal, parentPath.getFirst().getName());
     siblingTables.forEach(
         tbl ->
             resolutionManifest.addPath(
@@ -1177,7 +1177,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           resolvedTableEntities == null
               ? resolvedEntityView.getResolvedPath(tableIdentifier.namespace()).getRawFullPath()
               : resolvedTableEntities.getRawParentPath();
-      CatalogEntity catalog = CatalogEntity.of(resolvedNamespace.get(0));
+      CatalogEntity catalog = CatalogEntity.of(resolvedNamespace.getFirst());
 
       if (base == null || !metadata.location().equals(base.location())) {
         // If location is changing then we must validate that the requested location is valid
@@ -1817,7 +1817,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
       // finally, validate that the metadata file is within the table directory
       validateMetadataFileInTableDir(
-          tableIdentifier, tableMetadata, CatalogEntity.of(resolvedParent.getRawFullPath().get(0)));
+          tableIdentifier, tableMetadata, CatalogEntity.of(resolvedParent.getRawFullPath().getFirst()));
 
       // TODO: These might fail due to concurrent update; we need to do a retry in those cases.
       if (null == existingLocation) {
