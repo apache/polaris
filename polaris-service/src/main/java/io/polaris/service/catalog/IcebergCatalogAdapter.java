@@ -257,7 +257,7 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
-    if (purgeRequested != null && purgeRequested.booleanValue()) {
+    if (purgeRequested != null && purgeRequested) {
       newHandlerWrapper(securityContext, prefix).dropTableWithPurge(tableIdentifier);
     } else {
       newHandlerWrapper(securityContext, prefix).dropTableWithoutPurge(tableIdentifier);
