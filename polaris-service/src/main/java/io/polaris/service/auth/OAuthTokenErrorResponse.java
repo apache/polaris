@@ -44,11 +44,7 @@ public class OAuthTokenErrorResponse {
   private final String errorDescription;
   private String errorUri;
 
-  /**
-   * Initlaizes a response from one of the supported errors
-   *
-   * @param error
-   */
+  /** Initlaizes a response from one of the supported errors */
   public OAuthTokenErrorResponse(Error error) {
     this.error = error.name();
     this.errorDescription = error.getErrorDescription();

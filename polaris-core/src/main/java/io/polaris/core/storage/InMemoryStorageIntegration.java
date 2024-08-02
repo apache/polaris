@@ -46,7 +46,6 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
    * Check that the locations being accessed are all equal to or subdirectories of at least one of
    * the {@link PolarisStorageConfigurationInfo#getAllowedLocations}.
    *
-   * @param storageConfig
    * @param actions a set of operation actions to validate, like LIST/READ/DELETE/WRITE/ALL
    * @param locations a set of locations to get access to
    * @return a map of location to a validation result for each action passed in. In this

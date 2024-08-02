@@ -66,11 +66,7 @@ public class AzureLocation {
     filePath = path == null ? "" : path.startsWith("/") ? path.substring(1) : path;
   }
 
-  /**
-   * Get the storage account
-   *
-   * @return
-   */
+  /** Get the storage account */
   public String getStorageAccount() {
     return storageAccount;
   }
