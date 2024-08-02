@@ -38,12 +38,8 @@ public class TokenRequestValidator {
    *       to the format
    * </ul>
    *
-   * @param clientId
-   * @param clientSecret
-   * @param grantType
    * @param scope while optional in the Iceberg REST API Spec we make it required and expect it to
    *     conform to the format "PRINCIPAL_ROLE:NAME PRINCIPAL_ROLE:NAME2 ..."
-   * @return
    */
   public Optional<OAuthTokenErrorResponse.Error> validateForClientCredentialsFlow(
       final String clientId,

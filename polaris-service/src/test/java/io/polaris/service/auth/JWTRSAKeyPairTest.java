@@ -15,9 +15,8 @@
  */
 package io.polaris.service.auth;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Fail.fail;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
@@ -138,12 +137,12 @@ public class JWTRSAKeyPairTest {
     } catch (Exception e) {
       fail("Unexpected exception: " + e);
     }
-    assertNotNull(token);
-    assertEquals(420, token.getExpiresIn());
+    assertThat(token).isNotNull();
+    assertThat(token.getExpiresIn()).isEqualTo(420);
 
     LocalRSAKeyProvider provider = new LocalRSAKeyProvider();
-    assertNotNull(provider.getPrivateKey());
-    assertNotNull(provider.getPublicKey());
+    assertThat(provider.getPrivateKey()).isNotNull();
+    assertThat(provider.getPublicKey()).isNotNull();
     JWTVerifier verifier =
         JWT.require(
                 Algorithm.RSA256(
@@ -152,8 +151,8 @@ public class JWTRSAKeyPairTest {
             .withIssuer("polaris")
             .build();
     DecodedJWT decodedJWT = verifier.verify(token.getAccessToken());
-    assertNotNull(decodedJWT);
-    assertEquals(decodedJWT.getClaim("scope").asString(), "PRINCIPAL_ROLE:TEST");
-    assertEquals(decodedJWT.getClaim("client_id").asString(), "test-client-id");
+    assertThat(decodedJWT).isNotNull();
+    assertThat(decodedJWT.getClaim("scope").asString()).isEqualTo("PRINCIPAL_ROLE:TEST");
+    assertThat(decodedJWT.getClaim("client_id").asString()).isEqualTo("test-client-id");
   }
 }

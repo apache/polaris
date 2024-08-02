@@ -17,6 +17,7 @@ import argparse
 import sys
 from typing import List, Optional, Dict
 
+from cli.constants import Arguments
 from cli.options.option_tree import OptionTree, Option, Argument
 
 
@@ -33,11 +34,11 @@ class Parser(object):
     """
 
     _ROOT_ARGUMENTS = [
-        Argument('host', str, hint='hostname', default='localhost'),
-        Argument('port', int, hint='port', default=8181),
-        Argument('client-id', str, hint='client ID for token-based authentication'),
-        Argument('client-secret', str, hint='client secret for token-based authentication'),
-        Argument('access-token', str, hint='access token for token-based authentication'),
+        Argument(Arguments.HOST, str, hint='hostname', default='localhost'),
+        Argument(Arguments.PORT, int, hint='port', default=8181),
+        Argument(Arguments.CLIENT_ID, str, hint='client ID for token-based authentication'),
+        Argument(Arguments.CLIENT_SECRET, str, hint='client secret for token-based authentication'),
+        Argument(Arguments.ACCESS_TOKEN, str, hint='access token for token-based authentication'),
     ]
 
     @staticmethod
@@ -151,13 +152,19 @@ class TreeHelpParser(argparse.ArgumentParser):
         result = ""
         result += (TreeHelpParser.INDENT * indent) + option.name
 
+        if option.args:
+            result += '\n' + (TreeHelpParser.INDENT * (indent + 1)) + "Named arguments:"
         for arg in option.args:
-            result += '\n' + (TreeHelpParser.INDENT * (indent + 1)) + f"{arg.get_flag_name()}  {arg.hint}"
+            result += '\n' + (TreeHelpParser.INDENT * (indent + 2)) + f"{arg.get_flag_name()}  {arg.hint}"
+
+        if option.input_name:
+            result += '\n' + (TreeHelpParser.INDENT * (indent + 1)) + "Positional arguments:"
+            result += '\n' + (TreeHelpParser.INDENT * (indent + 2)) + option.input_name
 
         if len(option.args) > 0 and len(option.children) > 0:
             result += '\n'
 
-        for child in option.children:
+        for child in sorted(option.children, key=lambda o: o.name):
             result += '\n' + self._get_tree_for_option(child, indent + 1)
 
         return result

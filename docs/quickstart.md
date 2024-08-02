@@ -16,7 +16,7 @@
 
 # Quick Start
 
-This guide serves as a introduction to several key entities that can be managed with Polaris, describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Spark and Trino.
+This guide serves as a introduction to several key entities that can be managed with Polaris, describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Apache Spark.
 
 ## Prerequisites
 
@@ -39,17 +39,13 @@ git clone https://github.com/polaris-catalog/polaris.git
 
 #### With Docker
 
-If you plan to deploy Polaris inside [Docker](https://www.docker.com/)], you'll need to install docker itself. For can be done using [homebrew](https://brew.sh/):
+If you plan to deploy Polaris inside [Docker](https://www.docker.com/), you'll need to install docker itself. For example, this can be done using [homebrew](https://brew.sh/):
 
 ```
-brew install docker
+brew install --cask docker
 ```
 
-Once installed, make sure Docker is running. This can be done on macOS with:
-
-```
-open -a Docker
-```
+Once installed, make sure Docker is running.
 
 #### From Source
 
@@ -60,7 +56,7 @@ Polaris is built using [gradle](https://gradle.org/) and is compatible with Java
 ```
 cd ~/polaris
 jenv local 21
-brew install openjdk@21 gradle@8 jenv
+brew install openjdk@21 jenv
 jenv add $(brew --prefix openjdk@21)
 jenv local 21
 ```
@@ -77,13 +73,13 @@ If you want to connect to Polaris with [Apache Spark](https://spark.apache.org/)
 brew install git
 ```
 
-Then, clone Spark and check out a versioned branch. This guide uses [Spark 3.5.0](https://spark.apache.org/releases/spark-release-3-5-0.html).
+Then, clone Spark and check out a versioned branch. This guide uses [Spark 3.5](https://spark.apache.org/releases/spark-release-3-5-0.html).
 
 ```
 cd ~
 git clone https://github.com/apache/spark.git
 cd ~/spark
-git checkout branch-3.5.0
+git checkout branch-3.5
 ```
 
 ## Deploying Polaris 
@@ -128,7 +124,7 @@ For this tutorial, we'll launch an instance of Polaris that stores entities only
 When Polaris is launched using in-memory mode the root `CLIENT_ID` and `CLIENT_SECRET` can be found in stdout on initial startup. For example:
 
 ```
-Bootstrapped with credentials: {"client-id": "XXXX", "client-secret": "YYYY"}
+realm: default-realm root principal credentials: XXXX:YYYY
 ```
 
 Be sure to note of these credentials as we'll be using them below.
@@ -230,10 +226,10 @@ In order to give this principal the ability to interact with the catalog, we mus
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   privileges \
-  --catalog quickstart_catalog \
-  --catalog-role quickstart_catalog_role \
   catalog \
   grant \
+  --catalog quickstart_catalog \
+  --catalog-role quickstart_catalog_role \
   CATALOG_MANAGE_CONTENT
 ```
 
@@ -251,7 +247,7 @@ At this point, we’ve created a principal and granted it the ability to manage 
 
 To use a Polaris-managed catalog in [Apache Spark](https://spark.apache.org/), we can configure Spark to use the Iceberg catalog REST API. 
 
-This guide uses [Apache Spark 3.5](https://spark.apache.org/releases/spark-release-3-5-0.html), but be sure to find [the appropriate iceberg-spark package for your Spark version](https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-spark). With a local Spark clone, we on the `branch-3.5` branch we can run the following:
+This guide uses [Apache Spark 3.5](https://spark.apache.org/releases/spark-release-3-5-0.html), but be sure to find [the appropriate iceberg-spark package for your Spark version](https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-spark). From a local Spark clone on the `branch-3.5` branch we can run the following:
 
 _Note: the credentials provided here are those for our principal, not the root credentials._
 
@@ -311,10 +307,10 @@ If at any time access is revoked...
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
   privileges \
-  --catalog quickstart_catalog \
-  --catalog-role quickstart_catalog_role \
   catalog \
   revoke \
+  --catalog quickstart_catalog \
+  --catalog-role quickstart_catalog_role \
   CATALOG_MANAGE_CONTENT
 ```
 

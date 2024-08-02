@@ -34,11 +34,7 @@ public class StorageCredentialCacheEntry {
     this.credsMap = scopedCredentialsResult.getCredentials();
   }
 
-  /**
-   * Get the expiration time in millisecond for the cached entry
-   *
-   * @return
-   */
+  /** Get the expiration time in millisecond for the cached entry */
   public long getExpirationTime() {
     if (credsMap.containsKey(PolarisCredentialProperty.GCS_ACCESS_TOKEN_EXPIRES_AT)) {
       return Long.parseLong(credsMap.get(PolarisCredentialProperty.GCS_ACCESS_TOKEN_EXPIRES_AT));

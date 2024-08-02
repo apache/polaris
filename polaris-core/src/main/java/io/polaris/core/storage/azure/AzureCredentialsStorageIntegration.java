@@ -240,13 +240,7 @@ public class AzureCredentialsStorageIntegration
     }
   }
 
-  /**
-   * Verify that storage accounts, containers and endpoint are the same
-   *
-   * @param target
-   * @param readLocations
-   * @param writeLocations
-   */
+  /** Verify that storage accounts, containers and endpoint are the same */
   private void validateAccountAndContainer(
       AzureLocation target, Set<String> readLocations, Set<String> writeLocations) {
     Set<String> allLocations = new HashSet<>();

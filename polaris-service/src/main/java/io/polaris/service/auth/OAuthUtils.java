@@ -32,8 +32,6 @@ public class OAuthUtils {
   public static final String SF_ACCOUNT_URL_HEADER = "sf-account-url";
 
   /**
-   * @param clientId
-   * @param clientSecret
    * @return basic Authorization Header of the form `base64_encode(client_id:client_secret)
    */
   public static String getBasicAuthHeader(String clientId, String clientSecret) {

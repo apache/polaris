@@ -19,8 +19,8 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 /**
- * Token type identifier, from RFC 8693 Section 3 See
- * https://datatracker.ietf.org/doc/html/rfc8693#section-3
+ * Token type identifier, from <a href="https://datatracker.ietf.org/doc/html/rfc8693#section-3">RFC
+ * 8693 Section 3</a>
  */
 public enum TokenType {
   ACCESS_TOKEN("urn:ietf:params:oauth:token-type:access_token"),
