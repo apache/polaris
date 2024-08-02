@@ -33,6 +33,7 @@ import com.azure.storage.file.datalake.models.DataLakeStorageException;
 import com.azure.storage.file.datalake.sas.DataLakeServiceSasSignatureValues;
 import com.azure.storage.file.datalake.sas.PathSasPermission;
 import io.polaris.core.PolarisDiagnostics;
+import io.polaris.core.admin.model.AzureStorageConfigInfo;
 import io.polaris.core.storage.InMemoryStorageIntegration;
 import io.polaris.core.storage.PolarisCredentialProperty;
 import io.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -89,6 +90,40 @@ public class AzureCredentialsStorageIntegration
     String endpoint = "https://" + storageDnsName;
     String filePath = location.getFilePath();
 
+    AzureStorageConfigInfo.AuthTypeEnum authType = storageConfig.getAuthType();
+    String sasToken = "";
+
+    switch (authType) {
+      case SAS_TOKEN:
+        sasToken =
+            getSasToken(
+                storageConfig,
+                allowListOperation,
+                allowedReadLocations,
+                allowedWriteLocations,
+                location,
+                filePath,
+                storageDnsName,
+                loc);
+        break;
+
+      case APPLICATION_DEFAULT:
+        break;
+    }
+    credentialMap.put(PolarisCredentialProperty.AZURE_SAS_TOKEN, sasToken);
+    credentialMap.put(PolarisCredentialProperty.AZURE_ACCOUNT_HOST, storageDnsName);
+    return credentialMap;
+  }
+
+  private String getSasToken(
+      @NotNull AzureStorageConfigurationInfo storageConfig,
+      boolean allowListOperation,
+      @NotNull Set<String> allowedReadLocations,
+      @NotNull Set<String> allowedWriteLocations,
+      AzureLocation location,
+      String filePath,
+      String storageDnsName,
+      String loc) {
     BlobSasPermission blobSasPermission = new BlobSasPermission();
     // pathSasPermission is for Data lake storage
     PathSasPermission pathSasPermission = new PathSasPermission();
@@ -160,9 +195,7 @@ public class AzureCredentialsStorageIntegration
       throw new RuntimeException(
           String.format("Endpoint %s not supported", location.getEndpoint()));
     }
-    credentialMap.put(PolarisCredentialProperty.AZURE_SAS_TOKEN, sasToken);
-    credentialMap.put(PolarisCredentialProperty.AZURE_ACCOUNT_HOST, storageDnsName);
-    return credentialMap;
+    return sasToken;
   }
 
   private String getBlobUserDelegationSas(

@@ -581,7 +581,10 @@ public class PolarisServiceImplIntegrationTest {
   @Test
   public void testCreateAndUpdateAzureCatalog() {
     StorageConfigInfo storageConfig =
-        new AzureStorageConfigInfo("azure:tenantid:12345", StorageConfigInfo.StorageTypeEnum.AZURE);
+        new AzureStorageConfigInfo(
+            "azure:tenantid:12345",
+            AzureStorageConfigInfo.AuthTypeEnum.SAS_TOKEN,
+            StorageConfigInfo.StorageTypeEnum.AZURE);
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -612,7 +615,10 @@ public class PolarisServiceImplIntegrationTest {
     }
 
     StorageConfigInfo modifiedStorageConfig =
-        new AzureStorageConfigInfo("azure:tenantid:22222", StorageConfigInfo.StorageTypeEnum.AZURE);
+        new AzureStorageConfigInfo(
+            "azure:tenantid:22222",
+            AzureStorageConfigInfo.AuthTypeEnum.SAS_TOKEN,
+            StorageConfigInfo.StorageTypeEnum.AZURE);
     UpdateCatalogRequest badUpdateRequest =
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),

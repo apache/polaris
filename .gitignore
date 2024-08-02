@@ -50,6 +50,7 @@ gradle/wrapper/gradle-wrapper-*.sha256
 
 # jenv
 .java-version
+.sdkmanrc
 
 # Log files
 *.log
@@ -68,3 +69,7 @@ hs_err_pid*
 # macOS
 *.DS_Store
 .DS_Store
+
+# python
+polaris-venv
+pyproject.toml

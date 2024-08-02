@@ -151,6 +151,7 @@ public class CatalogEntity extends PolarisEntity {
             .setConsentUrl(azureConfig.getConsentUrl())
             .setStorageType(AZURE)
             .setAllowedLocations(azureConfig.getAllowedLocations())
+            .setAuthType(azureConfig.getAuthType())
             .build();
       }
       if (configInfo instanceof GcpStorageConfigurationInfo) {
@@ -254,7 +255,9 @@ public class CatalogEntity extends PolarisEntity {
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
             config =
                 new AzureStorageConfigurationInfo(
-                    new ArrayList<>(allowedLocations), azureConfigModel.getTenantId());
+                    new ArrayList<>(allowedLocations),
+                    azureConfigModel.getTenantId(),
+                    azureConfigModel.getAuthType());
             break;
           case GCS:
             config = new GcpStorageConfigurationInfo(new ArrayList<>(allowedLocations));

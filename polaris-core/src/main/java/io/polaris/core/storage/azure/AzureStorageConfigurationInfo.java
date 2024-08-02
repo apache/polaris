@@ -19,6 +19,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
+import io.polaris.core.admin.model.AzureStorageConfigInfo;
 import io.polaris.core.storage.PolarisStorageConfigurationInfo;
 import java.util.List;
 import java.util.Objects;
@@ -42,13 +43,18 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
   @JsonProperty(value = "consentUrl", required = false)
   private @Nullable String consentUrl = null;
 
+  private final @NotNull AzureStorageConfigInfo.AuthTypeEnum authType;
+
   @JsonCreator
   public AzureStorageConfigurationInfo(
       @JsonProperty(value = "allowedLocations", required = true) @NotNull
           List<String> allowedLocations,
-      @JsonProperty(value = "tenantId", required = true) @NotNull String tenantId) {
+      @JsonProperty(value = "tenantId", required = true) @NotNull String tenantId,
+      @JsonProperty(value = "authType", required = true) @NotNull
+          AzureStorageConfigInfo.AuthTypeEnum authType) {
     super(StorageType.AZURE, allowedLocations);
     this.tenantId = tenantId;
+    this.authType = authType;
     validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
   }
 
@@ -75,6 +81,10 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
 
   public void setConsentUrl(String consentUrl) {
     this.consentUrl = consentUrl;
+  }
+
+  public @NotNull AzureStorageConfigInfo.AuthTypeEnum getAuthType() {
+    return authType;
   }
 
   @Override

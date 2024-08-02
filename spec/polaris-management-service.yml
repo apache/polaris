@@ -912,8 +912,15 @@ components:
         consentUrl:
           type: string
           description: URL to the Azure permissions request page
+        authType:
+          type: string
+          enum:
+            - SAS_TOKEN
+            - APPLICATION_DEFAULT
+          description: the type of authentication to use
       required:
         - tenantId
+        - authType
 
     GcpStorageConfigInfo:
       type: object
