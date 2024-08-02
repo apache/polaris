@@ -19,7 +19,8 @@ from typing import Dict, Optional
 from pydantic import StrictStr
 
 from cli.command import Command
-from cli.constants import Subcommands
+from cli.constants import Subcommands, Arguments
+from cli.options.option_tree import Argument
 from polaris.management import PolarisDefaultApi, CreatePrincipalRoleRequest, PrincipalRole, UpdatePrincipalRoleRequest, \
     GrantCatalogRoleRequest, CatalogRole, GrantPrincipalRoleRequest
 
@@ -46,10 +47,12 @@ class PrincipalRolesCommand(Command):
     def validate(self):
         if self.principal_roles_subcommand == Subcommands.LIST:
             if self.principal_name and self.catalog_role_name:
-                raise Exception('You may provide either --principal or --catalog-role, but not both')
+                raise Exception(f'You may provide either {Argument.to_flag_name(Arguments.PRINCIPAL)} or'
+                                f' {Argument.to_flag_name(Arguments.CATALOG_ROLE)}, but not both')
         if self.principal_roles_subcommand in {Subcommands.GRANT, Subcommands.REVOKE}:
             if not self.principal_name:
-                raise Exception(f"Missing required argument for {self.principal_roles_subcommand}: --principal")
+                raise Exception(f'Missing required argument for {self.principal_roles_subcommand}:'
+                                f' {Argument.to_flag_name(Arguments.PRINCIPAL)}')
 
     def execute(self, api: PolarisDefaultApi) -> None:
         if self.principal_roles_subcommand == Subcommands.CREATE:

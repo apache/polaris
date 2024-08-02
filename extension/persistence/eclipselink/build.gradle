@@ -17,10 +17,10 @@
 dependencies {
     implementation(project(":polaris-core"))
     runtimeOnly(project(":polaris-service"))
-    implementation("org.eclipse.persistence:eclipselink:4.0.3")
-    implementation("io.dropwizard:dropwizard-jackson:${dropwizardVersion}")
-    implementation("com.h2database:h2:2.2.224") // Different dependencies will be needed for different backend database
-    
-    testImplementation("com.h2database:h2:2.2.224")
+    implementation(libs.eclipselink)
+    implementation(platform(libs.dropwizard.bom))
+    implementation("io.dropwizard:dropwizard-jackson")
+
+    testImplementation(libs.h2)
     testImplementation(testFixtures(project(":polaris-core")))
 }
