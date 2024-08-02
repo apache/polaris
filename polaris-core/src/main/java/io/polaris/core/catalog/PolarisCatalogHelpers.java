@@ -36,8 +36,7 @@ public class PolarisCatalogHelpers {
   private PolarisCatalogHelpers() {}
 
   public static List<String> tableIdentifierToList(TableIdentifier identifier) {
-    List<String> fullList = new ArrayList<>();
-    fullList.addAll(Arrays.asList(identifier.namespace().levels()));
+    List<String> fullList = new ArrayList<>(Arrays.asList(identifier.namespace().levels()));
     fullList.add(identifier.name());
     return fullList;
   }

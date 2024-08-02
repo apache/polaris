@@ -23,7 +23,7 @@ import io.polaris.core.persistence.PolarisMetaStoreManager;
 import io.polaris.core.persistence.PolarisMetaStoreSession;
 import io.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
 import io.polaris.core.persistence.PolarisTreeMapStore;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -68,7 +68,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
 
   private void bootstrapRealmAndPrintCredentials(String realmId) {
     Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> results =
-        this.bootstrapRealms(Arrays.asList(realmId));
+        this.bootstrapRealms(Collections.singletonList(realmId));
     bootstrappedRealms.add(realmId);
 
     PolarisMetaStoreManager.PrincipalSecretsResult principalSecrets = results.get(realmId);
