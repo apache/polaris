@@ -40,16 +40,21 @@ Polaris is built using Gradle with Java 21+ and Docker 27+.
   - These credentials can be used as "Client ID" and "Client Secret" in OAuth2 requests (e.g. the `curl` command below).
 - `./regtests/run.sh` - To run regression tests or end-to-end tests in another terminal.
 
-### Running in Docker
+Running in Docker
 - `docker build -t localhost:5001/polaris:latest .` - To build the image.
 - `docker run -p 8181:8181 localhost:5001/polaris:latest` - To run the image in standalone mode.
 - `docker compose up --build --exit-code-from regtest` - To run regression tests in a Docker environment.
 
-### Running in Kubernetes
+Running in Kubernetes
 - `./setup.sh` - To run Polaris as a mini-deployment locally. This will create two pods that bind themselves to port `8181`.
 - `kubectl get pods` - To check the status of the pods.
 - `kubectl get deployment` - To check the status of the deployment.
 - `kubectl describe deployment polaris-deployment` - To troubleshoot if things aren't working as expected.
+
+Polaris is organized into the following modules:
+- `polaris-core` - The main Polaris entity definitions and core business logic
+- `polaris-server` - The Polaris REST API server
+- `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
 
 ## Connecting from an Engine
 To connect from an engine like Spark, first create a catalog with these steps:
@@ -66,12 +71,8 @@ curl -i -X POST -H "Authorization: Bearer $PRINCIPAL_TOKEN" -H 'Accept: applicat
   -d '{"name": "polaris", "id": 100, "type": "INTERNAL", "readOnly": false, "storageConfigInfo": {"storageType": "FILE"}, "properties": {"default-base-location": "file:///tmp/polaris"}}'
 ```
 
-From here, you can use Spark to create namespaces, tables, etc. More details can be found in the [Quick Start Guide](https://polaris.io/#section/Quick-Start/Using-Iceberg-and-Polarise).
-
-Polaris is organized into the following modules:
-- `polaris-core` - The main Polaris entity definitions and core business logic
-- `polaris-server` - The Polaris REST API server
-- `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
+From here, you can use Spark to create namespaces, tables, etc. More details can be found in the
+[Quick Start Guide](https://polaris.io/#section/Quick-Start/Using-Iceberg-and-Polarise).
 
 ## API Docs
 - API docs are hosted at https://polaris.io. All updates to the main branch update the hosted docs.
