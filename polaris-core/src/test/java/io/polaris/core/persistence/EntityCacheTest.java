@@ -28,7 +28,7 @@ import io.polaris.core.persistence.cache.EntityCacheByNameKey;
 import io.polaris.core.persistence.cache.EntityCacheEntry;
 import io.polaris.core.persistence.cache.EntityCacheLookupResult;
 import java.util.List;
-import org.junit.jupiter.api.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -103,29 +103,29 @@ public class EntityCacheTest {
     EntityCacheLookupResult lookup =
         cache.getOrLoadEntityByName(
             this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
-    Assertions.assertNotNull(lookup);
-    Assertions.assertFalse(lookup.isCacheHit());
-    Assertions.assertNotNull(lookup.getCacheEntry());
+    Assertions.assertThat(lookup).isNotNull();
+    Assertions.assertThat(lookup.isCacheHit()).isFalse();
+    Assertions.assertThat(lookup.getCacheEntry()).isNotNull();
 
     // validate the cache entry
     PolarisBaseEntity catalog = lookup.getCacheEntry().getEntity();
-    Assertions.assertNotNull(catalog);
-    Assertions.assertEquals(PolarisEntityType.CATALOG, catalog.getType());
+    Assertions.assertThat(catalog).isNotNull();
+    Assertions.assertThat(catalog.getType()).isEqualTo(PolarisEntityType.CATALOG);
 
     // do it again, should be found in the cache
     lookup =
         cache.getOrLoadEntityByName(
             this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
-    Assertions.assertNotNull(lookup);
-    Assertions.assertTrue(lookup.isCacheHit());
+    Assertions.assertThat(lookup).isNotNull();
+    Assertions.assertThat(lookup.isCacheHit()).isTrue();
 
     // do it again by id, should be found in the cache
     lookup = cache.getOrLoadEntityById(this.callCtx, catalog.getCatalogId(), catalog.getId());
-    Assertions.assertNotNull(lookup);
-    Assertions.assertTrue(lookup.isCacheHit());
-    Assertions.assertNotNull(lookup.getCacheEntry());
-    Assertions.assertNotNull(lookup.getCacheEntry().getEntity());
-    Assertions.assertNotNull(lookup.getCacheEntry().getGrantRecordsAsSecurable());
+    Assertions.assertThat(lookup).isNotNull();
+    Assertions.assertThat(lookup.isCacheHit()).isTrue();
+    Assertions.assertThat(lookup.getCacheEntry()).isNotNull();
+    Assertions.assertThat(lookup.getCacheEntry().getEntity()).isNotNull();
+    Assertions.assertThat(lookup.getCacheEntry().getGrantRecordsAsSecurable()).isNotNull();
 
     // get N1
     PolarisBaseEntity N1 =
@@ -136,123 +136,129 @@ public class EntityCacheTest {
         new EntityCacheByNameKey(
             catalog.getId(), catalog.getId(), PolarisEntityType.NAMESPACE, "N1");
     EntityCacheEntry cacheEntry = cache.getEntityByName(N1_name);
-    Assertions.assertNull(cacheEntry);
+    Assertions.assertThat(cacheEntry).isNull();
 
     // try to find it in the cache by id. Should not be there, i.e. no cache hit
     lookup = cache.getOrLoadEntityById(this.callCtx, N1.getCatalogId(), N1.getId());
-    Assertions.assertNotNull(lookup);
-    Assertions.assertFalse(lookup.isCacheHit());
+    Assertions.assertThat(lookup).isNotNull();
+    Assertions.assertThat(lookup.isCacheHit()).isFalse();
 
     // should be there now, by name
     cacheEntry = cache.getEntityByName(N1_name);
-    Assertions.assertNotNull(cacheEntry);
-    Assertions.assertNotNull(cacheEntry.getEntity());
-    Assertions.assertNotNull(cacheEntry.getGrantRecordsAsSecurable());
+    Assertions.assertThat(cacheEntry).isNotNull();
+    Assertions.assertThat(cacheEntry.getEntity()).isNotNull();
+    Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).isNotNull();
 
     // should be there now, by id
     cacheEntry = cache.getEntityById(N1.getId());
-    Assertions.assertNotNull(cacheEntry);
-    Assertions.assertNotNull(cacheEntry.getEntity());
-    Assertions.assertNotNull(cacheEntry.getGrantRecordsAsSecurable());
+    Assertions.assertThat(cacheEntry).isNotNull();
+    Assertions.assertThat(cacheEntry.getEntity()).isNotNull();
+    Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).isNotNull();
 
     // lookup N1
     EntityCacheEntry N1_entry = cache.getEntityById(N1.getId());
-    Assertions.assertNotNull(N1_entry);
-    Assertions.assertNotNull(N1_entry.getEntity());
-    Assertions.assertNotNull(N1_entry.getGrantRecordsAsSecurable());
+    Assertions.assertThat(N1_entry).isNotNull();
+    Assertions.assertThat(N1_entry.getEntity()).isNotNull();
+    Assertions.assertThat(N1_entry.getGrantRecordsAsSecurable()).isNotNull();
 
     // negative tests, load an entity which does not exist
     lookup = cache.getOrLoadEntityById(this.callCtx, N1.getCatalogId(), 10000);
-    Assertions.assertNull(lookup);
+    Assertions.assertThat(lookup).isNull();
     lookup =
         cache.getOrLoadEntityByName(
             this.callCtx,
             new EntityCacheByNameKey(PolarisEntityType.CATALOG, "non_existant_catalog"));
-    Assertions.assertNull(lookup);
+    Assertions.assertThat(lookup).isNull();
 
     // lookup N2 to validate grants
     EntityCacheByNameKey N2_name =
         new EntityCacheByNameKey(catalog.getId(), N1.getId(), PolarisEntityType.NAMESPACE, "N2");
     lookup = cache.getOrLoadEntityByName(callCtx, N2_name);
-    Assertions.assertNotNull(lookup);
+    Assertions.assertThat(lookup).isNotNull();
     EntityCacheEntry cacheEntry_N1 = lookup.getCacheEntry();
-    Assertions.assertNotNull(cacheEntry_N1);
-    Assertions.assertNotNull(cacheEntry_N1.getEntity());
-    Assertions.assertNotNull(cacheEntry_N1.getGrantRecordsAsSecurable());
+    Assertions.assertThat(cacheEntry_N1).isNotNull();
+    Assertions.assertThat(cacheEntry_N1.getEntity()).isNotNull();
+    Assertions.assertThat(cacheEntry_N1.getGrantRecordsAsSecurable()).isNotNull();
 
     // lookup catalog role R1
     EntityCacheByNameKey R1_name =
         new EntityCacheByNameKey(
             catalog.getId(), catalog.getId(), PolarisEntityType.CATALOG_ROLE, "R1");
     lookup = cache.getOrLoadEntityByName(callCtx, R1_name);
-    Assertions.assertNotNull(lookup);
+    Assertions.assertThat(lookup).isNotNull();
     EntityCacheEntry cacheEntry_R1 = lookup.getCacheEntry();
-    Assertions.assertNotNull(cacheEntry_R1);
-    Assertions.assertNotNull(cacheEntry_R1.getEntity());
-    Assertions.assertNotNull(cacheEntry_R1.getGrantRecordsAsSecurable());
-    Assertions.assertNotNull(cacheEntry_R1.getGrantRecordsAsGrantee());
+    Assertions.assertThat(cacheEntry_R1).isNotNull();
+    Assertions.assertThat(cacheEntry_R1.getEntity()).isNotNull();
+    Assertions.assertThat(cacheEntry_R1.getGrantRecordsAsSecurable()).isNotNull();
+    Assertions.assertThat(cacheEntry_R1.getGrantRecordsAsGrantee()).isNotNull();
 
     // we expect one TABLE_READ grant on that securable granted to the catalog role R1
-    Assertions.assertEquals(1, cacheEntry_N1.getGrantRecordsAsSecurable().size());
+    Assertions.assertThat(cacheEntry_N1.getGrantRecordsAsSecurable()).hasSize(1);
     PolarisGrantRecord gr = cacheEntry_N1.getGrantRecordsAsSecurable().get(0);
 
     // securable is N1, grantee is R1
-    Assertions.assertEquals(cacheEntry_R1.getEntity().getId(), gr.getGranteeId());
-    Assertions.assertEquals(cacheEntry_R1.getEntity().getCatalogId(), gr.getGranteeCatalogId());
-    Assertions.assertEquals(cacheEntry_N1.getEntity().getId(), gr.getSecurableId());
-    Assertions.assertEquals(cacheEntry_N1.getEntity().getCatalogId(), gr.getSecurableCatalogId());
-    Assertions.assertEquals(PolarisPrivilege.TABLE_READ_DATA.getCode(), gr.getPrivilegeCode());
+    Assertions.assertThat(gr.getGranteeId()).isEqualTo(cacheEntry_R1.getEntity().getId());
+    Assertions.assertThat(gr.getGranteeCatalogId())
+        .isEqualTo(cacheEntry_R1.getEntity().getCatalogId());
+    Assertions.assertThat(gr.getSecurableId()).isEqualTo(cacheEntry_N1.getEntity().getId());
+    Assertions.assertThat(gr.getSecurableCatalogId())
+        .isEqualTo(cacheEntry_N1.getEntity().getCatalogId());
+    Assertions.assertThat(gr.getPrivilegeCode())
+        .isEqualTo(PolarisPrivilege.TABLE_READ_DATA.getCode());
 
     // R1 should have 4 privileges granted to it
-    Assertions.assertEquals(4, cacheEntry_R1.getGrantRecordsAsGrantee().size());
+    Assertions.assertThat(cacheEntry_R1.getGrantRecordsAsGrantee()).hasSize(4);
     List<PolarisGrantRecord> matchPriv =
         cacheEntry_R1.getGrantRecordsAsGrantee().stream()
             .filter(
                 grantRecord ->
                     grantRecord.getPrivilegeCode() == PolarisPrivilege.TABLE_READ_DATA.getCode())
             .toList();
-    Assertions.assertEquals(1, matchPriv.size());
+    Assertions.assertThat(matchPriv).hasSize(1);
     gr = matchPriv.getFirst();
-    Assertions.assertEquals(cacheEntry_R1.getEntity().getId(), gr.getGranteeId());
-    Assertions.assertEquals(cacheEntry_R1.getEntity().getCatalogId(), gr.getGranteeCatalogId());
-    Assertions.assertEquals(cacheEntry_N1.getEntity().getId(), gr.getSecurableId());
-    Assertions.assertEquals(cacheEntry_N1.getEntity().getCatalogId(), gr.getSecurableCatalogId());
-    Assertions.assertEquals(PolarisPrivilege.TABLE_READ_DATA.getCode(), gr.getPrivilegeCode());
+    Assertions.assertThat(gr.getGranteeId()).isEqualTo(cacheEntry_R1.getEntity().getId());
+    Assertions.assertThat(gr.getGranteeCatalogId())
+        .isEqualTo(cacheEntry_R1.getEntity().getCatalogId());
+    Assertions.assertThat(gr.getSecurableId()).isEqualTo(cacheEntry_N1.getEntity().getId());
+    Assertions.assertThat(gr.getSecurableCatalogId())
+        .isEqualTo(cacheEntry_N1.getEntity().getCatalogId());
+    Assertions.assertThat(gr.getPrivilegeCode())
+        .isEqualTo(PolarisPrivilege.TABLE_READ_DATA.getCode());
 
     // lookup principal role PR1
     EntityCacheByNameKey PR1_name =
         new EntityCacheByNameKey(PolarisEntityType.PRINCIPAL_ROLE, "PR1");
     lookup = cache.getOrLoadEntityByName(callCtx, PR1_name);
-    Assertions.assertNotNull(lookup);
+    Assertions.assertThat(lookup).isNotNull();
     EntityCacheEntry cacheEntry_PR1 = lookup.getCacheEntry();
-    Assertions.assertNotNull(cacheEntry_PR1);
-    Assertions.assertNotNull(cacheEntry_PR1.getEntity());
-    Assertions.assertNotNull(cacheEntry_PR1.getGrantRecordsAsSecurable());
-    Assertions.assertNotNull(cacheEntry_PR1.getGrantRecordsAsGrantee());
+    Assertions.assertThat(cacheEntry_PR1).isNotNull();
+    Assertions.assertThat(cacheEntry_PR1.getEntity()).isNotNull();
+    Assertions.assertThat(cacheEntry_PR1.getGrantRecordsAsSecurable()).isNotNull();
+    Assertions.assertThat(cacheEntry_PR1.getGrantRecordsAsGrantee()).isNotNull();
 
     // R1 should have 1 CATALOG_ROLE_USAGE privilege granted *on* it to PR1
-    Assertions.assertEquals(1, cacheEntry_R1.getGrantRecordsAsSecurable().size());
+    Assertions.assertThat(cacheEntry_R1.getGrantRecordsAsSecurable()).hasSize(1);
     gr = cacheEntry_R1.getGrantRecordsAsSecurable().get(0);
-    Assertions.assertEquals(cacheEntry_R1.getEntity().getId(), gr.getSecurableId());
-    Assertions.assertEquals(cacheEntry_R1.getEntity().getCatalogId(), gr.getSecurableCatalogId());
-    Assertions.assertEquals(cacheEntry_PR1.getEntity().getId(), gr.getGranteeId());
-    Assertions.assertEquals(cacheEntry_PR1.getEntity().getCatalogId(), gr.getGranteeCatalogId());
-    Assertions.assertEquals(PolarisPrivilege.CATALOG_ROLE_USAGE.getCode(), gr.getPrivilegeCode());
+    Assertions.assertThat(gr.getSecurableId()).isEqualTo(cacheEntry_R1.getEntity().getId());
+    Assertions.assertThat(gr.getSecurableCatalogId())
+        .isEqualTo(cacheEntry_R1.getEntity().getCatalogId());
+    Assertions.assertThat(gr.getGranteeId()).isEqualTo(cacheEntry_PR1.getEntity().getId());
+    Assertions.assertThat(gr.getGranteeCatalogId())
+        .isEqualTo(cacheEntry_PR1.getEntity().getCatalogId());
+    Assertions.assertThat(gr.getPrivilegeCode())
+        .isEqualTo(PolarisPrivilege.CATALOG_ROLE_USAGE.getCode());
 
     // PR1 should have 1 grant on it to P1.
-    Assertions.assertEquals(1, cacheEntry_PR1.getGrantRecordsAsSecurable().size());
-    Assertions.assertEquals(
-        PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode(),
-        cacheEntry_PR1.getGrantRecordsAsSecurable().get(0).getPrivilegeCode());
+    Assertions.assertThat(cacheEntry_PR1.getGrantRecordsAsSecurable()).hasSize(1);
+    Assertions.assertThat(cacheEntry_PR1.getGrantRecordsAsSecurable().get(0).getPrivilegeCode())
+        .isEqualTo(PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode());
 
     // PR1 should have 2 grants to it, on R1 and R2
-    Assertions.assertEquals(2, cacheEntry_PR1.getGrantRecordsAsGrantee().size());
-    Assertions.assertEquals(
-        PolarisPrivilege.CATALOG_ROLE_USAGE.getCode(),
-        cacheEntry_PR1.getGrantRecordsAsGrantee().get(0).getPrivilegeCode());
-    Assertions.assertEquals(
-        PolarisPrivilege.CATALOG_ROLE_USAGE.getCode(),
-        cacheEntry_PR1.getGrantRecordsAsGrantee().get(1).getPrivilegeCode());
+    Assertions.assertThat(cacheEntry_PR1.getGrantRecordsAsGrantee()).hasSize(2);
+    Assertions.assertThat(cacheEntry_PR1.getGrantRecordsAsGrantee().get(0).getPrivilegeCode())
+        .isEqualTo(PolarisPrivilege.CATALOG_ROLE_USAGE.getCode());
+    Assertions.assertThat(cacheEntry_PR1.getGrantRecordsAsGrantee().get(1).getPrivilegeCode())
+        .isEqualTo(PolarisPrivilege.CATALOG_ROLE_USAGE.getCode());
   }
 
   @Test
@@ -264,14 +270,14 @@ public class EntityCacheTest {
     EntityCacheLookupResult lookup =
         cache.getOrLoadEntityByName(
             this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
-    Assertions.assertNotNull(lookup);
-    Assertions.assertFalse(lookup.isCacheHit());
+    Assertions.assertThat(lookup).isNotNull();
+    Assertions.assertThat(lookup.isCacheHit()).isFalse();
 
     // the catalog
-    Assertions.assertNotNull(lookup.getCacheEntry());
+    Assertions.assertThat(lookup.getCacheEntry()).isNotNull();
     PolarisBaseEntity catalog = lookup.getCacheEntry().getEntity();
-    Assertions.assertNotNull(catalog);
-    Assertions.assertEquals(PolarisEntityType.CATALOG, catalog.getType());
+    Assertions.assertThat(catalog).isNotNull();
+    Assertions.assertThat(catalog.getType()).isEqualTo(PolarisEntityType.CATALOG);
 
     // find table N5/N6/T6
     PolarisBaseEntity N5 =
@@ -284,23 +290,23 @@ public class EntityCacheTest {
             PolarisEntityType.TABLE_LIKE,
             PolarisEntitySubType.TABLE,
             "T6");
-    Assertions.assertNotNull(T6v1);
+    Assertions.assertThat(T6v1).isNotNull();
 
     // that table is not in the cache
     EntityCacheEntry cacheEntry = cache.getEntityById(T6v1.getId());
-    Assertions.assertNull(cacheEntry);
+    Assertions.assertThat(cacheEntry).isNull();
 
     // now load that table in the cache
     cacheEntry =
         cache.getAndRefreshIfNeeded(
             this.callCtx, T6v1, T6v1.getEntityVersion(), T6v1.getGrantRecordsVersion());
-    Assertions.assertNotNull(cacheEntry);
-    Assertions.assertNotNull(cacheEntry.getEntity());
-    Assertions.assertNotNull(cacheEntry.getGrantRecordsAsSecurable());
+    Assertions.assertThat(cacheEntry).isNotNull();
+    Assertions.assertThat(cacheEntry.getEntity()).isNotNull();
+    Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).isNotNull();
     PolarisBaseEntity table = cacheEntry.getEntity();
-    Assertions.assertEquals(T6v1.getId(), table.getId());
-    Assertions.assertEquals(T6v1.getEntityVersion(), table.getEntityVersion());
-    Assertions.assertEquals(T6v1.getGrantRecordsVersion(), table.getGrantRecordsVersion());
+    Assertions.assertThat(table.getId()).isEqualTo(T6v1.getId());
+    Assertions.assertThat(table.getEntityVersion()).isEqualTo(T6v1.getEntityVersion());
+    Assertions.assertThat(table.getGrantRecordsVersion()).isEqualTo(T6v1.getGrantRecordsVersion());
 
     // update the entity
     PolarisBaseEntity T6v2 =
@@ -309,31 +315,31 @@ public class EntityCacheTest {
             T6v1,
             "{\"v2_properties\": \"some value\"}",
             "{\"v2_internal_properties\": \"internal value\"}");
-    Assertions.assertNotNull(T6v2);
+    Assertions.assertThat(T6v2).isNotNull();
 
     // now refresh that entity. But because we don't change the versions, nothing should be reloaded
     cacheEntry =
         cache.getAndRefreshIfNeeded(
             this.callCtx, T6v1, T6v1.getEntityVersion(), T6v1.getGrantRecordsVersion());
-    Assertions.assertNotNull(cacheEntry);
-    Assertions.assertNotNull(cacheEntry.getEntity());
-    Assertions.assertNotNull(cacheEntry.getGrantRecordsAsSecurable());
+    Assertions.assertThat(cacheEntry).isNotNull();
+    Assertions.assertThat(cacheEntry.getEntity()).isNotNull();
+    Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).isNotNull();
     table = cacheEntry.getEntity();
-    Assertions.assertEquals(T6v1.getId(), table.getId());
-    Assertions.assertEquals(T6v1.getEntityVersion(), table.getEntityVersion());
-    Assertions.assertEquals(T6v1.getGrantRecordsVersion(), table.getGrantRecordsVersion());
+    Assertions.assertThat(table.getId()).isEqualTo(T6v1.getId());
+    Assertions.assertThat(table.getEntityVersion()).isEqualTo(T6v1.getEntityVersion());
+    Assertions.assertThat(table.getGrantRecordsVersion()).isEqualTo(T6v1.getGrantRecordsVersion());
 
     // now refresh again, this time with the new versions. Should be reloaded
     cacheEntry =
         cache.getAndRefreshIfNeeded(
             this.callCtx, T6v2, T6v2.getEntityVersion(), T6v2.getGrantRecordsVersion());
-    Assertions.assertNotNull(cacheEntry);
-    Assertions.assertNotNull(cacheEntry.getEntity());
-    Assertions.assertNotNull(cacheEntry.getGrantRecordsAsSecurable());
+    Assertions.assertThat(cacheEntry).isNotNull();
+    Assertions.assertThat(cacheEntry.getEntity()).isNotNull();
+    Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).isNotNull();
     table = cacheEntry.getEntity();
-    Assertions.assertEquals(T6v2.getId(), table.getId());
-    Assertions.assertEquals(T6v2.getEntityVersion(), table.getEntityVersion());
-    Assertions.assertEquals(T6v2.getGrantRecordsVersion(), table.getGrantRecordsVersion());
+    Assertions.assertThat(table.getId()).isEqualTo(T6v2.getId());
+    Assertions.assertThat(table.getEntityVersion()).isEqualTo(T6v2.getEntityVersion());
+    Assertions.assertThat(table.getGrantRecordsVersion()).isEqualTo(T6v2.getGrantRecordsVersion());
 
     // update it again
     PolarisBaseEntity T6v3 =
@@ -342,7 +348,7 @@ public class EntityCacheTest {
             T6v2,
             "{\"v3_properties\": \"some value\"}",
             "{\"v3_internal_properties\": \"internal value\"}");
-    Assertions.assertNotNull(T6v3);
+    Assertions.assertThat(T6v3).isNotNull();
 
     // the two catalog roles
     PolarisBaseEntity R1 =
@@ -358,9 +364,9 @@ public class EntityCacheTest {
             this.callCtx, N2, N2.getEntityVersion(), N2.getGrantRecordsVersion());
 
     // should have one single grant
-    Assertions.assertNotNull(cacheEntry);
-    Assertions.assertNotNull(cacheEntry.getGrantRecordsAsSecurable());
-    Assertions.assertEquals(1, cacheEntry.getGrantRecordsAsSecurable().size());
+    Assertions.assertThat(cacheEntry).isNotNull();
+    Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).isNotNull();
+    Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).hasSize(1);
 
     // perform an additional grant to R1
     this.tm.grantPrivilege(R1, List.of(catalog, N1), N2, PolarisPrivilege.NAMESPACE_FULL_METADATA);
@@ -370,8 +376,8 @@ public class EntityCacheTest {
         this.tm.ensureExistsByName(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N2");
 
     // same entity version but different grant records
-    Assertions.assertNotNull(N2v2);
-    Assertions.assertEquals(N2.getGrantRecordsVersion() + 1, N2v2.getGrantRecordsVersion());
+    Assertions.assertThat(N2v2).isNotNull();
+    Assertions.assertThat(N2v2.getGrantRecordsVersion()).isEqualTo(N2.getGrantRecordsVersion() + 1);
 
     // the cache is outdated now
     lookup =
@@ -379,25 +385,25 @@ public class EntityCacheTest {
             this.callCtx,
             new EntityCacheByNameKey(
                 catalog.getId(), N1.getId(), PolarisEntityType.NAMESPACE, "N2"));
-    Assertions.assertNotNull(lookup);
+    Assertions.assertThat(lookup).isNotNull();
     cacheEntry = lookup.getCacheEntry();
-    Assertions.assertNotNull(cacheEntry);
-    Assertions.assertNotNull(cacheEntry.getEntity());
-    Assertions.assertNotNull(cacheEntry.getGrantRecordsAsSecurable());
-    Assertions.assertEquals(1, cacheEntry.getGrantRecordsAsSecurable().size());
-    Assertions.assertEquals(
-        N2.getGrantRecordsVersion(), cacheEntry.getEntity().getGrantRecordsVersion());
+    Assertions.assertThat(cacheEntry).isNotNull();
+    Assertions.assertThat(cacheEntry.getEntity()).isNotNull();
+    Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).isNotNull();
+    Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).hasSize(1);
+    Assertions.assertThat(cacheEntry.getEntity().getGrantRecordsVersion())
+        .isEqualTo(N2.getGrantRecordsVersion());
 
     // now refresh
     cacheEntry =
         cache.getAndRefreshIfNeeded(
             this.callCtx, N2, N2v2.getEntityVersion(), N2v2.getGrantRecordsVersion());
-    Assertions.assertNotNull(cacheEntry);
-    Assertions.assertNotNull(cacheEntry.getEntity());
-    Assertions.assertNotNull(cacheEntry.getGrantRecordsAsSecurable());
-    Assertions.assertEquals(2, cacheEntry.getGrantRecordsAsSecurable().size());
-    Assertions.assertEquals(
-        N2v2.getGrantRecordsVersion(), cacheEntry.getEntity().getGrantRecordsVersion());
+    Assertions.assertThat(cacheEntry).isNotNull();
+    Assertions.assertThat(cacheEntry.getEntity()).isNotNull();
+    Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).isNotNull();
+    Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).hasSize(2);
+    Assertions.assertThat(cacheEntry.getEntity().getGrantRecordsVersion())
+        .isEqualTo(N2v2.getGrantRecordsVersion());
   }
 
   @Test
@@ -408,23 +414,23 @@ public class EntityCacheTest {
     EntityCacheLookupResult lookup =
         cache.getOrLoadEntityByName(
             this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
-    Assertions.assertNotNull(lookup);
-    Assertions.assertNotNull(lookup.getCacheEntry());
+    Assertions.assertThat(lookup).isNotNull();
+    Assertions.assertThat(lookup.getCacheEntry()).isNotNull();
     PolarisBaseEntity catalog = lookup.getCacheEntry().getEntity();
 
     PolarisBaseEntity N1 =
         this.tm.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
     lookup = cache.getOrLoadEntityById(this.callCtx, N1.getCatalogId(), N1.getId());
-    Assertions.assertNotNull(lookup);
+    Assertions.assertThat(lookup).isNotNull();
 
     EntityCacheByNameKey T4_name =
         new EntityCacheByNameKey(N1.getCatalogId(), N1.getId(), PolarisEntityType.TABLE_LIKE, "T4");
     lookup = cache.getOrLoadEntityByName(callCtx, T4_name);
-    Assertions.assertNotNull(lookup);
+    Assertions.assertThat(lookup).isNotNull();
     EntityCacheEntry cacheEntry_T4 = lookup.getCacheEntry();
-    Assertions.assertNotNull(cacheEntry_T4);
-    Assertions.assertNotNull(cacheEntry_T4.getEntity());
-    Assertions.assertNotNull(cacheEntry_T4.getGrantRecordsAsSecurable());
+    Assertions.assertThat(cacheEntry_T4).isNotNull();
+    Assertions.assertThat(cacheEntry_T4.getEntity()).isNotNull();
+    Assertions.assertThat(cacheEntry_T4.getGrantRecordsAsSecurable()).isNotNull();
 
     PolarisBaseEntity T4 = cacheEntry_T4.getEntity();
 
@@ -435,17 +441,18 @@ public class EntityCacheTest {
         new EntityCacheByNameKey(
             N1.getCatalogId(), N1.getId(), PolarisEntityType.TABLE_LIKE, "T4_renamed");
     lookup = cache.getOrLoadEntityByName(callCtx, T4_renamed);
-    Assertions.assertNotNull(lookup);
+    Assertions.assertThat(lookup).isNotNull();
     EntityCacheEntry cacheEntry_T4_renamed = lookup.getCacheEntry();
-    Assertions.assertNotNull(cacheEntry_T4_renamed);
+    Assertions.assertThat(cacheEntry_T4_renamed).isNotNull();
     PolarisBaseEntity T4_renamed_entity = cacheEntry_T4_renamed.getEntity();
 
     // new entry if lookup by id
     EntityCacheLookupResult lookupResult =
         cache.getOrLoadEntityById(callCtx, T4.getCatalogId(), T4.getId());
-    Assertions.assertNotNull(lookupResult);
-    Assertions.assertNotNull(lookupResult.getCacheEntry());
-    Assertions.assertEquals("T4_renamed", lookupResult.getCacheEntry().getEntity().getName());
+    Assertions.assertThat(lookupResult).isNotNull();
+    Assertions.assertThat(lookupResult.getCacheEntry()).isNotNull();
+    Assertions.assertThat(lookupResult.getCacheEntry().getEntity().getName())
+        .isEqualTo("T4_renamed");
 
     // old name is gone, replaced by new name
     // Assertions.assertNull(cache.getOrLoadEntityByName(callCtx, T4_name));
@@ -458,6 +465,6 @@ public class EntityCacheTest {
         T4_renamed_entity.getGrantRecordsVersion());
 
     // now the loading by the old name should return null
-    Assertions.assertNull(cache.getOrLoadEntityByName(callCtx, T4_name));
+    Assertions.assertThat(cache.getOrLoadEntityByName(callCtx, T4_name)).isNull();
   }
 }
