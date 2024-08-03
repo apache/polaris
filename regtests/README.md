@@ -26,7 +26,7 @@ Tests can be run with docker-compose by executing
 docker compose up --build --exit-code-from regtest
 ```
 
-This is the flow used in CI and should be done locally before pushing to github to ensure that no environmental
+This is the flow used in CI and should be done locally before pushing to GitHub to ensure that no environmental
 factors contribute to the outcome of the tests.
 
 ## Run all tests
@@ -46,6 +46,7 @@ VERBOSE=1 ./run.sh t_spark_sql/src/spark_sql_basic.sh
 ```
 
 ## Run with Cloud resources
+
 Several tests require access to cloud resources, such as S3 or GCS. To run these tests, you must export the appropriate
 environment variables prior to running the tests. Each cloud can be enabled independently.
 Create a .env file that contains the following variables:
@@ -70,6 +71,7 @@ AZURE_TENANT_ID=<your_tenant_id>
 AZURE_DFS_TEST_BASE=abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<any_path>
 AZURE_BLOB_TEST_BASE=abfss://<container-name>@<storage-account-name>.blob.core.windows.net/<any_path>
 ```
+
 `GOOGLE_APPLICATION_CREDENTIALS` must be mounted to the container volumes. Copy your credentials file
 into the `credentials` folder. Then specify the name of the file in your .env file - do not change the
 path, as `/tmp/credentials` is the folder on the container where the credentials file will be mounted.
@@ -108,7 +110,7 @@ Simply run the specified fixdiffs file to run `meld` and fix the ref file.
 
 ## Run a spark-sql interactive shell
 
-With in-memory standalong Polaris running:
+With in-memory standalone Polaris running:
 
 ```
 ./run_spark_sql.sh
@@ -144,7 +146,7 @@ pyenv local 3.8
 ```
 
 Once you've done that, you can run `setup.sh` to generate a python virtual environment (installed at `~/polaris-venv`)
-and download all of the test dependencies into it. From here, `run.sh` will be able to execute any pytest present.
+and download all the test dependencies into it. From here, `run.sh` will be able to execute any pytest present.
 
 To debug, setup IntelliJ to point at your virtual environment to find your test dependencies
 (see https://www.jetbrains.com/help/idea/configuring-python-sdk.html). Then run the test in your IDE.
