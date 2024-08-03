@@ -68,14 +68,13 @@ docker run -p 8080:80 -v ${PWD}:/spec docker.io/redocly/cli build-docs spec/inde
 
 ## Connecting from an Engine
 To connect from an engine like Spark, first create a catalog with these steps:
-1. Generate a token for the root principal
 ```bash
+# Generate a token for the root principal
 export PRINCIPAL_TOKEN=$(curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
   -d 'grant_type=client_credentials&client_id=<principalClientId>&client_secret=<mainSecret>&scope=PRINCIPAL_ROLE:ALL' \
    | jq -r '.access_token')
-```
-2. Create a catalog named `polaris`
-```bash
+   
+# Create a catalog named `polaris`
 curl -i -X POST -H "Authorization: Bearer $PRINCIPAL_TOKEN" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://localhost:8181/api/management/v1/catalogs \
   -d '{"name": "polaris", "id": 100, "type": "INTERNAL", "readOnly": false, "storageConfigInfo": {"storageType": "FILE"}, "properties": {"default-base-location": "file:///tmp/polaris"}}'
