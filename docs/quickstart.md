@@ -20,7 +20,7 @@ This guide serves as an introduction to several key entities that can be managed
 
 ## Prerequisites
 
-This guide covers building Polaris, deploying it locally or via [Docker](https://www.docker.com/), and interacting with it using the command-line interface and [Apache Spark](https://spark.apache.org/). Before proceeding with Polaris, be sure to satisfy the relevant prerequisites listed here. 
+This guide covers building Polaris, deploying it locally or via [Docker](https://www.docker.com/), and interacting with it using the command-line interface and [Apache Spark](https://spark.apache.org/). Before proceeding with Polaris, be sure to satisfy the relevant prerequisites listed here.
 
 ### Building and Deploying Polaris
 
@@ -51,7 +51,7 @@ Once installed, make sure Docker is running.
 
 If you plan to build Polaris from source yourself, you will need to satisfy a few prerequisites first.
 
-Polaris is built using [gradle](https://gradle.org/) and is compatible with Java 21. We recommend the use of [jenv](https://www.jenv.be/) to manage multiple Java versions. For example, to install Java 21 via [homebrew](https://brew.sh/) and configure it with jenv: 
+Polaris is built using [gradle](https://gradle.org/) and is compatible with Java 21. We recommend the use of [jenv](https://www.jenv.be/) to manage multiple Java versions. For example, to install Java 21 via [homebrew](https://brew.sh/) and configure it with jenv:
 
 ```
 cd ~/polaris
@@ -82,7 +82,7 @@ cd ~/spark
 git checkout branch-3.5
 ```
 
-## Deploying Polaris 
+## Deploying Polaris
 
 Polaris can be deployed via a lightweight docker image or as a standalone process. Before starting, be sure that you've satisfied the relevant [prerequisites](#building-and-deploying-polaris) detailed above.
 
@@ -147,14 +147,13 @@ cd ~/polaris
   quickstart_catalog
 ```
 
-This will create a new catalog called **quickstart_catalog**. 
+This will create a new catalog called **quickstart_catalog**.
 
 The `DEFAULT_BASE_LOCATION` you provide will be the default location that objects in this catalog should be stored in, and the `ROLE_ARN` you provide should be a [Role ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) with access to read and write data in that location. These credentials will be provided to engines reading data from the catalog once they have authenticated with Polaris using credentials that have access to those resources.
 
-If you’re using a storage type other than S3, such as Azure, you’ll provide a different type of credential than a Role ARN. For more details on supported storage types, see the [docs](./entities.md#storage-type). 
+If you’re using a storage type other than S3, such as Azure, you’ll provide a different type of credential than a Role ARN. For more details on supported storage types, see the [docs](./entities.md#storage-type).
 
 Additionally, if Polaris is running somewhere other than `localhost:8181`, you can specify the correct hostname and port by providing `--host` and `--port` flags. For the full set of options supported by the CLI, please refer to the [docs](./command-line-interface.md).
-
 
 ### Creating a Principal and Assigning it Privileges
 
@@ -183,7 +182,6 @@ With a catalog created, we can create a [principal](./entities.md#principal) tha
   --catalog quickstart_catalog \
   quickstart_catalog_role
 ```
-
 
 Be sure to provide the necessary credentials, hostname, and port as before.
 
@@ -245,7 +243,7 @@ At this point, we’ve created a principal and granted it the ability to manage 
 
 ### Connecting with Spark
 
-To use a Polaris-managed catalog in [Apache Spark](https://spark.apache.org/), we can configure Spark to use the Iceberg catalog REST API. 
+To use a Polaris-managed catalog in [Apache Spark](https://spark.apache.org/), we can configure Spark to use the Iceberg catalog REST API.
 
 This guide uses [Apache Spark 3.5](https://spark.apache.org/releases/spark-release-3-5-0.html), but be sure to find [the appropriate iceberg-spark package for your Spark version](https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-spark). From a local Spark clone on the `branch-3.5` branch we can run the following:
 
@@ -264,7 +262,6 @@ bin/spark-shell \
 --conf spark.sql.catalog.quickstart_catalog.scope='PRINCIPAL_ROLE:ALL' \
 --conf spark.sql.catalog.quickstart_catalog.token-refresh-enabled=true
 ```
-
 
 Replace `XXXX` and `YYYY` with the client ID and client secret generated when you created the `quickstart_user` principal.
 

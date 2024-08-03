@@ -18,7 +18,7 @@
 
 # Polaris Catalog
 
-<a href="https://www.snowflake.com/blog/polaris-catalog-open-source/" target="_blank">Polaris Catalog</a> is an open source catalog for Apache Iceberg :tm:. Polaris Catalog implements Iceberg’s open <a href="https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml" target="_blank">REST API</a> for multi-engine interoperability with Apache Doris :tm:, Apache Flink® , Apache Spark :tm:, StarRocks, and Trino. 
+<a href="https://www.snowflake.com/blog/polaris-catalog-open-source/" target="_blank">Polaris Catalog</a> is an open source catalog for Apache Iceberg :tm:. Polaris Catalog implements Iceberg’s open <a href="https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml" target="_blank">REST API</a> for multi-engine interoperability with Apache Doris :tm:, Apache Flink® , Apache Spark :tm:, StarRocks, and Trino.
 
 ![Polaris Catalog Header](docs/img/logos/Polaris-Catalog-BLOG-symmetrical-subhead.png)
 
@@ -26,7 +26,7 @@
 
 Polaris Catalog is open source under an Apache 2.0 license.
 
-- ⭐ Star this repo if you’d like to bookmark and come back to it! 
+- ⭐ Star this repo if you’d like to bookmark and come back to it!
 - 📖 Read the <a href="https://www.snowflake.com/blog/polaris-catalog-open-source/" target="_blank">announcement blog post<a/> for more details!
 
 ## API Docs
@@ -48,12 +48,12 @@ docker run -p 8080:80 -v ${PWD}:/spec docker.io/redocly/cli build-docs spec/inde
 
 ## Requirements
 
-- Java JDK >= 21, see [CONTRIBUTING.md](./CONTRIBUTING.md#java-version-requirements). 
+- Java JDK >= 21, see [CONTRIBUTING.md](./CONTRIBUTING.md#java-version-requirements).
 - Gradle - This is included in the project and can be run using `./gradlew` in the project root.
 - Docker (Suggested Version: 27+) - If you want to run the project in a containerized environment or run integration tests.
 
-Getting Started
--------------------
+## Getting Started
+
 Polaris is a multi-module project with three modules:
 
 - `polaris-core` - The main Polaris entity definitions and core business logic.
@@ -93,8 +93,7 @@ While the Polaris server is running, run regression tests, or end-to-end tests i
 ./regtests/run.sh
 ```
 
-Docker Instructions
--------------------
+## Docker Instructions
 
 Build the image:
 
@@ -129,8 +128,7 @@ docker compose up --build --exit-code-from regtest
 
 They can also be executed outside of docker by following the setup instructions in the [README](regtests/README.md).
 
-Kubernetes Instructions
------------------------
+## Kubernetes Instructions
 
 You can run Polaris as a mini-deployment locally. This will create two pods that bind themselves to port `8181`:
 
@@ -189,6 +187,6 @@ You must run the following as the first query in your spark-sql shell to actuall
 use polaris;
 ```
 
-### Trademark Attribution 
+### Trademark Attribution
 
 _Apache Iceberg, Iceberg, Apache Spark, Spark, Apache Flink, Flink, Apache Doris, Doris, Apache, the Apache feather logo, the Apache Iceberg project logo, the Apache Spark project logo, the Apache Flink project logo, and the Apache Doris project logo are either registered trademarks or trademarks of The Apache Software Foundation. Copyright © 2024 The Apache Software Foundation._

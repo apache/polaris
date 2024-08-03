@@ -1,4 +1,5 @@
 # Security Policy
+
 If you discover a security issue, please bring it to our attention right away!
 
 ## Reporting a Vulnerability
