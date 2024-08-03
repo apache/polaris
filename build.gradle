@@ -64,6 +64,10 @@ subprojects {
         apply plugin: "java-library"
     }
 
+    project(":polaris-eclipselink") {
+        apply plugin: "java-library"
+    }
+
     dependencies {
         implementation(platform(libs.jackson.bom))
         implementation("com.fasterxml.jackson.core:jackson-annotations")

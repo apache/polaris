@@ -52,7 +52,7 @@ docker run -p 8080:80 -v ${PWD}:/spec docker.io/redocly/cli build-docs spec/inde
 
 - Java JDK >= 21, see [CONTRIBUTING.md](./CONTRIBUTING.md#java-version-requirements). 
 - Gradle - This is included in the project and can be run using `./gradlew` in the project root.
-- Docker - If you want to run the project in a containerized environment.
+- Docker (Suggested Version: 27+) - If you want to run the project in a containerized environment or run integration tests.
 
 Command-Line getting started
 -------------------
@@ -63,6 +63,7 @@ Polaris is a multi-module project with three modules:
 - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
 
 Build the binary (first time may require installing new JDK version). This build will run IntegrationTests by default.
+Make sure docker is running, as the integration tests require a running docker daemon.
 
 ```
 ./gradlew build
