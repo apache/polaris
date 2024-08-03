@@ -144,13 +144,16 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     // PolarisEntityManager will be used for Management APIs and optionally the core Catalog APIs
     // depending on the value of the baseCatalogType config.
     MetaStoreManagerFactory metaStoreManagerFactory = configuration.getMetaStoreManagerFactory();
-    StsClientBuilder stsClientBuilder = StsClient.builder();
-    AwsCredentialsProvider awsCredentialsProvider = configuration.credentialsProvider();
-    if (awsCredentialsProvider != null) {
-      stsClientBuilder.credentialsProvider(awsCredentialsProvider);
-    }
+
     metaStoreManagerFactory.setStorageIntegrationProvider(
-        new PolarisStorageIntegrationProviderImpl(stsClientBuilder::build));
+        new PolarisStorageIntegrationProviderImpl(() -> {
+          StsClientBuilder stsClientBuilder = StsClient.builder();
+          AwsCredentialsProvider awsCredentialsProvider = configuration.credentialsProvider();
+          if (awsCredentialsProvider != null) {
+            stsClientBuilder.credentialsProvider(awsCredentialsProvider);
+          }
+          return stsClientBuilder.build();
+        }));
 
     PolarisMetricRegistry polarisMetricRegistry =
         new PolarisMetricRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
