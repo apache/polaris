@@ -71,17 +71,7 @@ public class TableLikeEntity extends PolarisEntity {
 
   @Override
   public String getLocation() {
-    return Optional.ofNullable(super.location).orElse(this.getBaseLocation());
-  }
-
-  @Override
-  public void setLocation(String location) {
-    String terminatedLocation = PolarisUtils.terminateWithSlash(location);
-    super.setLocation(terminatedLocation);
-
-    Map<String, String> propertiesMap = this.getPropertiesAsMap();
-    propertiesMap.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, terminatedLocation);
-    this.setPropertiesAsMap(propertiesMap);
+    return PolarisUtils.terminateWithSlash(getBaseLocation());
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<TableLikeEntity, Builder> {
@@ -115,21 +105,13 @@ public class TableLikeEntity extends PolarisEntity {
       return this;
     }
 
-    private Builder setBaseLocation(String location) {
+    public Builder setBaseLocation(String location) {
       properties.put(PolarisEntityConstants.ENTITY_BASE_LOCATION, location);
       return this;
     }
 
     public Builder setMetadataLocation(String location) {
       internalProperties.put(METADATA_LOCATION_KEY, location);
-      return this;
-    }
-
-    public Builder setLocation(String location) {
-      String terminatedLocation = PolarisUtils.terminateWithSlash(location);
-
-      super.setLocation(terminatedLocation);
-      setBaseLocation(terminatedLocation);
       return this;
     }
   }

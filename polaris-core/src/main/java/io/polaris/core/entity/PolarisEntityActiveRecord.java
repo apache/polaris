@@ -17,8 +17,6 @@ package io.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.persistence.Column;
-
 import java.util.Objects;
 
 public class PolarisEntityActiveRecord {
@@ -40,9 +38,8 @@ public class PolarisEntityActiveRecord {
   // code representing the subtype of that entity
   private final int subTypeCode;
 
-  // location of the entity
-  @Column(nullable = true)
-  private String location;
+  // location of the entity where applicable
+  private final String location;
 
   public long getCatalogId() {
     return catalogId;

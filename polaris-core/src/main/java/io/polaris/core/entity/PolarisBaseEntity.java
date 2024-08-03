@@ -61,9 +61,6 @@ public class PolarisBaseEntity extends PolarisEntityCore {
   // current version for that entity, will be monotonically incremented
   protected int grantRecordsVersion;
 
-  // The location of the entity
-  protected String location;
-
   public int getSubTypeCode() {
     return subTypeCode;
   }
@@ -117,11 +114,7 @@ public class PolarisBaseEntity extends PolarisEntityCore {
   }
 
   public String getLocation() {
-    return this.location;
-  }
-
-  public void setLocation(String location) {
-    this.location = location;
+    return null;
   }
 
   @JsonIgnore
@@ -250,7 +243,6 @@ public class PolarisBaseEntity extends PolarisEntityCore {
     this.properties = entity.getProperties();
     this.internalProperties = entity.getInternalProperties();
     this.grantRecordsVersion = entity.getGrantRecordsVersion();
-    this.location = entity.getLocation();
   }
 
   /** Build the DTO for a new entity */

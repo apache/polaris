@@ -420,7 +420,7 @@ public class PolarisEclipseLinkStore {
         .createQuery(
             """
                 SELECT
-                    1
+                    location
                 FROM
                     ModelEntityActive
                 WHERE
@@ -431,7 +431,7 @@ public class PolarisEclipseLinkStore {
                         OR :location LIKE CONCAT(location, '%')
                     )
             """,
-            ModelEntityDropped.class)
+            String.class)
         .setParameter("location", location)
         .setParameter("table_code", PolarisEntityType.TABLE_LIKE.getCode())
         .getResultStream()
