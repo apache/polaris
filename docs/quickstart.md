@@ -194,7 +194,7 @@ When the `principals create` command completes successfully, it will return the 
 {"clientId": "XXXX", "clientSecret": "YYYY"}
 ```
 
-Now, we grant the [principal role](./entities.md#principal-role) we created, and grant the [catalog role](./entities.md#catalog-role) the principal role we created. For more information on these entities, please refer to the linked documentation.
+Now, we grant the [principal role](./entities.md#principal-role) and the [catalog role](./entities.md#catalog-role) to the principal role we created. For more information on these entities, please refer to the linked documentation.
 
 ```
 ./polaris \
