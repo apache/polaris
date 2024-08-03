@@ -16,7 +16,7 @@
 
 # Quick Start
 
-This guide serves as a introduction to several key entities that can be managed with Polaris, describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Apache Spark.
+This guide serves as an introduction to several key entities that can be managed with Polaris, describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Apache Spark.
 
 ## Prerequisites
 
@@ -194,7 +194,7 @@ When the `principals create` command completes successfully, it will return the 
 {"clientId": "XXXX", "clientSecret": "YYYY"}
 ```
 
-Now, we grant the principal the [principal role](./entities.md#principal-role) we created, and grant the [catalog role](./entities.md#catalog-role) the principal role we created. For more information on these entities, please refer to the linked documentation.
+Now, we grant the [principal role](./entities.md#principal-role) we created, and grant the [catalog role](./entities.md#catalog-role) the principal role we created. For more information on these entities, please refer to the linked documentation.
 
 ```
 ./polaris \

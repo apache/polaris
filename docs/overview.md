@@ -131,7 +131,7 @@ service principals together and grant privileges on securable objects. For more 
 see [Access control](./access-control.md "Access control"). For a diagram of this model, see [RBAC model](./access-control.md#rbac-model "RBAC model").
 
 If the Polaris administrator grants the service principal for the new service connection with a new principal role, the service principal
-doesn\'t have any privileges granted to it yet. When securing the catalog that the new service connection will connect to, the Polaris
+doesn't have any privileges granted to it yet. When securing the catalog that the new service connection will connect to, the Polaris
 administrator grants privileges to catalog roles and then grants these catalog roles to the new principal role. As a result, the service
 principal for the new service connection is bestowed with these privileges. For more information about catalog roles, see [Catalog role](./access-control.md#catalog-role "Catalog role").
 
