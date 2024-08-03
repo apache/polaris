@@ -23,20 +23,20 @@ and then grants service principals access to resources by assigning catalog role
 
 The key concepts to understanding access control in Polaris are:
 
--   **Securable object**
--   **Principal role**
--   **Catalog role**
--   **Privilege**
+- **Securable object**
+- **Principal role**
+- **Catalog role**
+- **Privilege**
 
 ## Securable object
 
 A securable object is an object to which access can be granted. Polaris
 has the following securable objects:
 
--   Catalog
--   Namespace
--   Iceberg table
--   View
+- Catalog
+- Namespace
+- Iceberg table
+- View
 
 ## Principal role
 
@@ -53,10 +53,10 @@ catalog roles to a principal role.
 
 The following table shows examples of principal roles that you might configure in Polaris:
 
-| Principal role name | Description |
-| -----------------------| ----------- |
-| Data_engineer   | A role that is granted to multiple service principals for running data engineering jobs. |
-| Data_scientist | A role that is granted to multiple service principals for running data science or AI jobs. |
+| Principal role name | Description                                                                                |
+|---------------------|--------------------------------------------------------------------------------------------|
+| Data_engineer       | A role that is granted to multiple service principals for running data engineering jobs.   |
+| Data_scientist      | A role that is granted to multiple service principals for running data science or AI jobs. |
 
 ## Catalog role
 
@@ -68,8 +68,8 @@ principals.
 
 **Note**
 
-If you update the privileges bestowed to a service principal, the updates won\'t take effect for up to one hour. This means that if you
-revoke or grant some privileges for a catalog, the updated privileges won\'t take effect on any service principal with access to that catalog
+If you update the privileges bestowed to a service principal, the updates won't take effect for up to one hour. This means that if you
+revoke or grant some privileges for a catalog, the updated privileges won't take effect on any service principal with access to that catalog
 for up to one hour.
 
 Polaris also supports a many-to-many relationship between catalog roles and principal roles. You can grant the same catalog role to one or more
@@ -78,11 +78,11 @@ principal roles. Likewise, a principal role can be granted to one or more catalo
 The following table displays examples of catalog roles that you might
 configure in Polaris:
 
-| Example Catalog role | Description |
-| -----------------------| ----------- |
-| Catalog administrators   | A role that has been granted multiple privileges to emulate full access to the catalog.<br /><br />Principal roles that have been granted this role are permitted to create, alter, read, write, and drop tables in the catalog.  |
-| Catalog readers      | A role that has been granted read-only privileges to tables in the catalog.<br /><br />Principal roles that have been granted this role are allowed to read from tables in the catalog. |
-| Catalog contributor   | A role that has been granted read and write access privileges to all tables that belong to the catalog.<br /><br />Principal roles that have been granted this role are allowed to perform read and write operations on tables in the catalog. |
+| Example Catalog role   | Description                                                                                                                                                                                                                                    |
+|------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Catalog administrators | A role that has been granted multiple privileges to emulate full access to the catalog.<br /><br />Principal roles that have been granted this role are permitted to create, alter, read, write, and drop tables in the catalog.               |
+| Catalog readers        | A role that has been granted read-only privileges to tables in the catalog.<br /><br />Principal roles that have been granted this role are allowed to read from tables in the catalog.                                                        |
+| Catalog contributor    | A role that has been granted read and write access privileges to all tables that belong to the catalog.<br /><br />Principal roles that have been granted this role are allowed to perform read and write operations on tables in the catalog. |
 
 ## RBAC model
 
@@ -106,83 +106,83 @@ To grant the full set of privileges (drop, list, read, write, etc.) on an object
 
 The TABLE_FULL_METADATA full privilege doesn't grant access to the TABLE_READ_DATA or TABLE_WRITE_DATA individual privileges.
 
-| Full privilege | Individual privilege | Description |
-| -----------------------| ----------- | ---- |
-| TABLE_FULL_METADATA | TABLE_CREATE | Enables registering a table with the catalog. |
-|  | TABLE_DROP | Enables dropping a table from the catalog. |
-|  | TABLE_LIST | Enables listing any tables in the catalog. |
-|  | TABLE_READ_PROPERTIES | Enables reading [properties](https://iceberg.apache.org/docs/nightly/configuration/#table-properties) of the table. |
-|  | TABLE_WRITE_PROPERTIES | Enables configuring [properties](https://iceberg.apache.org/docs/nightly/configuration/#table-properties) for the table. |
-| N/A | TABLE_READ_DATA | Enables reading data from the table by receiving short-lived read-only storage credentials from the catalog. |
-| N/A | TABLE_WRITE_DATA | Enables writing data to the table by receiving short-lived read+write storage credentials from the catalog. |
+| Full privilege      | Individual privilege   | Description                                                                                                              |
+|---------------------|------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| TABLE_FULL_METADATA | TABLE_CREATE           | Enables registering a table with the catalog.                                                                            |
+|                     | TABLE_DROP             | Enables dropping a table from the catalog.                                                                               |
+|                     | TABLE_LIST             | Enables listing any tables in the catalog.                                                                               |
+|                     | TABLE_READ_PROPERTIES  | Enables reading [properties](https://iceberg.apache.org/docs/nightly/configuration/#table-properties) of the table.      |
+|                     | TABLE_WRITE_PROPERTIES | Enables configuring [properties](https://iceberg.apache.org/docs/nightly/configuration/#table-properties) for the table. |
+| N/A                 | TABLE_READ_DATA        | Enables reading data from the table by receiving short-lived read-only storage credentials from the catalog.             |
+| N/A                 | TABLE_WRITE_DATA       | Enables writing data to the table by receiving short-lived read+write storage credentials from the catalog.              |
 
 ### View privileges
 
-| Full privilege | Individual privilege | Description |
-| -----------------------| ----------- | ---- |
-| VIEW_FULL_METADATA | VIEW_CREATE  | Enables registering a view with the catalog. |
-|  | VIEW_DROP | Enables dropping a view from the catalog. |
-|  | VIEW_LIST | Enables listing any views in the catalog.  |
-|  | VIEW_READ_PROPERTIES | Enables reading all the view properties. |
-|  | VIEW_WRITE_PROPERTIES | Enables configuring view properties. |
+| Full privilege     | Individual privilege  | Description                                  |
+|--------------------|-----------------------|----------------------------------------------|
+| VIEW_FULL_METADATA | VIEW_CREATE           | Enables registering a view with the catalog. |
+|                    | VIEW_DROP             | Enables dropping a view from the catalog.    |
+|                    | VIEW_LIST             | Enables listing any views in the catalog.    |
+|                    | VIEW_READ_PROPERTIES  | Enables reading all the view properties.     |
+|                    | VIEW_WRITE_PROPERTIES | Enables configuring view properties.         |
 
 ### Namespace privileges
 
-| Full privilege | Individual privilege | Description |
-| -----------------------| ----------- | ---- |
-| NAMESPACE_FULL_METADATA | NAMESPACE_CREATE | Enables creating a namespace in a catalog. |
-|  | NAMESPACE_DROP | Enables dropping the namespace from the catalog. |
-|  | NAMESPACE_LIST | Enables listing any object in the namespace, including nested namespaces and tables. |
-|  | NAMESPACE_READ_PROPERTIES | Enables reading all the namespace properties. |
-|  | NAMESPACE_WRITE_PROPERTIES | Enables configuring namespace properties. |
+| Full privilege          | Individual privilege       | Description                                                                          |
+|-------------------------|----------------------------|--------------------------------------------------------------------------------------|
+| NAMESPACE_FULL_METADATA | NAMESPACE_CREATE           | Enables creating a namespace in a catalog.                                           |
+|                         | NAMESPACE_DROP             | Enables dropping the namespace from the catalog.                                     |
+|                         | NAMESPACE_LIST             | Enables listing any object in the namespace, including nested namespaces and tables. |
+|                         | NAMESPACE_READ_PROPERTIES  | Enables reading all the namespace properties.                                        |
+|                         | NAMESPACE_WRITE_PROPERTIES | Enables configuring namespace properties.                                            |
 
 ### Catalog privileges
 
-| Privilege | Description |
-| -----------------------| ----------- |
-| CATALOG_MANAGE_ACCESS | Includes the ability to grant or revoke privileges on objects in a catalog to catalog roles, and the ability to grant or revoke catalog roles to or from principal roles. |
-| CATALOG_MANAGE_CONTENT | Enables full management of content for the catalog. This privilege encompasses the following privileges:<ul><li>CATALOG_MANAGE_METADATA</li><li>TABLE_FULL_METADATA</li><li>NAMESPACE_FULL_METADATA</li><li>VIEW_FULL_METADATA</li><li>TABLE_WRITE_DATA</li><li>TABLE_READ_DATA</li><li>CATALOG_READ_PROPERTIES</li><li>CATALOG_WRITE_PROPERTIES</li></ul> |
-| CATALOG_MANAGE_METADATA | Enables full management of the catalog, as well as catalog roles, namespaces, and tables.  |
-| CATALOG_READ_PROPERTIES | Enables listing catalogs and reading properties of the catalog. |
-| CATALOG_WRITE_PROPERTIES | Enables configuring catalog properties. |
+| Privilege                | Description                                                                                                                                                                                                                                                                                                                                                |
+|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| CATALOG_MANAGE_ACCESS    | Includes the ability to grant or revoke privileges on objects in a catalog to catalog roles, and the ability to grant or revoke catalog roles to or from principal roles.                                                                                                                                                                                  |
+| CATALOG_MANAGE_CONTENT   | Enables full management of content for the catalog. This privilege encompasses the following privileges:<ul><li>CATALOG_MANAGE_METADATA</li><li>TABLE_FULL_METADATA</li><li>NAMESPACE_FULL_METADATA</li><li>VIEW_FULL_METADATA</li><li>TABLE_WRITE_DATA</li><li>TABLE_READ_DATA</li><li>CATALOG_READ_PROPERTIES</li><li>CATALOG_WRITE_PROPERTIES</li></ul> |
+| CATALOG_MANAGE_METADATA  | Enables full management of the catalog, as well as catalog roles, namespaces, and tables.                                                                                                                                                                                                                                                                  |
+| CATALOG_READ_PROPERTIES  | Enables listing catalogs and reading properties of the catalog.                                                                                                                                                                                                                                                                                            |
+| CATALOG_WRITE_PROPERTIES | Enables configuring catalog properties.                                                                                                                                                                                                                                                                                                                    |
 
 ## RBAC example
 
 The following diagram illustrates how RBAC works in Polaris, and
 includes the following users:
 
--   **Alice**: A service admin who signs up for Polaris. Alice can
-    create service principals. She can also create catalogs and
-    namespaces, and configure access control for Polaris resources.
+- **Alice**: A service admin who signs up for Polaris. Alice can
+  create service principals. She can also create catalogs and
+  namespaces, and configure access control for Polaris resources.
 
 > **Note**
 >
 > The service principal for Alice is not visible in the Polaris Catalog
 > user interface.
 
--   **Bob**: A data engineer who uses Snowpipe Streaming (in Snowflake)
-    and Apache Spark connections to interact with Polaris.
+- **Bob**: A data engineer who uses Snowpipe Streaming (in Snowflake)
+  and Apache Spark connections to interact with Polaris.
 
-    -   Alice has created a service principal for Bob. It has been
-        granted the Data_engineer principal role, which in turn has been
-        granted the following catalog roles: Catalog contributor and
-        Data administrator (for both the Silver and Gold zone catalogs
-        in the following diagram).
+  - Alice has created a service principal for Bob. It has been
+    granted the Data_engineer principal role, which in turn has been
+    granted the following catalog roles: Catalog contributor and
+    Data administrator (for both the Silver and Gold zone catalogs
+    in the following diagram).
 
-    -   The Catalog contributor role grants permission to create
-        namespaces and tables in the Bronze zone catalog.
+  - The Catalog contributor role grants permission to create
+    namespaces and tables in the Bronze zone catalog.
 
-    -   The Data administrator roles grant full administrative rights to
-        the Silver zone catalog and Gold zone catalog.
+  - The Data administrator roles grant full administrative rights to
+    the Silver zone catalog and Gold zone catalog.
 
--   **Mark**: A data scientist who uses Snowflake AI services to
-    interact with Polaris.
+- **Mark**: A data scientist who uses Snowflake AI services to
+  interact with Polaris.
 
-    -   Alice has created a service principal for Mark. It has been
-        granted the Data_scientist principal role, which in turn has
-        been granted the catalog role named Catalog reader.
+  - Alice has created a service principal for Mark. It has been
+    granted the Data_scientist principal role, which in turn has
+    been granted the catalog role named Catalog reader.
 
-    -   The Catalog reader role grants read-only access for a catalog
-        named Gold zone catalog.
+  - The Catalog reader role grants read-only access for a catalog
+    named Gold zone catalog.
 
 ![Diagram that shows an example of how RBAC works in Polaris Catalog.](./img/rbac-example.svg "Polaris Catalog RBAC example")

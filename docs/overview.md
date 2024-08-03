@@ -38,11 +38,8 @@ In Polaris Catalog, you can create one or more catalog resources to organize Ice
 Configure your catalog by setting values in the storage configuration for S3, Azure, or Google Cloud Storage. An Iceberg catalog enables a
 query engine to manage and organize tables. The catalog forms the first architectural layer in the [Iceberg table specification](https://iceberg.apache.org/spec/#overview) and must support:
 
--   Storing the current metadata pointer for one or more Iceberg tables. A metadata pointer maps a table name to the location of that table's
-    current metadata file.
-
--   Performing atomic operations so that you can update the current metadata pointer for a table to the metadata pointer of a new version of
-    the table.
+- Storing the current metadata pointer for one or more Iceberg tables. A metadata pointer maps a table name to the location of that table's current metadata file.
+- Performing atomic operations so that you can update the current metadata pointer for a table to the metadata pointer of a new version of the table.
 
 To learn more about Iceberg catalogs, see the [Apache Iceberg documentation](https://iceberg.apache.org/concepts/catalog/).
 
@@ -50,10 +47,9 @@ To learn more about Iceberg catalogs, see the [Apache Iceberg documentation](htt
 
 A catalog can be one of the following two types:
 
--   Internal: The catalog is managed by Polaris. Tables from this catalog can be read and written in Polaris.
-
--   External: The catalog is externally managed by another Iceberg catalog provider (for example, Snowflake, Glue, Dremio Arctic). Tables from 
-    this catalog are synced to Polaris. These tables are read-only in Polaris. In the current release, only Snowflake external catalog is provided.
+- Internal: The catalog is managed by Polaris. Tables from this catalog can be read and written in Polaris.
+- External: The catalog is externally managed by another Iceberg catalog provider (for example, Snowflake, Glue, Dremio Arctic). Tables from
+  this catalog are synced to Polaris. These tables are read-only in Polaris. In the current release, only Snowflake external catalog is provided.
 
 A catalog is configured with a storage configuration that can point to S3, Azure storage, or GCS.
 
@@ -79,34 +75,24 @@ engines can only read from these tables.
 To ensure that the access privileges defined for a catalog are enforced
 correctly, you must:
 
--   Ensure a directory only contains the data files that belong to a
-    single table.
-
--   Create a directory hierarchy that matches the namespace hierarchy
-    for the catalog.
+- Ensure a directory only contains the data files that belong to a single table.
+- Create a directory hierarchy that matches the namespace hierarchy for the catalog.
 
 For example, if a catalog includes:
 
--   Top-level namespace namespace1
-
--   Nested namespace namespace1a
-
--   A customers table, which is grouped under nested namespace
-    namespace1a
-
--   An orders table, which is grouped under nested namespace namespace1a
+- Top-level namespace namespace1
+- Nested namespace namespace1a
+- A customers table, which is grouped under nested namespace namespace1a
+- An orders table, which is grouped under nested namespace namespace1a
 
 The directory hierarchy for the catalog must be:
 
--   /namespace1/namespace1a/customers/\<files for the customers table
-    *only*\>
-
--   /namespace1/namespace1a/orders/\<files for the orders table *only*\>
+- /namespace1/namespace1a/customers/\<files for the customers table *only*>
+- /namespace1/namespace1a/orders/\<files for the orders table *only*>
 
 ### Service principal
 
-A service principal is an entity that you create in Polaris Catalog. Each service principal encapsulates credentials that you use to connect
-to Polaris Catalog.
+A service principal is an entity that you create in Polaris Catalog. Each service principal encapsulates credentials that you use to connect to Polaris Catalog.
 
 Query engines use service principals to connect to catalogs.
 
@@ -114,20 +100,20 @@ Polaris Catalog generates a Client ID and Client Secret pair for each service pr
 
 The following table displays example service principals that you might create in Polaris Catalog:
 
-  | Service connection name     | Description |
-  | --------------------------- | ----------- |
-  |  Flink ingestion            | For Apache Flink to ingest streaming data into Iceberg tables. |
-  |  Spark ETL pipeline         | For Apache Spark to run ETL pipeline jobs on Iceberg tables. |
-  |  Snowflake data pipelines   | For Snowflake to run data pipelines for transforming data in Iceberg tables.  |
-  |  Trino BI dashboard         | For Trino to run BI queries for powering a dashboard. |
-  |  Snowflake AI team          | For Snowflake to run AI jobs on data in Iceberg tables. |
+| Service connection name  | Description                                                                  |
+|--------------------------|------------------------------------------------------------------------------|
+| Flink ingestion          | For Apache Flink to ingest streaming data into Iceberg tables.               |
+| Spark ETL pipeline       | For Apache Spark to run ETL pipeline jobs on Iceberg tables.                 |
+| Snowflake data pipelines | For Snowflake to run data pipelines for transforming data in Iceberg tables. |
+| Trino BI dashboard       | For Trino to run BI queries for powering a dashboard.                        |
+| Snowflake AI team        | For Snowflake to run AI jobs on data in Iceberg tables.                      |
 
 ### Service connection
 
 A service connection represents a REST-compatible engine (such as Apache Spark, Apache Flink, or Trino) that can read from and write to Polaris
-Catalog. When creating a new service connection, the Polaris administrator grants the service principal that is created with the new service 
-connection with either a new or existing principal role. A principal role is a resource in Polaris that you can use to logically group Polaris 
-service principals together and grant privileges on securable objects. For more information, see [Principal role](./access-control.md#principal-role "Principal role"). Polaris Catalog uses a role-based access control (RBAC) model to grant service principals access to resources. For more information, 
+Catalog. When creating a new service connection, the Polaris administrator grants the service principal that is created with the new service
+connection with either a new or existing principal role. A principal role is a resource in Polaris that you can use to logically group Polaris
+service principals together and grant privileges on securable objects. For more information, see [Principal role](./access-control.md#principal-role "Principal role"). Polaris Catalog uses a role-based access control (RBAC) model to grant service principals access to resources. For more information,
 see [Access control](./access-control.md "Access control"). For a diagram of this model, see [RBAC model](./access-control.md#rbac-model "RBAC model").
 
 If the Polaris administrator grants the service principal for the new service connection with a new principal role, the service principal
@@ -149,30 +135,30 @@ Catalog.
 
 When you create a catalog, you supply the following information about your external cloud storage:
 
-| Cloud storage provider | Information |
-| -----------------------| ----------- |
-| Amazon S3 | <ul><li>Default base location for your Amazon S3 bucket</li><li>Locations for your Amazon S3 bucket</li><li>S3 role ARN</li><li>External ID (optional)</li></ul> |
-| Google Cloud Storage (GCS) | <ul><li>Default base location for your GCS bucket</li><li>Locations for your Amazon GCS bucket</li></ul> |
-| Azure | <ul><li>Default base location for your Microsoft Azure container</li><li>Locations for your Microsoft Azure container</li><li>Azure tenant ID</li></ul> |
+| Cloud storage provider     | Information                                                                                                                                                      |
+|----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Amazon S3                  | <ul><li>Default base location for your Amazon S3 bucket</li><li>Locations for your Amazon S3 bucket</li><li>S3 role ARN</li><li>External ID (optional)</li></ul> |
+| Google Cloud Storage (GCS) | <ul><li>Default base location for your GCS bucket</li><li>Locations for your Amazon GCS bucket</li></ul>                                                         |
+| Azure                      | <ul><li>Default base location for your Microsoft Azure container</li><li>Locations for your Microsoft Azure container</li><li>Azure tenant ID</li></ul>          |
 
 ## Example workflow
 
 In the following example workflow, Bob creates an Iceberg table named Table1 and Alice reads data from Table1.
 
-1.  Bob uses Apache Spark to create the Table1 table under the
-    Namespace1 namespace in the Catalog1 catalog and insert values into
-    Table1.
+1. Bob uses Apache Spark to create the Table1 table under the
+   Namespace1 namespace in the Catalog1 catalog and insert values into
+   Table1.
 
-    Bob can create Table1 and insert data into it, because he is using a
-    service connection with a service principal that is bestowed with
-    the privileges to perform these actions.
+   Bob can create Table1 and insert data into it, because he is using a
+   service connection with a service principal that is bestowed with
+   the privileges to perform these actions.
 
-2.  Alice uses Snowflake to read data from Table1.
+2. Alice uses Snowflake to read data from Table1.
 
-    Alice can read data from Table1, because she is using a service
-    connection with a service principal with a catalog integration that
-    is bestowed with the privileges to perform this action. Alice
-    creates an unmanaged table in Snowflake to read data from Table1.
+   Alice can read data from Table1, because she is using a service
+   connection with a service principal with a catalog integration that
+   is bestowed with the privileges to perform this action. Alice
+   creates an unmanaged table in Snowflake to read data from Table1.
 
 ![Diagram that shows an example workflow for Polaris Catalog](./img/example-workflow.svg "Example workflow for Polaris Catalog")
 
@@ -202,12 +188,11 @@ namespaces, and tables.
 
 Polaris RBAC uses two different role types to delegate privileges:
 
--   **Principal roles:** Granted to Polaris service principals and
-    analogous to roles in other access control systems that you grant to
-    service principals.
+- **Principal roles:** Granted to Polaris service principals and
+  analogous to roles in other access control systems that you grant to
+  service principals.
 
--   **Catalog roles:** Configured with certain privileges on Polaris
-    catalog resources, and granted to principal roles.
+- **Catalog roles:** Configured with certain privileges on Polaris
+  catalog resources, and granted to principal roles.
 
 For more information, see [Access control](./access-control.md "Access control").
-

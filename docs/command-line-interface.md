@@ -33,6 +33,7 @@ options:
 ```
 
 `COMMAND` must be one of the following:
+
 1. catalogs
 2. principals
 3. principal-roles
@@ -40,7 +41,7 @@ options:
 5. namespaces
 6. privileges
 
-Each _command_ supports several _subcommands_, and some _subcommands_ have _actions_ that come after the subcommand in turn. Finally, _arguments_ follow to form a full invocation. Within a set of named arguments at the end of an invocation ordering is generally not important. Many invocations also have a required positional argument of the type that the _command_ refers to. Again, the ordering of this positional argument relative to named arguments is not important. 
+Each _command_ supports several _subcommands_, and some _subcommands_ have _actions_ that come after the subcommand in turn. Finally, _arguments_ follow to form a full invocation. Within a set of named arguments at the end of an invocation ordering is generally not important. Many invocations also have a required positional argument of the type that the _command_ refers to. Again, the ordering of this positional argument relative to named arguments is not important.
 
 Some example full invocations:
 
@@ -228,7 +229,7 @@ polaris catalogs update --default-base-location s3://new-bucket/my_data my_catal
 
 ### Principals
 
-The `principals` command is used to manage principals within Polaris. 
+The `principals` command is used to manage principals within Polaris.
 
 `principals` supports the following subcommands:
 
@@ -531,7 +532,7 @@ The catalog-roles command is used to create, discover, and manage catalog roles 
 4. list
 5. update
 6. grant
-7. revoke 
+7. revoke
 
 #### create
 
@@ -693,7 +694,7 @@ polaris catalog-roles revoke --catalog sales_data contains_cc_info_catalog_role 
 
 ### Namespaces
 
-The `namespaces` command is used to manage namespaces within Polaris. 
+The `namespaces` command is used to manage namespaces within Polaris.
 
 `namespaces` supports the following subcommands:
 
@@ -1023,7 +1024,7 @@ polaris privileges \
 
 ## Examples
 
-This section outlines example code for a few common operations as well as for some more complex ones. 
+This section outlines example code for a few common operations as well as for some more complex ones.
 
 For especially complex operations, you may wish to instead directly use the Python API.
 
@@ -1079,5 +1080,3 @@ for principal_role in ${principal_roles}; do
   done
 done
 ```
-
-
