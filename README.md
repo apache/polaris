@@ -32,7 +32,7 @@ Polaris Catalog is open source under an Apache 2.0 license.
 
 ## Building and Running 
 Polaris is built using Gradle with Java 21+ and Docker 27+.
-- `./gradlew build` - This will run integration tests by default. Make sure Docker is running, as the integration tests require a running Docker daemon.
+- `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
 - `./gradlew assemble` - To skip tests.
 - `./gradlew test` - To run unit tests and integration tests.
 - `./gradlew runApp` - To run the Polaris server locally on localhost:8181. 
@@ -52,32 +52,21 @@ Polaris is built using Gradle with Java 21+ and Docker 27+.
 - `kubectl describe deployment polaris-deployment` - To troubleshoot if things aren't working as expected.
 
 ## Connecting from an Engine
-Before connecting with an engine(e.g., Spark), you'll need to create a catalog. Here are the steps:
-1. Generate a token for the root principal:
+To connect from an engine like Spark, first create a catalog with these steps:
+1. Generate a token for the root principal
 ```bash
-curl -i -X POST \
-  http://localhost:8181/api/catalog/v1/oauth/tokens \
-  -d 'grant_type=client_credentials&client_id=<principalClientId>&client_secret=<mainSecret>&scope=PRINCIPAL_ROLE:ALL'
+export PRINCIPAL_TOKEN=$(curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
+  -d 'grant_type=client_credentials&client_id=<principalClientId>&client_secret=<mainSecret>&scope=PRINCIPAL_ROLE:ALL' \
+   | jq -r '.access_token')
 ```
-2. Extract the access token from the response and set it as the `PRINCIPAL_TOKEN` environment variable.
-```json
-{
-  "access_token": "MY_ACCESS_TOKEN",
-  "token_type": "bearer",
-  "expires_in": 3600
-}
-```
+2. Create a catalog named `polaris`
 ```bash
-$ export PRINCIPAL_TOKEN=MY_ACCESS_TOKEN
-```
-3. Create a catalog named `polaris`:
-```bash
-$ curl -i -X POST -H "Authorization: Bearer $PRINCIPAL_TOKEN" -H 'Accept: application/json' -H 'Content-Type: application/json' \
-  http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
+curl -i -X POST -H "Authorization: Bearer $PRINCIPAL_TOKEN" -H 'Accept: application/json' -H 'Content-Type: application/json' \
+  http://localhost:8181/api/management/v1/catalogs \
   -d '{"name": "polaris", "id": 100, "type": "INTERNAL", "readOnly": false, "storageConfigInfo": {"storageType": "FILE"}, "properties": {"default-base-location": "file:///tmp/polaris"}}'
 ```
 
-Now you can connect to the catalog from an engine. More details can be found in the [Quick Start Guide](https://polaris.io/#section/Quick-Start/Using-Iceberg-and-Polarise).
+From here, you can use Spark to create namespaces, tables, etc. More details can be found in the [Quick Start Guide](https://polaris.io/#section/Quick-Start/Using-Iceberg-and-Polarise).
 
 Polaris is organized into the following modules:
 - `polaris-core` - The main Polaris entity definitions and core business logic
@@ -85,8 +74,7 @@ Polaris is organized into the following modules:
 - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
 
 ## API Docs
-- API docs are hosted via Github Pages at https://polaris.io. All updates to the main branch
-update the hosted docs.
+- API docs are hosted at https://polaris.io. All updates to the main branch update the hosted docs.
 - The Polaris management API docs are found [here](https://polaris.io/index.html#tag/polaris-management-service_other)
 - The Apache Iceberg REST API docs are found [here](https://polaris.io/index.html#tag/Configuration-API)
 
