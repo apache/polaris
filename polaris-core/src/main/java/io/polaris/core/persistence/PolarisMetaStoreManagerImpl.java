@@ -132,6 +132,11 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
       @NotNull PolarisMetaStoreSession ms,
       @NotNull PolarisBaseEntity entity) {
 
+
+    if (entity.getType().getCode() == PolarisEntityType.TABLE_LIKE.getCode()) { // TODO remove
+      System.out.println("DEBUG");
+    }
+
     // validate the entity type and subtype
     callCtx.getDiagServices().checkNotNull(entity, "unexpected_null_entity");
     callCtx
