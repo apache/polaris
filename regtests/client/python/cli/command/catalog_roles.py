@@ -19,7 +19,8 @@ from typing import Dict, Optional
 from pydantic import StrictStr
 
 from cli.command import Command
-from cli.constants import Subcommands
+from cli.constants import Subcommands, Arguments
+from cli.options.option_tree import Argument
 from polaris.management import PolarisDefaultApi, CreateCatalogRoleRequest, CatalogRole, UpdateCatalogRoleRequest, \
     GrantCatalogRoleRequest
 
@@ -45,10 +46,10 @@ class CatalogRolesCommand(Command):
 
     def validate(self):
         if not self.catalog_name:
-            raise Exception("Missing required argument: --catalog")
+            raise Exception(f'Missing required argument: {Argument.to_flag_name(Arguments.CATALOG)}')
         if self.catalog_roles_subcommand in {Subcommands.GRANT, Subcommands.REVOKE}:
             if not self.principal_role_name:
-                raise Exception("Missing required argument: --principal")
+                raise Exception(f'Missing required argument: {Argument.to_flag_name(Arguments.PRINCIPAL_ROLE)}')
 
     def execute(self, api: PolarisDefaultApi) -> None:
         if self.catalog_roles_subcommand == Subcommands.CREATE:
@@ -90,4 +91,4 @@ class CatalogRolesCommand(Command):
             api.revoke_catalog_role_from_principal_role(
                 self.principal_role_name, self.catalog_name, self.catalog_role_name)
         else:
-            raise Exception(f"{self.catalog_roles_subcommand} is not supported in the CLI")
+            raise Exception(f'{self.catalog_roles_subcommand} is not supported in the CLI')

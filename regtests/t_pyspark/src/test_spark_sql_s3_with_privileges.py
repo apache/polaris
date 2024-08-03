@@ -35,6 +35,7 @@ from polaris.management import ApiClient as ManagementApiClient
 from polaris.management import PolarisDefaultApi, Principal, PrincipalRole, CatalogRole, \
   CatalogGrant, CatalogPrivilege, ApiException, CreateCatalogRoleRequest, CreatePrincipalRoleRequest, \
   CreatePrincipalRequest, AddGrantRequest, GrantCatalogRoleRequest, GrantPrincipalRoleRequest
+from polaris.management.exceptions import ForbiddenException
 
 
 @pytest.fixture
@@ -742,8 +743,7 @@ def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalo
 def test_spark_credentials_s3_direct_without_read(
         snowflake_catalog, snowman_catalog_client, creator_catalog_client, test_bucket):
   """
-  Create a table using `creator`, which does not have TABLE_READ_DATA and ensure that credentials to read the table
-  are not vended.
+  Create a table using `creator`, which does not have TABLE_READ_DATA and expect a `ForbiddenException`
   """
   snowman_catalog_client.create_namespace(
       prefix=snowflake_catalog.name,
@@ -752,26 +752,23 @@ def test_spark_credentials_s3_direct_without_read(
       )
   )
 
-  response = creator_catalog_client.create_table(
-      prefix=snowflake_catalog.name,
-      namespace="some_schema",
-      x_iceberg_access_delegation="true",
-      create_table_request=CreateTableRequest(
-          name="some_table",
-          var_schema=ModelSchema(
-                type = 'struct',
-                fields = [],
-          )
-      )
-  )
+  try:
+    creator_catalog_client.create_table(
+        prefix=snowflake_catalog.name,
+        namespace="some_schema",
+        x_iceberg_access_delegation="true",
+        create_table_request=CreateTableRequest(
+            name="some_table",
+            var_schema=ModelSchema(
+                  type = 'struct',
+                  fields = [],
+            )
+        )
+    )
+    pytest.fail("Expected exception when creating a table without TABLE_WRITE")
+  except Exception as e:
+    assert 'CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION' in str(e)
 
-  assert not response.config
-
-  snowman_catalog_client.drop_table(
-    prefix=snowflake_catalog.name,
-    namespace="some_schema",
-    table="some_table"
-  )
   snowman_catalog_client.drop_namespace(
     prefix=snowflake_catalog.name,
     namespace="some_schema"
@@ -882,6 +879,32 @@ def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, sno
         spark.sql(f'USE {snowflake_catalog.name}')
         spark.sql('DROP NAMESPACE db1.schema')
         spark.sql('DROP NAMESPACE db1')
+
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
+def test_spark_ctas(snowflake_catalog, polaris_catalog_url, snowman):
+    """
+    Create a table using CTAS and ensure that credentials are vended
+    :param root_client:
+    :param snowflake_catalog:
+    :return:
+    """
+    with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+                             catalog_name=snowflake_catalog.name,
+                             polaris_url=polaris_catalog_url) as spark:
+        table_name = f'iceberg_test_table_{str(uuid.uuid4())[-10:]}'
+        spark.sql(f'USE {snowflake_catalog.name}')
+        spark.sql('CREATE NAMESPACE db1')
+        spark.sql('CREATE NAMESPACE db1.schema')
+        spark.sql('USE db1.schema')
+        spark.sql(f'CREATE TABLE {table_name}_t1 (col1 int)')
+        spark.sql('SHOW TABLES')
+
+        # Insert some data
+        spark.sql(f"INSERT INTO {table_name}_t1 VALUES (10)")
+
+        # Run CTAS
+        spark.sql(f"CREATE TABLE {table_name}_t2 AS SELECT * FROM {table_name}_t1")
+
 
 def create_catalog_role(api, catalog, role_name):
   catalog_role = CatalogRole(name=role_name)

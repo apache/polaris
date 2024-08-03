@@ -32,20 +32,20 @@ For details on how to use Storage Types in the REST API, see [the API docs](../r
 
 A namespace is a logical entity that resides within a [catalog](#catalog) and can contain other entities such as [tables](#table) or [views](#view). Some other systems may refer to namespaces as _schemas_ or _databases_.
 
-In Polaris, namespaces can be nested up to 16 levels. For example, `a.b.c.d.e.f.g` is a valid namespace. `b` is said to reside within `a`, and so on.
+In Polaris, namespaces can be nested. For example, `a.b.c.d.e.f.g` is a valid namespace. `b` is said to reside within `a`, and so on.
 
 For information on managing namespaces with the REST API or for more information on what data can be associated with a namespace, see [the API docs](../regtests/client/python/docs/CreateNamespaceRequest.md).
 
 
 ## Table
 
-Polaris tables are entites that map to [Apache Iceberg tables](https://iceberg.apache.org/docs/nightly/configuration/).
+Polaris tables are entities that map to [Apache Iceberg tables](https://iceberg.apache.org/docs/nightly/configuration/).
 
 For information on managing tables with the REST API or for more information on what data can be associated with a table, see [the API docs](../regtests/client/python/docs/CreateTableRequest.md).
 
 ## View
 
-Polaris views are entites that map to [Apache Iceberg views](https://iceberg.apache.org/view-spec/).
+Polaris views are entities that map to [Apache Iceberg views](https://iceberg.apache.org/view-spec/).
 
 For information on managing views with the REST API or for more information on what data can be associated with a view, see [the API docs](../regtests/client/python/docs/CreateViewRequest.md).
 

@@ -493,7 +493,7 @@ tags:
       ## Table
 
 
-      Polaris tables are entites that map to [Apache Iceberg
+      Polaris tables are entities that map to [Apache Iceberg
       tables](https://iceberg.apache.org/docs/nightly/configuration/).
 
 
@@ -505,7 +505,7 @@ tags:
       ## View
 
 
-      Polaris views are entites that map to [Apache Iceberg
+      Polaris views are entities that map to [Apache Iceberg
       views](https://iceberg.apache.org/view-spec/).
 
 
