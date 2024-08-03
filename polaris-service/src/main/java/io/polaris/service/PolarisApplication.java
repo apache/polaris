@@ -146,14 +146,15 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     MetaStoreManagerFactory metaStoreManagerFactory = configuration.getMetaStoreManagerFactory();
 
     metaStoreManagerFactory.setStorageIntegrationProvider(
-        new PolarisStorageIntegrationProviderImpl(() -> {
-          StsClientBuilder stsClientBuilder = StsClient.builder();
-          AwsCredentialsProvider awsCredentialsProvider = configuration.credentialsProvider();
-          if (awsCredentialsProvider != null) {
-            stsClientBuilder.credentialsProvider(awsCredentialsProvider);
-          }
-          return stsClientBuilder.build();
-        }));
+        new PolarisStorageIntegrationProviderImpl(
+            () -> {
+              StsClientBuilder stsClientBuilder = StsClient.builder();
+              AwsCredentialsProvider awsCredentialsProvider = configuration.credentialsProvider();
+              if (awsCredentialsProvider != null) {
+                stsClientBuilder.credentialsProvider(awsCredentialsProvider);
+              }
+              return stsClientBuilder.build();
+            }));
 
     PolarisMetricRegistry polarisMetricRegistry =
         new PolarisMetricRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
