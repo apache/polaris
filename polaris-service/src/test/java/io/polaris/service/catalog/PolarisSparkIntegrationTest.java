@@ -17,6 +17,7 @@ package io.polaris.service.catalog;
 
 import static io.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
 import io.dropwizard.testing.ConfigOverride;
@@ -46,7 +47,6 @@ import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -302,13 +302,8 @@ public class PolarisSparkIntegrationTest {
     assertThat(tables).hasSize(1).extracting(row -> row.getString(1)).containsExactly("mytb1");
     long rowCount = spark.sql("SELECT * FROM mytb1").count();
     assertThat(rowCount).isEqualTo(3);
-    try {
-      spark.sql("INSERT INTO mytb1 VALUES (20, 'new_text')");
-      Assertions.fail("Expected exception when inserting into external table");
-    } catch (Exception e) {
-      LoggerFactory.getLogger(getClass()).info("Expected exception", e);
-      // expected exception
-    }
+    assertThatThrownBy(() -> spark.sql("INSERT INTO mytb1 VALUES (20, 'new_text')"))
+        .isInstanceOf(Exception.class);
 
     spark.sql("INSERT INTO " + CATALOG_NAME + ".ns1.tb1 VALUES (20, 'new_text')");
     tableResponse = loadTable(CATALOG_NAME, "ns1", "tb1");

@@ -14,6 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+################################################
+# This is a modified copy of the script in the #
+# parent directory, used for regression tests. #
+################################################
+
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
@@ -23,16 +29,22 @@ if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
   pip install poetry==1.5.0
 
   cp ${SCRIPT_DIR}/regtests/client/python/pyproject.toml ${SCRIPT_DIR}
-  pushd $SCRIPT_DIR && poetry install ; popd
+
+  # Save the current directory
+  CURRENT_DIR=$(pwd)
+  cd $SCRIPT_DIR && poetry install
+  cd $CURRENT_DIR
 
   deactivate
   echo "First time setup complete."
 fi
 
-pushd $SCRIPT_DIR > /dev/null
+# Save the current directory
+CURRENT_DIR=$(pwd)
+cd $SCRIPT_DIR > /dev/null
 PYTHONPATH=regtests/client/python ${SCRIPT_DIR}/polaris-venv/bin/python3 regtests/client/python/cli/polaris_cli.py "$@"
 status=$?
-popd > /dev/null
+cd $CURRENT_DIR > /dev/null
 
 if [ $status -ne 0 ]; then
   exit 1

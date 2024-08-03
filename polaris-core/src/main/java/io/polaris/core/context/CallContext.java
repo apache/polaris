@@ -95,9 +95,6 @@ public interface CallContext extends AutoCloseable {
    * #closeables()}. The original {@link #contextVariables()} map is untouched and {@link
    * #closeables()} in the original {@link CallContext} should be closed along with the {@link
    * CallContext}.
-   *
-   * @param base
-   * @return
    */
   static CallContext copyOf(CallContext base) {
     RealmContext realmContext = base.getRealmContext();

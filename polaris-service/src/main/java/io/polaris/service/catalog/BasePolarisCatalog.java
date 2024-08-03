@@ -970,9 +970,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    * is a namespace whose parent is the catalog, namespaces and tables otherwise) and checks the
    * base-location property of each. The target entity's base location may not be a prefix or a
    * suffix of any sibling entity's base location.
-   *
-   * @param location
-   * @param parentPath
    */
   private void validateNoLocationOverlap(
       String location, List<PolarisEntity> parentPath, String name) {
