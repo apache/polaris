@@ -111,14 +111,6 @@ class PolarisCli:
             builder = lambda: ApiClient(
                 Configuration(host=polaris_management_url, username=client_id, password=client_secret),
             )
-        elif os.getenv(CLIENT_ID_ENV) and os.getenv(CLIENT_SECRET_ENV):
-            builder = lambda: ApiClient(
-                Configuration(
-                    host=polaris_management_url,
-                    username=os.getenv(CLIENT_ID_ENV),
-                    password=os.getenv(CLIENT_SECRET_ENV)
-                )
-            )
         else:
             raise Exception(f'Please provide credentials via either {Argument.to_flag_name(Arguments.CLIENT_ID)} &'
                             f' {Argument.to_flag_name(Arguments.CLIENT_SECRET)} or'
