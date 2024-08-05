@@ -127,7 +127,7 @@ public abstract class PolarisAuthzTestBase {
       new PolarisAuthorizer(
           new DefaultConfigurationStore(
               Map.of(
-                  PolarisConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING,
+                  PolarisConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING.key,
                   true)));
 
   protected BasePolarisCatalog baseCatalog;

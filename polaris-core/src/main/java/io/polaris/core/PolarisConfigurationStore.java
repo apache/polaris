@@ -53,4 +53,20 @@ public interface PolarisConfigurationStore {
     T configValue = getConfiguration(ctx, configName);
     return configValue != null ? configValue : defaultValue;
   }
+
+  /**
+   * Retrieve the current value for a configuration.
+   *
+   * @param ctx the current call context
+   * @param config the configuration to load
+   * @return the current value set for the configuration key or null if not set
+   * @param <T> the type of the configuration value
+   */
+  default <T> @Nullable T getConfiguration(PolarisCallContext ctx, PolarisConfiguration<T> config) {
+    if (config.catalogConfig) {
+      throw new IllegalArgumentException(
+          String.format("Attempted to read catalog configuration `%s` as a global config", config.key));
+    }
+    return getConfiguration(ctx, config.key, config.defaultValue);
+  }
 }

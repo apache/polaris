@@ -919,6 +919,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    */
   private void validateNoLocationOverlap(
       TableIdentifier identifier, List<PolarisEntity> resolvedNamespace, String location) {
+<<<<<<< HEAD
     if (callContext
         .getPolarisCallContext()
         .getConfigurationStore()
@@ -926,6 +927,17 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             callContext.getPolarisCallContext(),
             PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP,
             PolarisConfiguration.DEFAULT_ALLOW_TABLE_LOCATION_OVERLAP)) {
+=======
+    boolean allowLocalTableLocationOverlap =
+        Boolean.parseBoolean(
+            String.valueOf(
+                getCurrentPolarisContext()
+                    .getConfigurationStore()
+                    .getConfiguration(
+                        getCurrentPolarisContext(),
+                        PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP)));
+    if (allowLocalTableLocationOverlap) {
+>>>>>>> 6b4ec75 (wip)
       LOG.debug("Skipping location overlap validation for identifier '{}'", identifier);
     } else { // if (entity.getSubType().equals(PolarisEntitySubType.TABLE)) {
       // TODO - is this necessary for views? overlapping views do not expose subdirectories via the
