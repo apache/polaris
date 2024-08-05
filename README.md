@@ -35,6 +35,12 @@ Polaris Catalog is open source under an Apache 2.0 license.
 - 📖 Read the <a href="https://www.snowflake.com/blog/polaris-catalog-open-source/" target="_blank">announcement blog post<a/> for more details!
 
 ## Building and Running 
+
+Polaris is organized into the following modules:
+- `polaris-core` - The main Polaris entity definitions and core business logic
+- `polaris-server` - The Polaris REST API server
+- `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
+ 
 Polaris is built using Gradle with Java 21+ and Docker 27+.
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
 - `./gradlew assemble` - To skip tests.
@@ -55,11 +61,6 @@ Running in Kubernetes
 - `kubectl get deployment` - To check the status of the deployment.
 - `kubectl describe deployment polaris-deployment` - To troubleshoot if things aren't working as expected.
 
-Polaris is organized into the following modules:
-- `polaris-core` - The main Polaris entity definitions and core business logic
-- `polaris-server` - The Polaris REST API server
-- `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
-
 Building docs
 - Docs are generated using [Redocly](https://redocly.com/docs/cli/installation). To regenerate them, run the following
 commands from the project root directory.
@@ -71,7 +72,8 @@ docker run -p 8080:80 -v ${PWD}:/spec docker.io/redocly/cli build-docs spec/inde
 ## Connecting from an Engine
 To connect from an engine like Spark, first create a catalog with these steps:
 ```bash
-# Generate a token for the root principal, replacing <CLIENT_ID> and <CLIENT_SECRET> with the values from the Polaris server output.
+# Generate a token for the root principal, replacing <CLIENT_ID> and <CLIENT_SECRET> with
+# the values from the Polaris server output.
 export PRINCIPAL_TOKEN=$(curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
   -d 'grant_type=client_credentials&client_id=<CLIENT_ID>&client_secret=<CLIENT_SECRET>&scope=PRINCIPAL_ROLE:ALL' \
    | jq -r '.access_token')
