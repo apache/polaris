@@ -1844,7 +1844,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // Pre-create namespaces if they don't exist
     for (int i = 1; i <= namespace.length(); i++) {
       Namespace nsLevel =
-          Namespace.of(Arrays.stream(namespace.levels()).limit(i).toList().toArray(String[]::new));
+          Namespace.of(Arrays.stream(namespace.levels()).limit(i).toArray(String[]::new));
       if (resolvedEntityView.getPassthroughResolvedPath(nsLevel) == null) {
         Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(nsLevel);
         PolarisResolvedPathWrapper resolvedParent =
