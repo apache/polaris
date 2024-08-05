@@ -23,29 +23,28 @@ The default `polaris-server.yml` configuration is intended for develoment and te
 
 ### Configurations
 
-There are many Polaris configurations that should be adjusted to ensure a secure Polaris deployment. Some of these configurations are briefly outlined below, along with a short description of each.
+Notable configuration used to secure a Polaris deployment are outlined below.
 
 * **oauth2**
   - Configure [OAuth](https://oauth.net/2/) with this setting, including a token broker
 
-* **callContextResolver** & **realmContextResolver**
-  - Use these configurations to specify a service that can resolve a realm from your bearer tokens.
-  - The service(s) used here must implement the relevant interfaces (e.g. [CallContextResolver](https://github.com/polaris-catalog/polaris/blob/8290019c10290a600e40b35ddb1e2f54bf99e120/polaris-service/src/main/java/io/polaris/service/context/CallContextResolver.java#L27)).
-
 * **authenticator.tokenBroker**
   - Ensure that this setting reflects the token broker specified in **oauth2** above
 
-* **cors**
-  - Use settings like **cors.allowed-origins** to control what connections your Polaris service will accept
+* **callContextResolver** & **realmContextResolver**
+  - Use these configurations to specify a service that can resolve a realm from bearer tokens.
+  - The service(s) used here must implement the relevant interfaces (i.e. [CallContextResolver](https://github.com/polaris-catalog/polaris/blob/8290019c10290a600e40b35ddb1e2f54bf99e120/polaris-service/src/main/java/io/polaris/service/context/CallContextResolver.java#L27) and [RealmContextResolver](https://github.com/polaris-catalog/polaris/blob/7ce86f10a68a3b56aed766235c88d6027c0de038/polaris-service/src/main/java/io/polaris/service/context/RealmContextResolver.java)).
 
+* **cors**
+  - Use settings like **cors.allowed-origins** to control what connections the Polaris service will accept
 
 ## Metastore Management
 
-Use the configuration `metaStoreManager` to configure a [MetastoreManager](https://github.com/polaris-catalog/polaris/blob/627dc602eb15a3258dcc32babf8def34cf6de0e9/polaris-core/src/main/java/io/polaris/core/persistence/PolarisMetaStoreManager.java#L47) implementation where Polaris entities will be persisted. 
+A Metastore Manger should be configured with an implementation that durably persists Polaris entities. Use the configuration `metaStoreManager` to configure a [MetastoreManager](https://github.com/polaris-catalog/polaris/blob/627dc602eb15a3258dcc32babf8def34cf6de0e9/polaris-core/src/main/java/io/polaris/core/persistence/PolarisMetaStoreManager.java#L47) implementation where Polaris entities will be persisted. 
 
 The default `in-memory` implementation is meant for testing and not suitable for production usage. Instead, consider an implementation such as `eclipse-link` which allows you to store metadata in a remote database.
 
-Credentials and metadata will be stored in the metastore manager, and so be sure that your metastore manager is accordingly secured.
+Be sure to secure your metastore backend since it will be storing credentials and catalog metadata.
 
 ### Configuring EclipseLink
 
@@ -55,13 +54,13 @@ To use [EclipseLink](https://eclipse.dev/eclipselink/) for metastore management,
 
 Before using Polaris when using a metastore manager other than `in-memory`, you must **bootstrap** the metastore manager. This is a manual operation that must be performed **only once** in order to prepare the metastore manager to integrate with Polaris. When the metastore manager is bootstrapped, any existing Polaris entities in the metastore manager may be **purged**.
 
-To bootstrap Polaris, run a command like the following:
+To bootstrap Polaris, run:
 
 ```bash
 java -jar /path/to/jar/snowflake-polaris-all.jar bootstrap polaris-server.yml
 ```
 
-Afterwards, you can launch Polaris normally with a command like the following:
+Afterwards, Polaris can be launched normally:
 
 ```bash
 java -jar /path/to/jar/snowflake-polaris-all.jar server polaris-server.yml
@@ -72,7 +71,7 @@ java -jar /path/to/jar/snowflake-polaris-all.jar server polaris-server.yml
 When deploying Polaris in production, consider adjusting the following configurations:
 
 * **featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES**
-  - By default, the `FILE` storage type may be supported. This is intended for testing, and in produciton you'll likely want to disable it
-  - Here you can also disable or enable any other storage type based on your expected usage of Apache Iceberg
+  - By default Polaris catalogs are allowed to be located in local filesystem with the `FILE` storage type. This should be disabled for production systems.
+  - Use this configuration to additionally disable any other storage types that will not be in use.
 
 
