@@ -973,10 +973,9 @@ tags:
 
 
       * **oauth2**
-        - Configure [OAuth](https://oauth.net/2/) with this setting, including a token broker
+        - Configure [OAuth](https://oauth.net/2/) with this setting. You can configure the token broken to use either [asymmetric](https://github.com/polaris-catalog/polaris/blob/b482617bf8cc508b37dbedf3ebc81a9408160a5e/polaris-service/src/main/java/io/polaris/service/auth/JWTRSAKeyPair.java#L24) or [symmetric](https://github.com/polaris-catalog/polaris/blob/b482617bf8cc508b37dbedf3ebc81a9408160a5e/polaris-service/src/main/java/io/polaris/service/auth/JWTSymmetricKeyBroker.java#L23) keys.
 
-      * **authenticator**
-        - Configure an authenticator in order to support either [asymmetric](https://github.com/polaris-catalog/polaris/blob/b482617bf8cc508b37dbedf3ebc81a9408160a5e/polaris-service/src/main/java/io/polaris/service/auth/JWTRSAKeyPair.java#L24) or [symmetric](https://github.com/polaris-catalog/polaris/blob/b482617bf8cc508b37dbedf3ebc81a9408160a5e/polaris-service/src/main/java/io/polaris/service/auth/JWTSymmetricKeyBroker.java#L23) keys.
+      * **authenticator.tokenBroker**
         - Ensure that the `tokenBroker` setting reflects the token broker specified in **oauth2** above
 
       * **callContextResolver** & **realmContextResolver**
