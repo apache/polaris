@@ -25,6 +25,8 @@ import io.polaris.core.persistence.PolarisTestMetaStoreManager;
 import io.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkMetaStoreSessionImpl;
 import io.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkStore;
 import java.time.ZoneId;
+
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 /**

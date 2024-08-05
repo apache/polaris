@@ -16,6 +16,7 @@
 package io.polaris.extension.persistence.impl.eclipselink;
 
 import io.polaris.core.PolarisDiagnostics;
+import io.polaris.core.PolarisUtils;
 import io.polaris.core.entity.PolarisBaseEntity;
 import io.polaris.core.entity.PolarisEntitiesActiveKey;
 import io.polaris.core.entity.PolarisEntityActiveRecord;
@@ -34,6 +35,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -416,22 +418,51 @@ public class PolarisEclipseLinkStore {
     }
     diagnosticServices.check(session != null, "session_is_null");
 
+    String queryString = """
+        SELECT
+            location
+        FROM
+            ModelEntityActive
+        WHERE
+            location IS NOT NULL
+            AND typeCode = :table_code
+            AND (
+                location LIKE CONCAT(:location, '%')
+                OR :location LIKE CONCAT(location, '%')
+            )
+    """;
+
+    int MAX_DIRECTORIES_IN_QUERY = 32;
+    Optional<List<String>> directories = PolarisUtils.pathToDirectories(location, MAX_DIRECTORIES_IN_QUERY);
+    if (directories.isPresent()) {
+      // TODO guard against injection here.
+      queryString = directories.get().stream().map(directory -> {
+        return String.format("""
+          SELECT
+              location
+          FROM
+              ModelEntityActive
+          WHERE
+              location IS NOT NULL
+              AND typeCode = :table_code
+              AND location = '%s'
+        """, directory);
+      }).collect(Collectors.joining(" UNION ALL "));
+      queryString += """
+          UNION ALL
+          SELECT
+              location
+          FROM
+              ModelEntityActive
+          WHERE
+              location IS NOT NULL
+              AND typeCode = :table_code
+              AND location LIKE ':location%'
+      """;
+    }
+
     return session
-        .createQuery(
-            """
-                SELECT
-                    location
-                FROM
-                    ModelEntityActive
-                WHERE
-                    location IS NOT NULL
-                    AND typeCode = :table_code
-                    AND (
-                        location LIKE CONCAT(:location, '%')
-                        OR :location LIKE CONCAT(location, '%')
-                    )
-            """,
-            String.class)
+        .createQuery(queryString, String.class)
         .setParameter("location", location)
         .setParameter("table_code", PolarisEntityType.TABLE_LIKE.getCode())
         .getResultStream()

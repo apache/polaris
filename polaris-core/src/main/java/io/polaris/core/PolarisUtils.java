@@ -17,6 +17,10 @@
 
 package io.polaris.core;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 /**
  * A collection of utilities for polaris-core
  */
@@ -32,6 +36,26 @@ public class PolarisUtils {
             return path + "/";
         } else {
             return path;
+        }
+    }
+
+    /**
+     * Given a path like `/a/b/c`, find all directories in the path such as [`/`, `/a/`, `/a/b/`, `/a/b/c`]
+     */
+    public static Optional<List<String>> pathToDirectories(String path, int maxSegments) {
+        List<String> directories = new ArrayList<>();
+        String[] splitPath = path.split("/", -1);
+
+        if (splitPath.length - 2 > maxSegments) {
+            return Optional.empty();
+        } else {
+            StringBuilder currentPath = new StringBuilder();
+            for (int i = 0; i < splitPath.length - 1; i++) {
+                currentPath.append(splitPath[i]).append("/");
+                directories.add(currentPath.toString());
+            }
+            // Chop off the protocol:
+            return Optional.of(directories.subList(1, directories.size()));
         }
     }
 }
