@@ -16,13 +16,9 @@
 package io.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import io.polaris.core.PolarisUtils;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
-
-import java.util.Map;
-import java.util.Optional;
 
 public class TableLikeEntity extends PolarisEntity {
   // For applicable types, this key on the "internalProperties" map will return the location

@@ -37,6 +37,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -418,6 +420,7 @@ public class PolarisEclipseLinkStore {
     }
     diagnosticServices.check(session != null, "session_is_null");
 
+    List<String> directoryList = new ArrayList<>();
     String queryString = """
         SELECT
             location
@@ -435,38 +438,33 @@ public class PolarisEclipseLinkStore {
     int MAX_DIRECTORIES_IN_QUERY = 32;
     Optional<List<String>> directories = PolarisUtils.pathToDirectories(location, MAX_DIRECTORIES_IN_QUERY);
     if (directories.isPresent()) {
-      // TODO guard against injection here.
-      queryString = directories.get().stream().map(directory -> {
-        return String.format("""
-          SELECT
-              location
-          FROM
-              ModelEntityActive
-          WHERE
-              location IS NOT NULL
-              AND typeCode = :table_code
-              AND location = '%s'
-        """, directory);
-      }).collect(Collectors.joining(" UNION ALL "));
-      queryString += """
-          UNION ALL
-          SELECT
-              location
-          FROM
-              ModelEntityActive
-          WHERE
-              location IS NOT NULL
-              AND typeCode = :table_code
-              AND location LIKE ':location%'
-      """;
+      directoryList = directories.get();
+      queryString = IntStream.range(0, directoryList.size())
+          .mapToObj(i ->
+              "SELECT location " +
+              "FROM ModelEntityActive " +
+              "WHERE location IS NOT NULL " +
+              "AND typeCode = :table_code " +
+              "AND location = :directory_" + i
+          )
+          .collect(Collectors.joining(" UNION ALL "));
+
+      queryString += " UNION ALL " +
+                     "SELECT location " +
+                     "FROM ModelEntityActive " +
+                     "WHERE location IS NOT NULL " +
+                     "AND typeCode = :table_code " +
+                     "AND location LIKE :locationPrefix";
     }
 
-    return session
-        .createQuery(queryString, String.class)
-        .setParameter("location", location)
+    TypedQuery<String> query = session.createQuery(queryString, String.class)
         .setParameter("table_code", PolarisEntityType.TABLE_LIKE.getCode())
-        .getResultStream()
-        .findFirst()
-        .isPresent();
+        .setParameter("locationPrefix", location + "%");
+
+    for (int i = 0; i < directoryList.size(); i++) {
+      query.setParameter("directory_" + i, directoryList.get(i));
+    }
+
+    return query.getResultStream().findFirst().isPresent();
   }
 }

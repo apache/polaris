@@ -29,9 +29,9 @@ import jakarta.persistence.Table;
  * entity information with ENTITIES_ACTIVE table
  */
 @Entity
-@Table(name = "ENTITIES_ACTIVE", indexes = {
-    @Index(name = "idx_location", columnList = "location")
-})
+@Table(
+    name = "ENTITIES_ACTIVE",
+    indexes = {@Index(name = "idx_location", columnList = "location")})
 public class ModelEntityActive {
   // entity catalog id
   @Id private long catalogId;
@@ -160,6 +160,12 @@ public class ModelEntityActive {
     }
 
     return new PolarisEntityActiveRecord(
-        model.catalogId, model.id, model.parentId, model.name, model.typeCode, model.subTypeCode, model.location);
+        model.catalogId,
+        model.id,
+        model.parentId,
+        model.name,
+        model.typeCode,
+        model.subTypeCode,
+        model.location);
   }
 }

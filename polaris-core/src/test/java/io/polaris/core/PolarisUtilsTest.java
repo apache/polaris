@@ -12,33 +12,26 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
  */
-
 package io.polaris.core;
 
+import java.util.List;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
-/**
- * Unit testing for `PolarisUtils`
- */
+/** Unit testing for `PolarisUtils` */
 public class PolarisUtilsTest {
 
-    @Test
-    void testPathToDirectories() {
-        Assertions.assertThat(PolarisUtils.pathToDirectories("s3://a/b/c/", 100))
-            .contains(List.of("s3://", "s3://a/", "s3://a/b/", "s3://a/b/c/"));
+  @Test
+  void testPathToDirectories() {
+    Assertions.assertThat(PolarisUtils.pathToDirectories("s3://a/b/c/", 100))
+        .contains(List.of("s3://", "s3://a/", "s3://a/b/", "s3://a/b/c/"));
 
-        Assertions.assertThat(PolarisUtils.pathToDirectories("s3://a/b/c/", 1))
-            .isEmpty();
+    Assertions.assertThat(PolarisUtils.pathToDirectories("s3://a/b/c/", 1)).isEmpty();
 
-        Assertions.assertThat(PolarisUtils.pathToDirectories("s3://a/b/c/", 4))
-            .contains(List.of("s3://", "s3://a/", "s3://a/b/", "s3://a/b/c/"));
+    Assertions.assertThat(PolarisUtils.pathToDirectories("s3://a/b/c/", 4))
+        .contains(List.of("s3://", "s3://a/", "s3://a/b/", "s3://a/b/c/"));
 
-        Assertions.assertThat(PolarisUtils.pathToDirectories("s3://a/b/c/", 3))
-            .isEmpty();
-    }
+    Assertions.assertThat(PolarisUtils.pathToDirectories("s3://a/b/c/", 3)).isEmpty();
+  }
 }

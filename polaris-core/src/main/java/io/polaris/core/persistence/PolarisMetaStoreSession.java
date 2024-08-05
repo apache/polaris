@@ -529,5 +529,6 @@ public interface PolarisMetaStoreSession {
    * @param location the location to check existing entities against
    * @return true if any entity's location overlaps with the specified location
    */
-  boolean locationOverlapsWithExistingTableLike(@NotNull PolarisCallContext callContext, String location);
+  boolean locationOverlapsWithExistingTableLike(
+      @NotNull PolarisCallContext callContext, String location);
 }

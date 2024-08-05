@@ -569,16 +569,17 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   }
 
   @Override
-  public boolean locationOverlapsWithExistingTableLike(@NotNull PolarisCallContext callContext, String location) {
-    return this.store.getSliceEntitiesActive().valueExists(polarisBaseEntity -> {
-      return
-          location != null &&
-          polarisBaseEntity.getLocation() != null &&
-          polarisBaseEntity.getType() == PolarisEntityType.TABLE_LIKE &&
-          (
-            polarisBaseEntity.getLocation().startsWith(location) ||
-            location.startsWith(polarisBaseEntity.getLocation())
-          );
-    });
+  public boolean locationOverlapsWithExistingTableLike(
+      @NotNull PolarisCallContext callContext, String location) {
+    return this.store
+        .getSliceEntitiesActive()
+        .valueExists(
+            polarisBaseEntity -> {
+              return location != null
+                  && polarisBaseEntity.getLocation() != null
+                  && polarisBaseEntity.getType() == PolarisEntityType.TABLE_LIKE
+                  && (polarisBaseEntity.getLocation().startsWith(location)
+                      || location.startsWith(polarisBaseEntity.getLocation()));
+            });
   }
 }

@@ -1480,8 +1480,6 @@ public interface PolarisMetaStoreManager {
       long entityCatalogId,
       long entityId);
 
-
   boolean locationOverlapsWithExistingTableLike(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull String location);
+      @NotNull PolarisCallContext callCtx, @NotNull String location);
 }

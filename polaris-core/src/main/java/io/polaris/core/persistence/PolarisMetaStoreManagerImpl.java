@@ -132,7 +132,6 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
       @NotNull PolarisMetaStoreSession ms,
       @NotNull PolarisBaseEntity entity) {
 
-
     if (entity.getType().getCode() == PolarisEntityType.TABLE_LIKE.getCode()) { // TODO remove
       System.out.println("DEBUG");
     }
@@ -2419,8 +2418,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
   }
 
   public boolean locationOverlapsWithExistingTableLike(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull String location) {
+      @NotNull PolarisCallContext callCtx, @NotNull String location) {
     // get metastore we should be using
     PolarisMetaStoreSession ms = callCtx.getMetaStore();
 
