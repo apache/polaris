@@ -15,6 +15,7 @@
  */
 package io.polaris.core.catalog;
 
+import com.google.common.collect.ImmutableList;
 import io.polaris.core.entity.PolarisEntity;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,9 +37,11 @@ public class PolarisCatalogHelpers {
   private PolarisCatalogHelpers() {}
 
   public static List<String> tableIdentifierToList(TableIdentifier identifier) {
-    List<String> fullList = new ArrayList<>(Arrays.asList(identifier.namespace().levels()));
+    ImmutableList.Builder<String> fullList =
+        ImmutableList.builderWithExpectedSize(identifier.namespace().length() + 1);
+    fullList.addAll(Arrays.asList(identifier.namespace().levels()));
     fullList.add(identifier.name());
-    return fullList;
+    return fullList.build();
   }
 
   public static TableIdentifier listToTableIdentifier(List<String> ids) {

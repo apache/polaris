@@ -731,10 +731,7 @@ public class PolarisCatalogHandlerWrapper {
     for (int i = 1; i <= identifier.namespace().length(); i++) {
       Namespace nsLevel =
           Namespace.of(
-              Arrays.stream(identifier.namespace().levels())
-                  .limit(i)
-                  .toList()
-                  .toArray(String[]::new));
+              Arrays.stream(identifier.namespace().levels()).limit(i).toArray(String[]::new));
       extraPassthroughNamespaces.add(nsLevel);
     }
     authorizeBasicNamespaceOperationOrThrow(
