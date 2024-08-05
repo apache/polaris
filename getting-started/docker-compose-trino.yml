@@ -42,14 +42,14 @@ services:
       timeout: 10s
       retries: 5
 
-  post-init-script:
+  create-catalog:
     image: curlimages/curl
     depends_on:
       polaris:
         condition: service_healthy
     volumes:
-      - ./post-init-script.sh:/post-init-script.sh
-    command: ["/bin/sh", "/post-init-script.sh"]
+      - ./create-catalog.sh:/create-catalog.sh
+    command: ["/bin/sh", "/create-catalog.sh"]
 
   trino:
     image: trinodb/trino:latest
