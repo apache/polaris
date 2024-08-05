@@ -203,13 +203,13 @@ application {
     mainClass = "io.polaris.service.PolarisApplication"
 }
 
-tasks.named("jar", Jar) {
+tasks.named("jar", Jar).configure {
     manifest {
         attributes "Main-Class": "io.polaris.service.PolarisApplication"
     }
 }
 
-tasks.named("shadowJar", ShadowJar) {
+tasks.named("shadowJar", ShadowJar).configure {
     mainClassName = "io.polaris.service.PolarisApplication"
     mergeServiceFiles()
     zip64 true
