@@ -54,10 +54,10 @@ subprojects {
     tasks.withType(JavaCompile).configureEach {
         options.compilerArgs << "-Xlint:unchecked"
         options.compilerArgs << "-Xlint:deprecation"
-    }
 
-    // Note: polaris-core seemed to be for Java 11, but uses functions that are introduced in later Java versions
-    tasks.withType(JavaCompile).configureEach { options.release = 21 }
+        // TODO Disabled until the code is only Java 11/17, see #76
+        // options.release = 17
+    }
 
     project(":polaris-eclipselink") {
         apply plugin: "java-library"

@@ -120,6 +120,11 @@ openApiValidate {
     inputSpec = "$rootDir/spec/polaris-management-service.yml"
 }
 
+tasks.withType(JavaCompile).configureEach {
+    // TODO Disabled until the code is only Java 11, see #76
+    // options.release = 11
+}
+
 tasks.register("generatePolarisService", org.openapitools.generator.gradle.plugin.tasks.GenerateTask).configure {
     inputSpec = "$rootDir/spec/polaris-management-service.yml"
     generatorName = "jaxrs-resteasy"
