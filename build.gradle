@@ -51,16 +51,15 @@ subprojects {
     apply plugin: "jacoco-report-aggregation"
     apply plugin: "groovy"
 
-    tasks.withType(JavaCompile) {
+    tasks.withType(JavaCompile).configureEach {
         options.compilerArgs << "-Xlint:unchecked"
         options.compilerArgs << "-Xlint:deprecation"
+
+        // TODO Disabled until the code is only Java 11/17, see #76
+        // options.release = 17
     }
 
-    project(":polaris-service") {
-        apply plugin: "application"
-    }
-
-    project(":polaris-core") {
+    project(":polaris-eclipselink") {
         apply plugin: "java-library"
     }
 
@@ -80,11 +79,9 @@ subprojects {
         testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     }
 
-    task format {
-        dependsOn "spotlessApply"
-    }
+    tasks.register("format").configure {dependsOn("spotlessApply") }
 
-    test {
+    tasks.named("test", Test).configure {
         useJUnitPlatform()
         jvmArgs += [ '-Duser.language=en' ]
     }

@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 plugins {
     alias(libs.plugins.shadow)
     alias(libs.plugins.openapi.generator)
+    id("application")
 }
 
 dependencies {
     implementation(project(":polaris-core"))
-
+    implementation(project(":polaris-eclipselink"))
+    
     implementation(platform(libs.iceberg.bom))
     implementation("org.apache.iceberg:iceberg-api")
     implementation("org.apache.iceberg:iceberg-core")
@@ -92,7 +96,7 @@ dependencies {
 openApiGenerate {
     inputSpec = "$rootDir/spec/rest-catalog-open-api.yaml"
     generatorName = "jaxrs-resteasy"
-    outputDir = "$buildDir/generated"
+    outputDir = "$projectDir/build/generated"
     apiPackage = "io.polaris.service.catalog.api"
     ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
     removeOperationIdPrefix = true
@@ -148,10 +152,10 @@ openApiGenerate {
     ]
 }
 
-task generatePolarisService(type: org.openapitools.generator.gradle.plugin.tasks.GenerateTask) {
+tasks.register("generatePolarisService", org.openapitools.generator.gradle.plugin.tasks.GenerateTask).configure {
     inputSpec = "$rootDir/spec/polaris-management-service.yml"
     generatorName = "jaxrs-resteasy"
-    outputDir = "$buildDir/generated"
+    outputDir = "$projectDir/build/generated"
     apiPackage = "io.polaris.service.admin.api"
     modelPackage = "io.polaris.core.admin.model"
     ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
@@ -175,9 +179,9 @@ task generatePolarisService(type: org.openapitools.generator.gradle.plugin.tasks
 }
 
 compileJava.dependsOn tasks.openApiGenerate, tasks.generatePolarisService
-sourceSets.main.java.srcDirs += ["$buildDir/generated/src/main/java"]
+sourceSets.main.java.srcDirs += ["$projectDir/build/generated/src/main/java"]
 
-test {
+tasks.named("test", Test).configure {
     if (System.getenv("AWS_REGION") == null) {
         environment "AWS_REGION", "us-west-2"
     }
@@ -186,29 +190,29 @@ test {
     maxParallelForks = 4
 }
 
-task runApp(type: JavaExec) {
+tasks.register("runApp", JavaExec).configure {
     if (System.getenv("AWS_REGION") == null) {
         environment "AWS_REGION", "us-west-2"
     }
     classpath = sourceSets.main.runtimeClasspath
     mainClass = "io.polaris.service.PolarisApplication"
-    args "server", "$rootDir/polaris-server.yml"
+    args = ["server", "$rootDir/polaris-server.yml"]
 }
 
 application {
     mainClass = "io.polaris.service.PolarisApplication"
 }
 
-jar {
+tasks.named("jar", Jar).configure {
     manifest {
         attributes "Main-Class": "io.polaris.service.PolarisApplication"
     }
 }
 
-shadowJar {
+tasks.named("shadowJar", ShadowJar).configure {
     mainClassName = "io.polaris.service.PolarisApplication"
     mergeServiceFiles()
     zip64 true
 }
 
-build.dependsOn(shadowJar)
+tasks.named("build").configure { dependsOn("shadowJar") }
