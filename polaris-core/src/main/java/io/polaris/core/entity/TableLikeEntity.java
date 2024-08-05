@@ -69,11 +69,6 @@ public class TableLikeEntity extends PolarisEntity {
     return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
   }
 
-  @Override
-  public String getLocation() {
-    return PolarisUtils.terminateWithSlash(getBaseLocation());
-  }
-
   public static class Builder extends PolarisEntity.BaseBuilder<TableLikeEntity, Builder> {
     public Builder(TableIdentifier identifier, String metadataLocation) {
       super();

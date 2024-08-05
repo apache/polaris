@@ -19,6 +19,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.polaris.core.PolarisUtils;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -114,7 +116,11 @@ public class PolarisBaseEntity extends PolarisEntityCore {
   }
 
   public String getLocation() {
-    return null;
+    if (getType() == PolarisEntityType.TABLE_LIKE) {
+      return PolarisUtils.terminateWithSlash(getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION));
+    } else {
+      return null;
+    }
   }
 
   @JsonIgnore
