@@ -41,11 +41,19 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
-    
+
+  post-init-script:
+    image: curlimages/curl
+    depends_on:
+      polaris:
+        condition: service_healthy
+    volumes:
+      - ./post-init-script.sh:/post-init-script.sh
+    command: ["/bin/sh", "/post-init-script.sh"]
+
   trino:
     image: trinodb/trino:latest
     ports:
       - "8080:8080"
     volumes:
       - ./trino-config:/etc/trino
-    network_mode: "host"
