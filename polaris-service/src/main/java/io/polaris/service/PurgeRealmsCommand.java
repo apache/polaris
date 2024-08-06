@@ -24,6 +24,7 @@ import io.polaris.service.config.PolarisApplicationConfig;
 import io.polaris.service.config.RealmEntityManagerFactory;
 import io.polaris.service.context.CallContextResolver;
 import net.sourceforge.argparse4j.inf.Namespace;
+import org.slf4j.Logger;
 
 /**
  * Command for purging root level service principals for a realm. This command will invoke a default
@@ -31,6 +32,8 @@ import net.sourceforge.argparse4j.inf.Namespace;
  * to the log and standard output (stdout).
  */
 public class PurgeRealmsCommand extends ConfiguredCommand<PolarisApplicationConfig> {
+  private Logger LOGGER = org.slf4j.LoggerFactory.getLogger(PurgeRealmsCommand.class);
+
   public PurgeRealmsCommand() {
     super("purge", "purge principal credentials for all realms and prints them to log");
   }
@@ -56,5 +59,7 @@ public class PurgeRealmsCommand extends ConfiguredCommand<PolarisApplicationConf
     }
 
     metaStoreManagerFactory.purgeRealms(configuration.getDefaultRealms());
+
+    LOGGER.info("Purge completed successfully.");
   }
 }

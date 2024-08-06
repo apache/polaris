@@ -706,6 +706,18 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     return new BaseResult(ReturnStatus.SUCCESS);
   }
 
+  @Override
+  public @NotNull BaseResult purge(@NotNull PolarisCallContext callCtx) {
+    // get meta store we should be using
+    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+
+    // run operation in a read/write transaction
+    ms.runActionInTransaction(callCtx, () -> ms.deleteAll(callCtx));
+
+    // all good
+    return new BaseResult(ReturnStatus.SUCCESS);
+  }
+
   /**
    * See {@link #readEntityByName(PolarisCallContext, List, PolarisEntityType, PolarisEntitySubType,
    * String)}

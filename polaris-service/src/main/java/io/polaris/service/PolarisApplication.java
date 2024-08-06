@@ -137,6 +137,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     bootstrap.setConfigurationSourceProvider(provider);
 
     bootstrap.addCommand(new BootstrapRealmsCommand());
+    bootstrap.addCommand(new PurgeRealmsCommand());
   }
 
   @Override
@@ -300,6 +301,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     if (metaStoreManagerFactory instanceof InMemoryPolarisMetaStoreManagerFactory) {
       metaStoreManagerFactory.getOrCreateMetaStoreManager(configuration::getDefaultRealm);
     }
+
+    LOGGER.info("Server started successfully.");
   }
 
   private static OpenTelemetry setupTracing() {
