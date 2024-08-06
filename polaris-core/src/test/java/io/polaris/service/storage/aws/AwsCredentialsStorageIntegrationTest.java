@@ -381,8 +381,6 @@ class AwsCredentialsStorageIntegrationTest {
     String externalId = "externalId";
     String bucket = "bucket";
     String warehouseKeyPrefix = "path/to/warehouse";
-    String firstPath = warehouseKeyPrefix + "/namespace/table";
-    String secondPath = warehouseKeyPrefix + "/oldnamespace/table";
     Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
         .thenAnswer(
             invocation -> {
@@ -443,14 +441,6 @@ class AwsCredentialsStorageIntegrationTest {
 
   private static @NotNull String s3Arn(String partition, String bucket, String keyPrefix) {
     String bucketArn = "arn:" + partition + ":s3:::" + bucket;
-    if (keyPrefix == null) {
-      return bucketArn;
-    }
-    return bucketArn + "/" + keyPrefix + "/*";
-  }
-
-  private static @NotNull String s3CnArn(String bucket, String keyPrefix) {
-    String bucketArn = "arn:aws-cn:s3:::" + bucket;
     if (keyPrefix == null) {
       return bucketArn;
     }

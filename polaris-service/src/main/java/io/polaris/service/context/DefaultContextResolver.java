@@ -94,12 +94,7 @@ public class DefaultContextResolver
           REALM_PROPERTY_DEFAULT_VALUE);
       parsedProperties.put(REALM_PROPERTY_KEY, REALM_PROPERTY_DEFAULT_VALUE);
     }
-    return new RealmContext() {
-      @Override
-      public String getRealmIdentifier() {
-        return parsedProperties.get(REALM_PROPERTY_KEY);
-      }
-    };
+    return () -> parsedProperties.get(REALM_PROPERTY_KEY);
   }
 
   @Override

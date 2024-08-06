@@ -76,8 +76,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisEclipseLinkMetaStoreSessionImpl.class);
 
-  private EntityManagerFactory emf;
-  private ThreadLocal<EntityManager> localSession = new ThreadLocal<>();
+  private final EntityManagerFactory emf;
+  private final ThreadLocal<EntityManager> localSession = new ThreadLocal<>();
   private final PolarisEclipseLinkStore store;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private static volatile Map<String, String> properties;
@@ -119,8 +119,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** Load the persistence unit properties from a given configuration file */
   private Map<String, String> loadProperties(String confFile, String persistenceUnitName) {
-    if (this.properties != null) {
-      return this.properties;
+    if (properties != null) {
+      return properties;
     }
 
     try {
@@ -141,7 +141,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
             nodeMap.getNamedItem("value").getNodeValue());
       }
 
-      this.properties = properties;
+      PolarisEclipseLinkMetaStoreSessionImpl.properties = properties;
       return properties;
     } catch (Exception e) {
       LOGGER.warn(
@@ -262,10 +262,10 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** {@inheritDoc} */
   @Override
-  public void persistStorageIntegrationIfNeeded(
+  public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
       @NotNull PolarisCallContext callContext,
       @NotNull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration storageIntegration) {
+      @Nullable PolarisStorageIntegration<T> storageIntegration) {
     // not implemented for eclipselink store
   }
 
@@ -373,7 +373,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   public @NotNull List<PolarisBaseEntity> lookupEntities(
       @NotNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     return this.store.lookupEntities(localSession.get(), entityIds).stream()
-        .map(model -> ModelEntity.toEntity(model))
+        .map(ModelEntity::toEntity)
         .toList();
   }
 
@@ -477,7 +477,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
     return this.store
         .lookupFullEntitiesActive(localSession.get(), catalogId, parentId, entityType)
         .stream()
-        .map(model -> ModelEntity.toEntity(model))
+        .map(ModelEntity::toEntity)
         .filter(entityFilter)
         .limit(limit)
         .map(transformer)
@@ -534,7 +534,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
     return this.store
         .lookupAllGrantRecordsOnSecurable(localSession.get(), securableCatalogId, securableId)
         .stream()
-        .map(model -> ModelGrantRecord.toGrantRecord(model))
+        .map(ModelGrantRecord::toGrantRecord)
         .toList();
   }
 
@@ -546,7 +546,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
     return this.store
         .lookupGrantRecordsOnGrantee(localSession.get(), granteeCatalogId, granteeId)
         .stream()
-        .map(model -> ModelGrantRecord.toGrantRecord(model))
+        .map(ModelGrantRecord::toGrantRecord)
         .toList();
   }
 

@@ -60,8 +60,6 @@ import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * {@link IcebergRestCatalogApiService} implementation that delegates operations to {@link
@@ -74,7 +72,7 @@ public class IcebergCatalogAdapter
 
   private final CallContextCatalogFactory catalogFactory;
   private final RealmEntityManagerFactory entityManagerFactory;
-  private PolarisAuthorizer polarisAuthorizer;
+  private final PolarisAuthorizer polarisAuthorizer;
 
   public IcebergCatalogAdapter(
       CallContextCatalogFactory catalogFactory,
@@ -257,7 +255,7 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
-    if (purgeRequested != null && purgeRequested.booleanValue()) {
+    if (purgeRequested != null && purgeRequested) {
       newHandlerWrapper(securityContext, prefix).dropTableWithPurge(tableIdentifier);
     } else {
       newHandlerWrapper(securityContext, prefix).dropTableWithoutPurge(tableIdentifier);

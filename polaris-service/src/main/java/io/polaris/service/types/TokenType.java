@@ -35,7 +35,7 @@ public enum TokenType {
 
   JWT("urn:ietf:params:oauth:token-type:jwt");
 
-  private String value;
+  private final String value;
 
   TokenType(String value) {
     this.value = value;

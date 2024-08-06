@@ -531,7 +531,7 @@ public class PolarisServiceImpl
         grantRequest,
         catalogRoleName,
         catalogName);
-    if (cascade != null && cascade.booleanValue()) {
+    if (cascade != null && cascade) {
       LOGGER.warn("Tried to use unimplemented 'cascade' feature when revoking grants.");
       return Response.status(501).build(); // not implemented
     }

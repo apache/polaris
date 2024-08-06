@@ -27,6 +27,7 @@ import io.polaris.service.task.TaskExecutor;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
 import org.slf4j.Logger;
@@ -73,13 +74,11 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
     String defaultBaseLocation = catalog.getDefaultBaseLocation();
     LOGGER.info("Looked up defaultBaseLocation {} for catalog {}", defaultBaseLocation, catalogKey);
-    if (defaultBaseLocation != null) {
-      catalogProperties.put(CatalogProperties.WAREHOUSE_LOCATION, defaultBaseLocation);
-    } else {
-      catalogProperties.put(
-          CatalogProperties.WAREHOUSE_LOCATION,
-          Paths.get(WAREHOUSE_LOCATION_BASEDIR, catalogKey).toString());
-    }
+    catalogProperties.put(
+        CatalogProperties.WAREHOUSE_LOCATION,
+        Objects.requireNonNullElseGet(
+            defaultBaseLocation,
+            () -> Paths.get(WAREHOUSE_LOCATION_BASEDIR, catalogKey).toString()));
 
     // TODO: The initialize properties might need to take more from CallContext and the
     // CatalogEntity.

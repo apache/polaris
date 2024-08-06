@@ -15,7 +15,6 @@
  */
 package io.polaris.core.storage.cache;
 
-import com.github.benmanes.caffeine.cache.CacheLoader;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
 import com.github.benmanes.caffeine.cache.LoadingCache;
@@ -83,12 +82,9 @@ public class StorageCredentialCache {
                   }
                 })
             .build(
-                new CacheLoader<StorageCredentialCacheKey, StorageCredentialCacheEntry>() {
-                  @Override
-                  public StorageCredentialCacheEntry load(StorageCredentialCacheKey key) {
-                    // the load happen at getOrGenerateSubScopeCreds()
-                    return null;
-                  }
+                key -> {
+                  // the load happen at getOrGenerateSubScopeCreds()
+                  return null;
                 });
   }
 
@@ -150,7 +146,7 @@ public class StorageCredentialCache {
 
   public Map<String, String> getIfPresent(StorageCredentialCacheKey key) {
     return Optional.ofNullable(cache.getIfPresent(key))
-        .map(value -> value.convertToMapOfString())
+        .map(StorageCredentialCacheEntry::convertToMapOfString)
         .orElse(null);
   }
 
