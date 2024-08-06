@@ -74,6 +74,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   public synchronized Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> bootstrapRealms(
       List<String> realms) {
     Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> results = new HashMap<>();
+
     for (String realm : realms) {
       RealmContext realmContext = () -> realm;
       if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {

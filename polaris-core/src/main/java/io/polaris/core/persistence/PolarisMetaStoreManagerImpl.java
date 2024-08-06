@@ -634,9 +634,6 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
   private void bootstrapPolarisService(
       @NotNull PolarisCallContext callCtx, @NotNull PolarisMetaStoreSession ms) {
 
-    // cleanup everything, start from a blank slate
-    ms.deleteAll(callCtx);
-
     // Create a root container entity that can represent the securable for any top-level grants.
     PolarisBaseEntity rootContainer =
         new PolarisBaseEntity(

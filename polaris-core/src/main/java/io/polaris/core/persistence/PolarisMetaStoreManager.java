@@ -191,7 +191,7 @@ public interface PolarisMetaStoreManager {
    *
    * <p>*************************** WARNING ************************
    *
-   * <p>This will destroy whatever Polaris metadata exists in this account
+   * <p>This will destroy whatever Polaris metadata exists in the metastore
    *
    * @param callCtx call context
    * @return always success or unexpected error
