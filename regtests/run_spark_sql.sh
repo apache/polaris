@@ -31,7 +31,7 @@ fi
 SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN:-principal:root;realm:default-realm}"
 
 # Use local filesystem by default
-curl -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accepts: application/json' -H 'Content-Type: application/json' \
+curl -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
   -d '{
         "catalog": {
@@ -51,21 +51,21 @@ curl -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accepts: appli
       }'
 
 # Use the following instead of below to use s3 instead of local filesystem
-#curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accepts: application/json' -H 'Content-Type: application/json' \
+#curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
 #  http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
 #  -d "{\"name\": \"manual_spark\", \"id\": 100, \"type\": \"INTERNAL\", \"readOnly\": false, \"properties\": {\"default-base-location\": \"s3://${S3_BUCKET}/${USER}/polaris/\"}}"
 
 # Add TABLE_WRITE_DATA to the catalog's catalog_admin role since by default it can only manage access and metadata
-curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accepts: application/json' -H 'Content-Type: application/json' \
+curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/manual_spark/catalog-roles/catalog_admin/grants \
   -d '{"type": "catalog", "privilege": "TABLE_WRITE_DATA"}' > /dev/stderr
 
 # For now, also explicitly assign the catalog_admin to the service_admin. Remove once GS fully rolled out for auto-assign.
-curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accepts: application/json' -H 'Content-Type: application/json' \
+curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/principal-roles/service_admin/catalog-roles/manual_spark \
   -d '{"name": "catalog_admin"}' > /dev/stderr
 
-curl -X GET -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accepts: application/json' -H 'Content-Type: application/json' \
+curl -X GET -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/manual_spark
 
 echo ${SPARK_HOME}/bin/spark-sql -S --conf spark.sql.catalog.polaris.token="${SPARK_BEARER_TOKEN}"
