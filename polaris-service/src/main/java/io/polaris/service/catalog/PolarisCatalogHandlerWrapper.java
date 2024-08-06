@@ -102,7 +102,7 @@ import org.slf4j.LoggerFactory;
  * authorization-aware catalog protocols.
  */
 public class PolarisCatalogHandlerWrapper {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisCatalogHandlerWrapper.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisCatalogHandlerWrapper.class);
 
   private final CallContext callContext;
   private final PolarisEntityManager entityManager;
@@ -477,7 +477,7 @@ public class PolarisCatalogHandlerWrapper {
         try {
           closeable.close();
         } catch (IOException e) {
-          LOG.error("Error while closing BaseCatalog", e);
+          LOGGER.error("Error while closing BaseCatalog", e);
         }
       }
     }
@@ -588,7 +588,7 @@ public class PolarisCatalogHandlerWrapper {
             LoadTableResponse.Builder responseBuilder =
                 LoadTableResponse.builder().withTableMetadata(tableMetadata);
             if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-              LOG.atDebug()
+              LOGGER.atDebug()
                   .addKeyValue("tableIdentifier", tableIdentifier)
                   .addKeyValue("tableLocation", tableMetadata.location())
                   .log("Fetching client credentials for table");
@@ -701,7 +701,7 @@ public class PolarisCatalogHandlerWrapper {
               LoadTableResponse.builder().withTableMetadata(metadata);
 
           if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-            LOG.atDebug()
+            LOGGER.atDebug()
                 .addKeyValue("tableIdentifier", ident)
                 .addKeyValue("tableLocation", metadata.location())
                 .log("Fetching client credentials for table");
@@ -749,7 +749,7 @@ public class PolarisCatalogHandlerWrapper {
                 .getResolvedLeafEntity()
                 .getEntity());
     if (catalog.getCatalogType().equals(io.polaris.core.admin.model.Catalog.TypeEnum.INTERNAL)) {
-      LOG.atWarn()
+      LOGGER.atWarn()
           .addKeyValue("catalog", catalog)
           .addKeyValue("notification", request)
           .log("Attempted notification on internal catalog");
@@ -803,7 +803,7 @@ public class PolarisCatalogHandlerWrapper {
             LoadTableResponse.Builder responseBuilder =
                 LoadTableResponse.builder().withTableMetadata(tableMetadata);
             if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-              LOG.atDebug()
+              LOGGER.atDebug()
                   .addKeyValue("tableIdentifier", tableIdentifier)
                   .addKeyValue("tableLocation", tableMetadata.location())
                   .log("Fetching client credentials for table");

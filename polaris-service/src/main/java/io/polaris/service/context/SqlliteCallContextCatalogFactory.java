@@ -45,7 +45,7 @@ public class SqlliteCallContextCatalogFactory implements CallContextCatalogFacto
   private static final String WAREHOUSE_LOCATION_BASEDIR =
       "/tmp/iceberg_rest_server_warehouse_data/";
 
-  private static final Logger LOG = LoggerFactory.getLogger(SqlliteCallContextCatalogFactory.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(SqlliteCallContextCatalogFactory.class);
 
   private Map<String, Catalog> cachedCatalogs = new HashMap<>();
   private final Map<String, String> catalogBaseDirs;
@@ -67,7 +67,7 @@ public class SqlliteCallContextCatalogFactory implements CallContextCatalogFacto
 
     String realm = context.getRealmContext().getRealmIdentifier();
     String catalogKey = realm + "/" + catalogName;
-    LOG.debug("Looking up catalogKey: {}", catalogKey);
+    LOGGER.debug("Looking up catalogKey: {}", catalogKey);
 
     Catalog catalogInstance = cachedCatalogs.get(catalogKey);
     if (catalogInstance == null) {
@@ -83,7 +83,7 @@ public class SqlliteCallContextCatalogFactory implements CallContextCatalogFacto
       String catalogFile = Paths.get(realmDir, catalogName).toString();
 
       // Ensure parent directories of metastore-state base directory exists.
-      LOG.info("Creating metastore state directory: " + realmDir);
+      LOGGER.info("Creating metastore state directory: " + realmDir);
       try {
         Path result = Files.createDirectories(FileSystems.getDefault().getPath(realmDir));
       } catch (IOException ioe) {

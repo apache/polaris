@@ -30,7 +30,7 @@ import org.slf4j.LoggerFactory;
  * different Polaris components.
  */
 public class PolarisCatalogHelpers {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisCatalogHelpers.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisCatalogHelpers.class);
 
   /** Not intended for instantiation. */
   private PolarisCatalogHelpers() {}

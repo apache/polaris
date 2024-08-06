@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
  * id and name resolution mechanics around PolarisEntities.
  */
 public class PolarisEntityManager {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisEntityManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisEntityManager.class);
 
   private final PolarisMetaStoreManager metaStoreManager;
   private final Supplier<PolarisMetaStoreSession> sessionSupplier;

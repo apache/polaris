@@ -73,7 +73,7 @@ import org.w3c.dom.NodeList;
  * Polaris metadata from/to the configured database systems.
  */
 public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreSession {
-  private static final Logger LOG =
+  private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisEclipseLinkMetaStoreSessionImpl.class);
 
   private EntityManagerFactory emf;
@@ -110,7 +110,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
     emf = Persistence.createEntityManagerFactory(persistenceUnitName, properties);
 
-    LOG.debug("Create EclipseLink Meta Store Session for {}", realmContext.getRealmIdentifier());
+    LOGGER.debug("Create EclipseLink Meta Store Session for {}", realmContext.getRealmIdentifier());
 
     // init store
     this.store = store;
@@ -144,7 +144,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       this.properties = properties;
       return properties;
     } catch (Exception e) {
-      LOG.warn(
+      LOGGER.warn(
           "Cannot find or parse the configuration file {} for persistence-unit {}",
           confFile,
           persistenceUnitName);
@@ -170,13 +170,13 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
         // Commit when it's not rolled back by the client
         if (session.getTransaction().isActive()) {
           tr.commit();
-          LOG.debug("transaction committed");
+          LOGGER.debug("transaction committed");
         }
 
         return result;
       } catch (Exception e) {
         tr.rollback();
-        LOG.debug("transaction rolled back: {}", e);
+        LOGGER.debug("transaction rolled back: {}", e);
 
         if (e instanceof OptimisticLockException
             || e.getCause() instanceof OptimisticLockException) {
@@ -207,11 +207,11 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
         // Commit when it's not rolled back by the client
         if (session.getTransaction().isActive()) {
           tr.commit();
-          LOG.debug("transaction committed");
+          LOGGER.debug("transaction committed");
         }
       } catch (Exception e) {
         tr.rollback();
-        LOG.debug("transaction rolled back");
+        LOGGER.debug("transaction rolled back");
 
         if (e instanceof OptimisticLockException
             || e.getCause() instanceof OptimisticLockException) {

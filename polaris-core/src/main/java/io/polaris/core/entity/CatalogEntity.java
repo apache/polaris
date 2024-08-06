@@ -49,7 +49,7 @@ import org.slf4j.LoggerFactory;
  * Catalog} model to the persistent entity model.
  */
 public class CatalogEntity extends PolarisEntity {
-  private static final Logger LOG = LoggerFactory.getLogger(CatalogEntity.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(CatalogEntity.class);
 
   public static final long ROOT_CATALOG_ID = 0;
   public static final String CATALOG_TYPE_PROPERTY = "catalogType";

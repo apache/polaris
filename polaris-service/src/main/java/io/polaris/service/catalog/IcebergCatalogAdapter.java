@@ -70,7 +70,7 @@ import org.slf4j.LoggerFactory;
  */
 public class IcebergCatalogAdapter
     implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService {
-  private static final Logger LOG = LoggerFactory.getLogger(IcebergCatalogAdapter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogAdapter.class);
 
   private final CallContextCatalogFactory catalogFactory;
   private final RealmEntityManagerFactory entityManagerFactory;

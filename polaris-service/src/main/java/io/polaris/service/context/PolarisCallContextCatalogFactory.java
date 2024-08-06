@@ -33,7 +33,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class PolarisCallContextCatalogFactory implements CallContextCatalogFactory {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisCallContextCatalogFactory.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisCallContextCatalogFactory.class);
 
   private static final String WAREHOUSE_LOCATION_BASEDIR =
       "/tmp/iceberg_rest_server_warehouse_data/";
@@ -58,7 +58,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
 
     String realm = context.getRealmContext().getRealmIdentifier();
     String catalogKey = realm + "/" + catalogName;
-    LOG.info("Initializing new BasePolarisCatalog for key: {}", catalogKey);
+    LOGGER.info("Initializing new BasePolarisCatalog for key: {}", catalogKey);
 
     PolarisEntityManager entityManager =
         entityManagerFactory.getOrCreateEntityManager(context.getRealmContext());
@@ -72,7 +72,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     CatalogEntity catalog = CatalogEntity.of(baseCatalogEntity);
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
     String defaultBaseLocation = catalog.getDefaultBaseLocation();
-    LOG.info("Looked up defaultBaseLocation {} for catalog {}", defaultBaseLocation, catalogKey);
+    LOGGER.info("Looked up defaultBaseLocation {} for catalog {}", defaultBaseLocation, catalogKey);
     if (defaultBaseLocation != null) {
       catalogProperties.put(CatalogProperties.WAREHOUSE_LOCATION, defaultBaseLocation);
     } else {
