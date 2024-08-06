@@ -1115,7 +1115,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           LOG.atError()
               .addKeyValue("entity.getTableIdentifier()", entity.getTableIdentifier())
               .addKeyValue("tableIdentifier", tableIdentifier)
-              .log("Stored entity identifier mismatches requested identifier");
+              .log("Stored table identifier mismatches requested identifier");
         }
       }
 
@@ -1130,18 +1130,13 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             MAX_RETRIES,
             metadataLocation -> {
               FileIO fileIO = this.tableFileIO;
-              boolean closeFileIO = false;
-              PolarisResolvedPathWrapper resolvedStorageEntity =
-                  resolvedEntities == null
-                      ? resolvedEntityView.getResolvedPath(tableIdentifier.namespace())
-                      : resolvedEntities;
               String latestLocationDir =
                   latestLocation.substring(0, latestLocation.lastIndexOf('/'));
               fileIO =
                   refreshIOWithCredentials(
                       tableIdentifier,
                       Set.of(latestLocationDir),
-                      resolvedStorageEntity,
+                      resolvedEntities,
                       new HashMap<>(),
                       fileIO);
               return TableMetadataParser.read(fileIO, metadataLocation);
@@ -1151,7 +1146,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     @Override
     public void doCommit(TableMetadata base, TableMetadata metadata) {
-      LOG.debug("doCommit for {} with base {}, metadata {}", tableIdentifier, base, metadata);
+      LOG.debug("doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       if (null == base && !namespaceExists(tableIdentifier.namespace())) {
         throw new NoSuchNamespaceException(
@@ -1336,7 +1331,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           LOG.atError()
               .addKeyValue("entity.getTableIdentifier()", entity.getTableIdentifier())
               .addKeyValue("identifier", identifier)
-              .log("Stored entity identifier mismatches requested identifier");
+              .log("Stored view identifier mismatches requested identifier");
         }
       }
 
@@ -1352,14 +1347,10 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             metadataLocation -> {
               FileIO fileIO = this.viewFileIO;
               boolean closeFileIO = false;
-              PolarisResolvedPathWrapper resolvedStorageEntity =
-                  resolvedEntities == null
-                      ? resolvedEntityView.getResolvedPath(identifier.namespace())
-                      : resolvedEntities;
               String latestLocationDir =
                   latestLocation.substring(0, latestLocation.lastIndexOf('/'));
               Optional<PolarisEntity> storageInfoEntity =
-                  findStorageInfoFromHierarchy(resolvedStorageEntity);
+                  findStorageInfoFromHierarchy(resolvedEntities);
               Map<String, String> credentialsMap =
                   storageInfoEntity
                       .map(
@@ -1389,7 +1380,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     @Override
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
-      LOG.debug("doCommit for {} with base {}, metadata {}", identifier, base, metadata);
+      LOG.debug("doCommit for view {} with base {}, metadata {}", identifier, base, metadata);
       if (null == base && !namespaceExists(identifier.namespace())) {
         throw new NoSuchNamespaceException(
             "Cannot create view %s. Namespace does not exist: %s",
@@ -1436,12 +1427,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
       String newLocation = writeNewMetadataIfRequired(metadata);
       String oldLocation = base == null ? null : currentMetadataLocation();
-
-      if (null == base && !namespaceExists(identifier.namespace())) {
-        throw new NoSuchNamespaceException(
-            "Cannot create view %s. Namespace does not exist: %s",
-            identifier, identifier.namespace());
-      }
 
       TableLikeEntity entity =
           TableLikeEntity.of(resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
@@ -1652,7 +1637,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   /**
    * Caller must fill in all entity fields except parentId, since the caller may not want to
-   * duplicate the logic to try to reolve parentIds before constructing the proposed entity. This
+   * duplicate the logic to try to resolve parentIds before constructing the proposed entity. This
    * method will fill in the parentId if needed upon resolution.
    */
   private void createTableLike(long catalogId, TableIdentifier identifier, PolarisEntity entity) {
