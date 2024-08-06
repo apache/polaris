@@ -73,4 +73,12 @@ public class PolarisEclipseLinkMetaStoreTest extends PolarisMetaStoreManagerTest
     new PolarisEclipseLinkMetaStoreSessionImpl(
         store, Mockito.mock(), () -> "realm", "does not exists", "polaris-dev");
   }
+
+  @Test
+  void ensureNotLoadingDefaultClassPersistence() {
+    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
+    PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
+    new PolarisEclipseLinkMetaStoreSessionImpl(
+        store, Mockito.mock(), () -> "realm", null, "polaris-dev");
+  }
 }
