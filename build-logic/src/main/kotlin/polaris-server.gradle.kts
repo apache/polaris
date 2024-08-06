@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.named
@@ -23,10 +24,14 @@ plugins {
   id("java")
   id("com.diffplug.spotless")
   id("jacoco-report-aggregation")
+  id("net.ltgt.errorprone")
 }
 
 tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
+  options.errorprone.disableAllWarnings = true
+  options.errorprone.disableWarningsInGeneratedCode = true
+  options.errorprone.error("StringCaseLocaleUsage")
 
   // TODO Disabled until the code is only Java 11/17/21, see #76
   // options.release = 17
@@ -68,3 +73,5 @@ spotless {
     // licenseHeaderFile(rootProject.file("codestyle/copyright-header.xml"), '<^[!?].*$')
   }
 }
+
+dependencies { errorprone(versionCatalogs.named("libs").findLibrary("errorprone").get()) }
