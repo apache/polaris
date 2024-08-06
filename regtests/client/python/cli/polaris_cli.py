@@ -91,7 +91,7 @@ class PolarisCli:
         client_id = options.client_id or os.getenv(CLIENT_ID_ENV)
         client_secret = options.client_secret or os.getenv(CLIENT_SECRET_ENV)
         
-        # Validate
+        # Validates
         has_access_token = options.access_token is not None
         has_client_secret = client_id is not None and client_secret is not None
         if has_access_token and has_client_secret:
