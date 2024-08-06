@@ -210,7 +210,7 @@ tasks.register<JavaExec>("runApp").configure {
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
-  classpath = configurations["runtimeClasspath"]
+  classpath = sourceSets["main"].runtimeClasspath
   mainClass = "io.polaris.service.PolarisApplication"
   args("server", "$rootDir/polaris-server.yml")
 }
