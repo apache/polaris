@@ -61,7 +61,7 @@ import org.slf4j.LoggerFactory;
 
 public class AzureCredentialStorageIntegrationTest {
 
-  private final Logger LOGGER =
+  private static final Logger LOGGER =
       LoggerFactory.getLogger(AzureCredentialStorageIntegrationTest.class);
 
   private final String clientId = System.getenv("AZURE_CLIENT_ID");

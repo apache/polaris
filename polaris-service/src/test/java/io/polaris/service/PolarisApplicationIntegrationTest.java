@@ -88,9 +88,10 @@ import org.slf4j.LoggerFactory;
   SnowmanCredentialsExtension.class
 })
 public class PolarisApplicationIntegrationTest {
-  public static final String PRINCIPAL_ROLE_NAME = "admin";
-  public static final Logger LOGGER =
+  private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisApplicationIntegrationTest.class);
+
+  public static final String PRINCIPAL_ROLE_NAME = "admin";
   private static DropwizardAppExtension<PolarisApplicationConfig> EXT =
       new DropwizardAppExtension<>(
           PolarisApplication.class,

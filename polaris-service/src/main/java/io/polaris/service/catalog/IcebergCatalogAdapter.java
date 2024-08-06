@@ -68,7 +68,6 @@ import org.apache.iceberg.rest.responses.ConfigResponse;
  */
 public class IcebergCatalogAdapter
     implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogAdapter.class);
 
   private final CallContextCatalogFactory catalogFactory;
   private final RealmEntityManagerFactory entityManagerFactory;
