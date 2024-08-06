@@ -1570,7 +1570,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             if (existingEntitySubType == null) {
               // this code path is unexpected
               throw new AlreadyExistsException(
-                  "Cannot rename %s to %s. Object %s already exists", from, to);
+                  "Cannot rename %s to %s. Object already exists", from, to);
             } else if (existingEntitySubType == PolarisEntitySubType.TABLE) {
               throw new AlreadyExistsException(
                   "Cannot rename %s to %s. Table already exists", from, to);

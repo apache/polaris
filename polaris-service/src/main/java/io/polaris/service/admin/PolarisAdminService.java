@@ -584,13 +584,12 @@ public class PolarisAdminService {
     if (!dropEntityResult.isSuccess()) {
       if (dropEntityResult.failedBecauseNotEmpty()) {
         throw new BadRequestException(
-            String.format("Catalog '%s' cannot be dropped, it is not empty", entity.getName()));
+            "Catalog '%s' cannot be dropped, it is not empty", entity.getName());
       } else {
         throw new BadRequestException(
-            String.format(
-                "Catalog '%s' cannot be dropped, concurrent modification detected. Please try "
-                    + "again",
-                entity.getName()));
+            "Catalog '%s' cannot be dropped, concurrent modification detected. Please try "
+                + "again",
+            entity.getName());
       }
     }
   }
@@ -701,7 +700,7 @@ public class PolarisAdminService {
             .orElseThrow(
                 () ->
                     new CommitFailedException(
-                        "Concurrent modification on Catalog '%s'; retry later"));
+                        "Concurrent modification on Catalog '%s'; retry later", name));
     return returnedEntity;
   }
 
@@ -826,7 +825,7 @@ public class PolarisAdminService {
             .orElseThrow(
                 () ->
                     new CommitFailedException(
-                        "Concurrent modification on Principal '%s'; retry later"));
+                        "Concurrent modification on Principal '%s'; retry later", name));
     return returnedEntity;
   }
 
@@ -1004,7 +1003,7 @@ public class PolarisAdminService {
             .orElseThrow(
                 () ->
                     new CommitFailedException(
-                        "Concurrent modification on PrincipalRole '%s'; retry later"));
+                        "Concurrent modification on PrincipalRole '%s'; retry later", name));
     return returnedEntity;
   }
 
@@ -1142,7 +1141,7 @@ public class PolarisAdminService {
             .orElseThrow(
                 () ->
                     new CommitFailedException(
-                        "Concurrent modification on CatalogRole '%s'; retry later"));
+                        "Concurrent modification on CatalogRole '%s'; retry later", name));
     return returnedEntity;
   }
 

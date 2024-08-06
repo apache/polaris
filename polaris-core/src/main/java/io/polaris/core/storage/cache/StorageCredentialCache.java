@@ -138,8 +138,8 @@ public class StorageCredentialCache {
               .addKeyValue("errorMessage", scopedCredentialsResult.getExtraInformation())
               .log("Failed to get subscoped credentials");
           throw new UnprocessableEntityException(
-              "Failed to get subscoped credentials: "
-                  + scopedCredentialsResult.getExtraInformation());
+              "Failed to get subscoped credentials: %s",
+              scopedCredentialsResult.getExtraInformation());
         };
     return cache.get(key, loader).convertToMapOfString();
   }
