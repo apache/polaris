@@ -496,14 +496,10 @@ public class PolarisAdminService {
    */
   private boolean catalogOverlapsWithExistingCatalog(CatalogEntity catalogEntity) {
     boolean allowOverlappingCatalogUrls =
-        Boolean.parseBoolean(
-            String.valueOf(
-                getCurrentPolarisContext()
-                    .getConfigurationStore()
-                    .getConfiguration(
-                        getCurrentPolarisContext(),
-                        PolarisConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS,
-                        PolarisConfiguration.DEFAULT_ALLOW_OVERLAPPING_CATALOG_URLS)));
+        getCurrentPolarisContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                getCurrentPolarisContext(), PolarisConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS);
 
     if (allowOverlappingCatalogUrls) {
       return false;
