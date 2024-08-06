@@ -69,83 +69,8 @@ docker run -p 8080:80 -v ${PWD}:/spec docker.io/redocly/cli join spec/docs.yaml 
 docker run -p 8080:80 -v ${PWD}:/spec docker.io/redocly/cli build-docs spec/index.yaml --output=docs/index.html --config=spec/redocly.yaml
 ```
 
-<<<<<<< HEAD
-# Setup
-
-## Requirements / Setup
-
-- Java JDK >= 21, see [CONTRIBUTING.md](./CONTRIBUTING.md#java-version-requirements). 
-- Gradle - This is included in the project and can be run using `./gradlew` in the project root.
-- Docker - If you want to run the project in a containerized environment.
-
-Command-Line getting started
--------------------
-
-_For an end-to-end tutorial on building, deploying, and managing entities in a local Polaris instance see the [quickstart guide](./docs/quickstart.md)._
-
-Polaris is a multi-module project with three modules:
-
-- `polaris-core` - The main Polaris entity definitions and core business logic
-- `polaris-server` - The Polaris REST API server
-- `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
-
-Build the binary (first time may require installing new JDK version). This build will run IntegrationTests by default.
-
-```
-./gradlew build
-```
-
-To skip tests.
-
-```
-./gradlew assemble
-```
-
-Run the Polaris server locally on localhost:8181
-
-```
-./gradlew runApp
-```
-
-The server will start using the in-memory mode, and it will print its auto-generated credentials to STDOUT in a message like the following:
-
-```text
-realm: default-realm root principal credentials: <id>:<secret>
-```
-
-These credentials can be used as "Client ID" and "Client Secret" in OAuth2 requests (e.g. the `curl` command below).
-
-While the Polaris server is running, run regression tests, or end-to-end tests in another terminal
-
-```
-./regtests/run.sh
-```
-
-Docker Instructions
--------------------
-
-Build the image:
-
-```
-docker build -t localhost:5001/polaris:latest .
-```
-
-Run it in a standalone mode. This runs a single container that binds the container's port `8181` to localhosts `8181`:
-
-```
-docker run -p 8181:8181 localhost:5001/polaris:latest
-```
-
-# Running the tests
-
-## Unit and Integration tests
-
-Unit and integration tests are run using gradle. To run all tests, use the following command:
-
-=======
 ## Connecting from an Engine
 To connect from an engine like Spark, first create a catalog with these steps:
->>>>>>> 4d6157f5f37cd156f7d279901401d53f6964c839
 ```bash
 # Generate a token for the root principal, replacing <CLIENT_ID> and <CLIENT_SECRET> with
 # the values from the Polaris server output.
