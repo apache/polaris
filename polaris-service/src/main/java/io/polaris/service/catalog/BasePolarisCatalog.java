@@ -1253,17 +1253,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private void validateMetadataFileInTableDir(
       TableIdentifier identifier, TableMetadata metadata, CatalogEntity catalog) {
     PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
-    boolean allowEscape = polarisCallContext
-        .getConfigurationStore()
-        .getConfiguration(
-            polarisCallContext,
-            PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
+    boolean allowEscape =
+        polarisCallContext
+            .getConfigurationStore()
+            .getConfiguration(
+                polarisCallContext, PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
     if (!allowEscape
         && !polarisCallContext
             .getConfigurationStore()
             .getConfiguration(
-                polarisCallContext,
-                PolarisConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
+                polarisCallContext, PolarisConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
       LOG.debug(
           "Validating base location {} for table {} in metadata file {}",
           metadata.location(),

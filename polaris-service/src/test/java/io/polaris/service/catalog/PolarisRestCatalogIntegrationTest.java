@@ -178,9 +178,11 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
               io.polaris.core.admin.model.CatalogProperties.Builder catalogPropsBuilder =
                   io.polaris.core.admin.model.CatalogProperties.builder(catalogBaseLocation)
                       .addProperty(
-                          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+                          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                          "true")
                       .addProperty(
-                          PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true");
+                          PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(),
+                          "true");
               if (!S3_BUCKET_BASE.startsWith("file:/")) {
                 catalogPropsBuilder.addProperty(
                     CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
@@ -593,7 +595,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       Catalog catalog = response.readEntity(Catalog.class);
       Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
-      catalogProps.put(PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
+      catalogProps.put(
+          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
       try (Response updateResponse =
           EXT.client()
               .target(
@@ -649,7 +652,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       Catalog catalog = response.readEntity(Catalog.class);
       Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
-      catalogProps.put(PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
+      catalogProps.put(
+          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
       try (Response updateResponse =
           EXT.client()
               .target(
@@ -714,7 +718,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       Catalog catalog = response.readEntity(Catalog.class);
       Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
-      catalogProps.put(PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
+      catalogProps.put(
+          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
       try (Response updateResponse =
           EXT.client()
               .target(

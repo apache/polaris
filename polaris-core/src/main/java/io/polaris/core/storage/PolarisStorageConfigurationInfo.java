@@ -147,15 +147,17 @@ public abstract class PolarisStorageConfigurationInfo {
                       .findFirst()
                       .orElse(null);
               CatalogEntity catalog = CatalogEntity.of(entityPath.get(0));
-              boolean allowEscape = CallContext
-                  .getCurrentContext()
-                  .getPolarisCallContext()
-                  .getConfigurationStore()
-                  .getConfiguration(
-                      CallContext.getCurrentContext().getPolarisCallContext(),
-                      catalog,
-                      PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
-              if (!allowEscape && catalog.getCatalogType() != Catalog.TypeEnum.EXTERNAL && baseLocation != null) {
+              boolean allowEscape =
+                  CallContext.getCurrentContext()
+                      .getPolarisCallContext()
+                      .getConfigurationStore()
+                      .getConfiguration(
+                          CallContext.getCurrentContext().getPolarisCallContext(),
+                          catalog,
+                          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
+              if (!allowEscape
+                  && catalog.getCatalogType() != Catalog.TypeEnum.EXTERNAL
+                  && baseLocation != null) {
                 LOGGER.debug(
                     "Not allowing unstructured table location for entity: {}",
                     entityPath.getLast().getName());

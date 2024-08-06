@@ -17,12 +17,10 @@ package io.polaris.core;
 
 import com.google.common.base.Preconditions;
 import io.polaris.core.entity.CatalogEntity;
-import io.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.s3.endpoints.internal.Value;
 
 /**
  * Dynamic configuration store used to retrieve runtime parameters, which may vary by realm or by
@@ -61,8 +59,8 @@ public interface PolarisConfigurationStore {
   }
 
   /**
-   * In some cases, we may extract a value that doesn't match the expected type for a config.
-   * This method can be used to attempt to force-cast it using `String.valueOf`
+   * In some cases, we may extract a value that doesn't match the expected type for a config. This
+   * method can be used to attempt to force-cast it using `String.valueOf`
    */
   private <T> @NotNull T tryCast(PolarisConfiguration<T> config, Object value) {
     if (value == null) {
@@ -84,14 +82,14 @@ public interface PolarisConfigurationStore {
    * @return the current value set for the configuration key or null if not set
    * @param <T> the type of the configuration value
    */
-  default <T> @NotNull T getConfiguration(
-      PolarisCallContext ctx, PolarisConfiguration<T> config) {
+  default <T> @NotNull T getConfiguration(PolarisCallContext ctx, PolarisConfiguration<T> config) {
     T result = getConfiguration(ctx, config.key, config.defaultValue);
     return tryCast(config, result);
   }
 
   /**
-   * Retrieve the current value for a configuration, overriding with a catalog config if it is present.
+   * Retrieve the current value for a configuration, overriding with a catalog config if it is
+   * present.
    *
    * @param ctx the current call context
    * @param catalogEntity the catalog to check for an override
@@ -100,11 +98,12 @@ public interface PolarisConfigurationStore {
    * @param <T> the type of the configuration value
    */
   default <T> @NotNull T getConfiguration(
-      PolarisCallContext ctx, @NotNull CatalogEntity catalogEntity, PolarisConfiguration<T> config) {
-    if (config.hasCatalogConfig() && catalogEntity.getPropertiesAsMap().containsKey(config.catalogConfig())) {
-      LOGGER.debug(
-          "Loaded config from catalog: {}",
-          config.catalogConfig());
+      PolarisCallContext ctx,
+      @NotNull CatalogEntity catalogEntity,
+      PolarisConfiguration<T> config) {
+    if (config.hasCatalogConfig()
+        && catalogEntity.getPropertiesAsMap().containsKey(config.catalogConfig())) {
+      LOGGER.debug("Loaded config from catalog: {}", config.catalogConfig());
       return tryCast(config, catalogEntity.getPropertiesAsMap().get(config.catalogConfig()));
     } else {
       return getConfiguration(ctx, config);
