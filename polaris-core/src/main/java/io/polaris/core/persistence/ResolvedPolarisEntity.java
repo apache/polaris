@@ -67,13 +67,11 @@ public class ResolvedPolarisEntity {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("entity:");
-    sb.append(entity);
-    sb.append(";grantRecordsAsGrantee:");
-    sb.append(grantRecordsAsGrantee);
-    sb.append(";grantRecordsAsSecurable:");
-    sb.append(grantRecordsAsSecurable);
-    return sb.toString();
+    return "entity:"
+        + entity
+        + ";grantRecordsAsGrantee:"
+        + grantRecordsAsGrantee
+        + ";grantRecordsAsSecurable:"
+        + grantRecordsAsSecurable;
   }
 }

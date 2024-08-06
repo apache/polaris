@@ -97,7 +97,7 @@ public class PolarisAdminService {
   public static final String CLEANUP_ON_CATALOG_DROP = "CLEANUP_ON_CATALOG_DROP";
 
   private final CallContext callContext;
-  private PolarisEntityManager entityManager;
+  private final PolarisEntityManager entityManager;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final PolarisAuthorizer authorizer;
 
@@ -629,16 +629,11 @@ public class PolarisAdminService {
           currentStorageConfig, newStorageConfig);
     }
 
-    if (currentStorageConfig instanceof AwsStorageConfigurationInfo
-        && newStorageConfig instanceof AwsStorageConfigurationInfo) {
-      AwsStorageConfigurationInfo currentAwsConfig =
-          (AwsStorageConfigurationInfo) currentStorageConfig;
-      AwsStorageConfigurationInfo newAwsConfig = (AwsStorageConfigurationInfo) newStorageConfig;
+    if (currentStorageConfig instanceof AwsStorageConfigurationInfo currentAwsConfig
+        && newStorageConfig instanceof AwsStorageConfigurationInfo newAwsConfig) {
 
-      if ((currentAwsConfig.getRoleARN() != null
-              && !currentAwsConfig.getRoleARN().equals(newAwsConfig.getRoleARN()))
-          || (newAwsConfig.getRoleARN() != null
-              && !newAwsConfig.getRoleARN().equals(currentAwsConfig.getRoleARN()))) {
+      if (!currentAwsConfig.getRoleARN().equals(newAwsConfig.getRoleARN())
+          || !newAwsConfig.getRoleARN().equals(currentAwsConfig.getRoleARN())) {
         throw new BadRequestException(
             "Cannot modify Role ARN in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
@@ -652,17 +647,11 @@ public class PolarisAdminService {
             "Cannot modify ExternalId in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
       }
-    } else if (currentStorageConfig instanceof AzureStorageConfigurationInfo
-        && newStorageConfig instanceof AzureStorageConfigurationInfo) {
-      AzureStorageConfigurationInfo currentAzureConfig =
-          (AzureStorageConfigurationInfo) currentStorageConfig;
-      AzureStorageConfigurationInfo newAzureConfig =
-          (AzureStorageConfigurationInfo) newStorageConfig;
+    } else if (currentStorageConfig instanceof AzureStorageConfigurationInfo currentAzureConfig
+        && newStorageConfig instanceof AzureStorageConfigurationInfo newAzureConfig) {
 
-      if ((currentAzureConfig.getTenantId() != null
-              && !currentAzureConfig.getTenantId().equals(newAzureConfig.getTenantId()))
-          || (newAzureConfig.getTenantId() != null
-              && !newAzureConfig.getTenantId().equals(currentAzureConfig.getTenantId()))) {
+      if (!currentAzureConfig.getTenantId().equals(newAzureConfig.getTenantId())
+          || !newAzureConfig.getTenantId().equals(currentAzureConfig.getTenantId())) {
         throw new BadRequestException(
             "Cannot modify TenantId in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);

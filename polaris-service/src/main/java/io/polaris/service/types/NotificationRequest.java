@@ -70,19 +70,18 @@ public class NotificationRequest {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("class NotificationRequest {\n");
-
-    sb.append("    notificationType: ").append(toIndentedString(notificationType)).append("\n");
-    sb.append("    payload: ").append(toIndentedString(payload)).append("\n");
-    sb.append("}");
-    return sb.toString();
+    return """
+        class NotificationRequest {
+            notificationType: %s
+            payload: %s
+        }"""
+        .formatted(toIndentedString(notificationType), toIndentedString(payload));
   }
 
   /**
    * Convert the given object to string with each line indented by 4 spaces (except the first line).
    */
-  private String toIndentedString(Object o) {
+  private static String toIndentedString(Object o) {
     if (o == null) {
       return "null";
     }

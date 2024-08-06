@@ -96,6 +96,7 @@ import org.apache.iceberg.view.BaseViewOperations;
 import org.apache.iceberg.view.ViewBuilder;
 import org.apache.iceberg.view.ViewMetadata;
 import org.apache.iceberg.view.ViewMetadataParser;
+import org.apache.iceberg.view.ViewOperations;
 import org.apache.iceberg.view.ViewUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.TestOnly;
@@ -116,19 +117,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private static final int MAX_RETRIES = 12;
 
   static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
-      new Predicate<Exception>() {
-        @Override
-        public boolean test(Exception ex) {
-          // Default arguments from BaseMetastoreTableOperation only stop retries on
-          // NotFoundException. We should more carefully identify the set of retriable
-          // and non-retriable exceptions here.
-          return !(ex instanceof NotFoundException)
-              && !(ex instanceof IllegalArgumentException)
-              && !(ex instanceof AlreadyExistsException)
-              && !(ex instanceof ForbiddenException)
-              && !(ex instanceof UnprocessableEntityException)
-              && isStorageProviderRetryableException(ex);
-        }
+      ex -> {
+        // Default arguments from BaseMetastoreTableOperation only stop retries on
+        // NotFoundException. We should more carefully identify the set of retriable
+        // and non-retriable exceptions here.
+        return !(ex instanceof NotFoundException)
+            && !(ex instanceof IllegalArgumentException)
+            && !(ex instanceof AlreadyExistsException)
+            && !(ex instanceof ForbiddenException)
+            && !(ex instanceof UnprocessableEntityException)
+            && isStorageProviderRetryableException(ex);
       };
   public static final String CLEANUP_ON_NAMESPACE_DROP = "CLEANUP_ON_NAMESPACE_DROP";
 
@@ -140,7 +138,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private String ioImplClassName;
   private FileIO catalogFileIO;
-  private String catalogName;
+  private final String catalogName;
   private long catalogId = -1;
   private String defaultBaseLocation;
   private CloseableGroup closeableGroup;
@@ -524,11 +522,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public boolean namespaceExists(Namespace namespace) {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
-    if (resolvedEntities == null) {
-      return false;
-    }
-    return true;
+    return resolvedEntityView.getResolvedPath(namespace) != null;
   }
 
   @Override
@@ -702,7 +696,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   @Override
-  protected BasePolarisViewOperations newViewOps(TableIdentifier identifier) {
+  protected ViewOperations newViewOps(TableIdentifier identifier) {
     return new BasePolarisViewOperations(catalogFileIO, identifier);
   }
 
@@ -959,7 +953,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // namespaces
     Optional<NamespaceEntity> parentNamespace =
         parentPath.size() > 1
-            ? Optional.of(NamespaceEntity.of(parentPath.get(parentPath.size() - 1)))
+            ? Optional.of(NamespaceEntity.of(parentPath.getLast()))
             : Optional.empty();
 
     List<TableIdentifier> siblingTables =
@@ -985,7 +979,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                       .collect(Collectors.toList());
                 })
             .orElse(List.of());
-    ;
 
     List<Namespace> siblingNamespaces =
         siblingNamespacesResult.getEntities().stream()
@@ -999,13 +992,13 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                   newLevels[nsLevels.length] = ns.getName();
                   return Namespace.of(newLevels);
                 })
-            .collect(Collectors.toList());
+            .toList();
     LOG.debug(
         "Resolving {} sibling entities to validate location",
         siblingTables.size() + siblingNamespaces.size());
     PolarisResolutionManifest resolutionManifest =
         new PolarisResolutionManifest(
-            callContext, entityManager, authenticatedPrincipal, parentPath.get(0).getName());
+            callContext, entityManager, authenticatedPrincipal, parentPath.getFirst().getName());
     siblingTables.forEach(
         tbl ->
             resolutionManifest.addPath(
@@ -1172,7 +1165,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           resolvedTableEntities == null
               ? resolvedEntityView.getResolvedPath(tableIdentifier.namespace()).getRawFullPath()
               : resolvedTableEntities.getRawParentPath();
-      CatalogEntity catalog = CatalogEntity.of(resolvedNamespace.get(0));
+      CatalogEntity catalog = CatalogEntity.of(resolvedNamespace.getFirst());
 
       if (base == null || !metadata.location().equals(base.location())) {
         // If location is changing then we must validate that the requested location is valid
@@ -1779,7 +1772,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
       TableOperations tableOperations = newTableOps(tableIdentifier);
       String locationDir = newLocation.substring(0, newLocation.lastIndexOf("/"));
-      ;
+
       FileIO fileIO =
           refreshIOWithCredentials(
               tableIdentifier,
@@ -1794,7 +1787,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
       // finally, validate that the metadata file is within the table directory
       validateMetadataFileInTableDir(
-          tableIdentifier, tableMetadata, CatalogEntity.of(resolvedParent.getRawFullPath().get(0)));
+          tableIdentifier,
+          tableMetadata,
+          CatalogEntity.of(resolvedParent.getRawFullPath().getFirst()));
 
       // TODO: These might fail due to concurrent update; we need to do a retry in those cases.
       if (null == existingLocation) {
@@ -1819,11 +1814,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // Pre-create namespaces if they don't exist
     for (int i = 1; i <= namespace.length(); i++) {
       Namespace nsLevel =
-          Namespace.of(
-              Arrays.stream(namespace.levels())
-                  .limit(i)
-                  .collect(Collectors.toList())
-                  .toArray(String[]::new));
+          Namespace.of(Arrays.stream(namespace.levels()).limit(i).toArray(String[]::new));
       if (resolvedEntityView.getPassthroughResolvedPath(nsLevel) == null) {
         Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(nsLevel);
         PolarisResolvedPathWrapper resolvedParent =

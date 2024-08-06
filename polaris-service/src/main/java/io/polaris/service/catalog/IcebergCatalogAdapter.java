@@ -71,7 +71,7 @@ public class IcebergCatalogAdapter
 
   private final CallContextCatalogFactory catalogFactory;
   private final RealmEntityManagerFactory entityManagerFactory;
-  private PolarisAuthorizer polarisAuthorizer;
+  private final PolarisAuthorizer polarisAuthorizer;
 
   public IcebergCatalogAdapter(
       CallContextCatalogFactory catalogFactory,
@@ -254,7 +254,7 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
-    if (purgeRequested != null && purgeRequested.booleanValue()) {
+    if (purgeRequested != null && purgeRequested) {
       newHandlerWrapper(securityContext, prefix).dropTableWithPurge(tableIdentifier);
     } else {
       newHandlerWrapper(securityContext, prefix).dropTableWithoutPurge(tableIdentifier);
