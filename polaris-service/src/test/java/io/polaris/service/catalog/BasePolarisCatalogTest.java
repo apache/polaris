@@ -1099,8 +1099,13 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
                   @Override
                   public Map<String, PolarisMetaStoreManager.PrincipalSecretsResult>
-                      bootstrapRealms(List<String> realms, boolean overwrite) {
+                      bootstrapRealms(List<String> realms) {
                     throw new NotImplementedException("Bootstrapping realms is not supported");
+                  }
+
+                  @Override
+                  public void purgeRealms(List<String> realms) {
+                    throw new NotImplementedException("Purging realms is not supported");
                   }
 
                   @Override

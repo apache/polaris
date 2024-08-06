@@ -26,13 +26,13 @@ import io.polaris.service.context.CallContextResolver;
 import net.sourceforge.argparse4j.inf.Namespace;
 
 /**
- * Command for bootstrapping root level service principals for each realm. This command will invoke
- * a default implementation which generates random user id and secret. These credentials will be
- * printed out to the log and standard output (stdout).
+ * Command for purging root level service principals for a realm. This command will invoke a default
+ * implementation which generates random user id and secret. These credentials will be printed out
+ * to the log and standard output (stdout).
  */
-public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplicationConfig> {
-  public BootstrapRealmsCommand() {
-    super("bootstrap", "bootstraps principal credentials for all realms and prints them to log");
+public class PurgeRealmsCommand extends ConfiguredCommand<PolarisApplicationConfig> {
+  public PurgeRealmsCommand() {
+    super("purge", "purge principal credentials for all realms and prints them to log");
   }
 
   @Override
@@ -55,6 +55,6 @@ public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplication
       csa.setConfigurationStore(configurationStore);
     }
 
-    metaStoreManagerFactory.bootstrapRealms(configuration.getDefaultRealms());
+    metaStoreManagerFactory.purgeRealms(configuration.getDefaultRealms());
   }
 }
