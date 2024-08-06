@@ -20,19 +20,19 @@ This guide serves as a introduction to several key entities that can be managed 
 
 ## Prerequisites
 
-This guide covers building Polaris, deploying it locally or via [Docker](https://www.docker.com/), and interacting with it using the command-line interface and [Apache Spark](https://spark.apache.org/). Before proceeding with Polaris, be sure to satisfy the relevant prerequisites listed here. 
+This guide covers building Polaris, deploying it locally or via [Docker](https://www.docker.com/), and interacting with it using the command-line interface and [Apache Spark](https://spark.apache.org/). Before proceeding with Polaris, be sure to satisfy the relevant prerequisites listed here.
 
 ### Building and Deploying Polaris
 
 To get the latest Polaris code, you'll need to clone the repository using [git](https://git-scm.com/). You can install git using [homebrew](https://brew.sh/):
 
-```
+```shell
 brew install git
 ```
 
 Then, use git to clone the Polaris repo:
 
-```
+```shell
 cd ~
 git clone https://github.com/polaris-catalog/polaris.git
 ```
@@ -41,7 +41,7 @@ git clone https://github.com/polaris-catalog/polaris.git
 
 If you plan to deploy Polaris inside [Docker](https://www.docker.com/), you'll need to install docker itself. For example, this can be done using [homebrew](https://brew.sh/):
 
-```
+```shell
 brew install --cask docker
 ```
 
@@ -53,9 +53,8 @@ If you plan to build Polaris from source yourself, you will need to satisfy a fe
 
 Polaris is built using [gradle](https://gradle.org/) and is compatible with Java 21. We recommend the use of [jenv](https://www.jenv.be/) to manage multiple Java versions. For example, to install Java 21 via [homebrew](https://brew.sh/) and configure it with jenv: 
 
-```
+```shell
 cd ~/polaris
-jenv local 21
 brew install openjdk@21 jenv
 jenv add $(brew --prefix openjdk@21)
 jenv local 21
@@ -69,20 +68,20 @@ Polaris is compatible with any [Apache Iceberg](https://iceberg.apache.org/) cli
 
 If you want to connect to Polaris with [Apache Spark](https://spark.apache.org/), you'll need to start by cloning Spark. As [above](#building-and-deploying-polaris), make sure [git](https://git-scm.com/) is installed first. You can install it with [homebrew](https://brew.sh/):
 
-```
+```shell
 brew install git
 ```
 
 Then, clone Spark and check out a versioned branch. This guide uses [Spark 3.5](https://spark.apache.org/releases/spark-release-3-5-0.html).
 
-```
+```shell
 cd ~
 git clone https://github.com/apache/spark.git
 cd ~/spark
 git checkout branch-3.5
 ```
 
-## Deploying Polaris 
+## Deploying Polaris
 
 Polaris can be deployed via a lightweight docker image or as a standalone process. Before starting, be sure that you've satisfied the relevant [prerequisites](#building-and-deploying-polaris) detailed above.
 
@@ -90,7 +89,7 @@ Polaris can be deployed via a lightweight docker image or as a standalone proces
 
 To start using Polaris in Docker, launch Polaris while Docker is running:
 
-```
+```shell
 cd ~/polaris
 docker compose -f docker-compose.yml up --build
 ```
@@ -101,7 +100,7 @@ Once the `polaris-polaris` container is up, you can continue to [Defining a Cata
 
 Run Polaris locally with:
 
-```
+```shell
 cd ~/polaris
 ./gradlew runApp
 ```
@@ -121,19 +120,24 @@ At this point, Polaris is running.
 
 For this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. It also means that Polaris will automatically bootstrap itself with root credentials. For more information on how to configure Polaris for production usage, see the [docs](./configuring-polaris-for-production.md).
 
-When Polaris is launched using in-memory mode the root `CLIENT_ID` and `CLIENT_SECRET` can be found in stdout on initial startup. For example:
+When Polaris is launched using in-memory mode the root principal credentials can be found in stdout on initial startup. For example:
 
 ```
-realm: default-realm root principal credentials: XXXX:YYYY
+realm: default-realm root principal credentials: <client-id>:<client-secret>
 ```
 
-Be sure to note of these credentials as we'll be using them below.
+Be sure to note of these credentials as we'll be using them below. You can also set these credentials as environment variables for use with the Polaris CLI:
+
+```shell
+export CLIENT_ID=<client-id> 
+export CLIENT_SECRET=<client-secret>
+```
 
 ## Defining a Catalog
 
-In Polaris, the [catalog](./entities/catalog.md) is the top-level entity that objects like [tables](./entities.md#table) and [views](./entities.md#view) are organized under. With a Polaris service running, you can create a catalog like so:
+In Polaris, the [catalog](./entities.md#catalog) is the top-level entity that objects like [tables](./entities.md#table) and [views](./entities.md#view) are organized under. With a Polaris service running, you can create a catalog like so:
 
-```
+```shell
 cd ~/polaris
 
 ./polaris \
@@ -147,11 +151,11 @@ cd ~/polaris
   quickstart_catalog
 ```
 
-This will create a new catalog called **quickstart_catalog**. 
+This will create a new catalog called **quickstart_catalog**.
 
 The `DEFAULT_BASE_LOCATION` you provide will be the default location that objects in this catalog should be stored in, and the `ROLE_ARN` you provide should be a [Role ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) with access to read and write data in that location. These credentials will be provided to engines reading data from the catalog once they have authenticated with Polaris using credentials that have access to those resources.
 
-If you’re using a storage type other than S3, such as Azure, you’ll provide a different type of credential than a Role ARN. For more details on supported storage types, see the [docs](./entities.md#storage-type). 
+If you’re using a storage type other than S3, such as Azure, you’ll provide a different type of credential than a Role ARN. For more details on supported storage types, see the [docs](./entities.md#storage-type).
 
 Additionally, if Polaris is running somewhere other than `localhost:8181`, you can specify the correct hostname and port by providing `--host` and `--port` flags. For the full set of options supported by the CLI, please refer to the [docs](./command-line-interface.md).
 
@@ -160,7 +164,7 @@ Additionally, if Polaris is running somewhere other than `localhost:8181`, you c
 
 With a catalog created, we can create a [principal](./entities.md#principal) that has access to manage that catalog. For details on how to configure the Polaris CLI, see [the section above](#defining-a-catalog) or refer to the [docs](./command-line-interface.md).
 
-```
+```shell
 ./polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
@@ -184,7 +188,6 @@ With a catalog created, we can create a [principal](./entities.md#principal) tha
   quickstart_catalog_role
 ```
 
-
 Be sure to provide the necessary credentials, hostname, and port as before.
 
 When the `principals create` command completes successfully, it will return the credentials for this new principal. Be sure to note these down for later. For example:
@@ -196,7 +199,7 @@ When the `principals create` command completes successfully, it will return the 
 
 Now, we grant the principal the [principal role](./entities.md#principal-role) we created, and grant the [catalog role](./entities.md#catalog-role) the principal role we created. For more information on these entities, please refer to the linked documentation.
 
-```
+```shell
 ./polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
@@ -219,9 +222,9 @@ Now, we’ve linked our principal to the catalog via roles like so:
 
 ![Principal to Catalog](./img/quickstart/privilege-illustration-1.png "Principal to Catalog")
 
-In order to give this principal the ability to interact with the catalog, we must assign some [privileges](./entities.md#privileges). For the time being, we will give this principal the ability to fully manage content in our new catalog. We can do this with the CLI like so:
+In order to give this principal the ability to interact with the catalog, we must assign some [privileges](./entities.md#privilege). For the time being, we will give this principal the ability to fully manage content in our new catalog. We can do this with the CLI like so:
 
-```
+```shell
 ./polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
@@ -245,13 +248,13 @@ At this point, we’ve created a principal and granted it the ability to manage 
 
 ### Connecting with Spark
 
-To use a Polaris-managed catalog in [Apache Spark](https://spark.apache.org/), we can configure Spark to use the Iceberg catalog REST API. 
+To use a Polaris-managed catalog in [Apache Spark](https://spark.apache.org/), we can configure Spark to use the Iceberg catalog REST API.
 
 This guide uses [Apache Spark 3.5](https://spark.apache.org/releases/spark-release-3-5-0.html), but be sure to find [the appropriate iceberg-spark package for your Spark version](https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-spark). From a local Spark clone on the `branch-3.5` branch we can run the following:
 
 _Note: the credentials provided here are those for our principal, not the root credentials._
 
-```
+```shell
 bin/spark-shell \
 --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2,org.apache.hadoop:hadoop-aws:3.4.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
@@ -268,7 +271,7 @@ bin/spark-shell \
 
 Replace `XXXX` and `YYYY` with the client ID and client secret generated when you created the `quickstart_user` principal.
 
-Similar to the CLI commands above, this configures Spark to use the Polaris running at `localhost:8181` as a catalog. If your Polaris server is running elsewhere, but sure to update the configuration appropriately.
+Similar to the CLI commands above, this configures Spark to use the Polaris catalog running at `localhost:8181`. If your Polaris server is running elsewhere, but sure to update the configuration appropriately.
 
 Finally, note that we include the `hadoop-aws` package here. If your table is using a different filesystem, be sure to include the appropriate dependency.
 
@@ -302,7 +305,7 @@ spark.sql("SELECT * FROM quickstart_table").show(false)
 
 If at any time access is revoked...
 
-```
+```shell
 ./polaris \
   --client-id ${CLIENT_ID} \
   --client-secret ${CLIENT_SECRET} \
