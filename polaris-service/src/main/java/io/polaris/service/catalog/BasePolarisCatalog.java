@@ -109,7 +109,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private static final Logger LOG = LoggerFactory.getLogger(BasePolarisCatalog.class);
 
   private static final Joiner SLASH = Joiner.on("/");
-  private static final Joiner DOT = Joiner.on(".");
 
   // Config key for whether to allow setting the FILE_IO_IMPL using catalog properties. Should
   // only be allowed in dev/test environments.
@@ -351,8 +350,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 })
             .orElse(Map.of());
     PolarisMetaStoreManager.DropEntityResult dropEntityResult =
-        dropTableLike(
-            catalogId, PolarisEntitySubType.TABLE, tableIdentifier, storageProperties, purge);
+        dropTableLike(PolarisEntitySubType.TABLE, tableIdentifier, storageProperties, purge);
     if (!dropEntityResult.isSuccess()) {
       return false;
     }
@@ -376,7 +374,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           "Cannot list tables for namespace. Namespace does not exist: %s", namespace);
     }
 
-    return listTableLike(catalogId, PolarisEntitySubType.TABLE, namespace);
+    return listTableLike(PolarisEntitySubType.TABLE, namespace);
   }
 
   @Override
@@ -385,7 +383,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       return;
     }
 
-    renameTableLike(catalogId, PolarisEntitySubType.TABLE, from, to);
+    renameTableLike(PolarisEntitySubType.TABLE, from, to);
   }
 
   @Override
@@ -700,7 +698,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           "Cannot list views for namespace. Namespace does not exist: %s", namespace);
     }
 
-    return listTableLike(catalogId, PolarisEntitySubType.VIEW, namespace);
+    return listTableLike(PolarisEntitySubType.VIEW, namespace);
   }
 
   @Override
@@ -710,8 +708,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public boolean dropView(TableIdentifier identifier) {
-    return dropTableLike(catalogId, PolarisEntitySubType.VIEW, identifier, Map.of(), true)
-        .isSuccess();
+    return dropTableLike(PolarisEntitySubType.VIEW, identifier, Map.of(), true).isSuccess();
   }
 
   @Override
@@ -720,14 +717,14 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       return;
     }
 
-    renameTableLike(catalogId, PolarisEntitySubType.VIEW, from, to);
+    renameTableLike(PolarisEntitySubType.VIEW, from, to);
   }
 
   @Override
   public boolean sendNotification(
       TableIdentifier identifier, NotificationRequest notificationRequest) {
     return sendNotificationForTableLike(
-        catalogId, PolarisEntitySubType.TABLE, identifier, notificationRequest);
+        PolarisEntitySubType.TABLE, identifier, notificationRequest);
   }
 
   @Override
@@ -1060,11 +1057,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   private class BasePolarisCatalogTableBuilder
       extends BaseMetastoreViewCatalog.BaseMetastoreViewCatalogTableBuilder {
-    private final TableIdentifier identifier;
 
     public BasePolarisCatalogTableBuilder(TableIdentifier identifier, Schema schema) {
       super(identifier, schema);
-      this.identifier = identifier;
     }
 
     @Override
@@ -1074,11 +1069,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   private class BasePolarisCatalogViewBuilder extends BaseMetastoreViewCatalog.BaseViewBuilder {
-    private final TableIdentifier identifier;
 
     public BasePolarisCatalogViewBuilder(TableIdentifier identifier) {
       super(identifier);
-      this.identifier = identifier;
     }
 
     @Override
@@ -1250,9 +1243,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             tableIdentifier, oldLocation, newLocation, existingLocation);
       }
       if (null == existingLocation) {
-        createTableLike(catalogId, tableIdentifier, entity);
+        createTableLike(tableIdentifier, entity);
       } else {
-        updateTableLike(catalogId, tableIdentifier, entity);
+        updateTableLike(tableIdentifier, entity);
       }
     }
 
@@ -1462,9 +1455,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             identifier, oldLocation, newLocation, existingLocation);
       }
       if (null == existingLocation) {
-        createTableLike(catalogId, identifier, entity);
+        createTableLike(identifier, entity);
       } else {
-        updateTableLike(catalogId, identifier, entity);
+        updateTableLike(identifier, entity);
       }
     }
 
@@ -1525,7 +1518,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   private void renameTableLike(
-      long catalogId, PolarisEntitySubType subType, TableIdentifier from, TableIdentifier to) {
+      PolarisEntitySubType subType, TableIdentifier from, TableIdentifier to) {
     LOG.debug("Renaming tableLike from {} to {}", from, to);
     PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(from, subType);
     if (resolvedEntities == null) {
@@ -1640,7 +1633,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    * duplicate the logic to try to resolve parentIds before constructing the proposed entity. This
    * method will fill in the parentId if needed upon resolution.
    */
-  private void createTableLike(long catalogId, TableIdentifier identifier, PolarisEntity entity) {
+  private void createTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedParent =
         resolvedEntityView.getResolvedPath(identifier.namespace());
     if (resolvedParent == null) {
@@ -1649,14 +1642,11 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
     }
 
-    createTableLike(catalogId, identifier, entity, resolvedParent);
+    createTableLike(identifier, entity, resolvedParent);
   }
 
   private void createTableLike(
-      long catalogId,
-      TableIdentifier identifier,
-      PolarisEntity entity,
-      PolarisResolvedPathWrapper resolvedParent) {
+      TableIdentifier identifier, PolarisEntity entity, PolarisResolvedPathWrapper resolvedParent) {
     // Make sure the metadata file is valid for our allowed locations.
     String metadataLocation = TableLikeEntity.of(entity).getMetadataLocation();
     validateLocationForTableLike(identifier, metadataLocation, resolvedParent);
@@ -1689,7 +1679,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     return !expectedParentLocation.relativize(childLocation).equals(childLocation);
   }
 
-  private void updateTableLike(long catalogId, TableIdentifier identifier, PolarisEntity entity) {
+  private void updateTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(identifier, entity.getSubType());
     if (resolvedEntities == null) {
@@ -1718,7 +1708,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   private @NotNull PolarisMetaStoreManager.DropEntityResult dropTableLike(
-      long catalogId,
       PolarisEntitySubType subType,
       TableIdentifier identifier,
       Map<String, String> storageProperties,
@@ -1744,10 +1733,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   private boolean sendNotificationForTableLike(
-      long catalogId,
-      PolarisEntitySubType subType,
-      TableIdentifier tableIdentifier,
-      NotificationRequest request) {
+      PolarisEntitySubType subType, TableIdentifier tableIdentifier, NotificationRequest request) {
     LOG.debug("Handling notification request {} for tableIdentifier {}", request, tableIdentifier);
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, subType);
@@ -1757,8 +1743,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     Preconditions.checkNotNull(notificationType, "Expected a valid notification type.");
 
     if (notificationType == NotificationType.DROP) {
-      return dropTableLike(
-              catalogId, PolarisEntitySubType.TABLE, tableIdentifier, Map.of(), false /* purge */)
+      return dropTableLike(PolarisEntitySubType.TABLE, tableIdentifier, Map.of(), false /* purge */)
           .isSuccess();
     } else if (notificationType == NotificationType.CREATE
         || notificationType == NotificationType.UPDATE) {
@@ -1817,14 +1802,14 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             "Creating table {} for notification with metadataLocation {}",
             tableIdentifier,
             newLocation);
-        createTableLike(catalogId, tableIdentifier, entity, resolvedParent);
+        createTableLike(tableIdentifier, entity, resolvedParent);
       } else {
         LOG.debug(
             "Updating table {} for notification with metadataLocation {}",
             tableIdentifier,
             newLocation);
 
-        updateTableLike(catalogId, tableIdentifier, entity);
+        updateTableLike(tableIdentifier, entity);
       }
     }
     return true;
@@ -1848,8 +1833,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private List<TableIdentifier> listTableLike(
-      long catalogId, PolarisEntitySubType subType, Namespace namespace) {
+  private List<TableIdentifier> listTableLike(PolarisEntitySubType subType, Namespace namespace) {
     PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
     if (resolvedEntities == null) {
       // Illegal state because the namespace should've already been in the static resolution set.

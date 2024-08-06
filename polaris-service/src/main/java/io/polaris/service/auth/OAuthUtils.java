@@ -16,28 +16,10 @@
 package io.polaris.service.auth;
 
 import jakarta.ws.rs.core.Response;
-import java.nio.charset.StandardCharsets;
-import org.apache.commons.codec.binary.Base64;
 
 /** Simple utility class to assist with OAuth operations */
 public class OAuthUtils {
-
-  public static final String AUTHORIZATION_HEADER = "Authorization";
-
-  public static final String SF_HEADER_ACCOUNT_NAME = "Snowflake-Account";
-
   public static final String POLARIS_ROLE_PREFIX = "PRINCIPAL_ROLE:";
-
-  public static final String SF_ACCOUNT_NAME_HEADER = "sf-account";
-  public static final String SF_ACCOUNT_URL_HEADER = "sf-account-url";
-
-  /**
-   * @return basic Authorization Header of the form `base64_encode(client_id:client_secret)
-   */
-  public static String getBasicAuthHeader(String clientId, String clientSecret) {
-    return Base64.encodeBase64String(
-        (clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
-  }
 
   public static Response getResponseFromError(OAuthTokenErrorResponse.Error error) {
     return switch (error) {

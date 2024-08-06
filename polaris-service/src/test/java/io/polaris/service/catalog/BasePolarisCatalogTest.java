@@ -642,12 +642,11 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         supportsNotifications(), "Only applicable if notifications are supported");
 
     String catalogName = "catalogForMaliciousDomain";
-    PolarisEntity catalogEntity =
-        adminService.createCatalog(
-            new CatalogEntity.Builder()
-                .setDefaultBaseLocation("http://maliciousdomain.com")
-                .setName(catalogName)
-                .build());
+    adminService.createCatalog(
+        new CatalogEntity.Builder()
+            .setDefaultBaseLocation("http://maliciousdomain.com")
+            .setName(catalogName)
+            .build());
 
     CallContext callContext = CallContext.getCurrentContext();
     PolarisPassthroughResolutionView passthroughView =
@@ -1119,8 +1118,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     PartitionSpec partitionSpec =
         PartitionSpec.builderFor(schema).identity("intType").withSpecId(1000).build();
 
-    return TableMetadata.newTableMetadata(
-        schema, partitionSpec, tableLocation, ImmutableMap.<String, String>of());
+    return TableMetadata.newTableMetadata(schema, partitionSpec, tableLocation, ImmutableMap.of());
   }
 
   private void createNonExistingNamespaces(Namespace namespace) {
