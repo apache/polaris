@@ -34,7 +34,12 @@ WORKDIR /home/spark/regtests
 COPY ./setup.sh /home/spark/regtests/setup.sh
 COPY ./pyspark-setup.sh /home/spark/regtests/pyspark-setup.sh
 COPY ./client/python /home/spark/regtests/client/python
+COPY ./polaris /home/spark
 
+RUN python3 -m venv /home/spark/polaris-venv && \
+    . /home/spark/polaris-venv/bin/activate && \
+    pip install poetry==1.5.0 && \
+    deactivate \
 RUN ./setup.sh
 
 COPY --chown=spark . /home/spark/regtests

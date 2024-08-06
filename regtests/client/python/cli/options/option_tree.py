@@ -32,14 +32,18 @@ class Argument:
     lower: bool = False
     allow_repeats: bool = False
     default: object = None
-    flag_name = None
 
     def __post_init__(self):
         if self.name.startswith('--'):
             raise Exception(f'Argument name {self.name} starts with `--`: should this be a flag_name?')
 
+    @staticmethod
+    def to_flag_name(argument_name):
+        return '--' + argument_name.replace('_', '-')
+
     def get_flag_name(self):
-        return self.flag_name or ('--' + self.name.replace('_', '-'))
+        return Argument.to_flag_name(self.name)
+
 
 
 @dataclass
@@ -62,17 +66,9 @@ class OptionTree:
     configuration of the CLI and to generate a custom `--help` message including nested commands.
     """
 
-    _STORAGE_CONFIG_INFO = [
-        Argument(Arguments.STORAGE_TYPE, str, Hints.Catalogs.Create.STORAGE_TYPE, lower=True,
-                 choices=[st.value for st in StorageType]),
-        Argument(Arguments.ALLOWED_LOCATION, str, Hints.Catalogs.Create.ALLOWED_LOCATION, allow_repeats=True),
-        Argument(Arguments.ROLE_ARN, str, Hints.Catalogs.Create.ROLE_ARN),
-        Argument(Arguments.EXTERNAL_ID, str, Hints.Catalogs.Create.EXTERNAL_ID),
-        Argument(Arguments.USER_ARN, str, Hints.Catalogs.Create.USER_ARN),
-        Argument(Arguments.TENANT_ID, str, Hints.Catalogs.Create.TENANT_ID),
-        Argument(Arguments.MULTI_TENANT_APP_NAME, str, Hints.Catalogs.Create.MULTI_TENANT_APP_NAME),
-        Argument(Arguments.CONSENT_URL, str, Hints.Catalogs.Create.CONSENT_URL),
-        Argument(Arguments.SERVICE_ACCOUNT, str, Hints.Catalogs.Create.SERVICE_ACCOUNT),
+    _CATALOG_ROLE_AND_CATALOG = [
+        Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
+        Argument(Arguments.CATALOG_ROLE, str, Hints.CatalogRoles.CATALOG_ROLE)
     ]
 
     @staticmethod
@@ -82,25 +78,36 @@ class OptionTree:
                 Option(Subcommands.CREATE, args=[
                     Argument(Arguments.TYPE, str, Hints.Catalogs.Create.TYPE, lower=True,
                              choices=[ct.value for ct in CatalogType], default=CatalogType.INTERNAL.value),
-                    Argument(Arguments.REMOTE_URL, str, Hints.Catalogs.Create.REMOTE_URL),
+                    Argument(Arguments.STORAGE_TYPE, str, Hints.Catalogs.Create.STORAGE_TYPE, lower=True,
+                             choices=[st.value for st in StorageType]),
                     Argument(Arguments.DEFAULT_BASE_LOCATION, str, Hints.Catalogs.Create.DEFAULT_BASE_LOCATION),
+                    Argument(Arguments.ALLOWED_LOCATION, str, Hints.Catalogs.Create.ALLOWED_LOCATION,
+                             allow_repeats=True),
+                    Argument(Arguments.ROLE_ARN, str, Hints.Catalogs.Create.ROLE_ARN),
+                    Argument(Arguments.EXTERNAL_ID, str, Hints.Catalogs.Create.EXTERNAL_ID),
+                    Argument(Arguments.TENANT_ID, str, Hints.Catalogs.Create.TENANT_ID),
+                    Argument(Arguments.MULTI_TENANT_APP_NAME, str, Hints.Catalogs.Create.MULTI_TENANT_APP_NAME),
+                    Argument(Arguments.CONSENT_URL, str, Hints.Catalogs.Create.CONSENT_URL),
+                    Argument(Arguments.SERVICE_ACCOUNT, str, Hints.Catalogs.Create.SERVICE_ACCOUNT),
+                    Argument(Arguments.REMOTE_URL, str, Hints.Catalogs.Create.REMOTE_URL),
                     Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True),
-                ] + OptionTree._STORAGE_CONFIG_INFO, input_name=Arguments.CATALOG),
+                ], input_name=Arguments.CATALOG),
                 Option(Subcommands.DELETE, input_name=Arguments.CATALOG),
                 Option(Subcommands.GET, input_name=Arguments.CATALOG),
                 Option(Subcommands.LIST, args=[
                     Argument(Arguments.PRINCIPAL_ROLE, str, Hints.PrincipalRoles.PRINCIPAL_ROLE)
                 ]),
                 Option(Subcommands.UPDATE, args=[
+                    Argument(Arguments.DEFAULT_BASE_LOCATION, str, Hints.Catalogs.Update.DEFAULT_BASE_LOCATION),
+                    Argument(Arguments.ALLOWED_LOCATION, str, Hints.Catalogs.Create.ALLOWED_LOCATION,
+                             allow_repeats=True),
                     Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True),
-                    Argument(Arguments.DEFAULT_BASE_LOCATION, str, Hints.Catalogs.Create.DEFAULT_BASE_LOCATION),
-                ] + OptionTree._STORAGE_CONFIG_INFO, input_name=Arguments.CATALOG)
+                ], input_name=Arguments.CATALOG)
             ]),
             Option(Commands.PRINCIPALS, 'manage principals', children=[
                 Option(Subcommands.CREATE, args=[
-                    Argument(Arguments.TYPE, str, Hints.Catalogs.Create.TYPE, lower=True,
+                    Argument(Arguments.TYPE, str, Hints.Principals.Create.TYPE, lower=True,
                              choices=[pt.value for pt in PrincipalType], default=PrincipalType.SERVICE.value),
-                    Argument(Arguments.CLIENT_ID, str, Hints.Principals.Create.CLIENT_ID),
                     Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True)
                 ], input_name=Arguments.PRINCIPAL),
                 Option(Subcommands.DELETE, input_name=Arguments.PRINCIPAL),
@@ -133,20 +140,20 @@ class OptionTree:
             ]),
             Option(Commands.CATALOG_ROLES, 'manage catalog roles', children=[
                 Option(Subcommands.CREATE, args=[
-                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.Create.CATALOG_NAME),
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
                     Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True)
                 ], input_name=Arguments.CATALOG_ROLE),
                 Option(Subcommands.DELETE, args=[
-                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.Create.CATALOG_NAME),
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
                 ], input_name=Arguments.CATALOG_ROLE),
                 Option(Subcommands.GET, args=[
-                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.Create.CATALOG_NAME),
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
                 ], input_name=Arguments.CATALOG_ROLE),
                 Option(Subcommands.LIST, hint=Hints.CatalogRoles.LIST, args=[
                     Argument(Arguments.PRINCIPAL_ROLE, str, Hints.PrincipalRoles.PRINCIPAL_ROLE)
                 ], input_name=Arguments.CATALOG),
                 Option(Subcommands.UPDATE, args=[
-                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.Create.CATALOG_NAME),
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
                     Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True)
                 ], input_name=Arguments.CATALOG_ROLE),
                 Option(Subcommands.GRANT, hint=Hints.CatalogRoles.GRANT_CATALOG_ROLE, args=[
@@ -158,47 +165,61 @@ class OptionTree:
                     Argument(Arguments.PRINCIPAL_ROLE, str, Hints.CatalogRoles.CATALOG_ROLE)
                 ], input_name=Arguments.CATALOG_ROLE)
             ]),
-            Option(Commands.PRIVILEGES, 'manage privileges for a catalog role', args=[
-                Argument(Arguments.CATALOG, str, Hints.CatalogRoles.Create.CATALOG_NAME),
-                Argument(Arguments.CATALOG_ROLE, str, Hints.CatalogRoles.CATALOG_ROLE)
-            ], children=[
-                Option(Subcommands.LIST),
+            Option(Commands.PRIVILEGES, 'manage privileges for a catalog role', children=[
+                Option(Subcommands.LIST, args=OptionTree._CATALOG_ROLE_AND_CATALOG),
                 Option(Subcommands.CATALOG, children=[
-                    Option(Actions.GRANT, input_name=Arguments.PRIVILEGE),
+                    Option(Actions.GRANT, args=OptionTree._CATALOG_ROLE_AND_CATALOG, input_name=Arguments.PRIVILEGE),
                     Option(Actions.REVOKE, args=[
                         Argument(Arguments.CASCADE, bool, Hints.Grant.CASCADE)
-                    ], input_name=Arguments.PRIVILEGE),
+                    ] + OptionTree._CATALOG_ROLE_AND_CATALOG, input_name=Arguments.PRIVILEGE),
                 ]),
                 Option(Subcommands.NAMESPACE, children=[
                     Option(Actions.GRANT, args=[
                         Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE)
-                    ], input_name=Arguments.PRIVILEGE),
+                    ] + OptionTree._CATALOG_ROLE_AND_CATALOG, input_name=Arguments.PRIVILEGE),
                     Option(Actions.REVOKE, args=[
                         Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
                         Argument(Arguments.CASCADE, bool, Hints.Grant.CASCADE)
-                    ], input_name=Arguments.PRIVILEGE),
+                    ] + OptionTree._CATALOG_ROLE_AND_CATALOG, input_name=Arguments.PRIVILEGE),
                 ]),
                 Option(Subcommands.TABLE, children=[
                     Option(Actions.GRANT, args=[
                         Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
                         Argument(Arguments.TABLE, str, Hints.Grant.TABLE)
-                    ], input_name=Arguments.PRIVILEGE),
+                    ] + OptionTree._CATALOG_ROLE_AND_CATALOG, input_name=Arguments.PRIVILEGE),
                     Option(Actions.REVOKE, args=[
                         Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
                         Argument(Arguments.TABLE, str, Hints.Grant.TABLE),
                         Argument(Arguments.CASCADE, bool, Hints.Grant.CASCADE)
-                    ], input_name=Arguments.PRIVILEGE),
+                    ] + OptionTree._CATALOG_ROLE_AND_CATALOG, input_name=Arguments.PRIVILEGE),
                 ]),
                 Option(Subcommands.VIEW, children=[
                     Option(Actions.GRANT, args=[
                         Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
                         Argument(Arguments.VIEW, str, Hints.Grant.VIEW)
-                    ], input_name=Arguments.PRIVILEGE),
+                    ] + OptionTree._CATALOG_ROLE_AND_CATALOG, input_name=Arguments.PRIVILEGE),
                     Option(Actions.REVOKE, args=[
                         Argument(Arguments.NAMESPACE, str, Hints.Grant.NAMESPACE),
                         Argument(Arguments.VIEW, str, Hints.Grant.VIEW),
                         Argument(Arguments.CASCADE, bool, Hints.Grant.CASCADE)
-                    ], input_name=Arguments.PRIVILEGE),
+                    ] + OptionTree._CATALOG_ROLE_AND_CATALOG, input_name=Arguments.PRIVILEGE),
                 ])
+            ]),
+            Option(Commands.NAMESPACES, 'manage namespaces', children=[
+                Option(Subcommands.CREATE, args=[
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
+                    Argument(Arguments.LOCATION, str, Hints.Namespaces.LOCATION),
+                    Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True)
+                ], input_name=Arguments.NAMESPACE),
+                Option(Subcommands.LIST, args=[
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
+                    Argument(Arguments.PARENT, str, Hints.Namespaces.PARENT)
+                ]),
+                Option(Subcommands.DELETE, args=[
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME)
+                ], input_name=Arguments.NAMESPACE),
+                Option(Subcommands.GET, args=[
+                    Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME)
+                ], input_name=Arguments.NAMESPACE),
             ])
         ]

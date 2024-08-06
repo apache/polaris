@@ -32,8 +32,7 @@ import org.jetbrains.annotations.NotNull;
 
 @JsonTypeName("in-memory")
 public class InMemoryPolarisMetaStoreManagerFactory
-    extends LocalPolarisMetaStoreManagerFactory<
-        PolarisTreeMapStore, PolarisTreeMapMetaStoreSessionImpl> {
+    extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
   Set<String> bootstrappedRealms = new HashSet<>();
 
   @Override

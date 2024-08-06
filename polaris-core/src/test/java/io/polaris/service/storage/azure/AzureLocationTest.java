@@ -16,7 +16,7 @@
 package io.polaris.service.storage.azure;
 
 import io.polaris.core.storage.azure.AzureLocation;
-import org.junit.jupiter.api.Assertions;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 public class AzureLocationTest {
@@ -25,22 +25,23 @@ public class AzureLocationTest {
   public void testLocation() {
     String uri = "abfss://container@storageaccount.blob.core.windows.net/myfile";
     AzureLocation azureLocation = new AzureLocation(uri);
-    Assertions.assertEquals("container", azureLocation.getContainer());
-    Assertions.assertEquals("storageaccount", azureLocation.getStorageAccount());
-    Assertions.assertEquals("blob.core.windows.net", azureLocation.getEndpoint());
-    Assertions.assertEquals("myfile", azureLocation.getFilePath());
+    Assertions.assertThat(azureLocation.getContainer()).isEqualTo("container");
+    Assertions.assertThat(azureLocation.getStorageAccount()).isEqualTo("storageaccount");
+    Assertions.assertThat(azureLocation.getEndpoint()).isEqualTo("blob.core.windows.net");
+    Assertions.assertThat(azureLocation.getFilePath()).isEqualTo("myfile");
   }
 
   @Test
   public void testLocation_negative_cases() {
-    Assertions.assertThrows(
-        IllegalArgumentException.class,
-        () -> new AzureLocation("wasbs://container@storageaccount.blob.core.windows.net/myfile"));
-    Assertions.assertThrows(
-        IllegalArgumentException.class,
-        () -> new AzureLocation("abfss://storageaccount.blob.core.windows.net/myfile"));
-    Assertions.assertThrows(
-        IllegalArgumentException.class,
-        () -> new AzureLocation("abfss://container@storageaccount/myfile"));
+    Assertions.assertThatThrownBy(
+            () ->
+                new AzureLocation("wasbs://container@storageaccount.blob.core.windows.net/myfile"))
+        .isInstanceOf(IllegalArgumentException.class);
+    Assertions.assertThatThrownBy(
+            () -> new AzureLocation("abfss://storageaccount.blob.core.windows.net/myfile"))
+        .isInstanceOf(IllegalArgumentException.class);
+    Assertions.assertThatThrownBy(
+            () -> new AzureLocation("abfss://container@storageaccount/myfile"))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 }

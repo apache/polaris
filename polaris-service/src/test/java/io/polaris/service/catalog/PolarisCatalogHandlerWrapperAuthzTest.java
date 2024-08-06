@@ -576,6 +576,61 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
   }
 
   @Test
+  public void testCreateTableDirectWithWriteDelegationAllSufficientPrivileges() {
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_WRITE_DATA))
+        .isTrue();
+
+    final TableIdentifier newtable = TableIdentifier.of(NS2, "newtable");
+    final CreateTableRequest createDirectWithWriteDelegationRequest =
+        CreateTableRequest.builder().withName("newtable").withSchema(SCHEMA).stageCreate().build();
+
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.TABLE_CREATE, PolarisPrivilege.TABLE_WRITE_DATA),
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1))
+              .createTableDirectWithWriteDelegation(NS2, createDirectWithWriteDelegationRequest);
+        },
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE2)).dropTableWithPurge(newtable);
+        },
+        PRINCIPAL_NAME);
+  }
+
+  @Test
+  public void testCreateTableDirectWithWriteDelegationInsufficientPermissions() {
+    final CreateTableRequest createDirectWithWriteDelegationRequest =
+        CreateTableRequest.builder()
+            .withName("directtable")
+            .withSchema(SCHEMA)
+            .stageCreate()
+            .build();
+
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_DROP,
+            PolarisPrivilege.TABLE_CREATE, // TABLE_CREATE itself is insufficient for delegation
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_LIST),
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1))
+              .createTableDirectWithWriteDelegation(NS2, createDirectWithWriteDelegationRequest);
+        });
+  }
+
+  @Test
   public void testCreateTableStagedAllSufficientPrivileges() {
     Assertions.assertThat(
             adminService.grantPrivilegeOnCatalogToRole(

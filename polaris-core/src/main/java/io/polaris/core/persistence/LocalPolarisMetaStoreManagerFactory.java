@@ -40,8 +40,7 @@ import org.slf4j.Logger;
  * PolarisMetaStoreManager} using an underlying meta store to store and retrieve all Polaris
  * metadata.
  */
-public abstract class LocalPolarisMetaStoreManagerFactory<
-        StoreType, SessionType extends PolarisMetaStoreSession>
+public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     implements MetaStoreManagerFactory {
 
   Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
@@ -151,9 +150,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<
    * This method bootstraps service for a given realm: i.e. creates all the needed entities in the
    * metastore and creates a root service principal. After that we rotate the root principal
    * credentials and print them to stdout
-   *
-   * @param realmContext
-   * @param metaStoreManager
    */
   private PolarisMetaStoreManager.PrincipalSecretsResult
       bootstrapServiceAndCreatePolarisPrincipalForRealm(
@@ -213,9 +209,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<
    * bootstrapped we are throwing IllegalStateException exception That will cause service to crash
    * and force user to run Bootstrap command and initialize MetaStore and create all the required
    * entities
-   *
-   * @param realmContext
-   * @param metaStoreManager
    */
   private void checkPolarisServiceBootstrappedForRealm(
       RealmContext realmContext, PolarisMetaStoreManager metaStoreManager) {

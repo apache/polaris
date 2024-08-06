@@ -15,20 +15,15 @@
  */
 
 plugins {
-    id "org.openapi.generator" version "7.6.0"
+    alias(libs.plugins.openapi.generator)
     id("java-library")
     id("java-test-fixtures")
 }
 
-compileJava {
-    sourceCompatibility = 11
-    targetCompatibility = 11
-}
-
 dependencies {
-    implementation(platform("org.apache.iceberg:iceberg-bom:${icebergVersion}"))
-    implementation("org.apache.iceberg:iceberg-api:${icebergVersion}")
-    implementation("org.apache.iceberg:iceberg-core:${icebergVersion}")
+    implementation(platform(libs.iceberg.bom))
+    implementation("org.apache.iceberg:iceberg-api")
+    implementation("org.apache.iceberg:iceberg-core")
     constraints {
         implementation("io.airlift:aircompressor:0.27") {
             because "Vulnerability detected in 0.25"
@@ -36,17 +31,18 @@ dependencies {
     }
     // TODO - this is only here for the Discoverable interface
     // We should use a different mechanism to discover the plugin implementations
-    implementation("io.dropwizard:dropwizard-jackson:${dropwizardVersion}")
+    implementation(platform(libs.dropwizard.bom))
+    implementation("io.dropwizard:dropwizard-jackson")
 
-    implementation(platform("com.fasterxml.jackson:jackson-bom:${jacksonVersion}"))
+    implementation(platform(libs.jackson.bom))
     implementation("com.fasterxml.jackson.core:jackson-annotations")
     implementation("com.fasterxml.jackson.core:jackson-core")
     implementation("com.fasterxml.jackson.core:jackson-databind")
-    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
-    implementation("org.apache.commons:commons-lang3:3.14.0")
-    implementation("commons-codec:commons-codec:1.17.0")
+    implementation(libs.caffeine)
+    implementation(libs.commons.lang3)
+    implementation(libs.commons.codec1)
 
-    implementation("org.apache.hadoop:hadoop-common:${hadoopVersion}") {
+    implementation(libs.hadoop.common) {
         exclude group: "org.slf4j", module: "slf4j-reload4j"
         exclude group: "org.slf4j", module: "slf4j-log4j12"
         exclude group: "ch.qos.reload4j", module: "reload4j"
@@ -71,24 +67,25 @@ dependencies {
         }
 
     }
-    implementation("org.apache.hadoop:hadoop-hdfs-client:${hadoopVersion}")
+    implementation(libs.hadoop.hdfs.client)
 
-    implementation("javax.inject:javax.inject:1")
-    implementation("io.swagger:swagger-annotations:1.6.14")
-    implementation("io.swagger:swagger-jaxrs:1.6.14")
-    implementation("jakarta.validation:jakarta.validation-api:3.0.2")
+    implementation(libs.javax.inject)
+    implementation(libs.swagger.annotations)
+    implementation(libs.swagger.jaxrs)
+    implementation(libs.jakarta.validation.api)
 
     implementation("org.apache.iceberg:iceberg-aws")
-    implementation(platform("software.amazon.awssdk:bom:2.26.25"))
+    implementation(platform(libs.awssdk.bom))
     implementation("software.amazon.awssdk:sts")
     implementation("software.amazon.awssdk:iam-policy-builder")
     implementation("software.amazon.awssdk:s3")
 
     implementation("org.apache.iceberg:iceberg-azure")
-    implementation("com.azure:azure-storage-blob:12.18.0")
-    implementation("com.azure:azure-storage-common:12.14.2")
-    implementation("com.azure:azure-identity:1.12.2")
-    implementation("com.azure:azure-storage-file-datalake:12.19.0")
+    implementation(platform(libs.azuresdk.bom))
+    implementation("com.azure:azure-storage-blob")
+    implementation("com.azure:azure-storage-common")
+    implementation("com.azure:azure-identity")
+    implementation("com.azure:azure-storage-file-datalake")
     constraints {
         implementation("io.netty:netty-codec-http2:4.1.100") {
             because "Vulnerability detected in 4.1.72"
@@ -99,34 +96,39 @@ dependencies {
     }
 
     implementation("org.apache.iceberg:iceberg-gcp")
-    implementation(platform("com.google.cloud:google-cloud-storage-bom:2.39.0"))
+    implementation(platform(libs.google.cloud.storage.bom))
     implementation("com.google.cloud:google-cloud-storage")
 
-    implementation(platform("io.micrometer:micrometer-bom:1.13.2"))
+    implementation(platform(libs.micrometer.bom))
     implementation("io.micrometer:micrometer-core")
 
-    testFixturesApi(platform("org.junit:junit-bom:5.10.3"))
+    testFixturesApi(platform(libs.junit.bom))
     testFixturesApi("org.junit.jupiter:junit-jupiter")
-    testFixturesApi("org.assertj:assertj-core:3.25.3")
-    testFixturesApi("org.mockito:mockito-core:5.11.0")
+    testFixturesApi(libs.assertj.core)
+    testFixturesApi(libs.mockito.core)
     testFixturesApi("com.fasterxml.jackson.core:jackson-core")
     testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
-    testFixturesApi("org.apache.commons:commons-lang3:3.14.0")
-    testFixturesApi("org.jetbrains:annotations:24.0.0")
-    testFixturesApi(platform("com.fasterxml.jackson:jackson-bom:${jacksonVersion}"))
+    testFixturesApi(libs.commons.lang3)
+    testFixturesApi(libs.jetbrains.annotations)
+    testFixturesApi(platform(libs.jackson.bom))
 
-    compileOnly("jakarta.annotation:jakarta.annotation-api:2.1.1")
-    compileOnly("jakarta.persistence:jakarta.persistence-api:3.1.0")
+    compileOnly(libs.jakarta.annotation.api)
+    compileOnly(libs.jakarta.persistence.api)
 }
 
 openApiValidate {
     inputSpec = "$rootDir/spec/polaris-management-service.yml"
 }
 
-task generatePolarisService(type: org.openapitools.generator.gradle.plugin.tasks.GenerateTask) {
+tasks.withType(JavaCompile).configureEach {
+    // TODO Disabled until the code is only Java 11, see #76
+    // options.release = 11
+}
+
+tasks.register("generatePolarisService", org.openapitools.generator.gradle.plugin.tasks.GenerateTask).configure {
     inputSpec = "$rootDir/spec/polaris-management-service.yml"
     generatorName = "jaxrs-resteasy"
-    outputDir = "$buildDir/generated"
+    outputDir = "$projectDir/build/generated"
     modelPackage = "io.polaris.core.admin.model"
     ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
     removeOperationIdPrefix = true
@@ -148,5 +150,6 @@ task generatePolarisService(type: org.openapitools.generator.gradle.plugin.tasks
     serverVariables = [basePath: "api/v1"]
 }
 
-compileJava.dependsOn tasks.generatePolarisService
-sourceSets.main.java.srcDirs += ["$buildDir/generated/src/main/java"]
+tasks.named("compileJava").configure {dependsOn("generatePolarisService") }
+
+sourceSets.main.java.srcDirs += [ project.layout.buildDirectory.dir("generated/src/main/java") ]

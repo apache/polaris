@@ -39,9 +39,6 @@ public class TaskUtils {
   /**
    * base64 encode the serialized manifest file entry so we can deserialize it and read the manifest
    * in the {@link ManifestFileCleanupTaskHandler}
-   *
-   * @param mf
-   * @return
    */
   static String encodeManifestFile(ManifestFile mf) {
     try {

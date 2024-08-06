@@ -36,8 +36,8 @@ import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -84,16 +84,16 @@ public class StorageCredentialCacheTest {
         new PolarisEntity(
             new PolarisBaseEntity(
                 1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.TABLE, 0, "name"));
-    Assertions.assertThrows(
-        RuntimeException.class,
-        () ->
-            storageCredentialCache.getOrGenerateSubScopeCreds(
-                metaStoreManager,
-                callCtx,
-                polarisEntity,
-                true,
-                new HashSet<>(Arrays.asList("s3://bucket1/path")),
-                new HashSet<>(Arrays.asList("s3://bucket3/path"))));
+    Assertions.assertThatThrownBy(
+            () ->
+                storageCredentialCache.getOrGenerateSubScopeCreds(
+                    metaStoreManager,
+                    callCtx,
+                    polarisEntity,
+                    true,
+                    new HashSet<>(Arrays.asList("s3://bucket1/path")),
+                    new HashSet<>(Arrays.asList("s3://bucket3/path"))))
+        .isInstanceOf(RuntimeException.class);
   }
 
   @Test
@@ -125,7 +125,7 @@ public class StorageCredentialCacheTest {
         true,
         new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
         new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
-    Assertions.assertEquals(1, storageCredentialCache.getEstimatedSize());
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
 
     // subscope for the same entity and same allowed locations, will hit the cache
     storageCredentialCache.getOrGenerateSubScopeCreds(
@@ -135,7 +135,7 @@ public class StorageCredentialCacheTest {
         true,
         new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
         new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
-    Assertions.assertEquals(1, storageCredentialCache.getEstimatedSize());
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(1);
   }
 
   @RepeatedTest(10)
@@ -175,7 +175,7 @@ public class StorageCredentialCacheTest {
         true,
         new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
         new HashSet<>(Arrays.asList("s3://bucket/path")));
-    Assertions.assertNull(storageCredentialCache.getIfPresent(cacheKey));
+    Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
 
     storageCredentialCache.getOrGenerateSubScopeCreds(
         metaStoreManager,
@@ -184,7 +184,7 @@ public class StorageCredentialCacheTest {
         true,
         new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
         new HashSet<>(Arrays.asList("s3://bucket/path")));
-    Assertions.assertNull(storageCredentialCache.getIfPresent(cacheKey));
+    Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
 
     storageCredentialCache.getOrGenerateSubScopeCreds(
         metaStoreManager,
@@ -193,7 +193,7 @@ public class StorageCredentialCacheTest {
         true,
         new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
         new HashSet<>(Arrays.asList("s3://bucket/path")));
-    Assertions.assertNull(storageCredentialCache.getIfPresent(cacheKey));
+    Assertions.assertThat(storageCredentialCache.getIfPresent(cacheKey)).isNull();
   }
 
   @Test
@@ -224,7 +224,7 @@ public class StorageCredentialCacheTest {
               true,
               new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
               new HashSet<>(Arrays.asList("s3://bucket/path")));
-      Assertions.assertEquals(++cacheSize, storageCredentialCache.getEstimatedSize());
+      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // update the entity's storage config, since StorageConfig changed, cache will generate new
     // entry
@@ -241,7 +241,7 @@ public class StorageCredentialCacheTest {
           /* allowedListAction= */ true,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
           new HashSet<>(Arrays.asList("s3://bucket/path")));
-      Assertions.assertEquals(++cacheSize, storageCredentialCache.getEstimatedSize());
+      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // allowedListAction changed to different value FALSE, will generate new entry
     for (PolarisEntity entity : entityList) {
@@ -252,7 +252,7 @@ public class StorageCredentialCacheTest {
           /* allowedListAction= */ false,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
           new HashSet<>(Arrays.asList("s3://bucket/path")));
-      Assertions.assertEquals(++cacheSize, storageCredentialCache.getEstimatedSize());
+      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // different allowedWriteLocations, will generate new entry
     for (PolarisEntity entity : entityList) {
@@ -263,7 +263,7 @@ public class StorageCredentialCacheTest {
           /* allowedListAction= */ false,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
           new HashSet<>(Arrays.asList("s3://differentbucket/path")));
-      Assertions.assertEquals(++cacheSize, storageCredentialCache.getEstimatedSize());
+      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // different allowedReadLocations, will generate new try
     for (PolarisEntity entity : entityList) {
@@ -279,7 +279,7 @@ public class StorageCredentialCacheTest {
           /* allowedListAction= */ false,
           new HashSet<>(Arrays.asList("s3://differentbucket/path", "s3://bucket2/path")),
           new HashSet<>(Arrays.asList("s3://bucket/path")));
-      Assertions.assertEquals(++cacheSize, storageCredentialCache.getEstimatedSize());
+      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
   }
 
@@ -310,7 +310,7 @@ public class StorageCredentialCacheTest {
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
           new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
     }
-    Assertions.assertEquals(entityList.size(), storageCredentialCache.getEstimatedSize());
+    Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
 
     // entity ID does not affect the cache
     for (PolarisEntity entity : entityList) {
@@ -322,7 +322,7 @@ public class StorageCredentialCacheTest {
           true,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
           new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
-      Assertions.assertEquals(entityList.size(), storageCredentialCache.getEstimatedSize());
+      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
 
     // other property changes does not affect the cache
@@ -335,7 +335,7 @@ public class StorageCredentialCacheTest {
           true,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
           new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
-      Assertions.assertEquals(entityList.size(), storageCredentialCache.getEstimatedSize());
+      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
     // order of the allowedReadLocations does not affect the cache
     for (PolarisEntity entity : entityList) {
@@ -347,7 +347,7 @@ public class StorageCredentialCacheTest {
           true,
           new HashSet<>(Arrays.asList("s3://bucket2/path", "s3://bucket1/path")),
           new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
-      Assertions.assertEquals(entityList.size(), storageCredentialCache.getEstimatedSize());
+      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
 
     // order of the allowedWriteLocations does not affect the cache
@@ -360,7 +360,7 @@ public class StorageCredentialCacheTest {
           true,
           new HashSet<>(Arrays.asList("s3://bucket2/path", "s3://bucket1/path")),
           new HashSet<>(Arrays.asList("s3://bucket4/path", "s3://bucket3/path")));
-      Assertions.assertEquals(entityList.size(), storageCredentialCache.getEstimatedSize());
+      Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(entityList.size());
     }
   }
 

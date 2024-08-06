@@ -15,8 +15,7 @@
  */
 package io.polaris.service.auth;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
@@ -82,13 +81,13 @@ public class JWTSymmetricKeyGeneratorTest {
     TokenResponse token =
         generator.generateFromClientSecrets(
             clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, "PRINCIPAL_ROLE:TEST");
-    assertNotNull(token);
+    assertThat(token).isNotNull();
 
     JWTVerifier verifier = JWT.require(Algorithm.HMAC256("polaris")).withIssuer("polaris").build();
     DecodedJWT decodedJWT = verifier.verify(token.getAccessToken());
-    assertNotNull(decodedJWT);
-    assertEquals(666, token.getExpiresIn());
-    assertEquals(decodedJWT.getClaim("scope").asString(), "PRINCIPAL_ROLE:TEST");
-    assertEquals(decodedJWT.getClaim("client_id").asString(), clientId);
+    assertThat(decodedJWT).isNotNull();
+    assertThat(token.getExpiresIn()).isEqualTo(666);
+    assertThat(decodedJWT.getClaim("scope").asString()).isEqualTo("PRINCIPAL_ROLE:TEST");
+    assertThat(decodedJWT.getClaim("client_id").asString()).isEqualTo(clientId);
   }
 }

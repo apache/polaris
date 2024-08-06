@@ -102,18 +102,18 @@ class TestCliParsing(unittest.TestCase):
         Parser.parse(['catalogs', 'get', 'catalog_name'])
         Parser.parse(['principals', 'list'])
         Parser.parse(['--host', 'some-host', 'catalogs', 'list'])
-        Parser.parse(['privileges', '--catalog', 'foo', '--catalog-role', 'bar', 'catalog', 'grant', 'TABLE_READ_DATA'])
-        Parser.parse(['privileges', '--catalog', 'foo', '--catalog-role', 'bar', 'table', 'grant',
+        Parser.parse(['privileges', 'catalog', 'grant', '--catalog', 'foo', '--catalog-role', 'bar', 'TABLE_READ_DATA'])
+        Parser.parse(['privileges', 'table', 'grant', '--catalog', 'foo', '--catalog-role', 'bar',
                       '--namespace', 'n', '--table', 't', 'TABLE_READ_DATA'])
-        Parser.parse(['privileges', '--catalog', 'foo', '--catalog-role', 'bar', 'table', 'revoke',
+        Parser.parse(['privileges', 'table', 'revoke', '--catalog', 'foo', '--catalog-role', 'bar',
                       '--namespace', 'n', '--table', 't', 'TABLE_READ_DATA'])
 
     # These commands are valid for parsing, but may cause errors within the command itself
-    def test_parse_valid_commands(self):
+    def test_parse_argparse_valid_commands(self):
         Parser.parse(['catalogs', 'create', 'catalog_name', '--type', 'internal', '--remote-url', 'www.apache.org'])
         Parser.parse(['privileges', 'table', 'grant',
                       '--namespace', 'n', '--table', 't', 'TABLE_READ_DATA'])
-        Parser.parse(['privileges', '--catalog', 'c', '--catalog-role', 'r', 'catalog', 'grant', 'fake-privilege'])
+        Parser.parse(['privileges', 'catalog', 'grant', '--catalog', 'c', '--catalog-role', 'r', 'fake-privilege'])
 
     def test_commands(self):
 
@@ -179,15 +179,12 @@ class TestCliParsing(unittest.TestCase):
                         '--storage-type')
         check_exception(lambda: mock_execute(['catalogs', 'create', 'my-catalog', '--storage-type', 'gcs']),
                         '--default-base-location')
-        check_exception(lambda: mock_execute(['catalogs', 'create', 'my-catalog', '--type', 'external',
-                                              '--default-base-location', 'x', '--storage-type', 'gcs']),
-                        '--remote-url')
         check_exception(lambda: mock_execute(['catalog-roles', 'get', 'foo']),
                         '--catalog')
         check_exception(lambda: mock_execute(['catalogs', 'update', 'foo', '--property', 'bad-format']),
                         'bad-format')
-        check_exception(lambda: mock_execute(['privileges', '--catalog', 'foo', '--catalog-role', 'bar',
-                                              'catalog', 'grant', 'TABLE_READ_MORE_BOOKS']),
+        check_exception(lambda: mock_execute(['privileges', 'catalog', 'grant',
+                                              '--catalog', 'foo', '--catalog-role', 'bar', 'TABLE_READ_MORE_BOOKS']),
                         'catalog privilege: TABLE_READ_MORE_BOOKS')
         check_exception(lambda: mock_execute(['catalogs', 'create', 'my-catalog', '--storage-type', 'gcs',
                                               '--allowed-location', 'a', '--allowed-location', 'b',
@@ -214,7 +211,7 @@ class TestCliParsing(unittest.TestCase):
             mock_execute([
                 'catalogs', 'create', 'my-catalog', '--storage-type', 's3',
                 '--allowed-location', 'a', '--allowed-location', 'b', '--role-arn', 'ra',
-                '--user-arn', 'ua', '--external-id', 'ei', '--default-base-location', 'x']),
+                '--external-id', 'ei', '--default-base-location', 'x']),
             'create_catalog', {
                 (0, 'catalog.name'): 'my-catalog',
                 (0, 'catalog.storage_config_info.storage_type'): 'S3',
@@ -234,10 +231,10 @@ class TestCliParsing(unittest.TestCase):
                 (0, None): 'foo',
             })
         check_arguments(
-            mock_execute(['principals', 'create', 'foo', '--client-id', 'id', '--property', 'key=value']),
+            mock_execute(['principals', 'create', 'foo', '--property', 'key=value']),
             'create_principal', {
                 (0, 'principal.name'): 'foo',
-                (0, 'principal.client_id'): 'id',
+                (0, 'principal.client_id'): None,
                 (0, 'principal.properties'): {'key': 'value'},
             })
         check_arguments(
@@ -369,7 +366,7 @@ class TestCliParsing(unittest.TestCase):
             })
         check_arguments(
             mock_execute(
-                ['privileges', '--catalog', 'foo', '--catalog-role', 'bar', 'catalog', 'grant', 'TABLE_READ_DATA']),
+                ['privileges', 'catalog', 'grant', '--catalog', 'foo', '--catalog-role', 'bar', 'TABLE_READ_DATA']),
             'add_grant_to_catalog_role', {
                 (0, None): 'foo',
                 (1, None): 'bar',
@@ -377,7 +374,7 @@ class TestCliParsing(unittest.TestCase):
             })
         check_arguments(
             mock_execute(
-                ['privileges', '--catalog', 'foo', '--catalog-role', 'bar', 'catalog', 'revoke', 'TABLE_READ_DATA']),
+                ['privileges', 'catalog', 'revoke', '--catalog', 'foo', '--catalog-role', 'bar', 'TABLE_READ_DATA']),
             'revoke_grant_from_catalog_role', {
                 (0, None): 'foo',
                 (1, None): 'bar',
@@ -386,8 +383,8 @@ class TestCliParsing(unittest.TestCase):
             })
         check_arguments(
             mock_execute(
-                ['privileges', '--catalog', 'foo', '--catalog-role', 'bar', 'namespace', 'grant', '--namespace', 'a.b.c',
-                 'TABLE_READ_DATA']),
+                ['privileges', 'namespace', 'grant', '--namespace', 'a.b.c', '--catalog', 'foo',
+                 '--catalog-role', 'bar', 'TABLE_READ_DATA']),
             'add_grant_to_catalog_role', {
                 (0, None): 'foo',
                 (1, None): 'bar',
@@ -396,8 +393,8 @@ class TestCliParsing(unittest.TestCase):
             })
         check_arguments(
             mock_execute(
-                ['privileges', '--catalog', 'foo', '--catalog-role', 'bar', 'table', 'grant', '--namespace', 'a.b.c',
-                 '--table', 't', 'TABLE_READ_DATA']),
+                ['privileges', 'table', 'grant', '--namespace', 'a.b.c',
+                 '--table', 't', '--catalog', 'foo', '--catalog-role', 'bar', 'TABLE_READ_DATA']),
             'add_grant_to_catalog_role', {
                 (0, None): 'foo',
                 (1, None): 'bar',
@@ -407,7 +404,7 @@ class TestCliParsing(unittest.TestCase):
             })
         check_arguments(
             mock_execute(
-                ['privileges', '--catalog', 'foo', '--catalog-role', 'bar', 'table', 'revoke', '--namespace', 'a.b.c',
+                ['privileges', 'table', 'revoke', '--namespace', 'a.b.c', '--catalog', 'foo', '--catalog-role', 'bar',
                  '--table', 't', '--cascade', 'TABLE_READ_DATA']),
             'revoke_grant_from_catalog_role', {
                 (0, None): 'foo',
@@ -419,7 +416,7 @@ class TestCliParsing(unittest.TestCase):
             })
         check_arguments(
             mock_execute(
-                ['privileges', '--catalog', 'foo', '--catalog-role', 'bar', 'view', 'grant', '--namespace', 'a.b.c',
+                ['privileges', 'view', 'grant', '--namespace', 'a.b.c', '--catalog', 'foo', '--catalog-role', 'bar',
                  '--view', 'v', 'VIEW_CREATE']),
             'add_grant_to_catalog_role', {
                 (0, None): 'foo',

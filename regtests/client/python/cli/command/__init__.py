@@ -93,11 +93,22 @@ class Command(ABC):
                 action=options_get(f'{subcommand}_subcommand'),
                 catalog_name=options_get(Arguments.CATALOG),
                 catalog_role_name=options_get(Arguments.CATALOG_ROLE),
-                namespace=options_get(Arguments.NAMESPACE, lambda s: s.split('.')),
+                namespace=options_get(Arguments.NAMESPACE, lambda s: s.split('.') if s else None),
                 view=options_get(Arguments.VIEW),
                 table=options_get(Arguments.TABLE),
                 privilege=options_get(Arguments.PRIVILEGE),
                 cascade=options_get(Arguments.CASCADE)
+            )
+        elif options.command == Commands.NAMESPACES:
+            from cli.command.namespaces import NamespacesCommand
+            subcommand = options_get(f'{Commands.NAMESPACES}_subcommand')
+            command = NamespacesCommand(
+                subcommand,
+                catalog=options_get(Arguments.CATALOG),
+                namespace=options_get(Arguments.NAMESPACE, lambda s: s.split('.')),
+                parent=options_get(Arguments.PARENT, lambda s: s.split('.') if s else None),
+                location=options_get(Arguments.LOCATION),
+                properties=properties
             )
 
         if command is not None:

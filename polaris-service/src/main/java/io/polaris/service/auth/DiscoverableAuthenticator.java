@@ -23,9 +23,9 @@ import java.security.Principal;
 
 /**
  * Extension of the {@link Authenticator} interface that extends {@link Discoverable} so
- * implementations can be discovered using the mechanisms described in
- * https://www.dropwizard.io/en/stable/manual/configuration.html#polymorphic-configuration . The
- * default implementation is {@link TestInlineBearerTokenPolarisAuthenticator}.
+ * implementations can be discovered using the mechanisms described in <a
+ * href="https://www.dropwizard.io/en/stable/manual/configuration.html#polymorphic-configuration">the
+ * manual</a>. The default implementation is {@link TestInlineBearerTokenPolarisAuthenticator}.
  *
  * @param <C>
  * @param <P>
