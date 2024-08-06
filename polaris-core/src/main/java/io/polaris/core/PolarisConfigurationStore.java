@@ -29,7 +29,7 @@ import software.amazon.awssdk.services.s3.endpoints.internal.Value;
  * request.
  */
 public interface PolarisConfigurationStore {
-  final Logger LOGGER = LoggerFactory.getLogger(PolarisConfigurationStore.class);
+  Logger LOGGER = LoggerFactory.getLogger(PolarisConfigurationStore.class);
 
   /**
    * Retrieve the current value for a configuration key. May be null if not set.
