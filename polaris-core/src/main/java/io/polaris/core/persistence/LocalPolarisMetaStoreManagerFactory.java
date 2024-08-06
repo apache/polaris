@@ -174,8 +174,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<
             PolarisEntityConstants.getRootPrincipalName());
     if (preliminaryRootPrincipalLookup.isSuccess()) {
       String overrideMessage =
-          "It appears this metastore manager has already been bootstrapped."
-              + " To continue bootstrapping, please first purge the metastore manager with the `purge` command.";
+          "It appears this metastore manager has already been bootstrapped. "
+              + "To continue bootstrapping, please first purge the metastore with the `purge` command.";
       logger.error("\n\n {} \n\n", overrideMessage);
       throw new IllegalArgumentException(overrideMessage);
     }
