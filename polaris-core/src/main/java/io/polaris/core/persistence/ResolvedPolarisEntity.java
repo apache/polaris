@@ -20,6 +20,7 @@ import io.polaris.core.entity.PolarisEntity;
 import io.polaris.core.entity.PolarisGrantRecord;
 import io.polaris.core.persistence.cache.EntityCacheEntry;
 import java.util.List;
+import org.jetbrains.annotations.NotNull;
 
 public class ResolvedPolarisEntity {
   private final PolarisEntity entity;
@@ -44,7 +45,7 @@ public class ResolvedPolarisEntity {
     this.grantRecordsAsSecurable = grantRecordsAsSecurable;
   }
 
-  public ResolvedPolarisEntity(EntityCacheEntry cacheEntry) {
+  public ResolvedPolarisEntity(@NotNull EntityCacheEntry cacheEntry) {
     this.entity = PolarisEntity.of(cacheEntry.getEntity());
     this.grantRecordsAsGrantee = ImmutableList.copyOf(cacheEntry.getGrantRecordsAsGrantee());
     this.grantRecordsAsSecurable = ImmutableList.copyOf(cacheEntry.getGrantRecordsAsSecurable());
