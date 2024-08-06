@@ -106,7 +106,6 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       properties.put(
           JDBC_URL, properties.get(JDBC_URL).replace("{realm}", realmContext.getRealmIdentifier()));
     }
-    properties.put(ECLIPSELINK_PERSISTENCE_XML, confFile);
 
     emf = Persistence.createEntityManagerFactory(persistenceUnitName, properties);
 
@@ -147,7 +146,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       LOG.warn(
           "Cannot find or parse the configuration file {} for persistence-unit {}",
           confFile,
-          persistenceUnitName);
+          persistenceUnitName, e);
     }
 
     return Maps.newHashMap();
