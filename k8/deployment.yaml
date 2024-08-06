@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name:  polaris
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: polaris
+  namespace: polaris
+spec:
+  selector:
+    matchLabels:
+      app: polaris
+  template:
+    metadata:
+      labels:
+        app: polaris
+    spec:
+      containers:
+      - name: polaris
+        image: localhost:5001/polaris:latest
+        ports:
+        - containerPort: 8181
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: polaris
+  namespace: polaris
+spec:
+  selector:
+    app: polaris
+  ports:
+  - port: 8181
+    targetPort: 8181
