@@ -435,8 +435,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .getConfigurationStore()
         .getConfiguration(
             callContext.getPolarisCallContext(),
-            PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP,
-            PolarisConfiguration.DEFAULT_ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+            PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOG.debug("Validating no overlap for {} with sibling tables or namespaces", namespace);
       validateNoLocationOverlap(
           entity.getBaseLocation(), resolvedParent.getRawFullPath(), entity.getName());
@@ -585,8 +584,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .getConfigurationStore()
         .getConfiguration(
             callContext.getPolarisCallContext(),
-            PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP,
-            PolarisConfiguration.DEFAULT_ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+            PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOG.debug("Validating no overlap with sibling tables or namespaces");
       validateNoLocationOverlap(
           NamespaceEntity.of(updatedEntity).getBaseLocation(),
@@ -924,8 +922,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .getConfigurationStore()
         .getConfiguration(
             callContext.getPolarisCallContext(),
-            PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP,
-            PolarisConfiguration.DEFAULT_ALLOW_TABLE_LOCATION_OVERLAP)) {
+            PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP)) {
       LOG.debug("Skipping location overlap validation for identifier '{}'", identifier);
     } else { // if (entity.getSubType().equals(PolarisEntitySubType.TABLE)) {
       // TODO - is this necessary for views? overlapping views do not expose subdirectories via the
@@ -1270,17 +1267,17 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private void validateMetadataFileInTableDir(
       TableIdentifier identifier, TableMetadata metadata, CatalogEntity catalog) {
     PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
-    String allowEscape =
-        catalog
-            .getPropertiesAsMap()
-            .get(PolarisConfiguration.CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION);
-    if (!Boolean.parseBoolean(allowEscape)
+    boolean allowEscape = polarisCallContext
+        .getConfigurationStore()
+        .getConfiguration(
+            polarisCallContext,
+            PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
+    if (!allowEscape
         && !polarisCallContext
             .getConfigurationStore()
             .getConfiguration(
                 polarisCallContext,
-                PolarisConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION,
-                PolarisConfiguration.DEFAULT_ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
+                PolarisConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
       LOG.debug(
           "Validating base location {} for table {} in metadata file {}",
           metadata.location(),

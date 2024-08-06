@@ -17,8 +17,11 @@ package io.polaris.core;
 
 import com.google.common.base.Preconditions;
 import io.polaris.core.entity.CatalogEntity;
+import io.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.endpoints.internal.Value;
 
 /**
@@ -26,6 +29,7 @@ import software.amazon.awssdk.services.s3.endpoints.internal.Value;
  * request.
  */
 public interface PolarisConfigurationStore {
+  final Logger LOGGER = LoggerFactory.getLogger(PolarisConfigurationStore.class);
 
   /**
    * Retrieve the current value for a configuration key. May be null if not set.
@@ -66,9 +70,9 @@ public interface PolarisConfigurationStore {
     }
 
     if (config.defaultValue instanceof Boolean) {
-      return (T) config.defaultValue.getClass().cast(Boolean.parseBoolean(String.valueOf(value)));
+      return config.cast(Boolean.valueOf(String.valueOf(value)));
     } else {
-      return (T) value;
+      return config.cast(value);
     }
   }
 
@@ -97,7 +101,10 @@ public interface PolarisConfigurationStore {
    */
   default <T> @NotNull T getConfiguration(
       PolarisCallContext ctx, @NotNull CatalogEntity catalogEntity, PolarisConfiguration<T> config) {
-    if (catalogEntity.getPropertiesAsMap().containsKey(config.catalogConfig())) {
+    if (config.hasCatalogConfig() && catalogEntity.getPropertiesAsMap().containsKey(config.catalogConfig())) {
+      LOGGER.debug(
+          "Loaded config from catalog: {}",
+          config.catalogConfig());
       return tryCast(config, catalogEntity.getPropertiesAsMap().get(config.catalogConfig()));
     } else {
       return getConfiguration(ctx, config);

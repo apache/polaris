@@ -22,13 +22,20 @@ public class PolarisConfiguration<T> {
   public final String key;
   public final String description;
   public final T defaultValue;
-  public final Optional<String> catalogConfigImpl;
+  private final Optional<String> catalogConfigImpl;
+  private final Class<T> typ;
 
+  @SuppressWarnings("unchecked")
   public PolarisConfiguration(String key, String description, T defaultValue, Optional<String> catalogConfig) {
     this.key = key;
     this.description = description;
     this.defaultValue = defaultValue;
     this.catalogConfigImpl = catalogConfig;
+    this.typ = (Class<T>) defaultValue.getClass();
+  }
+
+  public boolean hasCatalogConfig() {
+    return catalogConfigImpl.isPresent();
   }
 
   public String catalogConfig() {
@@ -36,6 +43,10 @@ public class PolarisConfiguration<T> {
         new IllegalStateException(
             "Attempted to read a catalog config key from a configuration that doesn't have one.")
     );
+  }
+
+  T cast(Object value) {
+    return this.typ.cast(value);
   }
 
   public static class Builder<T> {
@@ -116,27 +127,6 @@ public class PolarisConfiguration<T> {
           .defaultValue(false)
           .build();
 
-  public static final PolarisConfiguration<Boolean> ENFORCE_GLOBALLY_UNIQUE_TABLE_LOCATIONS =
-      PolarisConfiguration.<Boolean>builder()
-          .key("ENFORCE_GLOBALLY_UNIQUE_TABLE_LOCATIONS")
-          .description(
-              "If set to true, enforces that all table locations must be globally unique. " +
-              "This is enforced across all namespaces and catalogs."
-          )
-          .defaultValue(false)
-          .build();
-
-  public static final PolarisConfiguration<Boolean>
-      ENFORCE_TABLE_LOCATIONS_INSIDE_NAMESPACE_LOCATIONS =
-          PolarisConfiguration.<Boolean>builder()
-              .key("ENFORCE_TABLE_LOCATIONS_INSIDE_NAMESPACE_LOCATIONS")
-              .description(
-                  "If set to true, enforces that table locations must reside within their immediate parent " +
-                  "namespace's locations."
-              )
-              .defaultValue(true)
-              .build();
-
   public static final PolarisConfiguration<Boolean> ALLOW_OVERLAPPING_CATALOG_URLS =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_OVERLAPPING_CATALOG_URLS")
@@ -146,7 +136,7 @@ public class PolarisConfiguration<T> {
           .defaultValue(false)
           .build();
 
-  public static final PolarisConfiguration<Boolean> CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION =
+  public static final PolarisConfiguration<Boolean> ALLOW_UNSTRUCTURED_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_UNSTRUCTURED_TABLE_LOCATION")
           .catalogConfig("allow.unstructured.table.location")
@@ -156,7 +146,7 @@ public class PolarisConfiguration<T> {
           .defaultValue(false)
           .build();
 
-  public static final PolarisConfiguration<Boolean> CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION =
+  public static final PolarisConfiguration<Boolean> ALLOW_EXTERNAL_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_TABLE_LOCATION")
           .catalogConfig("allow.external.table.location")
