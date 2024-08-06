@@ -15,25 +15,34 @@
  */
 package io.polaris.core;
 
+import java.util.Optional;
+
 public class PolarisConfiguration<T> {
 
   public final String key;
   public final String description;
   public final T defaultValue;
-  public final boolean catalogConfig;
+  public final Optional<String> catalogConfigImpl;
 
-  public PolarisConfiguration(String key, String description, T defaultValue, boolean catalogConfig) {
+  public PolarisConfiguration(String key, String description, T defaultValue, Optional<String> catalogConfig) {
     this.key = key;
     this.description = description;
     this.defaultValue = defaultValue;
-    this.catalogConfig = catalogConfig;
+    this.catalogConfigImpl = catalogConfig;
+  }
+
+  public String catalogConfig() {
+    return catalogConfigImpl.orElseThrow(() ->
+        new IllegalStateException(
+            "Attempted to read a catalog config key from a configuration that doesn't have one.")
+    );
   }
 
   public static class Builder<T> {
     private String key;
     private String description;
     private T defaultValue;
-    private boolean catalogConfig = false;
+    private Optional<String> catalogConfig = Optional.empty();
 
     public Builder<T> key(String key) {
       this.key = key;
@@ -50,8 +59,8 @@ public class PolarisConfiguration<T> {
       return this;
     }
 
-    public Builder<T> catalogConfig(boolean catalogConfig) {
-      this.catalogConfig = catalogConfig;
+    public Builder<T> catalogConfig(String catalogConfig) {
+      this.catalogConfig = Optional.of(catalogConfig);
       return this;
     }
 
@@ -132,32 +141,28 @@ public class PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_OVERLAPPING_CATALOG_URLS")
           .description(
-              """
-              If set to true, allows catalog URLs to overlap.
-              """.trim())
+              "If set to true, allows catalog URLs to overlap."
+          )
           .defaultValue(false)
           .build();
 
   public static final PolarisConfiguration<Boolean> CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
-          .catalogConfig(true)
-          .key("allow.unstructured.table.location")
+          .key("ALLOW_UNSTRUCTURED_TABLE_LOCATION")
+          .catalogConfig("allow.unstructured.table.location")
           .description(
-              """
-              If set to true, allows unstructured table locations.
-              """.trim())
+              "If set to true, allows unstructured table locations."
+          )
           .defaultValue(false)
           .build();
 
   public static final PolarisConfiguration<Boolean> CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
-          .catalogConfig(true)
-          .key("allow.external.table.location")
+          .key("ALLOW_EXTERNAL_TABLE_LOCATION")
+          .catalogConfig("allow.external.table.location")
           .description(
-              """
-              If set to true, allows tables to have external locations outside the default structure.
-              """
-                  .trim())
+              "If set to true, allows tables to have external locations outside the default structure."
+          )
           .defaultValue(false)
           .build();
 }

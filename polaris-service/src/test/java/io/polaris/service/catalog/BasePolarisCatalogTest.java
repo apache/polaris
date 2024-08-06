@@ -187,8 +187,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 .setName(CATALOG_NAME)
                 .setDefaultBaseLocation(storageLocation)
                 .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-                .addProperty(PolarisConfiguration.CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION, "true")
-                .addProperty(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "true")
+                .addProperty(PolarisConfiguration.CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig.get(), "true")
+                .addProperty(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig.get(), "true")
                 .setStorageConfigurationInfo(storageConfigModel, storageLocation)
                 .build());
 
