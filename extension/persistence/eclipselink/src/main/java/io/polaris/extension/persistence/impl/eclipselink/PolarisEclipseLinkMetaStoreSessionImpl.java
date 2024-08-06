@@ -15,11 +15,9 @@
  */
 package io.polaris.extension.persistence.impl.eclipselink;
 
-import static org.eclipse.persistence.config.PersistenceUnitProperties.ECLIPSELINK_PERSISTENCE_XML;
 import static org.eclipse.persistence.config.PersistenceUnitProperties.JDBC_URL;
 
 import com.google.common.base.Predicates;
-import com.google.common.collect.Maps;
 import io.polaris.core.PolarisCallContext;
 import io.polaris.core.context.RealmContext;
 import io.polaris.core.entity.PolarisBaseEntity;
@@ -143,13 +141,13 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       this.properties = properties;
       return properties;
     } catch (Exception e) {
-      LOG.warn(
-          "Cannot find or parse the configuration file {} for persistence-unit {}",
-          confFile,
-          persistenceUnitName, e);
+      String errorMessage =
+          String.format(
+              "Cannot find or parse the configuration file {} for persistence-unit {}",
+              confFile,
+              persistenceUnitName);
+      throw new IllegalArgumentException(errorMessage, e);
     }
-
-    return Maps.newHashMap();
   }
 
   /** {@inheritDoc} */

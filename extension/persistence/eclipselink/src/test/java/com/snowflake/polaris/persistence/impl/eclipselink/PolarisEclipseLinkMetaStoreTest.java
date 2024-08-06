@@ -24,7 +24,14 @@ import io.polaris.core.persistence.PolarisMetaStoreManagerTest;
 import io.polaris.core.persistence.PolarisTestMetaStoreManager;
 import io.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkMetaStoreSessionImpl;
 import io.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkStore;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.ZoneId;
+import java.util.Objects;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 /**
@@ -36,11 +43,20 @@ public class PolarisEclipseLinkMetaStoreTest extends PolarisMetaStoreManagerTest
 
   @Override
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
+    Path tmpFile = Paths.get(String.format("/tmp/%s-persistence.xml", UUID.randomUUID()));
+    try {
+      Files.copy(
+          Objects.requireNonNull(getClass().getResourceAsStream("/META-INF/persistence.xml")),
+          tmpFile);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
     PolarisEclipseLinkMetaStoreSessionImpl session =
         new PolarisEclipseLinkMetaStoreSessionImpl(
-            store, Mockito.mock(), () -> "realm", null, "polaris-dev");
+            store, Mockito.mock(), () -> "realm", tmpFile.toString(), "polaris-dev");
     return new PolarisTestMetaStoreManager(
         new PolarisMetaStoreManagerImpl(),
         new PolarisCallContext(
@@ -48,5 +64,13 @@ public class PolarisEclipseLinkMetaStoreTest extends PolarisMetaStoreManagerTest
             diagServices,
             new PolarisConfigurationStore() {},
             timeSource.withZone(ZoneId.systemDefault())));
+  }
+
+  @Test
+  void throwExceptionIfConfigFileDoesNotExists() {
+    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
+    PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
+    new PolarisEclipseLinkMetaStoreSessionImpl(
+        store, Mockito.mock(), () -> "realm", "does not exists", "polaris-dev");
   }
 }
