@@ -459,7 +459,7 @@ public class IcebergCatalogAdapter
             CallContext.getCurrentContext(), authenticatedPrincipal, warehouse);
     ResolverStatus resolverStatus = resolver.resolveAll();
     if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
-      throw new NotFoundException("Unable to find warehouse " + warehouse);
+      throw new NotFoundException("Unable to find warehouse %s", warehouse);
     }
     EntityCacheEntry resolvedReferenceCatalog = resolver.getResolvedReferenceCatalog();
     Map<String, String> properties =

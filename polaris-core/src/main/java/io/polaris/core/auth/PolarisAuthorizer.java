@@ -500,8 +500,7 @@ public class PolarisAuthorizer {
     boolean enforceCredentialRotationRequiredState =
         featureConfig.getConfiguration(
             CallContext.getCurrentContext().getPolarisCallContext(),
-            PolarisConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING,
-            false);
+            PolarisConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
     if (enforceCredentialRotationRequiredState
         && authenticatedPrincipal
             .getPrincipalEntity()
