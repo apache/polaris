@@ -972,7 +972,7 @@ tags:
       below.
 
 
-      #### **oauth2**
+      #### oauth2
 
 
       > [!WARNING]  
@@ -993,7 +993,7 @@ tags:
       keys.
 
 
-      #### **authenticator.tokenBroker**
+      #### authenticator.tokenBroker
 
 
       > [!WARNING]  
@@ -1002,7 +1002,7 @@ tags:
       specified in `oauth2` above.
 
 
-      #### **callContextResolver** & **realmContextResolver**
+      #### callContextResolver** & **realmContextResolver
 
       * Use these configurations to specify a service that can resolve a realm
       from bearer tokens.
@@ -1086,7 +1086,7 @@ tags:
       configurations:
 
 
-      * **featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES**
+      #### featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES
         - By default Polaris catalogs are allowed to be located in local filesystem with the `FILE` storage type. This should be disabled for production systems.
         - Use this configuration to additionally disable any other storage types that will not be in use.
 
