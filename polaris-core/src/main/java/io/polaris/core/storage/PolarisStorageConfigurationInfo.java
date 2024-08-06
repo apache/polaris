@@ -154,7 +154,7 @@ public abstract class PolarisStorageConfigurationInfo {
                   .getConfiguration(
                       CallContext.getCurrentContext().getPolarisCallContext(),
                       catalog,
-                      PolarisConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION);
+                      PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
               if (!allowEscape && catalog.getCatalogType() != Catalog.TypeEnum.EXTERNAL && baseLocation != null) {
                 LOGGER.debug(
                     "Not allowing unstructured table location for entity: {}",
