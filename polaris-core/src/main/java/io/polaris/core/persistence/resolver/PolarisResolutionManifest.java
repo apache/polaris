@@ -403,7 +403,11 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     if (resolvedCacheEntry == null) {
       return null;
     }
-    return new PolarisResolvedPathWrapper(
-        List.of(getResolvedRootContainerEntity(), new ResolvedPolarisEntity(resolvedCacheEntry)));
+
+    ResolvedPolarisEntity resolvedRootContainerEntity = getResolvedRootContainerEntity();
+    return resolvedRootContainerEntity == null
+        ? new PolarisResolvedPathWrapper(List.of(new ResolvedPolarisEntity(resolvedCacheEntry)))
+        : new PolarisResolvedPathWrapper(
+            List.of(resolvedRootContainerEntity, new ResolvedPolarisEntity(resolvedCacheEntry)));
   }
 }
