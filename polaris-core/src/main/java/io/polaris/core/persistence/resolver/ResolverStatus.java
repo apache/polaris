@@ -37,7 +37,7 @@ public class ResolverStatus {
 
     // error, an entity could not be resolved
     ENTITY_COULD_NOT_BE_RESOLVED,
-  };
+  }
 
   private final StatusEnum status;
 

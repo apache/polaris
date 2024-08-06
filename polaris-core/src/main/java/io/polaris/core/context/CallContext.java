@@ -40,7 +40,7 @@ public interface CallContext extends AutoCloseable {
 
   // For requests that make use of a Catalog instance, this holds the instance that was
   // created, scoped to the current call context.
-  public static final String REQUEST_PATH_CATALOG_INSTANCE_KEY = "REQUEST_PATH_CATALOG_INSTANCE";
+  String REQUEST_PATH_CATALOG_INSTANCE_KEY = "REQUEST_PATH_CATALOG_INSTANCE";
 
   // Authenticator filters should populate this field alongside resolving a SecurityContext.
   // Value type: AuthenticatedPolarisPrincipal

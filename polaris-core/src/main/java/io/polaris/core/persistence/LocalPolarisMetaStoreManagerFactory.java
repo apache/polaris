@@ -43,15 +43,15 @@ import org.slf4j.Logger;
 public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     implements MetaStoreManagerFactory {
 
-  Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
-  Map<String, StorageCredentialCache> storageCredentialCacheMap = new HashMap<>();
-  Map<String, StoreType> backingStoreMap = new HashMap<>();
-  Map<String, Supplier<PolarisMetaStoreSession>> sessionSupplierMap = new HashMap<>();
-  protected PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
+  final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
+  final Map<String, StorageCredentialCache> storageCredentialCacheMap = new HashMap<>();
+  final Map<String, StoreType> backingStoreMap = new HashMap<>();
+  final Map<String, Supplier<PolarisMetaStoreSession>> sessionSupplierMap = new HashMap<>();
+  protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
 
   protected PolarisStorageIntegrationProvider storageIntegration;
 
-  private Logger logger =
+  private final Logger logger =
       org.slf4j.LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
 
   protected abstract StoreType createBackingStore(@NotNull PolarisDiagnostics diagnostics);

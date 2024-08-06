@@ -20,5 +20,5 @@ import org.apache.iceberg.catalog.TableIdentifier;
 
 public interface SupportsNotifications {
 
-  public boolean sendNotification(TableIdentifier table, NotificationRequest notificationRequest);
+  boolean sendNotification(TableIdentifier table, NotificationRequest notificationRequest);
 }

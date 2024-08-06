@@ -122,22 +122,26 @@ public class TableUpdateNotification {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("class TableUpdateNotification {\n");
-
-    sb.append("    tableName: ").append(toIndentedString(tableName)).append("\n");
-    sb.append("    timestamp: ").append(toIndentedString(timestamp)).append("\n");
-    sb.append("    tableUuid: ").append(toIndentedString(tableUuid)).append("\n");
-    sb.append("    metadataLocation: ").append(toIndentedString(metadataLocation)).append("\n");
-    sb.append("    metadata: ").append(toIndentedString(metadata)).append("\n");
-    sb.append("}");
-    return sb.toString();
+    return """
+        class TableUpdateNotification {
+            tableName: %s
+            timestamp: %s
+            tableUuid: %s
+            metadataLocation: %s
+            metadata: %s
+        }"""
+        .formatted(
+            toIndentedString(tableName),
+            toIndentedString(timestamp),
+            toIndentedString(tableUuid),
+            toIndentedString(metadataLocation),
+            toIndentedString(metadata));
   }
 
   /**
    * Convert the given object to string with each line indented by 4 spaces (except the first line).
    */
-  private String toIndentedString(Object o) {
+  private static String toIndentedString(Object o) {
     if (o == null) {
       return "null";
     }

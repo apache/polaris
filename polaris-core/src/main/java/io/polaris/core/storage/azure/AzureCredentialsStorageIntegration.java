@@ -86,7 +86,6 @@ public class AzureCredentialsStorageIntegration
     validateAccountAndContainer(location, allowedReadLocations, allowedWriteLocations);
 
     String storageDnsName = location.getStorageAccount() + "." + location.getEndpoint();
-    String endpoint = "https://" + storageDnsName;
     String filePath = location.getFilePath();
 
     BlobSasPermission blobSasPermission = new BlobSasPermission();

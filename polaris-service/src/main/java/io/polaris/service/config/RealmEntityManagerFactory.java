@@ -29,7 +29,7 @@ public class RealmEntityManagerFactory {
   private final MetaStoreManagerFactory metaStoreManagerFactory;
 
   // Key: realmIdentifier
-  private Map<String, PolarisEntityManager> cachedEntityManagers = new HashMap<>();
+  private final Map<String, PolarisEntityManager> cachedEntityManagers = new HashMap<>();
 
   // Subclasses for test injection.
   protected RealmEntityManagerFactory() {

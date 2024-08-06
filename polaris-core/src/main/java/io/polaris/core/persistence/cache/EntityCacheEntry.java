@@ -26,20 +26,20 @@ import org.jetbrains.annotations.NotNull;
 public class EntityCacheEntry {
 
   // epoch time (ns) when the cache entry was added to the cache
-  private long createdOnNanoTimestamp;
+  private final long createdOnNanoTimestamp;
 
   // epoch time (ns) when the cache entry was added to the cache
   private long lastAccessedNanoTimestamp;
 
   // the entity which have been cached.
-  private PolarisBaseEntity entity;
+  private final PolarisBaseEntity entity;
 
   // grants associated to this entity, for a principal, a principal role, or a catalog role these
   // are role usage
   // grants on that entity. For a catalog securable (i.e. a catalog, namespace, or table_like
   // securable), these are
   // the grants on this securable.
-  private List<PolarisGrantRecord> grantRecords;
+  private final List<PolarisGrantRecord> grantRecords;
 
   /**
    * Constructor used when an entry is initially created after loading the entity and its grants

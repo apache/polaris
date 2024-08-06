@@ -108,18 +108,17 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             entityManager,
             authenticatedRoot,
             new PolarisAuthorizer(new PolarisConfigurationStore() {}));
-    PolarisEntity catalogEntity =
-        adminService.createCatalog(
-            new CatalogEntity.Builder()
-                .setName(CATALOG_NAME)
-                .addProperty(PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .setDefaultBaseLocation("file://tmp")
-                .setStorageConfigurationInfo(
-                    new FileStorageConfigInfo(
-                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
-                    "file://tmp")
-                .build());
+    adminService.createCatalog(
+        new CatalogEntity.Builder()
+            .setName(CATALOG_NAME)
+            .addProperty(PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+            .addProperty(PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+            .setDefaultBaseLocation("file://tmp")
+            .setStorageConfigurationInfo(
+                new FileStorageConfigInfo(
+                    StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
+                "file://tmp")
+            .build());
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
