@@ -14,22 +14,14 @@
  * limitations under the License.
  */
 
-dependencies {
-    implementation(project(":polaris-core"))
-    runtimeOnly(project(":polaris-service"))
-    implementation(libs.eclipselink)
-    implementation(platform(libs.dropwizard.bom))
-    implementation("io.dropwizard:dropwizard-jackson")
-    implementation(libs.h2) // Different dependencies will be needed for different backend databases
+dependencyResolutionManagement {
+  versionCatalogs { create("baselibs") { from(files("../gradle/baselibs.versions.toml")) } }
+}
 
-    testImplementation(libs.h2)
-    testImplementation(testFixtures(project(":polaris-core")))
-
-    sourceSets {
-        test {
-            resources {
-                srcDir 'src/test/data'
-            }
-        }
-    }
+dependencyResolutionManagement {
+  repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+  repositories {
+    mavenCentral()
+    gradlePluginPortal()
+  }
 }

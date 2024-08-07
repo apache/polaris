@@ -14,25 +14,11 @@
  * limitations under the License.
  */
 
-if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
-    throw new GradleException("""
+plugins { `kotlin-dsl` }
 
-        Build aborted...
-
-        The Apache Polaris build requires Java 21.
-
-
-        """)
-}
-
-rootProject.name = "polaris"
-
-Properties projects = new Properties()
-file("gradle/projects.main.properties").withInputStream { projects.load(it) }
-projects.entrySet().forEach {
-    final def name = it.key as String
-    include(name)
-    final def prj = project(":${name}")
-    prj.name = name
-    prj.projectDir = file(it.value)
+dependencies {
+  implementation(gradleKotlinDsl())
+  implementation(baselibs.errorprone)
+  implementation(baselibs.idea.ext)
+  implementation(baselibs.spotless)
 }
