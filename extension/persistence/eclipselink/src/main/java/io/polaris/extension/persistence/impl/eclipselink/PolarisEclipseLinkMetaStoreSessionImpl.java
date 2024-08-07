@@ -54,6 +54,7 @@ import java.net.URLClassLoader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -67,6 +68,7 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -82,6 +84,10 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   private static final Logger LOG =
       LoggerFactory.getLogger(PolarisEclipseLinkMetaStoreSessionImpl.class);
 
+  // Cache to hold the EntityManagerFactory for each realm. Each realm needs a separate
+  // EntityManagerFactory since it connects to different databases
+  private static ConcurrentHashMap<String, EntityManagerFactory> realmFactories =
+      new ConcurrentHashMap<>();
   private final EntityManagerFactory emf;
   private final ThreadLocal<EntityManager> localSession = new ThreadLocal<>();
   private final PolarisEclipseLinkStore store;
@@ -113,13 +119,20 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   /**
    * Create EntityManagerFactory.
    *
-   * <p>TODO: The EntityManagerFactory creation is expensive. We should consider save and reuse for
-   * each realm.
+   * <p>The EntityManagerFactory creation is expensive, so we are caching and reusing it for each
+   * realm.
    */
   private EntityManagerFactory createEntityManagerFactory(
       @NotNull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName) {
+    String realm = realmContext.getRealmIdentifier();
+    EntityManagerFactory factory =
+        realmFactories.getOrDefault(realmContext.getRealmIdentifier(), null);
+    if (factory != null) {
+      return factory;
+    }
+
     ClassLoader prevClassLoader = Thread.currentThread().getContextClassLoader();
     try {
       persistenceUnitName = persistenceUnitName == null ? "polaris" : persistenceUnitName;
@@ -152,18 +165,24 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       Map<String, String> properties = loadProperties(confFile, persistenceUnitName);
       // Replace database name in JDBC URL with realm
       if (properties.containsKey(JDBC_URL)) {
-        properties.put(
-            JDBC_URL,
-            properties.get(JDBC_URL).replace("{realm}", realmContext.getRealmIdentifier()));
+        properties.put(JDBC_URL, properties.get(JDBC_URL).replace("{realm}", realm));
       }
       properties.put(ECLIPSELINK_PERSISTENCE_XML, confFile);
 
-      return Persistence.createEntityManagerFactory(persistenceUnitName, properties);
+      factory = Persistence.createEntityManagerFactory(persistenceUnitName, properties);
+      realmFactories.putIfAbsent(realm, factory);
+
+      return factory;
     } catch (IOException e) {
       throw new RuntimeException(e);
     } finally {
       Thread.currentThread().setContextClassLoader(prevClassLoader);
     }
+  }
+
+  @TestOnly
+  static void clearEntityManagerFactories() {
+    realmFactories.clear();
   }
 
   /** Load the persistence unit properties from a given configuration file */
