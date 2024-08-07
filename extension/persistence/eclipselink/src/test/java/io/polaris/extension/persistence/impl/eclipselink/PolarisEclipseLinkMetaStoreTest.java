@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.snowflake.polaris.persistence.impl.eclipselink;
+package io.polaris.extension.persistence.impl.eclipselink;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -26,8 +26,6 @@ import io.polaris.core.PolarisDiagnostics;
 import io.polaris.core.persistence.PolarisMetaStoreManagerImpl;
 import io.polaris.core.persistence.PolarisMetaStoreManagerTest;
 import io.polaris.core.persistence.PolarisTestMetaStoreManager;
-import io.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkMetaStoreSessionImpl;
-import io.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkStore;
 import java.time.ZoneId;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -63,6 +61,9 @@ public class PolarisEclipseLinkMetaStoreTest extends PolarisMetaStoreManagerTest
   @ParameterizedTest()
   @ArgumentsSource(CreateStoreSessionArgs.class)
   void testCreateStoreSession(String confFile, boolean success) {
+    // Clear to test out EntityManagerFactory creation rather than reusing
+    PolarisEclipseLinkMetaStoreSessionImpl.clearEntityManagerFactory();
+
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
     try {

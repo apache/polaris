@@ -60,11 +60,14 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -80,7 +83,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   private static final Logger LOG =
       LoggerFactory.getLogger(PolarisEclipseLinkMetaStoreSessionImpl.class);
 
-  private final EntityManagerFactory emf;
+  private static volatile EntityManagerFactory emf;
   private final ThreadLocal<EntityManager> localSession = new ThreadLocal<>();
   private final PolarisEclipseLinkStore store;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
@@ -100,20 +103,28 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       @NotNull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName) {
-
-    emf = createEntityManagerFactory(realmContext, confFile, persistenceUnitName);
     LOG.debug("Create EclipseLink Meta Store Session for {}", realmContext.getRealmIdentifier());
+    emf = createEntityManagerFactory(realmContext, confFile, persistenceUnitName);
 
     // init store
     this.store = store;
     this.storageIntegrationProvider = storageIntegrationProvider;
   }
 
-  /** Load the persistence unit properties from a given configuration file */
+  /**
+   * Create EntityManagerFactory.
+   *
+   * <p>The creation is expensive, but it should only need to create once and can be reused across
+   * the sessions.
+   */
   private EntityManagerFactory createEntityManagerFactory(
       @NotNull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName) {
+    if (emf != null) {
+      return emf;
+    }
+
     ClassLoader prevClassLoader = Thread.currentThread().getContextClassLoader();
     try {
       persistenceUnitName = persistenceUnitName == null ? "polaris" : persistenceUnitName;
@@ -131,8 +142,15 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
         if (prefixUrl == null) {
           prefixUrl = new File(jarPrefixPath).toURI().toURL();
         }
+
+        LOG.info(
+            "Created a new ClassLoader with the jar {} in classpath to load the config file",
+            prefixUrl);
+
         URLClassLoader currentClassLoader =
             new URLClassLoader(new URL[] {prefixUrl}, this.getClass().getClassLoader());
+
+        LOG.debug("Update ClassLoader in current thread temporarily");
         Thread.currentThread().setContextClassLoader(currentClassLoader);
       }
 
@@ -146,16 +164,24 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       properties.put(ECLIPSELINK_PERSISTENCE_XML, confFile);
 
       return Persistence.createEntityManagerFactory(persistenceUnitName, properties);
-    } catch (Exception e) {
+    } catch (IOException e) {
       throw new RuntimeException(e);
     } finally {
       Thread.currentThread().setContextClassLoader(prevClassLoader);
     }
   }
 
+  @TestOnly
+  static void clearEntityManagerFactory() {
+    if (emf != null) {
+      emf.close();
+      emf = null;
+    }
+  }
+
   /** Load the persistence unit properties from a given configuration file */
   private Map<String, String> loadProperties(
-      @NotNull String confFile, @NotNull String persistenceUnitName) throws Exception {
+      @NotNull String confFile, @NotNull String persistenceUnitName) throws IOException {
     try {
       InputStream input =
           Thread.currentThread().getContextClassLoader().getResourceAsStream(confFile);
@@ -176,13 +202,16 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       }
 
       return properties;
-    } catch (SAXException | IOException e) {
+    } catch (XPathExpressionException
+        | ParserConfigurationException
+        | SAXException
+        | IOException e) {
       String str =
           String.format(
               "Cannot find or parse the configuration file %s for persistence-unit %s",
               confFile, persistenceUnitName);
-      LOG.error(str);
-      throw new Exception(str);
+      LOG.error(str, e);
+      throw new IOException(str);
     }
   }
 
