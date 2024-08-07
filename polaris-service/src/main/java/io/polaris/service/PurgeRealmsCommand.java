@@ -26,9 +26,7 @@ import io.polaris.service.context.CallContextResolver;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.slf4j.Logger;
 
-/**
- * Command for purging all metadata associated with a realm
- */
+/** Command for purging all metadata associated with a realm */
 public class PurgeRealmsCommand extends ConfiguredCommand<PolarisApplicationConfig> {
   private Logger LOGGER = org.slf4j.LoggerFactory.getLogger(PurgeRealmsCommand.class);
 

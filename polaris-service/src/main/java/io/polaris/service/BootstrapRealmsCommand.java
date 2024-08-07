@@ -24,10 +24,9 @@ import io.polaris.service.config.ConfigurationStoreAware;
 import io.polaris.service.config.PolarisApplicationConfig;
 import io.polaris.service.config.RealmEntityManagerFactory;
 import io.polaris.service.context.CallContextResolver;
+import java.util.Map;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.slf4j.Logger;
-
-import java.util.Map;
 
 /**
  * Command for bootstrapping root level service principals for each realm. This command will invoke
@@ -67,9 +66,13 @@ public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplication
 
     // Log any errors:
     boolean success = true;
-    for (Map.Entry<String, PolarisMetaStoreManager.PrincipalSecretsResult> result: results.entrySet()) {
+    for (Map.Entry<String, PolarisMetaStoreManager.PrincipalSecretsResult> result :
+        results.entrySet()) {
       if (!result.getValue().isSuccess()) {
-        LOGGER.warn("Bootstrapping `{}` failed: {}", result.getKey(), result.getValue().getReturnStatus().toString());
+        LOGGER.warn(
+            "Bootstrapping `{}` failed: {}",
+            result.getKey(),
+            result.getValue().getReturnStatus().toString());
         success = false;
       }
     }
