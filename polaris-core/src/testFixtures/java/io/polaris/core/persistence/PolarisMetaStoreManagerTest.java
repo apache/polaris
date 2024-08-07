@@ -24,11 +24,9 @@ import io.polaris.core.entity.PolarisEntityActiveRecord;
 import io.polaris.core.entity.PolarisEntitySubType;
 import io.polaris.core.entity.PolarisEntityType;
 import io.polaris.core.entity.TaskEntity;
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.InstantSource;
-import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -38,6 +36,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -45,6 +44,7 @@ import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.threeten.extra.MutableClock;
 
 /**
  * Integration test for the polaris persistence layer
@@ -60,7 +60,7 @@ import org.junit.jupiter.api.Test;
  */
 public abstract class PolarisMetaStoreManagerTest {
 
-  protected static final MockInstantSource timeSource = new MockInstantSource();
+  protected final MutableClock timeSource = MutableClock.of(Instant.now(), ZoneOffset.UTC);
 
   private PolarisTestMetaStoreManager polarisTestMetaStoreManager;
 
@@ -339,7 +339,7 @@ public abstract class PolarisMetaStoreManagerTest {
 
     Assertions.assertThat(emtpyList).isNotNull().isEmpty();
 
-    timeSource.updateClock(Clock.offset(timeSource.currentClock, Duration.ofMinutes(10)));
+    timeSource.add(Duration.ofMinutes(10));
 
     // all the tasks are unnassigned. Fetch them all
     List<PolarisBaseEntity> allTasks =
@@ -355,7 +355,7 @@ public abstract class PolarisMetaStoreManagerTest {
     // drop all the tasks. Skip the clock forward and fetch. empty list expected
     allTasks.forEach(
         entity -> metaStoreManager.dropEntityIfExists(callCtx, null, entity, Map.of(), false));
-    timeSource.updateClock(Clock.offset(timeSource.currentClock, Duration.ofMinutes(10)));
+    timeSource.add(Duration.ofMinutes(10));
 
     List<PolarisBaseEntity> finalList =
         metaStoreManager.loadTasks(callCtx, executorId, 20).getEntities();
@@ -364,7 +364,7 @@ public abstract class PolarisMetaStoreManagerTest {
   }
 
   @Test
-  void testLoadTasksInParallel() {
+  void testLoadTasksInParallel() throws Exception {
     for (int i = 0; i < 100; i++) {
       polarisTestMetaStoreManager.createEntity(
           null, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE, "task_" + i);
@@ -373,7 +373,8 @@ public abstract class PolarisMetaStoreManagerTest {
     PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
     List<Future<Set<String>>> futureList = new ArrayList<>();
     List<Set<String>> responses;
-    try (ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor()) {
+    ExecutorService executorService = Executors.newCachedThreadPool();
+    try {
       for (int i = 0; i < 3; i++) {
         final String executorId = "taskExecutor_" + i;
 
@@ -405,7 +406,10 @@ public abstract class PolarisMetaStoreManagerTest {
                       throw new RuntimeException(e);
                     }
                   })
-              .toList();
+              .collect(Collectors.toList());
+    } finally {
+      executorService.shutdown();
+      Assertions.assertThat(executorService.awaitTermination(10, TimeUnit.MINUTES)).isTrue();
     }
     Assertions.assertThat(responses)
         .hasSize(3)
@@ -421,10 +425,11 @@ public abstract class PolarisMetaStoreManagerTest {
 
   /** Test generateNewEntityId() function that generates unique ids by creating Tasks in parallel */
   @Test
-  void testCreateTasksInParallel() {
+  void testCreateTasksInParallel() throws Exception {
     List<Future<List<Long>>> futureList = new ArrayList<>();
     Random rand = new Random();
-    try (ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor()) {
+    ExecutorService executorService = Executors.newCachedThreadPool();
+    try {
       for (int threadId = 0; threadId < 10; threadId++) {
         Future<List<Long>> future =
             executorService.submit(
@@ -436,7 +441,7 @@ public abstract class PolarisMetaStoreManagerTest {
                             null,
                             PolarisEntityType.TASK,
                             PolarisEntitySubType.NULL_SUBTYPE,
-                            "task_" + rand.nextLong() + "" + i);
+                            "task_" + rand.nextLong() + i);
                     list.add(entity.getId());
                   }
                   return list;
@@ -454,7 +459,7 @@ public abstract class PolarisMetaStoreManagerTest {
                       throw new RuntimeException(e);
                     }
                   })
-              .toList();
+              .collect(Collectors.toList());
 
       Assertions.assertThat(responses)
           .hasSize(10)
@@ -466,19 +471,9 @@ public abstract class PolarisMetaStoreManagerTest {
       Assertions.assertThat(idCounts)
           .hasSize(100)
           .allSatisfy((k, v) -> Assertions.assertThat(v).isEqualTo(1));
-    }
-  }
-
-  protected static final class MockInstantSource implements InstantSource {
-    private Clock currentClock = Clock.system(ZoneId.systemDefault());
-
-    @Override
-    public Instant instant() {
-      return Instant.now(currentClock);
-    }
-
-    public void updateClock(Clock clock) {
-      this.currentClock = clock;
+    } finally {
+      executorService.shutdown();
+      Assertions.assertThat(executorService.awaitTermination(10, TimeUnit.MINUTES)).isTrue();
     }
   }
 }

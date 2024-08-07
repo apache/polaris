@@ -20,6 +20,7 @@ import io.polaris.core.PolarisDiagnostics;
 import io.polaris.core.entity.PolarisBaseEntity;
 import io.polaris.core.entity.PolarisGrantRecord;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 
 /** An entry in our entity cache. Note, this is fully immutable */
@@ -108,13 +109,15 @@ public class EntityCacheEntry {
   }
 
   public @NotNull List<PolarisGrantRecord> getGrantRecordsAsGrantee() {
-    return grantRecords.stream().filter(record -> record.getGranteeId() == entity.getId()).toList();
+    return grantRecords.stream()
+        .filter(record -> record.getGranteeId() == entity.getId())
+        .collect(Collectors.toList());
   }
 
   public @NotNull List<PolarisGrantRecord> getGrantRecordsAsSecurable() {
     return grantRecords.stream()
         .filter(record -> record.getSecurableId() == entity.getId())
-        .toList();
+        .collect(Collectors.toList());
   }
 
   public void updateLastAccess() {

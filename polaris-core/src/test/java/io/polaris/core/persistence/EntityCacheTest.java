@@ -28,6 +28,7 @@ import io.polaris.core.persistence.cache.EntityCacheByNameKey;
 import io.polaris.core.persistence.cache.EntityCacheEntry;
 import io.polaris.core.persistence.cache.EntityCacheLookupResult;
 import java.util.List;
+import java.util.stream.Collectors;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -213,9 +214,9 @@ public class EntityCacheTest {
             .filter(
                 grantRecord ->
                     grantRecord.getPrivilegeCode() == PolarisPrivilege.TABLE_READ_DATA.getCode())
-            .toList();
+            .collect(Collectors.toList());
     Assertions.assertThat(matchPriv).hasSize(1);
-    gr = matchPriv.getFirst();
+    gr = matchPriv.get(0);
     Assertions.assertThat(gr.getGranteeId()).isEqualTo(cacheEntry_R1.getEntity().getId());
     Assertions.assertThat(gr.getGranteeCatalogId())
         .isEqualTo(cacheEntry_R1.getEntity().getCatalogId());

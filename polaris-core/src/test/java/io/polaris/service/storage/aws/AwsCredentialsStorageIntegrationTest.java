@@ -96,13 +96,21 @@ class AwsCredentialsStorageIntegrationTest {
   public void testGetSubscopedCredsInlinePolicy(String awsPartition) {
     PolarisStorageConfigurationInfo.StorageType storageType =
         PolarisStorageConfigurationInfo.StorageType.S3;
-    String roleARN =
-        switch (awsPartition) {
-          case AWS_PARTITION -> "arn:aws:iam::012345678901:role/jdoe";
-          case "aws-cn" -> "arn:aws-cn:iam::012345678901:role/jdoe";
-          case "aws-us-gov" -> "arn:aws-us-gov:iam::012345678901:role/jdoe";
-          default -> throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
-        };
+    String roleARN;
+    switch (awsPartition) {
+      case AWS_PARTITION:
+        roleARN = "arn:aws:iam::012345678901:role/jdoe";
+        break;
+      case "aws-cn":
+        roleARN = "arn:aws-cn:iam::012345678901:role/jdoe";
+        break;
+      case "aws-us-gov":
+        roleARN = "arn:aws-us-gov:iam::012345678901:role/jdoe";
+        break;
+      default:
+        throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
+    }
+    ;
     StsClient stsClient = Mockito.mock(StsClient.class);
     String externalId = "externalId";
     String bucket = "bucket";
