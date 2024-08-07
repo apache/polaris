@@ -123,7 +123,8 @@ public class PolarisServiceImpl
                     StorageConfigInfo.StorageTypeEnum.GCS.name(),
                     StorageConfigInfo.StorageTypeEnum.FILE.name()));
     if (!allowedStorageTypes.contains(storageConfigInfo.getStorageType().name())) {
-      LOGGER.atWarn()
+      LOGGER
+          .atWarn()
           .addKeyValue("storageConfig", storageConfigInfo)
           .log("Disallowed storage type in catalog");
       throw new IllegalArgumentException(
@@ -509,7 +510,8 @@ public class PolarisServiceImpl
           break;
         }
       default:
-        LOGGER.atWarn()
+        LOGGER
+            .atWarn()
             .addKeyValue("catalog", catalogName)
             .addKeyValue("role", catalogRoleName)
             .log("Don't know how to handle privilege grant: {}", grantRequest);
@@ -583,7 +585,8 @@ public class PolarisServiceImpl
           break;
         }
       default:
-        LOGGER.atWarn()
+        LOGGER
+            .atWarn()
             .addKeyValue("catalog", catalogName)
             .addKeyValue("role", catalogRoleName)
             .log("Don't know how to handle privilege revocation: {}", grantRequest);

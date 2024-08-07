@@ -216,7 +216,8 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     resolvedEntities.add(
         new ResolvedPolarisEntity(passthroughResolver.getResolvedReferenceCatalog()));
     resolvedPath.forEach(cacheEntry -> resolvedEntities.add(new ResolvedPolarisEntity(cacheEntry)));
-    LOGGER.debug("Returning resolvedEntities from getPassthroughResolvedPath: {}", resolvedEntities);
+    LOGGER.debug(
+        "Returning resolvedEntities from getPassthroughResolvedPath: {}", resolvedEntities);
     return new PolarisResolvedPathWrapper(resolvedEntities);
   }
 

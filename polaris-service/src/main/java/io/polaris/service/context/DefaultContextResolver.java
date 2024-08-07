@@ -104,7 +104,8 @@ public class DefaultContextResolver
       String path,
       Map<String, String> queryParams,
       Map<String, String> headers) {
-    LOGGER.atDebug()
+    LOGGER
+        .atDebug()
         .addKeyValue("realmContext", realmContext.getRealmIdentifier())
         .addKeyValue("method", method)
         .addKeyValue("path", path)

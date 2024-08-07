@@ -726,7 +726,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       Set<PolarisStorageActions> storageActions) {
     Optional<PolarisEntity> storageInfo = findStorageInfo(tableIdentifier);
     if (storageInfo.isEmpty()) {
-      LOGGER.atWarn()
+      LOGGER
+          .atWarn()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Table entity has no storage configuration in its hierarchy");
       return Map.of();
@@ -751,7 +752,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       String modifiedLocation =
           defaultBaseLocation
               + specifiedTableLikeLocation.substring(replaceNewLocationPrefix.length());
-      LOGGER.atDebug()
+      LOGGER
+          .atDebug()
           .addKeyValue("specifiedTableLikeLocation", specifiedTableLikeLocation)
           .addKeyValue("modifiedLocation", modifiedLocation)
           .log("Translating specifiedTableLikeLocation based on config");
@@ -808,7 +810,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 allowList,
                 tableLocations,
                 writeLocations);
-    LOGGER.atDebug()
+    LOGGER
+        .atDebug()
         .addKeyValue("tableIdentifier", tableIdentifier)
         .addKeyValue("credentialKeys", credentialsMap.keySet())
         .log("Loaded scoped credentials for table");
@@ -1095,7 +1098,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       if (resolvedEntities != null) {
         entity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
         if (!tableIdentifier.equals(entity.getTableIdentifier())) {
-          LOGGER.atError()
+          LOGGER
+              .atError()
               .addKeyValue("entity.getTableIdentifier()", entity.getTableIdentifier())
               .addKeyValue("tableIdentifier", tableIdentifier)
               .log("Stored table identifier mismatches requested identifier");
@@ -1129,7 +1133,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     @Override
     public void doCommit(TableMetadata base, TableMetadata metadata) {
-      LOGGER.debug("doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
+      LOGGER.debug(
+          "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       if (null == base && !namespaceExists(tableIdentifier.namespace())) {
         throw new NoSuchNamespaceException(
@@ -1310,7 +1315,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       if (resolvedEntities != null) {
         entity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
         if (!identifier.equals(entity.getTableIdentifier())) {
-          LOGGER.atError()
+          LOGGER
+              .atError()
               .addKeyValue("entity.getTableIdentifier()", entity.getTableIdentifier())
               .addKeyValue("identifier", identifier)
               .log("Stored view identifier mismatches requested identifier");
@@ -1603,7 +1609,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         // As long as there are older deployments which don't support the atomic update of the
         // internalProperties during rename, we can log and then patch it up explicitly
         // in a best-effort way.
-        LOGGER.atError()
+        LOGGER
+            .atError()
             .addKeyValue("toEntity.getTableIdentifier()", toEntity.getTableIdentifier())
             .addKeyValue("returnedEntity.getTableIdentifier()", returnedEntity.getTableIdentifier())
             .log("Returned entity identifier doesn't match toEntity identifier");
@@ -1723,7 +1730,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   private boolean sendNotificationForTableLike(
       PolarisEntitySubType subType, TableIdentifier tableIdentifier, NotificationRequest request) {
-    LOGGER.debug("Handling notification request {} for tableIdentifier {}", request, tableIdentifier);
+    LOGGER.debug(
+        "Handling notification request {} for tableIdentifier {}", request, tableIdentifier);
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, subType);
 

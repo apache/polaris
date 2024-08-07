@@ -45,7 +45,8 @@ public class SqlliteCallContextCatalogFactory implements CallContextCatalogFacto
   private static final String WAREHOUSE_LOCATION_BASEDIR =
       "/tmp/iceberg_rest_server_warehouse_data/";
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(SqlliteCallContextCatalogFactory.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(SqlliteCallContextCatalogFactory.class);
 
   private final Map<String, Catalog> cachedCatalogs = new HashMap<>();
   private final Map<String, String> catalogBaseDirs;

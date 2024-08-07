@@ -586,7 +586,8 @@ public class PolarisCatalogHandlerWrapper {
             LoadTableResponse.Builder responseBuilder =
                 LoadTableResponse.builder().withTableMetadata(tableMetadata);
             if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-              LOGGER.atDebug()
+              LOGGER
+                  .atDebug()
                   .addKeyValue("tableIdentifier", tableIdentifier)
                   .addKeyValue("tableLocation", tableMetadata.location())
                   .log("Fetching client credentials for table");
@@ -699,7 +700,8 @@ public class PolarisCatalogHandlerWrapper {
               LoadTableResponse.builder().withTableMetadata(metadata);
 
           if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-            LOGGER.atDebug()
+            LOGGER
+                .atDebug()
                 .addKeyValue("tableIdentifier", ident)
                 .addKeyValue("tableLocation", metadata.location())
                 .log("Fetching client credentials for table");
@@ -744,7 +746,8 @@ public class PolarisCatalogHandlerWrapper {
                 .getResolvedLeafEntity()
                 .getEntity());
     if (catalog.getCatalogType().equals(io.polaris.core.admin.model.Catalog.TypeEnum.INTERNAL)) {
-      LOGGER.atWarn()
+      LOGGER
+          .atWarn()
           .addKeyValue("catalog", catalog)
           .addKeyValue("notification", request)
           .log("Attempted notification on internal catalog");
@@ -795,7 +798,8 @@ public class PolarisCatalogHandlerWrapper {
             LoadTableResponse.Builder responseBuilder =
                 LoadTableResponse.builder().withTableMetadata(tableMetadata);
             if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-              LOGGER.atDebug()
+              LOGGER
+                  .atDebug()
                   .addKeyValue("tableIdentifier", tableIdentifier)
                   .addKeyValue("tableLocation", tableMetadata.location())
                   .log("Fetching client credentials for table");

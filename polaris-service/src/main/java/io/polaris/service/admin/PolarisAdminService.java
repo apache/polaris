@@ -187,7 +187,8 @@ public class PolarisAdminService {
             == authenticatedPrincipal.getPrincipalEntity().getId()
         && (op.equals(PolarisAuthorizableOperation.ROTATE_CREDENTIALS)
             || op.equals(PolarisAuthorizableOperation.RESET_CREDENTIALS))) {
-      LOGGER.atDebug()
+      LOGGER
+          .atDebug()
           .addKeyValue("principalName", topLevelEntityName)
           .log("Allowing rotate own credentials");
       return;
