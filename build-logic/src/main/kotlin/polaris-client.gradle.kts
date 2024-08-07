@@ -18,4 +18,4 @@ import org.gradle.api.tasks.compile.JavaCompile
 
 plugins { id("polaris-java") }
 
-tasks.withType(JavaCompile::class.java).configureEach { options.release = 21 }
+tasks.withType(JavaCompile::class.java).configureEach { options.release = 11 }

@@ -206,7 +206,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
             "Returning null for key {} due to size mismatch from getPassthroughResolvedPath "
                 + "resolvedPath: {}, requestedPath.getEntityNames(): {}",
             key,
-            resolvedPath.stream().map(ResolvedPolarisEntity::new).toList(),
+            resolvedPath.stream().map(ResolvedPolarisEntity::new).collect(Collectors.toList()),
             requestedPath.getEntityNames());
         return null;
       }

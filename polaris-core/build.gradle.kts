@@ -18,7 +18,7 @@ import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
 
 plugins {
   alias(libs.plugins.openapi.generator)
-  id("polaris-server")
+  id("polaris-client")
   id("java-library")
   id("java-test-fixtures")
 }
@@ -113,6 +113,7 @@ dependencies {
   testFixturesApi("com.fasterxml.jackson.core:jackson-core")
   testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
   testFixturesApi(libs.commons.lang3)
+  testFixturesApi(libs.threeten.extra)
   testFixturesApi(libs.jetbrains.annotations)
   testFixturesApi(platform(libs.jackson.bom))
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")

@@ -16,7 +16,7 @@
 # Base Image
 # Use a non-docker-io registry, because pulling images from docker.io is
 # subject to aggressive request rate limiting and bandwidth shaping.
-FROM registry.access.redhat.com/ubi9/openjdk-21-runtime as build
+FROM registry.access.redhat.com/ubi9/openjdk-21:1.20-2.1721752936 as build
 
 # Copy the REST catalog into the container
 COPY --chown=default:root . /app
@@ -28,7 +28,7 @@ RUN rm -rf build
 # Build the rest catalog
 RUN ./gradlew --no-daemon --info clean shadowJar
 
-FROM registry.access.redhat.com/ubi9/openjdk-21-runtime
+FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.20-2.1721752928
 WORKDIR /app
 COPY --from=build /app/polaris-service/build/libs/polaris-service-1.0.0-all.jar /app
 COPY --from=build /app/polaris-server.yml /app
