@@ -180,7 +180,7 @@ public interface PolarisMetaStoreManager {
    * service admin role. Will fail if the service has already been bootstrapped.
    *
    * @param callCtx call context
-   * @return always success or unexpected error
+   * @return the result of the bootstrap attempt
    */
   @NotNull
   BaseResult bootstrapPolarisService(@NotNull PolarisCallContext callCtx);

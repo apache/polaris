@@ -19,12 +19,15 @@ import io.dropwizard.core.cli.ConfiguredCommand;
 import io.dropwizard.core.setup.Bootstrap;
 import io.polaris.core.PolarisConfigurationStore;
 import io.polaris.core.persistence.MetaStoreManagerFactory;
+import io.polaris.core.persistence.PolarisMetaStoreManager;
 import io.polaris.service.config.ConfigurationStoreAware;
 import io.polaris.service.config.PolarisApplicationConfig;
 import io.polaris.service.config.RealmEntityManagerFactory;
 import io.polaris.service.context.CallContextResolver;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.slf4j.Logger;
+
+import java.util.Map;
 
 /**
  * Command for bootstrapping root level service principals for each realm. This command will invoke
@@ -58,8 +61,23 @@ public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplication
       csa.setConfigurationStore(configurationStore);
     }
 
-    metaStoreManagerFactory.bootstrapRealms(configuration.getDefaultRealms());
+    // Execute the bootstrap
+    Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> results =
+        metaStoreManagerFactory.bootstrapRealms(configuration.getDefaultRealms());
 
-    LOGGER.info("Bootstrap completed successfully.");
+    // Log any errors:
+    boolean success = true;
+    for (Map.Entry<String, PolarisMetaStoreManager.PrincipalSecretsResult> result: results.entrySet()) {
+      if (!result.getValue().isSuccess()) {
+        LOGGER.warn("Bootstrapping `{}` failed: {}", result.getKey(), result.getValue().getReturnStatus().toString());
+        success = false;
+      }
+    }
+
+    if (success) {
+      LOGGER.info("Bootstrap completed successfully.");
+    } else {
+      LOGGER.warn("Bootstrap encountered errors during operation.");
+    }
   }
 }

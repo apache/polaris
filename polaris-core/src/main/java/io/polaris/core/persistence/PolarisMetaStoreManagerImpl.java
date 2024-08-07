@@ -52,6 +52,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Default implementation of the Polaris Meta Store Manager. Uses the underlying meta store to store
@@ -59,6 +61,7 @@ import org.jetbrains.annotations.Nullable;
  */
 @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE")
 public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisMetaStoreManagerImpl.class);
 
   /** mapper, allows to serialize/deserialize properties to/from JSON */
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -709,7 +712,9 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     PolarisMetaStoreSession ms = callCtx.getMetaStore();
 
     // run operation in a read/write transaction
+    LOGGER.warn("Deleting all metadata in the metastore...");
     ms.runActionInTransaction(callCtx, () -> ms.deleteAll(callCtx));
+    LOGGER.warn("Finished deleting all metadata in the metastore");
 
     // all good
     return new BaseResult(ReturnStatus.SUCCESS);

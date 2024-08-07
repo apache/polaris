@@ -44,5 +44,6 @@ public interface MetaStoreManagerFactory extends Discoverable {
 
   Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> bootstrapRealms(List<String> realms);
 
+  /** Purge all metadata for the realms provided */
   void purgeRealms(List<String> realms);
 }
