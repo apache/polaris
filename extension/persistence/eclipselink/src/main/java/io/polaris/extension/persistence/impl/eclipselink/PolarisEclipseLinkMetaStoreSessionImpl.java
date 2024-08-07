@@ -19,7 +19,6 @@ import static org.eclipse.persistence.config.PersistenceUnitProperties.ECLIPSELI
 import static org.eclipse.persistence.config.PersistenceUnitProperties.JDBC_URL;
 
 import com.google.common.base.Predicates;
-import com.google.common.collect.Maps;
 import io.polaris.core.PolarisCallContext;
 import io.polaris.core.context.RealmContext;
 import io.polaris.core.entity.PolarisBaseEntity;
@@ -47,7 +46,11 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.Persistence;
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +70,7 @@ import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 /**
  * EclipseLink implementation of a Polaris metadata store supporting persisting and retrieving all
@@ -80,7 +84,6 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   private final ThreadLocal<EntityManager> localSession = new ThreadLocal<>();
   private final PolarisEclipseLinkStore store;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
-  private static volatile Map<String, String> properties;
 
   /**
    * Create a meta store session against provided realm. Each realm has its own database.
@@ -97,19 +100,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       @NotNull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName) {
-    persistenceUnitName = persistenceUnitName == null ? "polaris" : persistenceUnitName;
-    Map<String, String> properties =
-        loadProperties(
-            confFile == null ? "META-INF/persistence.xml" : confFile, persistenceUnitName);
-    // Replace database name in JDBC URL with realm
-    if (properties.containsKey(JDBC_URL)) {
-      properties.put(
-          JDBC_URL, properties.get(JDBC_URL).replace("{realm}", realmContext.getRealmIdentifier()));
-    }
-    properties.put(ECLIPSELINK_PERSISTENCE_XML, confFile);
 
-    emf = Persistence.createEntityManagerFactory(persistenceUnitName, properties);
-
+    emf = createEntityManagerFactory(realmContext, confFile, persistenceUnitName);
     LOG.debug("Create EclipseLink Meta Store Session for {}", realmContext.getRealmIdentifier());
 
     // init store
@@ -118,13 +110,55 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   }
 
   /** Load the persistence unit properties from a given configuration file */
-  private Map<String, String> loadProperties(String confFile, String persistenceUnitName) {
-    if (properties != null) {
-      return properties;
-    }
-
+  private EntityManagerFactory createEntityManagerFactory(
+      @NotNull RealmContext realmContext,
+      @Nullable String confFile,
+      @Nullable String persistenceUnitName) {
+    ClassLoader prevClassLoader = Thread.currentThread().getContextClassLoader();
     try {
-      InputStream input = this.getClass().getClassLoader().getResourceAsStream(confFile);
+      persistenceUnitName = persistenceUnitName == null ? "polaris" : persistenceUnitName;
+      confFile = confFile == null ? "META-INF/persistence.xml" : confFile;
+
+      // Currently eclipseLink can only support configuration as a resource inside a jar. To support
+      // external configuration, persistence.xml needs be placed inside a jar and here is to add the
+      // jar to the classpath.
+      // Supported configuration file: META-INFO/persistence.xml, /tmp/conf.jar!/persistence.xml
+      int splitPosition = confFile.indexOf("!/");
+      if (splitPosition != -1) {
+        String jarPrefixPath = confFile.substring(0, splitPosition);
+        confFile = confFile.substring(splitPosition + 2);
+        URL prefixUrl = this.getClass().getClassLoader().getResource(jarPrefixPath);
+        if (prefixUrl == null) {
+          prefixUrl = new File(jarPrefixPath).toURI().toURL();
+        }
+        URLClassLoader currentClassLoader =
+            new URLClassLoader(new URL[] {prefixUrl}, this.getClass().getClassLoader());
+        Thread.currentThread().setContextClassLoader(currentClassLoader);
+      }
+
+      Map<String, String> properties = loadProperties(confFile, persistenceUnitName);
+      // Replace database name in JDBC URL with realm
+      if (properties.containsKey(JDBC_URL)) {
+        properties.put(
+            JDBC_URL,
+            properties.get(JDBC_URL).replace("{realm}", realmContext.getRealmIdentifier()));
+      }
+      properties.put(ECLIPSELINK_PERSISTENCE_XML, confFile);
+
+      return Persistence.createEntityManagerFactory(persistenceUnitName, properties);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    } finally {
+      Thread.currentThread().setContextClassLoader(prevClassLoader);
+    }
+  }
+
+  /** Load the persistence unit properties from a given configuration file */
+  private Map<String, String> loadProperties(
+      @NotNull String confFile, @NotNull String persistenceUnitName) throws Exception {
+    try {
+      InputStream input =
+          Thread.currentThread().getContextClassLoader().getResourceAsStream(confFile);
       DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
       DocumentBuilder builder = factory.newDocumentBuilder();
       Document doc = builder.parse(input);
@@ -141,16 +175,15 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
             nodeMap.getNamedItem("value").getNodeValue());
       }
 
-      PolarisEclipseLinkMetaStoreSessionImpl.properties = properties;
       return properties;
-    } catch (Exception e) {
-      LOG.warn(
-          "Cannot find or parse the configuration file {} for persistence-unit {}",
-          confFile,
-          persistenceUnitName);
+    } catch (SAXException | IOException e) {
+      String str =
+          String.format(
+              "Cannot find or parse the configuration file %s for persistence-unit %s",
+              confFile, persistenceUnitName);
+      LOG.error(str);
+      throw new Exception(str);
     }
-
-    return Maps.newHashMap();
   }
 
   /** {@inheritDoc} */

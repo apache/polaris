@@ -24,4 +24,12 @@ dependencies {
 
     testImplementation(libs.h2)
     testImplementation(testFixtures(project(":polaris-core")))
+
+    sourceSets {
+        test {
+            resources {
+                srcDir 'src/test/data'
+            }
+        }
+    }
 }
