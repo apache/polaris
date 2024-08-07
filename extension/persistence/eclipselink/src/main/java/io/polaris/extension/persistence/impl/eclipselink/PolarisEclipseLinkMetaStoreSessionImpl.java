@@ -67,7 +67,6 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.jetbrains.annotations.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
@@ -83,7 +82,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   private static final Logger LOG =
       LoggerFactory.getLogger(PolarisEclipseLinkMetaStoreSessionImpl.class);
 
-  private static volatile EntityManagerFactory emf;
+  private final EntityManagerFactory emf;
   private final ThreadLocal<EntityManager> localSession = new ThreadLocal<>();
   private final PolarisEclipseLinkStore store;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
@@ -114,17 +113,13 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   /**
    * Create EntityManagerFactory.
    *
-   * <p>The creation is expensive, but it should only need to create once and can be reused across
-   * the sessions.
+   * <p>TODO: The EntityManagerFactory creation is expensive. We should consider save and reuse for
+   * each realm.
    */
   private EntityManagerFactory createEntityManagerFactory(
       @NotNull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName) {
-    if (emf != null) {
-      return emf;
-    }
-
     ClassLoader prevClassLoader = Thread.currentThread().getContextClassLoader();
     try {
       persistenceUnitName = persistenceUnitName == null ? "polaris" : persistenceUnitName;
@@ -168,14 +163,6 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       throw new RuntimeException(e);
     } finally {
       Thread.currentThread().setContextClassLoader(prevClassLoader);
-    }
-  }
-
-  @TestOnly
-  static void clearEntityManagerFactory() {
-    if (emf != null) {
-      emf.close();
-      emf = null;
     }
   }
 

@@ -61,9 +61,6 @@ public class PolarisEclipseLinkMetaStoreTest extends PolarisMetaStoreManagerTest
   @ParameterizedTest()
   @ArgumentsSource(CreateStoreSessionArgs.class)
   void testCreateStoreSession(String confFile, boolean success) {
-    // Clear to test out EntityManagerFactory creation rather than reusing
-    PolarisEclipseLinkMetaStoreSessionImpl.clearEntityManagerFactory();
-
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
     try {
