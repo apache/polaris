@@ -200,30 +200,8 @@ class GcpCredentialsStorageIntegrationTest {
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
     JsonNode refRules =
         mapper.readTree(
-            """
-{
-  "accessBoundaryRules": [
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectViewer"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('path/to/data')"
-      }
-    },
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectCreator"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/path/to/data')"
-      }
-    }
-  ]
-}
-                """);
+            GcpCredentialsStorageIntegrationTest.class.getResource(
+                "gcp-testGenerateAccessBoundary.json"));
     assertThat(parsedRules)
         .usingRecursiveComparison(
             RecursiveComparisonConfiguration.builder()
@@ -256,39 +234,8 @@ class GcpCredentialsStorageIntegrationTest {
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
     JsonNode refRules =
         mapper.readTree(
-            """
-{
-  "accessBoundaryRules": [
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectViewer"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/normal/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('normal/path/to/data') || resource.name.startsWith('projects/_/buckets/bucket1/objects/awesome/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('awesome/path/to/data')"
-      }
-    },
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectViewer"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket2",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket2/objects/a/super/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('a/super/path/to/data')"
-      }
-    },
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectCreator"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/path/to/data')"
-      }
-    }
-  ]
-}
-                """);
+            GcpCredentialsStorageIntegrationTest.class.getResource(
+                "gcp-testGenerateAccessBoundaryWithMultipleBuckets.json"));
     assertThat(parsedRules)
         .usingRecursiveComparison(
             RecursiveComparisonConfiguration.builder()
@@ -318,30 +265,8 @@ class GcpCredentialsStorageIntegrationTest {
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
     JsonNode refRules =
         mapper.readTree(
-            """
-{
-  "accessBoundaryRules": [
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectViewer"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/path/to/data') || resource.name.startsWith('projects/_/buckets/bucket1/objects/another/path/to/data')"
-      }
-    },
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectCreator"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/path/to/data')"
-      }
-    }
-  ]
-}
-            """);
+            GcpCredentialsStorageIntegrationTest.class.getResource(
+                "gcp-testGenerateAccessBoundaryWithoutList.json"));
     assertThat(parsedRules)
         .usingRecursiveComparison(
             RecursiveComparisonConfiguration.builder()
@@ -371,21 +296,8 @@ class GcpCredentialsStorageIntegrationTest {
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
     JsonNode refRules =
         mapper.readTree(
-            """
-{
-  "accessBoundaryRules": [
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectViewer"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/normal/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('normal/path/to/data') || resource.name.startsWith('projects/_/buckets/bucket1/objects/awesome/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('awesome/path/to/data')"
-      }
-    }
-  ]
-}
-            """);
+            GcpCredentialsStorageIntegrationTest.class.getResource(
+                "gcp-testGenerateAccessBoundaryWithoutWrites.json"));
     assertThat(parsedRules)
         .usingRecursiveComparison(
             RecursiveComparisonConfiguration.builder()

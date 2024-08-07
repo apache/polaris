@@ -19,7 +19,6 @@ import static org.eclipse.persistence.config.PersistenceUnitProperties.ECLIPSELI
 import static org.eclipse.persistence.config.PersistenceUnitProperties.JDBC_URL;
 
 import com.google.common.base.Predicates;
-import com.google.common.collect.Maps;
 import io.polaris.core.PolarisCallContext;
 import io.polaris.core.context.RealmContext;
 import io.polaris.core.entity.PolarisBaseEntity;
@@ -47,26 +46,35 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.Persistence;
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jetbrains.annotations.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.NodeList;
+import org.xml.sax.SAXException;
 
 /**
  * EclipseLink implementation of a Polaris metadata store supporting persisting and retrieving all
@@ -76,11 +84,14 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisEclipseLinkMetaStoreSessionImpl.class);
 
+  // Cache to hold the EntityManagerFactory for each realm. Each realm needs a separate
+  // EntityManagerFactory since it connects to different databases
+  private static final ConcurrentHashMap<String, EntityManagerFactory> realmFactories =
+      new ConcurrentHashMap<>();
   private final EntityManagerFactory emf;
   private final ThreadLocal<EntityManager> localSession = new ThreadLocal<>();
   private final PolarisEclipseLinkStore store;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
-  private static volatile Map<String, String> properties;
 
   /**
    * Create a meta store session against provided realm. Each realm has its own database.
@@ -97,34 +108,88 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       @NotNull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName) {
-    persistenceUnitName = persistenceUnitName == null ? "polaris" : persistenceUnitName;
-    Map<String, String> properties =
-        loadProperties(
-            confFile == null ? "META-INF/persistence.xml" : confFile, persistenceUnitName);
-    // Replace database name in JDBC URL with realm
-    if (properties.containsKey(JDBC_URL)) {
-      properties.put(
-          JDBC_URL, properties.get(JDBC_URL).replace("{realm}", realmContext.getRealmIdentifier()));
-    }
-    properties.put(ECLIPSELINK_PERSISTENCE_XML, confFile);
-
-    emf = Persistence.createEntityManagerFactory(persistenceUnitName, properties);
-
     LOGGER.debug("Create EclipseLink Meta Store Session for {}", realmContext.getRealmIdentifier());
+    emf = createEntityManagerFactory(realmContext, confFile, persistenceUnitName);
 
     // init store
     this.store = store;
     this.storageIntegrationProvider = storageIntegrationProvider;
   }
 
-  /** Load the persistence unit properties from a given configuration file */
-  private Map<String, String> loadProperties(String confFile, String persistenceUnitName) {
-    if (properties != null) {
-      return properties;
+  /**
+   * Create EntityManagerFactory.
+   *
+   * <p>The EntityManagerFactory creation is expensive, so we are caching and reusing it for each
+   * realm.
+   */
+  private EntityManagerFactory createEntityManagerFactory(
+      @NotNull RealmContext realmContext,
+      @Nullable String confFile,
+      @Nullable String persistenceUnitName) {
+    String realm = realmContext.getRealmIdentifier();
+    EntityManagerFactory factory = realmFactories.getOrDefault(realm, null);
+    if (factory != null) {
+      return factory;
     }
 
+    ClassLoader prevClassLoader = Thread.currentThread().getContextClassLoader();
     try {
-      InputStream input = this.getClass().getClassLoader().getResourceAsStream(confFile);
+      persistenceUnitName = persistenceUnitName == null ? "polaris" : persistenceUnitName;
+      confFile = confFile == null ? "META-INF/persistence.xml" : confFile;
+
+      // Currently eclipseLink can only support configuration as a resource inside a jar. To support
+      // external configuration, persistence.xml needs be placed inside a jar and here is to add the
+      // jar to the classpath.
+      // Supported configuration file: META-INFO/persistence.xml, /tmp/conf.jar!/persistence.xml
+      int splitPosition = confFile.indexOf("!/");
+      if (splitPosition != -1) {
+        String jarPrefixPath = confFile.substring(0, splitPosition);
+        confFile = confFile.substring(splitPosition + 2);
+        URL prefixUrl = this.getClass().getClassLoader().getResource(jarPrefixPath);
+        if (prefixUrl == null) {
+          prefixUrl = new File(jarPrefixPath).toURI().toURL();
+        }
+
+        LOG.info(
+            "Created a new ClassLoader with the jar {} in classpath to load the config file",
+            prefixUrl);
+
+        URLClassLoader currentClassLoader =
+            new URLClassLoader(new URL[] {prefixUrl}, this.getClass().getClassLoader());
+
+        LOG.debug("Update ClassLoader in current thread temporarily");
+        Thread.currentThread().setContextClassLoader(currentClassLoader);
+      }
+
+      Map<String, String> properties = loadProperties(confFile, persistenceUnitName);
+      // Replace database name in JDBC URL with realm
+      if (properties.containsKey(JDBC_URL)) {
+        properties.put(JDBC_URL, properties.get(JDBC_URL).replace("{realm}", realm));
+      }
+      properties.put(ECLIPSELINK_PERSISTENCE_XML, confFile);
+
+      factory = Persistence.createEntityManagerFactory(persistenceUnitName, properties);
+      realmFactories.putIfAbsent(realm, factory);
+
+      return factory;
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    } finally {
+      Thread.currentThread().setContextClassLoader(prevClassLoader);
+    }
+  }
+
+  @TestOnly
+  static void clearEntityManagerFactories() {
+    realmFactories.clear();
+  }
+
+  /** Load the persistence unit properties from a given configuration file */
+  private Map<String, String> loadProperties(
+      @NotNull String confFile, @NotNull String persistenceUnitName) throws IOException {
+    try {
+      InputStream input =
+          Thread.currentThread().getContextClassLoader().getResourceAsStream(confFile);
       DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
       DocumentBuilder builder = factory.newDocumentBuilder();
       Document doc = builder.parse(input);
@@ -141,16 +206,18 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
             nodeMap.getNamedItem("value").getNodeValue());
       }
 
-      PolarisEclipseLinkMetaStoreSessionImpl.properties = properties;
       return properties;
-    } catch (Exception e) {
-      LOGGER.warn(
-          "Cannot find or parse the configuration file {} for persistence-unit {}",
-          confFile,
-          persistenceUnitName);
+    } catch (XPathExpressionException
+        | ParserConfigurationException
+        | SAXException
+        | IOException e) {
+      String str =
+          String.format(
+              "Cannot find or parse the configuration file %s for persistence-unit %s",
+              confFile, persistenceUnitName);
+      LOGGEr.error(str, e);
+      throw new IOException(str);
     }
-
-    return Maps.newHashMap();
   }
 
   /** {@inheritDoc} */

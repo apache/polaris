@@ -333,7 +333,7 @@ public class Resolver {
         "resolver_must_be_successful");
     this.diagnostics.check(this.resolvedPaths.size() == 1, "only_if_single");
 
-    return resolvedPaths.getFirst();
+    return resolvedPaths.get(0);
   }
 
   /**
