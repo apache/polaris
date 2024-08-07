@@ -86,7 +86,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   // Cache to hold the EntityManagerFactory for each realm. Each realm needs a separate
   // EntityManagerFactory since it connects to different databases
-  private static ConcurrentHashMap<String, EntityManagerFactory> realmFactories =
+  private static final ConcurrentHashMap<String, EntityManagerFactory> realmFactories =
       new ConcurrentHashMap<>();
   private final EntityManagerFactory emf;
   private final ThreadLocal<EntityManager> localSession = new ThreadLocal<>();
@@ -127,8 +127,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       @Nullable String confFile,
       @Nullable String persistenceUnitName) {
     String realm = realmContext.getRealmIdentifier();
-    EntityManagerFactory factory =
-        realmFactories.getOrDefault(realmContext.getRealmIdentifier(), null);
+    EntityManagerFactory factory = realmFactories.getOrDefault(realm, null);
     if (factory != null) {
       return factory;
     }
