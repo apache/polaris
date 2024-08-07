@@ -14,25 +14,14 @@
  * limitations under the License.
  */
 
-if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
-    throw new GradleException("""
-
-        Build aborted...
-
-        The Apache Polaris build requires Java 21.
-
-
-        """)
+dependencyResolutionManagement {
+  versionCatalogs { create("baselibs") { from(files("../gradle/baselibs.versions.toml")) } }
 }
 
-rootProject.name = "polaris"
-
-Properties projects = new Properties()
-file("gradle/projects.main.properties").withInputStream { projects.load(it) }
-projects.entrySet().forEach {
-    final def name = it.key as String
-    include(name)
-    final def prj = project(":${name}")
-    prj.name = name
-    prj.projectDir = file(it.value)
+dependencyResolutionManagement {
+  repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+  repositories {
+    mavenCentral()
+    gradlePluginPortal()
+  }
 }

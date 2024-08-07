@@ -150,20 +150,25 @@ public class PolarisObjectMapperUtil {
       while (jParser.nextToken() != JsonToken.END_OBJECT) {
         if (jParser.getCurrentToken() == JsonToken.FIELD_NAME) {
           String fieldName = jParser.currentName();
-          if (fieldName.equals(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID)) {
-            jParser.nextToken();
-            executorId = jParser.getText();
-          } else if (fieldName.equals(PolarisTaskConstants.LAST_ATTEMPT_START_TIME)) {
-            jParser.nextToken();
-            lastAttemptStartTime = Long.parseLong(jParser.getText());
-          } else if (fieldName.equals(PolarisTaskConstants.ATTEMPT_COUNT)) {
-            jParser.nextToken();
-            attemptCount = Integer.parseInt(jParser.getText());
-          } else {
-            JsonToken next = jParser.nextToken();
-            if (next == JsonToken.START_OBJECT || next == JsonToken.START_ARRAY) {
-              jParser.skipChildren();
-            }
+          switch (fieldName) {
+            case PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID:
+              jParser.nextToken();
+              executorId = jParser.getText();
+              break;
+            case PolarisTaskConstants.LAST_ATTEMPT_START_TIME:
+              jParser.nextToken();
+              lastAttemptStartTime = Long.parseLong(jParser.getText());
+              break;
+            case PolarisTaskConstants.ATTEMPT_COUNT:
+              jParser.nextToken();
+              attemptCount = Integer.parseInt(jParser.getText());
+              break;
+            default:
+              JsonToken next = jParser.nextToken();
+              if (next == JsonToken.START_OBJECT || next == JsonToken.START_ARRAY) {
+                jParser.skipChildren();
+              }
+              break;
           }
         }
       }

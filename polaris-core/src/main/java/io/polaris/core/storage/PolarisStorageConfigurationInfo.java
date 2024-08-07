@@ -25,12 +25,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.polaris.core.PolarisConfiguration;
 import io.polaris.core.PolarisDiagnostics;
 import io.polaris.core.admin.model.Catalog;
+import io.polaris.core.context.CallContext;
 import io.polaris.core.entity.CatalogEntity;
 import io.polaris.core.entity.PolarisEntity;
 import io.polaris.core.entity.PolarisEntityConstants;
 import io.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import io.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import io.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -135,8 +138,11 @@ public abstract class PolarisStorageConfigurationInfo {
                         .get(PolarisEntityConstants.getStorageConfigInfoPropertyName())))
         .map(
             configInfo -> {
+              List<PolarisEntity> entityPathReversed = new ArrayList<>(entityPath);
+              Collections.reverse(entityPathReversed);
+
               String baseLocation =
-                  entityPath.reversed().stream()
+                  entityPathReversed.stream()
                       .flatMap(
                           e ->
                               Optional.ofNullable(
@@ -147,27 +153,24 @@ public abstract class PolarisStorageConfigurationInfo {
                       .orElse(null);
               CatalogEntity catalog = CatalogEntity.of(entityPath.get(0));
               boolean allowEscape =
-                  Optional.ofNullable(
-                          catalog
-                              .getPropertiesAsMap()
-                              .get(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION))
-                      .map(
-                          val -> {
-                            LOGGER.debug(
-                                "Found catalog level property to allow unstructured table location: {}",
-                                val);
-                            return Boolean.parseBoolean(val);
-                          })
-                      .orElseGet(() -> Catalog.TypeEnum.EXTERNAL.equals(catalog.getCatalogType()));
-              if (!allowEscape && baseLocation != null) {
+                  CallContext.getCurrentContext()
+                      .getPolarisCallContext()
+                      .getConfigurationStore()
+                      .getConfiguration(
+                          CallContext.getCurrentContext().getPolarisCallContext(),
+                          catalog,
+                          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
+              if (!allowEscape
+                  && catalog.getCatalogType() != Catalog.TypeEnum.EXTERNAL
+                  && baseLocation != null) {
                 LOGGER.debug(
                     "Not allowing unstructured table location for entity: {}",
-                    entityPath.getLast().getName());
+                    entityPathReversed.get(0).getName());
                 return new StorageConfigurationOverride(configInfo, List.of(baseLocation));
               } else {
                 LOGGER.debug(
                     "Allowing unstructured table location for entity: {}",
-                    entityPath.getLast().getName());
+                    entityPathReversed.get(0).getName());
                 return configInfo;
               }
             });
@@ -175,12 +178,14 @@ public abstract class PolarisStorageConfigurationInfo {
 
   private static @NotNull Optional<PolarisEntity> findStorageInfoFromHierarchy(
       List<PolarisEntity> entityPath) {
-    return entityPath.reversed().stream()
-        .filter(
-            e ->
-                e.getInternalPropertiesAsMap()
-                    .containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
-        .findFirst();
+    for (int i = entityPath.size() - 1; i >= 0; i--) {
+      PolarisEntity e = entityPath.get(i);
+      if (e.getInternalPropertiesAsMap()
+          .containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName())) {
+        return Optional.of(e);
+      }
+    }
+    return Optional.empty();
   }
 
   /** Subclasses must provide the Iceberg FileIO impl associated with their type in this method. */

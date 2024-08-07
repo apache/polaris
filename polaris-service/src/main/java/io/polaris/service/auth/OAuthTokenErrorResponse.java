@@ -29,7 +29,7 @@ public class OAuthTokenErrorResponse {
     invalid_scope("The scope is invalid"),
     ;
 
-    String errorDescription;
+    final String errorDescription;
 
     Error(String errorDescription) {
       this.errorDescription = errorDescription;
@@ -42,7 +42,7 @@ public class OAuthTokenErrorResponse {
 
   private final String error;
   private final String errorDescription;
-  private String errorUri;
+  private final String errorUri;
 
   /** Initlaizes a response from one of the supported errors */
   public OAuthTokenErrorResponse(Error error) {

@@ -15,6 +15,7 @@
  */
 package io.polaris.core.storage.cache;
 
+import com.google.common.collect.ImmutableMap;
 import io.polaris.core.PolarisCallContext;
 import io.polaris.core.PolarisDefaultDiagServiceImpl;
 import io.polaris.core.PolarisDiagnostics;
@@ -382,32 +383,29 @@ public class StorageCredentialCacheTest {
               : String.valueOf(Long.MAX_VALUE);
       res.add(
           new PolarisMetaStoreManager.ScopedCredentialsResult(
-              new EnumMap<>(PolarisCredentialProperty.class) {
-                {
-                  put(PolarisCredentialProperty.AWS_KEY_ID, "key_id_" + finalI);
-                  put(PolarisCredentialProperty.AWS_SECRET_KEY, "key_secret_" + finalI);
-                  put(PolarisCredentialProperty.EXPIRATION_TIME, expireTime);
-                }
-              }));
+              new EnumMap<>(
+                  ImmutableMap.<PolarisCredentialProperty, String>builder()
+                      .put(PolarisCredentialProperty.AWS_KEY_ID, "key_id_" + finalI)
+                      .put(PolarisCredentialProperty.AWS_SECRET_KEY, "key_secret_" + finalI)
+                      .put(PolarisCredentialProperty.EXPIRATION_TIME, expireTime)
+                      .buildOrThrow())));
       if (res.size() == number) return res;
       res.add(
           new PolarisMetaStoreManager.ScopedCredentialsResult(
-              new EnumMap<>(PolarisCredentialProperty.class) {
-                {
-                  put(PolarisCredentialProperty.AZURE_SAS_TOKEN, "sas_token_" + finalI);
-                  put(PolarisCredentialProperty.AZURE_ACCOUNT_HOST, "account_host");
-                  put(PolarisCredentialProperty.EXPIRATION_TIME, expireTime);
-                }
-              }));
+              new EnumMap<>(
+                  ImmutableMap.<PolarisCredentialProperty, String>builder()
+                      .put(PolarisCredentialProperty.AZURE_SAS_TOKEN, "sas_token_" + finalI)
+                      .put(PolarisCredentialProperty.AZURE_ACCOUNT_HOST, "account_host")
+                      .put(PolarisCredentialProperty.EXPIRATION_TIME, expireTime)
+                      .buildOrThrow())));
       if (res.size() == number) return res;
       res.add(
           new PolarisMetaStoreManager.ScopedCredentialsResult(
-              new EnumMap<>(PolarisCredentialProperty.class) {
-                {
-                  put(PolarisCredentialProperty.GCS_ACCESS_TOKEN, "gcs_token_" + finalI);
-                  put(PolarisCredentialProperty.GCS_ACCESS_TOKEN_EXPIRES_AT, expireTime);
-                }
-              }));
+              new EnumMap<>(
+                  ImmutableMap.<PolarisCredentialProperty, String>builder()
+                      .put(PolarisCredentialProperty.GCS_ACCESS_TOKEN, "gcs_token_" + finalI)
+                      .put(PolarisCredentialProperty.GCS_ACCESS_TOKEN_EXPIRES_AT, expireTime)
+                      .buildOrThrow())));
     }
     return res;
   }

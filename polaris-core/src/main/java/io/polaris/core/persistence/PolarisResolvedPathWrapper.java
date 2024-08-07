@@ -17,6 +17,7 @@ package io.polaris.core.persistence;
 
 import io.polaris.core.entity.PolarisEntity;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Holds fully-resolved path of PolarisEntities representing the targetEntity with all its grants
@@ -54,7 +55,7 @@ public class PolarisResolvedPathWrapper {
     if (resolvedPath == null) {
       return null;
     }
-    return resolvedPath.stream().map(resolved -> resolved.getEntity()).toList();
+    return resolvedPath.stream().map(ResolvedPolarisEntity::getEntity).collect(Collectors.toList());
   }
 
   public List<ResolvedPolarisEntity> getResolvedParentPath() {
@@ -68,14 +69,13 @@ public class PolarisResolvedPathWrapper {
     if (resolvedPath == null) {
       return null;
     }
-    return getResolvedParentPath().stream().map(resolved -> resolved.getEntity()).toList();
+    return getResolvedParentPath().stream()
+        .map(ResolvedPolarisEntity::getEntity)
+        .collect(Collectors.toList());
   }
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("resolvedPath:");
-    sb.append(resolvedPath);
-    return sb.toString();
+    return "resolvedPath:" + resolvedPath;
   }
 }

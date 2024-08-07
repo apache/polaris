@@ -87,15 +87,23 @@ class PolarisCli:
 
     @staticmethod
     def _get_client_builder(options):
-
-        # Validate
+        # Determine which credentials to use
+        client_id = options.client_id or os.getenv(CLIENT_ID_ENV)
+        client_secret = options.client_secret or os.getenv(CLIENT_SECRET_ENV)
+        
+        # Validates
         has_access_token = options.access_token is not None
-        has_client_secret = options.client_id is not None and options.client_secret is not None
+        has_client_secret = client_id is not None and client_secret is not None
         if has_access_token and has_client_secret:
             raise Exception(f'Please provide credentials via either {Argument.to_flag_name(Arguments.CLIENT_ID)} &'
                             f' {Argument.to_flag_name(Arguments.CLIENT_SECRET)} or'
                             f' {Argument.to_flag_name(Arguments.ACCESS_TOKEN)}, but not both')
-
+        if not has_access_token and not has_client_secret:
+            raise Exception(f'Please provide credentials via either {Argument.to_flag_name(Arguments.CLIENT_ID)} &'
+                            f' {Argument.to_flag_name(Arguments.CLIENT_SECRET)} or'
+                            f' {Argument.to_flag_name(Arguments.ACCESS_TOKEN)}.'
+                            f' Alternatively, you may set the environment variables {CLIENT_ID_ENV} &'
+                            f' {CLIENT_SECRET_ENV}.')
         # Authenticate accordingly
         polaris_management_url = f'http://{options.host}:{options.port}/api/management/v1'
         polaris_catalog_url = f'http://{options.host}:{options.port}/api/catalog/v1'
@@ -106,30 +114,15 @@ class PolarisCli:
             )
         elif has_client_secret:
             builder = lambda: ApiClient(
-                Configuration(host=polaris_management_url, username=options.client_id, password=options.client_secret),
+                Configuration(host=polaris_management_url, username=client_id, password=client_secret),
             )
-        elif os.getenv('CLIENT_ID') and os.getenv('CLIENT_SECRET'):
-            builder = lambda: ApiClient(
-                Configuration(
-                    host=polaris_management_url,
-                    username=os.getenv(CLIENT_ID_ENV),
-                    password=os.getenv(CLIENT_SECRET_ENV)
-                )
-            )
-        else:
-            raise Exception(f'Please provide credentials via either {Argument.to_flag_name(Arguments.CLIENT_ID)} &'
-                            f' {Argument.to_flag_name(Arguments.CLIENT_SECRET)} or'
-                            f' {Argument.to_flag_name(Arguments.ACCESS_TOKEN)}.'
-                            f' Alternatively, you may set the environment variables {CLIENT_ID_ENV} &'
-                            f' {CLIENT_SECRET_ENV}.')
 
         if not has_access_token and not PolarisCli.DIRECT_AUTHENTICATION_ENABLED:
-            token = PolarisCli._get_token(builder(), polaris_catalog_url, options.client_id, options.client_secret)
+            token = PolarisCli._get_token(builder(), polaris_catalog_url, client_id, client_secret)
             builder = lambda: ApiClient(
                 Configuration(host=polaris_management_url, access_token=token),
             )
         return builder
-
 
 
 if __name__ == '__main__':

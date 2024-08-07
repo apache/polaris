@@ -57,9 +57,10 @@ Running in Docker
 
 Running in Kubernetes
 - `./setup.sh` - To run Polaris as a mini-deployment locally. This will create two pods that bind themselves to port `8181`.
-- `kubectl get pods` - To check the status of the pods.
-- `kubectl get deployment` - To check the status of the deployment.
-- `kubectl describe deployment polaris-deployment` - To troubleshoot if things aren't working as expected.
+- `kubectl port-forward svc/polaris-service -n polaris 8181:8181` - To create a secure connection between a local machine and a pod within the cluster.
+- `kubectl get pods -n polaris` - To check the status of the pods.
+- `kubectl get deployment -n polaris` - To check the status of the deployment.
+- `kubectl describe deployment polaris-deployment -n polaris` - To troubleshoot if things aren't working as expected.
 
 Building docs
 - Docs are generated using [Redocly](https://redocly.com/docs/cli/installation). To regenerate them, run the following

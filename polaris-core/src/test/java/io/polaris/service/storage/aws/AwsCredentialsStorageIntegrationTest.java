@@ -96,13 +96,21 @@ class AwsCredentialsStorageIntegrationTest {
   public void testGetSubscopedCredsInlinePolicy(String awsPartition) {
     PolarisStorageConfigurationInfo.StorageType storageType =
         PolarisStorageConfigurationInfo.StorageType.S3;
-    String roleARN =
-        switch (awsPartition) {
-          case AWS_PARTITION -> "arn:aws:iam::012345678901:role/jdoe";
-          case "aws-cn" -> "arn:aws-cn:iam::012345678901:role/jdoe";
-          case "aws-us-gov" -> "arn:aws-us-gov:iam::012345678901:role/jdoe";
-          default -> throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
-        };
+    String roleARN;
+    switch (awsPartition) {
+      case AWS_PARTITION:
+        roleARN = "arn:aws:iam::012345678901:role/jdoe";
+        break;
+      case "aws-cn":
+        roleARN = "arn:aws-cn:iam::012345678901:role/jdoe";
+        break;
+      case "aws-us-gov":
+        roleARN = "arn:aws-us-gov:iam::012345678901:role/jdoe";
+        break;
+      default:
+        throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
+    }
+    ;
     StsClient stsClient = Mockito.mock(StsClient.class);
     String externalId = "externalId";
     String bucket = "bucket";
@@ -381,8 +389,6 @@ class AwsCredentialsStorageIntegrationTest {
     String externalId = "externalId";
     String bucket = "bucket";
     String warehouseKeyPrefix = "path/to/warehouse";
-    String firstPath = warehouseKeyPrefix + "/namespace/table";
-    String secondPath = warehouseKeyPrefix + "/oldnamespace/table";
     Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
         .thenAnswer(
             invocation -> {
@@ -443,14 +449,6 @@ class AwsCredentialsStorageIntegrationTest {
 
   private static @NotNull String s3Arn(String partition, String bucket, String keyPrefix) {
     String bucketArn = "arn:" + partition + ":s3:::" + bucket;
-    if (keyPrefix == null) {
-      return bucketArn;
-    }
-    return bucketArn + "/" + keyPrefix + "/*";
-  }
-
-  private static @NotNull String s3CnArn(String bucket, String keyPrefix) {
-    String bucketArn = "arn:aws-cn:s3:::" + bucket;
     if (keyPrefix == null) {
       return bucketArn;
     }

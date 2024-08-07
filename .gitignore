@@ -45,6 +45,7 @@ gradle/wrapper/gradle-wrapper-*.sha256
 
 # Gradle
 /.gradle
+/build-logic/.gradle
 **/build/
 !src/**/build/
 
