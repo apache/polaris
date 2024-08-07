@@ -272,6 +272,7 @@ public class CatalogEntity extends PolarisEntity {
       return this;
     }
 
+    @Override
     public CatalogEntity build() {
       return new CatalogEntity(buildBase());
     }
