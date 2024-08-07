@@ -88,8 +88,7 @@ defaultRealms:
   - default-realm
 
 metaStoreManager:
-  type: in-memory
-  # type: eclipse-link # uncomment to use eclipse-link as metastore
+  type: eclipse-link
   # persistence-unit: polaris
 
 
