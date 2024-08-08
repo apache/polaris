@@ -52,6 +52,7 @@ import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.Assumptions;
 import org.assertj.core.util.Strings;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -59,24 +60,17 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class AzureCredentialStorageIntegrationTest {
-
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(AzureCredentialStorageIntegrationTest.class);
 
   private final String clientId = System.getenv("AZURE_CLIENT_ID");
   private final String clientSecret = System.getenv("AZURE_CLIENT_SECRET");
   private final String tenantId = "d479c7c9-2632-445a-b22d-7c19e68774f6";
 
-  private boolean checkEnvNullVariables() {
-    if (Strings.isNullOrEmpty(clientId) || Strings.isNullOrEmpty(clientSecret)) {
-      LOGGER.debug("Null Azure testing environment variables! Skip {}", this.getClass().getName());
-      return true;
-    }
-    return false;
+  private void checkEnvNullVariables() {
+    Assumptions.assumeThat(Strings.isNullOrEmpty(clientId) || Strings.isNullOrEmpty(clientSecret))
+        .describedAs("Null Azure testing environment variables!")
+        .isFalse();
   }
 
   @Test
@@ -115,9 +109,8 @@ public class AzureCredentialStorageIntegrationTest {
   @TestWithAzureArgs
   public void testGetSubscopedTokenList(boolean allowListAction, String service) {
 
-    if (checkEnvNullVariables()) {
-      return;
-    }
+    checkEnvNullVariables();
+
     boolean isBlobService = service.equals("blob");
     List<String> allowedLoc =
         Arrays.asList(
@@ -184,10 +177,10 @@ public class AzureCredentialStorageIntegrationTest {
   }
 
   @TestWithAzureArgs
-  public void testGetSubscopedTokenRead(boolean allowListAction, String service) {
-    if (checkEnvNullVariables()) {
-      return;
-    }
+  public void testGetSubscopedTokenRead(
+      @SuppressWarnings("unused") boolean allowListAction, String service) {
+    checkEnvNullVariables();
+
     String allowedPrefix = "polaris-test";
     String blockedPrefix = "blocked-prefix";
     List<String> allowedLoc =
@@ -253,10 +246,10 @@ public class AzureCredentialStorageIntegrationTest {
   }
 
   @TestWithAzureArgs
-  public void testGetSubscopedTokenWrite(boolean allowListAction, String service) {
-    if (checkEnvNullVariables()) {
-      return;
-    }
+  public void testGetSubscopedTokenWrite(
+      @SuppressWarnings("unused") boolean allowListAction, String service) {
+    checkEnvNullVariables();
+
     boolean isBlobService = service.equals("blob");
     String allowedPrefix = "polaris-test/scopedcreds/";
     String blockedPrefix = "blocked-prefix";
