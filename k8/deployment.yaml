@@ -9,7 +9,6 @@ metadata:
   name: polaris-deployment
   namespace: polaris
 spec:
-  replicas: 2
   selector:
     matchLabels:
       app: polaris
@@ -23,6 +22,7 @@ spec:
         image: localhost:5001/polaris:latest
         ports:
         - containerPort: 8181
+        - containerPort: 8182
 ---
 apiVersion: v1
 kind: Service
@@ -33,5 +33,9 @@ spec:
   selector:
     app: polaris
   ports:
-  - port: 8181
+  - name: service
+    port: 8181
     targetPort: 8181
+  - name: metrics
+    port: 8182
+    targetPort: 8182
