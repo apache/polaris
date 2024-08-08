@@ -63,6 +63,7 @@ swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref =
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.20.0" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
+trino-jdbc = { module = "io.trino:trino-jdbc", version = "453" }
 
 [plugins]
 openapi-generator = { id = "org.openapi.generator", version = "7.6.0" }

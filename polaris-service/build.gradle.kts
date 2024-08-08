@@ -86,6 +86,7 @@ dependencies {
   testImplementation("io.dropwizard:dropwizard-testing")
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")
+  testImplementation("org.testcontainers:trino")
   testImplementation(libs.s3mock.testcontainers)
 
   testImplementation("org.apache.iceberg:iceberg-spark-3.5_2.12")
@@ -106,6 +107,7 @@ dependencies {
   testImplementation(libs.assertj.core)
   testImplementation(libs.mockito.core)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+  testRuntimeOnly("io.trino:trino-jdbc")
 }
 
 openApiGenerate {
