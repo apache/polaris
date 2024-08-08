@@ -183,29 +183,29 @@ public class SnowmanCredentialsExtension
             adminSecrets.getMainSecret(),
             realm);
 
-    try (Response deletePrResponse =
-        dropwizard
-            .client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principal-roles/%s",
-                    dropwizard.getLocalPort(), "catalog-admin"))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .delete()) {}
+    dropwizard
+        .client()
+        .target(
+            String.format(
+                "http://localhost:%d/api/management/v1/principal-roles/%s",
+                dropwizard.getLocalPort(), "catalog-admin"))
+        .request("application/json")
+        .header("Authorization", "Bearer " + userToken)
+        .header(REALM_PROPERTY_KEY, realm)
+        .delete()
+        .close();
 
-    try (Response deleteResponse =
-        dropwizard
-            .client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principals/%s",
-                    dropwizard.getLocalPort(), "snowman"))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .delete()) {}
+    dropwizard
+        .client()
+        .target(
+            String.format(
+                "http://localhost:%d/api/management/v1/principals/%s",
+                dropwizard.getLocalPort(), "snowman"))
+        .request("application/json")
+        .header("Authorization", "Bearer " + userToken)
+        .header(REALM_PROPERTY_KEY, realm)
+        .delete()
+        .close();
   }
 
   // FIXME - this would be better done with a Credentials-specific annotation processor so

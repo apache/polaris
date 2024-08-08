@@ -559,7 +559,6 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
 
   @Test
   public void testCreateTableDirectInsufficientPermissions() {
-    final TableIdentifier newtable = TableIdentifier.of(NS2, "newtable");
     final CreateTableRequest createRequest =
         CreateTableRequest.builder().withName("newtable").withSchema(SCHEMA).build();
 
@@ -792,7 +791,6 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     // To get a handy metadata file we can use one from another table.
     final String metadataLocation = newWrapper().loadTable(TABLE_NS1_1, "all").metadataLocation();
 
-    final TableIdentifier newtable = TableIdentifier.of(NS2, "newtable");
     final RegisterTableRequest registerRequest =
         new RegisterTableRequest() {
           @Override
@@ -1345,8 +1343,6 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
 
   @Test
   public void testCreateViewInsufficientPermissions() {
-    final TableIdentifier newview = TableIdentifier.of(NS2, "newview");
-
     final CreateViewRequest createRequest =
         ImmutableCreateViewRequest.builder()
             .name("newview")

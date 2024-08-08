@@ -222,14 +222,13 @@ public class StorageCredentialCacheTest {
     int cacheSize = 0;
     // different catalog will generate new cache entries
     for (PolarisEntity entity : entityList) {
-      Map<String, String> res =
-          storageCredentialCache.getOrGenerateSubScopeCreds(
-              metaStoreManager,
-              callCtx,
-              entity,
-              true,
-              new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-              new HashSet<>(Arrays.asList("s3://bucket/path")));
+      storageCredentialCache.getOrGenerateSubScopeCreds(
+          metaStoreManager,
+          callCtx,
+          entity,
+          true,
+          new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
+          new HashSet<>(Arrays.asList("s3://bucket/path")));
       Assertions.assertThat(storageCredentialCache.getEstimatedSize()).isEqualTo(++cacheSize);
     }
     // update the entity's storage config, since StorageConfig changed, cache will generate new

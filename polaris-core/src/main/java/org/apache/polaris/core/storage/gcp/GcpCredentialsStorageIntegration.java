@@ -80,7 +80,6 @@ public class GcpCredentialsStorageIntegration
     } catch (IOException e) {
       throw new RuntimeException("Unable to refresh GCP credentials", e);
     }
-    AccessToken sourceCredentialsAccessToken = this.sourceCredentials.getAccessToken();
 
     CredentialAccessBoundary accessBoundary =
         generateAccessBoundaryRules(
