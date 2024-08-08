@@ -82,7 +82,7 @@ public class PolarisEclipseLinkMetaStoreTest extends PolarisMetaStoreManagerTest
     public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
       return Stream.of(
           Arguments.of("META-INF/persistence.xml", true),
-          Arguments.of("eclipselink_conf.jar!/persistence.xml", true),
+          Arguments.of("./build/conf/conf.jar!/persistence.xml", true),
           Arguments.of("/dummy_path/conf.jar!/persistence.xml", false));
     }
   }
