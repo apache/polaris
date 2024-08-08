@@ -227,10 +227,11 @@ tasks.named<Jar>("jar") {
 
 tasks.named<ShadowJar>("shadowJar") {
   manifest { attributes["Main-Class"] = "io.polaris.service.PolarisApplication" }
+  archiveVersion.set("")
   mergeServiceFiles()
   isZip64 = true
 }
 
-tasks.named<CreateStartScripts>("startScripts") { classpath = files("polaris-service.jar") }
+tasks.named<CreateStartScripts>("startScripts") { classpath = files("polaris-service-all.jar") }
 
 tasks.named("build").configure { dependsOn("shadowJar") }
