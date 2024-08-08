@@ -31,8 +31,6 @@ import java.util.List;
 import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Wraps logic of handling name-caching and entity-caching against a concrete underlying entity
@@ -40,8 +38,6 @@ import org.slf4j.LoggerFactory;
  * id and name resolution mechanics around PolarisEntities.
  */
 public class PolarisEntityManager {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisEntityManager.class);
-
   private final PolarisMetaStoreManager metaStoreManager;
   private final Supplier<PolarisMetaStoreSession> sessionSupplier;
   private final EntityCache entityCache;
