@@ -86,7 +86,7 @@ curl -i -X POST -H "Authorization: Bearer $PRINCIPAL_TOKEN" -H 'Accept: applicat
 ```
 
 From here, you can use Spark to create namespaces, tables, etc. More details can be found in the
-[Quick Start Guide](https://polaris.io/#section/Quick-Start/Using-Iceberg-and-Polarise).
+[Quick Start Guide](https://polaris.io/#section/Quick-Start/Using-Iceberg-and-Polaris).
 
 ### Trademark Attribution 
 
