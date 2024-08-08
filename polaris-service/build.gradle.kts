@@ -231,9 +231,6 @@ tasks.named<ShadowJar>("shadowJar") {
   isZip64 = true
 }
 
-tasks.named<CreateStartScripts>("startScripts") {
-  classpath = files("polaris-service.jar")
-
-}
+tasks.named<CreateStartScripts>("startScripts") { classpath = files("polaris-service.jar") }
 
 tasks.named("build").configure { dependsOn("shadowJar") }
