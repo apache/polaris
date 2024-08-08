@@ -27,15 +27,16 @@ WORKDIR /app
 RUN rm -rf build
 
 # Build the rest catalog
-RUN ./gradlew --no-daemon --info -PeclipseLink=$ECLIPSELINK clean shadowJar
+RUN ./gradlew --no-daemon --info -PeclipseLink=$ECLIPSELINK clean shadowJar startScripts
 
 FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.20-2.1721752928
 WORKDIR /app
-COPY --from=build /app/polaris-service/build/libs/polaris-service-1.0.0-all.jar /app
+COPY --from=build /app/polaris-service/build/libs/polaris-service-1.0.0-all.jar /app/lib/polaris-service.jar
 COPY --from=build /app/polaris-server.yml /app
+COPY --from=build /app/polaris-service/build/scripts/polaris-service /app/bin/polaris-service
 
 EXPOSE 8181
 
 # Run the resulting java binary
-ENTRYPOINT ["java", "-jar", "/app/polaris-service-1.0.0-all.jar"]
+ENTRYPOINT ["/app/bin/polaris-service"]
 CMD ["server", "polaris-server.yml"]

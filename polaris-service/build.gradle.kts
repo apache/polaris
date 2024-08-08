@@ -109,9 +109,7 @@ dependencies {
 }
 
 if (project.properties.get("eclipseLink") == "true") {
-  dependencies {
-    implementation(project(":polaris-eclipselink"))
-  }
+  dependencies { implementation(project(":polaris-eclipselink")) }
 }
 
 openApiGenerate {
@@ -231,6 +229,11 @@ tasks.named<ShadowJar>("shadowJar") {
   manifest { attributes["Main-Class"] = "io.polaris.service.PolarisApplication" }
   mergeServiceFiles()
   isZip64 = true
+}
+
+tasks.named<CreateStartScripts>("startScripts") {
+  classpath = files("polaris-service.jar")
+
 }
 
 tasks.named("build").configure { dependsOn("shadowJar") }
