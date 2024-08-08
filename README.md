@@ -60,8 +60,8 @@ Running in Kubernetes
 - `kubectl port-forward svc/polaris-service -n polaris 8181:8181` - To create a secure connection between a local machine and a pod within the cluster for service endpoints.
 - `kubectl port-forward svc/polaris-service -n polaris 8182:8182` - To create a secure connection between a local machine and a pod within the cluster for metrics endpoints.
   - Currrently supported endpoints:
-    - localhost:8182/jmx
     - localhost:8182/metrics
+    - localhost:8182/healthcheck
 - `kubectl get pods -n polaris` - To check the status of the pods.
 - `kubectl get deployment -n polaris` - To check the status of the deployment.
 - `kubectl describe deployment polaris-deployment -n polaris` - To troubleshoot if things aren't working as expected.
