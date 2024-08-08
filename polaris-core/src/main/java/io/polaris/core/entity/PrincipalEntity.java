@@ -75,6 +75,7 @@ public class PrincipalEntity extends PolarisEntity {
       return this;
     }
 
+    @Override
     public PrincipalEntity build() {
       return new PrincipalEntity(buildBase());
     }

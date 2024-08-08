@@ -65,6 +65,7 @@ public class PolarisDefaultDiagServiceImpl implements PolarisDiagnostics {
    * @throws RuntimeException if `reference` is null
    */
   @Contract("null, _ -> fail")
+  @Override
   public <T> T checkNotNull(final T reference, final String signature) {
     return Preconditions.checkNotNull(reference, signature);
   }
@@ -82,6 +83,7 @@ public class PolarisDefaultDiagServiceImpl implements PolarisDiagnostics {
    * @throws RuntimeException if `reference` is null
    */
   @Contract("null, _, _, _ -> fail")
+  @Override
   public <T> T checkNotNull(
       final T reference,
       final String signature,
@@ -100,6 +102,7 @@ public class PolarisDefaultDiagServiceImpl implements PolarisDiagnostics {
    * @throws RuntimeException if `condition` is not true
    */
   @Contract("false, _ -> fail")
+  @Override
   public void check(final boolean expression, final String signature) {
     Preconditions.checkState(expression, signature);
   }
@@ -116,6 +119,7 @@ public class PolarisDefaultDiagServiceImpl implements PolarisDiagnostics {
    * @throws RuntimeException if condition` is not true
    */
   @Contract("false, _, _, _ -> fail")
+  @Override
   public void check(
       final boolean expression,
       final String signature,
