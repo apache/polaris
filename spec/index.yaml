@@ -1009,7 +1009,7 @@ tags:
       specified in `oauth2` above.
 
 
-      #### callContextResolver** & **realmContextResolver
+      #### callContextResolver & realmContextResolver
 
       * Use these configurations to specify a service that can resolve a realm
       from bearer tokens.
