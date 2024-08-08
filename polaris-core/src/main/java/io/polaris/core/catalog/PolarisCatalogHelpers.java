@@ -23,16 +23,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Holds helper methods translating between persistence-layer structs and Iceberg objects shared by
  * different Polaris components.
  */
 public class PolarisCatalogHelpers {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisCatalogHelpers.class);
-
   /** Not intended for instantiation. */
   private PolarisCatalogHelpers() {}
 
