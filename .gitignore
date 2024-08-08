@@ -8,16 +8,8 @@ notebooks/.ipynb_checkpoints/
 # Metastore
 metastore_db/
 
-.gradle
-**/build/
-!src/**/build/
-
 # Ignore Gradle GUI config
 gradle-app.setting
-
-# Ignore Gradle wrapper jar file
-gradle/wrapper/gradle-wrapper.jar
-gradle/wrapper/gradle-wrapper-*.sha256
 
 # Ignore Gradle wrapper jar file
 gradle/wrapper/gradle-wrapper.jar
@@ -35,7 +27,6 @@ gradle/wrapper/gradle-wrapper-*.sha256
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
 .env
-.java-version
 
 # IntelliJ
 /.idea
@@ -68,4 +59,3 @@ hs_err_pid*
 
 # macOS
 *.DS_Store
-.DS_Store
