@@ -54,10 +54,9 @@ public class PolarisS3FileIOClientFactory implements S3FileIOAwsClientFactory {
         .applyMutation(s3FileIOProperties::applyEndpointConfigurations)
         .applyMutation(s3FileIOProperties::applyServiceConfigurations)
         .applyMutation(
-            s3ClientBuilder -> {
-              s3FileIOProperties.applyCredentialConfigurations(
-                  awsClientProperties, s3ClientBuilder);
-            })
+            s3ClientBuilder ->
+                s3FileIOProperties.applyCredentialConfigurations(
+                    awsClientProperties, s3ClientBuilder))
         .applyMutation(s3FileIOProperties::applySignerConfiguration)
         .applyMutation(s3FileIOProperties::applyS3AccessGrantsConfigurations)
         .applyMutation(s3ClientBuilder -> s3ClientBuilder.crossRegionAccessEnabled(true))

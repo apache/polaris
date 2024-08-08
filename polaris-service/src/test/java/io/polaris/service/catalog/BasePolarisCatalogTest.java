@@ -187,8 +187,10 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 .setName(CATALOG_NAME)
                 .setDefaultBaseLocation(storageLocation)
                 .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-                .addProperty(PolarisConfiguration.CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION, "true")
-                .addProperty(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "true")
+                .addProperty(
+                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                .addProperty(
+                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
                 .setStorageConfigurationInfo(storageConfigModel, storageLocation)
                 .build());
 
@@ -413,8 +415,10 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             polarisContext,
             List.of(PolarisEntity.toCore(catalogEntity)),
             new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
-                .addProperty(PolarisConfiguration.CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION, "false")
-                .addProperty(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "true")
+                .addProperty(
+                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
+                .addProperty(
+                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
                 .build());
     BasePolarisCatalog catalog = catalog();
     TableMetadata tableMetadata =
@@ -470,8 +474,10 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             polarisContext,
             List.of(PolarisEntity.toCore(catalogEntity)),
             new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
-                .addProperty(PolarisConfiguration.CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION, "false")
-                .addProperty(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "true")
+                .addProperty(
+                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
+                .addProperty(
+                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
                 .build());
     BasePolarisCatalog catalog = catalog();
     TableMetadata tableMetadata =
@@ -524,8 +530,10 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             polarisContext,
             List.of(PolarisEntity.toCore(catalogEntity)),
             new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
-                .addProperty(PolarisConfiguration.CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION, "false")
-                .addProperty(PolarisConfiguration.CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION, "true")
+                .addProperty(
+                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
+                .addProperty(
+                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
                 .build());
     BasePolarisCatalog catalog = catalog();
     InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
@@ -642,12 +650,11 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         supportsNotifications(), "Only applicable if notifications are supported");
 
     String catalogName = "catalogForMaliciousDomain";
-    PolarisEntity catalogEntity =
-        adminService.createCatalog(
-            new CatalogEntity.Builder()
-                .setDefaultBaseLocation("http://maliciousdomain.com")
-                .setName(catalogName)
-                .build());
+    adminService.createCatalog(
+        new CatalogEntity.Builder()
+            .setDefaultBaseLocation("http://maliciousdomain.com")
+            .setName(catalogName)
+            .build());
 
     CallContext callContext = CallContext.getCurrentContext();
     PolarisPassthroughResolutionView passthroughView =
@@ -1119,8 +1126,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     PartitionSpec partitionSpec =
         PartitionSpec.builderFor(schema).identity("intType").withSpecId(1000).build();
 
-    return TableMetadata.newTableMetadata(
-        schema, partitionSpec, tableLocation, ImmutableMap.<String, String>of());
+    return TableMetadata.newTableMetadata(schema, partitionSpec, tableLocation, ImmutableMap.of());
   }
 
   private void createNonExistingNamespaces(Namespace namespace) {

@@ -283,7 +283,7 @@ public class ResolverTest {
 
     // now grant R3 to PR2
     Assertions.assertThat(resolver.getResolvedCallerPrincipalRoles()).hasSize(1);
-    PolarisBaseEntity PR2 = resolver.getResolvedCallerPrincipalRoles().getFirst().getEntity();
+    PolarisBaseEntity PR2 = resolver.getResolvedCallerPrincipalRoles().get(0).getEntity();
     this.tm.grantToGrantee(TEST, R3, PR2, PolarisPrivilege.CATALOG_ROLE_USAGE);
 
     // now resolve again with only PR2 activated, should see the new catalog role R3
@@ -321,7 +321,7 @@ public class ResolverTest {
     // get the various entities in the path
     Assertions.assertThat(resolver.getResolvedPath()).isNotNull();
     Assertions.assertThat(resolver.getResolvedPath()).hasSize(3);
-    PolarisBaseEntity N1 = resolver.getResolvedPath().getFirst().getEntity();
+    PolarisBaseEntity N1 = resolver.getResolvedPath().get(0).getEntity();
     PolarisBaseEntity N2 = resolver.getResolvedPath().get(1).getEntity();
     PolarisBaseEntity T1 = resolver.getResolvedPath().get(2).getEntity();
 
@@ -494,8 +494,11 @@ public class ResolverTest {
     principalRolesResolved.sort(Comparator.comparing(p -> p.getEntity().getName()));
 
     // ensure they are PR1 and PR2
-    this.ensureResolved(principalRolesResolved.getFirst(), PolarisEntityType.PRINCIPAL_ROLE, "PR1");
-    this.ensureResolved(principalRolesResolved.getLast(), PolarisEntityType.PRINCIPAL_ROLE, "PR2");
+    this.ensureResolved(principalRolesResolved.get(0), PolarisEntityType.PRINCIPAL_ROLE, "PR1");
+    this.ensureResolved(
+        principalRolesResolved.get(principalRolesResolved.size() - 1),
+        PolarisEntityType.PRINCIPAL_ROLE,
+        "PR2");
 
     // if a principal role was passed-in, ensure it exists
     if (principalRoleName != null) {

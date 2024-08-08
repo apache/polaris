@@ -87,7 +87,6 @@ public class AzureCredentialsStorageIntegration
     validateAccountAndContainer(location, allowedReadLocations, allowedWriteLocations);
 
     String storageDnsName = location.getStorageAccount() + "." + location.getEndpoint();
-    String endpoint = "https://" + storageDnsName;
     String filePath = location.getFilePath();
 
     AzureStorageConfigInfo.AuthTypeEnum authType = storageConfig.getAuthType();

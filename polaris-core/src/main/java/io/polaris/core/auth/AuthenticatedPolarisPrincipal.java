@@ -59,10 +59,11 @@ public class AuthenticatedPolarisPrincipal implements java.security.Principal {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("principalEntity=" + getPrincipalEntity());
-    sb.append(";activatedPrincipalRoleNames=" + getActivatedPrincipalRoleNames());
-    sb.append(";activatedPrincipalRoles=" + getActivatedPrincipalRoles());
-    return sb.toString();
+    return "principalEntity="
+        + getPrincipalEntity()
+        + ";activatedPrincipalRoleNames="
+        + getActivatedPrincipalRoleNames()
+        + ";activatedPrincipalRoles="
+        + getActivatedPrincipalRoles();
   }
 }

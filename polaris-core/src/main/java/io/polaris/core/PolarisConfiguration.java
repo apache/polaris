@@ -15,30 +15,136 @@
  */
 package io.polaris.core;
 
-public class PolarisConfiguration {
+import java.util.Optional;
 
-  public static final String ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING =
-      "ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING";
-  public static final String ALLOW_TABLE_LOCATION_OVERLAP = "ALLOW_TABLE_LOCATION_OVERLAP";
-  public static final String ALLOW_NAMESPACE_LOCATION_OVERLAP = "ALLOW_NAMESPACE_LOCATION_OVERLAP";
-  public static final String ALLOW_EXTERNAL_METADATA_FILE_LOCATION =
-      "ALLOW_EXTERNAL_METADATA_FILE_LOCATION";
+public class PolarisConfiguration<T> {
 
-  public static final String ALLOW_OVERLAPPING_CATALOG_URLS = "ALLOW_OVERLAPPING_CATALOG_URLS";
+  public final String key;
+  public final String description;
+  public final T defaultValue;
+  private final Optional<String> catalogConfigImpl;
+  private final Class<T> typ;
 
-  public static final String CATALOG_ALLOW_UNSTRUCTURED_TABLE_LOCATION =
-      "allow.unstructured.table.location";
-  public static final String CATALOG_ALLOW_EXTERNAL_TABLE_LOCATION =
-      "allow.external.table.location";
+  @SuppressWarnings("unchecked")
+  public PolarisConfiguration(
+      String key, String description, T defaultValue, Optional<String> catalogConfig) {
+    this.key = key;
+    this.description = description;
+    this.defaultValue = defaultValue;
+    this.catalogConfigImpl = catalogConfig;
+    this.typ = (Class<T>) defaultValue.getClass();
+  }
 
-  /*
-   * Default values for the configuration properties
-   */
+  public boolean hasCatalogConfig() {
+    return catalogConfigImpl.isPresent();
+  }
 
-  public static final boolean DEFAULT_ALLOW_OVERLAPPING_CATALOG_URLS = false;
-  public static final boolean DEFAULT_ALLOW_TABLE_LOCATION_OVERLAP = false;
-  public static final boolean DEFAULT_ALLOW_EXTERNAL_METADATA_FILE_LOCATION = false;
-  public static final boolean DEFAULT_ALLOW_NAMESPACE_LOCATION_OVERLAP = false;
+  public String catalogConfig() {
+    return catalogConfigImpl.orElseThrow(
+        () ->
+            new IllegalStateException(
+                "Attempted to read a catalog config key from a configuration that doesn't have one."));
+  }
 
-  private PolarisConfiguration() {}
+  T cast(Object value) {
+    return this.typ.cast(value);
+  }
+
+  public static class Builder<T> {
+    private String key;
+    private String description;
+    private T defaultValue;
+    private Optional<String> catalogConfig = Optional.empty();
+
+    public Builder<T> key(String key) {
+      this.key = key;
+      return this;
+    }
+
+    public Builder<T> description(String description) {
+      this.description = description;
+      return this;
+    }
+
+    public Builder<T> defaultValue(T defaultValue) {
+      this.defaultValue = defaultValue;
+      return this;
+    }
+
+    public Builder<T> catalogConfig(String catalogConfig) {
+      this.catalogConfig = Optional.of(catalogConfig);
+      return this;
+    }
+
+    public PolarisConfiguration<T> build() {
+      if (key == null || description == null || defaultValue == null) {
+        throw new IllegalArgumentException("key, description, and defaultValue are required");
+      }
+      return new PolarisConfiguration<>(key, description, defaultValue, catalogConfig);
+    }
+  }
+
+  public static <T> Builder<T> builder() {
+    return new Builder<>();
+  }
+
+  public static final PolarisConfiguration<Boolean>
+      ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING =
+          PolarisConfiguration.<Boolean>builder()
+              .key("ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING")
+              .description(
+                  "If set to true, require that principals must rotate their credentials before being used "
+                      + "for anything else.")
+              .defaultValue(false)
+              .build();
+
+  public static final PolarisConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_TABLE_LOCATION_OVERLAP")
+          .description(
+              "If set to true, allow one table's location to reside within another table's location. "
+                  + "This is only enforced within a given namespace.")
+          .defaultValue(false)
+          .build();
+
+  public static final PolarisConfiguration<Boolean> ALLOW_NAMESPACE_LOCATION_OVERLAP =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_NAMESPACE_LOCATION_OVERLAP")
+          .description(
+              "If set to true, allow one table's location to reside within another table's location. "
+                  + "This is only enforced within a parent catalog or namespace.")
+          .defaultValue(false)
+          .build();
+
+  public static final PolarisConfiguration<Boolean> ALLOW_EXTERNAL_METADATA_FILE_LOCATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_EXTERNAL_METADATA_FILE_LOCATION")
+          .description(
+              "If set to true, allows metadata files to be located outside the default metadata directory.")
+          .defaultValue(false)
+          .build();
+
+  public static final PolarisConfiguration<Boolean> ALLOW_OVERLAPPING_CATALOG_URLS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_OVERLAPPING_CATALOG_URLS")
+          .description("If set to true, allows catalog URLs to overlap.")
+          .defaultValue(false)
+          .build();
+
+  public static final PolarisConfiguration<Boolean> ALLOW_UNSTRUCTURED_TABLE_LOCATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_UNSTRUCTURED_TABLE_LOCATION")
+          .catalogConfig("allow.unstructured.table.location")
+          .description("If set to true, allows unstructured table locations.")
+          .defaultValue(false)
+          .build();
+
+  public static final PolarisConfiguration<Boolean> ALLOW_EXTERNAL_TABLE_LOCATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_EXTERNAL_TABLE_LOCATION")
+          .catalogConfig("allow.external.table.location")
+          .description(
+              "If set to true, allows tables to have external locations outside the default structure.")
+          .defaultValue(false)
+          .build();
 }

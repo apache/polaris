@@ -47,7 +47,7 @@ public class SqlliteCallContextCatalogFactory implements CallContextCatalogFacto
 
   private static final Logger LOG = LoggerFactory.getLogger(SqlliteCallContextCatalogFactory.class);
 
-  private Map<String, Catalog> cachedCatalogs = new HashMap<>();
+  private final Map<String, Catalog> cachedCatalogs = new HashMap<>();
   private final Map<String, String> catalogBaseDirs;
 
   public SqlliteCallContextCatalogFactory(Map<String, String> catalogBaseDirs) {
