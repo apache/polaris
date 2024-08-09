@@ -69,8 +69,8 @@ class GcpCredentialsStorageIntegrationTest {
   public void testSubscope(boolean allowedListAction) throws IOException {
     if (Strings.isNullOrEmpty(gcsServiceKeyJsonFileLocation)) {
       LOGGER.debug(
-          "Environment variable GOOGLE_APPLICATION_CREDENTIALS not exits, skip test "
-              + getClass().getName());
+          "Environment variable GOOGLE_APPLICATION_CREDENTIALS not exits, skip test {}",
+          getClass().getName());
       return;
     }
     List<String> allowedRead =

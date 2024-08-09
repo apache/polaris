@@ -56,7 +56,7 @@ Running in Docker
 - `docker compose up --build --exit-code-from regtest` - To run regression tests in a Docker environment.
 
 Running in Kubernetes
-- `./setup.sh` - To run Polaris as a mini-deployment locally. This will create one pod that bind itself to ports `8181` and `8182`.
+- `./run.sh` - To run Polaris as a mini-deployment locally. This will create one pod that bind itself to ports `8181` and `8182`.
 - `kubectl port-forward svc/polaris-service -n polaris 8181:8181 8182:8182` - To create secure connections between a local machine and a pod within the cluster for both service and metrics endpoints.
   - Currrently supported metrics endpoints:
     - localhost:8182/metrics
