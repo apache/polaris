@@ -16,7 +16,6 @@
 package io.polaris.service.auth;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Fail.fail;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
@@ -129,14 +128,9 @@ public class JWTRSAKeyPairTest {
     Mockito.when(metastoreManager.loadEntity(polarisCallContext, 0L, 1L))
         .thenReturn(new PolarisMetaStoreManager.EntityResult(principal));
     TokenBroker tokenBroker = new JWTRSAKeyPair(entityManager, 420);
-    TokenResponse token = null;
-    try {
-      token =
-          tokenBroker.generateFromClientSecrets(
-              clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, scope);
-    } catch (Exception e) {
-      fail("Unexpected exception: " + e);
-    }
+    TokenResponse token =
+        tokenBroker.generateFromClientSecrets(
+            clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, scope);
     assertThat(token).isNotNull();
     assertThat(token.getExpiresIn()).isEqualTo(420);
 

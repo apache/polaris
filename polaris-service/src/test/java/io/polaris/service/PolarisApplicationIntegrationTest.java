@@ -17,6 +17,7 @@ package io.polaris.service;
 
 import static io.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 
 import io.dropwizard.testing.ConfigOverride;
@@ -322,15 +323,9 @@ public class PolarisApplicationIntegrationTest {
     try (RESTSessionCatalog sessionCatalog =
         newSessionCatalog("testIcebergListNamespacesNotFound")) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
-      try {
-        sessionCatalog.listNamespaces(sessionContext, Namespace.of("whoops"));
-        fail("Expected exception to be thrown");
-      } catch (NoSuchNamespaceException e) {
-        // we expect this!
-        Assertions.assertThat(e).isNotNull();
-      } catch (Exception e) {
-        fail("Unexpected exception", e);
-      }
+      assertThatThrownBy(
+              () -> sessionCatalog.listNamespaces(sessionContext, Namespace.of("whoops")))
+          .isInstanceOf(NoSuchNamespaceException.class);
     }
   }
 
@@ -342,15 +337,11 @@ public class PolarisApplicationIntegrationTest {
       Namespace topLevelNamespace = Namespace.of("top_level");
       sessionCatalog.createNamespace(sessionContext, topLevelNamespace);
       sessionCatalog.loadNamespaceMetadata(sessionContext, Namespace.of("top_level"));
-      try {
-        sessionCatalog.listNamespaces(sessionContext, Namespace.of("top_level", "whoops"));
-        fail("Expected exception to be thrown");
-      } catch (NoSuchNamespaceException e) {
-        // we expect this!
-        Assertions.assertThat(e).isNotNull();
-      } catch (Exception e) {
-        fail("Unexpected exception", e);
-      }
+      assertThatThrownBy(
+              () ->
+                  sessionCatalog.listNamespaces(
+                      sessionContext, Namespace.of("top_level", "whoops")))
+          .isInstanceOf(NoSuchNamespaceException.class);
     }
   }
 
@@ -359,15 +350,8 @@ public class PolarisApplicationIntegrationTest {
     try (RESTSessionCatalog sessionCatalog =
         newSessionCatalog("testIcebergListTablesNamespaceNotFound")) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
-      try {
-        sessionCatalog.listTables(sessionContext, Namespace.of("whoops"));
-        fail("Expected exception to be thrown");
-      } catch (NoSuchNamespaceException e) {
-        // we expect this!
-        Assertions.assertThat(e).isNotNull();
-      } catch (Exception e) {
-        fail("Unexpected exception", e);
-      }
+      assertThatThrownBy(() -> sessionCatalog.listTables(sessionContext, Namespace.of("whoops")))
+          .isInstanceOf(NoSuchNamespaceException.class);
     }
   }
 
