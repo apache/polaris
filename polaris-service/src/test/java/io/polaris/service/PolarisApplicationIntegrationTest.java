@@ -420,7 +420,7 @@ public class PolarisApplicationIntegrationTest {
         sessionCatalog.loadNamespaceMetadata(sessionContext, ns);
         Assertions.fail("Expected exception when loading namespace after drop");
       } catch (NoSuchNamespaceException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
+        LOGGER.info("Received expected exception {}", e.getMessage());
       }
     }
   }
@@ -446,7 +446,7 @@ public class PolarisApplicationIntegrationTest {
             .create();
         Assertions.fail("Expected failure calling create table in external catalog");
       } catch (BadRequestException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
+        LOGGER.info("Received expected exception {}", e.getMessage());
       }
     }
   }
@@ -497,7 +497,7 @@ public class PolarisApplicationIntegrationTest {
             .hasMessage(
                 "Forbidden: Delegate access to table with user-specified write location is temporarily not supported.");
       } catch (BadRequestException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
+        LOGGER.info("Received expected exception {}", e.getMessage());
       }
     }
   }
@@ -598,7 +598,7 @@ public class PolarisApplicationIntegrationTest {
             .commit();
         Assertions.fail("Should fail when committing an update to external catalog");
       } catch (BadRequestException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
+        LOGGER.info("Received expected exception {}", e.getMessage());
       }
     }
   }
@@ -646,7 +646,7 @@ public class PolarisApplicationIntegrationTest {
         sessionCatalog.loadTable(sessionContext, tableIdentifier);
         Assertions.fail("Expected failure loading table after drop");
       } catch (NoSuchTableException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
+        LOGGER.info("Received expected exception {}", e.getMessage());
       }
     }
   }
