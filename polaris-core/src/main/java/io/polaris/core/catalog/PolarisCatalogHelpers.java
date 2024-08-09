@@ -29,11 +29,6 @@ import org.apache.iceberg.catalog.TableIdentifier;
  * different Polaris components.
  */
 public class PolarisCatalogHelpers {
-<<<<<<< HEAD
-  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisCatalogHelpers.class);
-
-=======
->>>>>>> be5c29af3332e2a77a3432661626cd3f443d5f4a
   /** Not intended for instantiation. */
   private PolarisCatalogHelpers() {}
 

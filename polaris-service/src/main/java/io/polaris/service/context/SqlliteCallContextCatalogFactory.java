@@ -84,11 +84,7 @@ public class SqlliteCallContextCatalogFactory implements CallContextCatalogFacto
       String catalogFile = Paths.get(realmDir, catalogName).toString();
 
       // Ensure parent directories of metastore-state base directory exists.
-<<<<<<< HEAD
-      LOGGER.info("Creating metastore state directory: " + realmDir);
-=======
-      LOG.info("Creating metastore state directory: {}", realmDir);
->>>>>>> be5c29af3332e2a77a3432661626cd3f443d5f4a
+      LOGGER.info("Creating metastore state directory: {}", realmDir);
       try {
         Path result = Files.createDirectories(FileSystems.getDefault().getPath(realmDir));
       } catch (IOException ioe) {

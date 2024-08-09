@@ -47,12 +47,6 @@ import org.jetbrains.annotations.Nullable;
  * Catalog} model to the persistent entity model.
  */
 public class CatalogEntity extends PolarisEntity {
-<<<<<<< HEAD
-  private static final Logger LOGGER = LoggerFactory.getLogger(CatalogEntity.class);
-
-  public static final long ROOT_CATALOG_ID = 0;
-=======
->>>>>>> be5c29af3332e2a77a3432661626cd3f443d5f4a
   public static final String CATALOG_TYPE_PROPERTY = "catalogType";
 
   // Specifies the object-store base location used for all Table file locations under the

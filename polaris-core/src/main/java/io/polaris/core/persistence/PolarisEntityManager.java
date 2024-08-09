@@ -38,11 +38,6 @@ import org.jetbrains.annotations.Nullable;
  * id and name resolution mechanics around PolarisEntities.
  */
 public class PolarisEntityManager {
-<<<<<<< HEAD
-  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisEntityManager.class);
-
-=======
->>>>>>> be5c29af3332e2a77a3432661626cd3f443d5f4a
   private final PolarisMetaStoreManager metaStoreManager;
   private final Supplier<PolarisMetaStoreSession> sessionSupplier;
   private final EntityCache entityCache;
