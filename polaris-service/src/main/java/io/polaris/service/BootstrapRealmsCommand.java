@@ -69,7 +69,7 @@ public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplication
     for (Map.Entry<String, PolarisMetaStoreManager.PrincipalSecretsResult> result :
         results.entrySet()) {
       if (!result.getValue().isSuccess()) {
-        LOGGER.warn(
+        LOGGER.error(
             "Bootstrapping `{}` failed: {}",
             result.getKey(),
             result.getValue().getReturnStatus().toString());
@@ -80,7 +80,7 @@ public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplication
     if (success) {
       LOGGER.info("Bootstrap completed successfully.");
     } else {
-      LOGGER.warn("Bootstrap encountered errors during operation.");
+      LOGGER.error("Bootstrap encountered errors during operation.");
     }
   }
 }
