@@ -56,7 +56,7 @@ Running in Docker
 - `docker compose up --build --exit-code-from regtest` - To run regression tests in a Docker environment.
 
 Running in Kubernetes
-- `./setup.sh` - To run Polaris as a mini-deployment locally. This will create two pods that bind themselves to port `8181`.
+- `./run.sh` - To run Polaris as a mini-deployment locally. This will create two pods that bind themselves to port `8181`.
 - `kubectl port-forward svc/polaris-service -n polaris 8181:8181` - To create a secure connection between a local machine and a pod within the cluster.
 - `kubectl get pods -n polaris` - To check the status of the pods.
 - `kubectl get deployment -n polaris` - To check the status of the deployment.
@@ -86,7 +86,7 @@ curl -i -X POST -H "Authorization: Bearer $PRINCIPAL_TOKEN" -H 'Accept: applicat
 ```
 
 From here, you can use Spark to create namespaces, tables, etc. More details can be found in the
-[Quick Start Guide](https://polaris.io/#section/Quick-Start/Using-Iceberg-and-Polarise).
+[Quick Start Guide](https://polaris.io/#section/Quick-Start/Using-Iceberg-and-Polaris).
 
 ### Trademark Attribution 
 

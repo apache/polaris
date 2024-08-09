@@ -187,11 +187,13 @@ public class PolarisEntity extends PolarisBaseEntity {
   }
 
   @JsonIgnore
+  @Override
   public PolarisEntityType getType() {
     return PolarisEntityType.fromCode(getTypeCode());
   }
 
   @JsonIgnore
+  @Override
   public PolarisEntitySubType getSubType() {
     return PolarisEntitySubType.fromCode(getSubTypeCode());
   }
@@ -268,6 +270,7 @@ public class PolarisEntity extends PolarisBaseEntity {
       super(original);
     }
 
+    @Override
     public PolarisEntity build() {
       return buildBase();
     }

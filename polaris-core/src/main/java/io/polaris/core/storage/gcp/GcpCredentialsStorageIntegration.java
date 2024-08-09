@@ -30,7 +30,6 @@ import io.polaris.core.storage.PolarisStorageIntegration;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -50,13 +49,10 @@ import org.slf4j.LoggerFactory;
  */
 public class GcpCredentialsStorageIntegration
     extends InMemoryStorageIntegration<GcpStorageConfigurationInfo> {
-  public static final String TOKEN_URL = "https://sts.googleapis.com/v1/token";
   private final Logger LOGGER = LoggerFactory.getLogger(GcpCredentialsStorageIntegration.class);
 
   private final GoogleCredentials sourceCredentials;
   private final HttpTransportFactory transportFactory;
-  public static final Set<Integer> TOKEN_ENDPOINT_RETRYABLE_STATUS_CODES =
-      new HashSet<>(Arrays.asList(500, 503, 408, 429));
 
   public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials, HttpTransportFactory transportFactory) {

@@ -42,7 +42,7 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
     val img =
       java.net
         .URI(
-          "\"https://raw.githubusercontent.com/polaris-catalog/polaris/main/docs/img/logos/polaris-brandmark.png"
+          "https://raw.githubusercontent.com/polaris-catalog/polaris/main/docs/img/logos/polaris-brandmark.png"
         )
         .toURL()
         .openConnection()

@@ -1037,6 +1037,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   }
 
   @Test
+  @Override
   public void testDropTableWithPurge() {
     if (this.requiresNamespaceCreate()) {
       ((SupportsNamespaces) catalog).createNamespace(NS);

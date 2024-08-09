@@ -957,6 +957,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
   }
 
   /** {@inheritDoc} */
+  @Override
   public @NotNull CreatePrincipalResult createPrincipal(
       @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity principal) {
     // get metastore we should be using

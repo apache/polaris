@@ -37,4 +37,11 @@ dependencies {
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-sourceSets { test { resources { srcDir("src/test/data") } } }
+tasks.register<Jar>("archiveConf") {
+  archiveFileName = "conf.jar"
+  destinationDirectory = layout.buildDirectory.dir("conf")
+
+  from("src/test/resources/META-INF/") { include("persistence.xml") }
+}
+
+tasks.named("test") { dependsOn("archiveConf") }

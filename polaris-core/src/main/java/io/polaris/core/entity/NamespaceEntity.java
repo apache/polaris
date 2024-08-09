@@ -82,6 +82,7 @@ public class NamespaceEntity extends PolarisEntity {
       return this;
     }
 
+    @Override
     public NamespaceEntity build() {
       return new NamespaceEntity(buildBase());
     }

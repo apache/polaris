@@ -70,7 +70,7 @@ public class AzureCredentialStorageIntegrationTest {
 
   private boolean checkEnvNullVariables() {
     if (Strings.isNullOrEmpty(clientId) || Strings.isNullOrEmpty(clientSecret)) {
-      LOGGER.debug("Null Azure testing environment variables! Skip " + this.getClass().getName());
+      LOGGER.debug("Null Azure testing environment variables! Skip {}", this.getClass().getName());
       return true;
     }
     return false;

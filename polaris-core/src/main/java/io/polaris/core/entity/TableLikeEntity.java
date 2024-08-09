@@ -77,6 +77,7 @@ public class TableLikeEntity extends PolarisEntity {
       super(original);
     }
 
+    @Override
     public TableLikeEntity build() {
       return new TableLikeEntity(buildBase());
     }

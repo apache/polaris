@@ -552,6 +552,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   }
 
   /** {@inheritDoc} */
+  @Override
   public boolean hasChildren(
       @NotNull PolarisCallContext callContext,
       @Nullable PolarisEntityType entityType,

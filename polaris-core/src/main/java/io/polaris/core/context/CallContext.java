@@ -135,6 +135,7 @@ public interface CallContext extends AutoCloseable {
         contextVariables().computeIfAbsent(CLOSEABLES, key -> new CloseableGroup());
   }
 
+  @Override
   default void close() {
     if (CURRENT_CONTEXT.get() == this) {
       unsetCurrentContext();

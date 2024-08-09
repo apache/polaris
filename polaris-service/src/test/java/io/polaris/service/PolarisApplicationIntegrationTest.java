@@ -17,6 +17,7 @@ package io.polaris.service;
 
 import static io.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.fail;
 
 import io.dropwizard.testing.ConfigOverride;
@@ -323,15 +324,9 @@ public class PolarisApplicationIntegrationTest {
     try (RESTSessionCatalog sessionCatalog =
         newSessionCatalog("testIcebergListNamespacesNotFound")) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
-      try {
-        sessionCatalog.listNamespaces(sessionContext, Namespace.of("whoops"));
-        fail("Expected exception to be thrown");
-      } catch (NoSuchNamespaceException e) {
-        // we expect this!
-        Assertions.assertThat(e).isNotNull();
-      } catch (Exception e) {
-        fail("Unexpected exception", e);
-      }
+      assertThatThrownBy(
+              () -> sessionCatalog.listNamespaces(sessionContext, Namespace.of("whoops")))
+          .isInstanceOf(NoSuchNamespaceException.class);
     }
   }
 
@@ -343,15 +338,11 @@ public class PolarisApplicationIntegrationTest {
       Namespace topLevelNamespace = Namespace.of("top_level");
       sessionCatalog.createNamespace(sessionContext, topLevelNamespace);
       sessionCatalog.loadNamespaceMetadata(sessionContext, Namespace.of("top_level"));
-      try {
-        sessionCatalog.listNamespaces(sessionContext, Namespace.of("top_level", "whoops"));
-        fail("Expected exception to be thrown");
-      } catch (NoSuchNamespaceException e) {
-        // we expect this!
-        Assertions.assertThat(e).isNotNull();
-      } catch (Exception e) {
-        fail("Unexpected exception", e);
-      }
+      assertThatThrownBy(
+              () ->
+                  sessionCatalog.listNamespaces(
+                      sessionContext, Namespace.of("top_level", "whoops")))
+          .isInstanceOf(NoSuchNamespaceException.class);
     }
   }
 
@@ -360,15 +351,8 @@ public class PolarisApplicationIntegrationTest {
     try (RESTSessionCatalog sessionCatalog =
         newSessionCatalog("testIcebergListTablesNamespaceNotFound")) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
-      try {
-        sessionCatalog.listTables(sessionContext, Namespace.of("whoops"));
-        fail("Expected exception to be thrown");
-      } catch (NoSuchNamespaceException e) {
-        // we expect this!
-        Assertions.assertThat(e).isNotNull();
-      } catch (Exception e) {
-        fail("Unexpected exception", e);
-      }
+      assertThatThrownBy(() -> sessionCatalog.listTables(sessionContext, Namespace.of("whoops")))
+          .isInstanceOf(NoSuchNamespaceException.class);
     }
   }
 
@@ -421,7 +405,7 @@ public class PolarisApplicationIntegrationTest {
         sessionCatalog.loadNamespaceMetadata(sessionContext, ns);
         Assertions.fail("Expected exception when loading namespace after drop");
       } catch (NoSuchNamespaceException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
+        LOGGER.info("Received expected exception {}", e.getMessage());
       }
     }
   }
@@ -447,7 +431,7 @@ public class PolarisApplicationIntegrationTest {
             .create();
         Assertions.fail("Expected failure calling create table in external catalog");
       } catch (BadRequestException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
+        LOGGER.info("Received expected exception {}", e.getMessage());
       }
     }
   }
@@ -498,7 +482,7 @@ public class PolarisApplicationIntegrationTest {
             .hasMessage(
                 "Forbidden: Delegate access to table with user-specified write location is temporarily not supported.");
       } catch (BadRequestException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
+        LOGGER.info("Received expected exception {}", e.getMessage());
       }
     }
   }
@@ -599,7 +583,7 @@ public class PolarisApplicationIntegrationTest {
             .commit();
         Assertions.fail("Should fail when committing an update to external catalog");
       } catch (BadRequestException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
+        LOGGER.info("Received expected exception {}", e.getMessage());
       }
     }
   }
@@ -647,7 +631,7 @@ public class PolarisApplicationIntegrationTest {
         sessionCatalog.loadTable(sessionContext, tableIdentifier);
         Assertions.fail("Expected failure loading table after drop");
       } catch (NoSuchTableException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
+        LOGGER.info("Received expected exception {}", e.getMessage());
       }
     }
   }

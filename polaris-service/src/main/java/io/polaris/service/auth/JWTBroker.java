@@ -51,6 +51,7 @@ abstract class JWTBroker implements TokenBroker {
 
   abstract Algorithm getAlgorithm();
 
+  @Override
   public DecodedToken verify(String token) {
     JWTVerifier verifier = JWT.require(getAlgorithm()).build();
     DecodedJWT decodedJWT = verifier.verify(token);
