@@ -9,6 +9,7 @@ metadata:
   name: polaris-deployment
   namespace: polaris
 spec:
+  replicas: 1
   selector:
     matchLabels:
       app: polaris

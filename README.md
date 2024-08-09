@@ -57,9 +57,8 @@ Running in Docker
 
 Running in Kubernetes
 - `./setup.sh` - To run Polaris as a mini-deployment locally. This will create one pod that bind itself to ports `8181` and `8182`.
-- `kubectl port-forward svc/polaris-service -n polaris 8181:8181` - To create a secure connection between a local machine and a pod within the cluster for service endpoints.
-- `kubectl port-forward svc/polaris-service -n polaris 8182:8182` - To create a secure connection between a local machine and a pod within the cluster for metrics endpoints.
-  - Currrently supported endpoints:
+- `kubectl port-forward svc/polaris-service -n polaris 8181:8181 8182:8182` - To create secure connections between a local machine and a pod within the cluster for both service and metrics endpoints.
+  - Currrently supported metrics endpoints:
     - localhost:8182/metrics
     - localhost:8182/healthcheck
 - `kubectl get pods -n polaris` - To check the status of the pods.
