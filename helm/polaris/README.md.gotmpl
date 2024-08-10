@@ -1,0 +1,54 @@
+<!---
+This README.md file was generated with:
+https://github.com/norwoodj/helm-docs
+Do not modify the README.md file directly, please modify README.md.gotmpl instead.
+To re-generate the README.md file, install helm-docs then run from the repo root:
+helm-docs --chart-search-root=helm
+-->
+
+# Nessie Helm chart
+
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.badgesSection" . }}
+
+{{ template "chart.description" . }}.
+
+{{ template "chart.homepageLine" . }}
+
+{{ template "chart.maintainersHeader" . }}
+
+{{- range .Maintainers }}
+* [{{ .Name }}]({{ if .Url }}{{ .Url }}{{ else }}https://github.com/{{ .Name }}{{ end }})
+{{- end }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+## Documentation
+
+TODO
+
+## Installation
+
+### From Helm repo
+```bash
+$ #TODO
+```
+
+### From local directory (for development purposes)
+
+From Polaris repo root:
+
+```bash
+$ helm install --namespace polaris polaris helm/polaris
+```
+
+### Uninstalling the chart
+
+```bash
+$ helm uninstall --namespace polaris polaris
+```
+
+{{ template "chart.valuesSection" . }}

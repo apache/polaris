@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "polaris.fullname" . | printf "%s-service" | quote }}
+  labels:
+    {{- include "polaris.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.service.annotations }}
+      {{- tpl (toYaml .Values.service.annotations) . | nindent 4 }}
+    {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "polaris.selectorLabels" . | nindent 4 }}
+  ports:
+    {{- range $portName, $portNumber := .Values.service.ports }}
+    - port: {{ $portNumber }}
+      targetPort: {{ $portNumber }}
+      protocol: TCP
+      name: {{ $portName }}
+    {{- end }}
+  sessionAffinity: {{ .Values.service.sessionAffinity }}
+

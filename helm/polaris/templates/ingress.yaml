@@ -1,0 +1,55 @@
+{{- $kubeVersion := .Capabilities.KubeVersion.Version -}}
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "polaris.fullname" . -}}
+{{- $svcPort := coalesce .Values.service.port (index .Values.service.ports "polaris-service") -}}
+{{- if semverCompare ">=1.22-0" $kubeVersion -}}
+apiVersion: networking.k8s.io/v1
+{{- else if semverCompare ">=1.14-0" $kubeVersion -}}
+apiVersion: networking.k8s.io/v1beta1
+{{- else -}}
+apiVersion: extensions/v1beta1
+{{- end }}
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "polaris.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.ingress.annotations }}
+      {{- tpl (toYaml .Values.ingress.annotations) . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className | quote }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              {{- if semverCompare ">=1.22-0" $kubeVersion }}
+              service:
+                name: {{ .backend.service.name }}
+                port:
+                  number: {{ .backend.service.port.number }}
+              {{- else }}
+              serviceName: {{ .backend.service.name }}
+              servicePort: {{ .backend.service.port.number }}
+              {{- end }}
+          {{- end }}
+    {{- end }}
+  {{- end }}
