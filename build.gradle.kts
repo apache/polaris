@@ -108,3 +108,31 @@ tasks.named<RatTask>("rat").configure {
 
   excludes.add("**/*.env*")
 }
+
+// Pass environment variables:
+//    ORG_GRADLE_PROJECT_apacheUsername
+//    ORG_GRADLE_PROJECT_apachePassword
+// OR in ~/.gradle/gradle.properties set
+//    apacheUsername
+//    apachePassword
+// Call targets:
+//    publishToApache
+//    closeApacheStagingRepository
+//    releaseApacheStagingRepository
+//       or closeAndReleaseApacheStagingRepository
+nexusPublishing {
+  transitionCheckOptions {
+    // default==60 (10 minutes), wait up to 120 minutes
+    maxRetries = 720
+    // default 10s
+    delayBetween = java.time.Duration.ofSeconds(10)
+  }
+
+  repositories {
+    register("apache") {
+      this.nexusUrl // TODO configure
+      this.snapshotRepositoryUrl // TODO configure
+      this.stagingProfileId // TODO configure if necessary
+    }
+  }
+}

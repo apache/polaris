@@ -21,10 +21,10 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
 
 plugins {
-  alias(libs.plugins.shadow)
   alias(libs.plugins.openapi.generator)
   id("polaris-server")
   id("polaris-license-report")
+  id("polaris-shadow-jar")
   id("application")
 }
 
@@ -174,33 +174,34 @@ openApiGenerate {
     )
 }
 
-tasks.register<GenerateTask>("generatePolarisService").configure {
-  inputSpec = "$rootDir/spec/polaris-management-service.yml"
-  generatorName = "jaxrs-resteasy"
-  outputDir = "$projectDir/build/generated"
-  apiPackage = "org.apache.polaris.service.admin.api"
-  modelPackage = "org.apache.polaris.core.admin.model"
-  ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
-  removeOperationIdPrefix = true
-  templateDir = "$rootDir/server-templates"
-  globalProperties.put("apis", "")
-  globalProperties.put("models", "false")
-  globalProperties.put("apiDocs", "false")
-  globalProperties.put("modelTests", "false")
-  configOptions.put("useBeanValidation", "true")
-  configOptions.put("sourceFolder", "src/main/java")
-  configOptions.put("useJakartaEe", "true")
-  configOptions.put("generateBuilders", "true")
-  configOptions.put("generateConstructorWithAllArgs", "true")
-  additionalProperties.put("apiNamePrefix", "Polaris")
-  additionalProperties.put("apiNameSuffix", "Api")
-  additionalProperties.put("metricsPrefix", "polaris")
-  serverVariables.put("basePath", "api/v1")
+val generatePolarisService by
+  tasks.registering(GenerateTask::class) {
+    inputSpec = "$rootDir/spec/polaris-management-service.yml"
+    generatorName = "jaxrs-resteasy"
+    outputDir = "$projectDir/build/generated"
+    apiPackage = "org.apache.polaris.service.admin.api"
+    modelPackage = "org.apache.polaris.core.admin.model"
+    ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
+    removeOperationIdPrefix = true
+    templateDir = "$rootDir/server-templates"
+    globalProperties.put("apis", "")
+    globalProperties.put("models", "false")
+    globalProperties.put("apiDocs", "false")
+    globalProperties.put("modelTests", "false")
+    configOptions.put("useBeanValidation", "true")
+    configOptions.put("sourceFolder", "src/main/java")
+    configOptions.put("useJakartaEe", "true")
+    configOptions.put("generateBuilders", "true")
+    configOptions.put("generateConstructorWithAllArgs", "true")
+    additionalProperties.put("apiNamePrefix", "Polaris")
+    additionalProperties.put("apiNameSuffix", "Api")
+    additionalProperties.put("metricsPrefix", "polaris")
+    serverVariables.put("basePath", "api/v1")
+  }
 
-  doFirst { delete(outputDir.get()) }
+listOf("sourcesJar", "compileJava").forEach { task ->
+  tasks.named(task) { dependsOn("openApiGenerate", generatePolarisService) }
 }
-
-tasks.named("compileJava").configure { dependsOn("openApiGenerate", "generatePolarisService") }
 
 sourceSets {
   main { java { srcDir(project.layout.buildDirectory.dir("generated/src/main/java")) } }
@@ -230,13 +231,24 @@ tasks.named<Jar>("jar") {
   manifest { attributes["Main-Class"] = "org.apache.polaris.service.PolarisApplication" }
 }
 
-tasks.named<ShadowJar>("shadowJar") {
-  manifest { attributes["Main-Class"] = "org.apache.polaris.service.PolarisApplication" }
-  archiveVersion.set("")
-  mergeServiceFiles()
-  isZip64 = true
+val shadowJar =
+  tasks.named<ShadowJar>("shadowJar") {
+    manifest { attributes["Main-Class"] = "org.apache.polaris.service.PolarisApplication" }
+    mergeServiceFiles()
+    isZip64 = true
+    finalizedBy("startScripts")
+  }
+
+val startScripts =
+  tasks.named<CreateStartScripts>("startScripts") {
+    classpath = files(provider { shadowJar.get().archiveFileName })
+  }
+
+tasks.register<Sync>("prepareDockerDist") {
+  into(project.layout.buildDirectory.dir("docker-dist"))
+  from(startScripts) { into("bin") }
+  from(shadowJar) { into("lib") }
+  doFirst { delete(project.layout.buildDirectory.dir("regtest-dist")) }
 }
 
-tasks.named<CreateStartScripts>("startScripts") { classpath = files("polaris-service-all.jar") }
-
-tasks.named("build").configure { dependsOn("shadowJar") }
+tasks.named("build").configure { dependsOn("prepareDockerDist") }

@@ -58,7 +58,10 @@ jobs:
 
       - name: Check formatting
         run: ./gradlew check
-        
+
+      - name: Check Maven publication
+        run: ./gradlew publishToMavenLocal sourceTarball
+
       - name: Build with Gradle Wrapper
         run: ./gradlew test
 
