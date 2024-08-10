@@ -15,5 +15,5 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args: ['{{ include "polaris.fullname" . | printf "%s-metrics" }}:{{ index .Values.service.ports "polaris-metrics" }}/healthcheck']
+      args: ['{{ include "polaris.fullname" . }}:{{ index .Values.service.ports "polaris-metrics" }}/healthcheck']
   restartPolicy: Never
