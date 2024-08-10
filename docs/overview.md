@@ -26,7 +26,7 @@ With Polaris Catalog, you can provide centralized, secure read and write access 
 
 This section introduces key concepts associated with using Polaris Catalog.
 
-In the following diagram, a sample [Polaris Catalog structure](overview.md#catalog) with nested [namespaces](overview.md#namespace) is shown for Catalog1. No tables
+In the following diagram, a sample [Polaris Catalog structure](#catalog) with nested [namespaces](#namespace) is shown for Catalog1. No tables
 or namespaces have been created yet for Catalog2 or Catalog3.
 
 ![Diagram that shows an example Polaris Catalog structure.](img/sample-catalog-structure.svg "Sample Polaris Catalog structure")
@@ -115,18 +115,18 @@ The following table displays example service principals that you might create in
 A service connection represents a REST-compatible engine (such as Apache Spark&trade;, Apache Flink&reg;, or Trino) that can read from and write to Polaris
 Catalog. When creating a new service connection, the Polaris administrator grants the service principal that is created with the new service 
 connection either a new or existing principal role. A principal role is a resource in Polaris that you can use to logically group Polaris 
-service principals together and grant privileges on securable objects. For more information, see [Principal role](access-control.md#principal-role "Principal role"). Polaris Catalog uses a role-based access control (RBAC) model to grant service principals access to resources. For more information, 
-see [Access control](access-control.md "Access control"). For a diagram of this model, see [RBAC model](access-control.md#rbac-model "RBAC model").
+service principals together and grant privileges on securable objects. For more information, see [Principal role](#tag/Access-Control/Principal-role "Principal role"). Polaris Catalog uses a role-based access control (RBAC) model to grant service principals access to resources. For more information, 
+see [Access control](#tag/Access-Control "Access control"). For a diagram of this model, see [RBAC model](#tag/Access-Control/RBAC-model "RBAC model").
 
 If the Polaris administrator grants the service principal for the new service connection a new principal role, the service principal
 doesn't have any privileges granted to it yet. When securing the catalog that the new service connection will connect to, the Polaris
 administrator grants privileges to catalog roles and then grants these catalog roles to the new principal role. As a result, the service
-principal for the new service connection has these privileges. For more information about catalog roles, see [Catalog role](access-control.md#catalog-role "Catalog role").
+principal for the new service connection has these privileges. For more information about catalog roles, see [Catalog role](#tag/Access-Control/Catalog-role "Catalog role").
 
 If the Polaris administrator grants an existing principal role to the service principal for the new service connection, the service principal
 has the same privileges granted to the catalog roles that are granted to the existing principal role. If needed, the Polaris
 administrator can grant additional catalog roles to the existing principal role or remove catalog roles from it to adjust the privileges
-bestowed to the service principal. For an example of how RBAC works in Polaris, see [RBAC example](access-control.md#rbac-example "RBAC example").
+bestowed to the service principal. For an example of how RBAC works in Polaris, see [RBAC example](#tag/Access-Control/RBAC-example "RBAC example").
 
 ### Storage configuration
 
@@ -197,7 +197,7 @@ Polaris RBAC uses two different role types to delegate privileges:
 - **Catalog roles:** Configured with certain privileges on Polaris
   catalog resources and granted to principal roles.
 
-For more information, see [Access control](access-control.md "Access control").
+For more information, see [Access control](#tag/Access-Control "Access control").
 
 ## Legal Notices
 

@@ -797,7 +797,7 @@ polaris namespaces list --catalog my_catalog --parent a.b
 
 ### Privileges
 
-The `privileges` command is used to grant various privileges to a catalog role, or to revoke those privileges. Privileges can be on the level of a catalog, a namespace, a table, or a view. For more information on privileges, please refer to the [docs](./entities.md#privilege).
+The `privileges` command is used to grant various privileges to a catalog role, or to revoke those privileges. Privileges can be on the level of a catalog, a namespace, a table, or a view. For more information on privileges, please refer to the [docs](https://polaris.io/#tag/Polaris-Catalog-Entities/Privilege).
 
 Note that when using the `privileges` command, the user specifies the relevant catalog and catalog role before selecting a subcommand.
 
