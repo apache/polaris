@@ -26,23 +26,14 @@ helm-docs --chart-search-root=helm
 
 {{ template "chart.requirementsSection" . }}
 
-## Documentation
-
-TODO
-
 ## Installation
-
-### From Helm repo
-```bash
-$ #TODO
-```
 
 ### From local directory (for development purposes)
 
 From Polaris repo root:
 
 ```bash
-$ helm install --namespace polaris polaris helm/polaris
+$ helm install polaris helm/polaris --namespace polaris --create-namespace
 ```
 
 ### Uninstalling the chart

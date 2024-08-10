@@ -43,12 +43,12 @@ spec:
             backend:
               {{- if semverCompare ">=1.22-0" $kubeVersion }}
               service:
-                name: {{ .backend.service.name }}
+                name: {{ $fullName }}
                 port:
-                  number: {{ .backend.service.port.number }}
+                  number: {{ $svcPort }}
               {{- else }}
-              serviceName: {{ .backend.service.name }}
-              servicePort: {{ .backend.service.port.number }}
+              serviceName: {{ $fullName }}
+              servicePort: {{ $svcPort }}
               {{- end }}
           {{- end }}
     {{- end }}
