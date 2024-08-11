@@ -250,6 +250,7 @@ At this point, we’ve created a principal and granted it the ability to manage 
 
 To use a Polaris-managed catalog in [Apache Spark](https://spark.apache.org/), we can configure Spark to use the Iceberg catalog REST API.
 
+<!-- markdown-link-check-disable-next-line -->
 This guide uses [Apache Spark 3.5](https://spark.apache.org/releases/spark-release-3-5-0.html), but be sure to find [the appropriate iceberg-spark package for your Spark version](https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-spark). From a local Spark clone on the `branch-3.5` branch we can run the following:
 
 _Note: the credentials provided here are those for our principal, not the root credentials._
