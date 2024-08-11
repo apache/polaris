@@ -207,16 +207,18 @@ polaris_config:
   server:
     # Maximum number of threads.
     maxThreads: 200
+
     # Minimum number of thread to keep alive.
     minThreads: 10
     applicationConnectors:
       # HTTP-specific options.
       - type: http
+
         # The port on which the HTTP server listens for service requests.
         port: 8181
+
     adminConnectors:
       - type: http
-        # The port on which the HTTP server listens for metrics requests.
         port: 8182
 
     # The hostname of the interface to which the HTTP server socket wil be found. If omitted, the
