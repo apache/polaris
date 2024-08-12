@@ -37,9 +37,6 @@ import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
  * be picked up, i.e. `iceberg-rest-server.yml`
  */
 public class PolarisApplicationConfig extends Configuration {
-  private Map<String, String> sqlLiteCatalogDirs = new HashMap<>();
-
-  private String baseCatalogType;
   private MetaStoreManagerFactory metaStoreManagerFactory;
   private String defaultRealm = "default-realm";
   private RealmContextResolver realmContextResolver;
@@ -52,24 +49,6 @@ public class PolarisApplicationConfig extends Configuration {
   private List<String> defaultRealms;
   private String awsAccessKey;
   private String awsSecretKey;
-
-  public Map<String, String> getSqlLiteCatalogDirs() {
-    return sqlLiteCatalogDirs;
-  }
-
-  public void setSqlLiteCatalogDirs(Map<String, String> sqlLiteCatalogDirs) {
-    this.sqlLiteCatalogDirs = sqlLiteCatalogDirs;
-  }
-
-  @JsonProperty("baseCatalogType")
-  public void setBaseCatalogType(String baseCatalogType) {
-    this.baseCatalogType = baseCatalogType;
-  }
-
-  @JsonProperty("baseCatalogType")
-  public String getBaseCatalogType() {
-    return baseCatalogType;
-  }
 
   @JsonProperty("metaStoreManager")
   public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
