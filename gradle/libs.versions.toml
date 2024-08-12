@@ -57,7 +57,6 @@ prometheus-metrics-exporter-servlet-jakarta = { module = "io.prometheus:promethe
 s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "3.9.1" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version = "4.8.5" }
-sqllite-jdbc = { module = "org.xerial:sqlite-jdbc", version = "3.45.1.0" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.20.0" }

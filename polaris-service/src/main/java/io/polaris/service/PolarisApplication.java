@@ -68,7 +68,6 @@ import io.polaris.service.context.CallContextCatalogFactory;
 import io.polaris.service.context.CallContextResolver;
 import io.polaris.service.context.PolarisCallContextCatalogFactory;
 import io.polaris.service.context.RealmContextResolver;
-import io.polaris.service.context.SqlliteCallContextCatalogFactory;
 import io.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import io.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import io.polaris.service.task.ManifestFileCleanupTaskHandler;
@@ -152,8 +151,6 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
 
   @Override
   public void run(PolarisApplicationConfig configuration, Environment environment) {
-    // PolarisEntityManager will be used for Management APIs and optionally the core Catalog APIs
-    // depending on the value of the baseCatalogType config.
     MetaStoreManagerFactory metaStoreManagerFactory = configuration.getMetaStoreManagerFactory();
     StsClientBuilder stsClientBuilder = StsClient.builder();
     AwsCredentialsProvider awsCredentialsProvider = configuration.credentialsProvider();
@@ -201,22 +198,11 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         new ManifestFileCleanupTaskHandler(
             fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
 
-    CallContextCatalogFactory catalogFactory;
-    if ("polaris".equals(configuration.getBaseCatalogType())) {
-      LOGGER.info(
-          "Initializing PolarisCallContextCatalogFactory for baseCatalogType {}, metaStoreManagerType {}",
-          configuration.getBaseCatalogType(),
-          metaStoreManagerFactory);
-      catalogFactory = new PolarisCallContextCatalogFactory(entityManagerFactory, taskExecutor);
-    } else if ("jdbc".equals(configuration.getBaseCatalogType())) {
-      LOGGER.info(
-          "Initializing SqlliteCallContextCatalogFactory for baseCatalogType {}",
-          configuration.getBaseCatalogType());
-      catalogFactory = new SqlliteCallContextCatalogFactory(configuration.getSqlLiteCatalogDirs());
-    } else {
-      LOGGER.error("Unrecognized baseCatalogType: {}", configuration.getBaseCatalogType());
-      throw new RuntimeException("Invalid baseCatalogType: " + configuration.getBaseCatalogType());
-    }
+    LOGGER.info(
+        "Initializing PolarisCallContextCatalogFactory for metaStoreManagerType {}",
+        metaStoreManagerFactory);
+    CallContextCatalogFactory catalogFactory =
+        new PolarisCallContextCatalogFactory(entityManagerFactory, taskExecutor);
 
     PolarisAuthorizer authorizer = new PolarisAuthorizer(configurationStore);
     IcebergCatalogAdapter catalogAdapter =
