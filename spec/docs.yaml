@@ -9,10 +9,10 @@ info:
     $ref: ../docs/quickstart.md
   contact:
     email: community [at] polaris.io
-    url: https://github.com/polaris-catalog/polaris
+    url: https://github.com/apache/polaris
   license:
     name: Apache v2.0
-    url: https://github.com/polaris-catalog/polaris/blob/main/LICENSE
+    url: https://github.com/apache/polaris/blob/main/LICENSE
 
 tags:    
   - name: Polaris Catalog Overview

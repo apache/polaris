@@ -34,7 +34,7 @@ Then, use git to clone the Polaris repo:
 
 ```shell
 cd ~
-git clone https://github.com/polaris-catalog/polaris.git
+git clone https://github.com/apache/polaris.git
 ```
 
 #### With Docker
