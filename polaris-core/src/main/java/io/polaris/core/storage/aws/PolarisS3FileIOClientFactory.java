@@ -25,8 +25,8 @@ import software.amazon.awssdk.services.s3.S3Client;
 /**
  * A S3FileIOAwsClientFactory that will be used by the S3FileIO to initialize S3 client. The
  * difference of this factory and DefaultS3FileIOAwsClientFactory is that this one enables cross
- * region access. The S3FileIO is not supporting cross region access due to the issue described here
- * https://github.com/apache/iceberg/issues/9785
+ * region access. The S3FileIO is not supporting cross region access due to the issue described <a
+ * href="https://github.com/apache/iceberg/issues/9785">here</a>
  */
 public class PolarisS3FileIOClientFactory implements S3FileIOAwsClientFactory {
   private S3FileIOProperties s3FileIOProperties;
@@ -54,10 +54,9 @@ public class PolarisS3FileIOClientFactory implements S3FileIOAwsClientFactory {
         .applyMutation(s3FileIOProperties::applyEndpointConfigurations)
         .applyMutation(s3FileIOProperties::applyServiceConfigurations)
         .applyMutation(
-            s3ClientBuilder -> {
-              s3FileIOProperties.applyCredentialConfigurations(
-                  awsClientProperties, s3ClientBuilder);
-            })
+            s3ClientBuilder ->
+                s3FileIOProperties.applyCredentialConfigurations(
+                    awsClientProperties, s3ClientBuilder))
         .applyMutation(s3FileIOProperties::applySignerConfiguration)
         .applyMutation(s3FileIOProperties::applyS3AccessGrantsConfigurations)
         .applyMutation(s3ClientBuilder -> s3ClientBuilder.crossRegionAccessEnabled(true))

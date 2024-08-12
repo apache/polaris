@@ -41,17 +41,12 @@ import java.util.Set;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Catalog specific subclass of the {@link PolarisEntity} that handles conversion from the {@link
  * Catalog} model to the persistent entity model.
  */
 public class CatalogEntity extends PolarisEntity {
-  private static final Logger LOG = LoggerFactory.getLogger(CatalogEntity.class);
-
-  public static final long ROOT_CATALOG_ID = 0;
   public static final String CATALOG_TYPE_PROPERTY = "catalogType";
 
   // Specifies the object-store base location used for all Table file locations under the
@@ -272,6 +267,7 @@ public class CatalogEntity extends PolarisEntity {
       return this;
     }
 
+    @Override
     public CatalogEntity build() {
       return new CatalogEntity(buildBase());
     }

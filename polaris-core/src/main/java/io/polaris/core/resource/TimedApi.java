@@ -25,7 +25,7 @@ import java.lang.annotation.Target;
  * Annotation to specify metrics to be registered on initialization. Users need to explicitly call
  * {@link PolarisMetricRegistry#init} to register the metrics.
  *
- * <p>If used on a Jersey resource method, this annotation also serves as a marker for the {@link
+ * <p>If used on a Jersey resource method, this annotation also serves as a marker for {@code
  * io.polaris.service.TimedApplicationEventListener} to time the underlying method and count errors
  * on failures.
  */

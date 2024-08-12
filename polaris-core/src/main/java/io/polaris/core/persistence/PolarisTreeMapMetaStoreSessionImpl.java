@@ -90,6 +90,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   /**
    * @return new unique entity identifier
    */
+  @Override
   public long generateNewId(@NotNull PolarisCallContext callCtx) {
     return this.store.getNextSequence();
   }
@@ -104,10 +105,10 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   /** {@inheritDoc} */
   @Override
-  public void persistStorageIntegrationIfNeeded(
+  public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
       @NotNull PolarisCallContext callContext,
       @NotNull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration storageIntegration) {
+      @Nullable PolarisStorageIntegration<T> storageIntegration) {
     // not implemented for in-memory store
   }
 
@@ -369,6 +370,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   }
 
   /** {@inheritDoc} */
+  @Override
   public boolean hasChildren(
       @NotNull PolarisCallContext callContext,
       @Nullable PolarisEntityType entityType,

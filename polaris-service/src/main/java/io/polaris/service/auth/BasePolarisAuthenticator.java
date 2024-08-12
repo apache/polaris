@@ -50,6 +50,7 @@ public abstract class BasePolarisAuthenticator
 
   protected RealmEntityManagerFactory entityManagerFactory;
 
+  @Override
   public void setEntityManagerFactory(RealmEntityManagerFactory entityManagerFactory) {
     this.entityManagerFactory = entityManagerFactory;
   }

@@ -187,11 +187,13 @@ public class PolarisEntity extends PolarisBaseEntity {
   }
 
   @JsonIgnore
+  @Override
   public PolarisEntityType getType() {
     return PolarisEntityType.fromCode(getTypeCode());
   }
 
   @JsonIgnore
+  @Override
   public PolarisEntitySubType getSubType() {
     return PolarisEntitySubType.fromCode(getSubTypeCode());
   }
@@ -203,15 +205,20 @@ public class PolarisEntity extends PolarisBaseEntity {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("name=" + getName());
-    sb.append(";id=" + getId());
-    sb.append(";parentId=" + getParentId());
-    sb.append(";entityVersion=" + getEntityVersion());
-    sb.append(";type=" + getType());
-    sb.append(";subType=" + getSubType());
-    sb.append(";internalProperties=" + getInternalPropertiesAsMap());
-    return sb.toString();
+    return "name="
+        + getName()
+        + ";id="
+        + getId()
+        + ";parentId="
+        + getParentId()
+        + ";entityVersion="
+        + getEntityVersion()
+        + ";type="
+        + getType()
+        + ";subType="
+        + getSubType()
+        + ";internalProperties="
+        + getInternalPropertiesAsMap();
   }
 
   @Override
@@ -263,6 +270,7 @@ public class PolarisEntity extends PolarisBaseEntity {
       super(original);
     }
 
+    @Override
     public PolarisEntity build() {
       return buildBase();
     }

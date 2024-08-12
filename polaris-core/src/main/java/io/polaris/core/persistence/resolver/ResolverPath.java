@@ -73,13 +73,11 @@ public class ResolverPath {
 
   @Override
   public String toString() {
-    StringBuilder sb = new StringBuilder();
-    sb.append("entityNames:");
-    sb.append(entityNames.toString());
-    sb.append(";lastEntityType:");
-    sb.append(lastEntityType.toString());
-    sb.append(";isOptional:");
-    sb.append(isOptional);
-    return sb.toString();
+    return "entityNames:"
+        + entityNames.toString()
+        + ";lastEntityType:"
+        + lastEntityType.toString()
+        + ";isOptional:"
+        + isOptional;
   }
 }

@@ -48,9 +48,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.assertj.core.api.Assertions;
 import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguration;
 import org.assertj.core.util.Strings;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -69,8 +69,8 @@ class GcpCredentialsStorageIntegrationTest {
   public void testSubscope(boolean allowedListAction) throws IOException {
     if (Strings.isNullOrEmpty(gcsServiceKeyJsonFileLocation)) {
       LOGGER.debug(
-          "Environment variable GOOGLE_APPLICATION_CREDENTIALS not exits, skip test "
-              + getClass().getName());
+          "Environment variable GOOGLE_APPLICATION_CREDENTIALS not exits, skip test {}",
+          getClass().getName());
       return;
     }
     List<String> allowedRead =
@@ -90,30 +90,33 @@ class GcpCredentialsStorageIntegrationTest {
         createStorageBlob("sfc-dev1-regtest", "polaris-test/subscoped-test/read1/", "file.txt");
     final byte[] fileContent = "hello-polaris".getBytes();
     // GOOD WRITE
-    Assertions.assertDoesNotThrow(() -> storageClient.create(blobInfoGoodWrite, fileContent));
+    Assertions.assertThatNoException()
+        .isThrownBy(() -> storageClient.create(blobInfoGoodWrite, fileContent));
 
     // BAD WROTE
-    Assertions.assertThrows(
-        StorageException.class, () -> storageClient.create(blobInfoBad, fileContent));
+    Assertions.assertThatThrownBy(() -> storageClient.create(blobInfoBad, fileContent))
+        .isInstanceOf(StorageException.class);
 
-    Assertions.assertDoesNotThrow(() -> storageClient.get(blobInfoGoodRead.getBlobId()));
-    Assertions.assertThrows(
-        StorageException.class, () -> storageClient.get(blobInfoBad.getBlobId()));
+    Assertions.assertThatNoException()
+        .isThrownBy(() -> storageClient.get(blobInfoGoodRead.getBlobId()));
+    Assertions.assertThatThrownBy(() -> storageClient.get(blobInfoBad.getBlobId()))
+        .isInstanceOf(StorageException.class);
 
     // LIST
     if (allowedListAction) {
-      Assertions.assertDoesNotThrow(
-          () ->
-              storageClient.list(
-                  "sfc-dev1-regtest",
-                  Storage.BlobListOption.prefix("polaris-test/subscoped-test/read1/")));
+      Assertions.assertThatNoException()
+          .isThrownBy(
+              () ->
+                  storageClient.list(
+                      "sfc-dev1-regtest",
+                      Storage.BlobListOption.prefix("polaris-test/subscoped-test/read1/")));
     } else {
-      Assertions.assertThrows(
-          StorageException.class,
-          () ->
-              storageClient.list(
-                  "sfc-dev1-regtest",
-                  Storage.BlobListOption.prefix("polaris-test/subscoped-test/read1/")));
+      Assertions.assertThatThrownBy(
+              () ->
+                  storageClient.list(
+                      "sfc-dev1-regtest",
+                      Storage.BlobListOption.prefix("polaris-test/subscoped-test/read1/")))
+          .isInstanceOf(StorageException.class);
     }
     // DELETE
     List<String> allowedWrite2 =
@@ -123,11 +126,12 @@ class GcpCredentialsStorageIntegrationTest {
     Storage clientForDelete = setupStorageClient(List.of(), allowedWrite2, allowedListAction);
 
     // can not delete because it is not in allowed write path for this client
-    Assertions.assertThrows(
-        StorageException.class, () -> clientForDelete.delete(blobInfoGoodWrite.getBlobId()));
+    Assertions.assertThatThrownBy(() -> clientForDelete.delete(blobInfoGoodWrite.getBlobId()))
+        .isInstanceOf(StorageException.class);
 
     // good to delete allowed location
-    Assertions.assertDoesNotThrow(() -> storageClient.delete(blobInfoGoodWrite.getBlobId()));
+    Assertions.assertThatNoException()
+        .isThrownBy(() -> storageClient.delete(blobInfoGoodWrite.getBlobId()));
   }
 
   private Storage setupStorageClient(
@@ -196,30 +200,8 @@ class GcpCredentialsStorageIntegrationTest {
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
     JsonNode refRules =
         mapper.readTree(
-            """
-{
-  "accessBoundaryRules": [
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectViewer"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('path/to/data')"
-      }
-    },
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectCreator"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/path/to/data')"
-      }
-    }
-  ]
-}
-                """);
+            GcpCredentialsStorageIntegrationTest.class.getResource(
+                "gcp-testGenerateAccessBoundary.json"));
     assertThat(parsedRules)
         .usingRecursiveComparison(
             RecursiveComparisonConfiguration.builder()
@@ -252,39 +234,8 @@ class GcpCredentialsStorageIntegrationTest {
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
     JsonNode refRules =
         mapper.readTree(
-            """
-{
-  "accessBoundaryRules": [
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectViewer"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/normal/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('normal/path/to/data') || resource.name.startsWith('projects/_/buckets/bucket1/objects/awesome/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('awesome/path/to/data')"
-      }
-    },
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectViewer"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket2",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket2/objects/a/super/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('a/super/path/to/data')"
-      }
-    },
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectCreator"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/path/to/data')"
-      }
-    }
-  ]
-}
-                """);
+            GcpCredentialsStorageIntegrationTest.class.getResource(
+                "gcp-testGenerateAccessBoundaryWithMultipleBuckets.json"));
     assertThat(parsedRules)
         .usingRecursiveComparison(
             RecursiveComparisonConfiguration.builder()
@@ -314,30 +265,8 @@ class GcpCredentialsStorageIntegrationTest {
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
     JsonNode refRules =
         mapper.readTree(
-            """
-{
-  "accessBoundaryRules": [
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectViewer"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/path/to/data') || resource.name.startsWith('projects/_/buckets/bucket1/objects/another/path/to/data')"
-      }
-    },
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectCreator"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/path/to/data')"
-      }
-    }
-  ]
-}
-            """);
+            GcpCredentialsStorageIntegrationTest.class.getResource(
+                "gcp-testGenerateAccessBoundaryWithoutList.json"));
     assertThat(parsedRules)
         .usingRecursiveComparison(
             RecursiveComparisonConfiguration.builder()
@@ -367,21 +296,8 @@ class GcpCredentialsStorageIntegrationTest {
     JsonNode parsedRules = mapper.convertValue(credentialAccessBoundary, JsonNode.class);
     JsonNode refRules =
         mapper.readTree(
-            """
-{
-  "accessBoundaryRules": [
-    {
-      "availablePermissions": [
-        "inRole:roles/storage.objectViewer"
-      ],
-      "availableResource": "//storage.googleapis.com/projects/_/buckets/bucket1",
-      "availabilityCondition": {
-        "expression": "resource.name.startsWith('projects/_/buckets/bucket1/objects/normal/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('normal/path/to/data') || resource.name.startsWith('projects/_/buckets/bucket1/objects/awesome/path/to/data') || api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('awesome/path/to/data')"
-      }
-    }
-  ]
-}
-            """);
+            GcpCredentialsStorageIntegrationTest.class.getResource(
+                "gcp-testGenerateAccessBoundaryWithoutWrites.json"));
     assertThat(parsedRules)
         .usingRecursiveComparison(
             RecursiveComparisonConfiguration.builder()

@@ -15,9 +15,7 @@
  */
 package io.polaris.service.auth;
 
-import static org.assertj.core.api.Fail.fail;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
@@ -130,20 +128,15 @@ public class JWTRSAKeyPairTest {
     Mockito.when(metastoreManager.loadEntity(polarisCallContext, 0L, 1L))
         .thenReturn(new PolarisMetaStoreManager.EntityResult(principal));
     TokenBroker tokenBroker = new JWTRSAKeyPair(entityManager, 420);
-    TokenResponse token = null;
-    try {
-      token =
-          tokenBroker.generateFromClientSecrets(
-              clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, scope);
-    } catch (Exception e) {
-      fail("Unexpected exception: " + e);
-    }
-    assertNotNull(token);
-    assertEquals(420, token.getExpiresIn());
+    TokenResponse token =
+        tokenBroker.generateFromClientSecrets(
+            clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, scope);
+    assertThat(token).isNotNull();
+    assertThat(token.getExpiresIn()).isEqualTo(420);
 
     LocalRSAKeyProvider provider = new LocalRSAKeyProvider();
-    assertNotNull(provider.getPrivateKey());
-    assertNotNull(provider.getPublicKey());
+    assertThat(provider.getPrivateKey()).isNotNull();
+    assertThat(provider.getPublicKey()).isNotNull();
     JWTVerifier verifier =
         JWT.require(
                 Algorithm.RSA256(
@@ -152,8 +145,8 @@ public class JWTRSAKeyPairTest {
             .withIssuer("polaris")
             .build();
     DecodedJWT decodedJWT = verifier.verify(token.getAccessToken());
-    assertNotNull(decodedJWT);
-    assertEquals(decodedJWT.getClaim("scope").asString(), "PRINCIPAL_ROLE:TEST");
-    assertEquals(decodedJWT.getClaim("client_id").asString(), "test-client-id");
+    assertThat(decodedJWT).isNotNull();
+    assertThat(decodedJWT.getClaim("scope").asString()).isEqualTo("PRINCIPAL_ROLE:TEST");
+    assertThat(decodedJWT.getClaim("client_id").asString()).isEqualTo("test-client-id");
   }
 }

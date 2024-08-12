@@ -76,7 +76,7 @@ public class TracingFilter implements Filter {
       try (Scope ignored = span.makeCurrent();
           MDC.MDCCloseable spanId = MDC.putCloseable("spanId", span.getSpanContext().getSpanId());
           MDC.MDCCloseable traceId =
-              MDC.putCloseable("traceId", span.getSpanContext().getTraceId()); ) {
+              MDC.putCloseable("traceId", span.getSpanContext().getTraceId())) {
         LOGGER
             .atInfo()
             .addKeyValue("spanId", span.getSpanContext().getSpanId())

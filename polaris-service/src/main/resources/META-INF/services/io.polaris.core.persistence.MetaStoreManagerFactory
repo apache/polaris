@@ -14,7 +14,5 @@
 # limitations under the License.
 #
 
-io.polaris.extension.persistence.impl.hibernate.HibernatePolarisMetaStoreManagerFactory
 io.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory
-com.snowflake.polaris.persistence.impl.remote.RemotePolarisMetaStoreManagerFactory
 io.polaris.extension.persistence.impl.eclipselink.EclipseLinkPolarisMetaStoreManagerFactory

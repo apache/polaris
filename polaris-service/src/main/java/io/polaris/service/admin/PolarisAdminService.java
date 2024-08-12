@@ -97,7 +97,7 @@ public class PolarisAdminService {
   public static final String CLEANUP_ON_CATALOG_DROP = "CLEANUP_ON_CATALOG_DROP";
 
   private final CallContext callContext;
-  private PolarisEntityManager entityManager;
+  private final PolarisEntityManager entityManager;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final PolarisAuthorizer authorizer;
 
@@ -496,14 +496,10 @@ public class PolarisAdminService {
    */
   private boolean catalogOverlapsWithExistingCatalog(CatalogEntity catalogEntity) {
     boolean allowOverlappingCatalogUrls =
-        Boolean.parseBoolean(
-            String.valueOf(
-                getCurrentPolarisContext()
-                    .getConfigurationStore()
-                    .getConfiguration(
-                        getCurrentPolarisContext(),
-                        PolarisConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS,
-                        PolarisConfiguration.DEFAULT_ALLOW_OVERLAPPING_CATALOG_URLS)));
+        getCurrentPolarisContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                getCurrentPolarisContext(), PolarisConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS);
 
     if (allowOverlappingCatalogUrls) {
       return false;
@@ -588,13 +584,12 @@ public class PolarisAdminService {
     if (!dropEntityResult.isSuccess()) {
       if (dropEntityResult.failedBecauseNotEmpty()) {
         throw new BadRequestException(
-            String.format("Catalog '%s' cannot be dropped, it is not empty", entity.getName()));
+            "Catalog '%s' cannot be dropped, it is not empty", entity.getName());
       } else {
         throw new BadRequestException(
-            String.format(
-                "Catalog '%s' cannot be dropped, concurrent modification detected. Please try "
-                    + "again",
-                entity.getName()));
+            "Catalog '%s' cannot be dropped, concurrent modification detected. Please try "
+                + "again",
+            entity.getName());
       }
     }
   }
@@ -629,16 +624,11 @@ public class PolarisAdminService {
           currentStorageConfig, newStorageConfig);
     }
 
-    if (currentStorageConfig instanceof AwsStorageConfigurationInfo
-        && newStorageConfig instanceof AwsStorageConfigurationInfo) {
-      AwsStorageConfigurationInfo currentAwsConfig =
-          (AwsStorageConfigurationInfo) currentStorageConfig;
-      AwsStorageConfigurationInfo newAwsConfig = (AwsStorageConfigurationInfo) newStorageConfig;
+    if (currentStorageConfig instanceof AwsStorageConfigurationInfo currentAwsConfig
+        && newStorageConfig instanceof AwsStorageConfigurationInfo newAwsConfig) {
 
-      if ((currentAwsConfig.getRoleARN() != null
-              && !currentAwsConfig.getRoleARN().equals(newAwsConfig.getRoleARN()))
-          || (newAwsConfig.getRoleARN() != null
-              && !newAwsConfig.getRoleARN().equals(currentAwsConfig.getRoleARN()))) {
+      if (!currentAwsConfig.getRoleARN().equals(newAwsConfig.getRoleARN())
+          || !newAwsConfig.getRoleARN().equals(currentAwsConfig.getRoleARN())) {
         throw new BadRequestException(
             "Cannot modify Role ARN in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
@@ -652,17 +642,11 @@ public class PolarisAdminService {
             "Cannot modify ExternalId in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
       }
-    } else if (currentStorageConfig instanceof AzureStorageConfigurationInfo
-        && newStorageConfig instanceof AzureStorageConfigurationInfo) {
-      AzureStorageConfigurationInfo currentAzureConfig =
-          (AzureStorageConfigurationInfo) currentStorageConfig;
-      AzureStorageConfigurationInfo newAzureConfig =
-          (AzureStorageConfigurationInfo) newStorageConfig;
+    } else if (currentStorageConfig instanceof AzureStorageConfigurationInfo currentAzureConfig
+        && newStorageConfig instanceof AzureStorageConfigurationInfo newAzureConfig) {
 
-      if ((currentAzureConfig.getTenantId() != null
-              && !currentAzureConfig.getTenantId().equals(newAzureConfig.getTenantId()))
-          || (newAzureConfig.getTenantId() != null
-              && !newAzureConfig.getTenantId().equals(currentAzureConfig.getTenantId()))) {
+      if (!currentAzureConfig.getTenantId().equals(newAzureConfig.getTenantId())
+          || !newAzureConfig.getTenantId().equals(currentAzureConfig.getTenantId())) {
         throw new BadRequestException(
             "Cannot modify TenantId in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
@@ -716,7 +700,7 @@ public class PolarisAdminService {
             .orElseThrow(
                 () ->
                     new CommitFailedException(
-                        "Concurrent modification on Catalog '%s'; retry later"));
+                        "Concurrent modification on Catalog '%s'; retry later", name));
     return returnedEntity;
   }
 
@@ -841,7 +825,7 @@ public class PolarisAdminService {
             .orElseThrow(
                 () ->
                     new CommitFailedException(
-                        "Concurrent modification on Principal '%s'; retry later"));
+                        "Concurrent modification on Principal '%s'; retry later", name));
     return returnedEntity;
   }
 
@@ -1019,7 +1003,7 @@ public class PolarisAdminService {
             .orElseThrow(
                 () ->
                     new CommitFailedException(
-                        "Concurrent modification on PrincipalRole '%s'; retry later"));
+                        "Concurrent modification on PrincipalRole '%s'; retry later", name));
     return returnedEntity;
   }
 
@@ -1157,7 +1141,7 @@ public class PolarisAdminService {
             .orElseThrow(
                 () ->
                     new CommitFailedException(
-                        "Concurrent modification on CatalogRole '%s'; retry later"));
+                        "Concurrent modification on CatalogRole '%s'; retry later", name));
     return returnedEntity;
   }
 

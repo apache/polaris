@@ -86,7 +86,6 @@ public class AzureCredentialsStorageIntegration
     validateAccountAndContainer(location, allowedReadLocations, allowedWriteLocations);
 
     String storageDnsName = location.getStorageAccount() + "." + location.getEndpoint();
-    String endpoint = "https://" + storageDnsName;
     String filePath = location.getFilePath();
 
     BlobSasPermission blobSasPermission = new BlobSasPermission();
@@ -240,13 +239,7 @@ public class AzureCredentialsStorageIntegration
     }
   }
 
-  /**
-   * Verify that storage accounts, containers and endpoint are the same
-   *
-   * @param target
-   * @param readLocations
-   * @param writeLocations
-   */
+  /** Verify that storage accounts, containers and endpoint are the same */
   private void validateAccountAndContainer(
       AzureLocation target, Set<String> readLocations, Set<String> writeLocations) {
     Set<String> allLocations = new HashSet<>();

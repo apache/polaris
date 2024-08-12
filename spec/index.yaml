@@ -4,7 +4,7 @@ info:
   x-logo:
     url: ./img/logos/polaris-catalog-stacked-logo.svg
     altText: Polaris Catalog Logo
-  description: "<!--\n\n Copyright (c) 2024 Snowflake Computing Inc.\n \n Licensed under the Apache License, Version 2.0 (the \"License\");\n you may not use this file except in compliance with the License.\n You may obtain a copy of the License at\n \n      http://www.apache.org/licenses/LICENSE-2.0\n \n Unless required by applicable law or agreed to in writing, software\n distributed under the License is distributed on an \"AS IS\" BASIS,\n WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n See the License for the specific language governing permissions and\n limitations under the License.\n\n-->\n\n# Quick Start\n\nThis guide serves as a introduction to several key entities that can be managed with Polaris, describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Spark and Trino.\n\n## Prerequisites\n\nThis guide covers building Polaris, deploying it locally or via [Docker](https://www.docker.com/), and interacting with it using the command-line interface and [Apache Spark](https://spark.apache.org/). Before proceeding with Polaris, be sure to satisfy the relevant prerequisites listed here. \n\n### Building and Deploying Polaris\n\nTo get the latest Polaris code, you'll need to clone the repository using [git](https://git-scm.com/). You can install git using [homebrew](https://brew.sh/):\n\n```\nbrew install git\n```\n\nThen, use git to clone the Polaris repo:\n\n```\ncd ~\ngit clone https://github.com/polaris-catalog/polaris.git\n```\n\n#### With Docker\n\nIf you plan to deploy Polaris inside [Docker](https://www.docker.com/)], you'll need to install docker itself. For can be done using [homebrew](https://brew.sh/):\n\n```\nbrew install docker\n```\n\nOnce installed, make sure Docker is running. This can be done on macOS with:\n\n```\nopen -a Docker\n```\n\n#### From Source\n\nIf you plan to build Polaris from source yourself, you will need to satisfy a few prerequisites first.\n\nPolaris is built using [gradle](https://gradle.org/) and is compatible with Java 21. We recommend the use of [jenv](https://www.jenv.be/) to manage multiple Java versions. For example, to install Java 21 via [homebre]w(https://brew.sh/) and configure it with jenv: \n\n```\ncd ~/polaris\njenv local 21\nbrew install openjdk@21 gradle@8 jenv\njenv add $(brew --prefix openjdk@21)\njenv local 21\n```\n\n### Connecting to Polaris\n\nPolaris is compatible with any [Apache Iceberg](https://iceberg.apache.org/) client that supports the REST API. Depending on the client you plan to use, refer to the prerequisites below.\n\n#### With Spark\n\nIf you want to connect to Polaris with [Apache Spark](https://spark.apache.org/), you'll need to start by cloning Spark. As [above](#building-and-deploying-polaris), make sure [git](https://git-scm.com/) is installed first. You can install it with [homebrew](https://brew.sh/):\n\n```\nbrew install git\n```\n\nThen, clone Spark and check out a versioned branch. This guide uses [Spark 3.5.0](https://spark.apache.org/releases/spark-release-3-5-0.html).\n\n```\ncd ~\ngit clone https://github.com/apache/spark.git\ncd ~/spark\ngit checkout branch-3.5.0\n```\n\n## Deploying Polaris \n\nPolaris can be deployed via a lightweight docker image or as a standalone process. Before starting, be sure that you've satisfied the relevant [prerequisites](#building-and-deploying-polaris) detailed above.\n\n### Docker Image\n\nTo start using Polaris in Docker, launch Polaris while Docker is running:\n\n```\ncd ~/polaris\ndocker compose -f docker-compose.yml up --build\n```\n\nOnce the `polaris-polaris` container is up, you can continue to [Defining a Catalog](#defining-a-catalog).\n\n### Building Polaris\n\nRun Polaris locally with:\n\n```\ncd ~/polaris\n./gradlew runApp\n```\n\nYou should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:\n\n```\nINFO  [...] [main] [] o.e.j.s.handler.ContextHandler: Started i.d.j.MutableServletContextHandler@...\nINFO  [...] [main] [] o.e.j.server.AbstractConnector: Started application@...\nINFO  [...] [main] [] o.e.j.server.AbstractConnector: Started admin@...\nINFO  [...] [main] [] o.eclipse.jetty.server.Server: Started Server@...\n```\n\nAt this point, Polaris is running.\n\n## Bootstrapping Polaris\n\nFor this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. It also means that Polaris will automatically bootstrap itself with root credentials. For more information on how to configure Polaris for production usage, see the [docs](./configuring-polaris-for-production.md).\n\nWhen Polaris is launched using in-memory mode the root `CLIENT_ID` and `CLIENT_SECRET` can be found in stdout on initial startup. For example:\n\n```\nBootstrapped with credentials: {\"client-id\": \"XXXX\", \"client-secret\": \"YYYY\"}\n```\n\nBe sure to note of these credentials as we'll be using them below.\n\n## Defining a Catalog\n\nIn Polaris, the [catalog](./entities/catalog.md) is the top-level entity that objects like [tables](./entities.md#table) and [views](./entities.md#view) are organized under. With a Polaris service running, you can create a catalog like so:\n\n```\ncd ~/polaris\n\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  catalogs \\\n  create \\\n  --storage-type s3 \\\n  --default-base-location ${DEFAULT_BASE_LOCATION} \\\n  --role-arn ${ROLE_ARN} \\\n  quickstart_catalog\n```\n\nThis will create a new catalog called **quickstart_catalog**. \n\nThe `DEFAULT_BASE_LOCATION` you provide will be the default location that objects in this catalog should be stored in, and the `ROLE_ARN` you provide should be a [Role ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) with access to read and write data in that location. These credentials will be provided to engines reading data from the catalog once they have authenticated with Polaris using credentials that have access to those resources.\n\nIf you’re using a storage type other than S3, such as Azure, you’ll provide a different type of credential than a Role ARN. For more details on supported storage types, see the [docs](./entities.md#storage-type). \n\nAdditionally, if Polaris is running somewhere other than `localhost:8181`, you can specify the correct hostname and port by providing `--host` and `--port` flags. For the full set of options supported by the CLI, please refer to the [docs](./command-line-interface.md).\n\n\n### Creating a Principal and Assigning it Privileges\n\nWith a catalog created, we can create a [principal](./entities.md#principal) that has access to manage that catalog. For details on how to configure the Polaris CLI, see [the section above](#defining-a-catalog) or refer to the [docs](./command-line-interface.md).\n\n```\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  principals \\\n  create \\\n  quickstart_user\n\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  principal-roles \\\n  create \\\n  quickstart_user_role\n\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  catalog-roles \\\n  create \\\n  --catalog quickstart_catalog \\\n  quickstart_catalog_role\n```\n\n\nBe sure to provide the necessary credentials, hostname, and port as before.\n\nWhen the `principals create` command completes successfully, it will return the credentials for this new principal. Be sure to note these down for later. For example:\n\n```\n./polaris ... principals create example\n{\"clientId\": \"XXXX\", \"clientSecret\": \"YYYY\"}\n```\n\nNow, we grant the principal the [principal role](./entities.md#principal-role) we created, and grant the [catalog role](./entities.md#catalog-role) the principal role we created. For more information on these entities, please refer to the linked documentation.\n\n```\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  principal-roles \\\n  grant \\\n  --principal quickstart_user \\\n  quickstart_user_role\n\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  catalog-roles \\\n  grant \\\n  --catalog quickstart_catalog \\\n  --principal-role quickstart_user_role \\\n  quickstart_catalog_role\n```\n\nNow, we’ve linked our principal to the catalog via roles like so:\n\n![Principal to Catalog](./img/quickstart/privilege-illustration-1.png \"Principal to Catalog\")\n\nIn order to give this principal the ability to interact with the catalog, we must assign some [privileges](./entities.md#privileges). For the time being, we will give this principal the ability to fully manage content in our new catalog. We can do this with the CLI like so:\n\n```\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  privileges \\\n  --catalog quickstart_catalog \\\n  --catalog-role quickstart_catalog_role \\\n  catalog \\\n  grant \\\n  CATALOG_MANAGE_CONTENT\n```\n\nThis grants the [catalog privileges](./entities.md#privilege) `CATALOG_MANAGE_CONTENT` to our catalog role, linking everything together like so:\n\n![Principal to Catalog with Catalog Role](./img/quickstart/privilege-illustration-2.png \"Principal to Catalog with Catalog Role\")\n\n`CATALOG_MANAGE_CONTENT` has create/list/read/write privileges on all entities within the catalog. The same privilege could be granted to a namespace, in which case the principal could create/list/read/write any entity under that namespace.\n\n## Using Iceberg & Polaris\n\nAt this point, we’ve created a principal and granted it the ability to manage a catalog. We can now use an external engine to assume that principal, access our catalog, and store data in that catalog using [Apache Iceberg](https://iceberg.apache.org/).\n\n### Connecting with Spark\n\nTo use a Polaris-managed catalog in [Apache Spark](https://spark.apache.org/), we can configure Spark to use the Iceberg catalog REST API. \n\nThis guide uses [Apache Spark 3.5](https://spark.apache.org/releases/spark-release-3-5-0.html), but be sure to find [the appropriate iceberg-spark package for your Spark version](https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-spark). With a local Spark clone, we on the `branch-3.5` branch we can run the following:\n\n_Note: the credentials provided here are those for our principal, not the root credentials._\n\n```\nbin/spark-shell \\\n--packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2,org.apache.hadoop:hadoop-aws:3.4.0 \\\n--conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \\\n--conf spark.sql.catalog.quickstart_catalog.warehouse=quickstart_catalog \\\n--conf spark.sql.catalog.quickstart_catalog.header.X-Iceberg-Access-Delegation=true \\\n--conf spark.sql.catalog.quickstart_catalog=org.apache.iceberg.spark.SparkCatalog \\\n--conf spark.sql.catalog.quickstart_catalog.catalog-impl=org.apache.iceberg.rest.RESTCatalog \\\n--conf spark.sql.catalog.quickstart_catalog.uri=http://localhost:8181/api/catalog \\\n--conf spark.sql.catalog.quickstart_catalog.credential='XXXX:YYYY' \\\n--conf spark.sql.catalog.quickstart_catalog.scope='PRINCIPAL_ROLE:ALL' \\\n--conf spark.sql.catalog.quickstart_catalog.token-refresh-enabled=true\n```\n\n\nReplace `XXXX` and `YYYY` with the client ID and client secret generated when you created the `quickstart_user` principal.\n\nSimilar to the CLI commands above, this configures Spark to use the Polaris running at `localhost:8181` as a catalog. If your Polaris server is running elsewhere, but sure to update the configuration appropriately.\n\nFinally, note that we include the `hadoop-aws` package here. If your table is using a different filesystem, be sure to include the appropriate dependency.\n\nOnce the Spark session starts, we can create a namespace and table within the catalog:\n\n```\nspark.sql(\"USE quickstart_catalog\")\nspark.sql(\"CREATE NAMESPACE IF NOT EXISTS quickstart_namespace\")\nspark.sql(\"CREATE NAMESPACE IF NOT EXISTS quickstart_namespace.schema\")\nspark.sql(\"USE NAMESPACE quickstart_namespace.schema\")\nspark.sql(\"\"\"\n\tCREATE TABLE IF NOT EXISTS quickstart_table (\n\t\tid BIGINT, data STRING\n\t) \nUSING ICEBERG\n\"\"\")\n```\n\nWe can now use this table like any other:\n\n```\nspark.sql(\"INSERT INTO quickstart_table VALUES (1, 'some data')\")\nspark.sql(\"SELECT * FROM quickstart_table\").show(false)\n. . .\n+---+---------+\n|id |data     |\n+---+---------+\n|1  |some data|\n+---+---------+\n```\n\nIf at any time access is revoked...\n\n```\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  privileges \\\n  --catalog quickstart_catalog \\\n  --catalog-role quickstart_catalog_role \\\n  catalog \\\n  revoke \\\n  CATALOG_MANAGE_CONTENT\n```\n\nSpark will lose access to the table:\n\n```\nspark.sql(\"SELECT * FROM quickstart_table\").show(false)\n\norg.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated ids '[6, 7]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION\n```\n"
+  description: "<!--\n Copyright (c) 2024 Snowflake Computing Inc.\n \n Licensed under the Apache License, Version 2.0 (the \"License\");\n you may not use this file except in compliance with the License.\n You may obtain a copy of the License at\n \n      http://www.apache.org/licenses/LICENSE-2.0\n \n Unless required by applicable law or agreed to in writing, software\n distributed under the License is distributed on an \"AS IS\" BASIS,\n WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n See the License for the specific language governing permissions and\n limitations under the License.\n-->\n\n# Quick Start\n\nThis guide serves as a introduction to several key entities that can be managed with Polaris, describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Apache Spark.\n\n## Prerequisites\n\nThis guide covers building Polaris, deploying it locally or via [Docker](https://www.docker.com/), and interacting with it using the command-line interface and [Apache Spark](https://spark.apache.org/). Before proceeding with Polaris, be sure to satisfy the relevant prerequisites listed here.\n\n### Building and Deploying Polaris\n\nTo get the latest Polaris code, you'll need to clone the repository using [git](https://git-scm.com/). You can install git using [homebrew](https://brew.sh/):\n\n```shell\nbrew install git\n```\n\nThen, use git to clone the Polaris repo:\n\n```shell\ncd ~\ngit clone https://github.com/polaris-catalog/polaris.git\n```\n\n#### With Docker\n\nIf you plan to deploy Polaris inside [Docker](https://www.docker.com/), you'll need to install docker itself. For example, this can be done using [homebrew](https://brew.sh/):\n\n```shell\nbrew install --cask docker\n```\n\nOnce installed, make sure Docker is running.\n\n#### From Source\n\nIf you plan to build Polaris from source yourself, you will need to satisfy a few prerequisites first.\n\nPolaris is built using [gradle](https://gradle.org/) and is compatible with Java 21. We recommend the use of [jenv](https://www.jenv.be/) to manage multiple Java versions. For example, to install Java 21 via [homebrew](https://brew.sh/) and configure it with jenv: \n\n```shell\ncd ~/polaris\nbrew install openjdk@21 jenv\njenv add $(brew --prefix openjdk@21)\njenv local 21\n```\n\n### Connecting to Polaris\n\nPolaris is compatible with any [Apache Iceberg](https://iceberg.apache.org/) client that supports the REST API. Depending on the client you plan to use, refer to the prerequisites below.\n\n#### With Spark\n\nIf you want to connect to Polaris with [Apache Spark](https://spark.apache.org/), you'll need to start by cloning Spark. As [above](#building-and-deploying-polaris), make sure [git](https://git-scm.com/) is installed first. You can install it with [homebrew](https://brew.sh/):\n\n```shell\nbrew install git\n```\n\nThen, clone Spark and check out a versioned branch. This guide uses [Spark 3.5](https://spark.apache.org/releases/spark-release-3-5-0.html).\n\n```shell\ncd ~\ngit clone https://github.com/apache/spark.git\ncd ~/spark\ngit checkout branch-3.5\n```\n\n## Deploying Polaris\n\nPolaris can be deployed via a lightweight docker image or as a standalone process. Before starting, be sure that you've satisfied the relevant [prerequisites](#building-and-deploying-polaris) detailed above.\n\n### Docker Image\n\nTo start using Polaris in Docker, launch Polaris while Docker is running:\n\n```shell\ncd ~/polaris\ndocker compose -f docker-compose.yml up --build\n```\n\nOnce the `polaris-polaris` container is up, you can continue to [Defining a Catalog](#defining-a-catalog).\n\n### Building Polaris\n\nRun Polaris locally with:\n\n```shell\ncd ~/polaris\n./gradlew runApp\n```\n\nYou should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:\n\n```\nINFO  [...] [main] [] o.e.j.s.handler.ContextHandler: Started i.d.j.MutableServletContextHandler@...\nINFO  [...] [main] [] o.e.j.server.AbstractConnector: Started application@...\nINFO  [...] [main] [] o.e.j.server.AbstractConnector: Started admin@...\nINFO  [...] [main] [] o.eclipse.jetty.server.Server: Started Server@...\n```\n\nAt this point, Polaris is running.\n\n## Bootstrapping Polaris\n\nFor this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. It also means that Polaris will automatically bootstrap itself with root credentials. For more information on how to configure Polaris for production usage, see the [docs](./configuring-polaris-for-production.md).\n\nWhen Polaris is launched using in-memory mode the root principal credentials can be found in stdout on initial startup. For example:\n\n```\nrealm: default-realm root principal credentials: <client-id>:<client-secret>\n```\n\nBe sure to note of these credentials as we'll be using them below. You can also set these credentials as environment variables for use with the Polaris CLI:\n\n```shell\nexport CLIENT_ID=<client-id> \nexport CLIENT_SECRET=<client-secret>\n```\n\n## Defining a Catalog\n\nIn Polaris, the [catalog](./entities.md#catalog) is the top-level entity that objects like [tables](./entities.md#table) and [views](./entities.md#view) are organized under. With a Polaris service running, you can create a catalog like so:\n\n```shell\ncd ~/polaris\n\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  catalogs \\\n  create \\\n  --storage-type s3 \\\n  --default-base-location ${DEFAULT_BASE_LOCATION} \\\n  --role-arn ${ROLE_ARN} \\\n  quickstart_catalog\n```\n\nThis will create a new catalog called **quickstart_catalog**.\n\nThe `DEFAULT_BASE_LOCATION` you provide will be the default location that objects in this catalog should be stored in, and the `ROLE_ARN` you provide should be a [Role ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) with access to read and write data in that location. These credentials will be provided to engines reading data from the catalog once they have authenticated with Polaris using credentials that have access to those resources.\n\nIf you’re using a storage type other than S3, such as Azure, you’ll provide a different type of credential than a Role ARN. For more details on supported storage types, see the [docs](./entities.md#storage-type).\n\nAdditionally, if Polaris is running somewhere other than `localhost:8181`, you can specify the correct hostname and port by providing `--host` and `--port` flags. For the full set of options supported by the CLI, please refer to the [docs](./command-line-interface.md).\n\n\n### Creating a Principal and Assigning it Privileges\n\nWith a catalog created, we can create a [principal](./entities.md#principal) that has access to manage that catalog. For details on how to configure the Polaris CLI, see [the section above](#defining-a-catalog) or refer to the [docs](./command-line-interface.md).\n\n```shell\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  principals \\\n  create \\\n  quickstart_user\n\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  principal-roles \\\n  create \\\n  quickstart_user_role\n\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  catalog-roles \\\n  create \\\n  --catalog quickstart_catalog \\\n  quickstart_catalog_role\n```\n\nBe sure to provide the necessary credentials, hostname, and port as before.\n\nWhen the `principals create` command completes successfully, it will return the credentials for this new principal. Be sure to note these down for later. For example:\n\n```\n./polaris ... principals create example\n{\"clientId\": \"XXXX\", \"clientSecret\": \"YYYY\"}\n```\n\nNow, we grant the principal the [principal role](./entities.md#principal-role) we created, and grant the [catalog role](./entities.md#catalog-role) the principal role we created. For more information on these entities, please refer to the linked documentation.\n\n```shell\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  principal-roles \\\n  grant \\\n  --principal quickstart_user \\\n  quickstart_user_role\n\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  catalog-roles \\\n  grant \\\n  --catalog quickstart_catalog \\\n  --principal-role quickstart_user_role \\\n  quickstart_catalog_role\n```\n\nNow, we’ve linked our principal to the catalog via roles like so:\n\n![Principal to Catalog](./img/quickstart/privilege-illustration-1.png \"Principal to Catalog\")\n\nIn order to give this principal the ability to interact with the catalog, we must assign some [privileges](./entities.md#privilege). For the time being, we will give this principal the ability to fully manage content in our new catalog. We can do this with the CLI like so:\n\n```shell\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  privileges \\\n  catalog \\\n  grant \\\n  --catalog quickstart_catalog \\\n  --catalog-role quickstart_catalog_role \\\n  CATALOG_MANAGE_CONTENT\n```\n\nThis grants the [catalog privileges](./entities.md#privilege) `CATALOG_MANAGE_CONTENT` to our catalog role, linking everything together like so:\n\n![Principal to Catalog with Catalog Role](./img/quickstart/privilege-illustration-2.png \"Principal to Catalog with Catalog Role\")\n\n`CATALOG_MANAGE_CONTENT` has create/list/read/write privileges on all entities within the catalog. The same privilege could be granted to a namespace, in which case the principal could create/list/read/write any entity under that namespace.\n\n## Using Iceberg & Polaris\n\nAt this point, we’ve created a principal and granted it the ability to manage a catalog. We can now use an external engine to assume that principal, access our catalog, and store data in that catalog using [Apache Iceberg](https://iceberg.apache.org/).\n\n### Connecting with Spark\n\nTo use a Polaris-managed catalog in [Apache Spark](https://spark.apache.org/), we can configure Spark to use the Iceberg catalog REST API.\n\nThis guide uses [Apache Spark 3.5](https://spark.apache.org/releases/spark-release-3-5-0.html), but be sure to find [the appropriate iceberg-spark package for your Spark version](https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-spark). From a local Spark clone on the `branch-3.5` branch we can run the following:\n\n_Note: the credentials provided here are those for our principal, not the root credentials._\n\n```shell\nbin/spark-shell \\\n--packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2,org.apache.hadoop:hadoop-aws:3.4.0 \\\n--conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \\\n--conf spark.sql.catalog.quickstart_catalog.warehouse=quickstart_catalog \\\n--conf spark.sql.catalog.quickstart_catalog.header.X-Iceberg-Access-Delegation=true \\\n--conf spark.sql.catalog.quickstart_catalog=org.apache.iceberg.spark.SparkCatalog \\\n--conf spark.sql.catalog.quickstart_catalog.catalog-impl=org.apache.iceberg.rest.RESTCatalog \\\n--conf spark.sql.catalog.quickstart_catalog.uri=http://localhost:8181/api/catalog \\\n--conf spark.sql.catalog.quickstart_catalog.credential='XXXX:YYYY' \\\n--conf spark.sql.catalog.quickstart_catalog.scope='PRINCIPAL_ROLE:ALL' \\\n--conf spark.sql.catalog.quickstart_catalog.token-refresh-enabled=true\n```\n\n\nReplace `XXXX` and `YYYY` with the client ID and client secret generated when you created the `quickstart_user` principal.\n\nSimilar to the CLI commands above, this configures Spark to use the Polaris catalog running at `localhost:8181`. If your Polaris server is running elsewhere, but sure to update the configuration appropriately.\n\nFinally, note that we include the `hadoop-aws` package here. If your table is using a different filesystem, be sure to include the appropriate dependency.\n\nOnce the Spark session starts, we can create a namespace and table within the catalog:\n\n```\nspark.sql(\"USE quickstart_catalog\")\nspark.sql(\"CREATE NAMESPACE IF NOT EXISTS quickstart_namespace\")\nspark.sql(\"CREATE NAMESPACE IF NOT EXISTS quickstart_namespace.schema\")\nspark.sql(\"USE NAMESPACE quickstart_namespace.schema\")\nspark.sql(\"\"\"\n\tCREATE TABLE IF NOT EXISTS quickstart_table (\n\t\tid BIGINT, data STRING\n\t) \nUSING ICEBERG\n\"\"\")\n```\n\nWe can now use this table like any other:\n\n```\nspark.sql(\"INSERT INTO quickstart_table VALUES (1, 'some data')\")\nspark.sql(\"SELECT * FROM quickstart_table\").show(false)\n. . .\n+---+---------+\n|id |data     |\n+---+---------+\n|1  |some data|\n+---+---------+\n```\n\nIf at any time access is revoked...\n\n```shell\n./polaris \\\n  --client-id ${CLIENT_ID} \\\n  --client-secret ${CLIENT_SECRET} \\\n  privileges \\\n  catalog \\\n  revoke \\\n  --catalog quickstart_catalog \\\n  --catalog-role quickstart_catalog_role \\\n  CATALOG_MANAGE_CONTENT\n```\n\nSpark will lose access to the table:\n\n```\nspark.sql(\"SELECT * FROM quickstart_table\").show(false)\n\norg.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated ids '[6, 7]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION\n```\n"
   contact:
     email: community [at] polaris.io
     url: https://github.com/polaris-catalog/polaris
@@ -50,7 +50,7 @@ servers:
         default: ''
 tags:
   - name: Polaris Catalog Overview
-    description: >+
+    description: >
       <!--
 
        Copyright (c) 2024 Snowflake Computing Inc.
@@ -70,16 +70,17 @@ tags:
       -->
 
 
-      Polaris Catalog is a catalog implementation for Apache Iceberg built on
-      the open source Apache Iceberg REST protocol.
+      Polaris Catalog is a catalog implementation for Apache Iceberg&trade;
+      tables and is built on the open source Apache Iceberg&trade; REST
+      protocol.
 
 
       With Polaris Catalog, you can provide centralized, secure read and write
-      access across different REST-compatible query engines to your Iceberg
-      tables.
+      access to your Iceberg tables across different REST-compatible query
+      engines.
 
 
-      ![Conceptual diagram of Polaris Catalog.](./img/overview.svg "Polaris
+      ![Conceptual diagram of Polaris Catalog.](img/overview.svg "Polaris
       Catalog overview")
 
 
@@ -91,14 +92,14 @@ tags:
 
 
       In the following diagram, a sample [Polaris Catalog
-      structure](./overview.md#catalog) with nested
-      [namespaces](./overview.md#namespace) is shown for Catalog1. No tables
+      structure](overview.md#catalog) with nested
+      [namespaces](overview.md#namespace) is shown for Catalog1. No tables
 
-      or namespaces have been created yet for Catalog2 or Catalog3:
+      or namespaces have been created yet for Catalog2 or Catalog3.
 
 
       ![Diagram that shows an example Polaris Catalog
-      structure.](./img/sample-catalog-structure.svg "Sample Polaris Catalog
+      structure.](img/sample-catalog-structure.svg "Sample Polaris Catalog
       structure")
 
 
@@ -113,20 +114,20 @@ tags:
       S3, Azure, or Google Cloud Storage. An Iceberg catalog enables a
 
       query engine to manage and organize tables. The catalog forms the first
-      architectural layer in the [Iceberg table
-      specification](https://iceberg.apache.org/spec/#overview) and must
-      support:
+      architectural layer in the [Apache Iceberg&trade; table
+      specification](https://iceberg.apache.org/spec/#overview) and must support
+      the following tasks:
 
 
-      -   Storing the current metadata pointer for one or more Iceberg tables. A
+      - Storing the current metadata pointer for one or more Iceberg tables. A
       metadata pointer maps a table name to the location of that table's
           current metadata file.
 
-      -   Performing atomic operations so that you can update the current
-      metadata pointer for a table to the metadata pointer of a new version of
-          the table.
+      - Performing atomic operations so that you can update the current metadata
+      pointer for a table to the metadata pointer of a new version of
+        the table.
 
-      To learn more about Iceberg catalogs, see the [Apache Iceberg
+      To learn more about Iceberg catalogs, see the [Apache Iceberg&trade;
       documentation](https://iceberg.apache.org/concepts/catalog/).
 
 
@@ -136,32 +137,28 @@ tags:
       A catalog can be one of the following two types:
 
 
-      -   Internal: The catalog is managed by Polaris. Tables from this catalog
+      - Internal: The catalog is managed by Polaris. Tables from this catalog
       can be read and written in Polaris.
 
 
-      -   External: The catalog is externally managed by another Iceberg catalog
+      - External: The catalog is externally managed by another Iceberg catalog
       provider (for example, Snowflake, Glue, Dremio Arctic). Tables from 
-          this catalog are synced to Polaris. These tables are read-only in Polaris. In the current release, only Snowflake external catalog is provided.
+        this catalog are synced to Polaris. These tables are read-only in Polaris. In the current release, only a Snowflake external catalog is provided.
 
       A catalog is configured with a storage configuration that can point to S3,
       Azure storage, or GCS.
-
-
-      To create a new catalog, see [Create a catalog](./create-a-catalog.md
-      "Sample Polaris Catalog structure").
 
 
       ### Namespace
 
 
       You create *namespaces* to logically group Iceberg tables within a
-      catalog. A catalog can have one or more namespaces. You can also create
+      catalog. A catalog can have multiple namespaces. You can also create
 
       nested namespaces. Iceberg tables belong to namespaces.
 
 
-      ### Iceberg tables & catalogs
+      ### Apache Iceberg&trade; tables and catalogs
 
 
       In an internal catalog, an Iceberg table is registered in Polaris Catalog,
@@ -183,42 +180,45 @@ tags:
       engines can only read from these tables.
 
 
-      **Important**
+      > **Important**
 
+      >
 
-      To ensure that the access privileges defined for a catalog are enforced
+      > For the access privileges defined for a catalog to be enforced
+      correctly, the following conditions must be met:
 
-      correctly, you must:
+      >
 
+      > - The directory only contains the data files that belong to a single
+      table.
 
-      -   Ensure a directory only contains the data files that belong to a
-          single table.
+      > - The directory hierarchy matches the namespace hierarchy for the
+      catalog.
 
-      -   Create a directory hierarchy that matches the namespace hierarchy
-          for the catalog.
+      >
 
-      For example, if a catalog includes:
+      > For example, if a catalog includes the following items:
 
+      >
 
-      -   Top-level namespace namespace1
+      > - Top-level namespace namespace1
 
+      > - Nested namespace namespace1a
 
-      -   Nested namespace namespace1a
+      > - A customers table, which is grouped under nested namespace namespace1a
 
+      > - An orders table, which is grouped under nested namespace namespace1a
 
-      -   A customers table, which is grouped under nested namespace
-          namespace1a
+      >
 
-      -   An orders table, which is grouped under nested namespace namespace1a
+      > The directory hierarchy for the catalog must follow this structure:
 
+      >
 
-      The directory hierarchy for the catalog must be:
+      > - /namespace1/namespace1a/customers/<files for the customers table
+      *only*>
 
-
-      -   /namespace1/namespace1a/customers/\<files for the customers table
-          *only*\>
-
-      -   /namespace1/namespace1a/orders/\<files for the orders table *only*\>
+      > - /namespace1/namespace1a/orders/<files for the orders table *only*>
 
 
       ### Service principal
@@ -240,62 +240,62 @@ tags:
       The following table displays example service principals that you might
       create in Polaris Catalog:
 
-        | Service connection name     | Description |
+        | Service connection name     | Purpose |
         | --------------------------- | ----------- |
-        |  Flink ingestion            | For Apache Flink to ingest streaming data into Iceberg tables. |
-        |  Spark ETL pipeline         | For Apache Spark to run ETL pipeline jobs on Iceberg tables. |
-        |  Snowflake data pipelines   | For Snowflake to run data pipelines for transforming data in Iceberg tables.  |
+        |  Flink ingestion            | For Apache Flink&reg; to ingest streaming data into Apache Iceberg&trade; tables. |
+        |  Spark ETL pipeline         | For Apache Spark&trade; to run ETL pipeline jobs on Iceberg tables. |
+        |  Snowflake data pipelines   | For Snowflake to run data pipelines for transforming data in Apache Iceberg&trade; tables.  |
         |  Trino BI dashboard         | For Trino to run BI queries for powering a dashboard. |
-        |  Snowflake AI team          | For Snowflake to run AI jobs on data in Iceberg tables. |
+        |  Snowflake AI team          | For Snowflake to run AI jobs on data in Apache Iceberg&trade; tables. |
 
       ### Service connection
 
 
       A service connection represents a REST-compatible engine (such as Apache
-      Spark, Apache Flink, or Trino) that can read from and write to Polaris
+      Spark&trade;, Apache Flink&reg;, or Trino) that can read from and write to
+      Polaris
 
       Catalog. When creating a new service connection, the Polaris administrator
       grants the service principal that is created with the new service 
 
-      connection with either a new or existing principal role. A principal role
-      is a resource in Polaris that you can use to logically group Polaris 
+      connection either a new or existing principal role. A principal role is a
+      resource in Polaris that you can use to logically group Polaris 
 
       service principals together and grant privileges on securable objects. For
-      more information, see [Principal role](./access-control.md#principal-role
+      more information, see [Principal role](access-control.md#principal-role
       "Principal role"). Polaris Catalog uses a role-based access control (RBAC)
       model to grant service principals access to resources. For more
       information, 
 
-      see [Access control](./access-control.md "Access control"). For a diagram
-      of this model, see [RBAC model](./access-control.md#rbac-model "RBAC
-      model").
+      see [Access control](access-control.md "Access control"). For a diagram of
+      this model, see [RBAC model](access-control.md#rbac-model "RBAC model").
 
 
       If the Polaris administrator grants the service principal for the new
-      service connection with a new principal role, the service principal
+      service connection a new principal role, the service principal
 
-      doesn\'t have any privileges granted to it yet. When securing the catalog
+      doesn't have any privileges granted to it yet. When securing the catalog
       that the new service connection will connect to, the Polaris
 
       administrator grants privileges to catalog roles and then grants these
       catalog roles to the new principal role. As a result, the service
 
-      principal for the new service connection is bestowed with these
-      privileges. For more information about catalog roles, see [Catalog
-      role](./access-control.md#catalog-role "Catalog role").
+      principal for the new service connection has these privileges. For more
+      information about catalog roles, see [Catalog
+      role](access-control.md#catalog-role "Catalog role").
 
 
       If the Polaris administrator grants an existing principal role to the
       service principal for the new service connection, the service principal
 
-      is bestowed with the privileges granted to the catalog roles that are
-      granted to the existing principal role. If needed, the Polaris
+      has the same privileges granted to the catalog roles that are granted to
+      the existing principal role. If needed, the Polaris
 
       administrator can grant additional catalog roles to the existing principal
       role or remove catalog roles from it to adjust the privileges
 
       bestowed to the service principal. For an example of how RBAC works in
-      Polaris, see [RBAC example](./access-control.md#rbac-example "RBAC
+      Polaris, see [RBAC example](access-control.md#rbac-example "RBAC
       example").
 
 
@@ -327,7 +327,7 @@ tags:
       ARN</li><li>External ID (optional)</li></ul> |
 
       | Google Cloud Storage (GCS) | <ul><li>Default base location for your GCS
-      bucket</li><li>Locations for your Amazon GCS bucket</li></ul> |
+      bucket</li><li>Locations for your GCS bucket</li></ul> |
 
       | Azure | <ul><li>Default base location for your Microsoft Azure
       container</li><li>Locations for your Microsoft Azure
@@ -337,28 +337,27 @@ tags:
       ## Example workflow
 
 
-      In the following example workflow, Bob creates an Iceberg table named
-      Table1 and Alice reads data from Table1.
+      In the following example workflow, Bob creates an Apache Iceberg&trade;
+      table named Table1 and Alice reads data from Table1.
 
 
-      1.  Bob uses Apache Spark to create the Table1 table under the
+      1.  Bob uses Apache Spark&trade; to create the Table1 table under the
           Namespace1 namespace in the Catalog1 catalog and insert values into
           Table1.
 
-          Bob can create Table1 and insert data into it, because he is using a
-          service connection with a service principal that is bestowed with
+          Bob can create Table1 and insert data into it because he is using a
+          service connection with a service principal that has
           the privileges to perform these actions.
 
       2.  Alice uses Snowflake to read data from Table1.
 
-          Alice can read data from Table1, because she is using a service
+          Alice can read data from Table1 because she is using a service
           connection with a service principal with a catalog integration that
-          is bestowed with the privileges to perform this action. Alice
+          has the privileges to perform this action. Alice
           creates an unmanaged table in Snowflake to read data from Table1.
 
       ![Diagram that shows an example workflow for Polaris
-      Catalog](./img/example-workflow.svg "Example workflow for Polaris
-      Catalog")
+      Catalog](img/example-workflow.svg "Example workflow for Polaris Catalog")
 
 
       ## Security and access control
@@ -374,7 +373,7 @@ tags:
       temporary storage credentials to the query engine during query
 
       execution. These credentials allow the query engine to run the query
-      without needing to have access to your external cloud storage for
+      without requiring access to your external cloud storage for
 
       Iceberg tables. This process is called credential vending.
 
@@ -395,7 +394,7 @@ tags:
 
 
       Polaris Catalog enforces the access control that you configure across all
-      tables registered with the service, and governs security for all
+      tables registered with the service and governs security for all
 
       queries from query engines in a consistent manner.
 
@@ -409,21 +408,28 @@ tags:
       Polaris RBAC uses two different role types to delegate privileges:
 
 
-      -   **Principal roles:** Granted to Polaris service principals and
-          analogous to roles in other access control systems that you grant to
-          service principals.
+      - **Principal roles:** Granted to Polaris service principals and
+        analogous to roles in other access control systems that you grant to
+        service principals.
 
-      -   **Catalog roles:** Configured with certain privileges on Polaris
-          catalog resources, and granted to principal roles.
+      - **Catalog roles:** Configured with certain privileges on Polaris
+        catalog resources and granted to principal roles.
 
-      For more information, see [Access control](./access-control.md "Access
+      For more information, see [Access control](access-control.md "Access
       control").
 
+
+      ## Legal Notices
+
+
+      Apache&reg;, Apache Iceberg&trade;, Apache Spark&trade;, Apache
+      Flink&reg;, and Flink&reg; are either registered trademarks or trademarks
+      of the Apache Software Foundation in the United States and/or other
+      countries.
     x-displayName: Polaris Catalog Overview
   - name: Polaris Catalog Entities
     description: >
       <!--
-
        Copyright (c) 2024 Snowflake Computing Inc.
        
        Licensed under the Apache License, Version 2.0 (the "License");
@@ -437,7 +443,6 @@ tags:
        WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
        See the License for the specific language governing permissions and
        limitations under the License.
-
       -->
 
 
@@ -481,9 +486,8 @@ tags:
       Some other systems may refer to namespaces as _schemas_ or _databases_.
 
 
-      In Polaris, namespaces can be nested up to 16 levels. For example,
-      `a.b.c.d.e.f.g` is a valid namespace. `b` is said to reside within `a`,
-      and so on.
+      In Polaris, namespaces can be nested. For example, `a.b.c.d.e.f.g` is a
+      valid namespace. `b` is said to reside within `a`, and so on.
 
 
       For information on managing namespaces with the REST API or for more
@@ -495,7 +499,7 @@ tags:
       ## Table
 
 
-      Polaris tables are entites that map to [Apache Iceberg
+      Polaris tables are entities that map to [Apache Iceberg
       tables](https://iceberg.apache.org/docs/nightly/configuration/).
 
 
@@ -507,7 +511,7 @@ tags:
       ## View
 
 
-      Polaris views are entites that map to [Apache Iceberg
+      Polaris views are entities that map to [Apache Iceberg
       views](https://iceberg.apache.org/view-spec/).
 
 
@@ -616,23 +620,23 @@ tags:
       Polaris Catalog.
 
 
-      Polaris Catalog uses a role-based access control (RBAC) model, in which
-      the Polaris administrator assigns access privileges to catalog roles,
+      Polaris Catalog uses a role-based access control (RBAC) model in which the
+      Polaris administrator assigns access privileges to catalog roles
 
-      and then grants service principals access to resources by assigning
+      and then grants access to resources to service principals by assigning
       catalog roles to principal roles.
 
 
-      The key concepts to understanding access control in Polaris are:
+      These are the key concepts to understanding access control in Polaris:
 
 
-      -   **Securable object**
+      - **Securable object**
 
-      -   **Principal role**
+      - **Principal role**
 
-      -   **Catalog role**
+      - **Catalog role**
 
-      -   **Privilege**
+      - **Privilege**
 
 
       ## Securable object
@@ -643,13 +647,13 @@ tags:
       has the following securable objects:
 
 
-      -   Catalog
+      - Catalog
 
-      -   Namespace
+      - Namespace
 
-      -   Iceberg table
+      - Iceberg table
 
-      -   View
+      - View
 
 
       ## Principal role
@@ -698,28 +702,29 @@ tags:
 
 
       A catalog role belongs to a particular catalog resource in Polaris and
-      specifies a set of permissions for actions on the catalog, or on objects
+      specifies a set of permissions for actions on the catalog or objects
 
       in the catalog, such as catalog namespaces or tables. You can create one
       or more catalog roles for a catalog.
 
 
-      You grant privileges to a catalog role, and then grant the catalog role to
+      You grant privileges to a catalog role and then grant the catalog role to
       a principal role to bestow the privileges to one or more service
 
       principals.
 
 
-      **Note**
+      > **Note**
 
+      >
 
-      If you update the privileges bestowed to a service principal, the updates
-      won\'t take effect for up to one hour. This means that if you
+      > If you update the privileges bestowed to a service principal, the
+      updates won't take effect for up to one hour. This means that if you
 
-      revoke or grant some privileges for a catalog, the updated privileges
-      won\'t take effect on any service principal with access to that catalog
+      > revoke or grant some privileges for a catalog, the updated privileges
+      won't take effect on any service principal with access to that catalog
 
-      for up to one hour.
+      > for up to one hour.
 
 
       Polaris also supports a many-to-many relationship between catalog roles
@@ -759,7 +764,7 @@ tags:
       The following diagram illustrates the RBAC model used by Polaris Catalog.
       For each catalog, the Polaris administrator assigns access
 
-      privileges to catalog roles, and then grants service principals access to
+      privileges to catalog roles and then grants service principals access to
       resources by assigning catalog roles to principal roles. Polaris
 
       supports a many-to-one relationship between service principals and
@@ -767,7 +772,7 @@ tags:
 
 
       ![Diagram that shows the RBAC model for Polaris
-      Catalog.](./img/rbac-model.svg "Polaris Catalog RBAC model")
+      Catalog.](img/rbac-model.svg "Polaris Catalog RBAC model")
 
 
       ## Access control privileges
@@ -782,6 +787,17 @@ tags:
       perform on objects in Polaris.
 
 
+      > **Important**
+
+      >
+
+      > You can only grant privileges at the catalog level. Fine-grained access
+      controls are not available. For example, you can grant read 
+
+      > privileges to all tables in a catalog but not to an individual table in
+      the catalog.
+
+
       To grant the full set of privileges (drop, list, read, write, etc.) on an
       object, you can use the *full privilege* option.
 
@@ -789,78 +805,75 @@ tags:
       ### Table privileges
 
 
-      **Note**
+      | Privilege | Description |
 
+      | --------- | ----------- |
 
-      The TABLE_FULL_METADATA full privilege doesn't grant access to the
-      TABLE_READ_DATA or TABLE_WRITE_DATA individual privileges.
+      | TABLE_CREATE | Enables registering a table with the catalog. |
 
+      | TABLE_DROP | Enables dropping a table from the catalog. |
 
-      | Full privilege | Individual privilege | Description |
+      | TABLE_LIST | Enables listing any tables in the catalog. |
 
-      | -----------------------| ----------- | ---- |
-
-      | TABLE_FULL_METADATA | TABLE_CREATE | Enables registering a table with
-      the catalog. |
-
-      |  | TABLE_DROP | Enables dropping a table from the catalog. |
-
-      |  | TABLE_LIST | Enables listing any tables in the catalog. |
-
-      |  | TABLE_READ_PROPERTIES | Enables reading
+      | TABLE_READ_PROPERTIES | Enables reading
       [properties](https://iceberg.apache.org/docs/nightly/configuration/#table-properties)
       of the table. |
 
-      |  | TABLE_WRITE_PROPERTIES | Enables configuring
+      | TABLE_WRITE_PROPERTIES | Enables configuring
       [properties](https://iceberg.apache.org/docs/nightly/configuration/#table-properties)
       for the table. |
 
-      | N/A | TABLE_READ_DATA | Enables reading data from the table by receiving
+      | TABLE_READ_DATA | Enables reading data from the table by receiving
       short-lived read-only storage credentials from the catalog. |
 
-      | N/A | TABLE_WRITE_DATA | Enables writing data to the table by receiving
+      | TABLE_WRITE_DATA | Enables writing data to the table by receiving
       short-lived read+write storage credentials from the catalog. |
+
+      | TABLE_FULL_METADATA | Grants all table privileges, except
+      TABLE_READ_DATA and TABLE_WRITE_DATA, which need to be granted
+      individually. |
 
 
       ### View privileges
 
 
-      | Full privilege | Individual privilege | Description |
+      | Privilege | Description |
 
-      | -----------------------| ----------- | ---- |
+      | --------- | ----------- |
 
-      | VIEW_FULL_METADATA | VIEW_CREATE  | Enables registering a view with the
-      catalog. |
+      | VIEW_CREATE  | Enables registering a view with the catalog. |
 
-      |  | VIEW_DROP | Enables dropping a view from the catalog. |
+      | VIEW_DROP | Enables dropping a view from the catalog. |
 
-      |  | VIEW_LIST | Enables listing any views in the catalog.  |
+      | VIEW_LIST | Enables listing any views in the catalog.  |
 
-      |  | VIEW_READ_PROPERTIES | Enables reading all the view properties. |
+      | VIEW_READ_PROPERTIES | Enables reading all the view properties. |
 
-      |  | VIEW_WRITE_PROPERTIES | Enables configuring view properties. |
+      | VIEW_WRITE_PROPERTIES | Enables configuring view properties. |
+
+      | VIEW_FULL_METADATA | Grants all view privileges. |
 
 
       ### Namespace privileges
 
 
-      | Full privilege | Individual privilege | Description |
+      | Privilege | Description |
 
-      | -----------------------| ----------- | ---- |
+      | --------- | ----------- |
 
-      | NAMESPACE_FULL_METADATA | NAMESPACE_CREATE | Enables creating a
-      namespace in a catalog. |
+      | NAMESPACE_CREATE | Enables creating a namespace in a catalog. |
 
-      |  | NAMESPACE_DROP | Enables dropping the namespace from the catalog. |
+      | NAMESPACE_DROP | Enables dropping the namespace from the catalog. |
 
-      |  | NAMESPACE_LIST | Enables listing any object in the namespace,
-      including nested namespaces and tables. |
+      | NAMESPACE_LIST | Enables listing any object in the namespace, including
+      nested namespaces and tables. |
 
-      |  | NAMESPACE_READ_PROPERTIES | Enables reading all the namespace
+      | NAMESPACE_READ_PROPERTIES | Enables reading all the namespace
       properties. |
 
-      |  | NAMESPACE_WRITE_PROPERTIES | Enables configuring namespace
-      properties. |
+      | NAMESPACE_WRITE_PROPERTIES | Enables configuring namespace properties. |
+
+      | NAMESPACE_FULL_METADATA | Grants all namespace privileges. |
 
 
       ### Catalog privileges
@@ -879,8 +892,8 @@ tags:
       privileges:<ul><li>CATALOG_MANAGE_METADATA</li><li>TABLE_FULL_METADATA</li><li>NAMESPACE_FULL_METADATA</li><li>VIEW_FULL_METADATA</li><li>TABLE_WRITE_DATA</li><li>TABLE_READ_DATA</li><li>CATALOG_READ_PROPERTIES</li><li>CATALOG_WRITE_PROPERTIES</li></ul>
       |
 
-      | CATALOG_MANAGE_METADATA | Enables full management of the catalog, as
-      well as catalog roles, namespaces, and tables.  |
+      | CATALOG_MANAGE_METADATA | Enables full management of the catalog,
+      catalog roles, namespaces, and tables.  |
 
       | CATALOG_READ_PROPERTIES | Enables listing catalogs and reading
       properties of the catalog. |
@@ -891,52 +904,201 @@ tags:
       ## RBAC example
 
 
-      The following diagram illustrates how RBAC works in Polaris, and
+      The following diagram illustrates how RBAC works in Polaris and
 
       includes the following users:
 
 
-      -   **Alice**: A service admin who signs up for Polaris. Alice can
+      - **Alice:** A service admin who signs up for Polaris. Alice can
           create service principals. She can also create catalogs and
-          namespaces, and configure access control for Polaris resources.
+          namespaces and configure access control for Polaris resources.
 
-      > **Note**
+      - **Bob:** A data engineer who uses Snowpipe Streaming (in Snowflake)
+          and Apache Spark&trade; connections to interact with Polaris.
 
-      >
-
-      > The service principal for Alice is not visible in the Polaris Catalog
-
-      > user interface.
-
-
-      -   **Bob**: A data engineer who uses Snowpipe Streaming (in Snowflake)
-          and Apache Spark connections to interact with Polaris.
-
-          -   Alice has created a service principal for Bob. It has been
+          - Alice has created a service principal for Bob. It has been
               granted the Data_engineer principal role, which in turn has been
               granted the following catalog roles: Catalog contributor and
               Data administrator (for both the Silver and Gold zone catalogs
               in the following diagram).
 
-          -   The Catalog contributor role grants permission to create
+          - The Catalog contributor role grants permission to create
               namespaces and tables in the Bronze zone catalog.
 
-          -   The Data administrator roles grant full administrative rights to
+          - The Data administrator roles grant full administrative rights to
               the Silver zone catalog and Gold zone catalog.
 
-      -   **Mark**: A data scientist who uses Snowflake AI services to
+      - **Mark:** A data scientist who uses Snowflake AI services to
           interact with Polaris.
 
-          -   Alice has created a service principal for Mark. It has been
+          - Alice has created a service principal for Mark. It has been
               granted the Data_scientist principal role, which in turn has
               been granted the catalog role named Catalog reader.
 
-          -   The Catalog reader role grants read-only access for a catalog
+          - The Catalog reader role grants read-only access for a catalog
               named Gold zone catalog.
 
       ![Diagram that shows an example of how RBAC works in Polaris
-      Catalog.](./img/rbac-example.svg "Polaris Catalog RBAC example")
+      Catalog.](img/rbac-example.svg "Polaris Catalog RBAC example")
     x-displayName: Access Control
+  - name: Configuring Polaris for Production
+    description: >+
+      <!--
+       Copyright (c) 2024 Snowflake Computing Inc.
+       
+       Licensed under the Apache License, Version 2.0 (the "License");
+       you may not use this file except in compliance with the License.
+       You may obtain a copy of the License at
+       
+            http://www.apache.org/licenses/LICENSE-2.0
+       
+       Unless required by applicable law or agreed to in writing, software
+       distributed under the License is distributed on an "AS IS" BASIS,
+       WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+       See the License for the specific language governing permissions and
+       limitations under the License.
+      -->
+
+
+
+      # Configuring Polaris for Production
+
+
+      The default `polaris-server.yml` configuration is intended for develoment
+      and testing. When deploying Polaris in production, there are several best
+      practices to keep in mind.
+
+
+      ## Security
+
+
+      ### Configurations
+
+
+      Notable configuration used to secure a Polaris deployment are outlined
+      below.
+
+
+      #### oauth2
+
+
+      > [!WARNING]  
+
+      > Ensure that the `tokenBroker` setting reflects the token broker
+      specified in `authenticator` below.
+
+
+      * Configure [OAuth](https://oauth.net/2/) with this setting. Remove the
+      `TestInlineBearerTokenPolarisAuthenticator` option and uncomment the
+      `DefaultPolarisAuthenticator` authenticator option beneath it.
+
+      * Then, configure the token broker. You can configure the token broker to
+      use either
+      [asymmetric](https://github.com/polaris-catalog/polaris/blob/b482617bf8cc508b37dbedf3ebc81a9408160a5e/polaris-service/src/main/java/io/polaris/service/auth/JWTRSAKeyPair.java#L24)
+      or
+      [symmetric](https://github.com/polaris-catalog/polaris/blob/b482617bf8cc508b37dbedf3ebc81a9408160a5e/polaris-service/src/main/java/io/polaris/service/auth/JWTSymmetricKeyBroker.java#L23)
+      keys.
+
+
+      #### authenticator.tokenBroker
+
+
+      > [!WARNING]  
+
+      > Ensure that the `tokenBroker` setting reflects the token broker
+      specified in `oauth2` above.
+
+
+      #### callContextResolver & realmContextResolver
+
+      * Use these configurations to specify a service that can resolve a realm
+      from bearer tokens.
+
+      * The service(s) used here must implement the relevant interfaces (i.e.
+      [CallContextResolver](https://github.com/polaris-catalog/polaris/blob/8290019c10290a600e40b35ddb1e2f54bf99e120/polaris-service/src/main/java/io/polaris/service/context/CallContextResolver.java#L27)
+      and
+      [RealmContextResolver](https://github.com/polaris-catalog/polaris/blob/7ce86f10a68a3b56aed766235c88d6027c0de038/polaris-service/src/main/java/io/polaris/service/context/RealmContextResolver.java)).
+
+
+      ## Metastore Management
+
+
+      > [!IMPORTANT]  
+
+      > The default `in-memory` implementation for `metastoreManager` is meant
+      for testing and not suitable for production usage. Instead, consider an
+      implementation such as `eclipse-link` which allows you to store metadata
+      in a remote database.
+
+
+      A Metastore Manger should be configured with an implementation that
+      durably persists Polaris entities. Use the configuration
+      `metaStoreManager` to configure a
+      [MetastoreManager](https://github.com/polaris-catalog/polaris/blob/627dc602eb15a3258dcc32babf8def34cf6de0e9/polaris-core/src/main/java/io/polaris/core/persistence/PolarisMetaStoreManager.java#L47)
+      implementation where Polaris entities will be persisted. 
+
+
+      Be sure to secure your metastore backend since it will be storing
+      credentials and catalog metadata.
+
+
+      ### Configuring EclipseLink
+
+
+      To use [EclipseLink](https://eclipse.dev/eclipselink/) for metastore
+      management, specify the configuration `metaStoreManager.conf-file` to
+      point to an [EclipseLink `persistence.xml`
+      file](https://eclipse.dev/eclipselink/documentation/2.5/solutions/testingjpa002.htm).
+      This file, local to the Polaris service, will contain information on what
+      database to use for metastore management and how to connect to it.
+
+
+      ### Bootstrapping
+
+
+      Before using Polaris when using a metastore manager other than
+      `in-memory`, you must **bootstrap** the metastore manager. This is a
+      manual operation that must be performed **only once** in order to prepare
+      the metastore manager to integrate with Polaris. When the metastore
+      manager is bootstrapped, any existing Polaris entities in the metastore
+      manager may be **purged**.
+
+
+      To bootstrap Polaris, run:
+
+
+      ```bash
+
+      java -jar /path/to/jar/polaris-service-1.0.0-all.jar bootstrap
+      polaris-server.yml
+
+      ```
+
+
+      Afterwards, Polaris can be launched normally:
+
+
+      ```bash
+
+      java -jar /path/to/jar/polaris-service-1.0.0-all.jar server
+      polaris-server.yml
+
+      ```
+
+
+      ## Other Configurations
+
+
+      When deploying Polaris in production, consider adjusting the following
+      configurations:
+
+
+      #### featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES
+        - By default Polaris catalogs are allowed to be located in local filesystem with the `FILE` storage type. This should be disabled for production systems.
+        - Use this configuration to additionally disable any other storage types that will not be in use.
+
+
+    x-displayName: Configuring Polaris for Production
   - name: polaris-management-service_other
     x-displayName: other
   - name: Configuration API
@@ -1918,6 +2080,12 @@ paths:
         about to expire by sending a token exchange request (3). The request's
         "subject" token should be the expiring token. This request should use
         the subject token in the "Authorization" header.
+      parameters:
+        - name: Authorization
+          in: header
+          schema:
+            type: string
+          required: false
       requestBody:
         required: true
         content:
@@ -6850,6 +7018,7 @@ x-tagGroups:
       - Polaris Catalog Overview
       - Polaris Catalog Entities
       - Access Control
+      - Configuring Polaris for Production
   - name: Polaris Management Service
     tags:
       - polaris-management-service_other

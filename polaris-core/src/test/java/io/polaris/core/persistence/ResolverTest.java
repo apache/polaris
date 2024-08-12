@@ -35,9 +35,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -233,10 +233,10 @@ public class ResolverTest {
         this.resolveDriver(this.cache, "test", null, List.of(N1, N5_N6_T8, N5_N6_T5, N1_N2), null);
     // get all the resolved paths
     List<List<EntityCacheEntry>> resolvedPath = resolver.getResolvedPaths();
-    Assertions.assertEquals(1, resolvedPath.get(0).size());
-    Assertions.assertEquals(2, resolvedPath.get(1).size());
-    Assertions.assertEquals(3, resolvedPath.get(2).size());
-    Assertions.assertEquals(2, resolvedPath.get(3).size());
+    Assertions.assertThat(resolvedPath.get(0)).hasSize(1);
+    Assertions.assertThat(resolvedPath.get(1)).hasSize(2);
+    Assertions.assertThat(resolvedPath.get(2)).hasSize(3);
+    Assertions.assertThat(resolvedPath.get(3)).hasSize(2);
   }
 
   /**
@@ -276,14 +276,14 @@ public class ResolverTest {
     Resolver resolver = this.resolveDriver(this.cache, Set.of("PR2"), "test", Set.of("R2"));
 
     // Now add a new catalog role and see if the changes are reflected
-    Assertions.assertNotNull(resolver.getResolvedReferenceCatalog());
+    Assertions.assertThat(resolver.getResolvedReferenceCatalog()).isNotNull();
     PolarisBaseEntity TEST = resolver.getResolvedReferenceCatalog().getEntity();
     PolarisBaseEntity R3 =
         this.tm.createEntity(List.of(TEST), PolarisEntityType.CATALOG_ROLE, "R3");
 
     // now grant R3 to PR2
-    Assertions.assertEquals(1, resolver.getResolvedCallerPrincipalRoles().size());
-    PolarisBaseEntity PR2 = resolver.getResolvedCallerPrincipalRoles().getFirst().getEntity();
+    Assertions.assertThat(resolver.getResolvedCallerPrincipalRoles()).hasSize(1);
+    PolarisBaseEntity PR2 = resolver.getResolvedCallerPrincipalRoles().get(0).getEntity();
     this.tm.grantToGrantee(TEST, R3, PR2, PolarisPrivilege.CATALOG_ROLE_USAGE);
 
     // now resolve again with only PR2 activated, should see the new catalog role R3
@@ -299,7 +299,7 @@ public class ResolverTest {
     resolver = this.resolveDriver(this.cache, Set.of("PR2"), "test", Set.of("R2", "R3"));
 
     // ensure that the correct catalog role was resolved
-    Assertions.assertTrue(resolver.getResolvedCatalogRoles().containsKey(R3_NEW.getId()));
+    Assertions.assertThat(resolver.getResolvedCatalogRoles()).containsKey(R3_NEW.getId());
   }
 
   /** Check resolve paths when cache is inconsistent */
@@ -315,21 +315,21 @@ public class ResolverTest {
     Resolver resolver = this.resolveDriver(this.cache, "test", N1_N2_T1_PATH, null, null);
 
     // get the catalog
-    Assertions.assertNotNull(resolver.getResolvedReferenceCatalog());
+    Assertions.assertThat(resolver.getResolvedReferenceCatalog()).isNotNull();
     PolarisBaseEntity TEST = resolver.getResolvedReferenceCatalog().getEntity();
 
     // get the various entities in the path
-    Assertions.assertNotNull(resolver.getResolvedPath());
-    Assertions.assertEquals(3, resolver.getResolvedPath().size());
-    PolarisBaseEntity N1 = resolver.getResolvedPath().getFirst().getEntity();
+    Assertions.assertThat(resolver.getResolvedPath()).isNotNull();
+    Assertions.assertThat(resolver.getResolvedPath()).hasSize(3);
+    PolarisBaseEntity N1 = resolver.getResolvedPath().get(0).getEntity();
     PolarisBaseEntity N2 = resolver.getResolvedPath().get(1).getEntity();
     PolarisBaseEntity T1 = resolver.getResolvedPath().get(2).getEntity();
 
     // resolve N3
     ResolverPath N1_N3_PATH = new ResolverPath(List.of("N1", "N3"), PolarisEntityType.NAMESPACE);
     resolver = this.resolveDriver(this.cache, "test", N1_N3_PATH, null, null);
-    Assertions.assertNotNull(resolver.getResolvedPath());
-    Assertions.assertEquals(2, resolver.getResolvedPath().size());
+    Assertions.assertThat(resolver.getResolvedPath()).isNotNull();
+    Assertions.assertThat(resolver.getResolvedPath()).hasSize(2);
     PolarisBaseEntity N3 = resolver.getResolvedPath().get(1).getEntity();
 
     // now re-parent T1 under N3, keeping the same name
@@ -468,7 +468,7 @@ public class ResolverTest {
     ResolverStatus status = resolver.resolveAll();
 
     // we expect success
-    Assertions.assertEquals(ResolverStatus.StatusEnum.SUCCESS, status.getStatus());
+    Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
 
     // the principal does not exist, check that this is the case
     if (exists) {
@@ -479,7 +479,8 @@ public class ResolverTest {
           principalName);
     } else {
       // not found
-      Assertions.assertNull(resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL, principalName));
+      Assertions.assertThat(resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL, principalName))
+          .isNull();
     }
 
     // validate that we were able to resolve the principal and the two principal roles
@@ -489,12 +490,15 @@ public class ResolverTest {
     List<EntityCacheEntry> principalRolesResolved = resolver.getResolvedCallerPrincipalRoles();
 
     // expect two principal roles
-    Assertions.assertEquals(2, principalRolesResolved.size());
+    Assertions.assertThat(principalRolesResolved).hasSize(2);
     principalRolesResolved.sort(Comparator.comparing(p -> p.getEntity().getName()));
 
     // ensure they are PR1 and PR2
-    this.ensureResolved(principalRolesResolved.getFirst(), PolarisEntityType.PRINCIPAL_ROLE, "PR1");
-    this.ensureResolved(principalRolesResolved.getLast(), PolarisEntityType.PRINCIPAL_ROLE, "PR2");
+    this.ensureResolved(principalRolesResolved.get(0), PolarisEntityType.PRINCIPAL_ROLE, "PR1");
+    this.ensureResolved(
+        principalRolesResolved.get(principalRolesResolved.size() - 1),
+        PolarisEntityType.PRINCIPAL_ROLE,
+        "PR2");
 
     // if a principal role was passed-in, ensure it exists
     if (principalRoleName != null) {
@@ -682,8 +686,8 @@ public class ResolverTest {
     ResolverStatus status = resolver.resolveAll();
 
     // we expect success unless a status
-    Assertions.assertNotNull(status);
-    Assertions.assertEquals(expectedStatus, status.getStatus());
+    Assertions.assertThat(status).isNotNull();
+    Assertions.assertThat(status.getStatus()).isEqualTo(expectedStatus);
 
     // validate if status is success
     if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
@@ -707,10 +711,11 @@ public class ResolverTest {
               principalName);
         } else {
           // principal was optional
-          Assertions.assertTrue(isPrincipalNameOptional);
+          Assertions.assertThat(isPrincipalNameOptional).isTrue();
           // not found
-          Assertions.assertNull(
-              resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL, principalName));
+          Assertions.assertThat(
+                  resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL, principalName))
+              .isNull();
         }
       }
 
@@ -736,16 +741,16 @@ public class ResolverTest {
       }
 
       // ensure the right set of principal roles were activated
-      Assertions.assertEquals(expectedSize, principalRolesResolved.size());
+      Assertions.assertThat(principalRolesResolved).hasSize(expectedSize);
 
       // expect either PR1 and PR2
       for (EntityCacheEntry principalRoleResolved : principalRolesResolved) {
-        Assertions.assertNotNull(principalRoleResolved);
-        Assertions.assertNotNull(principalRoleResolved.getEntity());
+        Assertions.assertThat(principalRoleResolved).isNotNull();
+        Assertions.assertThat(principalRoleResolved.getEntity()).isNotNull();
         String roleName = principalRoleResolved.getEntity().getName();
 
         // should be either PR1 or PR2
-        Assertions.assertTrue(roleName.equals("PR1") || roleName.equals("PR2"));
+        Assertions.assertThat(roleName.equals("PR1") || roleName.equals("PR2")).isTrue();
 
         // ensure they are PR1 and PR2
         this.ensureResolved(principalRoleResolved, PolarisEntityType.PRINCIPAL_ROLE, roleName);
@@ -763,7 +768,7 @@ public class ResolverTest {
       if (catalogName != null) {
         EntityCacheEntry catalogEntry =
             resolver.getResolvedEntity(PolarisEntityType.CATALOG, catalogName);
-        Assertions.assertNotNull(catalogEntry);
+        Assertions.assertThat(catalogEntry).isNotNull();
         this.ensureResolved(catalogEntry, PolarisEntityType.CATALOG, catalogName);
 
         // if a catalog role was passed-in, ensure that it was properly resolved
@@ -782,15 +787,15 @@ public class ResolverTest {
 
         // if there is an expected set, ensure we have the same set
         if (expectedActivatedCatalogRoles != null) {
-          Assertions.assertEquals(expectedActivatedCatalogRoles.size(), activatedCatalogs.size());
+          Assertions.assertThat(activatedCatalogs).hasSameSizeAs(expectedActivatedCatalogRoles);
         }
 
         // process each of those
         for (EntityCacheEntry resolvedActivatedCatalogEntry : activatedCatalogs.values()) {
           // must be in the expected list
-          Assertions.assertNotNull(resolvedActivatedCatalogEntry);
+          Assertions.assertThat(resolvedActivatedCatalogEntry).isNotNull();
           PolarisBaseEntity activatedCatalogRole = resolvedActivatedCatalogEntry.getEntity();
-          Assertions.assertNotNull(activatedCatalogRole);
+          Assertions.assertThat(activatedCatalogRole).isNotNull();
           // ensure well resolved
           this.ensureResolved(
               resolvedActivatedCatalogEntry,
@@ -799,9 +804,10 @@ public class ResolverTest {
               activatedCatalogRole.getName());
 
           // in the set of expected catalog roles
-          Assertions.assertTrue(
-              expectedActivatedCatalogRoles == null
-                  || expectedActivatedCatalogRoles.contains(activatedCatalogRole.getName()));
+          Assertions.assertThat(
+                  expectedActivatedCatalogRoles == null
+                      || expectedActivatedCatalogRoles.contains(activatedCatalogRole.getName()))
+              .isTrue();
         }
 
         // resolve each path
@@ -813,7 +819,7 @@ public class ResolverTest {
           List<List<EntityCacheEntry>> allResolvedPaths = resolver.getResolvedPaths();
 
           // same size
-          Assertions.assertEquals(allPathsToCheck.size(), allResolvedPaths.size());
+          Assertions.assertThat(allResolvedPaths).hasSameSizeAs(allPathsToCheck);
 
           // check that each path was properly resolved
           int pathCount = 0;
@@ -844,7 +850,7 @@ public class ResolverTest {
 
     // ensure same cardinality
     if (!pathToResolve.isOptional()) {
-      Assertions.assertEquals(pathToResolve.getEntityNames().size(), resolvedPath.size());
+      Assertions.assertThat(resolvedPath).hasSameSizeAs(pathToResolve.getEntityNames());
     }
 
     // catalog path
@@ -882,17 +888,17 @@ public class ResolverTest {
       PolarisEntityType entityType,
       String entityName) {
     // everything was resolved
-    Assertions.assertNotNull(cacheEntry);
+    Assertions.assertThat(cacheEntry).isNotNull();
     PolarisBaseEntity entity = cacheEntry.getEntity();
-    Assertions.assertNotNull(entity);
+    Assertions.assertThat(entity).isNotNull();
     List<PolarisGrantRecord> grantRecords = cacheEntry.getAllGrantRecords();
-    Assertions.assertNotNull(grantRecords);
+    Assertions.assertThat(grantRecords).isNotNull();
 
     // reference entity cannot be null
     PolarisBaseEntity refEntity =
         this.tm.ensureExistsByName(
             catalogPath, entityType, PolarisEntitySubType.ANY_SUBTYPE, entityName);
-    Assertions.assertNotNull(refEntity);
+    Assertions.assertThat(refEntity).isNotNull();
 
     // reload the cached entry from the backend
     PolarisMetaStoreManager.CachedEntryResult refCachedEntry =
@@ -900,27 +906,27 @@ public class ResolverTest {
             this.callCtx, refEntity.getCatalogId(), refEntity.getId());
 
     // should exist
-    Assertions.assertNotNull(refCachedEntry);
+    Assertions.assertThat(refCachedEntry).isNotNull();
 
     // ensure same entity
     refEntity = refCachedEntry.getEntity();
     List<PolarisGrantRecord> refGrantRecords = refCachedEntry.getEntityGrantRecords();
-    Assertions.assertNotNull(refEntity);
-    Assertions.assertNotNull(refGrantRecords);
-    Assertions.assertEquals(refEntity, entity);
-    Assertions.assertEquals(refEntity.getEntityVersion(), entity.getEntityVersion());
+    Assertions.assertThat(refEntity).isNotNull();
+    Assertions.assertThat(refGrantRecords).isNotNull();
+    Assertions.assertThat(entity).isEqualTo(refEntity);
+    Assertions.assertThat(entity.getEntityVersion()).isEqualTo(refEntity.getEntityVersion());
 
     // ensure it has not been dropped
-    Assertions.assertEquals(0, entity.getDropTimestamp());
+    Assertions.assertThat(entity.getDropTimestamp()).isZero();
 
     // same number of grants
-    Assertions.assertEquals(refGrantRecords.size(), grantRecords.size());
+    Assertions.assertThat(grantRecords).hasSameSizeAs(refGrantRecords);
 
     // ensure same grant records. The order in the list should be deterministic
     Iterator<PolarisGrantRecord> refGrantRecordsIt = refGrantRecords.iterator();
     for (PolarisGrantRecord grantRecord : grantRecords) {
       PolarisGrantRecord refGrantRecord = refGrantRecordsIt.next();
-      Assertions.assertEquals(refGrantRecord, grantRecord);
+      Assertions.assertThat(grantRecord).isEqualTo(refGrantRecord);
     }
   }
 

@@ -60,8 +60,6 @@ import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * {@link IcebergRestCatalogApiService} implementation that delegates operations to {@link
@@ -70,11 +68,10 @@ import org.slf4j.LoggerFactory;
  */
 public class IcebergCatalogAdapter
     implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService {
-  private static final Logger LOG = LoggerFactory.getLogger(IcebergCatalogAdapter.class);
 
   private final CallContextCatalogFactory catalogFactory;
   private final RealmEntityManagerFactory entityManagerFactory;
-  private PolarisAuthorizer polarisAuthorizer;
+  private final PolarisAuthorizer polarisAuthorizer;
 
   public IcebergCatalogAdapter(
       CallContextCatalogFactory catalogFactory,
@@ -257,7 +254,7 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
-    if (purgeRequested != null && purgeRequested.booleanValue()) {
+    if (purgeRequested != null && purgeRequested) {
       newHandlerWrapper(securityContext, prefix).dropTableWithPurge(tableIdentifier);
     } else {
       newHandlerWrapper(securityContext, prefix).dropTableWithoutPurge(tableIdentifier);
@@ -462,7 +459,7 @@ public class IcebergCatalogAdapter
             CallContext.getCurrentContext(), authenticatedPrincipal, warehouse);
     ResolverStatus resolverStatus = resolver.resolveAll();
     if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
-      throw new NotFoundException("Unable to find warehouse " + warehouse);
+      throw new NotFoundException("Unable to find warehouse %s", warehouse);
     }
     EntityCacheEntry resolvedReferenceCatalog = resolver.getResolvedReferenceCatalog();
     Map<String, String> properties =

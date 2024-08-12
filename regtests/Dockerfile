@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM apache/spark:3.5.1-python3
+FROM docker.io/apache/spark:3.5.1-python3
 ARG POLARIS_HOST=polaris
 ENV POLARIS_HOST=$POLARIS_HOST
 ENV SPARK_HOME=/opt/spark
@@ -34,7 +34,12 @@ WORKDIR /home/spark/regtests
 COPY ./setup.sh /home/spark/regtests/setup.sh
 COPY ./pyspark-setup.sh /home/spark/regtests/pyspark-setup.sh
 COPY ./client/python /home/spark/regtests/client/python
+COPY ./polaris /home/spark
 
+RUN python3 -m venv /home/spark/polaris-venv && \
+    . /home/spark/polaris-venv/bin/activate && \
+    pip install poetry==1.5.0 && \
+    deactivate \
 RUN ./setup.sh
 
 COPY --chown=spark . /home/spark/regtests

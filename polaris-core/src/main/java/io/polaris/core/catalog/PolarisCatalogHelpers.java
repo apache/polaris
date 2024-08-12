@@ -15,6 +15,7 @@
  */
 package io.polaris.core.catalog;
 
+import com.google.common.collect.ImmutableList;
 import io.polaris.core.entity.PolarisEntity;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -22,24 +23,21 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Holds helper methods translating between persistence-layer structs and Iceberg objects shared by
  * different Polaris components.
  */
 public class PolarisCatalogHelpers {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisCatalogHelpers.class);
-
   /** Not intended for instantiation. */
   private PolarisCatalogHelpers() {}
 
   public static List<String> tableIdentifierToList(TableIdentifier identifier) {
-    List<String> fullList = new ArrayList<>();
+    ImmutableList.Builder<String> fullList =
+        ImmutableList.builderWithExpectedSize(identifier.namespace().length() + 1);
     fullList.addAll(Arrays.asList(identifier.namespace().levels()));
     fullList.add(identifier.name());
-    return fullList;
+    return fullList.build();
   }
 
   public static TableIdentifier listToTableIdentifier(List<String> ids) {

@@ -18,7 +18,6 @@ services:
   polaris:
     build:
       context: .
-      network: host
     ports:
       - "8181:8181"
       - "8182"
@@ -47,7 +46,6 @@ services:
   regtest:
     build:
       context: regtests
-      network: host
       args:
         POLARIS_HOST: polaris
     depends_on:

@@ -86,6 +86,9 @@ defaultRealms:
 
 metaStoreManager:
   type: in-memory
+  # type: eclipse-link # uncomment to use eclipse-link as metastore
+  # persistence-unit: polaris
+
 
 # TODO - avoid duplicating token broker config
 oauth2:

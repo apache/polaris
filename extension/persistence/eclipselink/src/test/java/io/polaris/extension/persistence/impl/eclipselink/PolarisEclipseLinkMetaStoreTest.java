@@ -13,7 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.snowflake.polaris.persistence.impl.eclipselink;
+package io.polaris.extension.persistence.impl.eclipselink;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.polaris.core.PolarisCallContext;
 import io.polaris.core.PolarisConfigurationStore;
@@ -22,9 +26,13 @@ import io.polaris.core.PolarisDiagnostics;
 import io.polaris.core.persistence.PolarisMetaStoreManagerImpl;
 import io.polaris.core.persistence.PolarisMetaStoreManagerTest;
 import io.polaris.core.persistence.PolarisTestMetaStoreManager;
-import io.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkMetaStoreSessionImpl;
-import io.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkStore;
 import java.time.ZoneId;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.mockito.Mockito;
 
 /**
@@ -48,5 +56,34 @@ public class PolarisEclipseLinkMetaStoreTest extends PolarisMetaStoreManagerTest
             diagServices,
             new PolarisConfigurationStore() {},
             timeSource.withZone(ZoneId.systemDefault())));
+  }
+
+  @ParameterizedTest()
+  @ArgumentsSource(CreateStoreSessionArgs.class)
+  void testCreateStoreSession(String confFile, boolean success) {
+    // Clear cache to prevent reuse EntityManagerFactory
+    PolarisEclipseLinkMetaStoreSessionImpl.clearEntityManagerFactories();
+
+    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
+    PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
+    try {
+      var session =
+          new PolarisEclipseLinkMetaStoreSessionImpl(
+              store, Mockito.mock(), () -> "realm", confFile, "polaris-dev");
+      assertNotNull(session);
+      assertTrue(success);
+    } catch (Exception e) {
+      assertFalse(success);
+    }
+  }
+
+  private static class CreateStoreSessionArgs implements ArgumentsProvider {
+    @Override
+    public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
+      return Stream.of(
+          Arguments.of("META-INF/persistence.xml", true),
+          Arguments.of("./build/conf/conf.jar!/persistence.xml", true),
+          Arguments.of("/dummy_path/conf.jar!/persistence.xml", false));
+    }
   }
 }

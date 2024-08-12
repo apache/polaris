@@ -15,6 +15,9 @@
  */
 package io.polaris.service;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.util.Objects.requireNonNull;
+
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -87,6 +90,8 @@ import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.Closeable;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
@@ -112,30 +117,14 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     printAsciiArt();
   }
 
-  private static void printAsciiArt() {
-    String bannerArt =
-        String.join(
-            "\n",
-            " @@@@   @@@  @       @    @@@@   @  @@@@    @@@@    @  @@@@@  @    @     @@@   @@@@ ",
-            " @   @ @   @ @      @ @   @   @  @  @@     @       @ @   @   @ @   @    @   @ @     ",
-            " @@@@  @   @ @     @@@@@  @@@@   @    @@   @      @@@@@  @  @@@@@  @    @   @ @  @@@",
-            " @      @@@  @@@@ @     @ @  @@  @  @@@@    @@@@ @     @ @ @@   @@ @@@@  @@@   @@@@ ",
-            "                                                                                    ",
-            "                                                                                    ",
-            "                                                                                    ",
-            "                                                                                    ",
-            "                                      /////|                                        ",
-            "                                   //||///T|||                                      ",
-            "                                ///|||////||||||                                    ",
-            "                               //||||T////|||||||||                                 ",
-            "                          /T| //|||||T///T||//T||||||                               ",
-            "                        //|||/////T||////||/////|||||||  //||                       ",
-            "                     //||||||T///////////////////T|||||||T|||||                     ",
-            "                  //||||/////T|//////////|///////T|||||T||||||||                    ",
-            "                 //|||||/////|||T////////////////||||||/|||||||||                   ",
-            ",,..,,,..,,,..,//||||////////||||||||||/////////|||||///||||||||||,,,..,,..,,,..,,,.",
-            ",,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,..,,,.,,,..,,,..,");
-    System.out.println(bannerArt.replaceAll("\\|", "\\\\"));
+  private static void printAsciiArt() throws IOException {
+    URL url = PolarisApplication.class.getResource("banner.txt");
+    try (InputStream in =
+        requireNonNull(url, "banner.txt not found on classpath")
+            .openConnection()
+            .getInputStream()) {
+      System.out.println(new String(in.readAllBytes(), UTF_8));
+    }
   }
 
   @Override
@@ -152,13 +141,17 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
   @Override
   public void run(PolarisApplicationConfig configuration, Environment environment) {
     MetaStoreManagerFactory metaStoreManagerFactory = configuration.getMetaStoreManagerFactory();
-    StsClientBuilder stsClientBuilder = StsClient.builder();
-    AwsCredentialsProvider awsCredentialsProvider = configuration.credentialsProvider();
-    if (awsCredentialsProvider != null) {
-      stsClientBuilder.credentialsProvider(awsCredentialsProvider);
-    }
+
     metaStoreManagerFactory.setStorageIntegrationProvider(
-        new PolarisStorageIntegrationProviderImpl(stsClientBuilder::build));
+        new PolarisStorageIntegrationProviderImpl(
+            () -> {
+              StsClientBuilder stsClientBuilder = StsClient.builder();
+              AwsCredentialsProvider awsCredentialsProvider = configuration.credentialsProvider();
+              if (awsCredentialsProvider != null) {
+                stsClientBuilder.credentialsProvider(awsCredentialsProvider);
+              }
+              return stsClientBuilder.build();
+            }));
 
     PolarisMetricRegistry polarisMetricRegistry =
         new PolarisMetricRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
@@ -352,9 +345,9 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                       Collectors.toMap(Map.Entry::getKey, (e) -> ((String[]) e.getValue())[0])),
               headers);
       CallContext.setCurrentContext(currentCallContext);
-      try (MDC.MDCCloseable context =
+      try (MDC.MDCCloseable ignored1 =
               MDC.putCloseable("realm", currentRealmContext.getRealmIdentifier());
-          MDC.MDCCloseable requestId =
+          MDC.MDCCloseable ignored2 =
               MDC.putCloseable("request_id", httpRequest.getHeader("request_id"))) {
         chain.doFilter(request, response);
       } finally {
@@ -362,8 +355,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
             currentCallContext
                 .contextVariables()
                 .get(CallContext.REQUEST_PATH_CATALOG_INSTANCE_KEY);
-        if (contextCatalog != null && contextCatalog instanceof Closeable) {
-          ((Closeable) contextCatalog).close();
+        if (contextCatalog instanceof Closeable closeableCatalog) {
+          closeableCatalog.close();
         }
         currentCallContext.close();
       }

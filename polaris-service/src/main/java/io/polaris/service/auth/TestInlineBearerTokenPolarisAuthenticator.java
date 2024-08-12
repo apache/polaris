@@ -84,10 +84,8 @@ public class TestInlineBearerTokenPolarisAuthenticator extends BasePolarisAuthen
 
   private static Map<String, String> extractPrincipal(String credentials) {
     if (credentials.contains(";") || credentials.contains(":")) {
-      Map<String, String> parsedProperties = new HashMap<>();
-      parsedProperties.putAll(
+      return new HashMap<>(
           Splitter.on(';').trimResults().withKeyValueSeparator(':').split(credentials));
-      return parsedProperties;
     }
     return Map.of();
   }

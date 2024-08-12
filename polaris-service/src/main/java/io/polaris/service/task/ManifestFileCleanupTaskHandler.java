@@ -151,8 +151,8 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
               // file's existence, but then it is deleted before we have a chance to
               // send the delete request. In such a case, we <i>should</i> retry
               // and find
-              if (TaskUtils.exists(dataFile.toString(), fileIO)) {
-                fileIO.deleteFile(dataFile.toString());
+              if (TaskUtils.exists(dataFile, fileIO)) {
+                fileIO.deleteFile(dataFile);
               } else {
                 LOGGER
                     .atInfo()

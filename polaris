@@ -31,5 +31,11 @@ fi
 
 pushd $SCRIPT_DIR > /dev/null
 PYTHONPATH=regtests/client/python ${SCRIPT_DIR}/polaris-venv/bin/python3 regtests/client/python/cli/polaris_cli.py "$@"
+status=$?
 popd > /dev/null
 
+if [ $status -ne 0 ]; then
+  exit 1
+fi
+
+exit 0

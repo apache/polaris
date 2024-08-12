@@ -27,8 +27,6 @@ import io.polaris.core.persistence.MetaStoreManagerFactory;
 import io.polaris.core.persistence.PolarisMetaStoreManager;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.iceberg.ManifestFile;
@@ -48,7 +46,6 @@ public class TableCleanupTaskHandler implements TaskHandler {
   private final TaskExecutor taskExecutor;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final Function<TaskEntity, FileIO> fileIOSupplier;
-  private final ExecutorService executorService = Executors.newVirtualThreadPerTaskExecutor();
 
   public TableCleanupTaskHandler(
       TaskExecutor taskExecutor,

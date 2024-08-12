@@ -14,13 +14,8 @@
  * limitations under the License.
  */
 
-dependencies {
-    implementation(project(":polaris-core"))
-    implementation(project(":polaris-service"))
-    implementation(libs.eclipselink)
-    implementation(platform(libs.dropwizard.bom))
-    implementation("io.dropwizard:dropwizard-jackson")
+import org.gradle.api.tasks.compile.JavaCompile
 
-    testImplementation(libs.h2)
-    testImplementation(testFixtures(project(":polaris-core")))
-}
+plugins { id("polaris-java") }
+
+tasks.withType(JavaCompile::class.java).configureEach { options.release = 21 }

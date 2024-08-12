@@ -125,6 +125,7 @@ public class DefaultOAuth2ApiService implements OAuth2ApiService, HasEntityManag
     }
   }
 
+  @Override
   public void setTokenBroker(TokenBrokerFactory tokenBrokerFactory) {
     this.tokenBrokerFactory = tokenBrokerFactory;
   }

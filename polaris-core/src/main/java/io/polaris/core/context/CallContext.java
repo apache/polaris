@@ -40,7 +40,7 @@ public interface CallContext extends AutoCloseable {
 
   // For requests that make use of a Catalog instance, this holds the instance that was
   // created, scoped to the current call context.
-  public static final String REQUEST_PATH_CATALOG_INSTANCE_KEY = "REQUEST_PATH_CATALOG_INSTANCE";
+  String REQUEST_PATH_CATALOG_INSTANCE_KEY = "REQUEST_PATH_CATALOG_INSTANCE";
 
   // Authenticator filters should populate this field alongside resolving a SecurityContext.
   // Value type: AuthenticatedPolarisPrincipal
@@ -95,9 +95,6 @@ public interface CallContext extends AutoCloseable {
    * #closeables()}. The original {@link #contextVariables()} map is untouched and {@link
    * #closeables()} in the original {@link CallContext} should be closed along with the {@link
    * CallContext}.
-   *
-   * @param base
-   * @return
    */
   static CallContext copyOf(CallContext base) {
     RealmContext realmContext = base.getRealmContext();
@@ -138,6 +135,7 @@ public interface CallContext extends AutoCloseable {
         contextVariables().computeIfAbsent(CLOSEABLES, key -> new CloseableGroup());
   }
 
+  @Override
   default void close() {
     if (CURRENT_CONTEXT.get() == this) {
       unsetCurrentContext();

@@ -185,8 +185,8 @@ public class PolarisConnectionExtension implements BeforeAllCallback, ParameterR
     if (dropwizardExtensionField == null) {
       LoggerFactory.getLogger(PolarisGrantRecord.class)
           .warn(
-              "Unable to find dropwizard extension field in test class "
-                  + extensionContext.getRequiredTestClass());
+              "Unable to find dropwizard extension field in test class {}",
+              extensionContext.getRequiredTestClass());
       return null;
     }
     DropwizardAppExtension appExtension =

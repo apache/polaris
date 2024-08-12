@@ -44,7 +44,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.BaseTransaction;
@@ -301,14 +300,13 @@ public class PolarisCatalogHandlerWrapper {
       List<TableIdentifier> ids) {
     resolutionManifest =
         entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
-    ids.stream()
-        .forEach(
-            identifier ->
-                resolutionManifest.addPassthroughPath(
-                    new ResolverPath(
-                        PolarisCatalogHelpers.tableIdentifierToList(identifier),
-                        PolarisEntityType.TABLE_LIKE),
-                    identifier));
+    ids.forEach(
+        identifier ->
+            resolutionManifest.addPassthroughPath(
+                new ResolverPath(
+                    PolarisCatalogHelpers.tableIdentifierToList(identifier),
+                    PolarisEntityType.TABLE_LIKE),
+                identifier));
 
     ResolverStatus status = resolutionManifest.resolveAll();
 
@@ -420,7 +418,7 @@ public class PolarisCatalogHandlerWrapper {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_NAMESPACE;
 
     Namespace namespace = request.namespace();
-    if (namespace.length() == 0) {
+    if (namespace.isEmpty()) {
       throw new AlreadyExistsException(
           "Cannot create root namespace, as it already exists implicitly.");
     }
@@ -468,10 +466,6 @@ public class PolarisCatalogHandlerWrapper {
   /**
    * Execute a catalog function and ensure we close the BaseCatalog afterward. This will typically
    * ensure the underlying FileIO is closed
-   *
-   * @param handler
-   * @return
-   * @param <T>
    */
   private <T> T doCatalogOperation(Supplier<T> handler) {
     try {
@@ -737,10 +731,7 @@ public class PolarisCatalogHandlerWrapper {
     for (int i = 1; i <= identifier.namespace().length(); i++) {
       Namespace nsLevel =
           Namespace.of(
-              Arrays.stream(identifier.namespace().levels())
-                  .limit(i)
-                  .collect(Collectors.toList())
-                  .toArray(String[]::new));
+              Arrays.stream(identifier.namespace().levels()).limit(i).toArray(String[]::new));
       extraPassthroughNamespaces.add(nsLevel);
     }
     authorizeBasicNamespaceOperationOrThrow(
@@ -759,11 +750,8 @@ public class PolarisCatalogHandlerWrapper {
           .log("Attempted notification on internal catalog");
       throw new BadRequestException("Cannot update internal catalog via notifications");
     }
-    if (!(baseCatalog instanceof SupportsNotifications)) {
-      return false;
-    }
-    SupportsNotifications notificationCatalog = (SupportsNotifications) baseCatalog;
-    return notificationCatalog.sendNotification(identifier, request);
+    return baseCatalog instanceof SupportsNotifications notificationCatalog
+        && notificationCatalog.sendNotification(identifier, request);
   }
 
   public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
@@ -944,7 +932,9 @@ public class PolarisCatalogHandlerWrapper {
     authorizeCollectionOfTableLikeOperationOrThrow(
         op,
         PolarisEntitySubType.TABLE,
-        commitTransactionRequest.tableChanges().stream().map(t -> t.identifier()).toList());
+        commitTransactionRequest.tableChanges().stream()
+            .map(UpdateTableRequest::identifier)
+            .toList());
     CatalogEntity catalog =
         CatalogEntity.of(
             resolutionManifest
