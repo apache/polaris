@@ -15,6 +15,7 @@
  */
 package io.polaris.service.auth;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.auth0.jwt.JWT;
@@ -54,7 +55,8 @@ public class JWTRSAKeyPairTest {
     KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
     kpg.initialize(2048);
     KeyPair kp = kpg.generateKeyPair();
-    try (BufferedWriter writer = new BufferedWriter(new FileWriter(privateFileLocation, true))) {
+    try (BufferedWriter writer =
+        new BufferedWriter(new FileWriter(privateFileLocation, UTF_8, true))) {
       writer.write("-----BEGIN PRIVATE KEY-----"); // pragma: allowlist secret
       writer.newLine();
       writer.write(Base64.getMimeEncoder().encodeToString(kp.getPrivate().getEncoded()));
@@ -62,7 +64,8 @@ public class JWTRSAKeyPairTest {
       writer.write("-----END PRIVATE KEY-----");
       writer.newLine();
     }
-    try (BufferedWriter writer = new BufferedWriter(new FileWriter(publicFileLocation, true))) {
+    try (BufferedWriter writer =
+        new BufferedWriter(new FileWriter(publicFileLocation, UTF_8, true))) {
       writer.write("-----BEGIN PUBLIC KEY-----");
       writer.newLine();
       writer.write(Base64.getMimeEncoder().encodeToString(kp.getPublic().getEncoded()));
