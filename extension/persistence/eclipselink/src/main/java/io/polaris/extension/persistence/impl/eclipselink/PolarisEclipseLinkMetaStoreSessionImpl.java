@@ -243,7 +243,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
         return result;
       } catch (Exception e) {
         tr.rollback();
-        LOG.debug("transaction rolled back: {}", e);
+        LOG.debug("transaction rolled back", e);
 
         if (e instanceof OptimisticLockException
             || e.getCause() instanceof OptimisticLockException) {
@@ -278,7 +278,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
         }
       } catch (Exception e) {
         tr.rollback();
-        LOG.debug("transaction rolled back");
+        LOG.debug("transaction rolled back", e);
 
         if (e instanceof OptimisticLockException
             || e.getCause() instanceof OptimisticLockException) {
