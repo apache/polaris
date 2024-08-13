@@ -10,7 +10,3 @@ metadata:
 data:
   polaris-server.yml: |-
 {{ toYaml .Values.polarisServerConfig | indent 4 }}
-{{- if .Values.persistenceConfig  }}
-  persistence.xml: |-
-{{ .Values.persistenceConfig | indent 4 }}
-{{- end }}

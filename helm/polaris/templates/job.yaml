@@ -24,16 +24,16 @@ spec:
         {{- tpl (toYaml .Values.podLabels) . | nindent 8 }}
         {{- end }}
     spec:
-      {{- if .Values.persistenceConfig }}
+      {{- if .Values.persistenceConfigSecret }}
       initContainers:
         - name: init-config
           image: registry.access.redhat.com/ubi9/openjdk-21:1.20-2.1721752936
-          command: ['sh', '-c', 'cd /config/ && jar -cf /tmp/conf.jar persistence.xml']
+          command: ['sh', '-c', 'cd /secret && jar -cf /tmp/conf.jar persistence.xml']
           volumeMounts:
-            - name: config-volume
-              mountPath: /config
             - name: tmp-volume
               mountPath: /tmp
+            - name: secret-volume
+              mountPath: /secret
       {{- end }}
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -54,7 +54,7 @@ spec:
             - name: config-volume
               mountPath: {{ trimSuffix "/" .Values.image.configDir }}/polaris-server.yml
               subPath: polaris-server.yml
-            {{- if .Values.persistenceConfig }}
+            {{- if .Values.persistenceConfigSecret }}
             - name: tmp-volume
               mountPath: /tmp
             {{- end }}
@@ -65,9 +65,12 @@ spec:
         - name: config-volume
           configMap:
             name: {{ include "polaris.fullname" . }}
-        {{- if .Values.persistenceConfig }}
+        {{- if .Values.persistenceConfigSecret }}
         - name: tmp-volume
           emptyDir: {}
+        - name: secret-volume
+          secret:
+            secretName: {{ .Values.persistenceConfigSecret }}
         {{- end }}
       {{- if .Values.nodeSelector }}
       nodeSelector:
