@@ -187,7 +187,7 @@ readinessProbe:
   timeoutSeconds: 10
 
 # -- Advanced configuration via Environment Variables.
-# Extra environment variables to add to the Nessie server container.
+# Extra environment variables to add to the Polaris server container.
 # You can pass here any valid EnvVar object:
 # https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core
 # This can be useful to get configuration values from Kubernetes secrets or config maps.

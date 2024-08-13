@@ -47,7 +47,7 @@ $ helm uninstall --namespace polaris polaris
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Optional; set to zero or empty to disable. |
 | autoscaling.targetMemoryUtilizationPercentage | string | `nil` | Optional; set to zero or empty to disable. |
 | configMapLabels | object | `{}` | Additional Labels to apply to polaris configmap. |
-| extraEnv | list | `[]` | Advanced configuration via Environment Variables. Extra environment variables to add to the Nessie server container. You can pass here any valid EnvVar object: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core This can be useful to get configuration values from Kubernetes secrets or config maps. |
+| extraEnv | list | `[]` | Advanced configuration via Environment Variables. Extra environment variables to add to the Polaris server container. You can pass here any valid EnvVar object: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core This can be useful to get configuration values from Kubernetes secrets or config maps. |
 | image.configDir | string | `"/app/config"` | The path to the directory where the polaris-server.yml file should be mounted. |
 | image.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
 | image.repository | string | `"localhost:5001/polaris"` | The image repository to pull from. |
