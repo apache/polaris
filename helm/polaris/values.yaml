@@ -186,7 +186,27 @@ readinessProbe:
   # -- Number of seconds after which the probe times out. Minimum value is 1.
   timeoutSeconds: 10
 
-# -- Configures persistence.xml for servu
+# -- Advanced configuration via Environment Variables.
+# Extra environment variables to add to the Nessie server container.
+# You can pass here any valid EnvVar object:
+# https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core
+# This can be useful to get configuration values from Kubernetes secrets or config maps.
+extraEnv:
+  []
+#  - name: AWS_STORAGE_BUCKET
+#    value: s3://xxxxx/
+#  - name: AWS_ACCESS_KEY_ID
+#    valueFrom:
+#      secretKeyRef:
+#        name: aws-secret
+#        key: access_key_id
+#  - name: AWS_SECRET_ACCESS_KEY
+#    valueFrom:
+#      secretKeyRef:
+#        name: aws-secret
+#        key: secret_access_key
+
+# -- Configures for Polaris config (persistence.xml)
 persistenceConfig: |-
   <persistence version="2.0" xmlns="http://java.sun.com/xml/ns/persistence"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -215,7 +235,7 @@ persistenceConfig: |-
     </persistence-unit>
   </persistence>
 
-# -- Configures Polaris service.
+# -- Configures for Polaris config (polaris-server.yml)
 polarisServerConfig:
   server:
     # Maximum number of threads.

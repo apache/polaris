@@ -52,6 +52,10 @@ spec:
           imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}
           command: ["java"]
           args: ["-jar", "/app/polaris-service-1.0.0-all.jar", "server", "{{ trimSuffix "/" .Values.image.configDir }}/polaris-server.yml"]
+          env:
+            {{- if .Values.extraEnv }}
+            {{- tpl (toYaml .Values.extraEnv) . | nindent 12 }}
+            {{- end }}
           volumeMounts:
             - name: config-volume
               mountPath: {{ trimSuffix "/" .Values.image.configDir }}/polaris-server.yml
