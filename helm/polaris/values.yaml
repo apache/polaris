@@ -34,10 +34,10 @@ serviceAccount:
 # -- Annotations to apply to polaris pods.
 podAnnotations: {}
 
-# -- Additional Labels to apply to nessie pods.
+# -- Additional Labels to apply to polaris pods.
 podLabels: {}
 
-# -- Additional Labels to apply to nessie configmap.
+# -- Additional Labels to apply to polaris configmap.
 configMapLabels: {}
 
 # -- Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/.
@@ -70,7 +70,7 @@ service:
     polaris-metrics: 8182
   # -- The session affinity for the service. Valid values are: None, ClientIP.
   # ClientIP enables sticky sessions based on the client's IP address.
-  # This is generally beneficial to Nessie deployments, but some testing may be
+  # This is generally beneficial to Polaris deployments, but some testing may be
   # required in order to make sure that the load is distributed evenly among the pods.
   # Also, this setting affects only internal clients, not external ones.
   # If Ingress is enabled, it is recommended to set sessionAffinity to None.
@@ -79,10 +79,10 @@ service:
   annotations: {}
 
 # Polaris Ingress settings.
-# These settings generate an Ingress resource that routes external traffic to the Nessie service
+# These settings generate an Ingress resource that routes external traffic to the Polaris service
 # using the "polaris-service" port described above.
 # Consider enabling sticky sessions based on the remote client's IP address;
-# this is generally beneficial to Nessie deployments, but some testing may be
+# this is generally beneficial to Polaris deployments, but some testing may be
 # required in order to make sure that the load is distributed evenly among the pods.
 # Check your ingress controller's documentation.
 ingress:
@@ -106,7 +106,7 @@ ingress:
 #        - chart-example2.local
 #      secretName: secret1
 
-# -- Configures the resources requests and limits for nessie pods.
+# -- Configures the resources requests and limits for polaris pods.
 # We usually recommend not to specify default resources and to leave this as a conscious
 # choice for the user. This also increases chances charts run on environments with little
 # resources, such as Minikube. If you do want to specify resources, uncomment the following
@@ -133,18 +133,18 @@ autoscaling:
   # -- Optional; set to zero or empty to disable.
   targetMemoryUtilizationPercentage:
 
-# -- Node labels which must match for the nessie pod to be scheduled on that node. See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector.
+# -- Node labels which must match for the polaris pod to be scheduled on that node. See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector.
 nodeSelector:
   {}
   # kubernetes.io/os: linux
 
-# -- A list of tolerations to apply to nessie pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/.
+# -- A list of tolerations to apply to polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/.
 tolerations: []
 #  - key: "node-role.kubernetes.io/control-plane"
 #    operator: "Exists"
 #    effect: "NoSchedule"
 
-# -- Affinity and anti-affinity for nessie pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity.
+# -- Affinity and anti-affinity for polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity.
 affinity: {}
 #  podAffinity:
 #    preferredDuringSchedulingIgnoredDuringExecution:
@@ -156,9 +156,9 @@ affinity: {}
 #              - key: app.kubernetes.io/name
 #                operator: In
 #                values:
-#                  - nessie
+#                  - polaris
 
-# -- Configures the liveness probe for nessie pods.
+# -- Configures the liveness probe for polaris pods.
 livenessProbe:
   # -- Number of seconds after the container has started before liveness probes are initiated. Minimum value is 0.
   initialDelaySeconds: 5
@@ -173,7 +173,7 @@ livenessProbe:
   # -- Optional duration in seconds the pod needs to terminate gracefully upon probe failure. Minimum value is 1.
   terminationGracePeriodSeconds: 30
 
-# -- Configures the readiness probe for nessie pods.
+# -- Configures the readiness probe for polaris pods.
 readinessProbe:
   # -- Number of seconds after the container has started before readiness probes are initiated. Minimum value is 0.
   initialDelaySeconds: 5
@@ -186,6 +186,7 @@ readinessProbe:
   # -- Number of seconds after which the probe times out. Minimum value is 1.
   timeoutSeconds: 10
 
+# -- Configures persistence.xml for servu
 persistenceConfig: |-
   <persistence version="2.0" xmlns="http://java.sun.com/xml/ns/persistence"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
