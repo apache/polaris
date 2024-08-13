@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
  */
 @JsonTypeName("default")
 public class DefaultOAuth2ApiService implements OAuth2ApiService, HasEntityManagerFactory {
-  public static final Logger LOGGER = LoggerFactory.getLogger(DefaultOAuth2ApiService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DefaultOAuth2ApiService.class);
   private TokenBrokerFactory tokenBrokerFactory;
 
   public DefaultOAuth2ApiService() {}

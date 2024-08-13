@@ -44,13 +44,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException> {
-  private static final Logger LOG = LoggerFactory.getLogger(IcebergExceptionMapper.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(IcebergExceptionMapper.class);
 
   public IcebergExceptionMapper() {}
 
   @Override
   public Response toResponse(RuntimeException runtimeException) {
-    LOG.info("Handling runtimeException {}", runtimeException.getMessage());
+    LOGGER.info("Handling runtimeException {}", runtimeException.getMessage());
     int responseCode =
         switch (runtimeException) {
           case NoSuchNamespaceException e -> Response.Status.NOT_FOUND.getStatusCode();
@@ -80,7 +80,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
           default -> Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
         };
     if (responseCode == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()) {
-      LOG.error("Unhandled exception returning INTERNAL_SERVER_ERROR", runtimeException);
+      LOGGER.error("Unhandled exception returning INTERNAL_SERVER_ERROR", runtimeException);
     }
 
     ErrorResponse icebergErrorResponse =
@@ -94,7 +94,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
             .entity(icebergErrorResponse)
             .type(MediaType.APPLICATION_JSON_TYPE)
             .build();
-    LOG.debug("Mapped exception to errorResp: {}", errorResp);
+    LOGGER.debug("Mapped exception to errorResp: {}", errorResp);
     return errorResp;
   }
 }

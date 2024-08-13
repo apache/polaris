@@ -48,7 +48,7 @@ import org.slf4j.LoggerFactory;
  * function as a lookup manifest for downstream callers.
  */
 public class PolarisResolutionManifest implements PolarisResolutionManifestCatalogView {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisResolutionManifest.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisResolutionManifest.class);
 
   private final PolarisEntityManager entityManager;
   private final CallContext callContext;
@@ -195,14 +195,14 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     ResolverStatus status = passthroughResolver.resolveAll();
 
     if (status.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
-      LOG.debug("Returning null for key {} due to resolver status {}", key, status.getStatus());
+      LOGGER.debug("Returning null for key {} due to resolver status {}", key, status.getStatus());
       return null;
     }
 
     List<EntityCacheEntry> resolvedPath = passthroughResolver.getResolvedPath();
     if (requestedPath.isOptional()) {
       if (resolvedPath.size() != requestedPath.getEntityNames().size()) {
-        LOG.debug(
+        LOGGER.debug(
             "Returning null for key {} due to size mismatch from getPassthroughResolvedPath "
                 + "resolvedPath: {}, requestedPath.getEntityNames(): {}",
             key,
@@ -216,7 +216,8 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     resolvedEntities.add(
         new ResolvedPolarisEntity(passthroughResolver.getResolvedReferenceCatalog()));
     resolvedPath.forEach(cacheEntry -> resolvedEntities.add(new ResolvedPolarisEntity(cacheEntry)));
-    LOG.debug("Returning resolvedEntities from getPassthroughResolvedPath: {}", resolvedEntities);
+    LOGGER.debug(
+        "Returning resolvedEntities from getPassthroughResolvedPath: {}", resolvedEntities);
     return new PolarisResolvedPathWrapper(resolvedEntities);
   }
 
@@ -276,7 +277,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
         primaryResolver.getResolvedEntity(
             PolarisEntityType.ROOT, PolarisEntityConstants.getRootContainerName());
     if (resolvedCacheEntry == null) {
-      LOG.debug("Failed to find rootContainer, so using simulated rootContainer instead.");
+      LOGGER.debug("Failed to find rootContainer, so using simulated rootContainer instead.");
       return simulatedResolvedRootContainerEntity;
     }
     return new ResolvedPolarisEntity(resolvedCacheEntry);
