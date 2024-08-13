@@ -1,5 +1,6 @@
-apiVersion: apps/v1
-kind: Deployment
+{{- if eq .Values.polarisServerConfig.metaStoreManager.type "eclipse-link" }}
+apiVersion: batch/v1
+kind: Job
 metadata:
   name: {{ include "polaris.fullname" . }}
   labels:
@@ -7,13 +8,10 @@ metadata:
     {{- if .Values.podLabels }}
     {{- tpl (toYaml .Values.podLabels) . | nindent 4 }}
     {{- end }}
+  annotations:
+    "helm.sh/hook": post-install
+    "helm.sh/hook-delete-policy": hook-succeeded
 spec:
-  {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
-  {{- end }}
-  selector:
-    matchLabels:
-      {{- include "polaris.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -51,7 +49,7 @@ spec:
           image: "{{ tpl .Values.image.repository . }}:{{ tpl .Values.image.tag . | default .Chart.Version }}"
           imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}
           command: ["java"]
-          args: ["-jar", "/app/polaris-service-1.0.0-all.jar", "server", "{{ trimSuffix "/" .Values.image.configDir }}/polaris-server.yml"]
+          args: ["-jar", "/app/polaris-service-1.0.0-all.jar", "bootstrap", "{{ trimSuffix "/" .Values.image.configDir }}/polaris-server.yml"]
           volumeMounts:
             - name: config-volume
               mountPath: {{ trimSuffix "/" .Values.image.configDir }}/polaris-server.yml
@@ -60,35 +58,9 @@ spec:
             - name: tmp-volume
               mountPath: /tmp
             {{- end }}
-          ports:
-            {{- range $portName, $portNumber := .Values.service.ports }}
-            - name: {{ $portName }}
-              containerPort: {{ $portNumber }}
-              protocol: TCP
-            {{- end }}
-          livenessProbe:
-            httpGet:
-              path: /healthcheck
-              port: "polaris-metrics"
-              scheme: HTTP
-            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
-            successThreshold: {{ .Values.livenessProbe.successThreshold }}
-            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
-            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
-            terminationGracePeriodSeconds: {{ .Values.livenessProbe.terminationGracePeriodSeconds }}
-          readinessProbe:
-            httpGet:
-              path: /healthcheck
-              port: "polaris-metrics"
-              scheme: HTTP
-            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
-            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
-            successThreshold: {{ .Values.readinessProbe.successThreshold }}
-            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
-            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
           resources:
             {{- tpl (toYaml .Values.resources) . | nindent 12 }}
+      restartPolicy: Never
       volumes:
         - name: config-volume
           configMap:
@@ -109,3 +81,4 @@ spec:
       tolerations:
         {{- tpl (toYaml .Values.tolerations) . | nindent 8 }}
       {{- end }}
+{{- end }}
