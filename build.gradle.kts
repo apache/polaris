@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import org.nosphere.apache.rat.RatTask
+
 buildscript {
   repositories { maven { url = java.net.URI("https://plugins.gradle.org/m2/") } }
   dependencies {
@@ -25,6 +27,7 @@ plugins {
   id("idea")
   id("eclipse")
   id("polaris-root")
+  alias(libs.plugins.rat)
 }
 
 val projectName = rootProject.file("ide-name.txt").readText().trim()
@@ -53,3 +56,48 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
 }
 
 eclipse { project { name = ideName } }
+
+tasks.named<RatTask>("rat").configure {
+  // These are Gradle file pattern syntax
+  excludes.add("**/build/**")
+
+  excludes.add("docs/CNAME")
+  excludes.add("docs/index.html")
+
+  excludes.add("LICENSE")
+  excludes.add("NOTICE")
+
+  excludes.add("ide-name.txt")
+  excludes.add("version.txt")
+  excludes.add(".git")
+  excludes.add(".gradle")
+  excludes.add(".idea")
+  excludes.add(".java-version")
+  excludes.add("**/.keep")
+  excludes.add("**/poetry.lock")
+
+  excludes.add(".github/pull_request_template.md")
+
+  excludes.add("spec/docs.yaml")
+  excludes.add("spec/index.yml")
+
+  excludes.add("gradle/wrapper/gradle-wrapper*.jar*")
+
+  excludes.add("polaris-service/src/**/banner.txt")
+  excludes.add("polaris-service/logs")
+
+  excludes.add("regtests/**/py.typed")
+  excludes.add("regtests/**/*.ref")
+  excludes.add("regtests/client/python/.openapi-generator/**")
+
+  excludes.add("**/*.ipynb")
+  excludes.add("**/*.iml")
+  excludes.add("**/*.iws")
+
+  excludes.add("**/*.md")
+
+  excludes.add("**/*.png")
+  excludes.add("**/*.svg")
+
+  excludes.add("**/*.lock")
+}
