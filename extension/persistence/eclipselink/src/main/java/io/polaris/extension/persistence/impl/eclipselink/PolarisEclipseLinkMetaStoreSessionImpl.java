@@ -150,14 +150,14 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
           prefixUrl = new File(jarPrefixPath).toURI().toURL();
         }
 
-        LOG.info(
+        LOGGER.info(
             "Created a new ClassLoader with the jar {} in classpath to load the config file",
             prefixUrl);
 
         URLClassLoader currentClassLoader =
             new URLClassLoader(new URL[] {prefixUrl}, this.getClass().getClassLoader());
 
-        LOG.debug("Update ClassLoader in current thread temporarily");
+        LOGGER.debug("Update ClassLoader in current thread temporarily");
         Thread.currentThread().setContextClassLoader(currentClassLoader);
       }
 
@@ -215,7 +215,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
           String.format(
               "Cannot find or parse the configuration file %s for persistence-unit %s",
               confFile, persistenceUnitName);
-      LOGGEr.error(str, e);
+      LOGGER.error(str, e);
       throw new IOException(str);
     }
   }
