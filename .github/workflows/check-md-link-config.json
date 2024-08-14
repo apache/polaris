@@ -2,6 +2,9 @@
   "ignorePatterns": [
     {
       "pattern": "^https?://localhost.*"
+    },
+    {
+      "pattern": "https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-spark"
     }
   ]
 }
