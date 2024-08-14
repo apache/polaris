@@ -62,6 +62,7 @@ public class PrincipalRoleEntity extends PolarisEntity {
       super(original);
     }
 
+    @Override
     public PrincipalRoleEntity build() {
       return new PrincipalRoleEntity(buildBase());
     }

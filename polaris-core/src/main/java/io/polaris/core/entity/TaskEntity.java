@@ -95,6 +95,7 @@ public class TaskEntity extends PolarisEntity {
       return this;
     }
 
+    @Override
     public TaskEntity build() {
       return new TaskEntity(buildBase());
     }

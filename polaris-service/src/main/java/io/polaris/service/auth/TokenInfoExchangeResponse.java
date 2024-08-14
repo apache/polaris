@@ -34,6 +34,7 @@ public class TokenInfoExchangeResponse implements DecodedToken {
   private String scope;
 
   @JsonProperty("scope")
+  @Override
   public String getScope() {
     return scope;
   }
@@ -46,6 +47,7 @@ public class TokenInfoExchangeResponse implements DecodedToken {
   private String clientId;
 
   @JsonProperty("client_id")
+  @Override
   public String getClientId() {
     return clientId;
   }
@@ -82,6 +84,7 @@ public class TokenInfoExchangeResponse implements DecodedToken {
   private String sub;
 
   @JsonProperty("sub")
+  @Override
   public String getSub() {
     return sub;
   }

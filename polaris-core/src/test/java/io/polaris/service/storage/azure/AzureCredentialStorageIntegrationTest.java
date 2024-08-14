@@ -62,7 +62,7 @@ import org.slf4j.LoggerFactory;
 
 public class AzureCredentialStorageIntegrationTest {
 
-  private final Logger LOGGER =
+  private static final Logger LOGGER =
       LoggerFactory.getLogger(AzureCredentialStorageIntegrationTest.class);
 
   private final String clientId = System.getenv("AZURE_CLIENT_ID");
@@ -73,7 +73,7 @@ public class AzureCredentialStorageIntegrationTest {
 
   private boolean checkEnvNullVariables() {
     if (Strings.isNullOrEmpty(clientId) || Strings.isNullOrEmpty(clientSecret)) {
-      LOGGER.debug("Null Azure testing environment variables! Skip " + this.getClass().getName());
+      LOGGER.debug("Null Azure testing environment variables! Skip {}", this.getClass().getName());
       return true;
     }
     return false;

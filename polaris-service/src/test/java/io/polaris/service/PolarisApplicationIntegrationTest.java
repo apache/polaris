@@ -17,7 +17,7 @@ package io.polaris.service;
 
 import static io.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.fail;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
@@ -64,7 +64,6 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.RESTException;
-import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.iceberg.hadoop.HadoopFileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTSessionCatalog;
@@ -88,9 +87,10 @@ import org.slf4j.LoggerFactory;
   SnowmanCredentialsExtension.class
 })
 public class PolarisApplicationIntegrationTest {
-  public static final String PRINCIPAL_ROLE_NAME = "admin";
-  public static final Logger LOGGER =
+  private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisApplicationIntegrationTest.class);
+
+  public static final String PRINCIPAL_ROLE_NAME = "admin";
   private static DropwizardAppExtension<PolarisApplicationConfig> EXT =
       new DropwizardAppExtension<>(
           PolarisApplication.class,
@@ -307,14 +307,8 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testConfigureCatalogCaseSensitive() throws IOException {
-    try {
-      RESTSessionCatalog sessionCatalog = newSessionCatalog("TESTCONFIGURECATALOGCASESENSITIVE");
-      fail("Expected exception connecting to catalog");
-    } catch (ServiceFailureException e) {
-      fail("Unexpected service failure exception", e);
-    } catch (RESTException e) {
-      LoggerFactory.getLogger(getClass()).info("Caught expected rest exception", e);
-    }
+    assertThatThrownBy(() -> newSessionCatalog("TESTCONFIGURECATALOGCASESENSITIVE"))
+        .isInstanceOf(RESTException.class);
   }
 
   @Test
@@ -322,15 +316,9 @@ public class PolarisApplicationIntegrationTest {
     try (RESTSessionCatalog sessionCatalog =
         newSessionCatalog("testIcebergListNamespacesNotFound")) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
-      try {
-        sessionCatalog.listNamespaces(sessionContext, Namespace.of("whoops"));
-        fail("Expected exception to be thrown");
-      } catch (NoSuchNamespaceException e) {
-        // we expect this!
-        Assertions.assertThat(e).isNotNull();
-      } catch (Exception e) {
-        fail("Unexpected exception", e);
-      }
+      assertThatThrownBy(
+              () -> sessionCatalog.listNamespaces(sessionContext, Namespace.of("whoops")))
+          .isInstanceOf(NoSuchNamespaceException.class);
     }
   }
 
@@ -342,15 +330,11 @@ public class PolarisApplicationIntegrationTest {
       Namespace topLevelNamespace = Namespace.of("top_level");
       sessionCatalog.createNamespace(sessionContext, topLevelNamespace);
       sessionCatalog.loadNamespaceMetadata(sessionContext, Namespace.of("top_level"));
-      try {
-        sessionCatalog.listNamespaces(sessionContext, Namespace.of("top_level", "whoops"));
-        fail("Expected exception to be thrown");
-      } catch (NoSuchNamespaceException e) {
-        // we expect this!
-        Assertions.assertThat(e).isNotNull();
-      } catch (Exception e) {
-        fail("Unexpected exception", e);
-      }
+      assertThatThrownBy(
+              () ->
+                  sessionCatalog.listNamespaces(
+                      sessionContext, Namespace.of("top_level", "whoops")))
+          .isInstanceOf(NoSuchNamespaceException.class);
     }
   }
 
@@ -359,15 +343,8 @@ public class PolarisApplicationIntegrationTest {
     try (RESTSessionCatalog sessionCatalog =
         newSessionCatalog("testIcebergListTablesNamespaceNotFound")) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
-      try {
-        sessionCatalog.listTables(sessionContext, Namespace.of("whoops"));
-        fail("Expected exception to be thrown");
-      } catch (NoSuchNamespaceException e) {
-        // we expect this!
-        Assertions.assertThat(e).isNotNull();
-      } catch (Exception e) {
-        fail("Unexpected exception", e);
-      }
+      assertThatThrownBy(() -> sessionCatalog.listTables(sessionContext, Namespace.of("whoops")))
+          .isInstanceOf(NoSuchNamespaceException.class);
     }
   }
 
@@ -416,12 +393,8 @@ public class PolarisApplicationIntegrationTest {
       List<Namespace> namespaces = sessionCatalog.listNamespaces(sessionContext);
       assertThat(namespaces).isNotNull().hasSize(1).containsExactly(ns);
       sessionCatalog.dropNamespace(sessionContext, ns);
-      try {
-        sessionCatalog.loadNamespaceMetadata(sessionContext, ns);
-        Assertions.fail("Expected exception when loading namespace after drop");
-      } catch (NoSuchNamespaceException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
-      }
+      assertThatThrownBy(() -> sessionCatalog.loadNamespaceMetadata(sessionContext, ns))
+          .isInstanceOf(NoSuchNamespaceException.class);
     }
   }
 
@@ -433,21 +406,21 @@ public class PolarisApplicationIntegrationTest {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
       sessionCatalog.createNamespace(sessionContext, ns);
-      try {
-        sessionCatalog
-            .buildTable(
-                sessionContext,
-                TableIdentifier.of(ns, "the_table"),
-                new Schema(
-                    List.of(Types.NestedField.of(1, false, "theField", Types.StringType.get()))))
-            .withLocation("file:///tmp/tables")
-            .withSortOrder(SortOrder.unsorted())
-            .withPartitionSpec(PartitionSpec.unpartitioned())
-            .create();
-        Assertions.fail("Expected failure calling create table in external catalog");
-      } catch (BadRequestException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
-      }
+      assertThatThrownBy(
+              () ->
+                  sessionCatalog
+                      .buildTable(
+                          sessionContext,
+                          TableIdentifier.of(ns, "the_table"),
+                          new Schema(
+                              List.of(
+                                  Types.NestedField.of(
+                                      1, false, "theField", Types.StringType.get()))))
+                      .withLocation("file:///tmp/tables")
+                      .withSortOrder(SortOrder.unsorted())
+                      .withPartitionSpec(PartitionSpec.unpartitioned())
+                      .create())
+          .isInstanceOf(BadRequestException.class);
     }
   }
 
@@ -497,7 +470,7 @@ public class PolarisApplicationIntegrationTest {
             .hasMessage(
                 "Forbidden: Delegate access to table with user-specified write location is temporarily not supported.");
       } catch (BadRequestException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
+        LOGGER.info("Received expected exception {}", e.getMessage());
       }
     }
   }
@@ -587,19 +560,17 @@ public class PolarisApplicationIntegrationTest {
       sessionCatalog.registerTable(sessionContext, tableIdentifier, metadataLocation);
       Table table = sessionCatalog.loadTable(sessionContext, tableIdentifier);
       ((ResolvingFileIO) table.io()).setConf(new Configuration());
-      try {
-        table
-            .newAppend()
-            .appendFile(
-                new TestHelpers.TestDataFile(
-                    location + "/path/to/file.parquet",
-                    new PartitionData(PartitionSpec.unpartitioned().partitionType()),
-                    10L))
-            .commit();
-        Assertions.fail("Should fail when committing an update to external catalog");
-      } catch (BadRequestException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
-      }
+      assertThatThrownBy(
+              () ->
+                  table
+                      .newAppend()
+                      .appendFile(
+                          new TestHelpers.TestDataFile(
+                              location + "/path/to/file.parquet",
+                              new PartitionData(PartitionSpec.unpartitioned().partitionType()),
+                              10L))
+                      .commit())
+          .isInstanceOf(BadRequestException.class);
     }
   }
 
@@ -642,12 +613,8 @@ public class PolarisApplicationIntegrationTest {
       Table table = sessionCatalog.loadTable(sessionContext, tableIdentifier);
       assertThat(table).isNotNull();
       sessionCatalog.dropTable(sessionContext, tableIdentifier);
-      try {
-        sessionCatalog.loadTable(sessionContext, tableIdentifier);
-        Assertions.fail("Expected failure loading table after drop");
-      } catch (NoSuchTableException e) {
-        LOGGER.info("Received expected exception " + e.getMessage());
-      }
+      assertThatThrownBy(() -> sessionCatalog.loadTable(sessionContext, tableIdentifier))
+          .isInstanceOf(NoSuchTableException.class);
     }
   }
 
@@ -656,25 +623,22 @@ public class PolarisApplicationIntegrationTest {
     try (RESTSessionCatalog sessionCatalog = new RESTSessionCatalog()) {
       String emptyEnvironmentVariable = "env:__NULL_ENV_VARIABLE__";
       assertThat(EnvironmentUtil.resolveAll(Map.of("", emptyEnvironmentVariable)).get("")).isNull();
-      sessionCatalog.initialize(
-          "snowflake",
-          Map.of(
-              "uri",
-              "http://localhost:" + EXT.getLocalPort() + "/api/catalog",
-              OAuth2Properties.CREDENTIAL,
-              snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret(),
-              OAuth2Properties.SCOPE,
-              BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL,
-              "warehouse",
-              emptyEnvironmentVariable,
-              "header." + REALM_PROPERTY_KEY,
-              realm));
-      fail("Expected exception due to null warehouse");
-    } catch (ServiceFailureException e) {
-      fail("Unexpected service failure exception", e);
-    } catch (RESTException e) {
-      LoggerFactory.getLogger(getClass()).info("Caught expected rest exception", e);
-      assertThat(e).isInstanceOf(BadRequestException.class);
+      assertThatThrownBy(
+              () ->
+                  sessionCatalog.initialize(
+                      "snowflake",
+                      Map.of(
+                          "uri",
+                          "http://localhost:" + EXT.getLocalPort() + "/api/catalog",
+                          OAuth2Properties.CREDENTIAL,
+                          snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret(),
+                          OAuth2Properties.SCOPE,
+                          BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL,
+                          "warehouse",
+                          emptyEnvironmentVariable,
+                          "header." + REALM_PROPERTY_KEY,
+                          realm)))
+          .isInstanceOf(BadRequestException.class);
     }
   }
 }

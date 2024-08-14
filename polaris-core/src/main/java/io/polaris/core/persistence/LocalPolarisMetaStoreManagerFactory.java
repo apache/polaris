@@ -51,7 +51,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
   protected PolarisStorageIntegrationProvider storageIntegration;
 
-  private final Logger logger =
+  private final Logger LOGGER =
       org.slf4j.LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
 
   protected abstract StoreType createBackingStore(@NotNull PolarisDiagnostics diagnostics);
@@ -197,7 +197,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
             PolarisEntityConstants.getRootPrincipalName());
 
     if (!rootPrincipalLookup.isSuccess()) {
-      logger.error(
+      LOGGER.error(
           "\n\n Realm {} is not bootstrapped, could not load root principal. Please run Bootstrap command. \n\n",
           realmContext.getRealmIdentifier());
       throw new IllegalStateException(

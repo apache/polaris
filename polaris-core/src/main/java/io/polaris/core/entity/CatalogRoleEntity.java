@@ -58,6 +58,7 @@ public class CatalogRoleEntity extends PolarisEntity {
       super(original);
     }
 
+    @Override
     public CatalogRoleEntity build() {
       return new CatalogRoleEntity(buildBase());
     }

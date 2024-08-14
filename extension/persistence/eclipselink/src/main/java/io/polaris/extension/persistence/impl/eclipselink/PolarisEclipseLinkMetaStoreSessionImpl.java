@@ -81,7 +81,7 @@ import org.xml.sax.SAXException;
  * Polaris metadata from/to the configured database systems.
  */
 public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreSession {
-  private static final Logger LOG =
+  private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisEclipseLinkMetaStoreSessionImpl.class);
 
   // Cache to hold the EntityManagerFactory for each realm. Each realm needs a separate
@@ -108,7 +108,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       @NotNull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName) {
-    LOG.debug("Create EclipseLink Meta Store Session for {}", realmContext.getRealmIdentifier());
+    LOGGER.debug("Create EclipseLink Meta Store Session for {}", realmContext.getRealmIdentifier());
     emf = createEntityManagerFactory(realmContext, confFile, persistenceUnitName);
 
     // init store
@@ -150,14 +150,14 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
           prefixUrl = new File(jarPrefixPath).toURI().toURL();
         }
 
-        LOG.info(
+        LOGGER.info(
             "Created a new ClassLoader with the jar {} in classpath to load the config file",
             prefixUrl);
 
         URLClassLoader currentClassLoader =
             new URLClassLoader(new URL[] {prefixUrl}, this.getClass().getClassLoader());
 
-        LOG.debug("Update ClassLoader in current thread temporarily");
+        LOGGER.debug("Update ClassLoader in current thread temporarily");
         Thread.currentThread().setContextClassLoader(currentClassLoader);
       }
 
@@ -215,7 +215,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
           String.format(
               "Cannot find or parse the configuration file %s for persistence-unit %s",
               confFile, persistenceUnitName);
-      LOG.error(str, e);
+      LOGGER.error(str, e);
       throw new IOException(str);
     }
   }
@@ -237,13 +237,13 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
         // Commit when it's not rolled back by the client
         if (session.getTransaction().isActive()) {
           tr.commit();
-          LOG.debug("transaction committed");
+          LOGGER.debug("transaction committed");
         }
 
         return result;
       } catch (Exception e) {
         tr.rollback();
-        LOG.debug("transaction rolled back: {}", e);
+        LOGGER.debug("transaction rolled back", e);
 
         if (e instanceof OptimisticLockException
             || e.getCause() instanceof OptimisticLockException) {
@@ -274,11 +274,11 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
         // Commit when it's not rolled back by the client
         if (session.getTransaction().isActive()) {
           tr.commit();
-          LOG.debug("transaction committed");
+          LOGGER.debug("transaction committed");
         }
       } catch (Exception e) {
         tr.rollback();
-        LOG.debug("transaction rolled back");
+        LOGGER.debug("transaction rolled back", e);
 
         if (e instanceof OptimisticLockException
             || e.getCause() instanceof OptimisticLockException) {
@@ -552,6 +552,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   }
 
   /** {@inheritDoc} */
+  @Override
   public boolean hasChildren(
       @NotNull PolarisCallContext callContext,
       @Nullable PolarisEntityType entityType,

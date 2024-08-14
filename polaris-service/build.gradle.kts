@@ -64,7 +64,6 @@ dependencies {
 
   implementation(libs.hadoop.client.api)
 
-  implementation(libs.sqllite.jdbc)
   implementation(libs.auth0.jwt)
 
   implementation(libs.logback.core)

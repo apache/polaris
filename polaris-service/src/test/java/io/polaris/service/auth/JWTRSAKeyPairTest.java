@@ -15,8 +15,8 @@
  */
 package io.polaris.service.auth;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Fail.fail;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
@@ -55,7 +55,8 @@ public class JWTRSAKeyPairTest {
     KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
     kpg.initialize(2048);
     KeyPair kp = kpg.generateKeyPair();
-    try (BufferedWriter writer = new BufferedWriter(new FileWriter(privateFileLocation, true))) {
+    try (BufferedWriter writer =
+        new BufferedWriter(new FileWriter(privateFileLocation, UTF_8, true))) {
       writer.write("-----BEGIN PRIVATE KEY-----"); // pragma: allowlist secret
       writer.newLine();
       writer.write(Base64.getMimeEncoder().encodeToString(kp.getPrivate().getEncoded()));
@@ -63,7 +64,8 @@ public class JWTRSAKeyPairTest {
       writer.write("-----END PRIVATE KEY-----");
       writer.newLine();
     }
-    try (BufferedWriter writer = new BufferedWriter(new FileWriter(publicFileLocation, true))) {
+    try (BufferedWriter writer =
+        new BufferedWriter(new FileWriter(publicFileLocation, UTF_8, true))) {
       writer.write("-----BEGIN PUBLIC KEY-----");
       writer.newLine();
       writer.write(Base64.getMimeEncoder().encodeToString(kp.getPublic().getEncoded()));
@@ -129,14 +131,9 @@ public class JWTRSAKeyPairTest {
     Mockito.when(metastoreManager.loadEntity(polarisCallContext, 0L, 1L))
         .thenReturn(new PolarisMetaStoreManager.EntityResult(principal));
     TokenBroker tokenBroker = new JWTRSAKeyPair(entityManager, 420);
-    TokenResponse token = null;
-    try {
-      token =
-          tokenBroker.generateFromClientSecrets(
-              clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, scope);
-    } catch (Exception e) {
-      fail("Unexpected exception: " + e);
-    }
+    TokenResponse token =
+        tokenBroker.generateFromClientSecrets(
+            clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, scope);
     assertThat(token).isNotNull();
     assertThat(token.getExpiresIn()).isEqualTo(420);
 

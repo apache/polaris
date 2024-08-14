@@ -15,6 +15,8 @@
  */
 package io.polaris.service.auth;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import io.polaris.core.context.CallContext;
 import io.polaris.service.config.HasEntityManagerFactory;
@@ -38,7 +40,7 @@ import org.slf4j.LoggerFactory;
  */
 @JsonTypeName("default")
 public class DefaultOAuth2ApiService implements OAuth2ApiService, HasEntityManagerFactory {
-  public static final Logger LOGGER = LoggerFactory.getLogger(DefaultOAuth2ApiService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DefaultOAuth2ApiService.class);
   private TokenBrokerFactory tokenBrokerFactory;
 
   public DefaultOAuth2ApiService() {}
@@ -69,7 +71,7 @@ public class DefaultOAuth2ApiService implements OAuth2ApiService, HasEntityManag
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_client);
     }
     if (authHeader != null && clientId == null && authHeader.startsWith("Basic ")) {
-      String credentials = new String(Base64.decodeBase64(authHeader.substring(6)));
+      String credentials = new String(Base64.decodeBase64(authHeader.substring(6)), UTF_8);
       if (!credentials.contains(":")) {
         return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_client);
       }
@@ -125,6 +127,7 @@ public class DefaultOAuth2ApiService implements OAuth2ApiService, HasEntityManag
     }
   }
 
+  @Override
   public void setTokenBroker(TokenBrokerFactory tokenBrokerFactory) {
     this.tokenBrokerFactory = tokenBrokerFactory;
   }

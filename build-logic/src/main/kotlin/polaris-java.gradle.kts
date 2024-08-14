@@ -31,7 +31,11 @@ tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
   options.errorprone.disableAllWarnings = true
   options.errorprone.disableWarningsInGeneratedCode = true
-  options.errorprone.error("StringCaseLocaleUsage")
+  options.errorprone.error(
+    "DefaultCharset",
+    "MissingOverride",
+    "StringCaseLocaleUsage",
+  )
 }
 
 tasks.register("format").configure { dependsOn("spotlessApply") }

@@ -38,10 +38,12 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
   @JsonProperty("persistence-unit")
   private String persistenceUnitName;
 
+  @Override
   protected PolarisEclipseLinkStore createBackingStore(@NotNull PolarisDiagnostics diagnostics) {
     return new PolarisEclipseLinkStore(diagnostics);
   }
 
+  @Override
   protected PolarisMetaStoreSession createMetaStoreSession(
       @NotNull PolarisEclipseLinkStore store, @NotNull RealmContext realmContext) {
     return new PolarisEclipseLinkMetaStoreSessionImpl(
