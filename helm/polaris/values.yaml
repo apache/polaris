@@ -2,6 +2,14 @@
 # Beware that replicas are stateless; don't set this number > 1 when using in-memory meta store manager.
 replicaCount: 1
 
+initImage:
+  # -- The image repository to pull from (must have jar binary included).
+  repository: registry.access.redhat.com/ubi9/openjdk-21
+  # -- The image pull policy.
+  pullPolicy: IfNotPresent
+  # -- Overrides the image tag.
+  tag: "latest"
+
 image:
   # -- The image repository to pull from.
   repository: localhost:5001/polaris

@@ -27,7 +27,8 @@ spec:
       {{- if .Values.persistenceConfigSecret }}
       initContainers:
         - name: init-config
-          image: registry.access.redhat.com/ubi9/openjdk-21:1.20-2.1721752936
+          image: "{{ tpl .Values.initImage.repository . }}:{{ tpl .Values.initImage.tag . }}"
+          imagePullPolicy: {{ tpl .Values.initImage.pullPolicy . }}
           command: ['sh', '-c', 'cd /secret && jar -cf /tmp/conf.jar persistence.xml']
           volumeMounts:
             - name: tmp-volume
