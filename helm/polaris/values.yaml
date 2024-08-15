@@ -268,9 +268,6 @@ polarisServerConfig:
           # Enable archiving if the request log entries go to the their own file
           archive: true
 
-  # Either 'jdbc' or 'polaris'; specifies the underlying delegate catalog
-  baseCatalogType: "polaris"
-
   featureConfiguration:
     ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: false
     DISABLE_TOKEN_GENERATION_FOR_USER_PRINCIPALS: true
