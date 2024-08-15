@@ -7,7 +7,7 @@ initImage:
   repository: registry.access.redhat.com/ubi9/openjdk-21
   # -- The image pull policy.
   pullPolicy: IfNotPresent
-  # -- Overrides the image tag.
+  # -- The image tag.
   tag: "latest"
 
 image:
@@ -15,7 +15,7 @@ image:
   repository: localhost:5001/polaris
   # -- The image pull policy.
   pullPolicy: IfNotPresent
-  # -- Overrides the image tag.
+  # -- The image tag.
   tag: "latest"
   # -- The path to the directory where the polaris-server.yml file should be mounted.
   configDir: /app/config
