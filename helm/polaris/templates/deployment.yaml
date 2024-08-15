@@ -29,8 +29,8 @@ spec:
       {{- if .Values.persistenceConfigSecret }}
       initContainers:
         - name: init-config
-          image: "{{ tpl .Values.initImage.repository . }}:{{ tpl .Values.initImage.tag . }}"
-          imagePullPolicy: {{ tpl .Values.initImage.pullPolicy . }}
+          image: "{{ tpl .Values.toolsImage.repository . }}:{{ tpl .Values.toolsImage.tag . }}"
+          imagePullPolicy: {{ tpl .Values.toolsImage.pullPolicy . }}
           command: ['sh', '-c', 'cd /secret && jar -cf /tmp/conf.jar persistence.xml']
           volumeMounts:
             - name: tmp-volume

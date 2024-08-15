@@ -2,14 +2,6 @@
 # Beware that replicas are stateless; don't set this number > 1 when using in-memory meta store manager.
 replicaCount: 1
 
-initImage:
-  # -- The image repository to pull from (must have jar binary included).
-  repository: registry.access.redhat.com/ubi9/openjdk-21
-  # -- The image pull policy.
-  pullPolicy: IfNotPresent
-  # -- The image tag.
-  tag: "latest"
-
 image:
   # -- The image repository to pull from.
   repository: localhost:5001/polaris
@@ -18,6 +10,13 @@ image:
   # -- The image tag.
   tag: "latest"
 
+toolsImage:
+  # -- The image repository to pull from (must have jar binary included).
+  repository: registry.access.redhat.com/ubi9/openjdk-21
+  # -- The image pull policy.
+  pullPolicy: IfNotPresent
+  # -- The image tag.
+  tag: "latest"
 
 # -- References to secrets in the same namespace to use for pulling any of the images used by this
 # chart. Each entry is a LocalObjectReference to an existing secret in the namespace. The secret
@@ -213,8 +212,8 @@ extraEnv:
 #        name: aws-secret
 #        key: secret_access_key
 
-# -- Configures for persistence.xml (ensure the key name is 'persistence.xml')
-persistenceConfigSecret: polaris-secret
+# -- The secret name to pull persistence.xml from (ensure the key name is 'persistence.xml')
+persistenceConfigSecret: ~
 
 # -- Configures for polaris-server.yml
 polarisServerConfig:

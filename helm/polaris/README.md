@@ -22,6 +22,13 @@ A Helm chart for Polaris.
 
 ## Installation
 
+### Optional
+
+When using custom `persistence.xml`, you will need to create a K8S secret for `.persistenceConfigSecret`. Here is a sample instruction:
+```bash
+kubectl create secret generic  polaris-secret -n polaris-helm --from-file=persistence.xml
+```
+
 ### From local directory (for development purposes)
 
 From Polaris repo root:
@@ -57,9 +64,6 @@ $ helm uninstall --namespace polaris polaris
 | ingress.enabled | bool | `false` | Specifies whether an ingress should be created. |
 | ingress.hosts | list | `[{"host":"chart-example.local","paths":[]}]` | A list of host paths used to configure the ingress. |
 | ingress.tls | list | `[]` | A list of TLS certificates; each entry has a list of hosts in the certificate, along with the secret name used to terminate TLS traffic on port 443. |
-| initImage.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
-| initImage.repository | string | `"registry.access.redhat.com/ubi9/openjdk-21"` | The image repository to pull from (must have jar binary included). |
-| initImage.tag | string | `"latest"` | The image tag. |
 | livenessProbe | object | `{"failureThreshold":3,"initialDelaySeconds":5,"periodSeconds":10,"successThreshold":1,"terminationGracePeriodSeconds":30,"timeoutSeconds":10}` | Configures the liveness probe for polaris pods. |
 | livenessProbe.failureThreshold | int | `3` | Minimum consecutive failures for the probe to be considered failed after having succeeded. Minimum value is 1. |
 | livenessProbe.initialDelaySeconds | int | `5` | Number of seconds after the container has started before liveness probes are initiated. Minimum value is 0. |
@@ -68,7 +72,7 @@ $ helm uninstall --namespace polaris polaris
 | livenessProbe.terminationGracePeriodSeconds | int | `30` | Optional duration in seconds the pod needs to terminate gracefully upon probe failure. Minimum value is 1. |
 | livenessProbe.timeoutSeconds | int | `10` | Number of seconds after which the probe times out. Minimum value is 1. |
 | nodeSelector | object | `{}` | Node labels which must match for the polaris pod to be scheduled on that node. See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector. |
-| persistenceConfigSecret | string | `"polaris-secret"` | Configures for persistence.xml (ensure the key name is 'persistence.xml') |
+| persistenceConfigSecret | string | `nil` | The secret name to pull persistence.xml from (ensure the key name is 'persistence.xml') |
 | podAnnotations | object | `{}` | Annotations to apply to polaris pods. |
 | podLabels | object | `{}` | Additional Labels to apply to polaris pods. |
 | podSecurityContext | object | `{}` | Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
@@ -90,3 +94,6 @@ $ helm uninstall --namespace polaris polaris
 | serviceAccount.create | bool | `true` | Specifies whether a service account should be created. |
 | serviceAccount.name | string | `""` | The name of the service account to use. If not set and create is true, a name is generated using the fullname template. |
 | tolerations | list | `[]` | A list of tolerations to apply to polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/. |
+| toolsImage.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
+| toolsImage.repository | string | `"registry.access.redhat.com/ubi9/openjdk-21"` | The image repository to pull from (must have jar binary included). |
+| toolsImage.tag | string | `"latest"` | The image tag. |
