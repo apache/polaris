@@ -24,7 +24,7 @@ A Helm chart for Polaris.
 
 ### Optional
 
-When using custom `persistence.xml`, you will need to create a K8S secret for `.persistenceConfigSecret`. Here is a sample instruction:
+When using custom `persistence.xml`, you will need to create a K8S Secret for `.persistenceConfigSecret`. Here is a sample instruction:
 ```bash
 kubectl create secret generic  polaris-secret -n polaris-helm --from-file=persistence.xml
 ```
