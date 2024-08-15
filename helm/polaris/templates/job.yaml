@@ -29,7 +29,8 @@ spec:
         - name: init-config
           image: "{{ tpl .Values.toolsImage.repository . }}:{{ tpl .Values.toolsImage.tag . }}"
           imagePullPolicy: {{ tpl .Values.toolsImage.pullPolicy . }}
-          command: ['sh', '-c', 'cd /secret && jar -cf /tmp/conf.jar persistence.xml']
+          command: ["jar"]
+          args: ["-cf", "/tmp/conf.jar", "-C", "/secret", "persistence.xml"]
           volumeMounts:
             - name: tmp-volume
               mountPath: /tmp
