@@ -34,6 +34,10 @@ Polaris Catalog is open source under an Apache 2.0 license.
 - ⭐ Star this repo if you’d like to bookmark and come back to it! 
 - 📖 Read the <a href="https://www.snowflake.com/blog/polaris-catalog-open-source/" target="_blank">announcement blog post<a/> for more details!
 
+## Development
+
+See [CONTRIBUTING](CONTRIBUTING.md) for contribution requirements.
+
 ## Building and Running 
 
 Polaris is organized into the following modules:
