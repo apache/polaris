@@ -4,6 +4,7 @@
       "pattern": "^https?://localhost.*"
     },
     {
+      "_comment": "mvnrepository blocks requests originating from GitHub Actions",
       "pattern": "https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-spark"
     }
   ]
