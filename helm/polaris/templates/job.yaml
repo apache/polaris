@@ -50,10 +50,10 @@ spec:
           image: "{{ tpl .Values.image.repository . }}:{{ tpl .Values.image.tag . | default .Chart.Version }}"
           imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}
           command: ["java"]
-          args: ["-jar", "/app/polaris-service-1.0.0-all.jar", "bootstrap", "{{ trimSuffix "/" .Values.image.configDir }}/polaris-server.yml"]
+          args: ["-jar", "/app/polaris-service-1.0.0-all.jar", "bootstrap", "/app/config/polaris-server.yml"]
           volumeMounts:
             - name: config-volume
-              mountPath: {{ trimSuffix "/" .Values.image.configDir }}/polaris-server.yml
+              mountPath: /app/config/polaris-server.yml
               subPath: polaris-server.yml
             {{- if .Values.persistenceConfigSecret }}
             - name: tmp-volume

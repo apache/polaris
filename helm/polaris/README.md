@@ -48,10 +48,9 @@ $ helm uninstall --namespace polaris polaris
 | autoscaling.targetMemoryUtilizationPercentage | string | `nil` | Optional; set to zero or empty to disable. |
 | configMapLabels | object | `{}` | Additional Labels to apply to polaris configmap. |
 | extraEnv | list | `[]` | Advanced configuration via Environment Variables. Extra environment variables to add to the Polaris server container. You can pass here any valid EnvVar object: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core This can be useful to get configuration values from Kubernetes secrets or config maps. |
-| image.configDir | string | `"/app/config"` | The path to the directory where the polaris-server.yml file should be mounted. |
 | image.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
 | image.repository | string | `"localhost:5001/polaris"` | The image repository to pull from. |
-| image.tag | string | `"latest"` | Overrides the image tag. |
+| image.tag | string | `"latest"` | The image tag. |
 | imagePullSecrets | list | `[]` | References to secrets in the same namespace to use for pulling any of the images used by this chart. Each entry is a LocalObjectReference to an existing secret in the namespace. The secret must contain a .dockerconfigjson key with a base64-encoded Docker configuration file. See https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/ for more information. |
 | ingress.annotations | object | `{}` | Annotations to add to the ingress. |
 | ingress.className | string | `""` | Specifies the ingressClassName; leave empty if you don't want to customize it |
@@ -60,7 +59,7 @@ $ helm uninstall --namespace polaris polaris
 | ingress.tls | list | `[]` | A list of TLS certificates; each entry has a list of hosts in the certificate, along with the secret name used to terminate TLS traffic on port 443. |
 | initImage.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
 | initImage.repository | string | `"registry.access.redhat.com/ubi9/openjdk-21"` | The image repository to pull from (must have jar binary included). |
-| initImage.tag | string | `"latest"` | Overrides the image tag. |
+| initImage.tag | string | `"latest"` | The image tag. |
 | livenessProbe | object | `{"failureThreshold":3,"initialDelaySeconds":5,"periodSeconds":10,"successThreshold":1,"terminationGracePeriodSeconds":30,"timeoutSeconds":10}` | Configures the liveness probe for polaris pods. |
 | livenessProbe.failureThreshold | int | `3` | Minimum consecutive failures for the probe to be considered failed after having succeeded. Minimum value is 1. |
 | livenessProbe.initialDelaySeconds | int | `5` | Number of seconds after the container has started before liveness probes are initiated. Minimum value is 0. |
