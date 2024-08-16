@@ -25,6 +25,16 @@ from cli.options.parser import Parser
 from polaris.management import ApiClient, Configuration
 from polaris.management import PolarisDefaultApi
 
+"""
+A CLI configuration file. Here is an example of the file content:
+{
+   "client_id": "my_client_id",
+   "client_secret": "my_client_secret",
+   "host": "localhost",
+   "port": 8181
+}
+"""
+POLARIS_CLI_JSON = ".polaris_cli.json"
 
 class PolarisCli:
     """
@@ -44,6 +54,8 @@ class PolarisCli:
     @staticmethod
     def execute(args=None):
         options = Parser.parse(args)
+        PolarisCli._merge_with_config(options)
+
         client_builder = PolarisCli._get_client_builder(options)
         with client_builder() as api_client:
             try:
@@ -54,6 +66,27 @@ class PolarisCli:
             except Exception as e:
                 PolarisCli._try_print_exception(e)
                 sys.exit(1)
+
+    @staticmethod
+    def _merge_with_config(options):
+        config = PolarisCli._load_config()
+        if not config:
+            return
+
+        for attr in ['client_id', 'client_secret', 'host', 'port']:
+            if not getattr(options, attr) and config.get(attr):
+                setattr(options, attr, config[attr])
+
+    @staticmethod
+    def _load_config():
+        try:
+            with open(POLARIS_CLI_JSON, "r") as file:
+                return json.load(file)
+        except FileNotFoundError:
+            return None
+        except json.JSONDecodeError:
+            sys.stderr.write(f'Error decoding JSON from the file: {file_path}{os.linesep}')
+            return None
 
     @staticmethod
     def _try_print_exception(e):
