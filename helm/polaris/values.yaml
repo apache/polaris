@@ -292,6 +292,7 @@ polarisServerConfig:
     type: in-memory
     # type: eclipse-link # uncomment to use eclipse-link as metastore
     # persistence-unit: polaris
+    # conf-file: /eclipselink-config/conf.jar!/persistence.xml # Don't change this value when using custom persistence.xml via '.persistenceConfigSecret'
 
 
   # TODO - avoid duplicating token broker config

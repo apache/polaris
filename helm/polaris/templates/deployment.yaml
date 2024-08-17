@@ -26,16 +26,16 @@ spec:
         {{- tpl (toYaml .Values.podLabels) . | nindent 8 }}
         {{- end }}
     spec:
-      {{- if .Values.persistenceConfigSecret }}
+      {{- if and .Values.persistenceConfigSecret (index .Values.polarisServerConfig.metaStoreManager "conf-file") }}
       initContainers:
         - name: init-config
           image: "{{ tpl .Values.toolsImage.repository . }}:{{ tpl .Values.toolsImage.tag . }}"
           imagePullPolicy: {{ tpl .Values.toolsImage.pullPolicy . }}
           command: ["jar"]
-          args: ["-cf", "/tmp/conf.jar", "-C", "/secret", "persistence.xml"]
+          args: ["-cf", "/eclipselink-config/conf.jar", "-C", "/secret", "persistence.xml"]
           volumeMounts:
-            - name: tmp-volume
-              mountPath: /tmp
+            - name: eclipselink-config-volume
+              mountPath: /eclipselink-config
             - name: secret-volume
               mountPath: /secret
       {{- end }}
@@ -62,9 +62,9 @@ spec:
             - name: config-volume
               mountPath: /app/config/polaris-server.yml
               subPath: polaris-server.yml
-            {{- if .Values.persistenceConfigSecret }}
-            - name: tmp-volume
-              mountPath: /tmp
+            {{- if and .Values.persistenceConfigSecret (index .Values.polarisServerConfig.metaStoreManager "conf-file") }}
+            - name: eclipselink-config-volume
+              mountPath: /eclipselink-config
             {{- end }}
           ports:
             {{- range $portName, $portNumber := .Values.service.ports }}
@@ -99,8 +99,8 @@ spec:
         - name: config-volume
           configMap:
             name: {{ include "polaris.fullname" . }}
-        {{- if .Values.persistenceConfigSecret }}
-        - name: tmp-volume
+        {{- if and .Values.persistenceConfigSecret (index .Values.polarisServerConfig.metaStoreManager "conf-file") }}
+        - name: eclipselink-config-volume
           emptyDir: {}
         - name: secret-volume
           secret:
