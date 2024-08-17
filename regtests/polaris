@@ -22,13 +22,19 @@
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
+# Check if the current directory is 'regtests' and abort if it is
+if [ $(basename ${SCRIPT_DIR}) == "regtests" ]; then
+  echo "This script is intended solely for regression testing and cannot be executed from within the 'regtests' directory. Please use the script from the parent directory: $(dirname ${SCRIPT_DIR})/polaris"
+  exit 1
+fi
+
 if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
   echo "Performing first-time setup for the Python client..."
   python3 -m venv ${SCRIPT_DIR}/polaris-venv
   . ${SCRIPT_DIR}/polaris-venv/bin/activate
   pip install poetry==1.5.0
 
-  cp ${SCRIPT_DIR}/client/python/pyproject.toml ${SCRIPT_DIR}
+  cp ${SCRIPT_DIR}/regtests/client/python/pyproject.toml ${SCRIPT_DIR}
 
   # Save the current directory
   CURRENT_DIR=$(pwd)
@@ -42,7 +48,7 @@ fi
 # Save the current directory
 CURRENT_DIR=$(pwd)
 cd $SCRIPT_DIR > /dev/null
-PYTHONPATH=client/python ${SCRIPT_DIR}/polaris-venv/bin/python3 client/python/cli/polaris_cli.py "$@"
+PYTHONPATH=regtests/client/python ${SCRIPT_DIR}/polaris-venv/bin/python3 regtests/client/python/cli/polaris_cli.py "$@"
 status=$?
 cd $CURRENT_DIR > /dev/null
 
