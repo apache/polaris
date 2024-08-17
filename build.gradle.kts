@@ -86,6 +86,8 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("polaris-service/src/**/banner.txt")
   excludes.add("polaris-service/logs")
 
+  excludes.add("**/polaris-venv/**")
+
   excludes.add("regtests/**/py.typed")
   excludes.add("regtests/**/*.ref")
   excludes.add("regtests/client/python/.openapi-generator/**")
