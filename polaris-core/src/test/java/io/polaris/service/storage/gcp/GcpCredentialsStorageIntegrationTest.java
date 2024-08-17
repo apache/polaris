@@ -15,6 +15,7 @@
  */
 package io.polaris.service.storage.gcp;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -88,7 +89,7 @@ class GcpCredentialsStorageIntegrationTest {
         createStorageBlob("sfc-dev1-regtest", "polaris-test/subscoped-test/write3/", "file.txt");
     BlobInfo blobInfoGoodRead =
         createStorageBlob("sfc-dev1-regtest", "polaris-test/subscoped-test/read1/", "file.txt");
-    final byte[] fileContent = "hello-polaris".getBytes();
+    final byte[] fileContent = "hello-polaris".getBytes(UTF_8);
     // GOOD WRITE
     Assertions.assertThatNoException()
         .isThrownBy(() -> storageClient.create(blobInfoGoodWrite, fileContent));
