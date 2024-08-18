@@ -174,7 +174,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       String overrideMessage =
           "It appears this metastore manager has already been bootstrapped. "
               + "To continue bootstrapping, please first purge the metastore with the `purge` command.";
-      logger.error("\n\n {} \n\n", overrideMessage);
+      LOGGER.error("\n\n {} \n\n", overrideMessage);
       throw new IllegalArgumentException(overrideMessage);
     }
 
