@@ -37,6 +37,7 @@ import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.RepeatedTest;
@@ -94,7 +95,8 @@ public class StorageCredentialCacheTest {
                     true,
                     new HashSet<>(Arrays.asList("s3://bucket1/path")),
                     new HashSet<>(Arrays.asList("s3://bucket3/path"))))
-        .isInstanceOf(RuntimeException.class);
+        .isInstanceOf(UnprocessableEntityException.class)
+        .hasMessage("Failed to get subscoped credentials: extra_error_info");
   }
 
   @Test
