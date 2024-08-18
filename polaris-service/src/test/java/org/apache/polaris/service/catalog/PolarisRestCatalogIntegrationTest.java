@@ -31,14 +31,11 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.apache.commons.io.FileUtils;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
@@ -133,9 +130,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   public static void setup() throws IOException {
     realm = PolarisConnectionExtension.getTestRealm(PolarisRestCatalogIntegrationTest.class);
 
-    Path testDir = Path.of("build/test_data/iceberg/" + realm);
-    FileUtils.deleteQuietly(testDir.toFile());
-    Files.createDirectories(testDir);
+    // Set up test location
+    PolarisConnectionExtension.createTestDir(realm);
   }
 
   @BeforeEach

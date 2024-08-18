@@ -48,8 +48,7 @@ public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplication
   protected void run(
       Bootstrap<PolarisApplicationConfig> bootstrap,
       Namespace namespace,
-      PolarisApplicationConfig configuration)
-      throws Exception {
+      PolarisApplicationConfig configuration) {
     MetaStoreManagerFactory metaStoreManagerFactory = configuration.getMetaStoreManagerFactory();
 
     PolarisConfigurationStore configurationStore = configuration.getConfigurationStore();
