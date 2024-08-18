@@ -88,8 +88,12 @@ tasks.named<RatTask>("rat").configure {
 
   excludes.add("**/polaris-venv/**")
 
+  excludes.add("**/.pytest_cache/**")
   excludes.add("regtests/**/py.typed")
   excludes.add("regtests/**/*.ref")
+  excludes.add("regtests/.env")
+  excludes.add("regtests/derby.log")
+  excludes.add("regtests/metastore_db/**")
   excludes.add("regtests/client/python/.openapi-generator/**")
 
   excludes.add("**/*.ipynb")
