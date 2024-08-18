@@ -212,6 +212,9 @@ extraEnv:
 #        name: aws-secret
 #        key: secret_access_key
 
+# -- Configures whether to enable the bootstrap metastore manager job
+bootstrapMetastoreManager: false
+
 # -- The secret name to pull persistence.xml from (ensure the key name is 'persistence.xml')
 persistenceConfigSecret: ~
 
