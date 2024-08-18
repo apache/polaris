@@ -46,7 +46,8 @@ import org.slf4j.LoggerFactory;
 public class ManifestFileCleanupTaskHandler implements TaskHandler {
   public static final int MAX_ATTEMPTS = 3;
   public static final int FILE_DELETION_RETRY_MILLIS = 100;
-  private final Logger LOGGER = LoggerFactory.getLogger(ManifestFileCleanupTaskHandler.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(ManifestFileCleanupTaskHandler.class);
   private final Function<TaskEntity, FileIO> fileIOSupplier;
   private final ExecutorService executorService;
 

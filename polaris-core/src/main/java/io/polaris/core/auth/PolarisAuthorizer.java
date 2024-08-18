@@ -114,7 +114,7 @@ import org.slf4j.LoggerFactory;
  * which translates into a cross-catalog permission.
  */
 public class PolarisAuthorizer {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisAuthorizer.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisAuthorizer.class);
 
   private static final SetMultimap<PolarisPrivilege, PolarisPrivilege> SUPER_PRIVILEGES =
       HashMultimap.create();
@@ -605,7 +605,7 @@ public class PolarisAuthorizer {
             desiredPrivilege, PolarisPrivilege.fromCode(grantRecord.getPrivilegeCode()))) {
           // Found a potential candidate for satisfying our authz goal.
           if (activatedGranteeIds.contains(grantRecord.getGranteeId())) {
-            LOG.debug(
+            LOGGER.debug(
                 "Satisfied privilege {} with grantRecord {} from securable {} for "
                     + "principalName {} and activatedIds {}",
                 desiredPrivilege,
@@ -619,7 +619,7 @@ public class PolarisAuthorizer {
       }
     }
 
-    LOG.debug(
+    LOGGER.debug(
         "Failed to satisfy privilege {} for principalName {} on resolvedPath {}",
         desiredPrivilege,
         authenticatedPolarisPrincipal.getName(),

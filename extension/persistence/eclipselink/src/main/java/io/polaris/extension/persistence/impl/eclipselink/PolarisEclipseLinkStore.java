@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
  * with EclipseLink support
  */
 public class PolarisEclipseLinkStore {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisEclipseLinkStore.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisEclipseLinkStore.class);
 
   // diagnostic services
   private final PolarisDiagnostics diagnosticServices;
@@ -195,7 +195,7 @@ public class PolarisEclipseLinkStore {
     session.createQuery("DELETE from ModelGrantRecord").executeUpdate();
     session.createQuery("DELETE from ModelPrincipalSecrets").executeUpdate();
 
-    LOG.debug("All entities deleted.");
+    LOGGER.debug("All entities deleted.");
   }
 
   ModelEntity lookupEntity(EntityManager session, long catalogId, long entityId) {

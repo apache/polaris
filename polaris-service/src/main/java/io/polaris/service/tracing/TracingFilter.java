@@ -47,7 +47,7 @@ import org.slf4j.MDC;
  */
 @Priority(Priorities.AUTHENTICATION - 1)
 public class TracingFilter implements Filter {
-  private final Logger LOGGER = LoggerFactory.getLogger(TracingFilter.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TracingFilter.class);
   private final OpenTelemetry openTelemetry;
 
   public TracingFilter(OpenTelemetry openTelemetry) {

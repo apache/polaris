@@ -52,6 +52,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Default implementation of the Polaris Meta Store Manager. Uses the underlying meta store to store
@@ -59,6 +61,7 @@ import org.jetbrains.annotations.Nullable;
  */
 @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE")
 public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisMetaStoreManagerImpl.class);
 
   /** mapper, allows to serialize/deserialize properties to/from JSON */
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -634,9 +637,6 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
   private void bootstrapPolarisService(
       @NotNull PolarisCallContext callCtx, @NotNull PolarisMetaStoreSession ms) {
 
-    // cleanup everything, start from a blank slate
-    ms.deleteAll(callCtx);
-
     // Create a root container entity that can represent the securable for any top-level grants.
     PolarisBaseEntity rootContainer =
         new PolarisBaseEntity(
@@ -701,6 +701,20 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // run operation in a read/write transaction
     ms.runActionInTransaction(callCtx, () -> this.bootstrapPolarisService(callCtx, ms));
+
+    // all good
+    return new BaseResult(ReturnStatus.SUCCESS);
+  }
+
+  @Override
+  public @NotNull BaseResult purge(@NotNull PolarisCallContext callCtx) {
+    // get meta store we should be using
+    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+
+    // run operation in a read/write transaction
+    LOGGER.warn("Deleting all metadata in the metastore...");
+    ms.runActionInTransaction(callCtx, () -> ms.deleteAll(callCtx));
+    LOGGER.warn("Finished deleting all metadata in the metastore");
 
     // all good
     return new BaseResult(ReturnStatus.SUCCESS);
