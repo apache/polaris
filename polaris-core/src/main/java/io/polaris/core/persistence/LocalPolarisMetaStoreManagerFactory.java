@@ -90,6 +90,22 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   }
 
   @Override
+  public void purgeRealms(List<String> realms) {
+    for (String realm : realms) {
+      PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(() -> realm);
+      PolarisMetaStoreSession session = getOrCreateSessionSupplier(() -> realm).get();
+
+      PolarisCallContext callContext = new PolarisCallContext(session, diagServices);
+      metaStoreManager.purge(callContext);
+
+      storageCredentialCacheMap.remove(realm);
+      backingStoreMap.remove(realm);
+      sessionSupplierMap.remove(realm);
+      metaStoreManagerMap.remove(realm);
+    }
+  }
+
+  @Override
   public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(
       RealmContext realmContext) {
     if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
@@ -146,6 +162,21 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
         new PolarisCallContext(
             sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(), diagServices);
     CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
+
+    PolarisMetaStoreManager.EntityResult preliminaryRootPrincipalLookup =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            null,
+            PolarisEntityType.PRINCIPAL,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootPrincipalName());
+    if (preliminaryRootPrincipalLookup.isSuccess()) {
+      String overrideMessage =
+          "It appears this metastore manager has already been bootstrapped. "
+              + "To continue bootstrapping, please first purge the metastore with the `purge` command.";
+      logger.error("\n\n {} \n\n", overrideMessage);
+      throw new IllegalArgumentException(overrideMessage);
+    }
 
     metaStoreManager.bootstrapPolarisService(polarisContext);
 
