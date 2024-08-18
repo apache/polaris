@@ -79,7 +79,7 @@ public abstract class BasePolarisAuthenticator
                       PolarisEntitySubType.NULL_SUBTYPE,
                       tokenInfo.getSub()));
     } catch (Exception e) {
-      LoggerFactory.getLogger(BasePolarisAuthenticator.class)
+      LOGGER
           .atError()
           .addKeyValue("errMsg", e.getMessage())
           .addKeyValue("stackTrace", ExceptionUtils.getStackTrace(e))

@@ -35,11 +35,13 @@ import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
+import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class SnowmanCredentialsExtension
     implements BeforeAllCallback, AfterAllCallback, ParameterResolver {
 
+  private static final Logger LOGGER = LoggerFactory.getLogger(SnowmanCredentialsExtension.class);
   private SnowmanCredentials snowmanCredentials;
 
   public record SnowmanCredentials(String clientId, String clientSecret) {}
@@ -53,7 +55,7 @@ public class SnowmanCredentialsExtension
             .get(REALM_PROPERTY_KEY, String.class);
 
     if (adminSecrets == null) {
-      LoggerFactory.getLogger(SnowmanCredentialsExtension.class)
+      LOGGER
           .atError()
           .log(
               "No admin secrets configured - you must also configure your test with PolarisConnectionExtension");
@@ -159,7 +161,7 @@ public class SnowmanCredentialsExtension
             .get(REALM_PROPERTY_KEY, String.class);
 
     if (adminSecrets == null) {
-      LoggerFactory.getLogger(SnowmanCredentialsExtension.class)
+      LOGGER
           .atError()
           .log(
               "No admin secrets configured - you must also configure your test with PolarisConnectionExtension");
