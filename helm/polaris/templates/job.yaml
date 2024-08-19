@@ -1,4 +1,4 @@
-{{- if and (.Values.bootstrapMetastoreManager) (eq .Values.polarisServerConfig.metaStoreManager.type "eclipse-link") }}
+{{- if .Values.bootstrapMetastoreManager }}
 apiVersion: batch/v1
 kind: Job
 metadata:
