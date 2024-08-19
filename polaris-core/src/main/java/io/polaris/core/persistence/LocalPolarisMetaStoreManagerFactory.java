@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The common implementation of Configuration interface for configuring the {@link
@@ -51,8 +52,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
   protected PolarisStorageIntegrationProvider storageIntegration;
 
-  private final Logger LOGGER =
-      org.slf4j.LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
 
   protected abstract StoreType createBackingStore(@NotNull PolarisDiagnostics diagnostics);
 

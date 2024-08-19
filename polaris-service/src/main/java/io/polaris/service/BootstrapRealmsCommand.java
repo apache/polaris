@@ -27,6 +27,7 @@ import io.polaris.service.context.CallContextResolver;
 import java.util.Map;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Command for bootstrapping root level service principals for each realm. This command will invoke
@@ -34,7 +35,7 @@ import org.slf4j.Logger;
  * printed out to the log and standard output (stdout).
  */
 public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplicationConfig> {
-  private Logger LOGGER = org.slf4j.LoggerFactory.getLogger(BootstrapRealmsCommand.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(BootstrapRealmsCommand.class);
 
   public BootstrapRealmsCommand() {
     super("bootstrap", "bootstraps principal credentials for all realms and prints them to log");

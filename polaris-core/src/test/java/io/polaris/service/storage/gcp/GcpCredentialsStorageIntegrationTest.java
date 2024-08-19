@@ -63,7 +63,8 @@ class GcpCredentialsStorageIntegrationTest {
   private final String gcsServiceKeyJsonFileLocation =
       System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
 
-  private final Logger LOGGER = LoggerFactory.getLogger(GcpCredentialsStorageIntegrationTest.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(GcpCredentialsStorageIntegrationTest.class);
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
