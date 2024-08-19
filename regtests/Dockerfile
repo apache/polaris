@@ -34,7 +34,7 @@ WORKDIR /home/spark/regtests
 COPY ./setup.sh /home/spark/regtests/setup.sh
 COPY ./pyspark-setup.sh /home/spark/regtests/pyspark-setup.sh
 COPY ./client/python /home/spark/regtests/client/python
-COPY ./polaris /home/spark
+COPY ./polaris-reg-test /home/spark/polaris
 
 RUN python3 -m venv /home/spark/polaris-venv && \
     . /home/spark/polaris-venv/bin/activate && \

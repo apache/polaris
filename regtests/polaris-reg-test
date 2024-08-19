@@ -15,10 +15,10 @@
 # limitations under the License.
 #
 
-################################################
-# This is a modified copy of the script in the #
-# parent directory, used for regression tests. #
-################################################
+####################################################
+# This is a modified copy of the polaris script in #
+# the parent directory, used for regression tests. #
+####################################################
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
