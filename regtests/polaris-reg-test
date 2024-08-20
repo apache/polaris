@@ -14,22 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-
-####################################################
-# This is a modified copy of the polaris script in #
-# the parent directory, used for regression tests. #
-####################################################
-
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-# Check if the current directory is 'regtests' and abort if it is
-if [ $(basename ${SCRIPT_DIR}) == "regtests" ]; then
-  echo "This script is intended solely for regression testing and cannot be executed from within the 'regtests' directory. Please use the script from the parent directory: $(dirname ${SCRIPT_DIR})/polaris"
-  exit 1
-fi
-
-# Check if the virtual environment directory 'polaris-venv' exists.
-# If it does not, perform the first-time setup for the Python client
 if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
   echo "Performing first-time setup for the Python client..."
   python3 -m venv ${SCRIPT_DIR}/polaris-venv
@@ -37,22 +23,16 @@ if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
   pip install poetry==1.5.0
 
   cp ${SCRIPT_DIR}/regtests/client/python/pyproject.toml ${SCRIPT_DIR}
-
-  # Save the current directory
-  CURRENT_DIR=$(pwd)
-  cd $SCRIPT_DIR && poetry install
-  cd $CURRENT_DIR
+  pushd $SCRIPT_DIR && poetry install ; popd
 
   deactivate
   echo "First time setup complete."
 fi
 
-# Save the current directory
-CURRENT_DIR=$(pwd)
-cd $SCRIPT_DIR > /dev/null
+pushd $SCRIPT_DIR > /dev/null
 PYTHONPATH=regtests/client/python ${SCRIPT_DIR}/polaris-venv/bin/python3 regtests/client/python/cli/polaris_cli.py "$@"
 status=$?
-cd $CURRENT_DIR > /dev/null
+popd > /dev/null
 
 if [ $status -ne 0 ]; then
   exit 1
