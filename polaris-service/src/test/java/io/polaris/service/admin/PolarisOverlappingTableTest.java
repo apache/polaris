@@ -54,7 +54,9 @@ public class PolarisOverlappingTableTest {
           ConfigOverride.config("server.adminConnectors[0].port", "0"),
           // Ensure table locations are inside namespace locations
           ConfigOverride.config(
-              "featureConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION", "false"));
+              "featureConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION", "false"),
+          ConfigOverride.config(
+              "featureConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_CATALOG_LOCATION", "false"));
 
   private static final DropwizardAppExtension<PolarisApplicationConfig> ALLOW_NAMESPACE_ESCAPE_EXT =
       new DropwizardAppExtension<>(
@@ -63,9 +65,24 @@ public class PolarisOverlappingTableTest {
           // Bind to random port to support parallelism
           ConfigOverride.config("server.applicationConnectors[0].port", "0"),
           ConfigOverride.config("server.adminConnectors[0].port", "0"),
-          // Allow tables to reside outside the parent namespace:
+          // Table may be outside the namespace, but not the catalog
           ConfigOverride.config(
-              "featureConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION", "true"));
+              "featureConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION", "true"),
+          ConfigOverride.config(
+              "featureConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_CATALOG_LOCATION", "false"));
+
+  private static final DropwizardAppExtension<PolarisApplicationConfig> ALLOW_ALL_ESCAPE_EXT =
+      new DropwizardAppExtension<>(
+          PolarisApplication.class,
+          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
+          // Bind to random port to support parallelism
+          ConfigOverride.config("server.applicationConnectors[0].port", "0"),
+          ConfigOverride.config("server.adminConnectors[0].port", "0"),
+          // Table may be outside the namespace and the catalog
+          ConfigOverride.config(
+              "featureConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION", "true"),
+          ConfigOverride.config(
+              "featureConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_CATALOG_LOCATION", "true"));
 
   private static String userToken;
   private static String realm;
@@ -78,7 +95,7 @@ public class PolarisOverlappingTableTest {
     userToken = adminToken.token();
     realm = PolarisConnectionExtension.getTestRealm(PolarisServiceImplIntegrationTest.class);
     catalog = String.format("catalog_%s", UUID.randomUUID().toString());
-    List.of(BASE_EXT, ALLOW_NAMESPACE_ESCAPE_EXT)
+    List.of(BASE_EXT, ALLOW_NAMESPACE_ESCAPE_EXT, ALLOW_ALL_ESCAPE_EXT)
         .forEach(
             EXT -> {
               StorageConfigInfo config =
@@ -162,6 +179,10 @@ public class PolarisOverlappingTableTest {
     // Cannot escape into another location
     assertThat(createTable(BASE_EXT, String.format("%s/%s/fake_ns/table_4", baseLocation, catalog)))
         .returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
+
+    // Cannot escape outside the catalog
+    assertThat(createTable(ALLOW_NAMESPACE_ESCAPE_EXT, String.format("%s/table_5", baseLocation)))
+        .returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
   }
 
   @Test
@@ -191,6 +212,44 @@ public class PolarisOverlappingTableTest {
             createTable(
                 ALLOW_NAMESPACE_ESCAPE_EXT,
                 String.format("%s/%s/fake_ns/table_4", baseLocation, catalog)))
+        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+
+    // Still cannot escape outside the catalog
+    assertThat(createTable(ALLOW_NAMESPACE_ESCAPE_EXT, String.format("%s/table_5", baseLocation)))
+        .returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
+  }
+
+  @Test
+  public void testAllEscapeAllowed() {
+    // Original table
+    assertThat(
+            createTable(
+                ALLOW_ALL_ESCAPE_EXT,
+                String.format("%s/%s/%s/table_1", baseLocation, catalog, namespace)))
+        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+
+    // Unrelated path
+    assertThat(
+            createTable(
+                ALLOW_ALL_ESCAPE_EXT,
+                String.format("%s/%s/%s/table_2", baseLocation, catalog, namespace)))
+        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+
+    // Can now escape namespace
+    assertThat(
+            createTable(
+                ALLOW_ALL_ESCAPE_EXT, String.format("%s/%s/table_3", baseLocation, catalog)))
+        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+
+    // Can now escape into another location
+    assertThat(
+            createTable(
+                ALLOW_ALL_ESCAPE_EXT,
+                String.format("%s/%s/fake_ns/table_4", baseLocation, catalog)))
+        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+
+    // Can now escape outside the catalog
+    assertThat(createTable(ALLOW_ALL_ESCAPE_EXT, String.format("%s/table_5", baseLocation)))
         .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
   }
 }

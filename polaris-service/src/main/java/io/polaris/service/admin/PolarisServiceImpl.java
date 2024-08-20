@@ -16,6 +16,7 @@
 package io.polaris.service.admin;
 
 import io.polaris.core.PolarisCallContext;
+import io.polaris.core.PolarisConfiguration;
 import io.polaris.core.admin.model.AddGrantRequest;
 import io.polaris.core.admin.model.Catalog;
 import io.polaris.core.admin.model.CatalogGrant;
@@ -117,11 +118,7 @@ public class PolarisServiceImpl
             .getConfiguration(
                 polarisCallContext,
                 "SUPPORTED_CATALOG_STORAGE_TYPES",
-                List.of(
-                    StorageConfigInfo.StorageTypeEnum.S3.name(),
-                    StorageConfigInfo.StorageTypeEnum.AZURE.name(),
-                    StorageConfigInfo.StorageTypeEnum.GCS.name(),
-                    StorageConfigInfo.StorageTypeEnum.FILE.name()));
+                PolarisConfiguration.defaultStorageTypes);
     if (!allowedStorageTypes.contains(storageConfigInfo.getStorageType().name())) {
       LOGGER
           .atWarn()

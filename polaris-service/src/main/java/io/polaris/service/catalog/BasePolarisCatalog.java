@@ -24,6 +24,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import io.polaris.core.PolarisCallContext;
 import io.polaris.core.PolarisConfiguration;
+import io.polaris.core.admin.model.StorageConfigInfo;
 import io.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import io.polaris.core.catalog.PolarisCatalogHelpers;
 import io.polaris.core.context.CallContext;
@@ -855,14 +856,36 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 callContext.getPolarisCallContext(),
                 PolarisConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION);
 
+    boolean allowTableLocationOutsideCatalogLocation =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(),
+                PolarisConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_CATALOG_LOCATION);
+
+    if (allowTableLocationOutsideCatalogLocation && !allowTableLocationOutsideNamespaceLocation) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Incompatible configuration for %s: `%s` is set but `%s` is not",
+              identifier.name(),
+              PolarisConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_CATALOG_LOCATION.key,
+              PolarisConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION.key));
+    }
+
     Optional<PolarisStorageConfigurationInfo> optStorageConfiguration = Optional.empty();
     if (allowTableLocationOutsideNamespaceLocation) {
-      optStorageConfiguration =
-          findStorageInfoFromHierarchy(resolvedStorageEntity)
-              .map(
-                  storageInfoHolderEntity -> {
-                    return new CatalogEntity(storageInfoHolderEntity).getStorageConfigurationInfo();
-                  });
+      if (allowTableLocationOutsideCatalogLocation) {
+        optStorageConfiguration = Optional.empty();
+      } else {
+        optStorageConfiguration =
+            findStorageInfoFromHierarchy(resolvedStorageEntity)
+                .map(
+                    storageInfoHolderEntity -> {
+                      return new CatalogEntity(storageInfoHolderEntity)
+                          .getStorageConfigurationInfo();
+                    });
+      }
     } else {
       optStorageConfiguration =
           PolarisStorageConfigurationInfo.forEntityPath(
@@ -916,10 +939,20 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           // }
         },
         () -> {
-          if (location.startsWith("file:") || location.startsWith("http")) {
-            throw new ForbiddenException(
-                "Invalid location '%s' for identifier '%s': File locations are not allowed",
-                location, identifier);
+          List<String> allowedStorageTypes =
+              callContext
+                  .getPolarisCallContext()
+                  .getConfigurationStore()
+                  .getConfiguration(
+                      callContext.getPolarisCallContext(),
+                      "SUPPORTED_CATALOG_STORAGE_TYPES",
+                      PolarisConfiguration.defaultStorageTypes);
+          if (!allowedStorageTypes.contains(StorageConfigInfo.StorageTypeEnum.FILE.name())) {
+            if (location.startsWith("file:") || location.startsWith("http")) {
+              throw new ForbiddenException(
+                  "Invalid location '%s' for identifier '%s': File locations are not allowed",
+                  location, identifier);
+            }
           }
         });
   }

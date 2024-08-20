@@ -15,6 +15,8 @@
  */
 package io.polaris.core;
 
+import io.polaris.core.admin.model.StorageConfigInfo;
+import java.util.List;
 import java.util.Optional;
 
 public class PolarisConfiguration<T> {
@@ -88,6 +90,13 @@ public class PolarisConfiguration<T> {
     return new Builder<>();
   }
 
+  public static final List<String> defaultStorageTypes =
+      List.of(
+          StorageConfigInfo.StorageTypeEnum.S3.name(),
+          StorageConfigInfo.StorageTypeEnum.AZURE.name(),
+          StorageConfigInfo.StorageTypeEnum.GCS.name(),
+          StorageConfigInfo.StorageTypeEnum.FILE.name());
+
   public static final PolarisConfiguration<Boolean>
       ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING =
           PolarisConfiguration.<Boolean>builder()
@@ -111,7 +120,7 @@ public class PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_NAMESPACE_LOCATION_OVERLAP")
           .description(
-              "If set to true, allow one table's location to reside within another table's location. "
+              "If set to true, allow one namespace's location to reside within another namespace's location. "
                   + "This is only enforced within a parent catalog or namespace.")
           .defaultValue(false)
           .build();
@@ -157,4 +166,13 @@ public class PolarisConfiguration<T> {
                   "If set to true, allows tables to have a location outside of their parent namespace")
               .defaultValue(false)
               .build();
+
+  public static final PolarisConfiguration<Boolean> ALLOW_TABLE_LOCATION_OUTSIDE_CATALOG_LOCATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_TABLE_LOCATION_OUTSIDE_CATALOG_LOCATION")
+          .catalogConfig("allow.table.location.outside.catalog.location")
+          .description(
+              "If set to true, allows tables to have a location outside of their parent catalog")
+          .defaultValue(false)
+          .build();
 }
