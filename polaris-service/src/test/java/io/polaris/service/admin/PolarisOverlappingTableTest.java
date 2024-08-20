@@ -157,11 +157,11 @@ public class PolarisOverlappingTableTest {
 
     // Cannot escape namespace
     assertThat(createTable(BASE_EXT, String.format("%s/%s/table_3", baseLocation, catalog)))
-        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+        .returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
 
     // Cannot escape into another location
     assertThat(createTable(BASE_EXT, String.format("%s/%s/fake_ns/table_4", baseLocation, catalog)))
-        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+        .returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
   }
 
   @Test
