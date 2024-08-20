@@ -147,4 +147,13 @@ public class PolarisConfiguration<T> {
               "If set to true, allows tables to have external locations outside the default structure.")
           .defaultValue(false)
           .build();
+
+  public static final PolarisConfiguration<Boolean> ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION")
+          .catalogConfig("allow.table.location.outside.namespace.location")
+          .description(
+              "If set to true, allows tables to have a location outside of their parent namespace")
+          .defaultValue(false)
+          .build();
 }

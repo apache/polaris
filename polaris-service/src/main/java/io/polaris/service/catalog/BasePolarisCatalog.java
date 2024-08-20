@@ -846,10 +846,28 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       TableIdentifier identifier,
       String location,
       PolarisResolvedPathWrapper resolvedStorageEntity) {
-    Optional<PolarisStorageConfigurationInfo> optStorageConfiguration =
-        PolarisStorageConfigurationInfo.forEntityPath(
-            callContext.getPolarisCallContext().getDiagServices(),
-            resolvedStorageEntity.getRawFullPath());
+
+    boolean allowTableLocationOutsideNamespaceLocation = callContext
+        .getPolarisCallContext()
+        .getConfigurationStore()
+        .getConfiguration(
+            callContext.getPolarisCallContext(),
+            PolarisConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION);
+
+    Optional<PolarisStorageConfigurationInfo> optStorageConfiguration = Optional.empty();
+    if (allowTableLocationOutsideNamespaceLocation) {
+      optStorageConfiguration =
+          findStorageInfoFromHierarchy(resolvedStorageEntity)
+              .map(
+                  storageInfoHolderEntity -> {
+                    return new CatalogEntity(storageInfoHolderEntity).getStorageConfigurationInfo();
+                  });
+    } else {
+      optStorageConfiguration =
+          PolarisStorageConfigurationInfo.forEntityPath(
+              callContext.getPolarisCallContext().getDiagServices(),
+              resolvedStorageEntity.getRawFullPath());
+    }
 
     optStorageConfiguration.ifPresentOrElse(
         storageConfigInfo -> {
