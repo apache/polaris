@@ -218,6 +218,18 @@ class TestCliParsing(unittest.TestCase):
                 (0, 'catalog.properties.default_base_location'): 'x',
                 (0, 'catalog.storage_config_info.allowed_locations'): ['a', 'b'],
             })
+        check_arguments(
+            mock_execute([
+                'catalogs', 'create', 'my-catalog', '--storage-type', 'gcs',
+                '--allowed-location', 'a', '--allowed-location', 'b',
+                '--service-account', 'sa', '--default-base-location', 'x']),
+            'create_catalog', {
+                (0, 'catalog.name'): 'my-catalog',
+                (0, 'catalog.storage_config_info.storage_type'): 'GCS',
+                (0, 'catalog.properties.default_base_location'): 'x',
+                (0, 'catalog.storage_config_info.allowed_locations'): ['a', 'b'],
+                (0, 'catalog.storage_config_info.gcs_service_account'): 'sa',
+            })
         check_arguments(mock_execute(['catalogs', 'list']), 'list_catalogs')
         check_arguments(mock_execute(['catalogs', 'delete', 'foo']), 'delete_catalog', {
             (0, None): 'foo',
