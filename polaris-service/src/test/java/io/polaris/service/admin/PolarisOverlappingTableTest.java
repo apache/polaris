@@ -63,7 +63,7 @@ public class PolarisOverlappingTableTest {
           // Bind to random port to support parallelism
           ConfigOverride.config("server.applicationConnectors[0].port", "0"),
           ConfigOverride.config("server.adminConnectors[0].port", "0"),
-          // Ensure table locations are inside namespace locations
+          // Allow tables to reside outside the parent namespace:
           ConfigOverride.config(
               "featureConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION", "true"));
 
@@ -142,7 +142,7 @@ public class PolarisOverlappingTableTest {
   }
 
   @Test
-  public void testNamespaceEscapeEnforced() {
+  public void testNamespaceEscapeCheck() {
     // Original table
     assertThat(
             createTable(
@@ -165,7 +165,7 @@ public class PolarisOverlappingTableTest {
   }
 
   @Test
-  public void testNamespaceEscapeDisabled() {
+  public void testNamespaceEscapeAllowed() {
     // Original table
     assertThat(
             createTable(
