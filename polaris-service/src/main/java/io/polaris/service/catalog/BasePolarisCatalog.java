@@ -945,8 +945,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                   .getConfigurationStore()
                   .getConfiguration(
                       callContext.getPolarisCallContext(),
-                      "SUPPORTED_CATALOG_STORAGE_TYPES",
-                      PolarisConfiguration.defaultStorageTypes);
+                      PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
           if (!allowedStorageTypes.contains(StorageConfigInfo.StorageTypeEnum.FILE.name())) {
             if (location.startsWith("file:") || location.startsWith("http")) {
               throw new ForbiddenException(

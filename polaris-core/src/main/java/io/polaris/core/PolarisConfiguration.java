@@ -90,13 +90,6 @@ public class PolarisConfiguration<T> {
     return new Builder<>();
   }
 
-  public static final List<String> defaultStorageTypes =
-      List.of(
-          StorageConfigInfo.StorageTypeEnum.S3.name(),
-          StorageConfigInfo.StorageTypeEnum.AZURE.name(),
-          StorageConfigInfo.StorageTypeEnum.GCS.name(),
-          StorageConfigInfo.StorageTypeEnum.FILE.name());
-
   public static final PolarisConfiguration<Boolean>
       ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING =
           PolarisConfiguration.<Boolean>builder()
@@ -174,5 +167,18 @@ public class PolarisConfiguration<T> {
           .description(
               "If set to true, allows tables to have a location outside of their parent catalog")
           .defaultValue(false)
+          .build();
+
+  public static final PolarisConfiguration<List<String>> SUPPORTED_CATALOG_STORAGE_TYPES =
+      PolarisConfiguration.<List<String>>builder()
+          .key("SUPPORTED_CATALOG_STORAGE_TYPES")
+          .catalogConfig("supported.storage.types")
+          .description("The list of supported storage types for a catalog")
+          .defaultValue(
+              List.of(
+                  StorageConfigInfo.StorageTypeEnum.S3.name(),
+                  StorageConfigInfo.StorageTypeEnum.AZURE.name(),
+                  StorageConfigInfo.StorageTypeEnum.GCS.name(),
+                  StorageConfigInfo.StorageTypeEnum.FILE.name()))
           .build();
 }
