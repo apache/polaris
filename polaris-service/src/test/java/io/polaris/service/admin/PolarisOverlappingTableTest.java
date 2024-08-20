@@ -168,22 +168,29 @@ public class PolarisOverlappingTableTest {
   public void testNamespaceEscapeDisabled() {
     // Original table
     assertThat(
-        createTable(
-            ALLOW_NAMESPACE_ESCAPE_EXT, String.format("%s/%s/%s/table_1", baseLocation, catalog, namespace)))
+            createTable(
+                ALLOW_NAMESPACE_ESCAPE_EXT,
+                String.format("%s/%s/%s/table_1", baseLocation, catalog, namespace)))
         .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
 
     // Unrelated path
     assertThat(
-        createTable(
-            ALLOW_NAMESPACE_ESCAPE_EXT, String.format("%s/%s/%s/table_2", baseLocation, catalog, namespace)))
+            createTable(
+                ALLOW_NAMESPACE_ESCAPE_EXT,
+                String.format("%s/%s/%s/table_2", baseLocation, catalog, namespace)))
         .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
 
     // Can now escape namespace
-    assertThat(createTable(ALLOW_NAMESPACE_ESCAPE_EXT, String.format("%s/%s/table_3", baseLocation, catalog)))
+    assertThat(
+            createTable(
+                ALLOW_NAMESPACE_ESCAPE_EXT, String.format("%s/%s/table_3", baseLocation, catalog)))
         .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
 
     // Can now escape into another location
-    assertThat(createTable(ALLOW_NAMESPACE_ESCAPE_EXT, String.format("%s/%s/fake_ns/table_4", baseLocation, catalog)))
+    assertThat(
+            createTable(
+                ALLOW_NAMESPACE_ESCAPE_EXT,
+                String.format("%s/%s/fake_ns/table_4", baseLocation, catalog)))
         .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
   }
 }

@@ -847,12 +847,13 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       String location,
       PolarisResolvedPathWrapper resolvedStorageEntity) {
 
-    boolean allowTableLocationOutsideNamespaceLocation = callContext
-        .getPolarisCallContext()
-        .getConfigurationStore()
-        .getConfiguration(
-            callContext.getPolarisCallContext(),
-            PolarisConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION);
+    boolean allowTableLocationOutsideNamespaceLocation =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(),
+                PolarisConfiguration.ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION);
 
     Optional<PolarisStorageConfigurationInfo> optStorageConfiguration = Optional.empty();
     if (allowTableLocationOutsideNamespaceLocation) {
