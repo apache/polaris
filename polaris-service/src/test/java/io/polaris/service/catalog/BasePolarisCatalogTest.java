@@ -1114,6 +1114,11 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                   }
 
                   @Override
+                  public void purgeRealms(List<String> realms) {
+                    throw new NotImplementedException("Purging realms is not supported");
+                  }
+
+                  @Override
                   public void setStorageIntegrationProvider(
                       PolarisStorageIntegrationProvider storageIntegrationProvider) {}
                 })

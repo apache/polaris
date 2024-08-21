@@ -55,7 +55,8 @@ import reactor.core.publisher.Mono;
 public class AzureCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AzureStorageConfigurationInfo> {
 
-  private final Logger LOGGER = LoggerFactory.getLogger(AzureCredentialsStorageIntegration.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(AzureCredentialsStorageIntegration.class);
 
   final DefaultAzureCredential defaultAzureCredential;
 

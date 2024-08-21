@@ -65,6 +65,7 @@ public class PolarisTestMetaStoreManager {
     this.doRetry = false;
 
     // bootstrap the Polaris service
+    polarisMetaStoreManager.purge(polarisCallContext);
     polarisMetaStoreManager.bootstrapPolarisService(polarisCallContext);
   }
 

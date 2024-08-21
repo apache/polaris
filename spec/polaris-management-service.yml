@@ -977,6 +977,7 @@ components:
               type: string
             clientSecret:
               type: string
+              format: password
       required:
         - principal
         - credentials
