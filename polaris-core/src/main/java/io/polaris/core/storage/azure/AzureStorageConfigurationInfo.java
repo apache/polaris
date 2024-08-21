@@ -43,14 +43,14 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
   @JsonProperty(value = "consentUrl", required = false)
   private @Nullable String consentUrl = null;
 
-  private final @NotNull AzureStorageConfigInfo.AuthTypeEnum authType;
+  private final @Nullable AzureStorageConfigInfo.AuthTypeEnum authType;
 
   @JsonCreator
   public AzureStorageConfigurationInfo(
       @JsonProperty(value = "allowedLocations", required = true) @NotNull
           List<String> allowedLocations,
       @JsonProperty(value = "tenantId", required = true) @NotNull String tenantId,
-      @JsonProperty(value = "authType", required = true) @NotNull
+      @JsonProperty(value = "authType", required = false) @Nullable
           AzureStorageConfigInfo.AuthTypeEnum authType) {
     super(StorageType.AZURE, allowedLocations);
     this.tenantId = tenantId;
@@ -83,7 +83,7 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
     this.consentUrl = consentUrl;
   }
 
-  public @NotNull AzureStorageConfigInfo.AuthTypeEnum getAuthType() {
+  public AzureStorageConfigInfo.AuthTypeEnum getAuthType() {
     return authType;
   }
 
@@ -95,6 +95,7 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
         .add("allowedLocation", getAllowedLocations())
         .add("multiTenantAppName", multiTenantAppName)
         .add("consentUrl", consentUrl)
+        .add("authType", authType)
         .toString();
   }
 

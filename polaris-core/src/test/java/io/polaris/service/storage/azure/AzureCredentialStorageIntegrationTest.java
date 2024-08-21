@@ -30,7 +30,6 @@ import com.azure.storage.file.datalake.DataLakeFileSystemClientBuilder;
 import com.azure.storage.file.datalake.models.DataLakeStorageException;
 import com.azure.storage.file.datalake.models.PathItem;
 import io.polaris.core.PolarisDefaultDiagServiceImpl;
-import io.polaris.core.admin.model.AzureStorageConfigInfo;
 import io.polaris.core.storage.PolarisCredentialProperty;
 import io.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import io.polaris.core.storage.azure.AzureStorageConfigurationInfo;
@@ -68,8 +67,6 @@ public class AzureCredentialStorageIntegrationTest {
   private final String clientId = System.getenv("AZURE_CLIENT_ID");
   private final String clientSecret = System.getenv("AZURE_CLIENT_SECRET");
   private final String tenantId = "d479c7c9-2632-445a-b22d-7c19e68774f6";
-  private final AzureStorageConfigInfo.AuthTypeEnum authType =
-      AzureStorageConfigInfo.AuthTypeEnum.SAS_TOKEN;
 
   private boolean checkEnvNullVariables() {
     if (Strings.isNullOrEmpty(clientId) || Strings.isNullOrEmpty(clientSecret)) {
@@ -348,7 +345,7 @@ public class AzureCredentialStorageIntegrationTest {
     allowedLoc.addAll(allowedReadLoc);
     allowedLoc.addAll(allowedWriteLoc);
     AzureStorageConfigurationInfo azureConfig =
-        new AzureStorageConfigurationInfo(allowedLoc, tenantId, authType);
+        new AzureStorageConfigurationInfo(allowedLoc, tenantId, null);
     AzureCredentialsStorageIntegration azureCredsIntegration =
         new AzureCredentialsStorageIntegration();
     EnumMap<PolarisCredentialProperty, String> credsMap =

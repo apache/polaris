@@ -915,12 +915,12 @@ components:
         authType:
           type: string
           enum:
+            - NONE
             - SAS_TOKEN
             - APPLICATION_DEFAULT
           description: the type of authentication to use
       required:
         - tenantId
-        - authType
 
     GcpStorageConfigInfo:
       type: object

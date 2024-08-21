@@ -91,9 +91,15 @@ public class AzureCredentialsStorageIntegration
     String filePath = location.getFilePath();
 
     AzureStorageConfigInfo.AuthTypeEnum authType = storageConfig.getAuthType();
+
+    if (authType == null) {
+      authType = AzureStorageConfigInfo.AuthTypeEnum.NONE;
+    }
+
     String sasToken = "";
 
     switch (authType) {
+      case NONE:
       case SAS_TOKEN:
         sasToken =
             getSasToken(
