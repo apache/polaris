@@ -128,7 +128,7 @@ resources:
 
 autoscaling:
   # -- Specifies whether automatic horizontal scaling should be enabled.
-  # Do not enable this when using ROCKSDB version store type.
+  # Do not enable this when using in-memory version store type.
   enabled: false
   # -- The minimum number of replicas to maintain.
   minReplicas: 1

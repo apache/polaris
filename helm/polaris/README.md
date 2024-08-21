@@ -48,7 +48,7 @@ $ helm uninstall --namespace polaris polaris
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | affinity | object | `{}` | Affinity and anti-affinity for polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity. |
-| autoscaling.enabled | bool | `false` | Specifies whether automatic horizontal scaling should be enabled. Do not enable this when using ROCKSDB version store type. |
+| autoscaling.enabled | bool | `false` | Specifies whether automatic horizontal scaling should be enabled. Do not enable this when using in-memory version store type. |
 | autoscaling.maxReplicas | int | `3` | The maximum number of replicas to maintain. |
 | autoscaling.minReplicas | int | `1` | The minimum number of replicas to maintain. |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Optional; set to zero or empty to disable. |
