@@ -16,8 +16,11 @@
 #
 # Run without args to run all tests, or single arg for single test.
 
+export SPARK_VERSION=spark-3.5.2
+export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3-scala2.13
+
 if [ -z "${SPARK_HOME}"]; then
-  export SPARK_HOME=$(realpath ~/spark-3.5.1-bin-hadoop3-scala2.13)
+  export SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
 fi
 export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
 
