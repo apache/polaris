@@ -52,8 +52,8 @@ spec:
             {{- tpl (toYaml .Values.securityContext) . | nindent 12 }}
           image: "{{ tpl .Values.image.repository . }}:{{ tpl .Values.image.tag . | default .Chart.Version }}"
           imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}
-          command: ["java"]
-          args: ["-jar", "/app/polaris-service-1.0.0-all.jar", "server", "/app/config/polaris-server.yml"]
+          command: ["/app/bin/polaris-service"]
+          args: ["server", "/app/config/polaris-server.yml"]
           env:
             {{- if .Values.extraEnv }}
             {{- tpl (toYaml .Values.extraEnv) . | nindent 12 }}
