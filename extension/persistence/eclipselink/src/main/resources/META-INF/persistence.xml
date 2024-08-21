@@ -25,13 +25,13 @@
 
   <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
     <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
-    <class>io.polaris.core.persistence.models.ModelEntity</class>
-    <class>io.polaris.core.persistence.models.ModelEntityActive</class>
-    <class>io.polaris.core.persistence.models.ModelEntityChangeTracking</class>
-    <class>io.polaris.core.persistence.models.ModelEntityDropped</class>
-    <class>io.polaris.core.persistence.models.ModelGrantRecord</class>
-    <class>io.polaris.core.persistence.models.ModelPrincipalSecrets</class>
-    <class>io.polaris.core.persistence.models.ModelSequenceId</class>
+    <class>org.apache.polaris.core.persistence.models.ModelEntity</class>
+    <class>org.apache.polaris.core.persistence.models.ModelEntityActive</class>
+    <class>org.apache.polaris.core.persistence.models.ModelEntityChangeTracking</class>
+    <class>org.apache.polaris.core.persistence.models.ModelEntityDropped</class>
+    <class>org.apache.polaris.core.persistence.models.ModelGrantRecord</class>
+    <class>org.apache.polaris.core.persistence.models.ModelPrincipalSecrets</class>
+    <class>org.apache.polaris.core.persistence.models.ModelSequenceId</class>
     <shared-cache-mode>NONE</shared-cache-mode>
     <properties>
       <property name="jakarta.persistence.jdbc.url"

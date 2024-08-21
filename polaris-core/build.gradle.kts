@@ -131,7 +131,7 @@ tasks.register<GenerateTask>("generatePolarisService").configure {
   inputSpec = "$rootDir/spec/polaris-management-service.yml"
   generatorName = "jaxrs-resteasy"
   outputDir = "$projectDir/build/generated"
-  modelPackage = "io.polaris.core.admin.model"
+  modelPackage = "org.apache.polaris.core.admin.model"
   ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"

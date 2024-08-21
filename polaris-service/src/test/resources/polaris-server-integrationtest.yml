@@ -96,7 +96,7 @@ oauth2:
 #  clientSecret2: ${GS_POLARIS_SERVICE_CLIENT_SECRET2}
 
 authenticator:
-  class: io.polaris.service.auth.DefaultPolarisAuthenticator
+  class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator
   tokenBroker:
     type: symmetric-key
     secret: polaris
@@ -132,7 +132,7 @@ logging:
 
   # Logger-specific levels.
   loggers:
-    io.polaris: DEBUG
+    org.apache.polaris: DEBUG
 
   appenders:
 
