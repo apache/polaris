@@ -33,6 +33,10 @@ export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-
 echo 'Verifying Spark binaries...'
 if ! [ -f ${SPARK_HOME}/bin/spark-sql ]; then
   echo 'Setting up Spark...'
+  if [ -z "${SPARK_VERSION}" ] || [ -z "${SPARK_DISTRIBUTION}" ]; then
+    echo 'SPARK_VERSION or SPARK_DISTRIBUTION not set. Please set SPARK_VERSION and SPARK_DISTRIBUTION to the desired version.'
+    exit 1
+  fi
   if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
     echo 'Downloading spark distro...'
     wget -O ~/${SPARK_DISTRIBUTION}.tgz https://dlcdn.apache.org/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
