@@ -1,38 +1,32 @@
 <!--
-
- Copyright (c) 2024 Snowflake Computing Inc.
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
  
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
+   http://www.apache.org/licenses/LICENSE-2.0
  
-      http://www.apache.org/licenses/LICENSE-2.0
- 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
-
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
 -->
 
-![Polaris Catalog Header](docs/img/logos/Polaris-Catalog-BLOG-symmetrical-subhead.png)
+# Apache Polaris (incubating)
 
-Polaris is an open-source, fully-featured catalog for Apache Iceberg™. It implements Iceberg's 
+Apache Polaris is an open-source, fully-featured catalog for Apache Iceberg™. It implements Iceberg's 
 [REST API](https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml),
 enabling seamless multi-engine interoperability across a wide range of platforms, including Apache Doris™, Apache Flink®,
 Apache Spark™, StarRocks, and Trino.
 
-Documentation is available at https://polaris.io, including
-[Polaris management API doc](https://polaris.io/index.html#tag/polaris-management-service_other)
-and [Apache Iceberg REST API doc](https://polaris.io/index.html#tag/Configuration-API).
-
-
-## Status
-Polaris Catalog is open source under an Apache 2.0 license.
-
-- ⭐ Star this repo if you’d like to bookmark and come back to it! 
-- 📖 Read the <a href="https://www.snowflake.com/blog/polaris-catalog-open-source/" target="_blank">announcement blog post<a/> for more details!
+Documentation is available at https://polaris.apache.org, including
+[Polaris management API doc](https://polaris.apache.org/index.html#tag/polaris-management-service_other)
+and [Apache Iceberg REST API doc](https://polaris.apache.org/index.html#tag/Configuration-API).
 
 ## Development
 
@@ -40,12 +34,12 @@ See [CONTRIBUTING](CONTRIBUTING.md) for contribution requirements.
 
 ## Building and Running 
 
-Polaris is organized into the following modules:
+Apache Polaris is organized into the following modules:
 - `polaris-core` - The main Polaris entity definitions and core business logic
 - `polaris-server` - The Polaris REST API server
 - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
  
-Polaris is built using Gradle with Java 21+ and Docker 27+.
+Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
 - `./gradlew assemble` - To skip tests.
 - `./gradlew test` - To run unit tests and integration tests.
@@ -93,8 +87,14 @@ curl -i -X POST -H "Authorization: Bearer $PRINCIPAL_TOKEN" -H 'Accept: applicat
 ```
 
 From here, you can use Spark to create namespaces, tables, etc. More details can be found in the
-[Quick Start Guide](https://polaris.io/#section/Quick-Start/Using-Iceberg-and-Polaris).
+[Quick Start Guide](https://polaris.apache.org/#section/Quick-Start/Using-Iceberg-and-Polaris).
 
-### Trademark Attribution 
+## License
 
-_Apache Iceberg, Iceberg, Apache Spark, Spark, Apache Flink, Flink, Apache Doris, Doris, Apache, the Apache feather logo, the Apache Iceberg project logo, the Apache Spark project logo, the Apache Flink project logo, and the Apache Doris project logo are either registered trademarks or trademarks of The Apache Software Foundation. Copyright © 2024 The Apache Software Foundation._
+Apache Polaris is under the Apache License Version 2.0. See the [LICENSE](LICENSE).
+
+## ASF Incubator disclaimer
+
+Apache Polaris is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.
+ 
+<sub>Apache®, Apache Polaris, Apache Iceberg&trade;, Apache Spark&trade; are either registered trademarks or trademarks of the Apache Software Foundation in the United States and/or other countries.</sub>
