@@ -26,8 +26,11 @@ name: Check Markdown links
 on:
   push:
     paths:
+      - '*.md'  # Top-level .md files
       - docs/**
+      - regtests/README.md
       - regtests/client/python/docs/**
+      - regtests/client/python/README.md
     branches:
       - 'main'
   pull_request:
@@ -40,4 +43,4 @@ jobs:
     - uses: gaurav-nelson/github-action-markdown-link-check@v1
       with:
         config-file: '.github/workflows/check-md-link-config.json'
-        folder-path: 'docs,regtests/client/python/docs'
+        folder-path: '., docs, regtests, regtests/client/python/docs, regtests/client/python'
