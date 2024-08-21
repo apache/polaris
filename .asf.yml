@@ -29,7 +29,7 @@ github:
     - apache
 
   enabled_merge_buttons:
-    merge: false
+    merge: true
     squash: true
     rebase: true
 

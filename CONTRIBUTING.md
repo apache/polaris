@@ -38,7 +38,8 @@ When filing an [issue](https://github.com/apache/polaris/issues), make sure to a
 4. What did you expect to see?
 5. What did you see instead?
 
-Troubleshooting questions should be posted on [dev mailing list](https://lists.apache.org/list.html?dev@polaris.apache.org) instead of the issue tracker. Maintainers and community members will answer your questions there or ask you to file an issue if you’ve encountered a bug. 
+Troubleshooting questions should be posted on [dev mailing list](mailto:dev@polaris.apache.org) (you can [subscribe](mailto:dev-subscribe@polaris.apache.org)) instead of the issue tracker. Maintainers and community members will answer your questions there or ask you to file an issue if you’ve encountered a bug. 
+
 
 ### How to suggest a feature or enhancement
 
