@@ -35,6 +35,8 @@ import org.slf4j.LoggerFactory;
 
 /** A mapper to serialize/deserialize polaris objects. */
 public class PolarisObjectMapperUtil {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisObjectMapperUtil.class);
+
   /** mapper, allows to serialize/deserialize properties to/from JSON */
   private static final ObjectMapper MAPPER = configureMapper();
 
@@ -174,8 +176,7 @@ public class PolarisObjectMapperUtil {
       }
       return new TaskExecutionState(executorId, lastAttemptStartTime, attemptCount);
     } catch (IOException e) {
-      Logger logger = LoggerFactory.getLogger(PolarisObjectMapperUtil.class);
-      logger
+      LOGGER
           .atWarn()
           .addKeyValue("json", entity.getProperties())
           .addKeyValue("error", e.getMessage())

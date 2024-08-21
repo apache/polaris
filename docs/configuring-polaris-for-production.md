@@ -62,13 +62,13 @@ Before using Polaris when using a metastore manager other than `in-memory`, you 
 To bootstrap Polaris, run:
 
 ```bash
-java -jar /path/to/jar/polaris-service-1.0.0-all.jar bootstrap polaris-server.yml
+java -jar /path/to/jar/polaris-service-all.jar bootstrap polaris-server.yml
 ```
 
 Afterwards, Polaris can be launched normally:
 
 ```bash
-java -jar /path/to/jar/polaris-service-1.0.0-all.jar server polaris-server.yml
+java -jar /path/to/jar/polaris-service-all.jar server polaris-server.yml
 ```
 
 ## Other Configurations

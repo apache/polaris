@@ -25,10 +25,11 @@ import io.polaris.service.config.RealmEntityManagerFactory;
 import io.polaris.service.context.CallContextResolver;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Command for purging all metadata associated with a realm */
 public class PurgeRealmsCommand extends ConfiguredCommand<PolarisApplicationConfig> {
-  private Logger LOGGER = org.slf4j.LoggerFactory.getLogger(PurgeRealmsCommand.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PurgeRealmsCommand.class);
 
   public PurgeRealmsCommand() {
     super("purge", "purge principal credentials for all realms and prints them to log");

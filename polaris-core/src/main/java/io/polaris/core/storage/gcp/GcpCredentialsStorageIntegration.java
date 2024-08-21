@@ -49,7 +49,8 @@ import org.slf4j.LoggerFactory;
  */
 public class GcpCredentialsStorageIntegration
     extends InMemoryStorageIntegration<GcpStorageConfigurationInfo> {
-  private final Logger LOGGER = LoggerFactory.getLogger(GcpCredentialsStorageIntegration.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(GcpCredentialsStorageIntegration.class);
 
   private final GoogleCredentials sourceCredentials;
   private final HttpTransportFactory transportFactory;

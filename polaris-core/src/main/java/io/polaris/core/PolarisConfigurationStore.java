@@ -19,16 +19,12 @@ import com.google.common.base.Preconditions;
 import io.polaris.core.entity.CatalogEntity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Dynamic configuration store used to retrieve runtime parameters, which may vary by realm or by
  * request.
  */
 public interface PolarisConfigurationStore {
-  Logger LOGGER = LoggerFactory.getLogger(PolarisConfigurationStore.class);
-
   /**
    * Retrieve the current value for a configuration key. May be null if not set.
    *
@@ -103,7 +99,6 @@ public interface PolarisConfigurationStore {
       PolarisConfiguration<T> config) {
     if (config.hasCatalogConfig()
         && catalogEntity.getPropertiesAsMap().containsKey(config.catalogConfig())) {
-      LOGGER.debug("Loaded config from catalog: {}", config.catalogConfig());
       return tryCast(config, catalogEntity.getPropertiesAsMap().get(config.catalogConfig()));
     } else {
       return getConfiguration(ctx, config);

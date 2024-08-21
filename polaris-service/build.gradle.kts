@@ -107,6 +107,10 @@ dependencies {
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
+if (project.properties.get("eclipseLink") == "true") {
+  dependencies { implementation(project(":polaris-eclipselink")) }
+}
+
 openApiGenerate {
   inputSpec = "$rootDir/spec/rest-catalog-open-api.yaml"
   generatorName = "jaxrs-resteasy"
@@ -222,8 +226,11 @@ tasks.named<Jar>("jar") {
 
 tasks.named<ShadowJar>("shadowJar") {
   manifest { attributes["Main-Class"] = "io.polaris.service.PolarisApplication" }
+  archiveVersion.set("")
   mergeServiceFiles()
   isZip64 = true
 }
+
+tasks.named<CreateStartScripts>("startScripts") { classpath = files("polaris-service-all.jar") }
 
 tasks.named("build").configure { dependsOn("shadowJar") }
