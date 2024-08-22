@@ -66,8 +66,7 @@ service:
   # -- The type of service to create.
   type: ClusterIP
   # -- The ports the service will listen on. Two ports are required: one for the Polaris service and
-  # one for the metrics API. Other ports can be declared as needed. The metrics port is
-  # handled differently from other ports as a dedicated headless service is created for it.
+  # one for the metrics API.
   # Note: port names must be unique and no more than 15 characters long.
   ports:
     # polaris-server: The port the Polaris server listens on for API requests.
