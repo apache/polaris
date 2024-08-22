@@ -51,8 +51,8 @@ github:
 
 notifications:
   commits:      commits@polaris.apache.org
-  issues:       commits@polaris.apache.org
-  pullrequests: commits@polaris.apache.org
+  issues:       issues@polaris.apache.org
+  pullrequests: issues@polaris.apache.org
   jira_options: link label
 
 publish:
