@@ -1073,7 +1073,7 @@ tags:
 
       ```bash
 
-      java -jar /path/to/jar/polaris-service-1.0.0-all.jar bootstrap
+      java -jar /path/to/jar/polaris-service-all.jar bootstrap
       polaris-server.yml
 
       ```
@@ -1084,8 +1084,7 @@ tags:
 
       ```bash
 
-      java -jar /path/to/jar/polaris-service-1.0.0-all.jar server
-      polaris-server.yml
+      java -jar /path/to/jar/polaris-service-all.jar server polaris-server.yml
 
       ```
 
@@ -3965,6 +3964,7 @@ components:
               type: string
             clientSecret:
               type: string
+              format: password
       required:
         - principal
         - credentials
