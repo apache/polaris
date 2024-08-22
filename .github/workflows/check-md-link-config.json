@@ -1,7 +1,7 @@
 {
   "ignorePatterns": [
     {
-      "pattern": "^https?://localhost.*"
+      "pattern": "^https?://(localhost|polaris.apache.org).*"
     },
     {
       "_comment": "mvnrepository blocks requests originating from GitHub Actions",
