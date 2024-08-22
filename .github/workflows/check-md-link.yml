@@ -44,3 +44,4 @@ jobs:
       with:
         config-file: '.github/workflows/check-md-link-config.json'
         folder-path: '., docs, regtests, regtests/client/python/docs, regtests/client/python'
+        use-quiet-mode: true
