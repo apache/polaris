@@ -44,6 +44,8 @@ services:
         condition: service_healthy
     environment:
       AWS_REGION: us-west-2
+      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
       POLARIS_HOST: polaris
     volumes:
       - notebooks:/home/jovyan/notebooks
