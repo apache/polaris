@@ -50,10 +50,7 @@ create database db1;
 show databases;
 create table db1.table1 (id int, name string);
 insert into db1.table1 values (1, 'a');
-<<<<<<< HEAD
 select * from db1.table1;
-=======
->>>>>>> c2baec9 (Update README.md)
 ```
 
 ### More build and run options
