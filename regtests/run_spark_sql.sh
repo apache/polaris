@@ -20,7 +20,6 @@
 #
 # Run this to open an interactive spark-sql shell talking to a catalog named "manual_spark"
 #
-# You must run 'use polaris;' as your first query in the spark-sql shell.
 
 REGTEST_HOME=$(dirname $(realpath $0))
 cd ${REGTEST_HOME}
@@ -36,30 +35,56 @@ fi
 
 SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN:-principal:root;realm:default-realm}"
 
-# Use local filesystem by default
-curl -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
-  http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
-  -d '{
-        "catalog": {
-          "name": "manual_spark",
-          "type": "INTERNAL",
-          "readOnly": false,
-          "properties": {
-            "default-base-location": "file:///tmp/polaris/"
-          },
-          "storageConfigInfo": {
-            "storageType": "FILE",
-            "allowedLocations": [
-              "file:///tmp"
-            ]
-          }
-        }
-      }'
+# If argument 1 doesn't exist, use local filesystem
+if [ -z "$1" ]; then
+  # Use local filesystem by default
+  curl -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
+       -H 'Accept: application/json' \
+       -H 'Content-Type: application/json' \
+       http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
+       -d '{
+             "catalog": {
+               "name": "manual_spark",
+               "type": "INTERNAL",
+               "readOnly": false,
+               "properties": {
+                 "default-base-location": "file:///tmp/polaris/"
+               },
+               "storageConfigInfo": {
+                 "storageType": "FILE",
+                 "allowedLocations": [
+                   "file:///tmp"
+                 ]
+               }
+             }
+           }'
+else
+  # Check if AWS environment variables are set
+  if [ -z "${AWS_TEST_BASE}" ] || [ -z "${AWS_ROLE_ARN}" ]; then
+    echo "AWS_TEST_BASE or AWS_ROLE_ARN not set. Please set them to enable S3 integration."
+    exit 1
+  fi
 
-# Use the following instead of below to use s3 instead of local filesystem
-#curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
-#  http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
-#  -d "{\"name\": \"manual_spark\", \"id\": 100, \"type\": \"INTERNAL\", \"readOnly\": false, \"properties\": {\"default-base-location\": \"s3://${S3_BUCKET}/${USER}/polaris/\"}}"
+  # Use S3
+  curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
+       -H 'Accept: application/json' \
+       -H 'Content-Type: application/json' \
+       http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
+       -d "{
+             \"name\": \"manual_spark\",
+             \"id\": 100,
+             \"type\": \"INTERNAL\",
+             \"readOnly\": false,
+             \"properties\": {
+               \"default-base-location\": \"${AWS_TEST_BASE}\"
+             },
+             \"storageConfigInfo\": {
+               \"storageType\": \"S3\",
+               \"allowedLocations\": [\"${AWS_TEST_BASE}/\"],
+               \"roleArn\": \"${AWS_ROLE_ARN}\"
+             }
+           }"
+fi
 
 # Add TABLE_WRITE_DATA to the catalog's catalog_admin role since by default it can only manage access and metadata
 curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
