@@ -31,7 +31,7 @@ Notable configuration used to secure a Polaris deployment are outlined below.
 > Ensure that the `tokenBroker` setting reflects the token broker specified in `authenticator` below.
 
 * Configure [OAuth](https://oauth.net/2/) with this setting. Remove the `TestInlineBearerTokenPolarisAuthenticator` option and uncomment the `DefaultPolarisAuthenticator` authenticator option beneath it.
-* Then, configure the token broker. You can configure the token broker to use either [asymmetric](https://github.com/polaris-catalog/polaris/blob/b482617bf8cc508b37dbedf3ebc81a9408160a5e/polaris-service/src/main/java/io/polaris/service/auth/JWTRSAKeyPair.java#L24) or [symmetric](https://github.com/polaris-catalog/polaris/blob/b482617bf8cc508b37dbedf3ebc81a9408160a5e/polaris-service/src/main/java/io/polaris/service/auth/JWTSymmetricKeyBroker.java#L23) keys.
+* Then, configure the token broker. You can configure the token broker to use either [asymmetric](https://github.com/apache/polaris/blob/b482617bf8cc508b37dbedf3ebc81a9408160a5e/polaris-service/src/main/java/io/polaris/service/auth/JWTRSAKeyPair.java#L24) or [symmetric](https://github.com/apache/polaris/blob/b482617bf8cc508b37dbedf3ebc81a9408160a5e/polaris-service/src/main/java/io/polaris/service/auth/JWTSymmetricKeyBroker.java#L23) keys.
 
 #### authenticator.tokenBroker
 
@@ -40,14 +40,14 @@ Notable configuration used to secure a Polaris deployment are outlined below.
 
 #### callContextResolver & realmContextResolver
 * Use these configurations to specify a service that can resolve a realm from bearer tokens.
-* The service(s) used here must implement the relevant interfaces (i.e. [CallContextResolver](https://github.com/polaris-catalog/polaris/blob/8290019c10290a600e40b35ddb1e2f54bf99e120/polaris-service/src/main/java/io/polaris/service/context/CallContextResolver.java#L27) and [RealmContextResolver](https://github.com/polaris-catalog/polaris/blob/7ce86f10a68a3b56aed766235c88d6027c0de038/polaris-service/src/main/java/io/polaris/service/context/RealmContextResolver.java)).
+* The service(s) used here must implement the relevant interfaces (i.e. [CallContextResolver](https://github.com/apache/polaris/blob/8290019c10290a600e40b35ddb1e2f54bf99e120/polaris-service/src/main/java/io/polaris/service/context/CallContextResolver.java#L27) and [RealmContextResolver](https://github.com/apache/polaris/blob/7ce86f10a68a3b56aed766235c88d6027c0de038/polaris-service/src/main/java/io/polaris/service/context/RealmContextResolver.java)).
 
 ## Metastore Management
 
 > [!IMPORTANT]  
 > The default `in-memory` implementation for `metastoreManager` is meant for testing and not suitable for production usage. Instead, consider an implementation such as `eclipse-link` which allows you to store metadata in a remote database.
 
-A Metastore Manger should be configured with an implementation that durably persists Polaris entities. Use the configuration `metaStoreManager` to configure a [MetastoreManager](https://github.com/polaris-catalog/polaris/blob/627dc602eb15a3258dcc32babf8def34cf6de0e9/polaris-core/src/main/java/io/polaris/core/persistence/PolarisMetaStoreManager.java#L47) implementation where Polaris entities will be persisted. 
+A Metastore Manger should be configured with an implementation that durably persists Polaris entities. Use the configuration `metaStoreManager` to configure a [MetastoreManager](https://github.com/apache/polaris/blob/627dc602eb15a3258dcc32babf8def34cf6de0e9/polaris-core/src/main/java/io/polaris/core/persistence/PolarisMetaStoreManager.java#L47) implementation where Polaris entities will be persisted. 
 
 Be sure to secure your metastore backend since it will be storing credentials and catalog metadata.
 
