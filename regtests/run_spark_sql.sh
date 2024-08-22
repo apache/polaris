@@ -22,10 +22,13 @@
 REGTEST_HOME=$(dirname $(realpath $0))
 cd ${REGTEST_HOME}
 
+export SPARK_VERSION=spark-3.5.2
+export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3-scala2.13
+
 ./setup.sh
 
 if [ -z "${SPARK_HOME}"]; then
-  export SPARK_HOME=$(realpath ~/spark-3.5.1-bin-hadoop3-scala2.13)
+  export SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
 fi
 
 SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN:-principal:root;realm:default-realm}"

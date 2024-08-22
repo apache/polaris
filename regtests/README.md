@@ -74,13 +74,6 @@ AZURE_BLOB_TEST_BASE=abfss://<container-name>@<storage-account-name>.blob.core.w
 into the `credentials` folder. Then specify the name of the file in your .env file - do not change the
 path, as `/tmp/credentials` is the folder on the container where the credentials file will be mounted.
 
-## Setup without running tests
-
-Setup is idempotent.
-
-```
-./setup.sh
-```
 
 ## Experiment with failed test
 
