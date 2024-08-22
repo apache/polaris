@@ -64,6 +64,7 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("docs/CNAME")
   excludes.add("docs/index.html")
 
+  excludes.add("DISCLAIMER_WIP")
   excludes.add("LICENSE")
   excludes.add("NOTICE")
 
