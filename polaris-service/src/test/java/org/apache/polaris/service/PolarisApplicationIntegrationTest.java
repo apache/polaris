@@ -442,8 +442,7 @@ public class PolarisApplicationIntegrationTest {
                         .withProperties(Map.of("write.data.path", "s3://my-bucket/path/to/data"))
                         .create())
             .isInstanceOf(ForbiddenException.class)
-            .hasMessage(
-                "Forbidden: Delegate access to table with user-specified write location is temporarily not supported.");
+            .hasMessageContaining("Forbidden: Invalid locations");
 
         Assertions.assertThatThrownBy(
                 () ->
@@ -461,8 +460,7 @@ public class PolarisApplicationIntegrationTest {
                             Map.of("write.metadata.path", "s3://my-bucket/path/to/data"))
                         .create())
             .isInstanceOf(ForbiddenException.class)
-            .hasMessage(
-                "Forbidden: Delegate access to table with user-specified write location is temporarily not supported.");
+            .hasMessageContaining("Forbidden: Invalid locations");
       } catch (BadRequestException e) {
         LOGGER.info("Received expected exception {}", e.getMessage());
       }

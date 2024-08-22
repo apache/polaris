@@ -25,11 +25,16 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collector;
+import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -174,9 +179,36 @@ public abstract class PolarisStorageConfigurationInfo {
                 LOGGER.debug(
                     "Allowing unstructured table location for entity: {}",
                     entityPathReversed.get(0).getName());
-                return configInfo;
+                return userSpecifiedWriteLocations(entityPathReversed.get(0).getPropertiesAsMap())
+                    .map(
+                        locs ->
+                            (PolarisStorageConfigurationInfo)
+                                new StorageConfigurationOverride(
+                                    configInfo,
+                                    ImmutableList.<String>builder()
+                                        .addAll(configInfo.getAllowedLocations())
+                                        .addAll(locs)
+                                        .build()))
+                    .orElse(configInfo);
               }
             });
+  }
+
+  private static Optional<List<String>> userSpecifiedWriteLocations(
+      Map<String, String> properties) {
+    return Optional.ofNullable(properties)
+        .flatMap(
+            p ->
+                Stream.of(
+                        p.get(TableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY),
+                        p.get(TableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))
+                    .filter(Objects::nonNull)
+                    .collect(
+                        Collector.<String, List<String>, Optional<List<String>>>of(
+                            ArrayList::new,
+                            List::add,
+                            (l, r) -> ImmutableList.<String>builder().addAll(l).addAll(r).build(),
+                            l -> l.isEmpty() ? Optional.empty() : Optional.of(l))));
   }
 
   private static @NotNull Optional<PolarisEntity> findStorageInfoFromHierarchy(
