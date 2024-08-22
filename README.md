@@ -56,6 +56,7 @@ select * from db1.table1;
 >>>>>>> c2baec9 (Update README.md)
 ```
 
+### More build and run options
 Running in Docker
 - `docker build -t localhost:5001/polaris:latest .` - To build the image.
 - `docker run -p 8181:8181 localhost:5001/polaris:latest` - To run the image in standalone mode.
