@@ -34,6 +34,10 @@ Polaris Catalog is open source under an Apache 2.0 license.
 - ⭐ Star this repo if you’d like to bookmark and come back to it! 
 - 📖 Read the <a href="https://www.snowflake.com/blog/polaris-catalog-open-source/" target="_blank">announcement blog post<a/> for more details!
 
+## Development
+
+See [CONTRIBUTING](CONTRIBUTING.md) for contribution requirements.
+
 ## Building and Running 
 
 Polaris is organized into the following modules:
@@ -56,8 +60,11 @@ Running in Docker
 - `docker compose up --build --exit-code-from regtest` - To run regression tests in a Docker environment.
 
 Running in Kubernetes
-- `./setup.sh` - To run Polaris as a mini-deployment locally. This will create two pods that bind themselves to port `8181`.
-- `kubectl port-forward svc/polaris-service -n polaris 8181:8181` - To create a secure connection between a local machine and a pod within the cluster.
+- `./run.sh` - To run Polaris as a mini-deployment locally. This will create one pod that bind itself to ports `8181` and `8182`.
+- `kubectl port-forward svc/polaris-service -n polaris 8181:8181 8182:8182` - To create secure connections between a local machine and a pod within the cluster for both service and metrics endpoints.
+  - Currrently supported metrics endpoints:
+    - localhost:8182/metrics
+    - localhost:8182/healthcheck
 - `kubectl get pods -n polaris` - To check the status of the pods.
 - `kubectl get deployment -n polaris` - To check the status of the deployment.
 - `kubectl describe deployment polaris-deployment -n polaris` - To troubleshoot if things aren't working as expected.

@@ -93,7 +93,7 @@ import org.slf4j.LoggerFactory;
  * the persistence layer.
  */
 public class PolarisAdminService {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisAdminService.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisAdminService.class);
   public static final String CLEANUP_ON_CATALOG_DROP = "CLEANUP_ON_CATALOG_DROP";
 
   private final CallContext callContext;
@@ -187,7 +187,8 @@ public class PolarisAdminService {
             == authenticatedPrincipal.getPrincipalEntity().getId()
         && (op.equals(PolarisAuthorizableOperation.ROTATE_CREDENTIALS)
             || op.equals(PolarisAuthorizableOperation.RESET_CREDENTIALS))) {
-      LOG.atDebug()
+      LOGGER
+          .atDebug()
           .addKeyValue("principalName", topLevelEntityName)
           .log("Allowing rotate own credentials");
       return;

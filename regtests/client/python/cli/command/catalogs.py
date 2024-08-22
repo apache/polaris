@@ -126,8 +126,7 @@ class CatalogsCommand(Command):
             config = GcpStorageConfigInfo(
                 storage_type=self.storage_type.upper(),
                 allowed_locations=self.allowed_locations,
-                tenant_id=self.tenant_id,
-                multi_tenant_app_name=self.multi_tenant_app_name
+                gcs_service_account=self.service_account
             )
         elif self.storage_type == StorageType.FILE.value:
             config = StorageConfigInfo(

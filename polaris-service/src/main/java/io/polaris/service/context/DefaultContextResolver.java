@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 @JsonTypeName("default")
 public class DefaultContextResolver
     implements RealmContextResolver, CallContextResolver, ConfigurationStoreAware {
-  private static final Logger LOG = LoggerFactory.getLogger(DefaultContextResolver.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(DefaultContextResolver.class);
 
   public static final String REALM_PROPERTY_KEY = "realm";
   public static final String REALM_PROPERTY_DEFAULT_VALUE = "default-realm";
@@ -74,7 +74,7 @@ public class DefaultContextResolver
     // Since this default resolver is strictly for use in test/dev environments, we'll consider
     // it safe to log all contents. Any "real" resolver used in a prod environment should make
     // sure to only log non-sensitive contents.
-    LOG.debug(
+    LOGGER.debug(
         "Resolving RealmContext for method: {}, path: {}, queryParams: {}, headers: {}",
         method,
         path,
@@ -88,7 +88,7 @@ public class DefaultContextResolver
     }
 
     if (!parsedProperties.containsKey(REALM_PROPERTY_KEY)) {
-      LOG.warn(
+      LOGGER.warn(
           "Failed to parse {} from headers; using {}",
           REALM_PROPERTY_KEY,
           REALM_PROPERTY_DEFAULT_VALUE);
@@ -104,7 +104,8 @@ public class DefaultContextResolver
       String path,
       Map<String, String> queryParams,
       Map<String, String> headers) {
-    LOG.atDebug()
+    LOGGER
+        .atDebug()
         .addKeyValue("realmContext", realmContext.getRealmIdentifier())
         .addKeyValue("method", method)
         .addKeyValue("path", path)
@@ -114,7 +115,7 @@ public class DefaultContextResolver
     final Map<String, String> parsedProperties = parseBearerTokenAsKvPairs(headers);
 
     if (!parsedProperties.containsKey(PRINCIPAL_PROPERTY_KEY)) {
-      LOG.warn(
+      LOGGER.warn(
           "Failed to parse {} from headers ({}); using {}",
           PRINCIPAL_PROPERTY_KEY,
           headers,

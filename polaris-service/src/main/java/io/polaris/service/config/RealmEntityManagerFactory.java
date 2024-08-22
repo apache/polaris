@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 
 /** Gets or creates PolarisEntityManager instances based on config values and RealmContext. */
 public class RealmEntityManagerFactory {
-  private static final Logger LOG = LoggerFactory.getLogger(RealmEntityManagerFactory.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(RealmEntityManagerFactory.class);
   private final MetaStoreManagerFactory metaStoreManagerFactory;
 
   // Key: realmIdentifier
@@ -43,10 +43,10 @@ public class RealmEntityManagerFactory {
   public PolarisEntityManager getOrCreateEntityManager(RealmContext context) {
     String realm = context.getRealmIdentifier();
 
-    LOG.debug("Looking up PolarisEntityManager for realm {}", realm);
+    LOGGER.debug("Looking up PolarisEntityManager for realm {}", realm);
     PolarisEntityManager entityManagerInstance = cachedEntityManagers.get(realm);
     if (entityManagerInstance == null) {
-      LOG.info("Initializing new PolarisEntityManager for realm {}", realm);
+      LOGGER.info("Initializing new PolarisEntityManager for realm {}", realm);
 
       entityManagerInstance =
           new PolarisEntityManager(

@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The common implementation of Configuration interface for configuring the {@link
@@ -51,8 +52,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
   protected PolarisStorageIntegrationProvider storageIntegration;
 
-  private final Logger logger =
-      org.slf4j.LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
 
   protected abstract StoreType createBackingStore(@NotNull PolarisDiagnostics diagnostics);
 
@@ -87,6 +88,22 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     }
 
     return results;
+  }
+
+  @Override
+  public void purgeRealms(List<String> realms) {
+    for (String realm : realms) {
+      PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(() -> realm);
+      PolarisMetaStoreSession session = getOrCreateSessionSupplier(() -> realm).get();
+
+      PolarisCallContext callContext = new PolarisCallContext(session, diagServices);
+      metaStoreManager.purge(callContext);
+
+      storageCredentialCacheMap.remove(realm);
+      backingStoreMap.remove(realm);
+      sessionSupplierMap.remove(realm);
+      metaStoreManagerMap.remove(realm);
+    }
   }
 
   @Override
@@ -147,6 +164,21 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
             sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(), diagServices);
     CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
 
+    PolarisMetaStoreManager.EntityResult preliminaryRootPrincipalLookup =
+        metaStoreManager.readEntityByName(
+            polarisContext,
+            null,
+            PolarisEntityType.PRINCIPAL,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootPrincipalName());
+    if (preliminaryRootPrincipalLookup.isSuccess()) {
+      String overrideMessage =
+          "It appears this metastore manager has already been bootstrapped. "
+              + "To continue bootstrapping, please first purge the metastore with the `purge` command.";
+      LOGGER.error("\n\n {} \n\n", overrideMessage);
+      throw new IllegalArgumentException(overrideMessage);
+    }
+
     metaStoreManager.bootstrapPolarisService(polarisContext);
 
     PolarisMetaStoreManager.EntityResult rootPrincipalLookup =
@@ -197,7 +229,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
             PolarisEntityConstants.getRootPrincipalName());
 
     if (!rootPrincipalLookup.isSuccess()) {
-      logger.error(
+      LOGGER.error(
           "\n\n Realm {} is not bootstrapped, could not load root principal. Please run Bootstrap command. \n\n",
           realmContext.getRealmIdentifier());
       throw new IllegalStateException(

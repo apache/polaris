@@ -176,18 +176,28 @@ public interface PolarisMetaStoreManager {
   }
 
   /**
-   * Bootstrap the Polaris service, will remove ALL existing persisted entities, then will create
-   * the root catalog, root principal and associated service admin role.
+   * Bootstrap the Polaris service, creating the root catalog, root principal, and associated
+   * service admin role. Will fail if the service has already been bootstrapped.
+   *
+   * @param callCtx call context
+   * @return the result of the bootstrap attempt
+   */
+  @NotNull
+  BaseResult bootstrapPolarisService(@NotNull PolarisCallContext callCtx);
+
+  /**
+   * Purge all metadata associated with the Polaris service, resetting the metastore to the state it
+   * was in prior to bootstrapping.
    *
    * <p>*************************** WARNING ************************
    *
-   * <p>This will destroy whatever Polaris metadata exists in this account
+   * <p>This will destroy whatever Polaris metadata exists in the metastore
    *
    * @param callCtx call context
    * @return always success or unexpected error
    */
   @NotNull
-  BaseResult bootstrapPolarisService(@NotNull PolarisCallContext callCtx);
+  BaseResult purge(@NotNull PolarisCallContext callCtx);
 
   /** the return for an entity lookup call */
   class EntityResult extends BaseResult {

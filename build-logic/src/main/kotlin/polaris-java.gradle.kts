@@ -32,6 +32,7 @@ tasks.withType(JavaCompile::class.java).configureEach {
   options.errorprone.disableAllWarnings = true
   options.errorprone.disableWarningsInGeneratedCode = true
   options.errorprone.error(
+    "DefaultCharset",
     "MissingOverride",
     "StringCaseLocaleUsage",
   )

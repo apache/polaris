@@ -15,6 +15,7 @@
  */
 package io.polaris.service.catalog;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
@@ -341,7 +342,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     fileIO.addFile(
         tableMetadataLocation,
-        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes());
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
 
     Assertions.assertThat(catalog.sendNotification(table, request))
         .as("Notification should be sent successfully")
@@ -385,7 +386,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     fileIO.addFile(
         tableMetadataLocation,
-        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes());
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
 
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
         .isInstanceOf(ForbiddenException.class)
@@ -540,7 +541,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     fileIO.addFile(
         tableMetadataLocation,
-        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes());
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
 
     Namespace namespace = Namespace.of("parent", "child1");
     TableIdentifier table = TableIdentifier.of(namespace, "my_table");
@@ -632,7 +633,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     fileIO.addFile(
         metadataLocation,
-        TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes());
+        TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
         .isInstanceOf(ForbiddenException.class)
@@ -687,7 +688,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     fileIO.addFile(
         metadataLocation,
-        TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes());
+        TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
         .isInstanceOf(ForbiddenException.class)
@@ -703,7 +704,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     fileIO.addFile(
         httpsMetadataLocation,
-        TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes());
+        TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, newRequest))
         .isInstanceOf(ForbiddenException.class)
@@ -743,7 +744,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     fileIO.addFile(
         tableMetadataLocation,
-        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes());
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
 
     Assertions.assertThat(catalog.sendNotification(table, request))
         .as("Notification should be sent successfully")
@@ -795,7 +796,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     fileIO.addFile(
         tableMetadataLocation,
-        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes());
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
 
     Assertions.assertThat(catalog.sendNotification(table, request))
         .as("Notification should be sent successfully")
@@ -848,7 +849,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     fileIO.addFile(
         tableMetadataLocation,
-        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes());
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
 
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
         .isInstanceOf(ForbiddenException.class)
@@ -896,7 +897,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     // a forbidden table location.
     TableMetadata forbiddenMetadata =
         createSampleTableMetadata("s3://forbidden-table-location/table/");
-    fileIO.addFile(tableMetadataLocation, TableMetadataParser.toJson(forbiddenMetadata).getBytes());
+    fileIO.addFile(
+        tableMetadataLocation, TableMetadataParser.toJson(forbiddenMetadata).getBytes(UTF_8));
 
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
         .isInstanceOf(ForbiddenException.class)
@@ -971,7 +973,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     fileIO.addFile(
         tableMetadataLocation,
-        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes());
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
 
     Assertions.assertThat(catalog.sendNotification(table, request))
         .as("Notification should fail since table doesn't exist")
@@ -1023,7 +1025,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     fileIO.addFile(
         tableMetadataLocation,
-        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes());
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
 
     Assertions.assertThat(catalog.sendNotification(table, request))
         .as("Notification should be sent successfully")
@@ -1109,6 +1111,11 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                   public Map<String, PolarisMetaStoreManager.PrincipalSecretsResult>
                       bootstrapRealms(List<String> realms) {
                     throw new NotImplementedException("Bootstrapping realms is not supported");
+                  }
+
+                  @Override
+                  public void purgeRealms(List<String> realms) {
+                    throw new NotImplementedException("Purging realms is not supported");
                   }
 
                   @Override

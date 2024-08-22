@@ -15,6 +15,7 @@
  */
 package io.polaris.service.storage.gcp;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -62,15 +63,16 @@ class GcpCredentialsStorageIntegrationTest {
   private final String gcsServiceKeyJsonFileLocation =
       System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
 
-  private final Logger LOGGER = LoggerFactory.getLogger(GcpCredentialsStorageIntegrationTest.class);
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(GcpCredentialsStorageIntegrationTest.class);
 
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
   public void testSubscope(boolean allowedListAction) throws IOException {
     if (Strings.isNullOrEmpty(gcsServiceKeyJsonFileLocation)) {
       LOGGER.debug(
-          "Environment variable GOOGLE_APPLICATION_CREDENTIALS not exits, skip test "
-              + getClass().getName());
+          "Environment variable GOOGLE_APPLICATION_CREDENTIALS not exits, skip test {}",
+          getClass().getName());
       return;
     }
     List<String> allowedRead =
@@ -88,7 +90,7 @@ class GcpCredentialsStorageIntegrationTest {
         createStorageBlob("sfc-dev1-regtest", "polaris-test/subscoped-test/write3/", "file.txt");
     BlobInfo blobInfoGoodRead =
         createStorageBlob("sfc-dev1-regtest", "polaris-test/subscoped-test/read1/", "file.txt");
-    final byte[] fileContent = "hello-polaris".getBytes();
+    final byte[] fileContent = "hello-polaris".getBytes(UTF_8);
     // GOOD WRITE
     Assertions.assertThatNoException()
         .isThrownBy(() -> storageClient.create(blobInfoGoodWrite, fileContent));

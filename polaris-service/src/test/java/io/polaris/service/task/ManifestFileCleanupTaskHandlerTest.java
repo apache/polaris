@@ -15,6 +15,7 @@
  */
 package io.polaris.service.task;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThatPredicate;
 
 import io.polaris.core.PolarisCallContext;
@@ -135,12 +136,12 @@ class ManifestFileCleanupTaskHandlerTest {
       String dataFile1Path = "dataFile1.parquet";
       OutputFile dataFile1 = fileIO.newOutputFile(dataFile1Path);
       PositionOutputStream out1 = dataFile1.createOrOverwrite();
-      out1.write("the data".getBytes());
+      out1.write("the data".getBytes(UTF_8));
       out1.close();
       String dataFile2Path = "dataFile2.parquet";
       OutputFile dataFile2 = fileIO.newOutputFile(dataFile2Path);
       PositionOutputStream out2 = dataFile2.createOrOverwrite();
-      out2.write("the data".getBytes());
+      out2.write("the data".getBytes(UTF_8));
       out2.close();
       ManifestFile manifestFile =
           TaskTestUtils.manifestFile(fileIO, "manifest1.avro", 100L, dataFile1Path, dataFile2Path);
@@ -201,12 +202,12 @@ class ManifestFileCleanupTaskHandlerTest {
       String dataFile1Path = "dataFile1.parquet";
       OutputFile dataFile1 = fileIO.newOutputFile(dataFile1Path);
       PositionOutputStream out1 = dataFile1.createOrOverwrite();
-      out1.write("the data".getBytes());
+      out1.write("the data".getBytes(UTF_8));
       out1.close();
       String dataFile2Path = "dataFile2.parquet";
       OutputFile dataFile2 = fileIO.newOutputFile(dataFile2Path);
       PositionOutputStream out2 = dataFile2.createOrOverwrite();
-      out2.write("the data".getBytes());
+      out2.write("the data".getBytes(UTF_8));
       out2.close();
       ManifestFile manifestFile =
           TaskTestUtils.manifestFile(fileIO, "manifest1.avro", 100L, dataFile1Path, dataFile2Path);

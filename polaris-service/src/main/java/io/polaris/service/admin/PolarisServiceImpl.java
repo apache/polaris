@@ -71,7 +71,7 @@ public class PolarisServiceImpl
     implements PolarisCatalogsApiService,
         PolarisPrincipalsApiService,
         PolarisPrincipalRolesApiService {
-  private static final Logger LOG = LoggerFactory.getLogger(PolarisServiceImpl.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisServiceImpl.class);
   private final RealmEntityManagerFactory entityManagerFactory;
   private final PolarisAuthorizer polarisAuthorizer;
 
@@ -104,7 +104,7 @@ public class PolarisServiceImpl
     Catalog newCatalog =
         new CatalogEntity(adminService.createCatalog(CatalogEntity.fromCatalog(catalog)))
             .asCatalog();
-    LOG.info("Created new catalog {}", newCatalog);
+    LOGGER.info("Created new catalog {}", newCatalog);
     return Response.status(Response.Status.CREATED).build();
   }
 
@@ -123,7 +123,8 @@ public class PolarisServiceImpl
                     StorageConfigInfo.StorageTypeEnum.GCS.name(),
                     StorageConfigInfo.StorageTypeEnum.FILE.name()));
     if (!allowedStorageTypes.contains(storageConfigInfo.getStorageType().name())) {
-      LOG.atWarn()
+      LOGGER
+          .atWarn()
           .addKeyValue("storageConfig", storageConfigInfo)
           .log("Disallowed storage type in catalog");
       throw new IllegalArgumentException(
@@ -167,7 +168,7 @@ public class PolarisServiceImpl
             .map(CatalogEntity::asCatalog)
             .toList();
     Catalogs catalogs = new Catalogs(catalogList);
-    LOG.debug("listCatalogs returning: {}", catalogs);
+    LOGGER.debug("listCatalogs returning: {}", catalogs);
     return Response.ok(catalogs).build();
   }
 
@@ -181,7 +182,7 @@ public class PolarisServiceImpl
           new PrincipalEntity.Builder(principal).setCredentialRotationRequiredState().build();
     }
     PrincipalWithCredentials createdPrincipal = adminService.createPrincipal(principal);
-    LOG.info("Created new principal {}", createdPrincipal);
+    LOGGER.info("Created new principal {}", createdPrincipal);
     return Response.status(Response.Status.CREATED).entity(createdPrincipal).build();
   }
 
@@ -226,7 +227,7 @@ public class PolarisServiceImpl
             .map(PrincipalEntity::asPrincipal)
             .toList();
     Principals principals = new Principals(principalList);
-    LOG.debug("listPrincipals returning: {}", principals);
+    LOGGER.debug("listPrincipals returning: {}", principals);
     return Response.ok(principals).build();
   }
 
@@ -240,7 +241,7 @@ public class PolarisServiceImpl
                 adminService.createPrincipalRole(
                     PrincipalRoleEntity.fromPrincipalRole(request.getPrincipalRole())))
             .asPrincipalRole();
-    LOG.info("Created new principalRole {}", newPrincipalRole);
+    LOGGER.info("Created new principalRole {}", newPrincipalRole);
     return Response.status(Response.Status.CREATED).build();
   }
 
@@ -281,7 +282,7 @@ public class PolarisServiceImpl
             .map(PrincipalRoleEntity::asPrincipalRole)
             .toList();
     PrincipalRoles principalRoles = new PrincipalRoles(principalRoleList);
-    LOG.debug("listPrincipalRoles returning: {}", principalRoles);
+    LOGGER.debug("listPrincipalRoles returning: {}", principalRoles);
     return Response.ok(principalRoles).build();
   }
 
@@ -295,7 +296,7 @@ public class PolarisServiceImpl
                 adminService.createCatalogRole(
                     catalogName, CatalogRoleEntity.fromCatalogRole(request.getCatalogRole())))
             .asCatalogRole();
-    LOG.info("Created new catalogRole {}", newCatalogRole);
+    LOGGER.info("Created new catalogRole {}", newCatalogRole);
     return Response.status(Response.Status.CREATED).build();
   }
 
@@ -342,7 +343,7 @@ public class PolarisServiceImpl
             .map(CatalogRoleEntity::asCatalogRole)
             .toList();
     CatalogRoles catalogRoles = new CatalogRoles(catalogRoleList);
-    LOG.debug("listCatalogRoles returning: {}", catalogRoles);
+    LOGGER.debug("listCatalogRoles returning: {}", catalogRoles);
     return Response.ok(catalogRoles).build();
   }
 
@@ -350,7 +351,7 @@ public class PolarisServiceImpl
   @Override
   public Response assignPrincipalRole(
       String principalName, GrantPrincipalRoleRequest request, SecurityContext securityContext) {
-    LOG.info(
+    LOGGER.info(
         "Assigning principalRole {} to principal {}",
         request.getPrincipalRole().getName(),
         principalName);
@@ -363,7 +364,7 @@ public class PolarisServiceImpl
   @Override
   public Response revokePrincipalRole(
       String principalName, String principalRoleName, SecurityContext securityContext) {
-    LOG.info("Revoking principalRole {} from principal {}", principalRoleName, principalName);
+    LOGGER.info("Revoking principalRole {} from principal {}", principalRoleName, principalName);
     PolarisAdminService adminService = newAdminService(securityContext);
     adminService.revokePrincipalRole(principalName, principalRoleName);
     return Response.status(Response.Status.NO_CONTENT).build();
@@ -380,7 +381,7 @@ public class PolarisServiceImpl
             .map(PrincipalRoleEntity::asPrincipalRole)
             .toList();
     PrincipalRoles principalRoles = new PrincipalRoles(principalRoleList);
-    LOG.debug("listPrincipalRolesAssigned returning: {}", principalRoles);
+    LOGGER.debug("listPrincipalRolesAssigned returning: {}", principalRoles);
     return Response.ok(principalRoles).build();
   }
 
@@ -391,7 +392,7 @@ public class PolarisServiceImpl
       String catalogName,
       GrantCatalogRoleRequest request,
       SecurityContext securityContext) {
-    LOG.info(
+    LOGGER.info(
         "Assigning catalogRole {} in catalog {} to principalRole {}",
         request.getCatalogRole().getName(),
         catalogName,
@@ -409,7 +410,7 @@ public class PolarisServiceImpl
       String catalogName,
       String catalogRoleName,
       SecurityContext securityContext) {
-    LOG.info(
+    LOGGER.info(
         "Revoking catalogRole {} in catalog {} from principalRole {}",
         catalogRoleName,
         catalogName,
@@ -431,7 +432,7 @@ public class PolarisServiceImpl
             .map(PrincipalEntity::asPrincipal)
             .toList();
     Principals principals = new Principals(principalList);
-    LOG.debug("listAssigneePrincipalsForPrincipalRole returning: {}", principals);
+    LOGGER.debug("listAssigneePrincipalsForPrincipalRole returning: {}", principals);
     return Response.ok(principals).build();
   }
 
@@ -446,7 +447,7 @@ public class PolarisServiceImpl
             .map(CatalogRoleEntity::asCatalogRole)
             .toList();
     CatalogRoles catalogRoles = new CatalogRoles(catalogRoleList);
-    LOG.debug("listCatalogRolesForPrincipalRole returning: {}", catalogRoles);
+    LOGGER.debug("listCatalogRolesForPrincipalRole returning: {}", catalogRoles);
     return Response.ok(catalogRoles).build();
   }
 
@@ -457,7 +458,7 @@ public class PolarisServiceImpl
       String catalogRoleName,
       AddGrantRequest grantRequest,
       SecurityContext securityContext) {
-    LOG.info(
+    LOGGER.info(
         "Adding grant {} to catalogRole {} in catalog {}",
         grantRequest,
         catalogRoleName,
@@ -509,7 +510,8 @@ public class PolarisServiceImpl
           break;
         }
       default:
-        LOG.atWarn()
+        LOGGER
+            .atWarn()
             .addKeyValue("catalog", catalogName)
             .addKeyValue("role", catalogRoleName)
             .log("Don't know how to handle privilege grant: {}", grantRequest);
@@ -526,13 +528,13 @@ public class PolarisServiceImpl
       Boolean cascade,
       RevokeGrantRequest grantRequest,
       SecurityContext securityContext) {
-    LOG.info(
+    LOGGER.info(
         "Revoking grant {} from catalogRole {} in catalog {}",
         grantRequest,
         catalogRoleName,
         catalogName);
     if (cascade != null && cascade) {
-      LOG.warn("Tried to use unimplemented 'cascade' feature when revoking grants.");
+      LOGGER.warn("Tried to use unimplemented 'cascade' feature when revoking grants.");
       return Response.status(501).build(); // not implemented
     }
 
@@ -583,7 +585,8 @@ public class PolarisServiceImpl
           break;
         }
       default:
-        LOG.atWarn()
+        LOGGER
+            .atWarn()
             .addKeyValue("catalog", catalogName)
             .addKeyValue("role", catalogRoleName)
             .log("Don't know how to handle privilege revocation: {}", grantRequest);
@@ -603,7 +606,7 @@ public class PolarisServiceImpl
             .map(PrincipalRoleEntity::asPrincipalRole)
             .toList();
     PrincipalRoles principalRoles = new PrincipalRoles(principalRoleList);
-    LOG.debug("listAssigneePrincipalRolesForCatalogRole returning: {}", principalRoles);
+    LOGGER.debug("listAssigneePrincipalRolesForCatalogRole returning: {}", principalRoles);
     return Response.ok(principalRoles).build();
   }
 

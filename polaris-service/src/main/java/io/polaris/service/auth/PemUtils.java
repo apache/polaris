@@ -15,6 +15,8 @@
  */
 package io.polaris.service.auth;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
+
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -37,7 +39,7 @@ public class PemUtils {
       throw new FileNotFoundException(
           String.format("The file '%s' doesn't exist.", pemFile.getAbsolutePath()));
     }
-    PemReader reader = new PemReader(new FileReader(pemFile));
+    PemReader reader = new PemReader(new FileReader(pemFile, UTF_8));
     PemObject pemObject = reader.readPemObject();
     byte[] content = pemObject.getContent();
     reader.close();

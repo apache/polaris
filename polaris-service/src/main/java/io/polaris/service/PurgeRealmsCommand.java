@@ -19,26 +19,20 @@ import io.dropwizard.core.cli.ConfiguredCommand;
 import io.dropwizard.core.setup.Bootstrap;
 import io.polaris.core.PolarisConfigurationStore;
 import io.polaris.core.persistence.MetaStoreManagerFactory;
-import io.polaris.core.persistence.PolarisMetaStoreManager;
 import io.polaris.service.config.ConfigurationStoreAware;
 import io.polaris.service.config.PolarisApplicationConfig;
 import io.polaris.service.config.RealmEntityManagerFactory;
 import io.polaris.service.context.CallContextResolver;
-import java.util.Map;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Command for bootstrapping root level service principals for each realm. This command will invoke
- * a default implementation which generates random user id and secret. These credentials will be
- * printed out to the log and standard output (stdout).
- */
-public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplicationConfig> {
-  private static final Logger LOGGER = LoggerFactory.getLogger(BootstrapRealmsCommand.class);
+/** Command for purging all metadata associated with a realm */
+public class PurgeRealmsCommand extends ConfiguredCommand<PolarisApplicationConfig> {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PurgeRealmsCommand.class);
 
-  public BootstrapRealmsCommand() {
-    super("bootstrap", "bootstraps principal credentials for all realms and prints them to log");
+  public PurgeRealmsCommand() {
+    super("purge", "purge principal credentials for all realms and prints them to log");
   }
 
   @Override
@@ -61,27 +55,8 @@ public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplication
       csa.setConfigurationStore(configurationStore);
     }
 
-    // Execute the bootstrap
-    Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> results =
-        metaStoreManagerFactory.bootstrapRealms(configuration.getDefaultRealms());
+    metaStoreManagerFactory.purgeRealms(configuration.getDefaultRealms());
 
-    // Log any errors:
-    boolean success = true;
-    for (Map.Entry<String, PolarisMetaStoreManager.PrincipalSecretsResult> result :
-        results.entrySet()) {
-      if (!result.getValue().isSuccess()) {
-        LOGGER.error(
-            "Bootstrapping `{}` failed: {}",
-            result.getKey(),
-            result.getValue().getReturnStatus().toString());
-        success = false;
-      }
-    }
-
-    if (success) {
-      LOGGER.info("Bootstrap completed successfully.");
-    } else {
-      LOGGER.error("Bootstrap encountered errors during operation.");
-    }
+    LOGGER.info("Purge completed successfully.");
   }
 }
