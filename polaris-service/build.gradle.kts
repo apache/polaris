@@ -192,6 +192,8 @@ tasks.register<GenerateTask>("generatePolarisService").configure {
   additionalProperties.put("apiNameSuffix", "Api")
   additionalProperties.put("metricsPrefix", "polaris")
   serverVariables.put("basePath", "api/v1")
+
+  doFirst { delete(outputDir.get()) }
 }
 
 tasks.named("compileJava").configure { dependsOn("openApiGenerate", "generatePolarisService") }
