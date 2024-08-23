@@ -106,7 +106,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private static final String S3_BUCKET_BASE =
       Optional.ofNullable(System.getenv("INTEGRATION_TEST_S3_PATH"))
           .orElse("file:///tmp/buckets/my-bucket");
-  private static DropwizardAppExtension<PolarisApplicationConfig> EXT =
+  private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
       new DropwizardAppExtension<>(
           PolarisApplication.class,
           ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),

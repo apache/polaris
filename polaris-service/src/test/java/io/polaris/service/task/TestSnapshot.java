@@ -31,11 +31,11 @@ import org.apache.iceberg.io.CloseableIterable;
 import org.apache.iceberg.io.FileIO;
 
 final class TestSnapshot implements Snapshot {
-  private long sequenceNumber;
-  private long snapshotId;
-  private long parentSnapshot;
-  private long timestampMillis;
-  private String manifestListLocation;
+  private final long sequenceNumber;
+  private final long snapshotId;
+  private final long parentSnapshot;
+  private final long timestampMillis;
+  private final String manifestListLocation;
 
   public TestSnapshot(
       long sequenceNumber,

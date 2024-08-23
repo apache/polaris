@@ -69,7 +69,7 @@ public class PolarisSparkIntegrationTest {
 
   public static final String CATALOG_NAME = "mycatalog";
   public static final String EXTERNAL_CATALOG_NAME = "external_catalog";
-  private static S3MockContainer s3Container =
+  private static final S3MockContainer s3Container =
       new S3MockContainer("3.9.1").withInitialBuckets("my-bucket,my-old-bucket");
   private static PolarisConnectionExtension.PolarisToken polarisToken;
   private static SparkSession spark;

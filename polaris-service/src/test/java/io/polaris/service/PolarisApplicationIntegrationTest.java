@@ -91,7 +91,7 @@ public class PolarisApplicationIntegrationTest {
       LoggerFactory.getLogger(PolarisApplicationIntegrationTest.class);
 
   public static final String PRINCIPAL_ROLE_NAME = "admin";
-  private static DropwizardAppExtension<PolarisApplicationConfig> EXT =
+  private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
       new DropwizardAppExtension<>(
           PolarisApplication.class,
           ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
