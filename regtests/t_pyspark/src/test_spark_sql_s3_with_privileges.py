@@ -517,9 +517,10 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
 def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_catalog, polaris_catalog_url, snowman,
                                                   snowman_catalog_client, test_bucket):
   """
-  Using snowman, create namespaces and a table. Insert into the table in multiple operations and update existing records
-  to generate multiple metadata.json files and manfiests. Drop the table with purge=true. Poll S3 and validate all of
-  the files are deleted.
+  Update the catalog configuration to support unstructured table locations. Using snowman, create namespaces and a
+  table configured to use object-store layout in a folder under the catalog root, outside of the default table
+  directory. Insert into the table in multiple operations and update existing records to generate multiple metadata.json
+  files and manifests. Validate the data files are present under the expected subdirectory. Delete the files afterward.
 
   Using the reader principal's credentials verify read access. Validate the reader cannot insert into the table.
   :param root_client:
@@ -615,9 +616,10 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
 def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalog, polaris_catalog_url, snowman,
                                                   snowman_catalog_client, test_bucket):
   """
-  Using snowman, create namespaces and a table. Insert into the table in multiple operations and update existing records
-  to generate multiple metadata.json files and manfiests. Drop the table with purge=true. Poll S3 and validate all of
-  the files are deleted.
+  Using snowman, create namespaces and a table configured to use object-store layout, using a folder under the default
+  table directory structure. Insert into the table in multiple operations and update existing records
+  to generate multiple metadata.json files and manifests. Validate the data files are present under the expected
+  subdirectory. Delete the files afterward.
 
   Using the reader principal's credentials verify read access. Validate the reader cannot insert into the table.
   :param root_client:
