@@ -1,22 +1,25 @@
 <!--
- Copyright (c) 2024 Snowflake Computing Inc.
- 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
- 
-      http://www.apache.org/licenses/LICENSE-2.0
- 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
 -->
 
 # Quick Start
 
-This guide serves as a introduction to several key entities that can be managed with Polaris, describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Apache Spark.
+This guide serves as a introduction to several key entities that can be managed with Apache Polaris, describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Apache Spark&trade;.
 
 ## Prerequisites
 
@@ -271,7 +274,7 @@ bin/spark-shell \
 
 Replace `XXXX` and `YYYY` with the client ID and client secret generated when you created the `quickstart_user` principal.
 
-Similar to the CLI commands above, this configures Spark to use the Polaris catalog running at `localhost:8181`. If your Polaris server is running elsewhere, but sure to update the configuration appropriately.
+Similar to the CLI commands above, this configures Spark to use the Polaris running at `localhost:8181`. If your Polaris server is running elsewhere, but sure to update the configuration appropriately.
 
 Finally, note that we include the `hadoop-aws` package here. If your table is using a different filesystem, be sure to include the appropriate dependency.
 
