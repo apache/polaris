@@ -17,7 +17,7 @@
   under the License.
 -->
 
-This page documents various entities that can be managed in Apache Polaris.
+This page documents various entities that can be managed in Apache Polaris (Incubating).
 
 ## Catalog
 

@@ -17,7 +17,7 @@
   under the License.
 -->
 
-# Apache Polaris CLI
+# Apache Polaris (Incubating) CLI
 
 In order to help administrators quickly set up and manage their Polaris server, Polaris provides a simple command-line interface (CLI) for common tasks.
 

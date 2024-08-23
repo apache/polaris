@@ -18,7 +18,7 @@
 -->
 
 
-# Configuring Apache Polaris for Production
+# Configuring Apache Polaris (Incubating) for Production
 
 The default `polaris-server.yml` configuration is intended for develoment and testing. When deploying Polaris in production, there are several best practices to keep in mind.
 

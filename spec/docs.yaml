@@ -1,7 +1,7 @@
 openapi: 3.0.0
 
 info:
-  title: Apache Polaris Documentation
+  title: Apache Polaris (Incubating) Documentation
   x-logo:
     url: ./img/logos/polaris-catalog-stacked-logo.svg
     altText: Apache Polaris Logo

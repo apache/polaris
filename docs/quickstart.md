@@ -19,7 +19,7 @@
 
 # Quick Start
 
-This guide serves as a introduction to several key entities that can be managed with Apache Polaris, describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Apache Spark&trade;.
+This guide serves as a introduction to several key entities that can be managed with Apache Polaris (Incubating), describes how to build and deploy Polaris locally, and finally includes examples of how to use Polaris with Apache Spark&trade;.
 
 ## Prerequisites
 
