@@ -150,25 +150,6 @@ public class PolarisConfiguration<T> {
           .defaultValue(false)
           .build();
 
-  public static final PolarisConfiguration<Boolean>
-      ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION =
-          PolarisConfiguration.<Boolean>builder()
-              .key("ALLOW_TABLE_LOCATION_OUTSIDE_NAMESPACE_LOCATION")
-              .catalogConfig("allow.table.location.outside.namespace.location")
-              .description(
-                  "If set to true, allows tables to have a location outside of their parent namespace")
-              .defaultValue(false)
-              .build();
-
-  public static final PolarisConfiguration<Boolean> ALLOW_TABLE_LOCATION_OUTSIDE_CATALOG_LOCATION =
-      PolarisConfiguration.<Boolean>builder()
-          .key("ALLOW_TABLE_LOCATION_OUTSIDE_CATALOG_LOCATION")
-          .catalogConfig("allow.table.location.outside.catalog.location")
-          .description(
-              "If set to true, allows tables to have a location outside of their parent catalog")
-          .defaultValue(false)
-          .build();
-
   public static final PolarisConfiguration<List<String>> SUPPORTED_CATALOG_STORAGE_TYPES =
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_STORAGE_TYPES")
