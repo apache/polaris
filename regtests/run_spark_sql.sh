@@ -16,10 +16,19 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
+
+# -----------------------------------------------------------------------------
+# Purpose: Launch the Spark SQL shell to interact with Polaris.
+# -----------------------------------------------------------------------------
 #
+# Usage:
+#   Without arguments: Runs against a catalog backed by the local filesystem
+#   With two arguments: Runs against a catalog backed by AWS S3
+#     Example: ./run_spark_sql.sh s3://my-bucket/path arn:aws:iam::123456789001:principal/my-role
 #
-# Run this to open an interactive spark-sql shell talking to a catalog named "manual_spark"
-#
+# Arguments:
+#   [S3 location] - The S3 path to use as the default base location for the catalog.
+#   [AWS IAM role] - The AWS IAM role to assume when the catalog accessing the S3 location.
 
 REGTEST_HOME=$(dirname $(realpath $0))
 cd ${REGTEST_HOME}
@@ -35,9 +44,9 @@ fi
 
 SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN:-principal:root;realm:default-realm}"
 
-# If argument 1 doesn't exist, use local filesystem
+# use local filesystem if no arguments are provided
 if [ -z "$1" ]; then
-  # Use local filesystem by default
+  # create a catalog backed by the local filesystem
   curl -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
        -H 'Accept: application/json' \
        -H 'Content-Type: application/json' \
@@ -59,13 +68,15 @@ if [ -z "$1" ]; then
              }
            }'
 else
-  # Check if AWS environment variables are set
-  if [ -z "${AWS_TEST_BASE}" ] || [ -z "${AWS_ROLE_ARN}" ]; then
-    echo "AWS_TEST_BASE or AWS_ROLE_ARN not set. Please set them to enable S3 integration."
+  AWS_BASE_LOCATION=$1
+  AWS_ROLE_ARN=$2
+  # Check if AWS variables are set
+  if [ -z "${AWS_BASE_LOCATION}" ] || [ -z "${AWS_ROLE_ARN}" ]; then
+    echo "AWS_BASE_LOCATION or/and AWS_ROLE_ARN not set. Please set them to create a catalog backed by S3."
     exit 1
   fi
 
-  # Use S3
+  # create a catalog backed by S3
   curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
        -H 'Accept: application/json' \
        -H 'Content-Type: application/json' \
@@ -76,11 +87,11 @@ else
              \"type\": \"INTERNAL\",
              \"readOnly\": false,
              \"properties\": {
-               \"default-base-location\": \"${AWS_TEST_BASE}\"
+               \"default-base-location\": \"${AWS_BASE_LOCATION}\"
              },
              \"storageConfigInfo\": {
                \"storageType\": \"S3\",
-               \"allowedLocations\": [\"${AWS_TEST_BASE}/\"],
+               \"allowedLocations\": [\"${AWS_BASE_LOCATION}/\"],
                \"roleArn\": \"${AWS_ROLE_ARN}\"
              }
            }"
@@ -91,7 +102,7 @@ curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: appl
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/manual_spark/catalog-roles/catalog_admin/grants \
   -d '{"type": "catalog", "privilege": "TABLE_WRITE_DATA"}' > /dev/stderr
 
-# For now, also explicitly assign the catalog_admin to the service_admin. Remove once GS fully rolled out for auto-assign.
+# Assign the catalog_admin to the service_admin.
 curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/principal-roles/service_admin/catalog-roles/manual_spark \
   -d '{"name": "catalog_admin"}' > /dev/stderr
