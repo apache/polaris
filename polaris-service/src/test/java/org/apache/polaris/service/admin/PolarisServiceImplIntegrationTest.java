@@ -107,7 +107,9 @@ public class PolarisServiceImplIntegrationTest {
   @AfterEach
   public void tearDown() {
     try (Response response = newRequest("http://localhost:%d/api/management/v1/catalogs").get()) {
-      response.readEntity(Catalogs.class).getCatalogs().stream()
+      response
+          .readEntity(Catalogs.class)
+          .getCatalogs()
           .forEach(
               catalog ->
                   newRequest("http://localhost:%d/api/management/v1/catalogs/" + catalog.getName())

@@ -480,7 +480,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             tableGrant2,
             viewGrant1,
             viewGrant2);
-    role1Grants.stream().forEach(grant -> addGrant("catalogrole1", grant));
+    role1Grants.forEach(grant -> addGrant("catalogrole1", grant));
     List<GrantResource> role2Grants =
         List.of(
             catalogGrant1,
@@ -491,7 +491,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             tableGrant3,
             viewGrant1,
             viewGrant3);
-    role2Grants.stream().forEach(grant -> addGrant("catalogrole2", grant));
+    role2Grants.forEach(grant -> addGrant("catalogrole2", grant));
 
     // List grants for catalogrole1
     try (Response response =
