@@ -1587,6 +1587,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               throw new AlreadyExistsException(
                   "Cannot rename %s to %s. View already exists", from, to);
             }
+            throw new IllegalStateException(
+                String.format("Unexpected entity type '%s'", existingEntitySubType));
           }
 
         case PolarisMetaStoreManager.ReturnStatus.ENTITY_NOT_FOUND:
