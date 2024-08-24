@@ -37,6 +37,7 @@ tasks.withType(JavaCompile::class.java).configureEach {
   options.errorprone.error(
     "DefaultCharset",
     "FallThrough",
+    "MissingCasesInEnumSwitch",
     "MissingOverride",
     "StringCaseLocaleUsage",
   )
