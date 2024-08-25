@@ -102,8 +102,8 @@ oauth2:
 #    secret: polaris
 
 authenticator:
-  class: io.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator
-#  class: io.polaris.service.auth.DefaultPolarisAuthenticator # - uncomment to support Auth0 JWT tokens
+  class: org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator
+#  class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator # - uncomment to support Auth0 JWT tokens
 #  tokenBroker:
 #    type: symmetric-key
 #    secret: polaris
@@ -136,7 +136,7 @@ logging:
   # Logger-specific levels.
   loggers:
     org.apache.iceberg.rest: DEBUG
-    io.polaris: DEBUG
+    org.apache.polaris: DEBUG
 
   appenders:
 
