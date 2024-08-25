@@ -28,8 +28,8 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -43,7 +43,7 @@ import org.mockito.Mockito;
  *
  * @author aixu
  */
-public class PolarisEclipseLinkMetaStoreTest extends PolarisMetaStoreManagerTest {
+public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStoreManagerTest {
 
   @Override
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {

@@ -61,7 +61,7 @@ import org.threeten.extra.MutableClock;
  *
  * @author bdagevil
  */
-public abstract class PolarisMetaStoreManagerTest {
+public abstract class BasePolarisMetaStoreManagerTest {
 
   protected final MutableClock timeSource = MutableClock.of(Instant.now(), ZoneOffset.UTC);
 
