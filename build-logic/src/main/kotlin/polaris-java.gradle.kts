@@ -39,6 +39,7 @@ tasks.withType(JavaCompile::class.java).configureEach {
     "FallThrough",
     "MissingCasesInEnumSwitch",
     "MissingOverride",
+    "ModifiedButNotUsed",
     "OrphanedFormatString",
     "StringCaseLocaleUsage",
   )
