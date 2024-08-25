@@ -322,7 +322,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
         Stream.concat(firstTasks.stream(), newTaskList.stream().map(PolarisBaseEntity::getName))
             .collect(Collectors.toSet());
 
-    // only 10 tasks are unnassigned. Requesting 20, we should only receive those 10
+    // only 10 tasks are unassigned. Requesting 20, we should only receive those 10
     List<PolarisBaseEntity> lastTen =
         metaStoreManager.loadTasks(callCtx, executorId, 20).getEntities();
 
@@ -344,7 +344,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
     timeSource.add(Duration.ofMinutes(10));
 
-    // all the tasks are unnassigned. Fetch them all
+    // all the tasks are unassigned. Fetch them all
     List<PolarisBaseEntity> allTasks =
         metaStoreManager.loadTasks(callCtx, executorId, 20).getEntities();
 
