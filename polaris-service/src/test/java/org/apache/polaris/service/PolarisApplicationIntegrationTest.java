@@ -169,16 +169,16 @@ public class PolarisApplicationIntegrationTest {
 
   @AfterAll
   public static void deletePrincipalRole() {
-    try (Response deletePrResponse =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principal-roles/%s",
-                    EXT.getLocalPort(), PRINCIPAL_ROLE_NAME))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .delete()) {}
+    EXT.client()
+        .target(
+            String.format(
+                "http://localhost:%d/api/management/v1/principal-roles/%s",
+                EXT.getLocalPort(), PRINCIPAL_ROLE_NAME))
+        .request("application/json")
+        .header("Authorization", "Bearer " + userToken)
+        .header(REALM_PROPERTY_KEY, realm)
+        .delete()
+        .close();
   }
 
   /**

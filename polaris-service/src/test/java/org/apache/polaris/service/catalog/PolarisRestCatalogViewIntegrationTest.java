@@ -232,7 +232,7 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
                 assertThat(response)
                     .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
                 CatalogRole catalogRole = response.readEntity(CatalogRole.class);
-                try (Response assignResponse =
+                try (Response ignore =
                     EXT.client()
                         .target(
                             String.format(
