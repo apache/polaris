@@ -141,6 +141,14 @@ public class PolarisSparkIntegrationTest {
     CatalogProperties externalProps = new CatalogProperties("s3://my-bucket/path/to/data");
     externalProps.putAll(
         Map.of(
+            "table-default.s3.endpoint",
+            s3Container.getHttpEndpoint(),
+            "table-default.s3.path-style-access",
+            "true",
+            "table-default.s3.access-key-id",
+            "foo",
+            "table-default.s3.secret-access-key",
+            "bar",
             "s3.endpoint",
             s3Container.getHttpEndpoint(),
             "s3.path-style-access",
