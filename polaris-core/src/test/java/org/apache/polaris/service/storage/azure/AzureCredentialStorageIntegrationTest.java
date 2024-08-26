@@ -67,7 +67,7 @@ public class AzureCredentialStorageIntegrationTest {
   private final String clientSecret = System.getenv("AZURE_CLIENT_SECRET");
   private final String tenantId = "d479c7c9-2632-445a-b22d-7c19e68774f6";
 
-  private void checkEnvNullVariables() {
+  private void assumeEnvVariablesNotNull() {
     Assumptions.assumeThat(Strings.isNullOrEmpty(clientId) || Strings.isNullOrEmpty(clientSecret))
         .describedAs("Null Azure testing environment variables!")
         .isFalse();
@@ -109,7 +109,7 @@ public class AzureCredentialStorageIntegrationTest {
   @TestWithAzureArgs
   public void testGetSubscopedTokenList(boolean allowListAction, String service) {
 
-    checkEnvNullVariables();
+    assumeEnvVariablesNotNull();
 
     boolean isBlobService = service.equals("blob");
     List<String> allowedLoc =
@@ -179,7 +179,7 @@ public class AzureCredentialStorageIntegrationTest {
   @TestWithAzureArgs
   public void testGetSubscopedTokenRead(
       @SuppressWarnings("unused") boolean allowListAction, String service) {
-    checkEnvNullVariables();
+    assumeEnvVariablesNotNull();
 
     String allowedPrefix = "polaris-test";
     String blockedPrefix = "blocked-prefix";
@@ -248,7 +248,7 @@ public class AzureCredentialStorageIntegrationTest {
   @TestWithAzureArgs
   public void testGetSubscopedTokenWrite(
       @SuppressWarnings("unused") boolean allowListAction, String service) {
-    checkEnvNullVariables();
+    assumeEnvVariablesNotNull();
 
     boolean isBlobService = service.equals("blob");
     String allowedPrefix = "polaris-test/scopedcreds/";
