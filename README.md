@@ -76,8 +76,7 @@ Building docs
 - Docs are generated using [Redocly](https://redocly.com/docs/cli/installation). To regenerate them, run the following
 commands from the project root directory.
 ```bash
-docker run -p 8080:80 -v ${PWD}:/spec docker.io/redocly/cli join spec/docs.yaml spec/polaris-management-service.yml spec/rest-catalog-open-api.yaml -o spec/index.yaml --prefix-components-with-info-prop title
-docker run -p 8080:80 -v ${PWD}:/spec docker.io/redocly/cli build-docs spec/index.yaml --output=docs/index.html --config=spec/redocly.yaml
+docs/build
 ```
 
 ## License
