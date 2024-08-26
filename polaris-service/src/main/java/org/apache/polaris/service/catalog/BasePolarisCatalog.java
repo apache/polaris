@@ -44,9 +44,11 @@ import java.util.stream.Stream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseMetastoreTableOperations;
+import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.TableOperations;
@@ -66,6 +68,7 @@ import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.util.PropertyUtil;
 import org.apache.iceberg.view.BaseMetastoreViewCatalog;
 import org.apache.iceberg.view.BaseViewOperations;
@@ -277,6 +280,45 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   @Override
   protected Map<String, String> properties() {
     return catalogProperties == null ? ImmutableMap.of() : catalogProperties;
+  }
+
+  @Override
+  public Table registerTable(TableIdentifier identifier, String metadataFileLocation) {
+    Preconditions.checkArgument(
+        identifier != null && isValidIdentifier(identifier), "Invalid identifier: %s", identifier);
+    Preconditions.checkArgument(
+        metadataFileLocation != null && !metadataFileLocation.isEmpty(),
+        "Cannot register an empty metadata file location as a table");
+
+    // Throw an exception if this table already exists in the catalog.
+    if (tableExists(identifier)) {
+      throw new AlreadyExistsException("Table already exists: %s", identifier);
+    }
+
+    String locationDir = metadataFileLocation.substring(0, metadataFileLocation.lastIndexOf("/"));
+
+    TableOperations ops = newTableOps(identifier);
+
+    PolarisResolvedPathWrapper resolvedParent =
+        resolvedEntityView.getResolvedPath(identifier.namespace());
+    if (resolvedParent == null) {
+      // Illegal state because the namespace should've already been in the static resolution set.
+      throw new IllegalStateException(
+          String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
+    }
+    FileIO fileIO =
+        refreshIOWithCredentials(
+            identifier,
+            Set.of(locationDir),
+            resolvedParent,
+            new HashMap<>(tableDefaultProperties),
+            Set.of(PolarisStorageActions.READ));
+
+    InputFile metadataFile = fileIO.newInputFile(metadataFileLocation);
+    TableMetadata metadata = TableMetadataParser.read(fileIO, metadataFile);
+    ops.commit(null, metadata);
+
+    return new BaseTable(ops, fullTableName(name(), identifier), metricsReporter());
   }
 
   @Override
