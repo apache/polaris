@@ -46,6 +46,11 @@ github:
     wiki: false
     issues: true
     projects: false
+  collaborators: # note: the number of collaborators is limited to 10
+    - flyrain
+    - dennishuo
+    - annafil
+    - collado-mike
   ghp_branch: gh-pages
   ghp_path: /
 
