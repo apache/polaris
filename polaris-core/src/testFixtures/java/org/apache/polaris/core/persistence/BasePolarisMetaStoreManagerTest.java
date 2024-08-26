@@ -61,7 +61,7 @@ import org.threeten.extra.MutableClock;
  *
  * @author bdagevil
  */
-public abstract class PolarisMetaStoreManagerTest {
+public abstract class BasePolarisMetaStoreManagerTest {
 
   protected final MutableClock timeSource = MutableClock.of(Instant.now(), ZoneOffset.UTC);
 
@@ -322,7 +322,7 @@ public abstract class PolarisMetaStoreManagerTest {
         Stream.concat(firstTasks.stream(), newTaskList.stream().map(PolarisBaseEntity::getName))
             .collect(Collectors.toSet());
 
-    // only 10 tasks are unnassigned. Requesting 20, we should only receive those 10
+    // only 10 tasks are unassigned. Requesting 20, we should only receive those 10
     List<PolarisBaseEntity> lastTen =
         metaStoreManager.loadTasks(callCtx, executorId, 20).getEntities();
 
@@ -344,7 +344,7 @@ public abstract class PolarisMetaStoreManagerTest {
 
     timeSource.add(Duration.ofMinutes(10));
 
-    // all the tasks are unnassigned. Fetch them all
+    // all the tasks are unassigned. Fetch them all
     List<PolarisBaseEntity> allTasks =
         metaStoreManager.loadTasks(callCtx, executorId, 20).getEntities();
 

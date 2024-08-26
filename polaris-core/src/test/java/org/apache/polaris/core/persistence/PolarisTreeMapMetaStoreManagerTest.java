@@ -25,7 +25,7 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.mockito.Mockito;
 
-public class PolarisTreeMapMetaStoreManagerTest extends PolarisMetaStoreManagerTest {
+public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreManagerTest {
   @Override
   public PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
