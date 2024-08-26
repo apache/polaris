@@ -117,6 +117,20 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   // Config key for whether to allow setting the FILE_IO_IMPL using catalog properties. Should
   // only be allowed in dev/test environments.
   static final String ALLOW_SPECIFYING_FILE_IO_IMPL = "ALLOW_SPECIFYING_FILE_IO_IMPL";
+  static final boolean ALLOW_SPECIFYING_FILE_IO_IMPL_DEFAULT = false;
+
+  // Config key for whether to skip credential-subscoping indirection entirely whenever trying
+  // to obtain storage credentials for instantiating a FileIO. If 'true', no attempt is made
+  // to use StorageConfigs to generate table-specific storage credentials, but instead the default
+  // fallthrough of table-level credential properties or else provider-specific APPLICATION_DEFAULT
+  // credential-loading will be used for the FileIO.
+  // Typically this setting is used in single-tenant server deployments that don't rely on
+  // "credential-vending" and can use server-default environment variables or credential config
+  // files for all storage access, or in test/dev scenarios.
+  static final String SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION =
+      "SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION";
+  static final boolean SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION_DEFAULT = false;
+
   private static final int MAX_RETRIES = 12;
 
   static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
@@ -200,12 +214,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                     properties.getOrDefault(CatalogProperties.WAREHOUSE_LOCATION, "")));
     this.defaultBaseLocation = baseLocation.replaceAll("/*$", "");
 
-    Boolean allowSpecifyingFileIoImpl =
-        callContext
-            .getPolarisCallContext()
-            .getConfigurationStore()
-            .getConfiguration(
-                callContext.getPolarisCallContext(), ALLOW_SPECIFYING_FILE_IO_IMPL, false);
+    Boolean allowSpecifyingFileIoImpl = getBooleanContextConfiguration(
+        ALLOW_SPECIFYING_FILE_IO_IMPL, ALLOW_SPECIFYING_FILE_IO_IMPL_DEFAULT);
 
     PolarisStorageConfigurationInfo storageConfigurationInfo =
         catalogEntity.getStorageConfigurationInfo();
@@ -793,6 +803,15 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // Important: Any locations added to the set of requested locations need to be validated
     // prior to requested subscoped credentials.
     tableLocations.forEach(tl -> validateLocationForTableLike(tableIdentifier, tl));
+
+    Boolean skipCredentialSubscopingIndirection = getBooleanContextConfiguration(
+        SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION, SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION_DEFAULT);
+    if (Boolean.TRUE.equals(skipCredentialSubscopingIndirection)) {
+      LOGGER.atInfo()
+          .addKeyValue("tableIdentifier", tableIdentifier)
+          .log("Skipping generation of subscoped creds for table");
+      return Map.of();
+    }
 
     boolean allowList =
         storageActions.contains(PolarisStorageActions.LIST)
@@ -1878,6 +1897,18 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           "Delegate access to table with user-specified write location is temporarily not supported.");
     }
   }
+
+  /**
+   * Helper to retrieve dynamic context-based configuration that has a boolean value.
+   */
+  private Boolean getBooleanContextConfiguration(String configKey, boolean defaultValue) {
+    return callContext
+        .getPolarisCallContext()
+        .getConfigurationStore()
+        .getConfiguration(
+            callContext.getPolarisCallContext(), configKey, defaultValue);
+  }
+
 
   /**
    * Check if the exception is retryable for the storage provider

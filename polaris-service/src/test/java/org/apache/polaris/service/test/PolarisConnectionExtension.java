@@ -94,55 +94,6 @@ public class PolarisConnectionExtension implements BeforeAllCallback, ParameterR
           (PolarisApplicationConfig) dropwizardAppExtension.getConfiguration();
       metaStoreManagerFactory = config.getMetaStoreManagerFactory();
 
-      if (metaStoreManagerFactory instanceof LocalPolarisMetaStoreManagerFactory msmf) {
-        StsClient mockSts = Mockito.mock(StsClient.class);
-        Mockito.when(mockSts.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
-            .thenReturn(
-                AssumeRoleResponse.builder()
-                    .credentials(
-                        Credentials.builder()
-                            .accessKeyId("theaccesskey")
-                            .secretAccessKey("thesecretkey")
-                            .sessionToken("thesessiontoken")
-                            .build())
-                    .build());
-        msmf.setStorageIntegrationProvider(
-            new PolarisStorageIntegrationProvider() {
-              @Override
-              public @Nullable <T extends PolarisStorageConfigurationInfo>
-                  PolarisStorageIntegration<T> getStorageIntegrationForConfig(
-                      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-                return new PolarisStorageIntegration<T>("testIntegration") {
-                  @Override
-                  public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-                      @NotNull PolarisDiagnostics diagnostics,
-                      @NotNull T storageConfig,
-                      boolean allowListOperation,
-                      @NotNull Set<String> allowedReadLocations,
-                      @NotNull Set<String> allowedWriteLocations) {
-                    return new EnumMap<>(PolarisCredentialProperty.class);
-                  }
-
-                  @Override
-                  public EnumMap<PolarisStorageConfigurationInfo.DescribeProperty, String>
-                      descPolarisStorageConfiguration(
-                          @NotNull PolarisStorageConfigurationInfo storageConfigInfo) {
-                    return new EnumMap<>(PolarisStorageConfigurationInfo.DescribeProperty.class);
-                  }
-
-                  @Override
-                  public @NotNull Map<String, Map<PolarisStorageActions, ValidationResult>>
-                      validateAccessToLocations(
-                          @NotNull T storageConfig,
-                          @NotNull Set<PolarisStorageActions> actions,
-                          @NotNull Set<String> locations) {
-                    return Map.of();
-                  }
-                };
-              }
-            });
-      }
-
       RealmContext realmContext =
           config
               .getRealmContextResolver()
