@@ -45,16 +45,11 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
 
   val icon = ideaDir.file("icon.png").asFile
   if (!icon.exists()) {
-    val img =
-      java.net
-        .URI(
-          "https://raw.githubusercontent.com/apache/polaris/main/docs/img/logos/polaris-brandmark.png"
-        )
-        .toURL()
-        .openConnection()
-        .getInputStream()
-        .use { inp -> inp.readAllBytes() }
-    ideaDir.file("icon.png").asFile.outputStream().use { out -> out.write(img) }
+    copy {
+      from("docs/img/logos/polaris-brandmark.png")
+      into(ideaDir)
+      rename { _ -> "icon.png" }
+    }
   }
 }
 
