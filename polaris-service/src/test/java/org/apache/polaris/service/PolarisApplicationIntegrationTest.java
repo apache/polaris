@@ -311,7 +311,9 @@ public class PolarisApplicationIntegrationTest {
   @Test
   public void testConfigureCatalogCaseSensitive() throws IOException {
     assertThatThrownBy(() -> newSessionCatalog("TESTCONFIGURECATALOGCASESENSITIVE"))
-        .isInstanceOf(RESTException.class);
+        .isInstanceOf(RESTException.class)
+        .hasMessage(
+            "Unable to process: Unable to find warehouse TESTCONFIGURECATALOGCASESENSITIVE");
   }
 
   @Test
@@ -321,7 +323,8 @@ public class PolarisApplicationIntegrationTest {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       assertThatThrownBy(
               () -> sessionCatalog.listNamespaces(sessionContext, Namespace.of("whoops")))
-          .isInstanceOf(NoSuchNamespaceException.class);
+          .isInstanceOf(NoSuchNamespaceException.class)
+          .hasMessage("Namespace does not exist: whoops");
     }
   }
 
@@ -337,7 +340,8 @@ public class PolarisApplicationIntegrationTest {
               () ->
                   sessionCatalog.listNamespaces(
                       sessionContext, Namespace.of("top_level", "whoops")))
-          .isInstanceOf(NoSuchNamespaceException.class);
+          .isInstanceOf(NoSuchNamespaceException.class)
+          .hasMessage("Namespace does not exist: top_level.whoops");
     }
   }
 
@@ -347,7 +351,8 @@ public class PolarisApplicationIntegrationTest {
         newSessionCatalog("testIcebergListTablesNamespaceNotFound")) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       assertThatThrownBy(() -> sessionCatalog.listTables(sessionContext, Namespace.of("whoops")))
-          .isInstanceOf(NoSuchNamespaceException.class);
+          .isInstanceOf(NoSuchNamespaceException.class)
+          .hasMessage("Namespace does not exist: whoops");
     }
   }
 
@@ -397,7 +402,8 @@ public class PolarisApplicationIntegrationTest {
       assertThat(namespaces).isNotNull().hasSize(1).containsExactly(ns);
       sessionCatalog.dropNamespace(sessionContext, ns);
       assertThatThrownBy(() -> sessionCatalog.loadNamespaceMetadata(sessionContext, ns))
-          .isInstanceOf(NoSuchNamespaceException.class);
+          .isInstanceOf(NoSuchNamespaceException.class)
+          .hasMessage("Namespace does not exist: db1");
     }
   }
 
@@ -423,7 +429,8 @@ public class PolarisApplicationIntegrationTest {
                       .withSortOrder(SortOrder.unsorted())
                       .withPartitionSpec(PartitionSpec.unpartitioned())
                       .create())
-          .isInstanceOf(BadRequestException.class);
+          .isInstanceOf(BadRequestException.class)
+          .hasMessage("Malformed request: Cannot create table on external catalogs.");
     }
   }
 
@@ -573,7 +580,8 @@ public class PolarisApplicationIntegrationTest {
                               new PartitionData(PartitionSpec.unpartitioned().partitionType()),
                               10L))
                       .commit())
-          .isInstanceOf(BadRequestException.class);
+          .isInstanceOf(BadRequestException.class)
+          .hasMessage("Malformed request: Cannot update table on external catalogs.");
     }
   }
 
@@ -617,7 +625,8 @@ public class PolarisApplicationIntegrationTest {
       assertThat(table).isNotNull();
       sessionCatalog.dropTable(sessionContext, tableIdentifier);
       assertThatThrownBy(() -> sessionCatalog.loadTable(sessionContext, tableIdentifier))
-          .isInstanceOf(NoSuchTableException.class);
+          .isInstanceOf(NoSuchTableException.class)
+          .hasMessage("Table does not exist: db1.the_table");
     }
   }
 
@@ -641,7 +650,8 @@ public class PolarisApplicationIntegrationTest {
                           emptyEnvironmentVariable,
                           "header." + REALM_PROPERTY_KEY,
                           realm)))
-          .isInstanceOf(BadRequestException.class);
+          .isInstanceOf(BadRequestException.class)
+          .hasMessage("Malformed request: Please specify a warehouse");
     }
   }
 }

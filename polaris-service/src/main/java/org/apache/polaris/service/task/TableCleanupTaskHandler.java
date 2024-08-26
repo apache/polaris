@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
  * cleanup tasks are scheduled in a batch so tasks should be stored atomically.
  */
 public class TableCleanupTaskHandler implements TaskHandler {
-  private final Logger LOGGER = LoggerFactory.getLogger(TableCleanupTaskHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(TableCleanupTaskHandler.class);
   private final TaskExecutor taskExecutor;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final Function<TaskEntity, FileIO> fileIOSupplier;
