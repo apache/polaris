@@ -1,27 +1,25 @@
 <!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
 
- Licensed to the Apache Software Foundation (ASF) under one
- or more contributor license agreements.  See the NOTICE file
- distributed with this work for additional information
- regarding copyright ownership.  The ASF licenses this file
- to you under the Apache License, Version 2.0 (the
- "License"); you may not use this file except in compliance
- with the License.  You may obtain a copy of the License at
+  http://www.apache.org/licenses/LICENSE-2.0
 
-   http://www.apache.org/licenses/LICENSE-2.0
-
- Unless required by applicable law or agreed to in writing,
- software distributed under the License is distributed on an
- "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- KIND, either express or implied.  See the License for the
- specific language governing permissions and limitations
- under the License.
-
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
 -->
 
-This section provides information about how access control works for Polaris Catalog.
+This section provides information about how access control works for Apache Polaris (Incubating).
 
-Polaris Catalog uses a role-based access control (RBAC) model in which the Polaris administrator assigns access privileges to catalog roles
+Polaris uses a role-based access control (RBAC) model in which the Polaris administrator assigns access privileges to catalog roles
 and then grants access to resources to service principals by assigning catalog roles to principal roles.
 
 These are the key concepts to understanding access control in Polaris:
@@ -89,11 +87,11 @@ configure in Polaris:
 
 ## RBAC model
 
-The following diagram illustrates the RBAC model used by Polaris Catalog. For each catalog, the Polaris administrator assigns access
+The following diagram illustrates the RBAC model used by Polaris. For each catalog, the Polaris administrator assigns access
 privileges to catalog roles and then grants service principals access to resources by assigning catalog roles to principal roles. Polaris
 supports a many-to-one relationship between service principals and principal roles.
 
-![Diagram that shows the RBAC model for Polaris Catalog.](img/rbac-model.svg "Polaris Catalog RBAC model")
+![Diagram that shows the RBAC model for Apache Polaris.](img/rbac-model.svg "Apache Polaris RBAC model")
 
 ## Access control privileges
 
@@ -187,4 +185,4 @@ includes the following users:
     - The Catalog reader role grants read-only access for a catalog
         named Gold zone catalog.
 
-![Diagram that shows an example of how RBAC works in Polaris Catalog.](img/rbac-example.svg "Polaris Catalog RBAC example")
+![Diagram that shows an example of how RBAC works in Apache Polaris.](img/rbac-example.svg "Apache Polaris RBAC example")
