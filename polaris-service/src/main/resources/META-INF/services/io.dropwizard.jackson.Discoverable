@@ -23,3 +23,4 @@ org.apache.polaris.service.config.OAuth2ApiService
 org.apache.polaris.service.context.RealmContextResolver
 org.apache.polaris.service.context.CallContextResolver
 org.apache.polaris.service.auth.TokenBrokerFactory
+org.apache.polaris.service.catalog.FileIOFactory

@@ -28,6 +28,7 @@ import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.auth.DiscoverableAuthenticator;
+import org.apache.polaris.service.catalog.FileIOFactory;
 import org.apache.polaris.service.context.CallContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.slf4j.LoggerFactory;
@@ -52,6 +53,7 @@ public class PolarisApplicationConfig extends Configuration {
   private List<String> defaultRealms;
   private String awsAccessKey;
   private String awsSecretKey;
+  private FileIOFactory fileIOFactory;
 
   @JsonProperty("metaStoreManager")
   public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
@@ -61,6 +63,16 @@ public class PolarisApplicationConfig extends Configuration {
   @JsonProperty("metaStoreManager")
   public MetaStoreManagerFactory getMetaStoreManagerFactory() {
     return metaStoreManagerFactory;
+  }
+
+  @JsonProperty("io")
+  public void setFileIOFactory(FileIOFactory fileIOFactory) {
+    this.fileIOFactory = fileIOFactory;
+  }
+
+  @JsonProperty("io")
+  public FileIOFactory getFileIOFactory() {
+    return fileIOFactory;
   }
 
   @JsonProperty("authenticator")

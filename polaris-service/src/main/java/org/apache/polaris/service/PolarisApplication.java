@@ -81,6 +81,7 @@ import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApi;
 import org.apache.polaris.service.auth.DiscoverableAuthenticator;
+import org.apache.polaris.service.catalog.FileIOFactory;
 import org.apache.polaris.service.catalog.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
@@ -185,10 +186,22 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
             "realmContext", new ContextResolverFilter(realmContextResolver, callContextResolver))
         .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
 
+    FileIOFactory fileIOFactory = configuration.getFileIOFactory();
+    if (fileIOFactory instanceof MetricRegistryAware mrAware) {
+      mrAware.setMetricRegistry(polarisMetricRegistry);
+    }
+    if (fileIOFactory instanceof OpenTelemetryAware otAware) {
+      otAware.setOpenTelemetry(openTelemetry);
+    }
+    if (fileIOFactory instanceof ConfigurationStoreAware csAware) {
+      csAware.setConfigurationStore(configurationStore);
+    }
+
     TaskHandlerConfiguration taskConfig = configuration.getTaskHandler();
     TaskExecutorImpl taskExecutor =
         new TaskExecutorImpl(taskConfig.executorService(), metaStoreManagerFactory);
-    TaskFileIOSupplier fileIOSupplier = new TaskFileIOSupplier(metaStoreManagerFactory);
+    TaskFileIOSupplier fileIOSupplier =
+        new TaskFileIOSupplier(metaStoreManagerFactory, fileIOFactory);
     taskExecutor.addTaskHandler(
         new TableCleanupTaskHandler(taskExecutor, metaStoreManagerFactory, fileIOSupplier));
     taskExecutor.addTaskHandler(
@@ -199,7 +212,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         "Initializing PolarisCallContextCatalogFactory for metaStoreManagerType {}",
         metaStoreManagerFactory);
     CallContextCatalogFactory catalogFactory =
-        new PolarisCallContextCatalogFactory(entityManagerFactory, taskExecutor);
+        new PolarisCallContextCatalogFactory(entityManagerFactory, taskExecutor, fileIOFactory);
 
     PolarisAuthorizer authorizer = new PolarisAuthorizer(configurationStore);
     IcebergCatalogAdapter catalogAdapter =

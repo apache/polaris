@@ -92,6 +92,8 @@ metaStoreManager:
   # type: eclipse-link # uncomment to use eclipse-link as metastore
   # persistence-unit: polaris
 
+io:
+  factoryType: default
 
 # TODO - avoid duplicating token broker config
 oauth2:
