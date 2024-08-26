@@ -34,7 +34,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
@@ -1143,12 +1142,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   private void createNonExistingNamespaces(Namespace namespace) {
     // Pre-create namespaces if they don't exist
     for (int i = 1; i <= namespace.length(); i++) {
-      Namespace nsLevel =
-          Namespace.of(
-              Arrays.stream(namespace.levels())
-                  .limit(i)
-                  .collect(Collectors.toList())
-                  .toArray(String[]::new));
+      Namespace nsLevel = Namespace.of(Arrays.copyOf(namespace.levels(), i));
       if (!catalog.namespaceExists(nsLevel)) {
         catalog.createNamespace(nsLevel);
       }
