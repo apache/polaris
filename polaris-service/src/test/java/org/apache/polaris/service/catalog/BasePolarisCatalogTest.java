@@ -136,6 +136,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     Map<String, Object> configMap = new HashMap<>();
     configMap.put("ALLOW_SPECIFYING_FILE_IO_IMPL", true);
+    configMap.put("INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST", true);
     polarisContext =
         new PolarisCallContext(
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),

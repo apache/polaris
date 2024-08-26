@@ -27,11 +27,8 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
-import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -39,17 +36,10 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.storage.PolarisCredentialProperty;
-import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -58,12 +48,7 @@ import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 import org.junit.platform.commons.util.ReflectionUtils;
-import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.sts.StsClient;
-import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
-import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
-import software.amazon.awssdk.services.sts.model.Credentials;
 
 public class PolarisConnectionExtension implements BeforeAllCallback, ParameterResolver {
 
@@ -93,55 +78,6 @@ public class PolarisConnectionExtension implements BeforeAllCallback, ParameterR
       PolarisApplicationConfig config =
           (PolarisApplicationConfig) dropwizardAppExtension.getConfiguration();
       metaStoreManagerFactory = config.getMetaStoreManagerFactory();
-
-      if (metaStoreManagerFactory instanceof LocalPolarisMetaStoreManagerFactory msmf) {
-        StsClient mockSts = Mockito.mock(StsClient.class);
-        Mockito.when(mockSts.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
-            .thenReturn(
-                AssumeRoleResponse.builder()
-                    .credentials(
-                        Credentials.builder()
-                            .accessKeyId("theaccesskey")
-                            .secretAccessKey("thesecretkey")
-                            .sessionToken("thesessiontoken")
-                            .build())
-                    .build());
-        msmf.setStorageIntegrationProvider(
-            new PolarisStorageIntegrationProvider() {
-              @Override
-              public @Nullable <T extends PolarisStorageConfigurationInfo>
-                  PolarisStorageIntegration<T> getStorageIntegrationForConfig(
-                      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
-                return new PolarisStorageIntegration<T>("testIntegration") {
-                  @Override
-                  public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-                      @NotNull PolarisDiagnostics diagnostics,
-                      @NotNull T storageConfig,
-                      boolean allowListOperation,
-                      @NotNull Set<String> allowedReadLocations,
-                      @NotNull Set<String> allowedWriteLocations) {
-                    return new EnumMap<>(PolarisCredentialProperty.class);
-                  }
-
-                  @Override
-                  public EnumMap<PolarisStorageConfigurationInfo.DescribeProperty, String>
-                      descPolarisStorageConfiguration(
-                          @NotNull PolarisStorageConfigurationInfo storageConfigInfo) {
-                    return new EnumMap<>(PolarisStorageConfigurationInfo.DescribeProperty.class);
-                  }
-
-                  @Override
-                  public @NotNull Map<String, Map<PolarisStorageActions, ValidationResult>>
-                      validateAccessToLocations(
-                          @NotNull T storageConfig,
-                          @NotNull Set<PolarisStorageActions> actions,
-                          @NotNull Set<String> locations) {
-                    return Map.of();
-                  }
-                };
-              }
-            });
-      }
 
       RealmContext realmContext =
           config
