@@ -26,8 +26,6 @@ import java.util.*
 plugins { id("com.github.jk1.dependency-license-report") }
 
 afterEvaluate {
-  // Need to configure after evaluation, because the spark-extensions project use a custom
-  // `buildDir`.
   licenseReport {
     filters =
       arrayOf(
@@ -41,14 +39,7 @@ afterEvaluate {
     renderers =
       arrayOf(InventoryHtmlReportRenderer("index.html"), JsonReportRenderer(), XmlReportRenderer())
     excludeBoms = true
-    excludes =
-      arrayOf(
-        "com.google.guava:guava-parent",
-        "io.opentelemetry:opentelemetry-bom-alpha",
-        "io.opentelemetry.instrumentation:opentelemetry-instrumentation-bom-alpha"
-      )
     outputDir = "${project.layout.buildDirectory.get()}/reports/dependency-license"
-    excludeGroups = arrayOf("org.projectnessie.nessie", "org.projectnessie.nessie-integrations")
   }
 }
 
