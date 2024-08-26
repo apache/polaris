@@ -53,31 +53,25 @@ import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.Assumptions;
 import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguration;
-import org.assertj.core.util.Strings;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 class GcpCredentialsStorageIntegrationTest {
 
   private final String gcsServiceKeyJsonFileLocation =
       System.getenv("GOOGLE_APPLICATION_CREDENTIALS");
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(GcpCredentialsStorageIntegrationTest.class);
-
   @ParameterizedTest
   @ValueSource(booleans = {true, false})
-  public void testSubscope(boolean allowedListAction) throws IOException {
-    if (Strings.isNullOrEmpty(gcsServiceKeyJsonFileLocation)) {
-      LOGGER.debug(
-          "Environment variable GOOGLE_APPLICATION_CREDENTIALS not exits, skip test {}",
-          getClass().getName());
-      return;
-    }
+  public void testSubscope(boolean allowedListAction) throws Exception {
+    Assumptions.assumeThat(gcsServiceKeyJsonFileLocation)
+        .describedAs("Environment variable GOOGLE_APPLICATION_CREDENTIALS not exits")
+        .isNotNull()
+        .isNotEmpty();
+
     List<String> allowedRead =
         Arrays.asList(
             "gs://sfc-dev1-regtest/polaris-test/subscoped-test/read1/",
