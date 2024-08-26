@@ -21,9 +21,12 @@ package org.apache.polaris.service.catalog;
 import com.google.common.collect.ImmutableMap;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.TableMetadata;
@@ -1686,12 +1689,11 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             Catalog catalog =
                 super.createCallContextCatalog(
                     context, authenticatedPolarisPrincipal, resolvedManifest);
+            String fileIoImpl = "org.apache.iceberg.inmemory.InMemoryFileIO";
             catalog.initialize(
-                externalCatalog,
-                ImmutableMap.of(
-                    CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+                externalCatalog, ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, fileIoImpl));
 
-            FileIO fileIO = ((BasePolarisCatalog) catalog).newTableOps(table).io();
+            FileIO fileIO = CatalogUtil.loadFileIO(fileIoImpl, Map.of(), new Configuration());
             TableMetadata tableMetadata =
                 TableMetadata.buildFromEmpty()
                     .addSchema(SCHEMA, SCHEMA.highestFieldId())

@@ -132,6 +132,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       "SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION";
   static final boolean SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION_DEFAULT = false;
 
+  // Config key for initializing a default "catalogFileIO" that is available either via getIo()
+  // or for any TableOperations/ViewOperations instantiated, via ops.io() before entity-specific
+  // FileIO initialization is triggered for any such operations.
+  // Typically this should only be used in test scenarios where a BasePolarisCatalog instance
+  // is used for both the "client-side" and "server-side" logic instead of being access through
+  // a REST layer.
+  static final String INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST =
+      "INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST";
+  static final boolean INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST_DEFAULT = false;
+
   private static final int MAX_RETRIES = 12;
 
   static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
@@ -216,8 +226,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                     properties.getOrDefault(CatalogProperties.WAREHOUSE_LOCATION, "")));
     this.defaultBaseLocation = baseLocation.replaceAll("/*$", "");
 
-    Boolean allowSpecifyingFileIoImpl = getBooleanContextConfiguration(
-        ALLOW_SPECIFYING_FILE_IO_IMPL, ALLOW_SPECIFYING_FILE_IO_IMPL_DEFAULT);
+    Boolean allowSpecifyingFileIoImpl =
+        getBooleanContextConfiguration(
+            ALLOW_SPECIFYING_FILE_IO_IMPL, ALLOW_SPECIFYING_FILE_IO_IMPL_DEFAULT);
 
     PolarisStorageConfigurationInfo storageConfigurationInfo =
         catalogEntity.getStorageConfigurationInfo();
@@ -240,17 +251,27 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           ioImplClassName,
           storageConfigurationInfo);
     }
-    this.catalogFileIO = loadFileIO(ioImplClassName, properties);
-
     this.closeableGroup = CallContext.getCurrentContext().closeables();
     closeableGroup.addCloseable(metricsReporter());
-    // TODO: FileIO initialization should should happen later depending on the operation so
-    // we'd also add it to the closeableGroup later.
-    closeableGroup.addCloseable(this.catalogFileIO);
     closeableGroup.setSuppressCloseFailure(true);
+
     catalogProperties = properties;
     tableDefaultProperties =
         PropertyUtil.propertiesWithPrefix(properties, CatalogProperties.TABLE_DEFAULT_PREFIX);
+
+    Boolean initializeDefaultCatalogFileioForTest =
+        getBooleanContextConfiguration(
+            INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST,
+            INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST_DEFAULT);
+    if (Boolean.TRUE.equals(initializeDefaultCatalogFileioForTest)) {
+      LOGGER.debug(
+          "Initializing a default catalogFileIO with properties {}", tableDefaultProperties);
+      this.catalogFileIO = loadFileIO(ioImplClassName, tableDefaultProperties);
+      closeableGroup.addCloseable(this.catalogFileIO);
+    } else {
+      LOGGER.debug("Not initializing default catalogFileIO");
+      this.catalogFileIO = null;
+    }
   }
 
   @Override
@@ -795,10 +816,12 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // prior to requested subscoped credentials.
     tableLocations.forEach(tl -> validateLocationForTableLike(tableIdentifier, tl));
 
-    Boolean skipCredentialSubscopingIndirection = getBooleanContextConfiguration(
-        SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION, SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION_DEFAULT);
+    Boolean skipCredentialSubscopingIndirection =
+        getBooleanContextConfiguration(
+            SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION, SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION_DEFAULT);
     if (Boolean.TRUE.equals(skipCredentialSubscopingIndirection)) {
-      LOGGER.atInfo()
+      LOGGER
+          .atInfo()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Skipping generation of subscoped creds for table");
       return Map.of();
@@ -1354,7 +1377,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               // TODO: Once we have the "current" table properties pulled into the resolvedEntity
               // then we should use the actual current table properties for IO refresh here
               // instead of the general tableDefaultProperties.
-              FileIO fileIO  = 
+              FileIO fileIO =
                   refreshIOWithCredentials(
                       identifier,
                       Set.of(latestLocationDir),
@@ -1480,11 +1503,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         storageInfoEntity
             .map(
                 storageInfo ->
-                    refreshCredentials(
-                        identifier,
-                        storageActions,
-                        readLocations,
-                        storageInfo))
+                    refreshCredentials(identifier, storageActions, readLocations, storageInfo))
             .orElse(Map.of());
 
     // Update the FileIO before we write the new metadata file
@@ -1876,17 +1895,13 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  /**
-   * Helper to retrieve dynamic context-based configuration that has a boolean value.
-   */
+  /** Helper to retrieve dynamic context-based configuration that has a boolean value. */
   private Boolean getBooleanContextConfiguration(String configKey, boolean defaultValue) {
     return callContext
         .getPolarisCallContext()
         .getConfigurationStore()
-        .getConfiguration(
-            callContext.getPolarisCallContext(), configKey, defaultValue);
+        .getConfiguration(callContext.getPolarisCallContext(), configKey, defaultValue);
   }
-
 
   /**
    * Check if the exception is retryable for the storage provider
