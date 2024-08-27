@@ -31,9 +31,9 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.PartitionData;
@@ -117,23 +117,7 @@ public class PolarisApplicationIntegrationTest {
     realm = PolarisConnectionExtension.getTestRealm(PolarisApplicationIntegrationTest.class);
 
     testDir = Path.of("build/test_data/iceberg/" + realm);
-    if (Files.exists(testDir)) {
-      if (Files.isDirectory(testDir)) {
-        Files.walk(testDir)
-            .sorted(Comparator.reverseOrder())
-            .forEach(
-                path -> {
-                  try {
-                    Files.delete(path);
-                  } catch (IOException e) {
-                    throw new RuntimeException(e);
-                  }
-                });
-
-      } else {
-        Files.delete(testDir);
-      }
-    }
+    FileUtils.deleteQuietly(testDir.toFile());
     Files.createDirectories(testDir);
     PolarisApplicationIntegrationTest.userToken = userToken.token();
     PolarisApplicationIntegrationTest.snowmanCredentials = snowmanCredentials;
