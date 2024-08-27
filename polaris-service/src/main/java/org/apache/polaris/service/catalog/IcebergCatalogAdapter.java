@@ -176,10 +176,10 @@ public class IcebergCatalogAdapter
   private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
     EnumSet<AccessDelegationMode> delegationModes =
         AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
-    if (!delegationModes.isEmpty() && !delegationModes.contains(VENDED_CREDENTIALS)) {
-      throw new IllegalArgumentException(
-          "Unsupported access delegation mode: " + accessDelegationMode);
-    }
+    Preconditions.checkArgument(
+        delegationModes.isEmpty() || delegationModes.contains(VENDED_CREDENTIALS),
+        "Unsupported access delegation mode: %s",
+        accessDelegationMode);
     return delegationModes;
   }
 
