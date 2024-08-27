@@ -38,7 +38,7 @@ public enum AccessDelegationMode {
     this.protocolValue = protocolValue;
   }
 
-  private String protocolValue;
+  private final String protocolValue;
 
   public String protocolValue() {
     return protocolValue;
@@ -57,7 +57,7 @@ public enum AccessDelegationMode {
     return set;
   }
 
-  static class Mapper {
+  private static class Mapper {
     private static final Map<String, AccessDelegationMode> byProtocolValue =
         Arrays.stream(AccessDelegationMode.values())
             .collect(Collectors.toMap(AccessDelegationMode::protocolValue, Functions.identity()));
