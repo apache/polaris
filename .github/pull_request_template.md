@@ -9,6 +9,7 @@ Fixes # (issue)
 Please delete options that are not relevant.
 
 - [ ] Bug fix (non-breaking change which fixes an issue)
+- [ ] Documentation update
 - [ ] New feature (non-breaking change which adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
 - [ ] This change requires a documentation update
@@ -21,7 +22,6 @@ Please describe the tests that you ran to verify your changes. Provide instructi
 - [ ] Test B
 
 **Test Configuration**:
-* Firmware version:
 * Hardware:
 * Toolchain:
 * SDK:
@@ -34,8 +34,4 @@ Please delete options that are not relevant.
 - [ ] I have commented my code, particularly in hard-to-understand areas
 - [ ] I have made corresponding changes to the documentation
 - [ ] My changes generate no new warnings
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
-- [ ] Any dependent changes have been merged and published in downstream modules
 - [ ] If adding new functionality, I have discussed my implementation with the community using the linked GitHub issue
-- [ ] I have signed and submitted the [ICLA](https://github.com/polaris-catalog/polaris/blob/main/ICLA.md) and if needed, the [CCLA](https://github.com/polaris-catalog/polaris/blob/main/CCLA.md). See [Contributing](https://github.com/polaris-catalog/polaris/blob/main/CONTRIBUTING.md) for details. 

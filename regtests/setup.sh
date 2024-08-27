@@ -1,18 +1,21 @@
 #!/bin/bash
 #
-# Copyright (c) 2024 Snowflake Computing Inc.
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+#   http://www.apache.org/licenses/LICENSE-2.0
 #
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 #
 # Idempotent setup for regression tests. Run manually or let run.sh auto-run.
 #
@@ -24,7 +27,7 @@ set -x
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 if [ -z "${SPARK_HOME}" ]; then
-  SPARK_HOME=$(realpath ~/spark-3.5.1-bin-hadoop3-scala2.13)
+  SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
 fi
 SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
 export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
@@ -33,22 +36,26 @@ export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-
 echo 'Verifying Spark binaries...'
 if ! [ -f ${SPARK_HOME}/bin/spark-sql ]; then
   echo 'Setting up Spark...'
-  if ! [ -f ~/spark-3.5.1-bin-hadoop3-scala2.13.tgz ]; then
+  if [ -z "${SPARK_VERSION}" ] || [ -z "${SPARK_DISTRIBUTION}" ]; then
+    echo 'SPARK_VERSION or SPARK_DISTRIBUTION not set. Please set SPARK_VERSION and SPARK_DISTRIBUTION to the desired version.'
+    exit 1
+  fi
+  if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
     echo 'Downloading spark distro...'
-    wget -O ~/spark-3.5.1-bin-hadoop3-scala2.13.tgz https://dlcdn.apache.org/spark/spark-3.5.1/spark-3.5.1-bin-hadoop3-scala2.13.tgz
-    if ! [ -f ~/spark-3.5.1-bin-hadoop3-scala2.13.tgz ]; then
+    wget -O ~/${SPARK_DISTRIBUTION}.tgz https://dlcdn.apache.org/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
+    if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
       if [[ "${OSTYPE}" == "darwin"* ]]; then
         echo "Detected OS: mac. Running 'brew install wget' to try again."
         brew install wget
-        wget -O ~/spark-3.5.1-bin-hadoop3-scala2.13.tgz https://dlcdn.apache.org/spark/spark-3.5.1/spark-3.5.1-bin-hadoop3-scala2.13.tgz
+        wget -O ~/${SPARK_DISTRIBUTION}.tgz https://dlcdn.apache.org/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
       fi
     fi
   else
     echo 'Found existing Spark tarball'
   fi
-  tar xzvf ~/spark-3.5.1-bin-hadoop3-scala2.13.tgz -C ~
+  tar xzvf ~/${SPARK_DISTRIBUTION}.tgz -C ~
   echo 'Done!'
-  SPARK_HOME=$(realpath ~/spark-3.5.1-bin-hadoop3-scala2.13)
+  SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
   SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
 else
   echo 'Verified Spark distro already installed.'
