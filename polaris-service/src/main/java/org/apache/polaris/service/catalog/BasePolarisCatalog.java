@@ -1153,7 +1153,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     private Map<String, String> viewDefaultProperties() {
       Map<String, String> viewDefaultProperties = PropertyUtil.propertiesWithPrefix(BasePolarisCatalog.this.properties(), "table-default.");
-      LOGGER.info("View properties set at catalog level through catalog properties: {}", viewDefaultProperties);
+      LOGGER.debug("View properties set at catalog level through catalog properties: {}", viewDefaultProperties);
       return viewDefaultProperties;
     }
   }
