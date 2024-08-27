@@ -1143,11 +1143,18 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     public BasePolarisCatalogViewBuilder(TableIdentifier identifier) {
       super(identifier);
+      withProperties(viewDefaultProperties());
     }
 
     @Override
     public ViewBuilder withLocation(String newLocation) {
       return super.withLocation(transformTableLikeLocation(newLocation));
+    }
+
+    private Map<String, String> viewDefaultProperties() {
+      Map<String, String> viewDefaultProperties = PropertyUtil.propertiesWithPrefix(BasePolarisCatalog.this.properties(), "table-default.");
+      LOGGER.info("View properties set at catalog level through catalog properties: {}", viewDefaultProperties);
+      return viewDefaultProperties;
     }
   }
 
