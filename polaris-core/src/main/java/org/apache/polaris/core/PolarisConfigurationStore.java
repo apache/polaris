@@ -19,12 +19,8 @@
 package org.apache.polaris.core;
 
 import com.google.common.base.Preconditions;
-<<<<<<< HEAD:polaris-core/src/main/java/io/polaris/core/PolarisConfigurationStore.java
-import io.polaris.core.entity.CatalogEntity;
-import java.util.List;
-=======
 import org.apache.polaris.core.entity.CatalogEntity;
->>>>>>> b891c89c8910963224598720db85276454fb2072:polaris-core/src/main/java/org/apache/polaris/core/PolarisConfigurationStore.java
+import java.util.List;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
