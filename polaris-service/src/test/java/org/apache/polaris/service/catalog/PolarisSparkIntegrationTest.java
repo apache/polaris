@@ -269,20 +269,6 @@ public class PolarisSparkIntegrationTest {
   }
 
   @Test
-  public void testCreateView() {
-    long namespaceCount = onSpark("SHOW NAMESPACES").count();
-    assertThat(namespaceCount).isEqualTo(0L);
-
-    onSpark("CREATE NAMESPACE ns1");
-    onSpark("USE ns1");
-    onSpark("CREATE TABLE tb1 (col1 integer, col2 string)");
-    onSpark("INSERT INTO tb1 VALUES (1, 'a'), (2, 'b'), (3, 'c')");
-    onSpark("CREATE VIEW view1 as select * from tb1");
-    long recordCount = onSpark("SELECT * FROM view1").count();
-    assertThat(recordCount).isEqualTo(3);
-  }
-
-  @Test
   public void testCreateAndUpdateExternalTable() {
     long namespaceCount = onSpark("SHOW NAMESPACES").count();
     assertThat(namespaceCount).isEqualTo(0L);
@@ -362,6 +348,20 @@ public class PolarisSparkIntegrationTest {
     onSpark("REFRESH TABLE mytb1");
     rowCount = onSpark("SELECT * FROM mytb1").count();
     assertThat(rowCount).isEqualTo(4);
+  }
+
+  @Test
+  public void testCreateView() {
+    long namespaceCount = onSpark("SHOW NAMESPACES").count();
+    assertThat(namespaceCount).isEqualTo(0L);
+
+    onSpark("CREATE NAMESPACE ns1");
+    onSpark("USE ns1");
+    onSpark("CREATE TABLE tb1 (col1 integer, col2 string)");
+    onSpark("INSERT INTO tb1 VALUES (1, 'a'), (2, 'b'), (3, 'c')");
+    onSpark("CREATE VIEW view1 as select * from tb1");
+    long recordCount = onSpark("SELECT * FROM view1").count();
+    assertThat(recordCount).isEqualTo(3);
   }
 
   private LoadTableResponse loadTable(String catalog, String namespace, String table) {
