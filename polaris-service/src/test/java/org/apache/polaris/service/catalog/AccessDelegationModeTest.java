@@ -56,4 +56,11 @@ class AccessDelegationModeTest {
     assertThat(fromProtocolValuesList("abc,remote-signing"))
         .isEqualTo(EnumSet.of(REMOTE_SIGNING, UNKNOWN));
   }
+
+  @Test
+  void testLegacy() {
+    assertThat(fromProtocolValuesList("true")).isEqualTo(EnumSet.of(VENDED_CREDENTIALS));
+    assertThat(fromProtocolValuesList("true, vended-credentials"))
+        .isEqualTo(EnumSet.of(UNKNOWN, VENDED_CREDENTIALS));
+  }
 }
