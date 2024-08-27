@@ -581,7 +581,7 @@ public class PolarisCatalogHandlerWrapper {
                   .withLocation(request.location())
                   .withPartitionSpec(request.spec())
                   .withSortOrder(request.writeOrder())
-                  .withProperties(request.properties())
+                  .withProperties(properties)
                   .create();
 
           if (table instanceof BaseTable baseTable) {
