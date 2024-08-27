@@ -1,39 +1,40 @@
 <!--
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
 
- Copyright (c) 2024 Snowflake Computing Inc.
- 
- Licensed under the Apache License, Version 2.0 (the "License");
- you may not use this file except in compliance with the License.
- You may obtain a copy of the License at
- 
-      http://www.apache.org/licenses/LICENSE-2.0
- 
- Unless required by applicable law or agreed to in writing, software
- distributed under the License is distributed on an "AS IS" BASIS,
- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and
- limitations under the License.
+   http://www.apache.org/licenses/LICENSE-2.0
 
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
 -->
 
-Polaris Catalog is a catalog implementation for Apache Iceberg&trade; tables and is built on the open source Apache Iceberg&trade; REST protocol.
+Apache Polaris (Incubating) is a catalog implementation for Apache Iceberg&trade; tables and is built on the open source Apache Iceberg&trade; REST protocol.
 
-With Polaris Catalog, you can provide centralized, secure read and write access to your Iceberg tables across different REST-compatible query engines.
+With Polaris, you can provide centralized, secure read and write access to your Iceberg tables across different REST-compatible query engines.
 
-![Conceptual diagram of Polaris Catalog.](img/overview.svg "Polaris Catalog overview")
+![Conceptual diagram of Apache Polaris (Incubating).](img/overview.svg "Apache Polaris (Incubating) overview")
 
 ## Key concepts
 
-This section introduces key concepts associated with using Polaris Catalog.
+This section introduces key concepts associated with using Apache Polaris (Incubating).
 
-In the following diagram, a sample [Polaris Catalog structure](overview.md#catalog) with nested [namespaces](overview.md#namespace) is shown for Catalog1. No tables
+In the following diagram, a sample [Apache Polaris (Incubating) structure](overview.md#catalog) with nested [namespaces](overview.md#namespace) is shown for Catalog1. No tables
 or namespaces have been created yet for Catalog2 or Catalog3.
 
-![Diagram that shows an example Polaris Catalog structure.](img/sample-catalog-structure.svg "Sample Polaris Catalog structure")
+![Diagram that shows an example Apache Polaris (Incubating) structure.](img/sample-catalog-structure.svg "Sample Apache Polaris (Incubating) structure")
 
 ### Catalog
 
-In Polaris Catalog, you can create one or more catalog resources to organize Iceberg tables.
+In Polaris, you can create one or more catalog resources to organize Iceberg tables.
 
 Configure your catalog by setting values in the storage configuration for S3, Azure, or Google Cloud Storage. An Iceberg catalog enables a
 query engine to manage and organize tables. The catalog forms the first architectural layer in the [Apache Iceberg&trade; table specification](https://iceberg.apache.org/spec/#overview) and must support the following tasks:
@@ -64,11 +65,11 @@ nested namespaces. Iceberg tables belong to namespaces.
 
 ### Apache Iceberg&trade; tables and catalogs
 
-In an internal catalog, an Iceberg table is registered in Polaris Catalog, but read and written via query engines. The table data and
-metadata is stored in your external cloud storage. The table uses Polaris Catalog as the Iceberg catalog.
+In an internal catalog, an Iceberg table is registered in Polaris, but read and written via query engines. The table data and
+metadata is stored in your external cloud storage. The table uses Polaris as the Iceberg catalog.
 
 If you have tables that use Snowflake as the Iceberg catalog (Snowflake-managed tables), you can sync these tables to an external
-catalog in Polaris Catalog. If you sync this catalog to Polaris Catalog, it appears as an external catalog in Polaris Catalog. The table data and
+catalog in Polaris. If you sync this catalog to Polaris, it appears as an external catalog in Polaris. The table data and
 metadata is stored in your external cloud storage. The Snowflake query engine can read from or write to these tables. However, the other query
 engines can only read from these tables.
 
@@ -93,14 +94,14 @@ engines can only read from these tables.
 
 ### Service principal
 
-A service principal is an entity that you create in Polaris Catalog. Each service principal encapsulates credentials that you use to connect
-to Polaris Catalog.
+A service principal is an entity that you create in Polaris. Each service principal encapsulates credentials that you use to connect
+to Polaris.
 
 Query engines use service principals to connect to catalogs.
 
-Polaris Catalog generates a Client ID and Client Secret pair for each service principal.
+Polaris generates a Client ID and Client Secret pair for each service principal.
 
-The following table displays example service principals that you might create in Polaris Catalog:
+The following table displays example service principals that you might create in Polaris:
 
   | Service connection name     | Purpose |
   | --------------------------- | ----------- |
@@ -115,7 +116,7 @@ The following table displays example service principals that you might create in
 A service connection represents a REST-compatible engine (such as Apache Spark&trade;, Apache Flink&reg;, or Trino) that can read from and write to Polaris
 Catalog. When creating a new service connection, the Polaris administrator grants the service principal that is created with the new service 
 connection either a new or existing principal role. A principal role is a resource in Polaris that you can use to logically group Polaris 
-service principals together and grant privileges on securable objects. For more information, see [Principal role](access-control.md#principal-role "Principal role"). Polaris Catalog uses a role-based access control (RBAC) model to grant service principals access to resources. For more information, 
+service principals together and grant privileges on securable objects. For more information, see [Principal role](access-control.md#principal-role "Principal role"). Polaris uses a role-based access control (RBAC) model to grant service principals access to resources. For more information, 
 see [Access control](access-control.md "Access control"). For a diagram of this model, see [RBAC model](access-control.md#rbac-model "RBAC model").
 
 If the Polaris administrator grants the service principal for the new service connection a new principal role, the service principal
@@ -131,7 +132,7 @@ bestowed to the service principal. For an example of how RBAC works in Polaris, 
 ### Storage configuration
 
 A storage configuration stores a generated identity and access management (IAM) entity for your external cloud storage and is created
-when you create a catalog. The storage configuration is used to set the values to connect Polaris Catalog to your cloud storage. During the
+when you create a catalog. The storage configuration is used to set the values to connect Polaris to your cloud storage. During the
 catalog creation process, an IAM entity is generated and used to create a trust relationship between the cloud storage provider and Polaris
 Catalog.
 
@@ -162,7 +163,7 @@ In the following example workflow, Bob creates an Apache Iceberg&trade; table na
     has the privileges to perform this action. Alice
     creates an unmanaged table in Snowflake to read data from Table1.
 
-![Diagram that shows an example workflow for Polaris Catalog](img/example-workflow.svg "Example workflow for Polaris Catalog")
+![Diagram that shows an example workflow for Apache Polaris (Incubating)](img/example-workflow.svg "Example workflow for Apache Polaris (Incubating)")
 
 ## Security and access control
 
@@ -170,19 +171,19 @@ This section describes security and access control.
 
 ### Credential vending
 
-To secure interactions with service connections, Polaris Catalog vends temporary storage credentials to the query engine during query
+To secure interactions with service connections, Polaris vends temporary storage credentials to the query engine during query
 execution. These credentials allow the query engine to run the query without requiring access to your external cloud storage for
 Iceberg tables. This process is called credential vending.
 
 ### Identity and access management (IAM)
 
-Polaris Catalog uses the identity and access management (IAM) entity to securely connect to your storage for accessing table data, Iceberg
-metadata, and manifest files that store the table schema, partitions, and other metadata. Polaris Catalog retains the IAM entity for your
+Polaris uses the identity and access management (IAM) entity to securely connect to your storage for accessing table data, Iceberg
+metadata, and manifest files that store the table schema, partitions, and other metadata. Polaris retains the IAM entity for your
 storage location.
 
 ### Access control
 
-Polaris Catalog enforces the access control that you configure across all tables registered with the service and governs security for all
+Polaris enforces the access control that you configure across all tables registered with the service and governs security for all
 queries from query engines in a consistent manner.
 
 Polaris uses a role-based access control (RBAC) model that lets you centrally configure access for Polaris service principals to catalogs,

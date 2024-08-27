@@ -1,0 +1,11 @@
+{
+  "ignorePatterns": [
+    {
+      "pattern": "^https?://(localhost|polaris.apache.org).*"
+    },
+    {
+      "_comment": "mvnrepository blocks requests originating from GitHub Actions",
+      "pattern": "https://mvnrepository.com/artifact/org.apache.iceberg/iceberg-spark"
+    }
+  ]
+}
