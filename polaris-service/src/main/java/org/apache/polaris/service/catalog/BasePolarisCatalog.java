@@ -996,11 +996,14 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           // }
         },
         () -> {
-          if (locations.stream()
-              .anyMatch(location -> location.startsWith("file:") || location.startsWith("http"))) {
+          List<String> invalidLocations =
+              locations.stream()
+                  .filter(location -> location.startsWith("file:") || location.startsWith("http"))
+                  .collect(Collectors.toList());
+          if (!invalidLocations.isEmpty()) {
             throw new ForbiddenException(
                 "Invalid locations '%s' for identifier '%s': File locations are not allowed",
-                locations, identifier);
+                invalidLocations, identifier);
           }
         });
   }

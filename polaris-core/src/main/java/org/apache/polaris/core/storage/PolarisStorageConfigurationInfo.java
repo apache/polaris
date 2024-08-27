@@ -33,7 +33,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -179,36 +179,29 @@ public abstract class PolarisStorageConfigurationInfo {
                 LOGGER.debug(
                     "Allowing unstructured table location for entity: {}",
                     entityPathReversed.get(0).getName());
-                return userSpecifiedWriteLocations(entityPathReversed.get(0).getPropertiesAsMap())
-                    .map(
-                        locs ->
-                            (PolarisStorageConfigurationInfo)
-                                new StorageConfigurationOverride(
-                                    configInfo,
-                                    ImmutableList.<String>builder()
-                                        .addAll(configInfo.getAllowedLocations())
-                                        .addAll(locs)
-                                        .build()))
-                    .orElse(configInfo);
+
+                List<String> locs =
+                    userSpecifiedWriteLocations(entityPathReversed.get(0).getPropertiesAsMap());
+                return new StorageConfigurationOverride(
+                    configInfo,
+                    ImmutableList.<String>builder()
+                        .addAll(configInfo.getAllowedLocations())
+                        .addAll(locs)
+                        .build());
               }
             });
   }
 
-  private static Optional<List<String>> userSpecifiedWriteLocations(
-      Map<String, String> properties) {
+  private static List<String> userSpecifiedWriteLocations(Map<String, String> properties) {
     return Optional.ofNullable(properties)
-        .flatMap(
+        .map(
             p ->
                 Stream.of(
                         p.get(TableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY),
                         p.get(TableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))
                     .filter(Objects::nonNull)
-                    .collect(
-                        Collector.<String, List<String>, Optional<List<String>>>of(
-                            ArrayList::new,
-                            List::add,
-                            (l, r) -> ImmutableList.<String>builder().addAll(l).addAll(r).build(),
-                            l -> l.isEmpty() ? Optional.empty() : Optional.of(l))));
+                    .collect(Collectors.toList()))
+        .orElse(List.of());
   }
 
   private static @NotNull Optional<PolarisEntity> findStorageInfoFromHierarchy(
