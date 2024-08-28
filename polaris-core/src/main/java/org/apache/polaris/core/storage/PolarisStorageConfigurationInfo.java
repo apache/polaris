@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
  * <pre>
  * 1. locations that allows polaris to get access to
  * 2. cloud identity info that a service principle can request access token to the locations
- * </pre</>
+ * </pre>
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes({

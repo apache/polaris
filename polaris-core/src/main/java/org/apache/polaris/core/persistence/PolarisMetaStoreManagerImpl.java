@@ -855,7 +855,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
   }
 
   /**
-   * Given the serialized properties, deserialize those to a Map<String, String>
+   * Given the serialized properties, deserialize those to a {@code Map<String, String>}
    *
    * @param properties a JSON string representing the set of properties
    * @return a Map of string
