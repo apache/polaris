@@ -359,7 +359,7 @@ public class PolarisSparkIntegrationTest {
     onSpark("USE ns1");
     onSpark("CREATE TABLE tb1 (col1 integer, col2 string)");
     onSpark("INSERT INTO tb1 VALUES (1, 'a'), (2, 'b'), (3, 'c')");
-    onSpark("CREATE VIEW view1 as select * from tb1");
+    onSpark("CREATE VIEW view1 AS SELECT * FROM tb1");
     long recordCount = onSpark("SELECT * FROM view1").count();
     assertThat(recordCount).isEqualTo(3);
   }
