@@ -16,7 +16,7 @@
 
 import org.gradle.kotlin.dsl.support.unzipTo
 
-val licenseReports by configurations.creating { description = "Used to reference license reports" }
+val licenseReports by configurations.creating { description = "Used to generate license reports" }
 
 dependencies {
   licenseReports(project(":polaris-service", "licenseReports"))

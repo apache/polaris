@@ -24,7 +24,7 @@ import java.io.File
 import org.gradle.api.GradleException
 
 /**
- * Validates that all dependencies with MIT/BSD/Go/UPL/ISC licenses, which do not have an Apache
+ * Validates that all dependencies with MIT/BSD/Go/UPL/ISC licenses, and Apache
  * license, are mentioned in the `LICENSE` file.
  */
 class LicenseFileValidation : DependencyFilter {
