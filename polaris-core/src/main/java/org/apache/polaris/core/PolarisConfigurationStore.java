@@ -19,8 +19,8 @@
 package org.apache.polaris.core;
 
 import com.google.common.base.Preconditions;
-import org.apache.polaris.core.entity.CatalogEntity;
 import java.util.List;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 

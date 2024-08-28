@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.core;
 
-import io.polaris.core.admin.model.StorageConfigInfo;
 import java.util.List;
 import java.util.Optional;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 
 public class PolarisConfiguration<T> {
 
