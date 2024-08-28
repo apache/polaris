@@ -28,7 +28,7 @@ if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
         Build aborted...
 
         The Apache Polaris build requires Java 21.
-
+        Detected Java version: ${JavaVersion.current()}
 
         """
   )

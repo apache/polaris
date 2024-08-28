@@ -58,8 +58,9 @@ public class PolarisEntityConstants {
       "CREDENTIAL_ROTATION_REQUIRED";
 
   /**
-   * Name format of storage integration for polaris entity: POLARIS_<catalog_id>_<entity_id> . This
-   * name format gives us flexibility to switch to use integration name in the future if we want.
+   * Name format of storage integration for polaris entity: {@code
+   * POLARIS_<catalog_id>_<entity_id>}. This name format gives us flexibility to switch to use
+   * integration name in the future if we want.
    */
   public static final String POLARIS_STORAGE_INT_NAME_FORMAT = "POLARIS_%s_%s";
 

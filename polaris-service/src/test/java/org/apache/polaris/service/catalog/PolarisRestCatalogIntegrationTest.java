@@ -33,12 +33,12 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.apache.commons.io.FileUtils;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
@@ -135,23 +135,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     realm = PolarisConnectionExtension.getTestRealm(PolarisRestCatalogIntegrationTest.class);
 
     Path testDir = Path.of("build/test_data/iceberg/" + realm);
-    if (Files.exists(testDir)) {
-      if (Files.isDirectory(testDir)) {
-        Files.walk(testDir)
-            .sorted(Comparator.reverseOrder())
-            .forEach(
-                path -> {
-                  try {
-                    Files.delete(path);
-                  } catch (IOException e) {
-                    throw new RuntimeException(e);
-                  }
-                });
-
-      } else {
-        Files.delete(testDir);
-      }
-    }
+    FileUtils.deleteQuietly(testDir.toFile());
     Files.createDirectories(testDir);
   }
 

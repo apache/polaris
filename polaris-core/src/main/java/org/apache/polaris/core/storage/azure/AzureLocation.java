@@ -40,7 +40,7 @@ public class AzureLocation {
   /**
    * Construct an Azure location object from a location uri, it should follow this pattern:
    *
-   * <pre> abfs[s]://[<container>@]<storage account host>/<file path> </pre>
+   * <p>{@code abfs[s]://[<container>@]<storage account host>/<file path>}
    *
    * @param location a uri
    */
