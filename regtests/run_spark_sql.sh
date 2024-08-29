@@ -22,13 +22,26 @@
 # -----------------------------------------------------------------------------
 #
 # Usage:
-#   Without arguments: Runs against a catalog backed by the local filesystem
-#   With two arguments: Runs against a catalog backed by AWS S3
-#     Example: ./run_spark_sql.sh s3://my-bucket/path arn:aws:iam::123456789001:principal/my-role
+#   ./run_spark_sql.sh [S3-location AWS-IAM-role]
 #
-# Arguments:
-#   [S3 location] - The S3 path to use as the default base location for the catalog.
-#   [AWS IAM role] - The AWS IAM role to assume when the catalog accessing the S3 location.
+# Description:
+#   - Without arguments: Runs against a catalog backed by the local filesystem.
+#   - With two arguments: Runs against a catalog backed by AWS S3.
+#       - [S3-location]  - The S3 path to use as the default base location for the catalog.
+#       - [AWS-IAM-role] - The AWS IAM role for catalog to assume when accessing the S3 location.
+#
+# Examples:
+#   - Run against local filesystem:
+#     ./run_spark_sql.sh
+#
+#   - Run against AWS S3:
+#     ./run_spark_sql.sh s3://my-bucket/path arn:aws:iam::123456789001:role/my-role
+
+if [ $# -ne 0 ] && [ $# -ne 2 ]; then
+  echo "run_spark_sql.sh only accepts 0 or 2 arguments"
+  echo "Usage: ./run_spark_sql.sh [S3-location AWS-IAM-role]"
+  exit 1
+fi
 
 REGTEST_HOME=$(dirname $(realpath $0))
 cd ${REGTEST_HOME}
@@ -44,8 +57,7 @@ fi
 
 SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN:-principal:root;realm:default-realm}"
 
-# use local filesystem if no arguments are provided
-if [ -z "$1" ]; then
+if [ $# -eq 0 ]; then
   # create a catalog backed by the local filesystem
   curl -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
        -H 'Accept: application/json' \
@@ -67,16 +79,12 @@ if [ -z "$1" ]; then
                }
              }
            }'
-else
-  AWS_BASE_LOCATION=$1
-  AWS_ROLE_ARN=$2
-  # Check if AWS variables are set
-  if [ -z "${AWS_BASE_LOCATION}" ] || [ -z "${AWS_ROLE_ARN}" ]; then
-    echo "AWS_BASE_LOCATION or/and AWS_ROLE_ARN not set. Please set them to create a catalog backed by S3."
-    exit 1
-  fi
 
+elif [ $# -eq 2 ]; then
   # create a catalog backed by S3
+  S3_LOCATION=$1
+  AWS_IAM_ROLE=$2
+
   curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
        -H 'Accept: application/json' \
        -H 'Content-Type: application/json' \
@@ -87,12 +95,12 @@ else
              \"type\": \"INTERNAL\",
              \"readOnly\": false,
              \"properties\": {
-               \"default-base-location\": \"${AWS_BASE_LOCATION}\"
+               \"default-base-location\": \"${S3_LOCATION}\"
              },
              \"storageConfigInfo\": {
                \"storageType\": \"S3\",
-               \"allowedLocations\": [\"${AWS_BASE_LOCATION}/\"],
-               \"roleArn\": \"${AWS_ROLE_ARN}\"
+               \"allowedLocations\": [\"${S3_LOCATION}/\"],
+               \"roleArn\": \"${AWS_IAM_ROLE}\"
              }
            }"
 fi
@@ -110,7 +118,6 @@ curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: appl
 curl -X GET -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/manual_spark
 
-echo ${SPARK_HOME}/bin/spark-sql -S --conf spark.sql.catalog.polaris.token="${SPARK_BEARER_TOKEN}"
 ${SPARK_HOME}/bin/spark-sql -S --conf spark.sql.catalog.polaris.token="${SPARK_BEARER_TOKEN}" \
   --conf spark.sql.catalog.polaris.warehouse=manual_spark \
   --conf spark.sql.defaultCatalog=polaris \
