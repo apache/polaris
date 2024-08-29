@@ -58,7 +58,7 @@ public class CatalogEntityTest {
         .hasMessageContaining(
             "Location prefix not allowed: 'unsupportPrefix://mybucket/path', expected prefix: 's3://'");
 
-    // Invaliad azure prefix
+    // Invalid azure prefix
     AzureStorageConfigInfo azureStorageConfigModel =
         AzureStorageConfigInfo.builder()
             .setAllowedLocations(
