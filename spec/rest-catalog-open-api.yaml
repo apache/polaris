@@ -1001,6 +1001,14 @@ paths:
               examples:
                 TableToLoadDoesNotExist:
                   $ref: '#/components/examples/NoSuchTableError'
+        409:
+          description: Conflict - Polaris has processed a newer notification timestamp for the table.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              example:
+                $ref: '#/components/examples/OutOfOrderNotificationError'
         419:
           $ref: '#/components/responses/AuthenticationTimeoutResponse'
         503:
@@ -4128,6 +4136,16 @@ components:
       value: {
         "removals": ["foo", "bar"],
         "updates": {"owner": "Raoul"}
+      }
+
+    OutOfOrderNotificationError:
+      summary: The notification timestamp is older than the latest timestamp which Polaris has processed for the table.
+      value: {
+        "error": {
+          "message": "Notification timestamp is outdated for table",
+          "type": "CommitFailedException",
+          "code": 409
+        }
       }
 
   securitySchemes:
