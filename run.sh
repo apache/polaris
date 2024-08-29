@@ -21,20 +21,51 @@
 
 # Runs Polaris as a mini-deployment locally. Creates two pods that bind themselves to port 8181.
 
-CURRENT_DIR=$(pwd)
+# Initialize variables
+ECLIPSELINK="false"  # Default value
 
-# deploy the registry
+# Function to display usage information
+usage() {
+  echo "Usage: $0 [-e true|false] [-h]"
+  echo "  -e    Set the ECLIPSELINK flag (default: false)"
+  echo "  -h    Display this help message"
+  exit 1
+}
+
+# Parse command-line arguments
+while getopts "e:h" opt; do
+  case ${opt} in
+    e)
+      ECLIPSELINK=${OPTARG}
+      if [[ "$ECLIPSELINK" != "true" && "$ECLIPSELINK" != "false" ]]; then
+        echo "Error: Invalid value for -e. Use 'true' or 'false'."
+        usage
+      fi
+      ;;
+    h)
+      usage
+      ;;
+    *)
+      usage
+      ;;
+  esac
+done
+
+# Shift off the options and arguments
+shift $((OPTIND-1))
+
+# Deploy the registry
 echo "Building Kind Registry..."
 sh ./kind-registry.sh
 
-# build and deploy the server image
-echo "Building polaris image..."
-docker build -t localhost:5001/polaris -f Dockerfile .
+# Build and deploy the server image
+echo "Building polaris image with ECLIPSELINK=$ECLIPSELINK..."
+docker build -t localhost:5001/polaris --build-arg ECLIPSELINK=$ECLIPSELINK -f Dockerfile .
 echo "Pushing polaris image..."
 docker push localhost:5001/polaris
 echo "Loading polaris image to kind..."
 kind load docker-image localhost:5001/polaris:latest
 
-echo "Applying kubernetes manifests..."
+echo "Applying Kubernetes manifests..."
 kubectl delete -f k8/deployment.yaml --ignore-not-found
 kubectl apply -f k8/deployment.yaml
