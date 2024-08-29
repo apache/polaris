@@ -22,25 +22,24 @@
 # Runs Polaris as a mini-deployment locally. Creates two pods that bind themselves to port 8181.
 
 # Initialize variables
-ECLIPSELINK="false"  # Default value
+BUILD_ARGS=""  # Initialize an empty string to store Docker build arguments
 
 # Function to display usage information
 usage() {
-  echo "Usage: $0 [-e true|false] [-h]"
-  echo "  -e    Set the ECLIPSELINK flag (default: false)"
+  echo "Usage: $0 [-b build-arg1=value1,build-arg2=value2,...] [-h]"
+  echo "  -b    Pass a set of arbitrary build arguments to docker build, separated by commas"
   echo "  -h    Display this help message"
   exit 1
 }
 
 # Parse command-line arguments
-while getopts "e:h" opt; do
+while getopts "b:h" opt; do
   case ${opt} in
-    e)
-      ECLIPSELINK=${OPTARG}
-      if [[ "$ECLIPSELINK" != "true" && "$ECLIPSELINK" != "false" ]]; then
-        echo "Error: Invalid value for -e. Use 'true' or 'false'."
-        usage
-      fi
+    b)
+      IFS=',' read -ra ARGS <<< "${OPTARG}"  # Split the comma-separated list into an array
+      for arg in "${ARGS[@]}"; do
+        BUILD_ARGS+=" --build-arg ${arg}"  # Append each build argument to the list
+      done
       ;;
     h)
       usage
@@ -58,14 +57,21 @@ shift $((OPTIND-1))
 echo "Building Kind Registry..."
 sh ./kind-registry.sh
 
+# Check if BUILD_ARGS is not empty and print the build arguments
+if [[ -n "$BUILD_ARGS" ]]; then
+  echo "Building polaris image with build arguments:$BUILD_ARGS"
+else
+  echo "Building polaris image without any additional build arguments."
+fi
+
 # Build and deploy the server image
-echo "Building polaris image with ECLIPSELINK=$ECLIPSELINK..."
-docker build -t localhost:5001/polaris --build-arg ECLIPSELINK=$ECLIPSELINK -f Dockerfile .
+docker build -t localhost:5001/polaris $BUILD_ARGS -f Dockerfile .
 echo "Pushing polaris image..."
 docker push localhost:5001/polaris
 echo "Loading polaris image to kind..."
 kind load docker-image localhost:5001/polaris:latest
 
+# Apply Kubernetes deployment
 echo "Applying Kubernetes manifests..."
 kubectl delete -f k8/deployment.yaml --ignore-not-found
 kubectl apply -f k8/deployment.yaml
