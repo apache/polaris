@@ -1874,10 +1874,21 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                         .getMetaStoreManager()
                         .generateNewEntityId(getCurrentPolarisContext())
                         .getId())
+                .setLastNotificationTimestamp(request.getPayload().getTimestamp())
                 .build();
       } else {
+        // If the notification timestamp is outdated, we should not update the table
+        if (entity.getLastNotificationTimestamp() != null
+            && request.getPayload().getTimestamp() <= entity.getLastNotificationTimestamp()) {
+          throw new CommitFailedException(
+              "Notification timestamp is outdated for table %s", tableIdentifier);
+        }
         existingLocation = entity.getMetadataLocation();
-        entity = new TableLikeEntity.Builder(entity).setMetadataLocation(newLocation).build();
+        entity =
+            new TableLikeEntity.Builder(entity)
+                .setMetadataLocation(newLocation)
+                .setLastNotificationTimestamp(request.getPayload().getTimestamp())
+                .build();
       }
       // first validate we can read the metadata file
       validateLocationForTableLike(tableIdentifier, newLocation);
