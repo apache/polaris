@@ -75,8 +75,8 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    *
    * @param actions a set of operation actions to validate, like LIST/READ/DELETE/WRITE/ALL
    * @param locations a set of locations to get access to
-   * @return A Map of string, representing the result of validation, the key value is <location,
-   *     validate result>. A validate result looks like this
+   * @return A Map of string, representing the result of validation, the key value is {@code
+   *     <location, validate result>}. A validate result looks like this
    *     <pre>
    * {
    *   "status" : "failure",
@@ -97,7 +97,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    *       "status" : "failure"
    *     }
    *   },
-   *   "message" : "Some of the integration checks failed. Check the Snowflake documentation for more information."
+   *   "message" : "Some of the integration checks failed. Check the Polaris documentation for more information."
    * }
    * </pre>
    */

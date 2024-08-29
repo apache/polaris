@@ -1323,7 +1323,7 @@ public interface PolarisMetaStoreManager {
    * @param entityId the entity id
    * @param actions a set of operation actions: READ/WRITE/LIST/DELETE/ALL
    * @param locations a set of locations to verify
-   * @return a Map of <location, validate result>, a validate result value looks like this
+   * @return a Map of {@code <location, validate result>}, a validate result value looks like this
    *     <pre>
    * {
    *   "status" : "failure",
@@ -1344,7 +1344,7 @@ public interface PolarisMetaStoreManager {
    *       "status" : "failure"
    *     }
    *   },
-   *   "message" : "Some of the integration checks failed. Check the Snowflake documentation for more information."
+   *   "message" : "Some of the integration checks failed. Check the Polaris documentation for more information."
    * }
    * </pre>
    */

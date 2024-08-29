@@ -25,11 +25,16 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -37,6 +42,7 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -51,7 +57,7 @@ import org.slf4j.LoggerFactory;
  * <pre>
  * 1. locations that allows polaris to get access to
  * 2. cloud identity info that a service principle can request access token to the locations
- * </pre</>
+ * </pre>
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes({
@@ -174,9 +180,29 @@ public abstract class PolarisStorageConfigurationInfo {
                 LOGGER.debug(
                     "Allowing unstructured table location for entity: {}",
                     entityPathReversed.get(0).getName());
-                return configInfo;
+
+                List<String> locs =
+                    userSpecifiedWriteLocations(entityPathReversed.get(0).getPropertiesAsMap());
+                return new StorageConfigurationOverride(
+                    configInfo,
+                    ImmutableList.<String>builder()
+                        .addAll(configInfo.getAllowedLocations())
+                        .addAll(locs)
+                        .build());
               }
             });
+  }
+
+  private static List<String> userSpecifiedWriteLocations(Map<String, String> properties) {
+    return Optional.ofNullable(properties)
+        .map(
+            p ->
+                Stream.of(
+                        p.get(TableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY),
+                        p.get(TableLikeEntity.USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList()))
+        .orElse(List.of());
   }
 
   private static @NotNull Optional<PolarisEntity> findStorageInfoFromHierarchy(

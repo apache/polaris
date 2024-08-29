@@ -111,7 +111,6 @@ spark.driver.extraJavaOptions -Dderby.system.home=/tmp/derby
 spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog
 spark.sql.catalog.polaris.type=rest
 spark.sql.catalog.polaris.uri=http://${POLARIS_HOST:-localhost}:8181/api/catalog
-spark.sql.catalog.polaris.warehouse=snowflake
 spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=true
 spark.sql.catalog.polaris.client.region=us-west-2
 EOF
