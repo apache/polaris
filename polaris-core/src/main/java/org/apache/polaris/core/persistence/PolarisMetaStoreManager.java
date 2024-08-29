@@ -1344,7 +1344,7 @@ public interface PolarisMetaStoreManager {
    *       "status" : "failure"
    *     }
    *   },
-   *   "message" : "Some of the integration checks failed. Check the Polaris documentation for more information."
+   *   "message" : "Some of the integration checks failed. Check the Snowflake documentation for more information."
    * }
    * </pre>
    */
