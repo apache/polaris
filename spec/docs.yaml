@@ -1,24 +1,24 @@
 openapi: 3.0.0
 
 info:
-  title: Polaris Catalog Documentation
+  title: Apache Polaris (Incubating) Documentation
   x-logo:
     url: ./img/logos/polaris-catalog-stacked-logo.svg
-    altText: Polaris Catalog Logo
+    altText: Apache Polaris Logo
   description:
     $ref: ../docs/quickstart.md
   contact:
-    email: community [at] polaris.io
+    email: dev [at] polaris.apache.org
     url: https://github.com/apache/polaris
   license:
     name: Apache v2.0
     url: https://github.com/apache/polaris/blob/main/LICENSE
 
 tags:    
-  - name: Polaris Catalog Overview
+  - name: Overview
     description: 
       $ref: ../docs/overview.md
-  - name: Polaris Catalog Entities
+  - name: Polaris Entities
     description:
       $ref: ../docs/entities.md
   - name: Access Control

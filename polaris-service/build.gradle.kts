@@ -1,17 +1,20 @@
 /*
- * Copyright (c) 2024 Snowflake Computing Inc.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
@@ -115,7 +118,7 @@ openApiGenerate {
   inputSpec = "$rootDir/spec/rest-catalog-open-api.yaml"
   generatorName = "jaxrs-resteasy"
   outputDir = "$projectDir/build/generated"
-  apiPackage = "io.polaris.service.catalog.api"
+  apiPackage = "org.apache.polaris.service.catalog.api"
   ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
@@ -161,12 +164,12 @@ openApiGenerate {
       "OAuthError" to "org.apache.iceberg.rest.responses.ErrorResponse",
 
       // Custom types defined below
-      "CommitViewRequest" to "io.polaris.service.types.CommitViewRequest",
-      "TokenType" to "io.polaris.service.types.TokenType",
-      "CommitTableRequest" to "io.polaris.service.types.CommitTableRequest",
-      "NotificationRequest" to "io.polaris.service.types.NotificationRequest",
-      "TableUpdateNotification" to "io.polaris.service.types.TableUpdateNotification",
-      "NotificationType" to "io.polaris.service.types.NotificationType"
+      "CommitViewRequest" to "org.apache.polaris.service.types.CommitViewRequest",
+      "TokenType" to "org.apache.polaris.service.types.TokenType",
+      "CommitTableRequest" to "org.apache.polaris.service.types.CommitTableRequest",
+      "NotificationRequest" to "org.apache.polaris.service.types.NotificationRequest",
+      "TableUpdateNotification" to "org.apache.polaris.service.types.TableUpdateNotification",
+      "NotificationType" to "org.apache.polaris.service.types.NotificationType"
     )
 }
 
@@ -174,8 +177,8 @@ tasks.register<GenerateTask>("generatePolarisService").configure {
   inputSpec = "$rootDir/spec/polaris-management-service.yml"
   generatorName = "jaxrs-resteasy"
   outputDir = "$projectDir/build/generated"
-  apiPackage = "io.polaris.service.admin.api"
-  modelPackage = "io.polaris.core.admin.model"
+  apiPackage = "org.apache.polaris.service.admin.api"
+  modelPackage = "org.apache.polaris.core.admin.model"
   ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
@@ -216,18 +219,18 @@ tasks.register<JavaExec>("runApp").configure {
     environment("AWS_REGION", "us-west-2")
   }
   classpath = sourceSets["main"].runtimeClasspath
-  mainClass = "io.polaris.service.PolarisApplication"
+  mainClass = "org.apache.polaris.service.PolarisApplication"
   args("server", "$rootDir/polaris-server.yml")
 }
 
-application { mainClass = "io.polaris.service.PolarisApplication" }
+application { mainClass = "org.apache.polaris.service.PolarisApplication" }
 
 tasks.named<Jar>("jar") {
-  manifest { attributes["Main-Class"] = "io.polaris.service.PolarisApplication" }
+  manifest { attributes["Main-Class"] = "org.apache.polaris.service.PolarisApplication" }
 }
 
 tasks.named<ShadowJar>("shadowJar") {
-  manifest { attributes["Main-Class"] = "io.polaris.service.PolarisApplication" }
+  manifest { attributes["Main-Class"] = "org.apache.polaris.service.PolarisApplication" }
   archiveVersion.set("")
   mergeServiceFiles()
   isZip64 = true
