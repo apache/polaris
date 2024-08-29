@@ -120,7 +120,6 @@ EOF
 fi
 
 # cleanup derby home if existed
-# Check if the directory exists
 if [ -d "${DERBY_HOME}" ]; then
   echo "Directory ${DERBY_HOME} exists. Deleting it..."
   rm -rf "${DERBY_HOME}"
