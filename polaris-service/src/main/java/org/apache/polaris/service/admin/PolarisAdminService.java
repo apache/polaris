@@ -617,7 +617,7 @@ public class PolarisAdminService {
         currentEntity.getStorageConfigurationInfo();
     PolarisStorageConfigurationInfo newStorageConfig = newEntity.getStorageConfigurationInfo();
 
-    if (currentStorageConfig == null && newStorageConfig == null) {
+    if (currentStorageConfig == null || newStorageConfig == null) {
       return;
     }
 
