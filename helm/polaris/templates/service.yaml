@@ -39,4 +39,3 @@ spec:
       name: {{ $portName }}
     {{- end }}
   sessionAffinity: {{ .Values.service.sessionAffinity }}
-

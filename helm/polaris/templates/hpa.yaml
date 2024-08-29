@@ -18,13 +18,7 @@
 */}}
 
 {{- if .Values.autoscaling.enabled }}
-{{- if .Capabilities.APIVersions.Has "autoscaling/v2" -}}
 apiVersion: autoscaling/v2
-{{- else if .Capabilities.APIVersions.Has "autoscaling/v2beta2" -}}
-apiVersion: autoscaling/v2beta2
-{{- else -}}
-apiVersion: autoscaling/v2beta1
-{{- end }}
 kind: HorizontalPodAutoscaler
 metadata:
   name: {{ include "polaris.fullname" . }}
@@ -42,24 +36,16 @@ spec:
     - type: Resource
       resource:
         name: cpu
-        {{- if or (.Capabilities.APIVersions.Has "autoscaling/v2") (.Capabilities.APIVersions.Has "autoscaling/v2beta2") }}
         target:
           type: Utilization
           averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
-        {{- else }}
-        targetAverageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
-        {{- end }}
     {{- end }}
     {{- if .Values.autoscaling.targetMemoryUtilizationPercentage }}
     - type: Resource
       resource:
         name: memory
-        {{- if or (.Capabilities.APIVersions.Has "autoscaling/v2") (.Capabilities.APIVersions.Has "autoscaling/v2beta2") }}
         target:
           type: Utilization
           averageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
-        {{- else }}
-        targetAverageUtilization: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}
-        {{- end }}
     {{- end }}
 {{- end }}

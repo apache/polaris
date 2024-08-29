@@ -43,7 +43,7 @@ toolsImage:
 # https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/ for more
 # information.
 imagePullSecrets: []
-#  - name: registry-creds
+#  - registry-creds
 
 
 serviceAccount:
@@ -90,7 +90,7 @@ service:
   ports:
     # polaris-server: The port the Polaris server listens on for API requests.
     polaris-service: 8181
-    # polaris-mgmt: The port the Polaris server listens on for metrics API requests (health checks, metrics, etc.).
+    # polaris-metrics: The port the Polaris server listens on for metrics API requests (health checks, metrics, etc.).
     polaris-metrics: 8182
   # -- The session affinity for the service. Valid values are: None, ClientIP.
   # ClientIP enables sticky sessions based on the client's IP address.
@@ -271,21 +271,21 @@ polarisServerConfig:
         # Settings for logging to stdout.
         - type: console
 
-        # Settings for logging to a file.
-        - type: file
+        # # Settings for logging to a file.
+        # - type: file
 
-          # The file to which statements will be logged.
-          currentLogFilename: ./logs/request.log
+        #   # The file to which statements will be logged.
+        #   currentLogFilename: ./logs/request.log
 
-          #  When the log file rolls over, the file will be archived to requests-2012-03-15.log.gz,
-          # requests.log will be truncated, and new statements written to it.
-          archivedLogFilenamePattern: ./logs/requests-%d.log.gz
+        #   #  When the log file rolls over, the file will be archived to requests-2012-03-15.log.gz,
+        #   # requests.log will be truncated, and new statements written to it.
+        #   archivedLogFilenamePattern: ./logs/requests-%d.log.gz
 
-          # The maximum number of log files to archive.
-          archivedFileCount: 14
+        #   # The maximum number of log files to archive.
+        #   archivedFileCount: 14
 
-          # Enable archiving if the request log entries go to the their own file
-          archive: true
+        #   # Enable archiving if the request log entries go to the their own file
+        #   archive: true
 
   featureConfiguration:
     ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: false
@@ -325,7 +325,7 @@ polarisServerConfig:
   #    secret: polaris
 
   authenticator:
-    class: io.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator
+    class: org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator
   #  class: io.polaris.service.auth.DefaultPolarisAuthenticator # - uncomment to support Auth0 JWT tokens
   #  tokenBroker:
   #    type: symmetric-key
@@ -371,21 +371,21 @@ polarisServerConfig:
         # Custom Logback PatternLayout with threadname.
         logFormat: "%-5p [%d{ISO8601} - %-6r] [%t] [%X{aid}%X{sid}%X{tid}%X{wid}%X{oid}%X{srv}%X{job}%X{rid}] %c{30}: %m %kvp%n%ex"
 
-      # Settings for logging to a file.
-      - type: file
-        # If true, write log statements to a file.
-        #      enabled: true
-        # Do not write log statements below this threshold to the file.
-        threshold: ALL
-        layout:
-          type: polaris
-          flattenKeyValues: false
-          includeKeyValues: true
+      # # Settings for logging to a file.
+      # - type: file
+      #   # If true, write log statements to a file.
+      #   #      enabled: true
+      #   # Do not write log statements below this threshold to the file.
+      #   threshold: ALL
+      #   layout:
+      #     type: polaris
+      #     flattenKeyValues: false
+      #     includeKeyValues: true
 
-        # The file to which statements will be logged.
-        currentLogFilename: ./logs/polaris.log
-        #  When the log file rolls over, the file will be archived to snowflake-2012-03-15.log.gz,
-        # snowflake.log will be truncated, and new statements written to it.
-        archivedLogFilenamePattern: ./logs/polaris-%d.log.gz
-        # The maximum number of log files to archive.
-        archivedFileCount: 14
+      #   # The file to which statements will be logged.
+      #   currentLogFilename: ./logs/polaris.log
+      #   #  When the log file rolls over, the file will be archived to snowflake-2012-03-15.log.gz,
+      #   # snowflake.log will be truncated, and new statements written to it.
+      #   archivedLogFilenamePattern: ./logs/polaris-%d.log.gz
+      #   # The maximum number of log files to archive.
+      #   archivedFileCount: 14

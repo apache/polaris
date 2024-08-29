@@ -17,17 +17,11 @@
   under the License.
 */}}
 
-{{- $kubeVersion := .Capabilities.KubeVersion.Version -}}
+# {{- $kubeVersion := .Capabilities.KubeVersion.Version -}}
 {{- if .Values.ingress.enabled -}}
 {{- $fullName := include "polaris.fullname" . -}}
 {{- $svcPort := coalesce .Values.service.port (index .Values.service.ports "polaris-service") -}}
-{{- if semverCompare ">=1.22-0" $kubeVersion -}}
 apiVersion: networking.k8s.io/v1
-{{- else if semverCompare ">=1.14-0" $kubeVersion -}}
-apiVersion: networking.k8s.io/v1beta1
-{{- else -}}
-apiVersion: extensions/v1beta1
-{{- end }}
 kind: Ingress
 metadata:
   name: {{ $fullName }}
@@ -60,15 +54,10 @@ spec:
           - path: {{ .path }}
             pathType: {{ .pathType }}
             backend:
-              {{- if semverCompare ">=1.22-0" $kubeVersion }}
               service:
                 name: {{ $fullName }}
                 port:
                   number: {{ $svcPort }}
-              {{- else }}
-              serviceName: {{ $fullName }}
-              servicePort: {{ $svcPort }}
-              {{- end }}
           {{- end }}
     {{- end }}
   {{- end }}

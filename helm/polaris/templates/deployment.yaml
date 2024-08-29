@@ -60,7 +60,9 @@ spec:
       {{- end }}
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
-        {{- tpl (toYaml .Values.imagePullSecrets) . | nindent 8 }}
+      {{- range .Values.imagePullSecrets }}
+        - name: {{ . | quote }}
+      {{- end }}
       {{- end }}
       serviceAccountName: {{ include "polaris.serviceAccountName" . }}
       securityContext:
