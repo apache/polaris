@@ -87,6 +87,11 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("polaris-service/src/**/banner.txt")
   excludes.add("polaris-service/logs")
 
+  excludes.add("site/node_modules/**")
+  excludes.add("site/public/**")
+  excludes.add("site/resources/_gen/**")
+  excludes.add("site/layouts/robots.txt")
+
   excludes.add("**/polaris-venv/**")
 
   excludes.add("**/.pytest_cache/**")
@@ -110,6 +115,8 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("**/*.lock")
 
   excludes.add("**/*.env*")
+
+  excludes.add("**/go.sum")
 }
 
 // Pass environment variables:

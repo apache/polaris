@@ -1,0 +1,88 @@
+---
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+title: "Hugo/Docsy Playground"
+linkTitle: "Hugo & Docsy"
+type: docs
+weight: 100
+---
+
+This is a new home page.
+
+== Nested Tables!! YAY!!!!!!
+
+[cols="1,2a"]
+|===
+| Col 1 | Col 2
+
+| Cell 1.1
+| Cell 1.2
+
+| Cell 2.1
+| Cell 2.2
+
+[cols="2,1"]
+!===
+! Col1 ! Col2
+
+! C11
+! C12
+
+!===
+
+|===
+
+== Source Code
+
+=== Via Hugo
+
+{{< highlight java "linenos=table,hl_lines=5 7-9,linenostart=1" >}}
+package org.apache.polaris.docsfoo;
+
+import java.util.List;
+
+@ApplicationScoped
+public class FooBar {
+public List<String> getPolarisValues() {
+return List.of("a", "lot", "of", "values");
+}
+}
+{{< / highlight >}}
+
+=== Via asciidoc
+
+[source,java]
+----
+package org.apache.polaris.docsfoo;
+
+import java.util.List;
+
+@ApplicationScoped
+public class FooBar {
+    public List<String> getPolarisValues() {
+        return List.of("a", "lot", "of", "values");
+    }
+}
+----
+
+[source,bash]
+----
+cd foo
+mkdir bar
+----
