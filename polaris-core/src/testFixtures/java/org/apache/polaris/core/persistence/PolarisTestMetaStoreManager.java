@@ -352,86 +352,6 @@ public class PolarisTestMetaStoreManager {
     this.checkGrantRecordRemoved(loadGrantsOnGrantee.getGrantRecords(), securable, grantee, priv);
   }
 
-  /**
-   * Ensure that the specified catalog has been properly created.
-   *
-   * @param catalogName name of the catalog
-   */
-  Pair<PolarisBaseEntity, PolarisBaseEntity> validateCatalogCreated(String catalogName) {
-    // load all catalogs
-    List<PolarisEntityActiveRecord> catalogs =
-        polarisMetaStoreManager
-            .listEntities(
-                this.polarisCallContext,
-                null,
-                PolarisEntityType.CATALOG,
-                PolarisEntitySubType.NULL_SUBTYPE)
-            .getEntities();
-
-    // cannot be null
-    Assertions.assertThat(catalogs).isNotNull();
-
-    // iterate to find our catalog
-    PolarisEntityActiveRecord catalogListInfo = null;
-    for (PolarisEntityActiveRecord cat : catalogs) {
-      if (cat.getName().equals(catalogName)) {
-        catalogListInfo = cat;
-        break;
-      }
-    }
-
-    // we must find it
-    Assertions.assertThat(catalogListInfo).isNotNull();
-
-    // now make sure this catalog was properly persisted
-    PolarisBaseEntity catalog =
-        this.ensureExistsById(
-            null,
-            catalogListInfo.getId(),
-            true,
-            catalogName,
-            PolarisEntityType.CATALOG,
-            PolarisEntitySubType.NULL_SUBTYPE);
-
-    // build catalog path to our catalog
-    List<PolarisEntityCore> catalogPath = new ArrayList<>();
-    catalogPath.add(catalog);
-
-    // load all roles
-    List<PolarisEntityActiveRecord> roles =
-        polarisMetaStoreManager
-            .listEntities(
-                this.polarisCallContext,
-                catalogPath,
-                PolarisEntityType.CATALOG_ROLE,
-                PolarisEntitySubType.NULL_SUBTYPE)
-            .getEntities();
-
-    // ensure not null, one element only
-    Assertions.assertThat(roles).isNotNull().hasSize(1);
-
-    // get catalog list information
-    PolarisEntityActiveRecord roleListInfo = roles.get(0);
-
-    // now make sure this principal was properly persisted
-    PolarisBaseEntity role =
-        this.ensureExistsById(
-            catalogPath,
-            roleListInfo.getId(),
-            true,
-            PolarisEntityConstants.getNameOfCatalogAdminRole(),
-            PolarisEntityType.CATALOG_ROLE,
-            PolarisEntitySubType.NULL_SUBTYPE);
-
-    // ensure that the admin role has been granted CATALOG_MANAGE_ACCESS and
-    // CATALOG_MANAGE_METADATA priv on the catalog
-    this.ensureGrantRecordExists(catalog, role, PolarisPrivilege.CATALOG_MANAGE_ACCESS);
-    this.ensureGrantRecordExists(catalog, role, PolarisPrivilege.CATALOG_MANAGE_METADATA);
-
-    // success, return result
-    return new ImmutablePair<>(catalog, role);
-  }
-
   /** Create a principal */
   PolarisBaseEntity createPrincipal(String name) {
     // create new principal identity
@@ -952,52 +872,6 @@ public class PolarisTestMetaStoreManager {
 
     // now validate that the privilege is gone
     this.ensureGrantRecordRemoved(granted, grantee, priv);
-  }
-
-  /** Create a new catalog */
-  PolarisBaseEntity createCatalog(String catalogName) {
-    // create new catalog
-    PolarisBaseEntity catalog =
-        new PolarisBaseEntity(
-            PolarisEntityConstants.getNullId(),
-            polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId(),
-            PolarisEntityType.CATALOG,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getRootEntityId(),
-            "test");
-    PolarisMetaStoreManager.CreateCatalogResult catalogCreated =
-        polarisMetaStoreManager.createCatalog(this.polarisCallContext, catalog, List.of());
-    Assertions.assertThat(catalogCreated).isNotNull();
-
-    // ensure well created
-    this.ensureExistsById(
-        null,
-        catalog.getId(),
-        true,
-        catalogName,
-        PolarisEntityType.CATALOG,
-        PolarisEntitySubType.NULL_SUBTYPE);
-
-    // retry if we are asked to
-    if (this.doRetry) {
-      PolarisMetaStoreManager.CreateCatalogResult retryCatalogCreated =
-          polarisMetaStoreManager.createCatalog(this.polarisCallContext, catalog, List.of());
-      Assertions.assertThat(retryCatalogCreated).isNotNull();
-
-      // ensure well created
-      this.ensureExistsById(
-          null,
-          catalog.getId(),
-          true,
-          catalogName,
-          PolarisEntityType.CATALOG,
-          PolarisEntitySubType.NULL_SUBTYPE);
-
-      // should be same id as the first time around
-      Assertions.assertThat(retryCatalogCreated.getCatalog().getId()).isEqualTo(catalog.getId());
-    }
-
-    return catalogCreated.getCatalog();
   }
 
   /**
