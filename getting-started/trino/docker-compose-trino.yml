@@ -20,7 +20,7 @@
 services:
   polaris:
     build:
-      context: ../..
+      context: .
     ports:
       - "8181:8181"
       - "8182"
@@ -30,14 +30,8 @@ services:
       AZURE_TENANT_ID: $AZURE_TENANT_ID
       AZURE_CLIENT_ID: $AZURE_CLIENT_ID
       AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET
-    command: # override the command to specify aws keys as dropwizard config
-      - java
-      - -Ddw.awsAccessKey=$AWS_ACCESS_KEY_ID
-      - -Ddw.awsSecretKey=$AWS_SECRET_ACCESS_KEY
-      - -jar
-      - /app/polaris-service-1.0.0-all.jar
-      - server
-      - polaris-server.yml
+      # add aws keys as dropwizard config
+      JAVA_OPTS: -Ddw.awsAccessKey=$AWS_ACCESS_KEY_ID -Ddw.awsSecretKey=$AWS_SECRET_ACCESS_KEY
 
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/healthcheck"]
