@@ -59,4 +59,4 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./trino-config:/etc/trino
+      - ./trino-config/catalog:/etc/trino/catalog
