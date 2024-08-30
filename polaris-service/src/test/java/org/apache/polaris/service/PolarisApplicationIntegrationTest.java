@@ -268,7 +268,7 @@ public class PolarisApplicationIntegrationTest {
   private static RESTSessionCatalog newSessionCatalog(String catalog) {
     RESTSessionCatalog sessionCatalog = new RESTSessionCatalog();
     sessionCatalog.initialize(
-        "snowflake",
+        "polaris_catalog_test",
         Map.of(
             "uri",
             "http://localhost:" + EXT.getLocalPort() + "/api/catalog",
@@ -620,7 +620,7 @@ public class PolarisApplicationIntegrationTest {
       assertThatThrownBy(
               () ->
                   sessionCatalog.initialize(
-                      "snowflake",
+                      "polaris_catalog_test",
                       Map.of(
                           "uri",
                           "http://localhost:" + EXT.getLocalPort() + "/api/catalog",
