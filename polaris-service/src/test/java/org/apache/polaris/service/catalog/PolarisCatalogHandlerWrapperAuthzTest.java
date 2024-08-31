@@ -1676,7 +1676,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
                 return entityManager;
               }
             },
-            Mockito.mock()) {
+            Mockito.mock(),
+            new DefaultFileIOFactory()) {
           @Override
           public Catalog createCallContextCatalog(
               CallContext context,

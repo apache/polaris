@@ -65,13 +65,13 @@ else
 fi
 
 # Build and deploy the server image
+echo "Building polaris image..."
 docker build -t localhost:5001/polaris $BUILD_ARGS -f Dockerfile .
 echo "Pushing polaris image..."
 docker push localhost:5001/polaris
 echo "Loading polaris image to kind..."
 kind load docker-image localhost:5001/polaris:latest
 
-# Apply Kubernetes deployment
-echo "Applying Kubernetes manifests..."
+echo "Applying kubernetes manifests..."
 kubectl delete -f k8/deployment.yaml --ignore-not-found
 kubectl apply -f k8/deployment.yaml

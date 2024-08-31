@@ -20,7 +20,7 @@
 # Run without args to run all tests, or single arg for single test.
 
 export SPARK_VERSION=spark-3.5.2
-export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3-scala2.13
+export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3
 
 if [ -z "${SPARK_HOME}"]; then
   export SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})

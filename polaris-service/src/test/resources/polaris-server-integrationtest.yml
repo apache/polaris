@@ -85,6 +85,9 @@ metaStoreManager:
 # type: eclipse-link # uncomment to use eclipse-link as metastore
 # persistence-unit: polaris-dev
 
+io:
+  factoryType: default
+
 oauth2:
   type: default
   tokenBroker:
