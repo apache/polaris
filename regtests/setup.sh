@@ -30,6 +30,7 @@ if [ -z "${SPARK_HOME}" ]; then
   SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
 fi
 SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
+DERBY_HOME="/tmp/derby"
 export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
 
 # Ensure binaries are downloaded locally
@@ -106,7 +107,7 @@ spark.hadoop.fs.s3.impl org.apache.hadoop.fs.s3a.S3AFileSystem
 spark.hadoop.fs.AbstractFileSystem.s3.impl org.apache.hadoop.fs.s3a.S3A
 spark.sql.variable.substitute true
 
-spark.driver.extraJavaOptions -Dderby.system.home=/tmp/derby
+spark.driver.extraJavaOptions -Dderby.system.home=${DERBY_HOME}
 
 spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog
 spark.sql.catalog.polaris.type=rest
@@ -117,6 +118,11 @@ EOF
   echo 'Success!'
 fi
 
+# cleanup derby home if existed
+if [ -d "${DERBY_HOME}" ]; then
+  echo "Directory ${DERBY_HOME} exists. Deleting it..."
+  rm -rf "${DERBY_HOME}"
+fi
 # setup python venv and install polaris client library and test dependencies
 pushd $SCRIPT_DIR && ./pyspark-setup.sh && popd
 
