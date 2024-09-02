@@ -18,18 +18,14 @@
  */
 package org.apache.polaris.service.catalog;
 
-import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
-import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -45,7 +41,6 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
-import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -294,7 +289,7 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
-    if (isCreate(commitTableRequest)) {
+    if (PolarisCatalogHandlerWrapper.isCreate(commitTableRequest)) {
       return Response.ok(
               newHandlerWrapper(securityContext, prefix)
                   .updateTableForStagedCreate(tableIdentifier, commitTableRequest))
@@ -305,27 +300,6 @@ public class IcebergCatalogAdapter
                   .updateTable(tableIdentifier, commitTableRequest))
           .build();
     }
-  }
-
-  /**
-   * TODO: Make the helper in org.apache.iceberg.rest.CatalogHandlers public instead of needing to
-   * copy/pastehere.
-   */
-  private static boolean isCreate(UpdateTableRequest request) {
-    boolean isCreate =
-        request.requirements().stream()
-            .anyMatch(UpdateRequirement.AssertTableDoesNotExist.class::isInstance);
-
-    if (isCreate) {
-      List<UpdateRequirement> invalidRequirements =
-          request.requirements().stream()
-              .filter(req -> !(req instanceof UpdateRequirement.AssertTableDoesNotExist))
-              .collect(Collectors.toList());
-      Preconditions.checkArgument(
-          invalidRequirements.isEmpty(), "Invalid create requirements: %s", invalidRequirements);
-    }
-
-    return isCreate;
   }
 
   @Override
