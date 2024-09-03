@@ -66,14 +66,8 @@ public class PolarisEclipseLinkStore {
   long getNextSequence(EntityManager session) {
     diagnosticServices.check(session != null, "session_is_null");
 
-    // IDs start at 1000
-    String query =
-        "SELECT COALESCE(MAX(e.id), 1000) FROM ModelSequenceId e "
-            + "UNION ALL "
-            + "SELECT COALESCE(last_value, 1000) FROM POLARIS_SEQ";
-    List<Long> currentIds =
-        (List<Long>) session.createNativeQuery(query, Long.class).getResultList();
-    Long newId = currentIds.stream().max(Long::compareTo).orElseGet(() -> 1000L) + 25;
+    Long currentId = PolarisSequenceManager.generateId(session);
+    Long newId = currentId + 25;
 
     ModelSequenceId sequenceEntity = new ModelSequenceId();
     sequenceEntity.setId(newId);
