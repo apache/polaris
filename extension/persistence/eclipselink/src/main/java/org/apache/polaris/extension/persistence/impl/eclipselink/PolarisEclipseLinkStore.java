@@ -19,6 +19,7 @@
 package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,13 +68,14 @@ public class PolarisEclipseLinkStore {
     diagnosticServices.check(session != null, "session_is_null");
 
     // IDs start at 1000
-    TypedQuery<Long> query =
-        session.createQuery(
-            "SELECT COALESCE(MAX(e.id), 999) + 1 FROM ModelSequenceId e", Long.class);
-    final Long id = query.getSingleResult();
+    String query = "SELECT COALESCE(MAX(e.id), 1000) FROM ModelSequenceId e " +
+        "UNION ALL " +
+        "SELECT COALESCE(last_value, 1000) FROM POLARIS_SEQ";
+    List<Long> currentIds = (List<Long>) session.createNativeQuery(query, Long.class).getResultList();
+    Long newId = currentIds.stream().max(Long::compareTo).orElseGet(() -> 1000L) + 25;
 
     ModelSequenceId sequenceEntity = new ModelSequenceId();
-    sequenceEntity.setId(id);
+    sequenceEntity.setId(newId);
     session.persist(sequenceEntity);
     session.flush();
     return sequenceEntity.getId();

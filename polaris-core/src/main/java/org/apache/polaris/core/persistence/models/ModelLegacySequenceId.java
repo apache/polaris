@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.core.persistence.models;
 
 import jakarta.persistence.Column;
@@ -26,21 +27,24 @@ import jakarta.persistence.Table;
 
 @Entity
 @Table(
-    name = "POLARIS_SEQUENCE",
-    indexes = {@Index(name = "idx_id", columnList = "id")})
+    name = "POLARIS_SEQ",
+    indexes = {@Index(name = "idx_last_value", columnList = "last_value")})
 /**
- * Used to manage unique IDs in Polaris
+ * Used to maintain backwards compatibility with previous versions of Polaris that used a
+ * generator POLARIS_SEQ to generate IDs.
+ *
+ * This shouldn't be written to, and is replced by `ModelSequenceId` going forward.
  */
-public class ModelSequenceId {
-  @Id
-  @Column(name = "id", nullable = false)
-  private Long id;
+public class ModelLegacySequenceId {
+    @Id
+    @Column(name = "last_value", nullable = false)
+    private Long id;
 
-  public void setId(Long id) {
-    this.id = id;
-  }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-  public Long getId() {
-    return id;
-  }
+    public Long getId() {
+        return id;
+    }
 }
