@@ -105,4 +105,6 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("**/*.svg")
 
   excludes.add("**/*.lock")
+
+  excludes.add("**/*.env*")
 }
