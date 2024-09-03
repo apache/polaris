@@ -38,6 +38,7 @@ dependencies {
   testImplementation(libs.assertj.core)
   testImplementation(libs.mockito.core)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+  implementation("org.postgresql:postgresql:42.7.4")
 }
 
 tasks.register<Jar>("archiveConf") {

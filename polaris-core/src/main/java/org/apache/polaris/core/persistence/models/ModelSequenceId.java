@@ -28,9 +28,7 @@ import jakarta.persistence.Table;
 @Table(
     name = "POLARIS_SEQUENCE",
     indexes = {@Index(name = "idx_id", columnList = "id")})
-/**
- * Used to manage unique IDs in Polaris
- */
+/** Used to manage unique IDs in Polaris */
 public class ModelSequenceId {
   @Id
   @Column(name = "id", nullable = false)
