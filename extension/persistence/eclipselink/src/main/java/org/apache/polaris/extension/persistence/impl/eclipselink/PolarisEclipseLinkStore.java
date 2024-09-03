@@ -66,6 +66,7 @@ public class PolarisEclipseLinkStore {
   long getNextSequence(EntityManager session) {
     diagnosticServices.check(session != null, "session_is_null");
 
+    // IDs start at 1000
     TypedQuery<Long> query =
         session.createQuery(
             "SELECT COALESCE(MAX(e.id), 999) + 1 FROM ModelSequenceId e", Long.class);
