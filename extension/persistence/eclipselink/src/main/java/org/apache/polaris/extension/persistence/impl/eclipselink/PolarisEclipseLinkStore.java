@@ -66,14 +66,15 @@ public class PolarisEclipseLinkStore {
   long getNextSequence(EntityManager session) {
     diagnosticServices.check(session != null, "session_is_null");
 
+    TypedQuery<Long> query =
+        session.createQuery(
+            "SELECT COALESCE(MAX(e.id), 999) + 1 FROM ModelSequenceId e", Long.class);
+    final Long id = query.getSingleResult();
+
     ModelSequenceId sequenceEntity = new ModelSequenceId();
-
-    Long generatedId = PolarisSequenceGenerator.generateId(session);
-    sequenceEntity.setManualId(generatedId);
-
+    sequenceEntity.setId(id);
     session.persist(sequenceEntity);
     session.flush();
-
     return sequenceEntity.getId();
   }
 
