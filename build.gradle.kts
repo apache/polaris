@@ -56,6 +56,8 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
 eclipse { project { name = ideName } }
 
 tasks.named<RatTask>("rat").configure {
+  onlyIf { project.findProperty("skipRat")?.toString()?.toBoolean() != true }
+
   // These are Gradle file pattern syntax
   excludes.add("**/build/**")
 
