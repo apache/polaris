@@ -73,11 +73,11 @@ public class ModelEntity {
   private long lastUpdateTimestamp;
 
   // properties, serialized as a JSON string
-  @Column(length = 16383)
+  @Column(columnDefinition = "TEXT")
   private String properties;
 
   // internal properties, serialized as a JSON string
-  @Column(length = 16383)
+  @Column(columnDefinition = "TEXT")
   private String internalProperties;
 
   // current version for that entity, will be monotonically incremented
