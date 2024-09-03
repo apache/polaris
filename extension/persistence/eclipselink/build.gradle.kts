@@ -38,6 +38,9 @@ dependencies {
   testImplementation(libs.assertj.core)
   testImplementation(libs.mockito.core)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+  implementation("com.google.cloud.sql:mysql-socket-factory-connector-j-8:1.20.0")
+  implementation("com.mysql:mysql-connector-j:8.4.0")
 }
 
 tasks.register<Jar>("archiveConf") {
