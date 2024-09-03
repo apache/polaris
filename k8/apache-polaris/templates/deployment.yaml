@@ -1,0 +1,44 @@
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: {{ .Values.deployment.name }}
+#   namespace: {{ .Values.namespace.name }}
+# spec:
+#   replicas: {{ .Values.replicaCount }}
+#   selector:
+#     matchLabels:
+#       app: {{ .Values.app.name }}
+#   template:
+#     metadata:
+#       labels:
+#         app: {{ .Values.app.name }}
+#     spec:
+#       containers:
+#       - name: {{ .Values.app.name }}
+#         image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+#         ports:
+#         - containerPort: 8181
+#         - containerPort: 8182
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.deployment.name }}
+  namespace: {{ .Values.namespace.name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.app.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.app.name }}
+    spec:
+      containers:
+      - name: {{ .Values.app.name }}
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        ports:
+        {{- range .Values.containerPorts }}
+        - containerPort: {{ . }}
+        {{- end }}

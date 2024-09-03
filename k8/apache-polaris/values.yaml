@@ -1,0 +1,28 @@
+namespace:
+  name: polaris
+
+deployment:
+  name: polaris-deployment
+
+app:
+  name: polaris
+
+replicaCount: 1
+
+image:
+  repository: nishanbiswas/polaris
+  tag: latest
+
+service:
+  name: polaris-service
+  ports:
+    - name: service
+      port: 8181
+      targetPort: 8181
+    - name: metrics
+      port: 8182
+      targetPort: 8182
+
+containerPorts:
+  - 8181
+  - 8182
