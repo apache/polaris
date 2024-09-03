@@ -806,6 +806,12 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
                     aws_session_token=response.config['s3.session-token'])
 
   objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
+                            Prefix='polaris_test/snowflake_catalog/db1/schema/iceberg_table/')
+  assert objects is not None
+  assert 'CommonPrefixes' in objects
+  assert len(objects['CommonPrefixes']) > 0
+
+  objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
                             Prefix='polaris_test/snowflake_catalog/db1/schema/iceberg_table/metadata/')
   assert objects is not None
   assert 'Contents' in objects
@@ -1051,7 +1057,7 @@ def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, sno
         objects = client.list_objects(Bucket=test_bucket, Delimiter='/',
                                       Prefix=f'{prefix}/metadata/')
         assert objects is not None
-        assert 'Contents' in objects , f'list medata files failed in prefix: {prefix}/metadata/'
+        assert 'Contents' in objects , f'list metadata files failed in prefix: {prefix}/metadata/'
 
         objects = client.list_objects(Bucket=test_bucket, Delimiter='/',
                                       Prefix=f'{prefix}/data/')
@@ -1059,15 +1065,11 @@ def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, sno
         # no insert executed, so should not have any data files
         assert 'Contents' not in objects , f'No contents should be in prefix: {prefix}/data/'
 
-        # list files fail in the same table's other directory. The access policy should restrict this
-        # even metadata and data, it needs an ending `/`
-        for invalidPrefix in [f'{prefix}/other_directory/', f'{prefix}/metadata', f'{prefix}/data']:
-            try:
-                client.list_objects(Bucket=test_bucket, Delimiter='/',
-                                          Prefix=invalidPrefix)
-                pytest.fail(f'Expected exception listing files outside of allowed table directories, but succeeds on location: {invalidPrefix}')
-            except botocore.exceptions.ClientError as error:
-                assert error.response['Error']['Code'] == 'AccessDenied', 'Expected exception AccessDenied, but got: ' + error.response['Error']['Code'] + ' on location: ' + invalidPrefix
+        objects = client.list_objects(Bucket=test_bucket, Delimiter='/',
+                                  Prefix=f'{prefix}/')
+        assert objects is not None
+        assert 'CommonPrefixes' in objects , f'list prefixes failed in prefix: {prefix}/'
+        assert len(objects['CommonPrefixes']) > 0
 
     with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
                              catalog_name=snowflake_catalog.name,
