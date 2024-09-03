@@ -363,7 +363,7 @@ public class PolarisServiceImpl
     try {
       adminService.assignPrincipalRole(principalName, request.getPrincipalRole().getName());
     } catch (IllegalStateException e) {
-      throw new AlreadyExistsException("Grant already exists");
+      throw new AlreadyExistsException("Grant already exists or resolution failed");
     }
     return Response.status(Response.Status.CREATED).build();
   }
@@ -406,8 +406,12 @@ public class PolarisServiceImpl
         catalogName,
         principalRoleName);
     PolarisAdminService adminService = newAdminService(securityContext);
-    adminService.assignCatalogRoleToPrincipalRole(
-        principalRoleName, catalogName, request.getCatalogRole().getName());
+    try {
+      adminService.assignCatalogRoleToPrincipalRole(
+          principalRoleName, catalogName, request.getCatalogRole().getName());
+    } catch (IllegalStateException e) {
+      throw new AlreadyExistsException("Grant already exists or resolution failed");
+    }
     return Response.status(Response.Status.CREATED).build();
   }
 
@@ -472,10 +476,11 @@ public class PolarisServiceImpl
         catalogRoleName,
         catalogName);
     PolarisAdminService adminService = newAdminService(securityContext);
-    switch (grantRequest.getGrant()) {
+    try {
+      switch (grantRequest.getGrant()) {
         // The per-securable-type Privilege enums must be exact String match for a subset of all
         // PolarisPrivilege values.
-      case ViewGrant viewGrant:
+        case ViewGrant viewGrant:
         {
           PolarisPrivilege privilege =
               PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
@@ -488,7 +493,7 @@ public class PolarisServiceImpl
               privilege);
           break;
         }
-      case TableGrant tableGrant:
+        case TableGrant tableGrant:
         {
           PolarisPrivilege privilege =
               PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
@@ -501,7 +506,7 @@ public class PolarisServiceImpl
               privilege);
           break;
         }
-      case NamespaceGrant namespaceGrant:
+        case NamespaceGrant namespaceGrant:
         {
           PolarisPrivilege privilege =
               PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
@@ -510,20 +515,23 @@ public class PolarisServiceImpl
               catalogName, catalogRoleName, Namespace.of(namespaceParts), privilege);
           break;
         }
-      case CatalogGrant catalogGrant:
+        case CatalogGrant catalogGrant:
         {
           PolarisPrivilege privilege =
               PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
           adminService.grantPrivilegeOnCatalogToRole(catalogName, catalogRoleName, privilege);
           break;
         }
-      default:
-        LOGGER
-            .atWarn()
-            .addKeyValue("catalog", catalogName)
-            .addKeyValue("role", catalogRoleName)
-            .log("Don't know how to handle privilege grant: {}", grantRequest);
-        return Response.status(Response.Status.BAD_REQUEST).build();
+        default:
+          LOGGER
+              .atWarn()
+              .addKeyValue("catalog", catalogName)
+              .addKeyValue("role", catalogRoleName)
+              .log("Don't know how to handle privilege grant: {}", grantRequest);
+          return Response.status(Response.Status.BAD_REQUEST).build();
+      }
+    } catch (IllegalStateException e) {
+      throw new AlreadyExistsException("Grant already exists or resolution failed");
     }
     return Response.status(Response.Status.CREATED).build();
   }
