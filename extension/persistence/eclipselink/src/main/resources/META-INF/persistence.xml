@@ -15,7 +15,7 @@
     <shared-cache-mode>NONE</shared-cache-mode>
     <properties>
       <property name="jakarta.persistence.jdbc.url"
-        value="jdbc:postgres://localhost:5432/db"/>
+        value="jdbc:postgresql://localhost:5432/db"/>
       <property name="jakarta.persistence.jdbc.user" value="polaris"/>
       <property name="jakarta.persistence.jdbc.password" value="test"/>
       <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
