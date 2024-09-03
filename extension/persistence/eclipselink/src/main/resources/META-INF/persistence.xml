@@ -34,7 +34,8 @@
     <class>org.apache.polaris.core.persistence.models.ModelSequenceId</class>
     <shared-cache-mode>NONE</shared-cache-mode>
     <properties>
-      <property name="jakarta.persistence.jdbc.url" value="jdbc:mysql://localhost:3306/db"/>
+      <property name="jakarta.persistence.jdbc.url"
+        value="jdbc:mysql://localhost:3306/db?characterEncoding=latin1&amp;useUnicode=false"/>
       <property name="jakarta.persistence.jdbc.user" value="polaris"/>
       <property name="jakarta.persistence.jdbc.password" value="test"/>
       <property name="jakarta.persistence.schema-generation.database.action" value="create"/>

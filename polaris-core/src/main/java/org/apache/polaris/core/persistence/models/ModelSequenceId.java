@@ -18,22 +18,38 @@
  */
 package org.apache.polaris.core.persistence.models;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "POLARIS_SEQUENCE")
+@Table(
+    name = "POLARIS_SEQUENCE",
+    indexes = {@Index(name = "idx_polaris_sequence_id", columnList = "id")})
 public class ModelSequenceId {
   @Id
+  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sequenceGen")
   @SequenceGenerator(
       name = "sequenceGen",
       sequenceName = "POLARIS_SEQ",
       initialValue = 1000,
       allocationSize = 25)
-  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sequenceGen")
+  @Column(name = "id", nullable = false)
   private Long id;
+
+  @Column(name = "manual_id", nullable = true)
+  private Long manualId;
+
+  public void setManualId(Long manualId) {
+    this.manualId = manualId;
+  }
+
+  public Long getId() {
+    return id != null ? id : manualId;
+  }
 }

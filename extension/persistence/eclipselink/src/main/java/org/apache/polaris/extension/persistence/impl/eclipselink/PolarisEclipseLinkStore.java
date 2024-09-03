@@ -38,6 +38,7 @@ import org.apache.polaris.core.persistence.models.ModelEntityChangeTracking;
 import org.apache.polaris.core.persistence.models.ModelEntityDropped;
 import org.apache.polaris.core.persistence.models.ModelGrantRecord;
 import org.apache.polaris.core.persistence.models.ModelPrincipalSecrets;
+import org.apache.polaris.core.persistence.models.ModelSequenceId;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -64,8 +65,16 @@ public class PolarisEclipseLinkStore {
 
   long getNextSequence(EntityManager session) {
     diagnosticServices.check(session != null, "session_is_null");
-    // implement with a sequence table POLARIS_SEQUENCE
-    return (long) session.createNativeQuery("SELECT NEXTVAL('POLARIS_SEQ')").getSingleResult();
+
+    ModelSequenceId sequenceEntity = new ModelSequenceId();
+
+    Long generatedId = PolarisSequenceGenerator.generateId(session);
+    sequenceEntity.setManualId(generatedId);
+
+    session.persist(sequenceEntity);
+    session.flush();
+
+    return sequenceEntity.getId();
   }
 
   void writeToEntities(EntityManager session, PolarisBaseEntity entity) {
