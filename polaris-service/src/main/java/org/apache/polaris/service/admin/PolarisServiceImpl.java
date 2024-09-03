@@ -23,6 +23,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
@@ -359,7 +360,11 @@ public class PolarisServiceImpl
         request.getPrincipalRole().getName(),
         principalName);
     PolarisAdminService adminService = newAdminService(securityContext);
-    adminService.assignPrincipalRole(principalName, request.getPrincipalRole().getName());
+    try {
+      adminService.assignPrincipalRole(principalName, request.getPrincipalRole().getName());
+    } catch (IllegalStateException e) {
+      throw new AlreadyExistsException("Grant already exists");
+    }
     return Response.status(Response.Status.CREATED).build();
   }
 
