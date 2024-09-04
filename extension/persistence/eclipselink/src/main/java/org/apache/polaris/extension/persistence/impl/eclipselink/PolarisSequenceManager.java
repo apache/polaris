@@ -70,7 +70,6 @@ public class PolarisSequenceManager {
           LOGGER.info("POLARIS_SEQ exists, calling NEXTVAL");
           long queryResult =
               (long) session.createNativeQuery("SELECT NEXTVAL('POLARIS_SEQ')").getSingleResult();
-          removeSequence(session);
           result = Optional.of(queryResult);
         } else {
           LOGGER.info("POLARIS_SEQ does not exist, skipping NEXTVAL");
@@ -80,6 +79,7 @@ public class PolarisSequenceManager {
             "Encountered an exception when checking sequence or calling `NEXTVAL('POLARIS_SEQ')`",
             e);
       }
+      removeSequence(session);
       sequenceCleaned.set(true);
     }
     return result;
