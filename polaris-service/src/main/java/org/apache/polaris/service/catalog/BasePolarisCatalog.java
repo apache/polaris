@@ -1014,8 +1014,10 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    * configuration of the service
    */
   private void validateNoLocationOverlap(
-      CatalogEntity catalog, TableIdentifier identifier, List<PolarisEntity> resolvedNamespace, String location) {
-    // TODO pass in catalog here
+      CatalogEntity catalog,
+      TableIdentifier identifier,
+      List<PolarisEntity> resolvedNamespace,
+      String location) {
     if (callContext
         .getPolarisCallContext()
         .getConfigurationStore()
@@ -1300,11 +1302,12 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         validateLocationsForTableLike(tableIdentifier, dataLocations, resolvedStorageEntity);
         // also validate that the table location doesn't overlap an existing table
         dataLocations.forEach(
-            location -> validateNoLocationOverlap(
-                CatalogEntity.of(resolvedStorageEntity.getRawFullPath().getFirst()),
-                tableIdentifier,
-                resolvedNamespace,
-                location));
+            location ->
+                validateNoLocationOverlap(
+                    CatalogEntity.of(resolvedStorageEntity.getRawFullPath().getFirst()),
+                    tableIdentifier,
+                    resolvedNamespace,
+                    location));
         // and that the metadata file points to a location within the table's directory structure
         if (metadata.metadataFileLocation() != null) {
           validateMetadataFileInTableDir(tableIdentifier, metadata, catalog);

@@ -80,9 +80,9 @@ public class PolarisOverlappingTableTest {
   private static String namespace;
   private static final String baseLocation = "file:///tmp/PolarisOverlappingTableTest";
 
-  private final static CatalogWrapper defaultCatalog = new CatalogWrapper("default");
-  private final static CatalogWrapper laxCatalog = new CatalogWrapper("lax");
-  private final static CatalogWrapper strictCatalog = new CatalogWrapper("strict");
+  private static final CatalogWrapper defaultCatalog = new CatalogWrapper("default");
+  private static final CatalogWrapper laxCatalog = new CatalogWrapper("lax");
+  private static final CatalogWrapper strictCatalog = new CatalogWrapper("strict");
 
   /** Used to define a parameterized test config */
   protected record TestConfig(
@@ -94,18 +94,18 @@ public class PolarisOverlappingTableTest {
     }
 
     private String extensionName() {
-        return (extension
+      return (extension
               .getConfiguration()
               .getConfigurationStore()
               .getConfiguration(null, PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP))
-              ? "lax"
-              : "strict";
+          ? "lax"
+          : "strict";
     }
 
     /** Extract the first component of the catalog name; e.g. `default` from `default_123_xyz` */
     private String catalogShortName() {
       StringBuilder result = new StringBuilder();
-      for (char c: catalog().toCharArray()) {
+      for (char c : catalog().toCharArray()) {
         if (c == '_') {
           break;
         }
@@ -117,7 +117,8 @@ public class PolarisOverlappingTableTest {
     @Override
     public String toString() {
       return String.format(
-          "extension=%s, catalog=%s, status=%s", extensionName(), catalogShortName(), response.toString());
+          "extension=%s, catalog=%s, status=%s",
+          extensionName(), catalogShortName(), response.toString());
     }
   }
 
@@ -232,8 +233,7 @@ public class PolarisOverlappingTableTest {
         new TestConfig(BASE_EXT, laxCatalog, Response.Status.OK),
         new TestConfig(LAX_EXT, defaultCatalog, Response.Status.OK),
         new TestConfig(LAX_EXT, strictCatalog, Response.Status.FORBIDDEN),
-        new TestConfig(LAX_EXT, laxCatalog, Response.Status.OK)
-        );
+        new TestConfig(LAX_EXT, laxCatalog, Response.Status.OK));
   }
 
   @ParameterizedTest
@@ -285,7 +285,8 @@ public class PolarisOverlappingTableTest {
             createTable(
                 config.extension,
                 config.catalog(),
-                String.format("%s/%s/%s/table_100/child", baseLocation, config.catalog(), namespace)))
+                String.format(
+                    "%s/%s/%s/table_100/child", baseLocation, config.catalog(), namespace)))
         .returns(config.response.getStatusCode(), Response::getStatus);
 
     // Outside the namespace
