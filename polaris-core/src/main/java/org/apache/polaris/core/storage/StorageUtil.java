@@ -18,10 +18,8 @@
  */
 package org.apache.polaris.core.storage;
 
-import org.apache.hadoop.fs.Path;
-import org.jetbrains.annotations.NotNull;
-
 import java.net.URI;
+import org.jetbrains.annotations.NotNull;
 
 public class StorageUtil {
   /**
@@ -46,6 +44,7 @@ public class StorageUtil {
 
   /**
    * Given a path, extract the bucket (authority).
+   *
    * @param path A path to parse
    * @return The bucket/authority of the path
    */
@@ -56,6 +55,7 @@ public class StorageUtil {
 
   /**
    * Given a URI, extract the bucket (authority).
+   *
    * @param uri A path to parse
    * @return The bucket/authority of the URI
    */
