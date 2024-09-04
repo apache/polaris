@@ -71,8 +71,8 @@ public class PolarisOverlappingTableTest {
           ConfigOverride.config("server.applicationConnectors[0].port", "0"),
           ConfigOverride.config("server.adminConnectors[0].port", "0"),
           // Relax table location constraints
-          ConfigOverride.config("featureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION", "false"),
-          ConfigOverride.config("featureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP", "false"));
+          ConfigOverride.config("featureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION", "true"),
+          ConfigOverride.config("featureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP", "true"));
 
   private static PolarisConnectionExtension.PolarisToken adminToken;
   private static String userToken;
@@ -139,7 +139,7 @@ public class PolarisOverlappingTableTest {
   public void setup(PolarisConnectionExtension.PolarisToken adminToken) {
     userToken = adminToken.token();
     realm = PolarisConnectionExtension.getTestRealm(PolarisServiceImplIntegrationTest.class);
-    defaultCatalog.catalog = String.format("catalog_%s", UUID.randomUUID().toString());
+    defaultCatalog.catalog = String.format("default_catalog_%s", UUID.randomUUID().toString());
     laxCatalog.catalog = String.format("lax_catalog_%s", UUID.randomUUID().toString());
     strictCatalog.catalog = String.format("strict_catalog_%s", UUID.randomUUID().toString());
     List.of(BASE_EXT, LAX_EXT)
@@ -156,14 +156,14 @@ public class PolarisOverlappingTableTest {
                             CatalogProperties.builder()
                                 .setDefaultBaseLocation(String.format("%s/%s", baseLocation, c));
                         if (!c.equals(defaultCatalog)) {
-//                          propertiesBuilder
-//                              .addProperty(
-//                                  PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION
-//                                      .catalogConfig(),
-//                                  String.valueOf(c.equals(laxCatalog)))
-//                              .addProperty(
-//                                  PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
-//                                  String.valueOf(c.equals(laxCatalog)));
+                          propertiesBuilder
+                              .addProperty(
+                                  PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION
+                                      .catalogConfig(),
+                                  String.valueOf(c.equals(laxCatalog)))
+                              .addProperty(
+                                  PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
+                                  String.valueOf(c.equals(laxCatalog)));
                         }
                         Catalog catalogObject =
                             new Catalog(
@@ -227,12 +227,12 @@ public class PolarisOverlappingTableTest {
 
   private static Stream<TestConfig> getTestConfigs() {
     return Stream.of(
-        new TestConfig(BASE_EXT, defaultCatalog, Response.Status.FORBIDDEN) //,
-//        new TestConfig(BASE_EXT, strictCatalog, Response.Status.FORBIDDEN),
-//        new TestConfig(BASE_EXT, laxCatalog, Response.Status.OK),
-//        new TestConfig(LAX_EXT, defaultCatalog, Response.Status.OK),
-//        new TestConfig(LAX_EXT, strictCatalog, Response.Status.FORBIDDEN),
-//        new TestConfig(LAX_EXT, laxCatalog, Response.Status.OK)
+        new TestConfig(BASE_EXT, defaultCatalog, Response.Status.FORBIDDEN),
+        new TestConfig(BASE_EXT, strictCatalog, Response.Status.FORBIDDEN),
+        new TestConfig(BASE_EXT, laxCatalog, Response.Status.OK),
+        new TestConfig(LAX_EXT, defaultCatalog, Response.Status.OK),
+        new TestConfig(LAX_EXT, strictCatalog, Response.Status.FORBIDDEN),
+        new TestConfig(LAX_EXT, laxCatalog, Response.Status.OK)
         );
   }
 
