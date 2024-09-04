@@ -21,10 +21,7 @@ package org.apache.polaris.extension.persistence.impl.eclipselink;
 import jakarta.persistence.*;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
-
 import org.apache.polaris.core.persistence.models.ModelSequenceId;
-import org.eclipse.persistence.internal.jpa.EntityManagerImpl;
-import org.eclipse.persistence.platform.database.DatabasePlatform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +72,9 @@ public class PolarisSequenceManager {
             "Encountered an exception when checking sequence or calling `NEXTVAL('POLARIS_SEQ')`",
             e);
       }
-      removeSequence(session);
+      if (result.isPresent()) {
+        removeSequence(session);
+      }
       sequenceCleaned.set(true);
     }
     return result;
