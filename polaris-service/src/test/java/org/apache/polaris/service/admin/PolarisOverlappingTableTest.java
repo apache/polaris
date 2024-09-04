@@ -104,14 +104,12 @@ public class PolarisOverlappingTableTest {
 
     /** Extract the first component of the catalog name; e.g. `default` from `default_123_xyz` */
     private String catalogShortName() {
-      StringBuilder result = new StringBuilder();
-      for (char c : catalog().toCharArray()) {
-        if (c == '_') {
-          break;
-        }
-        result.append(c);
+      int firstComponentEnd = catalog().indexOf('_');
+      if (firstComponentEnd != -1) {
+        return catalog().substring(0, firstComponentEnd);
+      } else {
+        return catalog();
       }
-      return result.toString();
     }
 
     @Override
@@ -149,10 +147,6 @@ public class PolarisOverlappingTableTest {
               List.of(defaultCatalog, laxCatalog, strictCatalog)
                   .forEach(
                       c -> {
-                        StorageConfigInfo config =
-                            FileStorageConfigInfo.builder()
-                                .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-                                .build();
                         CatalogProperties.Builder propertiesBuilder =
                             CatalogProperties.builder()
                                 .setDefaultBaseLocation(String.format("%s/%s", baseLocation, c));
@@ -166,13 +160,17 @@ public class PolarisOverlappingTableTest {
                                   PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
                                   String.valueOf(c.equals(laxCatalog)));
                         }
+                        StorageConfigInfo config =
+                            FileStorageConfigInfo.builder()
+                                .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+                                .build();
                         Catalog catalogObject =
                             new Catalog(
                                 Catalog.TypeEnum.INTERNAL,
                                 c.catalog,
                                 propertiesBuilder.build(),
-                                System.currentTimeMillis(),
-                                System.currentTimeMillis(),
+                                1725487592064L,
+                                1725487592064L,
                                 1,
                                 config);
                         try (Response response =
