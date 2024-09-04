@@ -21,6 +21,8 @@ package org.apache.polaris.extension.persistence.impl.eclipselink;
 import jakarta.persistence.*;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.apache.polaris.core.persistence.models.ModelSequenceId;
 import org.eclipse.persistence.internal.jpa.EntityManagerImpl;
 import org.eclipse.persistence.platform.database.DatabasePlatform;
 import org.slf4j.Logger;
@@ -36,12 +38,6 @@ public class PolarisSequenceManager {
 
   private static AtomicBoolean sequenceCleaned = new AtomicBoolean(false);
   private static long ID_STEP_SIZE = 25;
-
-  /* Get the `DatabasePlatform` associated with the `EntityManager` */
-  private static DatabasePlatform getDatabasePlatform(EntityManager session) {
-    EntityManagerImpl entityManagerImpl = session.unwrap(EntityManagerImpl.class);
-    return entityManagerImpl.getDatabaseSession().getPlatform();
-  }
 
   /* Generate an ID from the `ModelSequenceId` table instead of using a generator */
   private static Long generateSequenceFromTable(EntityManager session) {
@@ -90,7 +86,15 @@ public class PolarisSequenceManager {
    * `POLARIS_SEQ` exists, it will be renamed to `POLARIS_SEQ_UNUSED`.
    */
   public static Long getNewId(EntityManager session) {
-    Optional<Long> sequenceId = getSequenceId(session);
-    return sequenceId.orElseGet(() -> generateSequenceFromTable(session)) + ID_STEP_SIZE;
+    ModelSequenceId modelSequenceId = new ModelSequenceId();
+
+    // If a legacy sequence ID is present, use that as an override:
+    getSequenceId(session).ifPresent(modelSequenceId::setId);
+
+    // Persist the new ID:
+    session.persist(modelSequenceId);
+    session.flush();
+
+    return modelSequenceId.getId();
   }
 }

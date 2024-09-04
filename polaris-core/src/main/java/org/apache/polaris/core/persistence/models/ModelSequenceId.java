@@ -20,6 +20,8 @@ package org.apache.polaris.core.persistence.models;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
@@ -31,7 +33,7 @@ import jakarta.persistence.Table;
     indexes = {@Index(name = "idx_id", columnList = "id")})
 public class ModelSequenceId {
   @Id
-  @Column(name = "id", nullable = false)
+  @GeneratedValue(strategy = GenerationType.AUTO)
   private Long id;
 
   public void setId(Long id) {
