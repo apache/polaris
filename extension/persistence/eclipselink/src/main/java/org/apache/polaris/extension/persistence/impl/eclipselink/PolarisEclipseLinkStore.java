@@ -22,6 +22,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -53,6 +54,9 @@ public class PolarisEclipseLinkStore {
   // diagnostic services
   private final PolarisDiagnostics diagnosticServices;
 
+  // Used to track when the store is initialized
+  private final AtomicBoolean initialized = new AtomicBoolean(false);
+
   /**
    * Constructor, allocate everything at once
    *
@@ -62,14 +66,22 @@ public class PolarisEclipseLinkStore {
     this.diagnosticServices = diagnostics;
   }
 
+  /** Initialize the store. This should be called before other methods. */
+  public void initialize(EntityManager session) {
+    PolarisSequenceManager.initialize(session);
+    initialized.set(true);
+  }
+
   long getNextSequence(EntityManager session) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     return PolarisSequenceManager.getNewId(session);
   }
 
   void writeToEntities(EntityManager session, PolarisBaseEntity entity) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     ModelEntity model = lookupEntity(session, entity.getCatalogId(), entity.getId());
     if (model != null) {
@@ -84,6 +96,7 @@ public class PolarisEclipseLinkStore {
 
   void writeToEntitiesActive(EntityManager session, PolarisBaseEntity entity) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     ModelEntityActive model = lookupEntityActive(session, new PolarisEntitiesActiveKey(entity));
     if (model == null) {
@@ -93,6 +106,7 @@ public class PolarisEclipseLinkStore {
 
   void writeToEntitiesDropped(EntityManager session, PolarisBaseEntity entity) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     ModelEntityDropped entityDropped =
         lookupEntityDropped(session, entity.getCatalogId(), entity.getId());
@@ -103,6 +117,7 @@ public class PolarisEclipseLinkStore {
 
   void writeToEntitiesChangeTracking(EntityManager session, PolarisBaseEntity entity) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     // Update the existing change tracking if a record with the same ids exists; otherwise, persist
     // a new one
@@ -119,12 +134,14 @@ public class PolarisEclipseLinkStore {
 
   void writeToGrantRecords(EntityManager session, PolarisGrantRecord grantRec) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     session.persist(ModelGrantRecord.fromGrantRecord(grantRec));
   }
 
   void deleteFromEntities(EntityManager session, long catalogId, long entityId) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     ModelEntity model = lookupEntity(session, catalogId, entityId);
     diagnosticServices.check(model != null, "entity_not_found");
@@ -134,6 +151,7 @@ public class PolarisEclipseLinkStore {
 
   void deleteFromEntitiesActive(EntityManager session, PolarisEntitiesActiveKey key) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     ModelEntityActive entity = lookupEntityActive(session, key);
     diagnosticServices.check(entity != null, "active_entity_not_found");
@@ -142,6 +160,7 @@ public class PolarisEclipseLinkStore {
 
   void deleteFromEntitiesDropped(EntityManager session, long catalogId, long entityId) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     ModelEntityDropped entity = lookupEntityDropped(session, catalogId, entityId);
     diagnosticServices.check(entity != null, "dropped_entity_not_found");
@@ -151,6 +170,7 @@ public class PolarisEclipseLinkStore {
 
   void deleteFromEntitiesChangeTracking(EntityManager session, PolarisEntityCore entity) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     ModelEntityChangeTracking entityChangeTracking =
         lookupEntityChangeTracking(session, entity.getCatalogId(), entity.getId());
@@ -161,6 +181,7 @@ public class PolarisEclipseLinkStore {
 
   void deleteFromGrantRecords(EntityManager session, PolarisGrantRecord grantRec) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     ModelGrantRecord lookupGrantRecord =
         lookupGrantRecord(
@@ -178,6 +199,7 @@ public class PolarisEclipseLinkStore {
 
   void deleteAllEntityGrantRecords(EntityManager session, PolarisEntityCore entity) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     // Delete grant records from grantRecords tables
     lookupAllGrantRecordsOnSecurable(session, entity.getCatalogId(), entity.getId())
@@ -190,6 +212,7 @@ public class PolarisEclipseLinkStore {
 
   void deleteAll(EntityManager session) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     session.createQuery("DELETE from ModelEntity").executeUpdate();
     session.createQuery("DELETE from ModelEntityActive").executeUpdate();
@@ -203,6 +226,7 @@ public class PolarisEclipseLinkStore {
 
   ModelEntity lookupEntity(EntityManager session, long catalogId, long entityId) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     return session
         .createQuery(
@@ -218,6 +242,7 @@ public class PolarisEclipseLinkStore {
   @SuppressWarnings("unchecked")
   List<ModelEntity> lookupEntities(EntityManager session, List<PolarisEntityId> entityIds) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     if (entityIds == null || entityIds.isEmpty()) return new ArrayList<>();
 
@@ -234,6 +259,7 @@ public class PolarisEclipseLinkStore {
   ModelEntityActive lookupEntityActive(
       EntityManager session, PolarisEntitiesActiveKey entityActiveKey) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     return session
         .createQuery(
@@ -254,6 +280,7 @@ public class PolarisEclipseLinkStore {
       long parentId,
       @Nullable PolarisEntityType entityType) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     String hql =
         "SELECT COUNT(m) from ModelEntityActive m where m.catalogId=:catalogId and m.parentId=:parentId";
@@ -276,6 +303,7 @@ public class PolarisEclipseLinkStore {
   List<ModelEntity> lookupFullEntitiesActive(
       EntityManager session, long catalogId, long parentId, @NotNull PolarisEntityType entityType) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     // Currently check against ENTITIES not joining with ENTITIES_ACTIVE
     String hql =
@@ -293,6 +321,7 @@ public class PolarisEclipseLinkStore {
 
   ModelEntityDropped lookupEntityDropped(EntityManager session, long catalogId, long entityId) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     return session
         .createQuery(
@@ -308,6 +337,7 @@ public class PolarisEclipseLinkStore {
   ModelEntityChangeTracking lookupEntityChangeTracking(
       EntityManager session, long catalogId, long entityId) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     return session
         .createQuery(
@@ -328,6 +358,7 @@ public class PolarisEclipseLinkStore {
       long granteeId,
       int privilegeCode) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     return session
         .createQuery(
@@ -350,6 +381,7 @@ public class PolarisEclipseLinkStore {
   List<ModelGrantRecord> lookupAllGrantRecordsOnSecurable(
       EntityManager session, long securableCatalogId, long securableId) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     return session
         .createQuery(
@@ -365,6 +397,7 @@ public class PolarisEclipseLinkStore {
   List<ModelGrantRecord> lookupGrantRecordsOnGrantee(
       EntityManager session, long granteeCatalogId, long granteeId) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     return session
         .createQuery(
@@ -379,6 +412,7 @@ public class PolarisEclipseLinkStore {
 
   ModelPrincipalSecrets lookupPrincipalSecrets(EntityManager session, String clientId) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     return session
         .createQuery(
@@ -392,6 +426,7 @@ public class PolarisEclipseLinkStore {
 
   void writePrincipalSecrets(EntityManager session, PolarisPrincipalSecrets principalSecrets) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     ModelPrincipalSecrets modelPrincipalSecrets =
         lookupPrincipalSecrets(session, principalSecrets.getPrincipalClientId());
@@ -406,10 +441,15 @@ public class PolarisEclipseLinkStore {
 
   void deletePrincipalSecrets(EntityManager session, String clientId) {
     diagnosticServices.check(session != null, "session_is_null");
+    checkInitialized();
 
     ModelPrincipalSecrets modelPrincipalSecrets = lookupPrincipalSecrets(session, clientId);
     diagnosticServices.check(modelPrincipalSecrets != null, "principal_secretes_not_found");
 
     session.remove(modelPrincipalSecrets);
+  }
+
+  private void checkInitialized() {
+    diagnosticServices.check(this.initialized.get(), "store_not_initialized");
   }
 }

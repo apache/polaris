@@ -81,6 +81,15 @@ public class PolarisSequenceManager {
   }
 
   /**
+   * Prepare the `PolarisSequenceManager` to generate IDs. This may run a failing query, so it
+   * should be called for the first time outside the context of a transaction.
+   */
+  public static void initialize(EntityManager session) {
+    // Trigger cleanup of the POLARIS_SEQ if it is present
+    getSequenceId(session);
+  }
+
+  /**
    * Generates a new ID from `POLARIS_SEQUENCE` or `POLARIS_SEQ` depending on availability. If
    * `POLARIS_SEQ` exists, it will be renamed to `POLARIS_SEQ_UNUSED`.
    */
