@@ -61,7 +61,7 @@ public class PolarisSequenceManager {
       try {
         LOGGER.info("Checking if the sequence POLARIS_SEQ exists");
         String checkSequenceQuery =
-            "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_name = 'POLARIS_SEQ'";
+            "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_name = 'polaris_seq'";
         int sequenceExists =
             ((Number) session.createNativeQuery(checkSequenceQuery).getSingleResult()).intValue();
 
