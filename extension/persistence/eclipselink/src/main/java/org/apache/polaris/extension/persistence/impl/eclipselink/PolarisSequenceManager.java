@@ -22,6 +22,9 @@ import jakarta.persistence.*;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.polaris.core.persistence.models.ModelSequenceId;
+import org.eclipse.persistence.internal.jpa.EntityManagerImpl;
+import org.eclipse.persistence.platform.database.DatabasePlatform;
+import org.eclipse.persistence.platform.database.PostgreSQLPlatform;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,13 +37,11 @@ public class PolarisSequenceManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisSequenceManager.class);
 
   private static AtomicBoolean sequenceCleaned = new AtomicBoolean(false);
-  private static long ID_STEP_SIZE = 25;
 
-  /* Generate an ID from the `ModelSequenceId` table instead of using a generator */
-  private static Long generateSequenceFromTable(EntityManager session) {
-    TypedQuery<Long> query =
-        session.createQuery("SELECT COALESCE(MAX(e.id), 1000) FROM ModelSequenceId e", Long.class);
-    return query.getSingleResult();
+  /* Get the database platform associated with the `EntityManager` */
+  private static DatabasePlatform getDatabasePlatform(EntityManager session) {
+    EntityManagerImpl entityManagerImpl = session.unwrap(EntityManagerImpl.class);
+    return entityManagerImpl.getDatabaseSession().getPlatform();
   }
 
   private static void removeSequence(EntityManager session) {
@@ -50,34 +51,40 @@ public class PolarisSequenceManager {
   }
 
   private static synchronized Optional<Long> getSequenceId(EntityManager session) {
-    Optional<Long> result = Optional.empty();
-    if (!sequenceCleaned.get()) {
-      try {
-        LOGGER.info("Checking if the sequence POLARIS_SEQ exists");
-        String checkSequenceQuery =
-            "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_name IN ('polaris_seq', 'POLARIS_SEQ')";
-        int sequenceExists =
-            ((Number) session.createNativeQuery(checkSequenceQuery).getSingleResult()).intValue();
+    DatabasePlatform databasePlatform = getDatabasePlatform(session);
+    if (databasePlatform instanceof PostgreSQLPlatform) {
+      Optional<Long> result = Optional.empty();
+      if (!sequenceCleaned.get()) {
+        try {
+          LOGGER.info("Checking if the sequence POLARIS_SEQ exists");
+          String checkSequenceQuery =
+              "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_name IN ('polaris_seq', 'POLARIS_SEQ')";
+          int sequenceExists =
+              ((Number) session.createNativeQuery(checkSequenceQuery).getSingleResult()).intValue();
 
-        if (sequenceExists > 0) {
-          LOGGER.info("POLARIS_SEQ exists, calling NEXTVAL");
-          long queryResult =
-              (long) session.createNativeQuery("SELECT NEXTVAL('POLARIS_SEQ')").getSingleResult();
-          result = Optional.of(queryResult);
-        } else {
-          LOGGER.info("POLARIS_SEQ does not exist, skipping NEXTVAL");
+          if (sequenceExists > 0) {
+            LOGGER.info("POLARIS_SEQ exists, calling NEXTVAL");
+            long queryResult =
+                (long) session.createNativeQuery("SELECT NEXTVAL('POLARIS_SEQ')").getSingleResult();
+            result = Optional.of(queryResult);
+          } else {
+            LOGGER.info("POLARIS_SEQ does not exist, skipping NEXTVAL");
+          }
+        } catch (Exception e) {
+          LOGGER.info(
+              "Encountered an exception when checking sequence or calling `NEXTVAL('POLARIS_SEQ')`",
+              e);
         }
-      } catch (Exception e) {
-        LOGGER.info(
-            "Encountered an exception when checking sequence or calling `NEXTVAL('POLARIS_SEQ')`",
-            e);
+        if (result.isPresent()) {
+          removeSequence(session);
+        }
+        sequenceCleaned.set(true);
       }
-      if (result.isPresent()) {
-        removeSequence(session);
-      }
-      sequenceCleaned.set(true);
+      return result;
+    } else {
+      LOGGER.info("Skipping POLARIS_SEQ / NEXTVAL check for platform " + databasePlatform);
+      return Optional.empty();
     }
-    return result;
   }
 
   /**
