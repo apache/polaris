@@ -1,0 +1,96 @@
+{
+  "allowedLicenses": [
+    {
+      "moduleLicense": "Apache Software License, Version 2.0"
+    },
+    {
+      "moduleLicense": "Apache Software License, version 2.0"
+    },
+    {
+      "moduleLicense": "Apache License, Version 2.0"
+    },
+    {
+      "moduleLicense": "Apache 2"
+    },
+    {
+      "moduleLicense": "Apache 2.0"
+    },
+    {
+      "moduleLicense": "Apache-2.0"
+    },
+    {
+      "moduleLicense": "BSD-2.Clause"
+    },
+    {
+      "moduleLicense": "Revised BSD"
+    },
+    {
+      "moduleLicense": "BSD-3.Clause"
+    },
+    {
+      "moduleLicense": "BSD New license"
+    },
+    {
+      "moduleLicense": "Common Development and Distribution License (CDDL) v1.0"
+    },
+    {
+      "moduleLicense": "Creative Commons 1.0 Universal"
+    },
+    {
+      "moduleLicense": "Eclipse Distribution License, Version 1.0"
+    },
+    {
+      "moduleLicense": "EDL 1.0"
+    },
+    {
+      "moduleLicense": "Eclipse Public License, Version 1.0"
+    },
+    {
+      "moduleLicense": "EPL 2.0"
+    },
+    {
+      "moduleLicense": "Eclipse Public License, Version 2.0"
+    },
+    {
+      "moduleLicense": "Eclipse Public License - v 2.0"
+    },
+    {
+      "moduleLicense": "Eclipse Public License v. 2.0"
+    },
+    {
+      "moduleLicense": "GNU General Public License, Version 2 with the GNU Classpath Exception"
+    },
+    {
+      "moduleLicense": "GNU Lesser General Public License Version 2.1"
+    },
+    {
+      "moduleLicense": "Go License"
+    },
+    {
+      "moduleLicense": "MIT License"
+    },
+    {
+      "moduleLicense": "MIT-0"
+    },
+    {
+      "moduleLicense": "MIT"
+    },
+    {
+      "moduleLicense": "Public Domain"
+    },
+    {
+      "moduleLicense": "Public Domain, per Creative Commons CC0"
+    },
+    {
+      "moduleLicense": "Universal Permissive License, Version 1.0"
+    },
+    {
+      "moduleLicense": "Bouncy Castle Licence"
+    },
+    {
+      "moduleLicense": null,
+      "moduleName": "javax.servlet.jsp:jsp-api",
+      "moduleVersion": "2.1"
+    }
+  ]
+}
