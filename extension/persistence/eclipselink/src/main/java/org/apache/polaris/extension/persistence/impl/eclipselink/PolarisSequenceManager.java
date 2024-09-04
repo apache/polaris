@@ -35,6 +35,7 @@ public class PolarisSequenceManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisSequenceManager.class);
 
   private static AtomicBoolean sequenceCleaned = new AtomicBoolean(false);
+  private static long ID_STEP_SIZE = 25;
 
   /* Get the `DatabasePlatform` associated with the `EntityManager` */
   private static DatabasePlatform getDatabasePlatform(EntityManager session) {
@@ -84,9 +85,12 @@ public class PolarisSequenceManager {
     return result;
   }
 
-  /** Generates a new ID from `POLARIS_SEQUENCE` or `POLARIS_SEQ` depending on availability. */
-  public static Long generateId(EntityManager session) {
+  /**
+   * Generates a new ID from `POLARIS_SEQUENCE` or `POLARIS_SEQ` depending on availability. If
+   * `POLARIS_SEQ` exists, it will be renamed to `POLARIS_SEQ_UNUSED`.
+   */
+  public static Long getNewId(EntityManager session) {
     Optional<Long> sequenceId = getSequenceId(session);
-    return sequenceId.orElseGet(() -> generateSequenceFromTable(session));
+    return sequenceId.orElseGet(() -> generateSequenceFromTable(session)) + ID_STEP_SIZE;
   }
 }

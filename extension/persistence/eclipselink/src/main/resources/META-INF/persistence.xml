@@ -35,9 +35,9 @@
     <shared-cache-mode>NONE</shared-cache-mode>
     <properties>
       <property name="jakarta.persistence.jdbc.url"
-        value="jdbc:postgresql://localhost:5432/db"/>
-      <property name="jakarta.persistence.jdbc.user" value="polaris"/>
-      <property name="jakarta.persistence.jdbc.password" value="test"/>
+        value="jdbc:h2:file:/tmp/eclipseLink/{realm}"/>
+      <property name="jakarta.persistence.jdbc.user" value="sa"/>
+      <property name="jakarta.persistence.jdbc.password" value=""/>
       <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
       <property name="eclipselink.logging.level.sql" value="FINE"/>
       <property name="eclipselink.logging.parameters" value="true"/>

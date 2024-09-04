@@ -66,8 +66,7 @@ public class PolarisEclipseLinkStore {
   long getNextSequence(EntityManager session) {
     diagnosticServices.check(session != null, "session_is_null");
 
-    Long currentId = PolarisSequenceManager.generateId(session);
-    Long newId = currentId + 25;
+    Long newId = PolarisSequenceManager.getNewId(session);
 
     ModelSequenceId sequenceEntity = new ModelSequenceId();
     sequenceEntity.setId(newId);
