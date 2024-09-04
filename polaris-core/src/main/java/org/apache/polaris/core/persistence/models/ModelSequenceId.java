@@ -22,14 +22,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
 /** Used to manage unique IDs in Polaris */
 @Entity
-@Table(
-    name = "POLARIS_SEQUENCE",
-    indexes = {@Index(name = "idx_id", columnList = "id")})
+@Table(name = "POLARIS_SEQUENCE")
 public class ModelSequenceId {
   @Id
   @GeneratedValue(strategy = GenerationType.AUTO)
