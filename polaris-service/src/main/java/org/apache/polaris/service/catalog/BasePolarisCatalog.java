@@ -1882,7 +1882,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             && request.getPayload().getTimestamp()
                 <= entity.getLastAdmittedNotificationTimestamp().get()) {
           throw new AlreadyExistsException(
-              "A notification with a newer timestamp has been admitted for table %s",
+              "A notification with a newer timestamp has been processed for table %s",
               tableIdentifier);
         }
         existingLocation = entity.getMetadataLocation();

@@ -47,8 +47,8 @@ import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
-import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
@@ -945,7 +945,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     fileIO.addFile(
         tableMetadataLocation,
-        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes());
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
 
     catalog.sendNotification(table, request);
 
@@ -960,8 +960,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     request2.setPayload(update2);
 
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request2))
-        .isInstanceOf(CommitFailedException.class)
-        .hasMessageContaining("Notification timestamp is outdated for table parent.child1.table");
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining(
+            "A notification with a newer timestamp has been processed for table parent.child1.table");
 
     // Verify that DROP notification won't be rejected due to timestamp
     NotificationRequest request3 = new NotificationRequest();
