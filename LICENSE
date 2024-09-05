@@ -236,6 +236,7 @@ com.google.api:api-common
 com.google.api:gax
 com.google.api:gax-grpc
 com.google.api:gax-httpjson
+com.google.api.grpc:proto-google-cloud-monitoring-v3
 com.google.apis:google-api-services-storage
 com.google.auth:google-auth-library-credentials
 com.google.auth:google-auth-library-oauth2-http
@@ -244,6 +245,11 @@ com.google.cloud:google-cloud-core
 com.google.cloud:google-cloud-core-grpc
 com.google.cloud:google-cloud-core-http
 com.google.cloud:google-cloud-storage
+com.google.cloud:google-cloud-monitoring
+com.google.cloud.opentelemetry:detector-resources-support
+com.google.cloud.opentelemetry:exporter-metrics
+com.google.cloud.opentelemetry:shared-resourcemapping
+com.google.cloud:google-cloud-monitorin
 com.google.code.findbugs:jsr305
 com.google.code.gson:gson
 com.google.errorprone:error_prone_annotations
@@ -308,6 +314,7 @@ io.grpc:grpc-googleapis
 io.grpc:grpc-grpclb
 io.grpc:grpc-inprocess
 io.grpc:grpc-netty-shaded
+io.grpc:grpc-opentelemetry
 io.grpc:grpc-protobuf
 io.grpc:grpc-protobuf-lite
 io.grpc:grpc-rls
@@ -354,6 +361,7 @@ io.opentelemetry:opentelemetry-sdk-extension-autoconfigure-spi
 io.opentelemetry:opentelemetry-sdk-logs
 io.opentelemetry:opentelemetry-sdk-metrics
 io.opentelemetry:opentelemetry-sdk-trace
+io.opentelemetry.contrib:opentelemetry-gcp-resources
 io.perfmark:perfmark-api
 io.projectreactor.netty:reactor-netty-core
 io.projectreactor.netty:reactor-netty-http
@@ -394,6 +402,7 @@ org.apache.hadoop:hadoop-auth
 org.apache.hadoop:hadoop-client-api
 org.apache.hadoop:hadoop-common
 org.apache.hadoop:hadoop-hdfs-client
+org.apache.hadoop.thirdparty:hadoop-shaded-protobuf_3_21
 org.apache.httpcomponents.client5:httpclient5
 org.apache.httpcomponents.core5:httpcore5
 org.apache.httpcomponents.core5:httpcore5-h2
@@ -3428,6 +3437,12 @@ ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
 CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+---
+org.bouncycastle:bcprov-jdk15on
+
+Copyright (c) 2000-2024 The Legion of the Bouncy Castle Inc. (https://www.bouncycastle.org). Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sub license, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ---
@@ -4785,7 +4800,10 @@ org.glassfish.hk2:osgi-resource-locator
     do so.  If you do not wish to do so, delete this exception statement
     from your version.
 
+---
+org.jline:jline
 
+JLine is distributed under the BSD License, meaning that you are completely free to redistribute, modify, or sell it with almost no restrictions.
 
 ---
 org.latencyutils:LatencyUtils
