@@ -1877,11 +1877,13 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 .setLastNotificationTimestamp(request.getPayload().getTimestamp())
                 .build();
       } else {
-        // If the notification timestamp is outdated, we should not update the table
-        if (entity.getLastNotificationTimestamp() != null
-            && request.getPayload().getTimestamp() <= entity.getLastNotificationTimestamp()) {
-          throw new CommitFailedException(
-              "Notification timestamp is outdated for table %s", tableIdentifier);
+        // If the notification timestamp is out-of-order, we should not update the table
+        if (entity.getLastAdmittedNotificationTimestamp().isPresent()
+            && request.getPayload().getTimestamp()
+                <= entity.getLastAdmittedNotificationTimestamp().get()) {
+          throw new AlreadyExistsException(
+              "A notification with a newer timestamp has been admitted for table %s",
+              tableIdentifier);
         }
         existingLocation = entity.getMetadataLocation();
         entity =

@@ -976,7 +976,14 @@ paths:
       summary: Sends a notification to the table
       operationId: sendNotification
       requestBody:
-        description: The request containing the notification to be sent
+        description:
+          The request containing the notification to be sent.
+        
+          For each table, Polaris will reject any notification where the timestamp in the request body
+          is older than or equal to the most recent time Polaris has already processed for the table.
+          The responsibility of ensuring the correct order of timestamps for a sequence of notifications 
+          lies with the caller of the API. This includes managing potential clock skew or inconsistencies 
+          when notifications are sent from multiple sources.
         content:
           application/json:
             schema:
@@ -1002,7 +1009,9 @@ paths:
                 TableToLoadDoesNotExist:
                   $ref: '#/components/examples/NoSuchTableError'
         409:
-          description: Conflict - Polaris has processed a newer notification timestamp for the table.
+          description:
+            Conflict - The timestamp of the notification being sent is older than or equal to the 
+            most recent timestamp Polaris has already processed for the specified table.
           content:
             application/json:
               schema:
@@ -4139,11 +4148,13 @@ components:
       }
 
     OutOfOrderNotificationError:
-      summary: The notification timestamp is older than the latest timestamp which Polaris has processed for the table.
+      summary:
+        The timestamp of the notification being sent is older than or equal to the most recent timestamp 
+        Polaris has already processed for the specified table.
       value: {
         "error": {
-          "message": "Notification timestamp is outdated for table",
-          "type": "CommitFailedException",
+          "message": "A notification with a newer timestamp has been admitted for table",
+          "type": "AlreadyExistsException",
           "code": 409
         }
       }
