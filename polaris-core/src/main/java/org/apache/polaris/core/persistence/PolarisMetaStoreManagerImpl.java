@@ -33,11 +33,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.entity.AsyncTaskType;
-import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
@@ -1503,26 +1500,6 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
       if (ms.hasChildren(
           callCtx, null, refreshEntityToDrop.getCatalogId(), refreshEntityToDrop.getId())) {
         return new DropEntityResult(ReturnStatus.NAMESPACE_NOT_EMPTY, null);
-      }
-    }
-
-    // Check that cleanup is enabled, if it is set:
-    if (catalogPath != null && cleanup) {
-      boolean dropWithPurgeEnabled =
-          callCtx
-              .getConfigurationStore()
-              .getConfiguration(
-                  callCtx,
-                  (CatalogEntity) catalogPath.get(0),
-                  PolarisConfiguration.DROP_WITH_PURGE_ENABLED);
-      if (!dropWithPurgeEnabled) {
-        throw new ForbiddenException(
-            String.format(
-                "Unable to purge entity: %s. To enable this feature, set the Polaris configuration %s "
-                    + "or the catalog configuration %s",
-                entityToDrop.getName(),
-                PolarisConfiguration.DROP_WITH_PURGE_ENABLED.key,
-                PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig()));
       }
     }
 

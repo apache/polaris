@@ -1827,6 +1827,26 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
     PolarisEntity leafEntity = resolvedEntities.getRawLeafEntity();
 
+    // Check that purge is enabled, if it is set:
+    if (catalogPath != null && !catalogPath.isEmpty() && purge) {
+      boolean dropWithPurgeEnabled =
+          callContext.getPolarisCallContext()
+              .getConfigurationStore()
+              .getConfiguration(
+                  callContext.getPolarisCallContext(),
+                  (CatalogEntity) catalogPath.getFirst(),
+                  PolarisConfiguration.DROP_WITH_PURGE_ENABLED);
+      if (!dropWithPurgeEnabled) {
+        throw new ForbiddenException(
+            String.format(
+                "Unable to purge entity: %s. To enable this feature, set the Polaris configuration %s "
+                    + "or the catalog configuration %s",
+                identifier.name(),
+                PolarisConfiguration.DROP_WITH_PURGE_ENABLED.key,
+                PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig()));
+      }
+    }
+
     return entityManager
         .getMetaStoreManager()
         .dropEntityIfExists(
