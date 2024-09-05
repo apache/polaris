@@ -1515,7 +1515,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
                   callCtx,
                   (CatalogEntity) catalogPath.get(0),
                   PolarisConfiguration.DROP_WITH_PURGE_ENABLED);
-      if (dropWithPurgeEnabled) {
+      if (!dropWithPurgeEnabled) {
         throw new ForbiddenException(
             String.format(
                 "Unable to purge entity: %s. To enable this feature, set the Polaris configuration %s "

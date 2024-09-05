@@ -159,10 +159,18 @@ public class PolarisConfiguration<T> {
           .defaultValue(false)
           .build();
 
+  public static final PolarisConfiguration<Boolean> CLEANUP_ON_CATALOG_DROP =
+      PolarisConfiguration.<Boolean>builder()
+          .key("CLEANUP_ON_CATALOG_DROP")
+          .catalogConfig("cleanup.on.catalog.drop")
+          .description("If set to true, clean up data when a catalog is dropped")
+          .defaultValue(false)
+          .build();
+
   public static final PolarisConfiguration<Boolean> DROP_WITH_PURGE_ENABLED =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_DROP_WITH_PURGE")
-          .catalogConfig("dropWithPurge.enabled")
+          .catalogConfig("drop-with-purge.enabled")
           .description(
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
           .defaultValue(true)
