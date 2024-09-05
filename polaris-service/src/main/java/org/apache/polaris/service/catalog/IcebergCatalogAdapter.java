@@ -18,12 +18,15 @@
  */
 package org.apache.polaris.service.catalog;
 
-import com.google.common.base.Strings;
+import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
+
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.iceberg.catalog.Catalog;
@@ -166,16 +169,28 @@ public class IcebergCatalogAdapter
         .build();
   }
 
+  private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
+    EnumSet<AccessDelegationMode> delegationModes =
+        AccessDelegationMode.fromProtocolValuesList(accessDelegationMode);
+    Preconditions.checkArgument(
+        delegationModes.isEmpty() || delegationModes.contains(VENDED_CREDENTIALS),
+        "Unsupported access delegation mode: %s",
+        accessDelegationMode);
+    return delegationModes;
+  }
+
   @Override
   public Response createTable(
       String prefix,
       String namespace,
       CreateTableRequest createTableRequest,
-      String xIcebergAccessDelegation,
+      String accessDelegationMode,
       SecurityContext securityContext) {
+    EnumSet<AccessDelegationMode> delegationModes =
+        parseAccessDelegationModes(accessDelegationMode);
     Namespace ns = decodeNamespace(namespace);
     if (createTableRequest.stageCreate()) {
-      if (Strings.isNullOrEmpty(xIcebergAccessDelegation)) {
+      if (delegationModes.isEmpty()) {
         return Response.ok(
                 newHandlerWrapper(securityContext, prefix)
                     .createTableStaged(ns, createTableRequest))
@@ -183,11 +198,10 @@ public class IcebergCatalogAdapter
       } else {
         return Response.ok(
                 newHandlerWrapper(securityContext, prefix)
-                    .createTableStagedWithWriteDelegation(
-                        ns, createTableRequest, xIcebergAccessDelegation))
+                    .createTableStagedWithWriteDelegation(ns, createTableRequest))
             .build();
       }
-    } else if (Strings.isNullOrEmpty(xIcebergAccessDelegation)) {
+    } else if (delegationModes.isEmpty()) {
       return Response.ok(
               newHandlerWrapper(securityContext, prefix).createTableDirect(ns, createTableRequest))
           .build();
@@ -215,20 +229,21 @@ public class IcebergCatalogAdapter
       String prefix,
       String namespace,
       String table,
-      String xIcebergAccessDelegation,
+      String accessDelegationMode,
       String snapshots,
       SecurityContext securityContext) {
+    EnumSet<AccessDelegationMode> delegationModes =
+        parseAccessDelegationModes(accessDelegationMode);
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
-    if (Strings.isNullOrEmpty(xIcebergAccessDelegation)) {
+    if (delegationModes.isEmpty()) {
       return Response.ok(
               newHandlerWrapper(securityContext, prefix).loadTable(tableIdentifier, snapshots))
           .build();
     } else {
       return Response.ok(
               newHandlerWrapper(securityContext, prefix)
-                  .loadTableWithAccessDelegation(
-                      tableIdentifier, xIcebergAccessDelegation, snapshots))
+                  .loadTableWithAccessDelegation(tableIdentifier, snapshots))
           .build();
     }
   }

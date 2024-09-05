@@ -102,7 +102,7 @@ class IcebergSparkSession:
       .config(
         f"spark.sql.catalog.{catalog_name}", "org.apache.iceberg.spark.SparkCatalog"
       )
-      .config(f"spark.sql.catalog.{catalog_name}.header.X-Iceberg-Access-Delegation", "true")
+      .config(f"spark.sql.catalog.{catalog_name}.header.X-Iceberg-Access-Delegation", "vended-credentials")
       .config(f"spark.sql.catalog.{catalog_name}.type", "rest")
       .config(f"spark.sql.catalog.{catalog_name}.uri", self.polaris_url)
       .config(f"spark.sql.catalog.{catalog_name}.warehouse", self.catalog_name)

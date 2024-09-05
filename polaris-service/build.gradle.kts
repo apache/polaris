@@ -24,6 +24,7 @@ plugins {
   alias(libs.plugins.shadow)
   alias(libs.plugins.openapi.generator)
   id("polaris-server")
+  id("polaris-license-report")
   id("application")
 }
 

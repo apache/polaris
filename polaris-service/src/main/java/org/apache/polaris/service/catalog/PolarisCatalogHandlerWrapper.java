@@ -705,7 +705,7 @@ public class PolarisCatalogHandlerWrapper {
   }
 
   public LoadTableResponse createTableStagedWithWriteDelegation(
-      Namespace namespace, CreateTableRequest request, String xIcebergAccessDelegation) {
+      Namespace namespace, CreateTableRequest request) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
@@ -796,7 +796,7 @@ public class PolarisCatalogHandlerWrapper {
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
-      TableIdentifier tableIdentifier, String xIcebergAccessDelegation, String snapshots) {
+      TableIdentifier tableIdentifier, String snapshots) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
