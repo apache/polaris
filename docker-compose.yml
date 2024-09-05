@@ -19,8 +19,7 @@
 
 services:
   polaris:
-    build:
-      context: .
+    image: polaris:latest
     ports:
       - "8181:8181"
       - "8182"

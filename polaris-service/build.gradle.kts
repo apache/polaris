@@ -247,11 +247,16 @@ val startScripts =
     classpath = files(provider { shadowJar.get().archiveFileName })
   }
 
-tasks.register<Sync>("prepareDockerDist") {
-  into(project.layout.buildDirectory.dir("docker-dist"))
-  from(startScripts) { into("bin") }
-  from(shadowJar) { into("lib") }
-  doFirst { delete(project.layout.buildDirectory.dir("regtest-dist")) }
-}
+val prepareDockerDist =
+  tasks.register<Sync>("prepareDockerDist") {
+    into(project.layout.buildDirectory.dir("docker-dist"))
+    from(startScripts) { into("bin") }
+    from(shadowJar) { into("lib") }
+    doFirst { delete(project.layout.buildDirectory.dir("regtest-dist")) }
+  }
+
+val dockerDist by configurations.creating
+
+artifacts { add(dockerDist.name, prepareDockerDist) }
 
 tasks.named("build").configure { dependsOn("prepareDockerDist") }

@@ -73,6 +73,7 @@ testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 
 [plugins]
+docker = { id = "org.jetbrains.gradle.docker", version = "1.6.0-RC.5" }
 openapi-generator = { id = "org.openapi.generator", version = "7.6.0" }
 rat = { id = "org.nosphere.apache.rat", version = "0.8.1" }
 spotless = { id = "com.diffplug.spotless", version = "6.25.0" }

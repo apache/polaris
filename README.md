@@ -62,8 +62,9 @@ select * from db1.table1;
 
 ### More build and run options
 Running in Docker
-- `docker build -t localhost:5001/polaris:latest .` - To build the image.
-- `docker run -p 8181:8181 localhost:5001/polaris:latest` - To run the image in standalone mode.
+- `./gradlew dockerBuild` - To build the image.
+  - Run `./gradlew dockerBuild --info` - To see docker build output 
+- `docker run -p 8181:8181 polaris:latest` - To run the image in standalone mode.
 
 Running in Kubernetes
 - `./run.sh` - To run Polaris as a mini-deployment locally. This will create one pod that bind itself to ports `8181` and `8182`.

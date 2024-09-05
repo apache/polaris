@@ -17,27 +17,15 @@
 # under the License.
 #
 
-# Base Image
 # Use a non-docker-io registry, because pulling images from docker.io is
 # subject to aggressive request rate limiting and bandwidth shaping.
-FROM registry.access.redhat.com/ubi9/openjdk-21:1.20-2.1721752936 as build
-ARG ECLIPSELINK=false
-
-# Copy the REST catalog into the container
-COPY --chown=default:root . /app
-
-# Set the working directory in the container, nuke any existing builds
-WORKDIR /app
-RUN rm -rf build
-
-# Build the rest catalog
-RUN ./gradlew --no-daemon --info -PeclipseLink=$ECLIPSELINK clean prepareDockerDist
-
 FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.20-2.1721752928
+
+COPY lib/ /app/lib/
+COPY bin/ /app/bin/
+COPY polaris-server.yml /app
+
 WORKDIR /app
-COPY --from=build /app/polaris-service/build/docker-dist/bin /app/bin
-COPY --from=build /app/polaris-service/build/docker-dist/lib /app/lib
-COPY --from=build /app/polaris-server.yml /app
 
 EXPOSE 8181
 
