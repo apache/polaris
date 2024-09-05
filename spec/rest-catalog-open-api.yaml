@@ -1010,7 +1010,7 @@ paths:
                   $ref: '#/components/examples/NoSuchTableError'
         409:
           description:
-            Conflict - The timestamp of the notification being sent is older than or equal to the 
+            Conflict - The timestamp of the received notification is older than or equal to the 
             most recent timestamp Polaris has already processed for the specified table.
           content:
             application/json:
@@ -3230,6 +3230,7 @@ components:
     NotificationRequest:
       required:
         - notification-type
+        - payload
       properties:
         notification-type:
           $ref: '#/components/schemas/NotificationType'
@@ -4149,7 +4150,7 @@ components:
 
     OutOfOrderNotificationError:
       summary:
-        The timestamp of the notification being sent is older than or equal to the most recent timestamp 
+        The timestamp of the received notification is older than or equal to the most recent timestamp 
         Polaris has already processed for the specified table.
       value: {
         "error": {
