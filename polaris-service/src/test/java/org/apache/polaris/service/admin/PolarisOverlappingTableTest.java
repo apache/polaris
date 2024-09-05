@@ -141,67 +141,62 @@ public class PolarisOverlappingTableTest {
     defaultCatalog.catalog = String.format("default_catalog_%s", UUID.randomUUID().toString());
     laxCatalog.catalog = String.format("lax_catalog_%s", UUID.randomUUID().toString());
     strictCatalog.catalog = String.format("strict_catalog_%s", UUID.randomUUID().toString());
-    List.of(BASE_EXT, LAX_EXT)
-        .forEach(
-            EXT -> {
-              List.of(defaultCatalog, laxCatalog, strictCatalog)
-                  .forEach(
-                      c -> {
-                        CatalogProperties.Builder propertiesBuilder =
-                            CatalogProperties.builder()
-                                .setDefaultBaseLocation(String.format("%s/%s", baseLocation, c));
-                        if (!c.equals(defaultCatalog)) {
-                          propertiesBuilder
-                              .addProperty(
-                                  PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION
-                                      .catalogConfig(),
-                                  String.valueOf(c.equals(laxCatalog)))
-                              .addProperty(
-                                  PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
-                                  String.valueOf(c.equals(laxCatalog)));
-                        }
-                        StorageConfigInfo config =
-                            FileStorageConfigInfo.builder()
-                                .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-                                .build();
-                        Catalog catalogObject =
-                            new Catalog(
-                                Catalog.TypeEnum.INTERNAL,
-                                c.catalog,
-                                propertiesBuilder.build(),
-                                1725487592064L,
-                                1725487592064L,
-                                1,
-                                config);
-                        try (Response response =
-                            request(EXT, "management/v1/catalogs")
-                                .post(Entity.json(new CreateCatalogRequest(catalogObject)))) {
-                          if (response.getStatus() != Response.Status.CREATED.getStatusCode()) {
-                            throw new IllegalStateException(
-                                "Failed to create catalog: " + response.readEntity(String.class));
-                          }
-                        }
+    for (var EXT: List.of(BASE_EXT, LAX_EXT)) {
+      for (var c : List.of(defaultCatalog, laxCatalog, strictCatalog)) {
+        CatalogProperties.Builder propertiesBuilder =
+            CatalogProperties.builder()
+                .setDefaultBaseLocation(String.format("%s/%s", baseLocation, c));
+        if (!c.equals(defaultCatalog)) {
+          propertiesBuilder
+              .addProperty(
+                  PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION
+                      .catalogConfig(),
+                  String.valueOf(c.equals(laxCatalog)))
+              .addProperty(
+                  PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
+                  String.valueOf(c.equals(laxCatalog)));
+        }
+        StorageConfigInfo config =
+            FileStorageConfigInfo.builder()
+                .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+                .build();
+        Catalog catalogObject =
+            new Catalog(
+                Catalog.TypeEnum.INTERNAL,
+                c.catalog,
+                propertiesBuilder.build(),
+                1725487592064L,
+                1725487592064L,
+                1,
+                config);
+        try (Response response =
+                 request(EXT, "management/v1/catalogs")
+                     .post(Entity.json(new CreateCatalogRequest(catalogObject)))) {
+          if (response.getStatus() != Response.Status.CREATED.getStatusCode()) {
+            throw new IllegalStateException(
+                "Failed to create catalog: " + response.readEntity(String.class));
+          }
+        }
 
-                        namespace = "ns";
-                        CreateNamespaceRequest createNamespaceRequest =
-                            CreateNamespaceRequest.builder()
-                                .withNamespace(Namespace.of(namespace))
-                                .build();
-                        try (Response response =
-                            request(EXT, String.format("catalog/v1/%s/namespaces", c))
-                                .post(Entity.json(createNamespaceRequest))) {
-                          if (response.getStatus() != Response.Status.OK.getStatusCode()) {
-                            throw new IllegalStateException(
-                                "Failed to create namespace: " + response.readEntity(String.class));
-                          }
-                        }
-                      });
-            });
+        namespace = "ns";
+        CreateNamespaceRequest createNamespaceRequest =
+            CreateNamespaceRequest.builder()
+                .withNamespace(Namespace.of(namespace))
+                .build();
+        try (Response response =
+                 request(EXT, String.format("catalog/v1/%s/namespaces", c))
+                     .post(Entity.json(createNamespaceRequest))) {
+          if (response.getStatus() != Response.Status.OK.getStatusCode()) {
+            throw new IllegalStateException(
+                "Failed to create namespace: " + response.readEntity(String.class));
+          }
+        }
+      }
+    }
   }
 
   private Response createTable(
       DropwizardAppExtension<PolarisApplicationConfig> extension, String catalog, String location) {
-    System.out.println();
     CreateTableRequest createTableRequest =
         CreateTableRequest.builder()
             .withName("table_" + UUID.randomUUID().toString())
