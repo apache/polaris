@@ -157,7 +157,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             && !(ex instanceof UnprocessableEntityException)
             && isStorageProviderRetryableException(ex);
       };
-  public static final String CLEANUP_ON_NAMESPACE_DROP = "CLEANUP_ON_NAMESPACE_DROP";
 
   private final PolarisEntityManager entityManager;
   private final CallContext callContext;
@@ -628,7 +627,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 Map.of(),
                 polarisCallContext
                     .getConfigurationStore()
-                    .getConfiguration(polarisCallContext, CLEANUP_ON_NAMESPACE_DROP, false));
+                    .getConfiguration(polarisCallContext, PolarisConfiguration.CLEANUP_ON_NAMESPACE_DROP));
 
     if (!dropEntityResult.isSuccess() && dropEntityResult.failedBecauseNotEmpty()) {
       throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);
@@ -1826,6 +1825,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
     PolarisEntity leafEntity = resolvedEntities.getRawLeafEntity();
+
+    boolean dropWithPurgeEnabled = callContext
+        .getPolarisCallContext()
+        .getConfigurationStore()
+        .getConfiguration(
+            callContext.getPolarisCallContext(),
+            (CatalogEntity) catalogPath.getFirst(),
+            PolarisConfiguration.DROP_WITH_PURGE_ENABLED);
+
+
     return entityManager
         .getMetaStoreManager()
         .dropEntityIfExists(
