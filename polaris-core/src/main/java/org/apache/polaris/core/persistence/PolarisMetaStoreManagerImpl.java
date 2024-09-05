@@ -1430,7 +1430,6 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
    *
    * <p>{@link #dropEntityIfExists(PolarisCallContext, List, PolarisEntityCore, Map, boolean)}
    */
-  @SuppressWarnings("FormatStringAnnotation")
   private @NotNull DropEntityResult dropEntityIfExists(
       @NotNull PolarisCallContext callCtx,
       @NotNull PolarisMetaStoreSession ms,
