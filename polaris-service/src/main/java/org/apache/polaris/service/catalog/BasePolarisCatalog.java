@@ -627,7 +627,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 Map.of(),
                 polarisCallContext
                     .getConfigurationStore()
-                    .getConfiguration(polarisCallContext, PolarisConfiguration.CLEANUP_ON_NAMESPACE_DROP));
+                    .getConfiguration(
+                        polarisCallContext, PolarisConfiguration.CLEANUP_ON_NAMESPACE_DROP));
 
     if (!dropEntityResult.isSuccess() && dropEntityResult.failedBecauseNotEmpty()) {
       throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);

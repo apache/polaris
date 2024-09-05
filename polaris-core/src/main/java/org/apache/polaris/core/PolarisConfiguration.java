@@ -155,8 +155,7 @@ public class PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_NAMESPACE_DROP")
           .catalogConfig("cleanup.on.namespace.drop")
-          .description(
-              "If set to true, clean up data when a namespace is dropped")
+          .description("If set to true, clean up data when a namespace is dropped")
           .defaultValue(false)
           .build();
 

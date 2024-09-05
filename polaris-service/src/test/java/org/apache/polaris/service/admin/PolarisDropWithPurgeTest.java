@@ -28,9 +28,7 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
-
-import java.util.Arrays;
-import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.apache.iceberg.catalog.Namespace;
@@ -46,136 +44,159 @@ import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @ExtendWith({DropwizardExtensionsSupport.class, PolarisConnectionExtension.class})
 public class PolarisDropWithPurgeTest {
-    private static final DropwizardAppExtension<PolarisApplicationConfig> BASE_EXT =
-        new DropwizardAppExtension<>(
-            PolarisApplication.class,
-            ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-            // Bind to random port to support parallelism
-            ConfigOverride.config("server.applicationConnectors[0].port", "0"),
-            ConfigOverride.config("server.adminConnectors[0].port", "0"),
-            // Drop with purge disabled at the extension level
-            ConfigOverride.config("featureConfiguration.DROP_WITH_PURGE_ENABLED", "true"));
+  private static final DropwizardAppExtension<PolarisApplicationConfig> BASE_EXT =
+      new DropwizardAppExtension<>(
+          PolarisApplication.class,
+          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
+          // Bind to random port to support parallelism
+          ConfigOverride.config("server.applicationConnectors[0].port", "0"),
+          ConfigOverride.config("server.adminConnectors[0].port", "0"),
+          // Drop with purge disabled at the extension level
+          ConfigOverride.config("featureConfiguration.DROP_WITH_PURGE_ENABLED", "true"));
 
-    private static PolarisConnectionExtension.PolarisToken adminToken;
-    private static String userToken;
-    private static String realm;
-    private static String catalog;
-    private static String namespace;
-    private static final String baseLocation = "file:///tmp/PolarisDropWithPurgeTest";
+  private static PolarisConnectionExtension.PolarisToken adminToken;
+  private static String userToken;
+  private static String realm;
+  private static String defaultCatalog;
+  private static String strictCatalog;
+  private static String namespace;
+  private static final String baseLocation = "file:///tmp/PolarisDropWithPurgeTest";
 
-    @BeforeEach
-    public void setup(PolarisConnectionExtension.PolarisToken adminToken) {
-        userToken = adminToken.token();
-        realm = PolarisConnectionExtension.getTestRealm(PolarisServiceImplIntegrationTest.class);
-        catalog = String.format("catalog_%s", UUID.randomUUID().toString());
-        CatalogProperties.Builder propertiesBuilder =
-            CatalogProperties.builder()
-                .setDefaultBaseLocation(String.format("%s/%s", baseLocation, catalog));
-        StorageConfigInfo config =
-            FileStorageConfigInfo.builder()
-                .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-                .build();
-        Catalog catalogObject =
-            new Catalog(
-                Catalog.TypeEnum.INTERNAL,
-                catalog,
-                propertiesBuilder.build(),
-                1725487592064L,
-                1725487592064L,
-                1,
-                config);
-        try (Response response =
-                 request(BASE_EXT, "management/v1/catalogs")
-                     .post(Entity.json(new CreateCatalogRequest(catalogObject)))) {
-            if (response.getStatus() != Response.Status.CREATED.getStatusCode()) {
-                throw new IllegalStateException(
-                    "Failed to create catalog: " + response.readEntity(String.class));
-            }
-        }
+  private static Catalog createCatalog(String catalog, Map<String, String> configs) {
+    StorageConfigInfo config =
+        FileStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+            .build();
+    CatalogProperties.Builder propertiesBuilder =
+        CatalogProperties.builder()
+            .setDefaultBaseLocation(String.format("%s/%s", baseLocation, catalog));
+    for (Map.Entry<String, String> configEntry : configs.entrySet()) {
+      propertiesBuilder.addProperty(configEntry.getKey(), configEntry.getValue());
+    }
+    return new Catalog(
+        Catalog.TypeEnum.INTERNAL,
+        catalog,
+        propertiesBuilder.build(),
+        1725487592064L,
+        1725487592064L,
+        1,
+        config);
+  }
 
-        namespace = "ns";
-        CreateNamespaceRequest createNamespaceRequest =
-            CreateNamespaceRequest.builder()
-                .withNamespace(Namespace.of(namespace))
-                .build();
-        try (Response response =
-                 request(BASE_EXT, String.format("catalog/v1/%s/namespaces", catalog))
-                     .post(Entity.json(createNamespaceRequest))) {
-            if (response.getStatus() != Response.Status.OK.getStatusCode()) {
-                throw new IllegalStateException(
-                    "Failed to create namespace: " + response.readEntity(String.class));
-            }
-        }
+  private static void setupCatalog(Catalog catalogObject) {
+    try (Response response =
+        request("management/v1/catalogs")
+            .post(Entity.json(new CreateCatalogRequest(catalogObject)))) {
+      if (response.getStatus() != Response.Status.CREATED.getStatusCode()) {
+        throw new IllegalStateException(
+            "Failed to create catalog: " + response.readEntity(String.class));
+      }
     }
 
-    private String createTable() {
-        String name = "table_" + UUID.randomUUID().toString();
-        CreateTableRequest createTableRequest =
-            CreateTableRequest.builder()
-                .withName(name)
-                .withSchema(SCHEMA)
-                .build();
-        String prefix = String.format("catalog/v1/%s/namespaces/%s/tables", catalog, namespace);
-        try (Response response = request(BASE_EXT, prefix).post(Entity.json(createTableRequest))) {
-            if (response.getStatus() != Response.Status.OK.getStatusCode()) {
-                throw new IllegalStateException("Failed to create table: " + name);
-            }
-            return name;
-        }
+    namespace = "ns";
+    CreateNamespaceRequest createNamespaceRequest =
+        CreateNamespaceRequest.builder().withNamespace(Namespace.of(namespace)).build();
+    try (Response response =
+        request(String.format("catalog/v1/%s/namespaces", catalogObject.getName()))
+            .post(Entity.json(createNamespaceRequest))) {
+      if (response.getStatus() != Response.Status.OK.getStatusCode()) {
+        throw new IllegalStateException(
+            "Failed to create namespace: " + response.readEntity(String.class));
+      }
     }
+  }
 
-    private Response dropTable(String name, boolean purge) {
-        String prefix = String.format("catalog/v1/%s/namespaces/%s/tables/%s", catalog, namespace, name);
+  @BeforeAll
+  public static void setup(PolarisConnectionExtension.PolarisToken adminToken) {
+    userToken = adminToken.token();
+    realm = PolarisConnectionExtension.getTestRealm(PolarisServiceImplIntegrationTest.class);
+    defaultCatalog = String.format("default_catalog_%s", UUID.randomUUID().toString());
+    strictCatalog = String.format("strict_catalog_%s", UUID.randomUUID().toString());
 
-        try (Response response = BASE_EXT.client()
+    setupCatalog(createCatalog(defaultCatalog, Map.of()));
+    setupCatalog(
+        createCatalog(
+            strictCatalog,
+            Map.of(PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")));
+  }
+
+  private String createTable(String catalog) {
+    String name = "table_" + UUID.randomUUID().toString();
+    CreateTableRequest createTableRequest =
+        CreateTableRequest.builder().withName(name).withSchema(SCHEMA).build();
+    String prefix = String.format("catalog/v1/%s/namespaces/%s/tables", catalog, namespace);
+    try (Response response = request(prefix).post(Entity.json(createTableRequest))) {
+      if (response.getStatus() != Response.Status.OK.getStatusCode()) {
+        throw new IllegalStateException("Failed to create table: " + name);
+      }
+      return name;
+    }
+  }
+
+  private Response dropTable(String catalog, String name, boolean purge) {
+    String prefix =
+        String.format("catalog/v1/%s/namespaces/%s/tables/%s", catalog, namespace, name);
+    try (Response response =
+        BASE_EXT
+            .client()
             .target(String.format("http://localhost:%d/api/%s", BASE_EXT.getLocalPort(), prefix))
-            .queryParam("purgeRequested", purge) // Add purge flag
+            .queryParam("purgeRequested", purge)
             .request("application/json")
             .header("Authorization", "Bearer " + userToken)
             .header(REALM_PROPERTY_KEY, realm)
-            .delete()) { // Send DELETE request
-
-            // Check for success status (204 No Content)
-            if (response.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
-                throw new IllegalStateException("Failed to drop table: " + name);
-            }
-            return response; // Return response for further handling
-        }
+            .delete()) {
+      return response;
     }
+  }
 
-    private static Invocation.Builder request(
-        DropwizardAppExtension<PolarisApplicationConfig> extension,
-        String prefix) {
-        return extension
-            .client()
-            .target(String.format("http://localhost:%d/api/%s", extension.getLocalPort(), prefix))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm);
+  private static Invocation.Builder request(String prefix) {
+    return BASE_EXT
+        .client()
+        .target(String.format("http://localhost:%d/api/%s", BASE_EXT.getLocalPort(), prefix))
+        .request("application/json")
+        .header("Authorization", "Bearer " + userToken)
+        .header(REALM_PROPERTY_KEY, realm);
+  }
+
+  /** Used to define a parameterized test config */
+  protected record TestConfig(String name, String catalog, Response.Status purgeResult) {
+
+    @Override
+    public String toString() {
+      return name;
     }
+  }
 
-    @Test
-    void testDropTable() {
+  private static Stream<TestConfig> getTestConfigs() {
+    return Stream.of(
+        new TestConfig("default catalog", defaultCatalog, Response.Status.OK)); //,
+       //  new TestConfig("strict catalog", strictCatalog, Response.Status.FORBIDDEN));
+  }
 
-        // Drop a table without purge
-        Assertions
-            .assertThat(dropTable(createTable(), false))
-            .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+  @ParameterizedTest
+  @MethodSource("getTestConfigs")
+  void testDropTable(TestConfig config) {
 
+    // Drop a table without purge
+    Assertions.assertThat(dropTable(config.catalog, createTable(config.catalog), false))
+        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
 
-//        assertThat(
-//            createCatalog(
-//                prefix, "kingdoms", initiallyExternal, Arrays.asList("plants", "animals")))
-//            .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    // Drop a table twice:
+    String t1 = createTable(config.catalog);
+    Assertions.assertThat(dropTable(config.catalog, t1, false))
+        .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    Assertions.assertThat(dropTable(config.catalog, t1, false))
+        .returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
 
-    }
+    // Drop a table with purge
+    Assertions.assertThat(dropTable(config.catalog, createTable(config.catalog), true))
+        .returns(config.purgeResult.getStatusCode(), Response::getStatus);
+  }
 }
