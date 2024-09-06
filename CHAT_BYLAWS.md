@@ -44,7 +44,6 @@ Definition: “3rd party” means any (other) open-source project or any commerc
 
 ## Content moderation
 
-* User content in any form is not moderated.
-* The (P)PMC reserves the right to remove/delete commercial advertisements without notice, authors are notified about
-  the removal.
-* The (P)PMC further reserves the right to remove/delete content that violates the “Code of Conduct” without notice.
+* Any content which violates the Apache “Code of Conduct” will be removed.
+* Any commercial advertisements will be removed.
+* All other content will not be moderated.
