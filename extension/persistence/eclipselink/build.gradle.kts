@@ -32,8 +32,6 @@ dependencies {
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
-  implementation("org.apache.iceberg:iceberg-core")
-  implementation("org.apache.iceberg:iceberg-aws")
 
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
