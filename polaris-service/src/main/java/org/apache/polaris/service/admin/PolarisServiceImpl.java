@@ -21,6 +21,8 @@ package org.apache.polaris.service.admin;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.Locale;
+
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -363,7 +365,11 @@ public class PolarisServiceImpl
     try {
       adminService.assignPrincipalRole(principalName, request.getPrincipalRole().getName());
     } catch (IllegalStateException e) {
-      throw new AlreadyExistsException("Grant already exists or resolution failed");
+      if (e.toString().toLowerCase(Locale.ROOT).contains("duplicate key")) {
+        throw new AlreadyExistsException("Grant already exists or resolution failed");
+      } else {
+        throw e;
+      }
     }
     return Response.status(Response.Status.CREATED).build();
   }
@@ -410,7 +416,11 @@ public class PolarisServiceImpl
       adminService.assignCatalogRoleToPrincipalRole(
           principalRoleName, catalogName, request.getCatalogRole().getName());
     } catch (IllegalStateException e) {
-      throw new AlreadyExistsException("Grant already exists or resolution failed");
+      if (e.toString().toLowerCase(Locale.ROOT).contains("duplicate key")) {
+        throw new AlreadyExistsException("Grant already exists or resolution failed");
+      } else {
+        throw e;
+      }
     }
     return Response.status(Response.Status.CREATED).build();
   }
@@ -531,7 +541,11 @@ public class PolarisServiceImpl
           return Response.status(Response.Status.BAD_REQUEST).build();
       }
     } catch (IllegalStateException e) {
-      throw new AlreadyExistsException("Grant already exists or resolution failed");
+      if (e.toString().toLowerCase(Locale.ROOT).contains("duplicate key")) {
+        throw new AlreadyExistsException("Grant already exists or resolution failed");
+      } else {
+        throw e;
+      }
     }
     return Response.status(Response.Status.CREATED).build();
   }
