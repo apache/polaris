@@ -16,13 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.core.monitor;
 
-plugins { `kotlin-dsl` }
-
-dependencies {
-  implementation(gradleKotlinDsl())
-  implementation(baselibs.errorprone)
-  implementation(baselibs.idea.ext)
-  implementation(baselibs.license.report)
-  implementation(baselibs.spotless)
+/** Allows setting a configured instance of {@link PolarisMetricRegistry} */
+public interface MetricRegistryAware {
+  void setMetricRegistry(PolarisMetricRegistry metricRegistry);
 }

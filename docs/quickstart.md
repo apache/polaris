@@ -262,7 +262,7 @@ bin/spark-shell \
 --packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2,org.apache.hadoop:hadoop-aws:3.4.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
 --conf spark.sql.catalog.quickstart_catalog.warehouse=quickstart_catalog \
---conf spark.sql.catalog.quickstart_catalog.header.X-Iceberg-Access-Delegation=true \
+--conf spark.sql.catalog.quickstart_catalog.header.X-Iceberg-Access-Delegation=vended-credentials \
 --conf spark.sql.catalog.quickstart_catalog=org.apache.iceberg.spark.SparkCatalog \
 --conf spark.sql.catalog.quickstart_catalog.catalog-impl=org.apache.iceberg.rest.RESTCatalog \
 --conf spark.sql.catalog.quickstart_catalog.uri=http://localhost:8181/api/catalog \

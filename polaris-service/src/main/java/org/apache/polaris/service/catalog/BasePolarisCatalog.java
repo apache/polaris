@@ -42,11 +42,9 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseMetastoreTableOperations;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
@@ -175,6 +173,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private CloseableGroup closeableGroup;
   private Map<String, String> catalogProperties;
   private Map<String, String> tableDefaultProperties;
+  private final FileIOFactory fileIOFactory;
 
   /**
    * @param entityManager provides handle to underlying PolarisMetaStoreManager with which to
@@ -189,7 +188,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView,
       AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      TaskExecutor taskExecutor) {
+      TaskExecutor taskExecutor,
+      FileIOFactory fileIOFactory) {
     this.entityManager = entityManager;
     this.callContext = callContext;
     this.resolvedEntityView = resolvedEntityView;
@@ -199,6 +199,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     this.taskExecutor = taskExecutor;
     this.catalogId = catalogEntity.getId();
     this.catalogName = catalogEntity.getName();
+    this.fileIOFactory = fileIOFactory;
   }
 
   @Override
@@ -1967,8 +1968,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     Map<String, String> propertiesWithS3CustomizedClientFactory = new HashMap<>(properties);
     propertiesWithS3CustomizedClientFactory.put(
         S3FileIOProperties.CLIENT_FACTORY, PolarisS3FileIOClientFactory.class.getName());
-    return CatalogUtil.loadFileIO(
-        ioImpl, propertiesWithS3CustomizedClientFactory, new Configuration());
+    return fileIOFactory.loadFileIO(ioImpl, propertiesWithS3CustomizedClientFactory);
   }
 
   private void blockedUserSpecifiedWriteLocation(Map<String, String> properties) {

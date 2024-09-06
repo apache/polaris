@@ -16,13 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.service.catalog;
 
-plugins { `kotlin-dsl` }
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import java.util.Map;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.io.FileIO;
 
-dependencies {
-  implementation(gradleKotlinDsl())
-  implementation(baselibs.errorprone)
-  implementation(baselibs.idea.ext)
-  implementation(baselibs.license.report)
-  implementation(baselibs.spotless)
+/** A simple FileIOFactory implementation that defers all the work to the Iceberg SDK */
+@JsonTypeName("default")
+public class DefaultFileIOFactory implements FileIOFactory {
+  @Override
+  public FileIO loadFileIO(String impl, Map<String, String> properties) {
+    return CatalogUtil.loadFileIO(impl, properties, new Configuration());
+  }
 }

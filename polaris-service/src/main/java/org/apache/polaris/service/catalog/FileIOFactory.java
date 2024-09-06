@@ -16,13 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.service.catalog;
 
-plugins { `kotlin-dsl` }
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import io.dropwizard.jackson.Discoverable;
+import java.util.Map;
+import org.apache.iceberg.io.FileIO;
 
-dependencies {
-  implementation(gradleKotlinDsl())
-  implementation(baselibs.errorprone)
-  implementation(baselibs.idea.ext)
-  implementation(baselibs.license.report)
-  implementation(baselibs.spotless)
+/** Interface for providing a way to construct FileIO objects, such as for reading/writing S3. */
+@JsonTypeInfo(
+    use = JsonTypeInfo.Id.NAME,
+    include = JsonTypeInfo.As.PROPERTY,
+    property = "factoryType")
+public interface FileIOFactory extends Discoverable {
+  FileIO loadFileIO(String impl, Map<String, String> properties);
 }

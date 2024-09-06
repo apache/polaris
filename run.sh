@@ -21,8 +21,6 @@
 
 # Runs Polaris as a mini-deployment locally. Creates two pods that bind themselves to port 8181.
 
-CURRENT_DIR=$(pwd)
-
 # deploy the registry
 echo "Building Kind Registry..."
 sh ./kind-registry.sh

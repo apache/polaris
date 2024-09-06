@@ -129,7 +129,12 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             callContext, entityManager, authenticatedRoot, CATALOG_NAME);
     this.catalog =
         new BasePolarisCatalog(
-            entityManager, callContext, passthroughView, authenticatedRoot, Mockito.mock());
+            entityManager,
+            callContext,
+            passthroughView,
+            authenticatedRoot,
+            Mockito.mock(),
+            new DefaultFileIOFactory());
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
