@@ -1811,6 +1811,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
   }
 
+  @SuppressWarnings("FormatStringAnnotation")
   private @NotNull PolarisMetaStoreManager.DropEntityResult dropTableLike(
       PolarisEntitySubType subType,
       TableIdentifier identifier,
@@ -1830,11 +1831,12 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // Check that purge is enabled, if it is set:
     if (catalogPath != null && !catalogPath.isEmpty() && purge) {
       boolean dropWithPurgeEnabled =
-          callContext.getPolarisCallContext()
+          callContext
+              .getPolarisCallContext()
               .getConfigurationStore()
               .getConfiguration(
                   callContext.getPolarisCallContext(),
-                  (CatalogEntity) catalogPath.getFirst(),
+                  catalogEntity,
                   PolarisConfiguration.DROP_WITH_PURGE_ENABLED);
       if (!dropWithPurgeEnabled) {
         throw new ForbiddenException(

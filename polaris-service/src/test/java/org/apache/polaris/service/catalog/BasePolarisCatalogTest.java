@@ -1146,6 +1146,67 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(InMemoryFileIO.class);
   }
 
+  @Test
+  public void testDropTableWithPurgeDisabled() {
+    // Create a catalog with purge disabled:
+    String noPurgeCatalogName = CATALOG_NAME + "_no_purge";
+    String storageLocation = "s3://testDropTableWithPurgeDisabled/data";
+    AwsStorageConfigInfo noPurgeStorageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setExternalId("externalId")
+            .setUserArn("aws::a:user:arn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .build();
+    adminService.createCatalog(
+        new CatalogEntity.Builder()
+            .setName(noPurgeCatalogName)
+            .setDefaultBaseLocation(storageLocation)
+            .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+            .addProperty(PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+            .addProperty(
+                PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+            .addProperty(PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
+            .setStorageConfigurationInfo(noPurgeStorageConfigModel, storageLocation)
+            .build());
+    RealmContext realmContext = () -> "realm";
+    CallContext callContext = CallContext.of(realmContext, polarisContext);
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            callContext, entityManager, authenticatedRoot, noPurgeCatalogName);
+    BasePolarisCatalog noPurgeCatalog =
+        new BasePolarisCatalog(
+            entityManager,
+            callContext,
+            passthroughView,
+            authenticatedRoot,
+            Mockito.mock(),
+            new DefaultFileIOFactory());
+    noPurgeCatalog.initialize(
+        noPurgeCatalogName,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    if (this.requiresNamespaceCreate()) {
+      ((SupportsNamespaces) noPurgeCatalog).createNamespace(NS);
+    }
+
+    Assertions.assertThatPredicate(noPurgeCatalog::tableExists)
+        .as("Table should not exist before create")
+        .rejects(TABLE);
+
+    Table table = noPurgeCatalog.buildTable(TABLE, SCHEMA).create();
+    Assertions.assertThatPredicate(noPurgeCatalog::tableExists)
+        .as("Table should exist after create")
+        .accepts(TABLE);
+    Assertions.assertThat(table).isInstanceOf(BaseTable.class);
+
+    // Attempt to drop the table:
+    Assertions.assertThatThrownBy(() -> noPurgeCatalog.dropTable(TABLE, true))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining(PolarisConfiguration.DROP_WITH_PURGE_ENABLED.key);
+  }
+
   private TableMetadata createSampleTableMetadata(String tableLocation) {
     Schema schema =
         new Schema(

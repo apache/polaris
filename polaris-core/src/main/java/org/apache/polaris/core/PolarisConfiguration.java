@@ -169,7 +169,7 @@ public class PolarisConfiguration<T> {
 
   public static final PolarisConfiguration<Boolean> DROP_WITH_PURGE_ENABLED =
       PolarisConfiguration.<Boolean>builder()
-          .key("ALLOW_DROP_WITH_PURGE")
+          .key("DROP_WITH_PURGE_ENABLED")
           .catalogConfig("drop-with-purge.enabled")
           .description(
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
