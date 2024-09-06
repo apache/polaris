@@ -362,14 +362,7 @@ public class PolarisServiceImpl
         principalName);
     PolarisAdminService adminService = newAdminService(securityContext);
     try {
-      adminService.assignPrincipalRole(principalName, request.getPrincipalRole().getName());
-    } catch (IllegalStateException e) {
-      if (e.toString().toLowerCase(Locale.ROOT).contains("duplicate key")) {
-        throw new AlreadyExistsException("Grant already exists or resolution failed");
-      } else {
-        throw e;
-      }
-    }
+    adminService.assignPrincipalRole(principalName, request.getPrincipalRole().getName());
     return Response.status(Response.Status.CREATED).build();
   }
 

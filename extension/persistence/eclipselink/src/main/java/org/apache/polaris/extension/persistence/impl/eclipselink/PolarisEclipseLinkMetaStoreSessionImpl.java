@@ -49,6 +49,7 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -261,7 +262,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       }
     } catch (PersistenceException e) {
       if (e.toString().toLowerCase(Locale.ROOT).contains("duplicate key")) {
-        throw new IllegalStateException("Duplicate key error when persisting entity", e);
+        throw new AlreadyExistsException("Duplicate key error when persisting entity");
       } else {
         throw e;
       }
