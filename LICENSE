@@ -1348,6 +1348,230 @@ Linking this library statically or dynamically with other modules is making a co
 As a special exception, the copyright holders of this library give you permission to link this library with independent modules to produce an executable, regardless of the license terms of these independent modules, and to copy and distribute the resulting executable under terms of your choice, provided that you also meet, for each linked independent module, the terms and conditions of the license of that module.  An independent module is a module which is not derived from or based on this library.  If you modify this library, you may extend this exception to your version of the library, but you are not obligated to do so.  If you do not wish to do so, delete this exception statement from your version.
 
 
+---
+com.sun.xml.bind:jaxb-core
+
+Copyright (c) 2018 Oracle and/or its affiliates. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+  - Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+
+  - Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+
+  - Neither the name of the Eclipse Foundation, Inc. nor the names of its
+    contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+# Notices for Eclipse Implementation of JAXB
+
+This content is produced and maintained by the Eclipse Implementation of JAXB
+project.
+
+* Project home: https://projects.eclipse.org/projects/ee4j.jaxb-impl
+
+## Trademarks
+
+Eclipse Implementation of JAXB is a trademark of the Eclipse Foundation.
+
+## Copyright
+
+All content is the property of the respective authors or their employers. For
+more information regarding authorship of content, please consult the listed
+source code repository logs.
+
+## Declared Project Licenses
+
+This program and the accompanying materials are made available under the terms
+of the Eclipse Distribution License v. 1.0 which is available at
+http://www.eclipse.org/org/documents/edl-v10.php.
+
+SPDX-License-Identifier: BSD-3-Clause
+
+## Source Code
+
+The project maintains the following source code repositories:
+
+* https://github.com/eclipse-ee4j/jaxb-ri
+* https://github.com/eclipse-ee4j/jaxb-istack-commons
+* https://github.com/eclipse-ee4j/jaxb-dtd-parser
+* https://github.com/eclipse-ee4j/jaxb-fi
+* https://github.com/eclipse-ee4j/jaxb-stax-ex
+* https://github.com/eclipse-ee4j/jax-rpc-ri
+
+## Third-party Content
+
+This project leverages the following third party content.
+
+Apache Ant (1.10.2)
+
+* License: Apache-2.0 AND W3C AND LicenseRef-Public-Domain
+
+Apache Ant (1.10.2)
+
+* License: Apache-2.0 AND W3C AND LicenseRef-Public-Domain
+
+Apache Felix (1.2.0)
+
+* License: Apache License, 2.0
+
+args4j (2.33)
+
+* License: MIT License
+
+dom4j (1.6.1)
+
+* License: Custom license based on Apache 1.1
+
+file-management (3.0.0)
+
+* License: Apache-2.0
+* Project: https://maven.apache.org/shared/file-management/
+* Source:
+   https://svn.apache.org/viewvc/maven/shared/tags/file-management-3.0.0/
+
+JUnit (4.12)
+
+* License: Eclipse Public License
+
+JUnit (4.12)
+
+* License: Eclipse Public License
+
+maven-compat (3.5.2)
+
+* License: Apache-2.0
+* Project: https://maven.apache.org/ref/3.5.2/maven-compat/
+* Source:
+   https://mvnrepository.com/artifact/org.apache.maven/maven-compat/3.5.2
+
+maven-core (3.5.2)
+
+* License: Apache-2.0
+* Project: https://maven.apache.org/ref/3.5.2/maven-core/index.html
+* Source: https://mvnrepository.com/artifact/org.apache.maven/maven-core/3.5.2
+
+maven-plugin-annotations (3.5)
+
+* License: Apache-2.0
+* Project: https://maven.apache.org/plugin-tools/maven-plugin-annotations/
+* Source:
+   https://github.com/apache/maven-plugin-tools/tree/master/maven-plugin-annotations
+
+maven-plugin-api (3.5.2)
+
+* License: Apache-2.0
+
+maven-resolver-api (1.1.1)
+
+* License: Apache-2.0
+
+maven-resolver-api (1.1.1)
+
+* License: Apache-2.0
+
+maven-resolver-connector-basic (1.1.1)
+
+* License: Apache-2.0
+
+maven-resolver-impl (1.1.1)
+
+* License: Apache-2.0
+
+maven-resolver-spi (1.1.1)
+
+* License: Apache-2.0
+
+maven-resolver-transport-file (1.1.1)
+
+* License: Apache-2.0
+* Project: https://maven.apache.org/resolver/maven-resolver-transport-file/
+* Source:
+   https://github.com/apache/maven-resolver/tree/master/maven-resolver-transport-file
+
+maven-resolver-util (1.1.1)
+
+* License: Apache-2.0
+
+maven-settings (3.5.2)
+
+* License: Apache-2.0
+* Source:
+   https://mvnrepository.com/artifact/org.apache.maven/maven-settings/3.5.2
+
+OSGi Service Platform Core Companion Code (6.0)
+
+* License: Apache License, 2.0
+
+plexus-archiver (3.5)
+
+* License: Apache-2.0
+* Project: https://codehaus-plexus.github.io/plexus-archiver/
+* Source: https://github.com/codehaus-plexus/plexus-archiver
+
+plexus-io (3.0.0)
+
+* License: Apache-2.0
+
+plexus-utils (3.1.0)
+
+* License: Apache- 2.0 or Apache- 1.1 or BSD or Public Domain or Indiana
+   University Extreme! Lab Software License V1.1.1 (Apache 1.1 style)
+
+relaxng-datatype (1.0)
+
+* License: New BSD license
+
+Sax (0.2)
+
+* License: SAX-PD
+* Project: http://www.megginson.com/downloads/SAX/
+* Source: http://sourceforge.net/project/showfiles.php?group_id=29449
+
+testng (6.14.2)
+
+* License: Apache-2.0 AND (MIT OR GPL-1.0+)
+* Project: https://testng.org/doc/index.html
+* Source: https://github.com/cbeust/testng
+
+wagon-http-lightweight (3.0.0)
+
+* License: Pending
+* Project: https://maven.apache.org/wagon/
+* Source:
+   https://mvnrepository.com/artifact/org.apache.maven.wagon/wagon-http-lightweight/3.0.0
+
+xz for java (1.8)
+
+* License: LicenseRef-Public-Domain
+
+## Cryptography
+
+Content may contain encryption software. The country in which you are currently
+may have restrictions on the import, possession, and use, and/or re-export to
+another country, of encryption software. BEFORE using any encryption software,
+please check the country's laws, regulations and policies concerning the import,
+possession, or use, and re-export of encryption software, to see if this is
+permitted.
 
 ---
 com.sun.xml.bind:jaxb-impl
@@ -2110,6 +2334,255 @@ do so.  If you do not wish to do so, delete this exception statement
 from your version.
 
 
+---
+com.sun.xml.bind:jaxb-xjc
+
+Copyright (c) 2018 Oracle and/or its affiliates. All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+  - Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+
+  - Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+
+  - Neither the name of the Eclipse Foundation, Inc. nor the names of its
+    contributors may be used to endorse or promote products derived
+    from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+Copyright (c) 2004 Kohsuke Kawaguchi
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation
+files (the "Software"), to deal in the Software without
+restriction, including without limitation the rights to use,
+copy, modify, merge, publish, distribute, sublicense, and/or
+sell copies of the Software, and to permit persons to whom
+the Software is furnished to do so, subject to the following
+conditions:
+
+The above copyright notice and this permission notice shall
+be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY
+KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS
+OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+
+
+# Notices for Eclipse Implementation of JAXB
+
+This content is produced and maintained by the Eclipse Implementation of JAXB
+project.
+
+* Project home: https://projects.eclipse.org/projects/ee4j.jaxb-impl
+
+## Trademarks
+
+Eclipse Implementation of JAXB is a trademark of the Eclipse Foundation.
+
+## Copyright
+
+All content is the property of the respective authors or their employers. For
+more information regarding authorship of content, please consult the listed
+source code repository logs.
+
+## Declared Project Licenses
+
+This program and the accompanying materials are made available under the terms
+of the Eclipse Distribution License v. 1.0 which is available at
+http://www.eclipse.org/org/documents/edl-v10.php.
+
+SPDX-License-Identifier: BSD-3-Clause
+
+## Source Code
+
+The project maintains the following source code repositories:
+
+* https://github.com/eclipse-ee4j/jaxb-ri
+* https://github.com/eclipse-ee4j/jaxb-istack-commons
+* https://github.com/eclipse-ee4j/jaxb-dtd-parser
+* https://github.com/eclipse-ee4j/jaxb-fi
+* https://github.com/eclipse-ee4j/jaxb-stax-ex
+* https://github.com/eclipse-ee4j/jax-rpc-ri
+
+## Third-party Content
+
+This project leverages the following third party content.
+
+Apache Ant (1.10.2)
+
+* License: Apache-2.0 AND W3C AND LicenseRef-Public-Domain
+
+Apache Ant (1.10.2)
+
+* License: Apache-2.0 AND W3C AND LicenseRef-Public-Domain
+
+Apache Felix (1.2.0)
+
+* License: Apache License, 2.0
+
+args4j (2.33)
+
+* License: MIT License
+
+dom4j (1.6.1)
+
+* License: Custom license based on Apache 1.1
+
+file-management (3.0.0)
+
+* License: Apache-2.0
+* Project: https://maven.apache.org/shared/file-management/
+* Source:
+   https://svn.apache.org/viewvc/maven/shared/tags/file-management-3.0.0/
+
+JUnit (4.12)
+
+* License: Eclipse Public License
+
+JUnit (4.12)
+
+* License: Eclipse Public License
+
+maven-compat (3.5.2)
+
+* License: Apache-2.0
+* Project: https://maven.apache.org/ref/3.5.2/maven-compat/
+* Source:
+   https://mvnrepository.com/artifact/org.apache.maven/maven-compat/3.5.2
+
+maven-core (3.5.2)
+
+* License: Apache-2.0
+* Project: https://maven.apache.org/ref/3.5.2/maven-core/index.html
+* Source: https://mvnrepository.com/artifact/org.apache.maven/maven-core/3.5.2
+
+maven-plugin-annotations (3.5)
+
+* License: Apache-2.0
+* Project: https://maven.apache.org/plugin-tools/maven-plugin-annotations/
+* Source:
+   https://github.com/apache/maven-plugin-tools/tree/master/maven-plugin-annotations
+
+maven-plugin-api (3.5.2)
+
+* License: Apache-2.0
+
+maven-resolver-api (1.1.1)
+
+* License: Apache-2.0
+
+maven-resolver-api (1.1.1)
+
+* License: Apache-2.0
+
+maven-resolver-connector-basic (1.1.1)
+
+* License: Apache-2.0
+
+maven-resolver-impl (1.1.1)
+
+* License: Apache-2.0
+
+maven-resolver-spi (1.1.1)
+
+* License: Apache-2.0
+
+maven-resolver-transport-file (1.1.1)
+
+* License: Apache-2.0
+* Project: https://maven.apache.org/resolver/maven-resolver-transport-file/
+* Source:
+   https://github.com/apache/maven-resolver/tree/master/maven-resolver-transport-file
+
+maven-resolver-util (1.1.1)
+
+* License: Apache-2.0
+
+maven-settings (3.5.2)
+
+* License: Apache-2.0
+* Source:
+   https://mvnrepository.com/artifact/org.apache.maven/maven-settings/3.5.2
+
+OSGi Service Platform Core Companion Code (6.0)
+
+* License: Apache License, 2.0
+
+plexus-archiver (3.5)
+
+* License: Apache-2.0
+* Project: https://codehaus-plexus.github.io/plexus-archiver/
+* Source: https://github.com/codehaus-plexus/plexus-archiver
+
+plexus-io (3.0.0)
+
+* License: Apache-2.0
+
+plexus-utils (3.1.0)
+
+* License: Apache- 2.0 or Apache- 1.1 or BSD or Public Domain or Indiana
+   University Extreme! Lab Software License V1.1.1 (Apache 1.1 style)
+
+relaxng-datatype (1.0)
+
+* License: New BSD license
+
+Sax (0.2)
+
+* License: SAX-PD
+* Project: http://www.megginson.com/downloads/SAX/
+* Source: http://sourceforge.net/project/showfiles.php?group_id=29449
+
+testng (6.14.2)
+
+* License: Apache-2.0 AND (MIT OR GPL-1.0+)
+* Project: https://testng.org/doc/index.html
+* Source: https://github.com/cbeust/testng
+
+wagon-http-lightweight (3.0.0)
+
+* License: Pending
+* Project: https://maven.apache.org/wagon/
+* Source:
+   https://mvnrepository.com/artifact/org.apache.maven.wagon/wagon-http-lightweight/3.0.0
+
+xz for java (1.8)
+
+* License: LicenseRef-Public-Domain
+
+## Cryptography
+
+Content may contain encryption software. The country in which you are currently
+may have restrictions on the import, possession, and use, and/or re-export to
+another country, of encryption software. BEFORE using any encryption software,
+please check the country's laws, regulations and policies concerning the import,
+possession, or use, and re-export of encryption software, to see if this is
+permitted.
 
 
 ---
@@ -2892,6 +3365,383 @@ permitted.
 
 
 ---
+jakarta.persistence:jakarta.persistence-api
+
+This program and the accompanying materials are made available under the
+terms of the Eclipse Public License v. 2.0 which is available at
+http://www.eclipse.org/legal/epl-2.0,
+or the Eclipse Distribution License v. 1.0 which is available at
+http://www.eclipse.org/org/documents/edl-v10.php.
+
+SPDX-License-Identifier: EPL-2.0 OR BSD-3-Clause
+
+
+Eclipse Public License - v 2.0
+
+    THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE
+    PUBLIC LICENSE ("AGREEMENT"). ANY USE, REPRODUCTION OR DISTRIBUTION
+    OF THE PROGRAM CONSTITUTES RECIPIENT'S ACCEPTANCE OF THIS AGREEMENT.
+
+1. DEFINITIONS
+
+"Contribution" means:
+
+  a) in the case of the initial Contributor, the initial content
+     Distributed under this Agreement, and
+
+  b) in the case of each subsequent Contributor:
+     i) changes to the Program, and
+     ii) additions to the Program;
+  where such changes and/or additions to the Program originate from
+  and are Distributed by that particular Contributor. A Contribution
+  "originates" from a Contributor if it was added to the Program by
+  such Contributor itself or anyone acting on such Contributor's behalf.
+  Contributions do not include changes or additions to the Program that
+  are not Modified Works.
+
+"Contributor" means any person or entity that Distributes the Program.
+
+"Licensed Patents" mean patent claims licensable by a Contributor which
+are necessarily infringed by the use or sale of its Contribution alone
+or when combined with the Program.
+
+"Program" means the Contributions Distributed in accordance with this
+Agreement.
+
+"Recipient" means anyone who receives the Program under this Agreement
+or any Secondary License (as applicable), including Contributors.
+
+"Derivative Works" shall mean any work, whether in Source Code or other
+form, that is based on (or derived from) the Program and for which the
+editorial revisions, annotations, elaborations, or other modifications
+represent, as a whole, an original work of authorship.
+
+"Modified Works" shall mean any work in Source Code or other form that
+results from an addition to, deletion from, or modification of the
+contents of the Program, including, for purposes of clarity any new file
+in Source Code form that contains any contents of the Program. Modified
+Works shall not include works that contain only declarations,
+interfaces, types, classes, structures, or files of the Program solely
+in each case in order to link to, bind by name, or subclass the Program
+or Modified Works thereof.
+
+"Distribute" means the acts of a) distributing or b) making available
+in any manner that enables the transfer of a copy.
+
+"Source Code" means the form of a Program preferred for making
+modifications, including but not limited to software source code,
+documentation source, and configuration files.
+
+"Secondary License" means either the GNU General Public License,
+Version 2.0, or any later versions of that license, including any
+exceptions or additional permissions as identified by the initial
+Contributor.
+
+2. GRANT OF RIGHTS
+
+  a) Subject to the terms of this Agreement, each Contributor hereby
+  grants Recipient a non-exclusive, worldwide, royalty-free copyright
+  license to reproduce, prepare Derivative Works of, publicly display,
+  publicly perform, Distribute and sublicense the Contribution of such
+  Contributor, if any, and such Derivative Works.
+
+  b) Subject to the terms of this Agreement, each Contributor hereby
+  grants Recipient a non-exclusive, worldwide, royalty-free patent
+  license under Licensed Patents to make, use, sell, offer to sell,
+  import and otherwise transfer the Contribution of such Contributor,
+  if any, in Source Code or other form. This patent license shall
+  apply to the combination of the Contribution and the Program if, at
+  the time the Contribution is added by the Contributor, such addition
+  of the Contribution causes such combination to be covered by the
+  Licensed Patents. The patent license shall not apply to any other
+  combinations which include the Contribution. No hardware per se is
+  licensed hereunder.
+
+  c) Recipient understands that although each Contributor grants the
+  licenses to its Contributions set forth herein, no assurances are
+  provided by any Contributor that the Program does not infringe the
+  patent or other intellectual property rights of any other entity.
+  Each Contributor disclaims any liability to Recipient for claims
+  brought by any other entity based on infringement of intellectual
+  property rights or otherwise. As a condition to exercising the
+  rights and licenses granted hereunder, each Recipient hereby
+  assumes sole responsibility to secure any other intellectual
+  property rights needed, if any. For example, if a third party
+  patent license is required to allow Recipient to Distribute the
+  Program, it is Recipient's responsibility to acquire that license
+  before distributing the Program.
+
+  d) Each Contributor represents that to its knowledge it has
+  sufficient copyright rights in its Contribution, if any, to grant
+  the copyright license set forth in this Agreement.
+
+  e) Notwithstanding the terms of any Secondary License, no
+  Contributor makes additional grants to any Recipient (other than
+  those set forth in this Agreement) as a result of such Recipient's
+  receipt of the Program under the terms of a Secondary License
+  (if permitted under the terms of Section 3).
+
+3. REQUIREMENTS
+
+3.1 If a Contributor Distributes the Program in any form, then:
+
+  a) the Program must also be made available as Source Code, in
+  accordance with section 3.2, and the Contributor must accompany
+  the Program with a statement that the Source Code for the Program
+  is available under this Agreement, and informs Recipients how to
+  obtain it in a reasonable manner on or through a medium customarily
+  used for software exchange; and
+
+  b) the Contributor may Distribute the Program under a license
+  different than this Agreement, provided that such license:
+     i) effectively disclaims on behalf of all other Contributors all
+     warranties and conditions, express and implied, including
+     warranties or conditions of title and non-infringement, and
+     implied warranties or conditions of merchantability and fitness
+     for a particular purpose;
+
+     ii) effectively excludes on behalf of all other Contributors all
+     liability for damages, including direct, indirect, special,
+     incidental and consequential damages, such as lost profits;
+
+     iii) does not attempt to limit or alter the recipients' rights
+     in the Source Code under section 3.2; and
+
+     iv) requires any subsequent distribution of the Program by any
+     party to be under a license that satisfies the requirements
+     of this section 3.
+
+3.2 When the Program is Distributed as Source Code:
+
+  a) it must be made available under this Agreement, or if the
+  Program (i) is combined with other material in a separate file or
+  files made available under a Secondary License, and (ii) the initial
+  Contributor attached to the Source Code the notice described in
+  Exhibit A of this Agreement, then the Program may be made available
+  under the terms of such Secondary Licenses, and
+
+  b) a copy of this Agreement must be included with each copy of
+  the Program.
+
+3.3 Contributors may not remove or alter any copyright, patent,
+trademark, attribution notices, disclaimers of warranty, or limitations
+of liability ("notices") contained within the Program from any copy of
+the Program which they Distribute, provided that Contributors may add
+their own appropriate notices.
+
+4. COMMERCIAL DISTRIBUTION
+
+Commercial distributors of software may accept certain responsibilities
+with respect to end users, business partners and the like. While this
+license is intended to facilitate the commercial use of the Program,
+the Contributor who includes the Program in a commercial product
+offering should do so in a manner which does not create potential
+liability for other Contributors. Therefore, if a Contributor includes
+the Program in a commercial product offering, such Contributor
+("Commercial Contributor") hereby agrees to defend and indemnify every
+other Contributor ("Indemnified Contributor") against any losses,
+damages and costs (collectively "Losses") arising from claims, lawsuits
+and other legal actions brought by a third party against the Indemnified
+Contributor to the extent caused by the acts or omissions of such
+Commercial Contributor in connection with its distribution of the Program
+in a commercial product offering. The obligations in this section do not
+apply to any claims or Losses relating to any actual or alleged
+intellectual property infringement. In order to qualify, an Indemnified
+Contributor must: a) promptly notify the Commercial Contributor in
+writing of such claim, and b) allow the Commercial Contributor to control,
+and cooperate with the Commercial Contributor in, the defense and any
+related settlement negotiations. The Indemnified Contributor may
+participate in any such claim at its own expense.
+
+For example, a Contributor might include the Program in a commercial
+product offering, Product X. That Contributor is then a Commercial
+Contributor. If that Commercial Contributor then makes performance
+claims, or offers warranties related to Product X, those performance
+claims and warranties are such Commercial Contributor's responsibility
+alone. Under this section, the Commercial Contributor would have to
+defend claims against the other Contributors related to those performance
+claims and warranties, and if a court requires any other Contributor to
+pay any damages as a result, the Commercial Contributor must pay
+those damages.
+
+5. NO WARRANTY
+
+EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, AND TO THE EXTENT
+PERMITTED BY APPLICABLE LAW, THE PROGRAM IS PROVIDED ON AN "AS IS"
+BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESS OR
+IMPLIED INCLUDING, WITHOUT LIMITATION, ANY WARRANTIES OR CONDITIONS OF
+TITLE, NON-INFRINGEMENT, MERCHANTABILITY OR FITNESS FOR A PARTICULAR
+PURPOSE. Each Recipient is solely responsible for determining the
+appropriateness of using and distributing the Program and assumes all
+risks associated with its exercise of rights under this Agreement,
+including but not limited to the risks and costs of program errors,
+compliance with applicable laws, damage to or loss of data, programs
+or equipment, and unavailability or interruption of operations.
+
+6. DISCLAIMER OF LIABILITY
+
+EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, AND TO THE EXTENT
+PERMITTED BY APPLICABLE LAW, NEITHER RECIPIENT NOR ANY CONTRIBUTORS
+SHALL HAVE ANY LIABILITY FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING WITHOUT LIMITATION LOST
+PROFITS), HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OR DISTRIBUTION OF THE PROGRAM OR THE
+EXERCISE OF ANY RIGHTS GRANTED HEREUNDER, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGES.
+
+7. GENERAL
+
+If any provision of this Agreement is invalid or unenforceable under
+applicable law, it shall not affect the validity or enforceability of
+the remainder of the terms of this Agreement, and without further
+action by the parties hereto, such provision shall be reformed to the
+minimum extent necessary to make such provision valid and enforceable.
+
+If Recipient institutes patent litigation against any entity
+(including a cross-claim or counterclaim in a lawsuit) alleging that the
+Program itself (excluding combinations of the Program with other software
+or hardware) infringes such Recipient's patent(s), then such Recipient's
+rights granted under Section 2(b) shall terminate as of the date such
+litigation is filed.
+
+All Recipient's rights under this Agreement shall terminate if it
+fails to comply with any of the material terms or conditions of this
+Agreement and does not cure such failure in a reasonable period of
+time after becoming aware of such noncompliance. If all Recipient's
+rights under this Agreement terminate, Recipient agrees to cease use
+and distribution of the Program as soon as reasonably practicable.
+However, Recipient's obligations under this Agreement and any licenses
+granted by Recipient relating to the Program shall continue and survive.
+
+Everyone is permitted to copy and distribute copies of this Agreement,
+but in order to avoid inconsistency the Agreement is copyrighted and
+may only be modified in the following manner. The Agreement Steward
+reserves the right to publish new versions (including revisions) of
+this Agreement from time to time. No one other than the Agreement
+Steward has the right to modify this Agreement. The Eclipse Foundation
+is the initial Agreement Steward. The Eclipse Foundation may assign the
+responsibility to serve as the Agreement Steward to a suitable separate
+entity. Each new version of the Agreement will be given a distinguishing
+version number. The Program (including Contributions) may always be
+Distributed subject to the version of the Agreement under which it was
+received. In addition, after a new version of the Agreement is published,
+Contributor may elect to Distribute the Program (including its
+Contributions) under the new version.
+
+Except as expressly stated in Sections 2(a) and 2(b) above, Recipient
+receives no rights or licenses to the intellectual property of any
+Contributor under this Agreement, whether expressly, by implication,
+estoppel or otherwise. All rights in the Program not expressly granted
+under this Agreement are reserved. Nothing in this Agreement is intended
+to be enforceable by any entity that is not a Contributor or Recipient.
+No third-party beneficiary rights are created under this Agreement.
+
+Exhibit A - Form of Secondary Licenses Notice
+
+"This Source Code may also be made available under the following
+Secondary Licenses when the conditions for such availability set forth
+in the Eclipse Public License, v. 2.0 are satisfied: {name license(s),
+version(s), and exceptions or additional permissions here}."
+
+  Simply including a copy of this Agreement, including this Exhibit A
+  is not sufficient to license the Source Code under Secondary Licenses.
+
+  If it is not possible or desirable to put the notice in a particular
+  file, then You may include the notice in a location (such as a LICENSE
+  file in a relevant directory) where a recipient would be likely to
+  look for such a notice.
+
+  You may add additional accurate notices of copyright ownership.
+
+
+
+Eclipse Distribution License - v 1.0
+Copyright (c) 2007, Eclipse Foundation, Inc. and its licensors.
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice,
+this list of conditions and the following disclaimer.
+* Redistributions in binary form must reproduce the above copyright notice,
+this list of conditions and the following disclaimer in the documentation
+and/or other materials provided with the distribution.
+* Neither the name of the Eclipse Foundation, Inc. nor the names of its contributors
+may be used to endorse or promote products derived from this software
+without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
+BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+[//]: # " Copyright (c) 2019 Oracle and/or its affiliates. All rights reserved. "
+[//]: # "  "
+[//]: # " This program and the accompanying materials are made available under the "
+[//]: # " terms of the Eclipse Distribution License v. 1.0, which is available at "
+[//]: # " http://www.eclipse.org/org/documents/edl-v10.php. "
+[//]: # "  "
+[//]: # " SPDX-License-Identifier: BSD-3-Clause "
+
+# Notices for Jakarta Persistence
+
+This content is produced and maintained by the Jakarta Persistence
+project.
+
+* Project home: https://projects.eclipse.org/projects/ee4j.jpa
+
+## Trademarks
+
+ Jakarta Persistence is a trademark of the Eclipse Foundation.
+
+## Copyright
+
+All content is the property of the respective authors or their employers. For
+more information regarding authorship of content, please consult the listed
+source code repository logs.
+
+## Declared Project Licenses
+
+This program and the accompanying materials are made available under the terms
+of the Eclipse Public License v. 2.0 which is available at
+http://www.eclipse.org/legal/epl-2.0, or the Eclipse Distribution License v. 1.0
+which is available at http://www.eclipse.org/org/documents/edl-v10.php.
+
+SPDX-License-Identifier: EPL-2.0 OR BSD-3-Clause
+
+## Source Code
+
+The project maintains the following source code repositories:
+
+* https://github.com/eclipse-ee4j/jpa-api
+
+## Third-party Content
+
+This project leverages the following third party content.
+
+None
+
+## Cryptography
+
+Content may contain encryption software. The country in which you are currently
+may have restrictions on the import, possession, and use, and/or re-export to
+another country, of encryption software. BEFORE using any encryption software,
+please check the country's laws, regulations and policies concerning the import,
+possession, or use, and re-export of encryption software, to see if this is
+permitted.
+
+---
 jakarta.xml.bind:jakarta.xml.bind-api
 
 Copyright (c) 2017, 2018 Oracle and/or its affiliates. All rights reserved.
@@ -3452,6 +4302,1071 @@ Copyright (c) 2000-2024 The Legion of the Bouncy Castle Inc. (https://www.bouncy
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+
+---
+org.eclipse.angus:angus-activation
+
+Copyright (c) 2018 Oracle and/or its affiliates. All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions
+    are met:
+
+      - Redistributions of source code must retain the above copyright
+        notice, this list of conditions and the following disclaimer.
+
+      - Redistributions in binary form must reproduce the above copyright
+        notice, this list of conditions and the following disclaimer in the
+        documentation and/or other materials provided with the distribution.
+
+      - Neither the name of the Eclipse Foundation, Inc. nor the names of its
+        contributors may be used to endorse or promote products derived
+        from this software without specific prior written permission.
+
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+    IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+    THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+    PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+    CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+    EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+    LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+    NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+# Notices for Eclipse Angus
+
+This content is produced and maintained by the Eclipse Angus project.
+
+* Project home: https://projects.eclipse.org/projects/ee4j.angus
+
+## Trademarks
+
+Eclipse Angus is a trademark of the Eclipse Foundation.
+
+## Copyright
+
+All content is the property of the respective authors or their employers. For
+more information regarding authorship of content, please consult the listed
+source code repository logs.
+
+## Declared Project Licenses
+
+This program and the accompanying materials are made available under the terms
+of the Eclipse Distribution License v1.0 which is available at
+https://www.eclipse.org/org/documents/edl-v10.php.
+
+SPDX-License-Identifier: BSD-3-Clause
+
+## Source Code
+
+The project maintains the following source code repositories:
+
+* https://github.com/eclipse-ee4j/angus-activation
+* https://github.com/eclipse-ee4j/angus-mail
+
+## Third-party Content
+
+This project leverages the following third party content.
+
+None
+
+## Cryptography
+
+Content may contain encryption software. The country in which you are currently
+may have restrictions on the import, possession, and use, and/or re-export to
+another country, of encryption software. BEFORE using any encryption software,
+please check the country's laws, regulations and policies concerning the import,
+possession, or use, and re-export of encryption software, to see if this is
+permitted.
+
+
+
+---
+org.eclipse.persistence:eclipselink
+
+Eclipse Public License - v 2.0
+
+    THE ACCOMPANYING PROGRAM IS PROVIDED UNDER THE TERMS OF THIS ECLIPSE
+    PUBLIC LICENSE ("AGREEMENT"). ANY USE, REPRODUCTION OR DISTRIBUTION
+    OF THE PROGRAM CONSTITUTES RECIPIENT'S ACCEPTANCE OF THIS AGREEMENT.
+
+1. DEFINITIONS
+
+"Contribution" means:
+
+  a) in the case of the initial Contributor, the initial content
+     Distributed under this Agreement, and
+
+  b) in the case of each subsequent Contributor:
+     i) changes to the Program, and
+     ii) additions to the Program;
+  where such changes and/or additions to the Program originate from
+  and are Distributed by that particular Contributor. A Contribution
+  "originates" from a Contributor if it was added to the Program by
+  such Contributor itself or anyone acting on such Contributor's behalf.
+  Contributions do not include changes or additions to the Program that
+  are not Modified Works.
+
+"Contributor" means any person or entity that Distributes the Program.
+
+"Licensed Patents" mean patent claims licensable by a Contributor which
+are necessarily infringed by the use or sale of its Contribution alone
+or when combined with the Program.
+
+"Program" means the Contributions Distributed in accordance with this
+Agreement.
+
+"Recipient" means anyone who receives the Program under this Agreement
+or any Secondary License (as applicable), including Contributors.
+
+"Derivative Works" shall mean any work, whether in Source Code or other
+form, that is based on (or derived from) the Program and for which the
+editorial revisions, annotations, elaborations, or other modifications
+represent, as a whole, an original work of authorship.
+
+"Modified Works" shall mean any work in Source Code or other form that
+results from an addition to, deletion from, or modification of the
+contents of the Program, including, for purposes of clarity any new file
+in Source Code form that contains any contents of the Program. Modified
+Works shall not include works that contain only declarations,
+interfaces, types, classes, structures, or files of the Program solely
+in each case in order to link to, bind by name, or subclass the Program
+or Modified Works thereof.
+
+"Distribute" means the acts of a) distributing or b) making available
+in any manner that enables the transfer of a copy.
+
+"Source Code" means the form of a Program preferred for making
+modifications, including but not limited to software source code,
+documentation source, and configuration files.
+
+"Secondary License" means either the GNU General Public License,
+Version 2.0, or any later versions of that license, including any
+exceptions or additional permissions as identified by the initial
+Contributor.
+
+2. GRANT OF RIGHTS
+
+  a) Subject to the terms of this Agreement, each Contributor hereby
+  grants Recipient a non-exclusive, worldwide, royalty-free copyright
+  license to reproduce, prepare Derivative Works of, publicly display,
+  publicly perform, Distribute and sublicense the Contribution of such
+  Contributor, if any, and such Derivative Works.
+
+  b) Subject to the terms of this Agreement, each Contributor hereby
+  grants Recipient a non-exclusive, worldwide, royalty-free patent
+  license under Licensed Patents to make, use, sell, offer to sell,
+  import and otherwise transfer the Contribution of such Contributor,
+  if any, in Source Code or other form. This patent license shall
+  apply to the combination of the Contribution and the Program if, at
+  the time the Contribution is added by the Contributor, such addition
+  of the Contribution causes such combination to be covered by the
+  Licensed Patents. The patent license shall not apply to any other
+  combinations which include the Contribution. No hardware per se is
+  licensed hereunder.
+
+  c) Recipient understands that although each Contributor grants the
+  licenses to its Contributions set forth herein, no assurances are
+  provided by any Contributor that the Program does not infringe the
+  patent or other intellectual property rights of any other entity.
+  Each Contributor disclaims any liability to Recipient for claims
+  brought by any other entity based on infringement of intellectual
+  property rights or otherwise. As a condition to exercising the
+  rights and licenses granted hereunder, each Recipient hereby
+  assumes sole responsibility to secure any other intellectual
+  property rights needed, if any. For example, if a third party
+  patent license is required to allow Recipient to Distribute the
+  Program, it is Recipient's responsibility to acquire that license
+  before distributing the Program.
+
+  d) Each Contributor represents that to its knowledge it has
+  sufficient copyright rights in its Contribution, if any, to grant
+  the copyright license set forth in this Agreement.
+
+  e) Notwithstanding the terms of any Secondary License, no
+  Contributor makes additional grants to any Recipient (other than
+  those set forth in this Agreement) as a result of such Recipient's
+  receipt of the Program under the terms of a Secondary License
+  (if permitted under the terms of Section 3).
+
+3. REQUIREMENTS
+
+3.1 If a Contributor Distributes the Program in any form, then:
+
+  a) the Program must also be made available as Source Code, in
+  accordance with section 3.2, and the Contributor must accompany
+  the Program with a statement that the Source Code for the Program
+  is available under this Agreement, and informs Recipients how to
+  obtain it in a reasonable manner on or through a medium customarily
+  used for software exchange; and
+
+  b) the Contributor may Distribute the Program under a license
+  different than this Agreement, provided that such license:
+     i) effectively disclaims on behalf of all other Contributors all
+     warranties and conditions, express and implied, including
+     warranties or conditions of title and non-infringement, and
+     implied warranties or conditions of merchantability and fitness
+     for a particular purpose;
+
+     ii) effectively excludes on behalf of all other Contributors all
+     liability for damages, including direct, indirect, special,
+     incidental and consequential damages, such as lost profits;
+
+     iii) does not attempt to limit or alter the recipients' rights
+     in the Source Code under section 3.2; and
+
+     iv) requires any subsequent distribution of the Program by any
+     party to be under a license that satisfies the requirements
+     of this section 3.
+
+3.2 When the Program is Distributed as Source Code:
+
+  a) it must be made available under this Agreement, or if the
+  Program (i) is combined with other material in a separate file or
+  files made available under a Secondary License, and (ii) the initial
+  Contributor attached to the Source Code the notice described in
+  Exhibit A of this Agreement, then the Program may be made available
+  under the terms of such Secondary Licenses, and
+
+  b) a copy of this Agreement must be included with each copy of
+  the Program.
+
+3.3 Contributors may not remove or alter any copyright, patent,
+trademark, attribution notices, disclaimers of warranty, or limitations
+of liability ("notices") contained within the Program from any copy of
+the Program which they Distribute, provided that Contributors may add
+their own appropriate notices.
+
+4. COMMERCIAL DISTRIBUTION
+
+Commercial distributors of software may accept certain responsibilities
+with respect to end users, business partners and the like. While this
+license is intended to facilitate the commercial use of the Program,
+the Contributor who includes the Program in a commercial product
+offering should do so in a manner which does not create potential
+liability for other Contributors. Therefore, if a Contributor includes
+the Program in a commercial product offering, such Contributor
+("Commercial Contributor") hereby agrees to defend and indemnify every
+other Contributor ("Indemnified Contributor") against any losses,
+damages and costs (collectively "Losses") arising from claims, lawsuits
+and other legal actions brought by a third party against the Indemnified
+Contributor to the extent caused by the acts or omissions of such
+Commercial Contributor in connection with its distribution of the Program
+in a commercial product offering. The obligations in this section do not
+apply to any claims or Losses relating to any actual or alleged
+intellectual property infringement. In order to qualify, an Indemnified
+Contributor must: a) promptly notify the Commercial Contributor in
+writing of such claim, and b) allow the Commercial Contributor to control,
+and cooperate with the Commercial Contributor in, the defense and any
+related settlement negotiations. The Indemnified Contributor may
+participate in any such claim at its own expense.
+
+For example, a Contributor might include the Program in a commercial
+product offering, Product X. That Contributor is then a Commercial
+Contributor. If that Commercial Contributor then makes performance
+claims, or offers warranties related to Product X, those performance
+claims and warranties are such Commercial Contributor's responsibility
+alone. Under this section, the Commercial Contributor would have to
+defend claims against the other Contributors related to those performance
+claims and warranties, and if a court requires any other Contributor to
+pay any damages as a result, the Commercial Contributor must pay
+those damages.
+
+5. NO WARRANTY
+
+EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, AND TO THE EXTENT
+PERMITTED BY APPLICABLE LAW, THE PROGRAM IS PROVIDED ON AN "AS IS"
+BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESS OR
+IMPLIED INCLUDING, WITHOUT LIMITATION, ANY WARRANTIES OR CONDITIONS OF
+TITLE, NON-INFRINGEMENT, MERCHANTABILITY OR FITNESS FOR A PARTICULAR
+PURPOSE. Each Recipient is solely responsible for determining the
+appropriateness of using and distributing the Program and assumes all
+risks associated with its exercise of rights under this Agreement,
+including but not limited to the risks and costs of program errors,
+compliance with applicable laws, damage to or loss of data, programs
+or equipment, and unavailability or interruption of operations.
+
+6. DISCLAIMER OF LIABILITY
+
+EXCEPT AS EXPRESSLY SET FORTH IN THIS AGREEMENT, AND TO THE EXTENT
+PERMITTED BY APPLICABLE LAW, NEITHER RECIPIENT NOR ANY CONTRIBUTORS
+SHALL HAVE ANY LIABILITY FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING WITHOUT LIMITATION LOST
+PROFITS), HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OR DISTRIBUTION OF THE PROGRAM OR THE
+EXERCISE OF ANY RIGHTS GRANTED HEREUNDER, EVEN IF ADVISED OF THE
+POSSIBILITY OF SUCH DAMAGES.
+
+7. GENERAL
+
+If any provision of this Agreement is invalid or unenforceable under
+applicable law, it shall not affect the validity or enforceability of
+the remainder of the terms of this Agreement, and without further
+action by the parties hereto, such provision shall be reformed to the
+minimum extent necessary to make such provision valid and enforceable.
+
+If Recipient institutes patent litigation against any entity
+(including a cross-claim or counterclaim in a lawsuit) alleging that the
+Program itself (excluding combinations of the Program with other software
+or hardware) infringes such Recipient's patent(s), then such Recipient's
+rights granted under Section 2(b) shall terminate as of the date such
+litigation is filed.
+
+All Recipient's rights under this Agreement shall terminate if it
+fails to comply with any of the material terms or conditions of this
+Agreement and does not cure such failure in a reasonable period of
+time after becoming aware of such noncompliance. If all Recipient's
+rights under this Agreement terminate, Recipient agrees to cease use
+and distribution of the Program as soon as reasonably practicable.
+However, Recipient's obligations under this Agreement and any licenses
+granted by Recipient relating to the Program shall continue and survive.
+
+Everyone is permitted to copy and distribute copies of this Agreement,
+but in order to avoid inconsistency the Agreement is copyrighted and
+may only be modified in the following manner. The Agreement Steward
+reserves the right to publish new versions (including revisions) of
+this Agreement from time to time. No one other than the Agreement
+Steward has the right to modify this Agreement. The Eclipse Foundation
+is the initial Agreement Steward. The Eclipse Foundation may assign the
+responsibility to serve as the Agreement Steward to a suitable separate
+entity. Each new version of the Agreement will be given a distinguishing
+version number. The Program (including Contributions) may always be
+Distributed subject to the version of the Agreement under which it was
+received. In addition, after a new version of the Agreement is published,
+Contributor may elect to Distribute the Program (including its
+Contributions) under the new version.
+
+Except as expressly stated in Sections 2(a) and 2(b) above, Recipient
+receives no rights or licenses to the intellectual property of any
+Contributor under this Agreement, whether expressly, by implication,
+estoppel or otherwise. All rights in the Program not expressly granted
+under this Agreement are reserved. Nothing in this Agreement is intended
+to be enforceable by any entity that is not a Contributor or Recipient.
+No third-party beneficiary rights are created under this Agreement.
+
+Exhibit A - Form of Secondary Licenses Notice
+
+"This Source Code may also be made available under the following
+Secondary Licenses when the conditions for such availability set forth
+in the Eclipse Public License, v. 2.0 are satisfied: {name license(s),
+version(s), and exceptions or additional permissions here}."
+
+  Simply including a copy of this Agreement, including this Exhibit A
+  is not sufficient to license the Source Code under Secondary Licenses.
+
+  If it is not possible or desirable to put the notice in a particular
+  file, then You may include the notice in a location (such as a LICENSE
+  file in a relevant directory) where a recipient would be likely to
+  look for such a notice.
+
+  You may add additional accurate notices of copyright ownership.
+
+
+
+
+
+Eclipse Distribution License - v 1.0
+
+Copyright (c) 2007, Eclipse Foundation, Inc. and its licensors.
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+    Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+    Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+    Neither the name of the Eclipse Foundation, Inc. nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+
+[//]: # " Copyright (c) 2020 Oracle and/or its affiliates. All rights reserved. "
+[//]: # "  "
+[//]: # " This program and the accompanying materials are made available under the "
+[//]: # " terms of the Eclipse Public License v. 2.0 which is available at "
+[//]: # " http://www.eclipse.org/legal/epl-2.0, "
+[//]: # " or the Eclipse Distribution License v. 1.0 which is available at "
+[//]: # " http://www.eclipse.org/org/documents/edl-v10.php. "
+[//]: # "  "
+[//]: # " SPDX-License-Identifier: EPL-2.0 OR BSD-3-Clause "
+
+# Notices for EclipseLink
+
+This content is produced and maintained by the EclipseLink project.
+
+* Project home: https://projects.eclipse.org/projects/ee4j.eclipselink
+
+## Trademarks
+
+ EclipseLink is a trademark of the Eclipse Foundation.
+
+## Copyright
+
+All content is the property of the respective authors or their employers. For
+more information regarding authorship of content, please consult the listed
+source code repository logs.
+
+## Declared Project Licenses
+
+This program and the accompanying materials are made available under the terms
+of the Eclipse Public License v. 2.0 which is available at
+https://www.eclipse.org/legal/epl-2.0, or the Eclipse Distribution License v1.0
+which is available at https://www.eclipse.org/org/documents/edl-v10.php.
+
+SPDX-License-Identifier: EPL-2.0 OR BSD-3-Clause
+
+## Source Code
+
+The project maintains the following source code repositories:
+
+* https://github.com/eclipse-ee4j/eclipselink
+* https://github.com/eclipse-ee4j/eclipselink-workbench
+* https://github.com/eclipse-ee4j/eclipselink-oracleddlparser
+* https://github.com/eclipse-ee4j/eclipselink-examples
+* https://git.eclipse.org/r/plugins/gitiles/eclipselink/eclipselink.releng
+* https://git.eclipse.org/r/plugins/gitiles/eclipselink/eclipselink.runtime
+* https://git.eclipse.org/r/plugins/gitiles/eclipselink/eclipselink.utils.temp
+* https://git.eclipse.org/r/plugins/gitiles/eclipselink/examples
+* https://git.eclipse.org/r/plugins/gitiles/eclipselink/examples/mysports
+* https://git.eclipse.org/r/plugins/gitiles/eclipselink/examples/nosql
+* https://git.eclipse.org/r/plugins/gitiles/eclipselink/examples/performance
+* https://git.eclipse.org/r/plugins/gitiles/eclipselink/examples/temporal
+* https://git.eclipse.org/r/plugins/gitiles/eclipselink/incubator
+* https://git.eclipse.org/r/plugins/gitiles/eclipselink/javax.persistence
+* https://git.eclipse.org/r/plugins/gitiles/eclipselink/oracleddlparser
+
+## Third-party Content
+
+This project leverages the following third party content.
+
+* Service Data Objects (SDO) (2.1)
+
+* License: OSOA SDO License
+
+Activation Framework (1.1)
+
+* License: Common Development and Distribution License
+
+ANTLR (3.0)
+
+* License: New BSD license
+
+ANTLR Runtime only (3.5.2)
+
+* License: New BSD License
+* Project: http://www.antlr3.org/
+* Source:
+   http://repo1.maven.org/maven2/org/antlr/antlr-runtime/3.5.2/antlr-runtime-3.5.2-sources.jar
+
+ANTLR Runtime only: Version (3.2)
+
+* License: New BSD license
+
+Apache Ant (1.7.0)
+
+* License: Apache License, 2.0
+
+Apache Ant (1.10.7)
+
+* License: Apache-2.0 AND W3C AND LicenseRef-Public-Domain
+
+Apache Ant (1.10.7)
+
+* License: Apache-2.0 AND W3C AND LicenseRef-Public-Domain
+
+Apache Geronimo Jaxws 2.1 Spec (1.0)
+
+* License: Apache License, 2.0
+
+Apache Java Servlet API (2.4)
+
+* License: Apache License, 2.0
+
+atinject (Package javax.inject) (1.0)
+
+* License: Apache License, 2.0
+
+atinject (Package javax.inject) (1.0)
+
+* License: Apache License, 2.0
+
+Bean Validation API (1.0)
+
+* License: Apache License, 2.0
+* Source:
+   http://anonsvn.jboss.org/repos/hibernate/beanvalidation/trunk/validation-api/
+
+Bean Validation API (1.0.0)
+
+* License: Apache License, 2.0
+* Project:
+   http://repository.jboss.com/maven2/javax/validation/validation-api/1.0.0.GA/
+* Source:
+   http://repository.jboss.com/maven2/javax/validation/validation-api/1.0.0.GA/
+
+Bean Validation API (1.1.0)
+
+* License: Apache License, 2.0
+* Project: http://beanvalidation.org/
+
+Bean Validation API (2.0.1)
+
+* License: Apache-2.0
+* Project: http://beanvalidation.org/
+* Source:
+   https://github.com/beanvalidation/beanvalidation-api/releases/tag/2.0.1.Final
+
+bnd (0.0.351)
+
+* License: Apache License, 2.0
+* Project: http://sourceforge.net/projects/bnd/
+* Source: http://sourceforge.net/projects/bnd/
+
+cdi-api (1.0)
+
+* License: Apache License, 2.0
+
+cdi-api 2.0 (JSR 365: Contexts and Dependency Injection for Java (2.0)
+
+* License: Apache-2.0
+* Project: http://www.cdi-spec.org/
+* Source:
+   http://repo1.maven.org/maven2/javax/enterprise/cdi-api/2.0/cdi-api-2.0-sources.jar
+
+Classmate library (1.0.0)
+
+* License: Apache License, 2.0
+* Project: http://github.com/cowtowncoder/java-classmate
+* Source:
+   https://github.com/cowtowncoder/java-classmate/archive/classmate-1.0.0.tar.gz
+
+commons-logging-1.1.1.jar (1.1.1)
+
+* License: Apache License, 2.0
+* Project: http://commons.apache.org/logging/
+* Source:
+   http://apache.siamwebhosting.com/commons/logging/binaries/commons-logging-1.1.1-bin.zip
+
+EJB (3.0)
+
+* License: Common Development and Distribution License
+* Project: http://java.sun.com/products/ejb/
+
+ejb-api (3.1.1)
+
+* License: Common Development and Distribution License
+
+Expression Language API (2.2)
+
+* License: Common Development and Distribution License, Apache 2.0 License
+* Project: https://uel.java.net/
+* Source:
+   http://download.java.net/maven/2/javax/el/el-api/2.2/el-api-2.2-sources.jar
+
+Expression Language Implementation (2.2.2)
+
+* License: Common Development and Distribution License
+* Project: https://uel.java.net/
+* Source:
+   http://search.maven.org/remotecontent?filepath=org/glassfish/web/javax.el/2.2.2/javax.el-2.2.2-sources.jar
+
+geronimo activation (1.1)
+
+* License: Apache License, 2.0
+
+glassfish-corba-orb (4.2.0)
+
+* License: CDDL-1.1 OR GPL-2.0 With Classpath-exception-2.0
+
+gmbal (4.0.0)
+
+* License: (CDDL-1.1 OR GPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0) AND
+   Apache-2.0
+* Project: https://javaee.github.io/gmbal/
+* Source: https://github.com/javaee/gmbal
+
+gmbal-api (3.2.0)
+
+* License: CDDL-1.1 or GPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0
+* Project: https://javaee.github.io/gmbal/
+* Source: https://github.com/javaee/gmbal
+
+gmbal-pfl basic_4.0.1.b003 (4.0.1)
+
+* License: (CDDL-1.1 OR GPL-2.0 OR GPL-2.0 WITH Classpath-exception-2.0) AND
+   Apache-2.0 AND BSD-3-Clause
+
+hk2-api (2.3.0)
+
+* License: Common Development and Distribution License
+
+hk2-locator (2.3.0)
+
+* License: Common Development and Distribution License
+
+hk2-utils (2.3.0)
+
+* License: (CDDL-1.1 OR GPL-2.0 WITH Classpath-exception-2.0)
+
+Java API for JSON Processing JSR-353 (JSON-P) (0.0.99)
+
+* License: Common Development and Distribution License
+* Project: http://json-processing-spec.java.net
+* Source: http://java.net/projects/jsonp
+
+Java API for JSON Processing JSR-353 (JSON-P) (1.0)
+
+* License: Common Development and Distribution License
+* Project: http://jsonp.java.net/
+* Source:
+   http://search.maven.org/remotecontent?filepath=javax/json/javax.json-api/1.0/javax.json-api-1.0-sources.jar
+
+Java API for JSON Processing RI JSR-353 (1.0)
+
+* License: Common Development and Distribution License
+* Project: http://jsonp.java.net/
+* Source:
+   http://search.maven.org/remotecontent?filepath=org/glassfish/javax.json/1.0/javax.json-1.0-sources.jar
+
+Java Transaction (JTA) (1.1)
+
+* License: Common Development and Distribution License
+
+Java Transaction API (1.3)
+
+* License: (CDDL-1.1 OR GPL-2.0-only OR GPL-2.0-only WITH
+   classpath-exception-2.0)
+
+JavaCC (5.0)
+
+* License: New BSD License
+
+JavaMail (1.4)
+
+* License: Common Development and Distribution License
+
+Javax.annotation (1.2)
+
+* License: Common Development and Distribution License
+
+Javax.interceptor API (1.2)
+
+* License: Common Development and Distribution License 1.1
+
+javax.json (1.0.4)
+
+* License: Common Development and Distribution License
+* Project: https://jsonp.java.net
+* Source:
+   http://central.maven.org/maven2/org/glassfish/javax.json/1.0.4/javax.json-1.0.4-sources.jar
+
+javax.json.bind-api (1.0)
+
+* License: Common Development and Distribution License
+* Project: https://java.net/projects/jsonb-spec/pages/Home
+* Source: https://java.net/projects/jsonb-spec/sources/git/show
+
+javax.ws.rs (2.0.1)
+
+* License: Common Development and Distribution License, + 1 file partial ASL
+
+JAX-RS (JSR311) API (1.1.1)
+
+* License: Common Development and Distribution License
+* Project: https://jsr311.dev.java.net/
+* Source:
+   http://download.java.net/maven/2/javax/ws/rs/jsr311-api/1.1/jsr311-api-1.1-sources.jar
+
+JAXB (2.1.9)
+
+* License: Common Development and Distribution License
+
+JAXB (2.1.9)
+
+* License: Common Development and Distribution License
+
+JAXB (2.1.12)
+
+* License: BSD, Apache 2.0, CDDL, Public Domain, MIT License, Apache 1.1
+
+JAXB 2.0 Reference Implementation (jaxb-impl.jar) (2.0.5)
+
+* License: Common Development and Distribution License
+
+JAXB IMPL (2.1.12)
+
+* License: Common Development and Distribution License
+* Project: https://jaxb.dev.java.net/2.1.12/
+* Source: https://jaxb.dev.java.net/2.1.12/JAXB2_20090708.jar
+
+JAXB 2.0 XJC (2.0.5)
+
+* License: Common Development and Distribution License
+
+JAXB 2.2 API (Binary only) (2.2)
+
+* License: Common Development and Distribution License
+* Project: https://jaxb.dev.java.net/2.2/
+* Source: https://jaxb.dev.java.net/2.2/JAXB2_20091104.jar
+
+JAXB 2.2 Impl (Binary only) (2.2)
+
+* License: Common Development and Distribution License
+
+JAXB 2.2 XJC (Binary) (2.2)
+
+* License: BSD, CDDL, Public Domain
+* Project: https://jaxb.dev.java.net/2.2/
+* Source: https://jaxb.dev.java.net/2.2/JAXB2_20091104.jar
+
+JAXB API (2.2.12)
+
+* License: Common Development and Distribution License
+* Project: https://jaxb.java.net/
+* Source:
+   https://maven.java.net/service/local/artifact/maven/redirect?r=metro-388&g=javax.xml.bind&a=jaxb-api&v=2.2.12-b140109.1041&e=jar&c=sources
+
+JAXB API (2.1.12)
+
+* License: Common Development and Distribution License
+* Project: https://jaxb.dev.java.net/2.1.12/
+* Source: https://jaxb.dev.java.net/2.1.12/JAXB2_20090708.jar
+
+JAXB CORE (2.2.11)
+
+* License: Common Development and Distribution License
+
+JAXB CORE (2.2.11)
+
+* License: Common Development and Distribution License
+* Project: https://jaxb.java.net/
+* Source:
+   https://maven.java.net/service/local/artifact/maven/redirect?r=metro-535&g=org.glassfish.jaxb&a=jaxb-core&v=2.2.11-M1&e=jar&c=sources
+
+JAXB IMPL (2.2.11)
+
+* License: Common Development and Distribution License
+
+JAXB XJC (2.2.11)
+
+* License: Common Development and Distribution License, MIT, BSD, Public
+   Domain, Apache License, 2.0
+* Project: https://jaxb.java.net/
+* Source:
+   https://maven.java.net/service/local/artifact/maven/redirect?r=metro-535&g=org.glassfish.jaxb&a=jaxb-xjc&v=2.2.11-M1&e=jar&c=sources
+
+JAXB-API 2.0 (2.0)
+
+* License: Commond Development and Distribution License
+
+jaxrpc.jar (1.1)
+
+* License: Common Development and Distribution License
+
+Jaxws-api-2.0.jar (2.0)
+
+* License: Common Development and Distribution License
+
+JCA 1.6 (1.6)
+
+* License: Common Development and Distribution License
+
+JCA Connector (1.5)
+
+* License: Common Development and Distribution License
+
+Jersey Common (2.0)
+
+* License: Common Development and Distribution License
+* Project: http://jersey.java.net/
+* Source: https://github.com/jersey/jersey
+
+Jersey Core (1.8.0)
+
+* License: CDDL, Apache 2.0 (four files)
+
+Jersey Guava Repackaged (2.14)
+
+* License: Apache License, 2.0
+
+Jersey Server (2.0)
+
+* License: Common Development and Distribution License
+* Project: http://jersey.java.net/
+* Source: https://github.com/jersey/jersey
+
+jersey-client (2.14)
+
+* License: Common Development and Distribution License
+
+jersey-common (2.14)
+
+* License: Common Development and Distribution License
+
+jgroups (4.1.8)
+
+* License: Apache-2.0 AND CC-BY-2.5 AND LicenseRef-Public-Domain
+
+JMS (1.1)
+
+* License: Common Development and Distribution License
+
+JPA (2.0)
+
+* License: Negotiated agreement between Sun and Eclipse (supercedes spec terms)
+* Project: http://jcp.org/en/jsr/detail?id=317
+
+JPA (Javax Persistence Jar) (1.0)
+
+* License: Common Development and Distribution License
+
+Logback Classic (1.0.7)
+
+* License: Eclipse Public License
+
+Logback Core (1.0.7)
+
+* License: Eclipse Public License
+
+logback-classic (1.3.0)
+
+* License: EPL-1.0 OR LGPL-2.1
+
+management-api (3.2.1)
+
+* License: (CDDL-1.1 OR GPL-2.0-only OR GPL-2.0-only WITH
+   Classpath-exception-2.0)
+* Project: https://javaee.github.io/gmbal-commons/
+* Source: https://github.com/javaee/gmbal-commons
+
+MongoDB Java Driver (2.7.3)
+
+* License: Apache License, 2.0, Eclipse Public License (One File)
+
+MongoDB Java Driver (2.10.1)
+
+* License: Apache License, 2.0
+
+mongodb java driver (3.2.0)
+
+* License: Apache License, 2.0, Creative Commons Attribution License 2.5,
+   Public Domain
+* Project: https://docs.mongodb.org/ecosystem/drivers/java/
+* Source:
+   http://central.maven.org/maven2/org/mongodb/mongo-java-driver/3.2.0/mongo-java-driver-3.2.0-sources.jar
+
+mongodb java driver (3.11.2)
+
+* License: Apache-2.0 AND MIT AND AND CC-BY-2.5 AND CC0-1.0
+
+opencsv (1.8)
+
+* License: Apache License, 2.0
+* Project: http://opencsv.sourceforge.net/
+* Source:
+   http://downloads.sourceforge.net/opencsv/opencsv-1.8-src-with-libs.tar.gz?modtime=1185864370&big_mirror=0
+
+oracle-nosql-client (18.3.10)
+
+* License: Apache-2.0
+
+org.apache.ant (1.6.5)
+
+* License: Apache License, 2.0
+* Project: http://ant.apache.org/
+
+org.apache.felix.framework (6.0.3)
+
+* License: Pending
+
+org.osgi.core (1.2.0)
+
+* License: Apache-2.0
+
+org.osgi.core (6.0.0)
+
+* License: Apache-2.0
+
+OSGi Enterprise Specification APIs (4.2)
+
+* License: Apache License, 2.0
+
+osgi.compendium (4.1.0)
+
+* License: Apache License, 2.0
+
+osgi.core (4.1.0)
+
+* License: Apache License, 2.0
+
+pax-exam (n/a)
+
+* License: Pending
+
+pax-exam-container-forked (4.13.1)
+
+* License: Pending
+
+pax-exam-junit4 (4.13.1)
+
+* License: Pending
+
+pax-exam-link-mvn (4.13.1)
+
+* License: Pending
+
+saaj-api-1.3.jar (1.3)
+
+* License: Common Development and Distribution License
+
+sdo Version: SDO (2.1.1)
+
+* License: SDO License (Custom)
+* Project: http://jcp.org/aboutJava/communityprocess/pr/jsr235/index.html
+
+SLF4J API (1.7.2)
+
+* License: MIT License
+
+slf4j-api (1.7.30)
+
+* License: MIT
+
+slf4j-api (2.0.0)
+
+* License: MIT
+
+spring-agent (2.5.3)
+
+* License: Apache License, 2.0
+* Project: http://www.springframework.org
+* Source:
+   http://downloads.sourceforge.net/springframework/spring-framework-2.5.3-with-dependencies.zip?modtime=1204283106&big_mirror=0
+
+spring-aop (5.2.0)
+
+* License: Apache-2.0
+
+spring-beans (5.2.0)
+
+* License: Apache-2.0
+
+spring-context (5.2.0)
+
+* License: Apache-2.0
+
+spring-core (5.2.0)
+
+* License: Apache-2.0 AND BSD-3-Clause
+
+spring-expression (5.2.0)
+
+* License: Apache-2.0
+
+spring-instrument (5.2.0)
+
+* License: Pending
+
+spring-jcl (5.2.0)
+
+* License: Apache-2.0
+
+spring-jdbc (5.2.0)
+
+* License: Pending
+
+spring-orm (5.2.0)
+
+* License: Pending
+
+spring-test (5.2.0)
+
+* License: Apache-2.0 AND BSD-3-Clause AND LicenseRef-Public-Domain
+
+spring-tx (5.2.0)
+
+* License: Pending
+
+StAX-API.Jar (1.0.1)
+
+* License: Apache License, 2.0
+
+wsdl4j (1.6.2)
+
+* License: Common Public License 1.0
+
+Xerces (2.9.0)
+
+* License: Apache License, 2.0
+
+Xerces (2.12.0)
+
+* License: Apache-2.0 AND W3C-19980720
+* Project: http://xerces.apache.org/xerces2-j/
+* Source: https://svn.apache.org/repos/asf/xerces/java/tags/Xerces-J_2_12_0/
+
+## Cryptography
+
+Content may contain encryption software. The country in which you are currently
+may have restrictions on the import, possession, and use, and/or re-export to
+another country, of encryption software. BEFORE using any encryption software,
+please check the country's laws, regulations and policies concerning the import,
+possession, or use, and re-export of encryption software, to see if this is
+permitted.
+
+
+
+License for the Service Data Objects JavaDoc and Interface Definition
+files.
+
+The Service Data Objects JavaDoc and Interface Definition files are
+being provided by the copyright holders under the following license. By
+using and/or copying this work, you agree that you have read,
+understood and will comply with the following terms and conditions:
+
+Permission to copy, display, make derivative works of and distribute
+the Service Data Objects JavaDoc and Interface Definition files (the
+"Artifacts") in any medium without fee or royalty is hereby granted,
+provided that you include the following on ALL copies of the Artifacts,
+or portions thereof, that you make:
+
+1.    A link or URL to the Artifacts at this location:
+http://www.jcp.org/en/jsr/detail?id=235
+
+2.    The full text of this copyright notice as shown in the Artifacts.
+
+
+
+THE ARTIFACTS ARE PROVIDED "AS IS" AND THE AUTHORS MAKE NO
+REPRESENTATIONS OR WARRANTIES, EXPRESS OR IMPLIED, REGARDING THE
+ARTIFACTS AND THE IMPLEMENTATION OF THEIR CONTENTS,
+INCLUDING, BUT NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT OR TITLE.
+
+THE AUTHORS WILL NOT BE LIABLE FOR ANY DIRECT, INDIRECT, SPECIAL,
+INCIDENTAL OR CONSEQUENTIAL DAMAGES ARISING OUT OF OR RELATING TO ANY
+USE OR DISTRIBUTION OF THE ARTIFACTS.
+
+The name and trademarks of the Authors may NOT be used in any manner,
+including advertising or publicity pertaining to the Service Data
+Objects Specification or its contents without specific, written prior
+permission. Title to copyright in the Service Data Objects
+Specification will at all times remain with the Authors.
+
+No other rights are granted by implication, estoppel or otherwise.
+
+Revision level 1.2, last updated on 2009/01/13
+Changed the URL of the Artifacts.
+Revision level 1.1, last updated on 2007/11/19
 
 
 ---
