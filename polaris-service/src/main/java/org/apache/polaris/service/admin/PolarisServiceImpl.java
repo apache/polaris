@@ -21,10 +21,8 @@ package org.apache.polaris.service.admin;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
-import java.util.Locale;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
@@ -361,7 +359,6 @@ public class PolarisServiceImpl
         request.getPrincipalRole().getName(),
         principalName);
     PolarisAdminService adminService = newAdminService(securityContext);
-    try {
     adminService.assignPrincipalRole(principalName, request.getPrincipalRole().getName());
     return Response.status(Response.Status.CREATED).build();
   }
@@ -404,16 +401,8 @@ public class PolarisServiceImpl
         catalogName,
         principalRoleName);
     PolarisAdminService adminService = newAdminService(securityContext);
-    try {
-      adminService.assignCatalogRoleToPrincipalRole(
-          principalRoleName, catalogName, request.getCatalogRole().getName());
-    } catch (IllegalStateException e) {
-      if (e.toString().toLowerCase(Locale.ROOT).contains("duplicate key")) {
-        throw new AlreadyExistsException("Grant already exists or resolution failed");
-      } else {
-        throw e;
-      }
-    }
+    adminService.assignCatalogRoleToPrincipalRole(
+        principalRoleName, catalogName, request.getCatalogRole().getName());
     return Response.status(Response.Status.CREATED).build();
   }
 
@@ -478,66 +467,58 @@ public class PolarisServiceImpl
         catalogRoleName,
         catalogName);
     PolarisAdminService adminService = newAdminService(securityContext);
-    try {
-      switch (grantRequest.getGrant()) {
-          // The per-securable-type Privilege enums must be exact String match for a subset of all
-          // PolarisPrivilege values.
-        case ViewGrant viewGrant:
-          {
-            PolarisPrivilege privilege =
-                PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
-            String viewName = viewGrant.getViewName();
-            String[] namespaceParts = viewGrant.getNamespace().toArray(new String[0]);
-            adminService.grantPrivilegeOnViewToRole(
-                catalogName,
-                catalogRoleName,
-                TableIdentifier.of(Namespace.of(namespaceParts), viewName),
-                privilege);
-            break;
-          }
-        case TableGrant tableGrant:
-          {
-            PolarisPrivilege privilege =
-                PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
-            String tableName = tableGrant.getTableName();
-            String[] namespaceParts = tableGrant.getNamespace().toArray(new String[0]);
-            adminService.grantPrivilegeOnTableToRole(
-                catalogName,
-                catalogRoleName,
-                TableIdentifier.of(Namespace.of(namespaceParts), tableName),
-                privilege);
-            break;
-          }
-        case NamespaceGrant namespaceGrant:
-          {
-            PolarisPrivilege privilege =
-                PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
-            String[] namespaceParts = namespaceGrant.getNamespace().toArray(new String[0]);
-            adminService.grantPrivilegeOnNamespaceToRole(
-                catalogName, catalogRoleName, Namespace.of(namespaceParts), privilege);
-            break;
-          }
-        case CatalogGrant catalogGrant:
-          {
-            PolarisPrivilege privilege =
-                PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
-            adminService.grantPrivilegeOnCatalogToRole(catalogName, catalogRoleName, privilege);
-            break;
-          }
-        default:
-          LOGGER
-              .atWarn()
-              .addKeyValue("catalog", catalogName)
-              .addKeyValue("role", catalogRoleName)
-              .log("Don't know how to handle privilege grant: {}", grantRequest);
-          return Response.status(Response.Status.BAD_REQUEST).build();
-      }
-    } catch (IllegalStateException e) {
-      if (e.toString().toLowerCase(Locale.ROOT).contains("duplicate key")) {
-        throw new AlreadyExistsException("Grant already exists or resolution failed");
-      } else {
-        throw e;
-      }
+    switch (grantRequest.getGrant()) {
+        // The per-securable-type Privilege enums must be exact String match for a subset of all
+        // PolarisPrivilege values.
+      case ViewGrant viewGrant:
+        {
+          PolarisPrivilege privilege =
+              PolarisPrivilege.valueOf(viewGrant.getPrivilege().toString());
+          String viewName = viewGrant.getViewName();
+          String[] namespaceParts = viewGrant.getNamespace().toArray(new String[0]);
+          adminService.grantPrivilegeOnViewToRole(
+              catalogName,
+              catalogRoleName,
+              TableIdentifier.of(Namespace.of(namespaceParts), viewName),
+              privilege);
+          break;
+        }
+      case TableGrant tableGrant:
+        {
+          PolarisPrivilege privilege =
+              PolarisPrivilege.valueOf(tableGrant.getPrivilege().toString());
+          String tableName = tableGrant.getTableName();
+          String[] namespaceParts = tableGrant.getNamespace().toArray(new String[0]);
+          adminService.grantPrivilegeOnTableToRole(
+              catalogName,
+              catalogRoleName,
+              TableIdentifier.of(Namespace.of(namespaceParts), tableName),
+              privilege);
+          break;
+        }
+      case NamespaceGrant namespaceGrant:
+        {
+          PolarisPrivilege privilege =
+              PolarisPrivilege.valueOf(namespaceGrant.getPrivilege().toString());
+          String[] namespaceParts = namespaceGrant.getNamespace().toArray(new String[0]);
+          adminService.grantPrivilegeOnNamespaceToRole(
+              catalogName, catalogRoleName, Namespace.of(namespaceParts), privilege);
+          break;
+        }
+      case CatalogGrant catalogGrant:
+        {
+          PolarisPrivilege privilege =
+              PolarisPrivilege.valueOf(catalogGrant.getPrivilege().toString());
+          adminService.grantPrivilegeOnCatalogToRole(catalogName, catalogRoleName, privilege);
+          break;
+        }
+      default:
+        LOGGER
+            .atWarn()
+            .addKeyValue("catalog", catalogName)
+            .addKeyValue("role", catalogRoleName)
+            .log("Don't know how to handle privilege grant: {}", grantRequest);
+        return Response.status(Response.Status.BAD_REQUEST).build();
     }
     return Response.status(Response.Status.CREATED).build();
   }
