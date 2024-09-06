@@ -262,7 +262,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       }
     } catch (PersistenceException e) {
       if (e.toString().toLowerCase(Locale.ROOT).contains("duplicate key")) {
-        throw new AlreadyExistsException("Duplicate key error when persisting entity");
+        throw new AlreadyExistsException(e, "Duplicate key error when persisting entity");
       } else {
         throw e;
       }
