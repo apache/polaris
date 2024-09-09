@@ -33,7 +33,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
@@ -645,18 +644,21 @@ public class PolarisApplicationIntegrationTest {
     Entity<PrincipalRole> largeRequest = Entity.json(new PrincipalRole("r".repeat(1000001)));
 
     try (Response response =
-                 EXT.client()
-                         .target(
-                                 String.format(
-                                         "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
-                         .request("application/json")
-                         .header("Authorization", "Bearer " + userToken)
-                         .header(REALM_PROPERTY_KEY, realm)
-                         .post(largeRequest)) {
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
+            .request("application/json")
+            .header("Authorization", "Bearer " + userToken)
+            .header(REALM_PROPERTY_KEY, realm)
+            .post(largeRequest)) {
       assertThat(response)
-              .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
-              .matches(r -> r.readEntity(RequestThrottlingErrorResponse.class).getError().equals(RequestThrottlingErrorResponse.Error.REQUEST_TOO_LARGE));
-
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
+          .matches(
+              r ->
+                  r.readEntity(RequestThrottlingErrorResponse.class)
+                      .getError()
+                      .equals(RequestThrottlingErrorResponse.Error.REQUEST_TOO_LARGE));
     }
   }
 }

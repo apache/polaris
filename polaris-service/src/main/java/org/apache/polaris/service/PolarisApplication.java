@@ -277,10 +277,11 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     objectMapper.setPropertyNamingStrategy(new PropertyNamingStrategies.KebabCaseStrategy());
 
     long maxDocumentBytes = configuration.getMaxDocumentBytes();
-    if(maxDocumentBytes > 0) {
+    if (maxDocumentBytes > 0) {
       objectMapper
-              .getFactory()
-              .setStreamReadConstraints(StreamReadConstraints.builder().maxDocumentLength(maxDocumentBytes).build());
+          .getFactory()
+          .setStreamReadConstraints(
+              StreamReadConstraints.builder().maxDocumentLength(maxDocumentBytes).build());
       LOGGER.info("Limiting document size to {} bytes", maxDocumentBytes);
     }
 
