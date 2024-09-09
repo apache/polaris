@@ -21,6 +21,11 @@ regtests/derby.log
 regtests/metastore_db
 regtests/output/
 
+# Python stuff
+/poetry.lock
+/polaris-venv/
+/pyproject.toml
+
 # Notebooks
 notebooks/.ipynb_checkpoints/
 

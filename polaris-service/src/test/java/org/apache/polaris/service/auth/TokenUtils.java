@@ -31,12 +31,6 @@ import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 
 public class TokenUtils {
 
-  /** Get token against default realm */
-  public static String getTokenFromSecrets(
-      Client client, int port, String clientId, String clientSecret) {
-    return getTokenFromSecrets(client, port, clientId, clientSecret, null);
-  }
-
   /** Get token against specified realm */
   public static String getTokenFromSecrets(
       Client client, int port, String clientId, String clientSecret, String realm) {

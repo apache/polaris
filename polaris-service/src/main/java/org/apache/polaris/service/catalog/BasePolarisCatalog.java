@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.catalog;
 
-import static org.apache.polaris.core.storage.StorageUtil.concatFilePrefixes;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
@@ -364,10 +362,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   private Set<String> getLocationsAllowedToBeAccessed(TableMetadata tableMetadata) {
-    String basicLocation = tableMetadata.location();
     Set<String> locations = new HashSet<>();
-    locations.add(concatFilePrefixes(basicLocation, "data/", "/"));
-    locations.add(concatFilePrefixes(basicLocation, "metadata/", "/"));
+    locations.add(tableMetadata.location());
     if (tableMetadata
         .properties()
         .containsKey(TableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY)) {
@@ -386,11 +382,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   private Set<String> getLocationsAllowedToBeAccessed(ViewMetadata viewMetadata) {
-    String basicLocation = viewMetadata.location();
-    Set<String> locations = new HashSet<>();
-    // a view won't have a "data" location, so only allowed to access "metadata"
-    locations.add(concatFilePrefixes(basicLocation, "metadata/", "/"));
-    return locations;
+    return Set.of(viewMetadata.location());
   }
 
   @Override
@@ -1881,10 +1873,23 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                         .getMetaStoreManager()
                         .generateNewEntityId(getCurrentPolarisContext())
                         .getId())
+                .setLastNotificationTimestamp(request.getPayload().getTimestamp())
                 .build();
       } else {
+        // If the notification timestamp is out-of-order, we should not update the table
+        if (entity.getLastAdmittedNotificationTimestamp().isPresent()
+            && request.getPayload().getTimestamp()
+                <= entity.getLastAdmittedNotificationTimestamp().get()) {
+          throw new AlreadyExistsException(
+              "A notification with a newer timestamp has been processed for table %s",
+              tableIdentifier);
+        }
         existingLocation = entity.getMetadataLocation();
-        entity = new TableLikeEntity.Builder(entity).setMetadataLocation(newLocation).build();
+        entity =
+            new TableLikeEntity.Builder(entity)
+                .setMetadataLocation(newLocation)
+                .setLastNotificationTimestamp(request.getPayload().getTimestamp())
+                .build();
       }
       // first validate we can read the metadata file
       validateLocationForTableLike(tableIdentifier, newLocation);
