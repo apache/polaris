@@ -23,18 +23,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public class RequestThrottlingErrorResponse {
   public enum Error {
-    request_too_large("The request is too large"),
+    REQUEST_TOO_LARGE,
     ;
-
-    final String errorDescription;
-
-    Error(String errorDescription) {
-      this.errorDescription = errorDescription;
-    }
-
-    public String getErrorDescription() {
-      return errorDescription;
-    }
   }
 
   private final Error error;

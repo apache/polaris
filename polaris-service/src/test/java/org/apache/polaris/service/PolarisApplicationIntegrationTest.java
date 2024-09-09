@@ -33,11 +33,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.shaded.com.sun.jersey.api.client.filter.LoggingFilter;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.PartitionData;
 import org.apache.iceberg.PartitionSpec;
@@ -79,8 +77,6 @@ import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.throttling.RequestThrottlingErrorResponse;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
-import org.glassfish.jersey.client.JerseyClientBuilder;
-import org.glassfish.jersey.logging.LoggingFeature;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -659,7 +655,7 @@ public class PolarisApplicationIntegrationTest {
                          .post(largeRequest)) {
       assertThat(response)
               .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
-              .matches(r -> r.readEntity(RequestThrottlingErrorResponse.class).getError().equals(RequestThrottlingErrorResponse.Error.request_too_large));
+              .matches(r -> r.readEntity(RequestThrottlingErrorResponse.class).getError().equals(RequestThrottlingErrorResponse.Error.REQUEST_TOO_LARGE));
 
     }
   }
