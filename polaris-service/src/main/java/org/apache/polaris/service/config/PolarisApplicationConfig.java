@@ -54,6 +54,7 @@ public class PolarisApplicationConfig extends Configuration {
   private String awsAccessKey;
   private String awsSecretKey;
   private FileIOFactory fileIOFactory;
+  private long maxDocumentBytes;
 
   @JsonProperty("metaStoreManager")
   public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
@@ -144,6 +145,15 @@ public class PolarisApplicationConfig extends Configuration {
   @JsonProperty("featureConfiguration")
   public void setFeatureConfiguration(Map<String, Object> featureConfiguration) {
     this.configurationStore = new DefaultConfigurationStore(featureConfiguration);
+  }
+
+  @JsonProperty("maxDocumentBytes")
+  public void setMaxDocumentBytes(long maxDocumentBytes) {
+    this.maxDocumentBytes = maxDocumentBytes;
+  }
+
+  public long getMaxDocumentBytes() {
+    return maxDocumentBytes;
   }
 
   public PolarisConfigurationStore getConfigurationStore() {

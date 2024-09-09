@@ -167,3 +167,5 @@ logging:
       archivedLogFilenamePattern: ./logs/polaris-%d.log.gz
       # The maximum number of log files to archive.
       archivedFileCount: 14
+
+maxDocumentBytes: 0 # Don't set a limit

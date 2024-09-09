@@ -23,6 +23,7 @@ import static java.util.Objects.requireNonNull;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
@@ -104,6 +105,7 @@ import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutorImpl;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
+import org.apache.polaris.service.throttling.StreamReadConstraintsExceptionMapper;
 import org.apache.polaris.service.tracing.OpenTelemetryAware;
 import org.apache.polaris.service.tracing.TracingFilter;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
@@ -273,6 +275,16 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
     objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     objectMapper.setPropertyNamingStrategy(new PropertyNamingStrategies.KebabCaseStrategy());
+
+    long maxDocumentBytes = configuration.getMaxDocumentBytes();
+    if(maxDocumentBytes > 0) {
+      objectMapper
+              .getFactory()
+              .setStreamReadConstraints(StreamReadConstraints.builder().maxDocumentLength(maxDocumentBytes).build());
+      LOGGER.info("Limiting document size to {} bytes", maxDocumentBytes);
+    }
+
+    environment.jersey().register(new StreamReadConstraintsExceptionMapper());
     RESTSerializers.registerAll(objectMapper);
     Serializers.registerSerializers(objectMapper);
     environment.jersey().register(new IcebergJsonProcessingExceptionMapper());

@@ -33,8 +33,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.shaded.com.sun.jersey.api.client.filter.LoggingFilter;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.PartitionData;
 import org.apache.iceberg.PartitionSpec;
@@ -73,8 +76,11 @@ import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
+import org.apache.polaris.service.throttling.RequestThrottlingErrorResponse;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.glassfish.jersey.client.JerseyClientBuilder;
+import org.glassfish.jersey.logging.LoggingFeature;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -634,6 +640,26 @@ public class PolarisApplicationIntegrationTest {
                           realm)))
           .isInstanceOf(BadRequestException.class)
           .hasMessage("Malformed request: Please specify a warehouse");
+    }
+  }
+
+  @Test
+  public void testRequestTooLarge() {
+    Entity<PrincipalRole> largeRequest = Entity.json(new PrincipalRole("r".repeat(1000001)));
+
+    try (Response response =
+                 EXT.client()
+                         .target(
+                                 String.format(
+                                         "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
+                         .request("application/json")
+                         .header("Authorization", "Bearer " + userToken)
+                         .header(REALM_PROPERTY_KEY, realm)
+                         .post(largeRequest)) {
+      assertThat(response)
+              .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
+              .matches(r -> r.readEntity(RequestThrottlingErrorResponse.class).getError().equals(RequestThrottlingErrorResponse.Error.request_too_large));
+
     }
   }
 }

@@ -167,3 +167,5 @@ logging:
       archivedLogFilenamePattern: ./logs/iceberg-rest-%d.log.gz
       # The maximum number of log files to archive.
       archivedFileCount: 14
+
+maxDocumentBytes: 1000000
