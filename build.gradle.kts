@@ -17,6 +17,7 @@
  * under the License.
  */
 
+import java.net.URI
 import org.nosphere.apache.rat.RatTask
 
 buildscript {
@@ -130,9 +131,9 @@ nexusPublishing {
 
   repositories {
     register("apache") {
-      this.nexusUrl // TODO configure
-      this.snapshotRepositoryUrl // TODO configure
-      this.stagingProfileId // TODO configure if necessary
+      nexusUrl = URI.create("https://repository.apache.org/service/local/")
+      snapshotRepositoryUrl =
+        URI.create("https://repository.apache.org/content/repositories/snapshots/")
     }
   }
 }
