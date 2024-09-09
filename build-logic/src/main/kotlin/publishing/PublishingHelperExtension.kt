@@ -53,6 +53,7 @@ constructor(objectFactory: ObjectFactory, project: Project)
 
   // override the list of developers (P)PMC members + committers, necessary for podlings
   val podlingPpmcAsfIds = objectFactory.setProperty(String::class.java).convention(emptySet())
+  val podlingMentorsAsfIds = objectFactory.setProperty(String::class.java).convention(emptySet())
   val podlingCommitterAsfIds = objectFactory.setProperty(String::class.java).convention(emptySet())
 
   fun distributionFile(ext: String): File =

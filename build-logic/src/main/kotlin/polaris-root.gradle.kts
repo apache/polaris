@@ -67,6 +67,16 @@ extensions.getByType<PublishingHelperExtension>().apply {
 
   mailingLists.addAll("dev", "issues", "commits")
 
-  podlingPpmcAsfIds.addAll("anoop", "ashvin", "jackye", "russellspitzer", "snazy", "vvcephei")
+  podlingPpmcAsfIds.addAll(
+    "anoop",
+    "ashvin",
+    "jackye",
+    "jbonofre",
+    "russellspitzer",
+    "snazy",
+    "takidau",
+    "vvcephei"
+  )
+  podlingMentorsAsfIds.addAll("bdelacretaz", "blue", "holden", "jbonofre", "yao")
   podlingCommitterAsfIds.addAll()
 }

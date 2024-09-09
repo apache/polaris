@@ -164,6 +164,7 @@ fun addDevelopersToPom(mavenPom: MavenPom, asfName: String, e: PublishingHelperE
             parseJson("https://projects.apache.org/json/foundation/people.json")!!
         val filteredPeople: List<Pair<String, Map<String, Any>>>
         val pmc: (Pair<String, Map<String, Any>>) -> Boolean
+        val mentor: (Pair<String, Map<String, Any>>) -> Boolean
         val pmcRole: String
         if (!fromPodlings) {
             val asfNamePmc = "$asfName-pmc"
@@ -176,17 +177,20 @@ fun addDevelopersToPom(mavenPom: MavenPom, asfName: String, e: PublishingHelperE
                 groups.contains(asfNamePmc)
             }
             pmcRole = "PMC Member"
+            mentor = {(_, _) -> false}
         } else {
             val podlingPpmc = e.podlingPpmcAsfIds.get()
-            filteredPeople = (e.podlingCommitterAsfIds.get() + podlingPpmc).map { id ->
+            val podlingMentors = e.podlingMentorsAsfIds.get()
+            filteredPeople = (e.podlingCommitterAsfIds.get() + podlingPpmc + podlingMentors).map { id ->
                 val info = people[id]
                 if (info == null) {
                     throw GradleException("Person with ASF id '%id' not found in people.json".format(id))
                 }
                 Pair(id, info)
             }
-            pmc = {(id, _) -> podlingPpmc.contains(id)}
+            pmc = {(id, _) -> podlingPpmc.contains(id) || podlingMentors.contains(id)}
             pmcRole = "PPMC Member"
+            mentor = {(id, _) -> podlingMentors.contains(id)}
         }
 
         val sortedPeople = filteredPeople.sortedBy { (id, info) -> "${info["name"] as String}_$id" }
@@ -200,6 +204,9 @@ fun addDevelopersToPom(mavenPom: MavenPom, asfName: String, e: PublishingHelperE
                 this.roles.add("Committer")
                 if (pmc.invoke(Pair(id, info))) {
                     this.roles.add(pmcRole)
+                }
+                if (mentor.invoke(Pair(id, info))) {
+                    this.roles.add("Mentor")
                 }
             }
         }
