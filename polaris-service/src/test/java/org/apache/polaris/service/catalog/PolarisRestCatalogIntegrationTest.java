@@ -685,7 +685,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                     .buildTable(TableIdentifier.of(Namespace.of("ns1", "ns1a"), "tbl2"), SCHEMA)
                     .withLocation(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override")
                     .create())
-        .isInstanceOf(BadRequestException.class)
+        .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("because it conflicts with existing table or namespace");
   }
 
