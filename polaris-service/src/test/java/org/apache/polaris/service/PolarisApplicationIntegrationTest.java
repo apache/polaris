@@ -645,6 +645,7 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testRequestTooLarge() {
+    // The size is set to be higher than the limit in polaris-server-integrationtest.yml
     Entity<PrincipalRole> largeRequest = Entity.json(new PrincipalRole("r".repeat(1000001)));
 
     try (Response response =
