@@ -141,7 +141,7 @@ public class PolarisOverlappingTableTest {
     defaultCatalog.catalog = String.format("default_catalog_%s", UUID.randomUUID().toString());
     laxCatalog.catalog = String.format("lax_catalog_%s", UUID.randomUUID().toString());
     strictCatalog.catalog = String.format("strict_catalog_%s", UUID.randomUUID().toString());
-    for (var EXT: List.of(BASE_EXT, LAX_EXT)) {
+    for (var EXT : List.of(BASE_EXT, LAX_EXT)) {
       for (var c : List.of(defaultCatalog, laxCatalog, strictCatalog)) {
         CatalogProperties.Builder propertiesBuilder =
             CatalogProperties.builder()
@@ -149,8 +149,7 @@ public class PolarisOverlappingTableTest {
         if (!c.equals(defaultCatalog)) {
           propertiesBuilder
               .addProperty(
-                  PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION
-                      .catalogConfig(),
+                  PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
                   String.valueOf(c.equals(laxCatalog)))
               .addProperty(
                   PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
@@ -170,8 +169,8 @@ public class PolarisOverlappingTableTest {
                 1,
                 config);
         try (Response response =
-                 request(EXT, "management/v1/catalogs")
-                     .post(Entity.json(new CreateCatalogRequest(catalogObject)))) {
+            request(EXT, "management/v1/catalogs")
+                .post(Entity.json(new CreateCatalogRequest(catalogObject)))) {
           if (response.getStatus() != Response.Status.CREATED.getStatusCode()) {
             throw new IllegalStateException(
                 "Failed to create catalog: " + response.readEntity(String.class));
@@ -180,12 +179,10 @@ public class PolarisOverlappingTableTest {
 
         namespace = "ns";
         CreateNamespaceRequest createNamespaceRequest =
-            CreateNamespaceRequest.builder()
-                .withNamespace(Namespace.of(namespace))
-                .build();
+            CreateNamespaceRequest.builder().withNamespace(Namespace.of(namespace)).build();
         try (Response response =
-                 request(EXT, String.format("catalog/v1/%s/namespaces", c))
-                     .post(Entity.json(createNamespaceRequest))) {
+            request(EXT, String.format("catalog/v1/%s/namespaces", c))
+                .post(Entity.json(createNamespaceRequest))) {
           if (response.getStatus() != Response.Status.OK.getStatusCode()) {
             throw new IllegalStateException(
                 "Failed to create namespace: " + response.readEntity(String.class));

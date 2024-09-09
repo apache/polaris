@@ -1304,10 +1304,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         dataLocations.forEach(
             location ->
                 validateNoLocationOverlap(
-                    catalogEntity,
-                    tableIdentifier,
-                    resolvedNamespace,
-                    location));
+                    catalogEntity, tableIdentifier, resolvedNamespace, location));
         // and that the metadata file points to a location within the table's directory structure
         if (metadata.metadataFileLocation() != null) {
           validateMetadataFileInTableDir(tableIdentifier, metadata, catalog);
@@ -1521,10 +1518,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         // for the storage configuration inherited under this entity's path.
         validateLocationForTableLike(identifier, metadata.location(), resolvedStorageEntity);
         validateNoLocationOverlap(
-            catalogEntity,
-            identifier,
-            resolvedNamespace,
-            metadata.location());
+            catalogEntity, identifier, resolvedNamespace, metadata.location());
       }
 
       Map<String, String> tableProperties = new HashMap<>(metadata.properties());
