@@ -121,6 +121,10 @@ tasks.named<RatTask>("rat").configure {
 //    closeApacheStagingRepository
 //    releaseApacheStagingRepository
 //       or closeAndReleaseApacheStagingRepository
+//
+// Username is your ASF ID
+// Password: your ASF LDAP password - or better: a token generated via
+// https://repository.apache.org/
 nexusPublishing {
   transitionCheckOptions {
     // default==60 (10 minutes), wait up to 120 minutes
