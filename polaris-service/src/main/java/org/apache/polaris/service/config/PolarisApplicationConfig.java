@@ -32,6 +32,7 @@ import org.apache.polaris.service.auth.DiscoverableAuthenticator;
 import org.apache.polaris.service.catalog.FileIOFactory;
 import org.apache.polaris.service.context.CallContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
+import org.apache.polaris.service.ratelimiting.RateLimiterFactory;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -55,6 +56,10 @@ public class PolarisApplicationConfig extends Configuration {
   private String awsAccessKey;
   private String awsSecretKey;
   private FileIOFactory fileIOFactory;
+  private RateLimiterFactory rateLimiterFactory;
+
+  //  @JsonProperty("rateLimiting")
+  //  private RateLimitingConfig rateLimitingConfig;
 
   public static final long REQUEST_BODY_BYTES_NO_LIMIT = -1;
   private long maxRequestBodyBytes = REQUEST_BODY_BYTES_NO_LIMIT;
@@ -135,6 +140,16 @@ public class PolarisApplicationConfig extends Configuration {
   @JsonProperty("cors")
   public void setCorsConfiguration(CorsConfiguration corsConfiguration) {
     this.corsConfiguration = corsConfiguration;
+  }
+
+  @JsonProperty("rateLimiting")
+  public void setRateLimiterFactory(RateLimiterFactory rateLimiterFactory) {
+    this.rateLimiterFactory = rateLimiterFactory;
+  }
+
+  @JsonProperty("rateLimiting")
+  public RateLimiterFactory getRateLimiterFactory() {
+    return rateLimiterFactory;
   }
 
   public void setTaskHandler(TaskHandlerConfiguration taskHandler) {

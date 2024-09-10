@@ -166,3 +166,6 @@ logging:
 
 # Limits the size of request bodies sent to Polaris. -1 means no limit.
 maxRequestBodyBytes: -1
+
+rateLimiting:
+  factoryType: no-op
