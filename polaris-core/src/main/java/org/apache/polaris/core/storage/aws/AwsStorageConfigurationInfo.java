@@ -42,11 +42,11 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   private final @NotNull String roleARN;
 
   // AWS external ID, optional
-  @JsonProperty(value = "externalId", required = false)
+  @JsonProperty(value = "externalId")
   private @Nullable String externalId = null;
 
   /** User ARN for the service principal */
-  @JsonProperty(value = "userARN", required = false)
+  @JsonProperty(value = "userARN")
   private @Nullable String userARN = null;
 
   @JsonCreator
@@ -95,7 +95,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     return externalId;
   }
 
-  public void setExternalId(String externalId) {
+  public void setExternalId(@Nullable String externalId) {
     this.externalId = externalId;
   }
 
