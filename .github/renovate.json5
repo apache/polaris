@@ -28,7 +28,8 @@
     ":dependencyDashboard",
   ],
 
-  // Added for posterity how to let Renovate manage version-branches
+  // Added for posterity how to let Renovate manage version-branches, assuming that release branches
+  // have the `release/` prefix.
   baseBranches: ["main", "/^release\\/.*/"],
   additionalBranchPrefix: "{{baseBranch}}/",
   commitMessagePrefix: "{{baseBranch}}: ",
@@ -39,32 +40,15 @@
   },
 
   packageRules: [
-    {
-      matchManagers: ["github-actions"],
-      matchUpdateTypes: ["major", "minor", "patch", "digest"],
-      automerge: true,
-      platformAutomerge: true,
-    },
-
-    // Check for updates, merge automatically
+    // Check for updates, do not merge automatically. This rule does effectively nothing, but serves as a
+    // reference for the kinds of managers used in Polaris.
     {
       matchManagers: [
         "gradle", "gradle-wrapper",
         "pip_requirements", "pip_setup", "poetry", "setup-cfg",
-        "dockerfile", "devcontainer", "docker-compose"],
-      matchUpdateTypes: ["minor", "patch"],
-      automerge: true,
-      platformAutomerge: true,
-    },
-
-    // Check for major updates, but do not merge automatically
-    {
-      matchManagers: [
-        "gradle", "gradle-wrapper",
-        "pip_requirements", "pip_setup", "poetry", "setup-cfg",
-        "dockerfile", "devcontainer", "docker-compose"],
-      matchUpdateTypes: ["major"],
-      automerge: false,
+        "dockerfile", "devcontainer", "docker-compose",
+        "github-actions"],
+      automerge: false, // just be explicit (false is the default)
     },
 
     // Reduce awssdk update frequency noise (awssdk has daily releases)
@@ -82,7 +66,9 @@
     },
   ],
 
-  // Max 50 PRs in total, 5 per hour
+  // Max 50 PRs in total, 5 per hour.
+  // Renovate rebases PRs automatically when the renovate bot "visits" (scans) the repo, hence the hourly and
+  // concurrent PRs limit.
   prConcurrentLimit: 50,
   prHourlyLimit: 5,
 }
