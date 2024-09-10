@@ -706,8 +706,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createTableStagedWithWriteDelegation(
-                  NS2, createStagedWithWriteDelegationRequest, "vended-credentials");
+              .createTableStagedWithWriteDelegation(NS2, createStagedWithWriteDelegationRequest);
         },
         // createTableStagedWithWriteDelegation doesn't actually commit any metadata
         null,
@@ -736,8 +735,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_LIST),
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createTableStagedWithWriteDelegation(
-                  NS2, createStagedWithWriteDelegationRequest, "vended-credentials");
+              .createTableStagedWithWriteDelegation(NS2, createStagedWithWriteDelegationRequest);
         });
   }
 
@@ -855,7 +853,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "vended-credentials", "all"),
+        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all"),
         null /* cleanupAction */);
   }
 
@@ -871,8 +869,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_CREATE,
             PolarisPrivilege.TABLE_LIST,
             PolarisPrivilege.TABLE_DROP),
-        () ->
-            newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "vended-credentials", "all"));
+        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all"));
   }
 
   @Test
@@ -885,7 +882,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "vended-credentials", "all"),
+        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all"),
         null /* cleanupAction */);
   }
 
@@ -901,8 +898,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_CREATE,
             PolarisPrivilege.TABLE_LIST,
             PolarisPrivilege.TABLE_DROP),
-        () ->
-            newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "vended-credentials", "all"));
+        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all"));
   }
 
   @Test

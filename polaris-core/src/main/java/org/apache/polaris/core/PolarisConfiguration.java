@@ -104,6 +104,7 @@ public class PolarisConfiguration<T> {
   public static final PolarisConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_TABLE_LOCATION_OVERLAP")
+          .catalogConfig("allow.overlapping.table.location")
           .description(
               "If set to true, allow one table's location to reside within another table's location. "
                   + "This is only enforced within a given namespace.")
@@ -149,5 +150,30 @@ public class PolarisConfiguration<T> {
           .description(
               "If set to true, allows tables to have external locations outside the default structure.")
           .defaultValue(false)
+          .build();
+
+  public static final PolarisConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
+      PolarisConfiguration.<Boolean>builder()
+          .key("CLEANUP_ON_NAMESPACE_DROP")
+          .catalogConfig("cleanup.on.namespace.drop")
+          .description("If set to true, clean up data when a namespace is dropped")
+          .defaultValue(false)
+          .build();
+
+  public static final PolarisConfiguration<Boolean> CLEANUP_ON_CATALOG_DROP =
+      PolarisConfiguration.<Boolean>builder()
+          .key("CLEANUP_ON_CATALOG_DROP")
+          .catalogConfig("cleanup.on.catalog.drop")
+          .description("If set to true, clean up data when a catalog is dropped")
+          .defaultValue(false)
+          .build();
+
+  public static final PolarisConfiguration<Boolean> DROP_WITH_PURGE_ENABLED =
+      PolarisConfiguration.<Boolean>builder()
+          .key("DROP_WITH_PURGE_ENABLED")
+          .catalogConfig("drop-with-purge.enabled")
+          .description(
+              "If set to true, allows tables to be dropped with the purge parameter set to true.")
+          .defaultValue(true)
           .build();
 }

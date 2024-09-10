@@ -21,6 +21,7 @@ import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.named
+import publishing.PublishingHelperPlugin
 
 plugins {
   id("jacoco")
@@ -29,6 +30,8 @@ plugins {
   id("jacoco-report-aggregation")
   id("net.ltgt.errorprone")
 }
+
+apply<PublishingHelperPlugin>()
 
 tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
@@ -83,6 +86,11 @@ spotless {
 }
 
 dependencies { errorprone(versionCatalogs.named("libs").findLibrary("errorprone").get()) }
+
+java {
+  withJavadocJar()
+  withSourcesJar()
+}
 
 tasks.withType<Javadoc>().configureEach {
   val opt = options as CoreJavadocOptions

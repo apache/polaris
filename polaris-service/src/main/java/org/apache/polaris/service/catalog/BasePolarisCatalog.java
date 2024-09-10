@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.catalog;
 
-import static org.apache.polaris.core.storage.StorageUtil.concatFilePrefixes;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
@@ -157,7 +155,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             && !(ex instanceof UnprocessableEntityException)
             && isStorageProviderRetryableException(ex);
       };
-  public static final String CLEANUP_ON_NAMESPACE_DROP = "CLEANUP_ON_NAMESPACE_DROP";
 
   private final PolarisEntityManager entityManager;
   private final CallContext callContext;
@@ -364,10 +361,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   private Set<String> getLocationsAllowedToBeAccessed(TableMetadata tableMetadata) {
-    String basicLocation = tableMetadata.location();
     Set<String> locations = new HashSet<>();
-    locations.add(concatFilePrefixes(basicLocation, "data/", "/"));
-    locations.add(concatFilePrefixes(basicLocation, "metadata/", "/"));
+    locations.add(tableMetadata.location());
     if (tableMetadata
         .properties()
         .containsKey(TableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY)) {
@@ -386,11 +381,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   private Set<String> getLocationsAllowedToBeAccessed(ViewMetadata viewMetadata) {
-    String basicLocation = viewMetadata.location();
-    Set<String> locations = new HashSet<>();
-    // a view won't have a "data" location, so only allowed to access "metadata"
-    locations.add(concatFilePrefixes(basicLocation, "metadata/", "/"));
-    return locations;
+    return Set.of(viewMetadata.location());
   }
 
   @Override
@@ -628,7 +619,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 Map.of(),
                 polarisCallContext
                     .getConfigurationStore()
-                    .getConfiguration(polarisCallContext, CLEANUP_ON_NAMESPACE_DROP, false));
+                    .getConfiguration(
+                        polarisCallContext, PolarisConfiguration.CLEANUP_ON_NAMESPACE_DROP));
 
     if (!dropEntityResult.isSuccess() && dropEntityResult.failedBecauseNotEmpty()) {
       throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);
@@ -1014,12 +1006,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    * configuration of the service
    */
   private void validateNoLocationOverlap(
-      TableIdentifier identifier, List<PolarisEntity> resolvedNamespace, String location) {
+      CatalogEntity catalog,
+      TableIdentifier identifier,
+      List<PolarisEntity> resolvedNamespace,
+      String location) {
     if (callContext
         .getPolarisCallContext()
         .getConfigurationStore()
         .getConfiguration(
             callContext.getPolarisCallContext(),
+            catalog,
             PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP)) {
       LOGGER.debug("Skipping location overlap validation for identifier '{}'", identifier);
     } else { // if (entity.getSubType().equals(PolarisEntitySubType.TABLE)) {
@@ -1144,7 +1140,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               URI existing = URI.create(siblingLocation);
               if (isUnderParentLocation(target, existing)
                   || isUnderParentLocation(existing, target)) {
-                throw new org.apache.iceberg.exceptions.BadRequestException(
+                throw new org.apache.iceberg.exceptions.ForbiddenException(
                     "Unable to create table at location '%s' because it conflicts with existing table or namespace at location '%s'",
                     target, existing);
               }
@@ -1298,7 +1294,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         validateLocationsForTableLike(tableIdentifier, dataLocations, resolvedStorageEntity);
         // also validate that the table location doesn't overlap an existing table
         dataLocations.forEach(
-            location -> validateNoLocationOverlap(tableIdentifier, resolvedNamespace, location));
+            location ->
+                validateNoLocationOverlap(
+                    catalogEntity, tableIdentifier, resolvedNamespace, location));
         // and that the metadata file points to a location within the table's directory structure
         if (metadata.metadataFileLocation() != null) {
           validateMetadataFileInTableDir(tableIdentifier, metadata, catalog);
@@ -1511,7 +1509,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         // If location is changing then we must validate that the requested location is valid
         // for the storage configuration inherited under this entity's path.
         validateLocationForTableLike(identifier, metadata.location(), resolvedStorageEntity);
-        validateNoLocationOverlap(identifier, resolvedNamespace, metadata.location());
+        validateNoLocationOverlap(
+            catalogEntity, identifier, resolvedNamespace, metadata.location());
       }
 
       Map<String, String> tableProperties = new HashMap<>(metadata.properties());
@@ -1811,6 +1810,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
   }
 
+  @SuppressWarnings("FormatStringAnnotation")
   private @NotNull PolarisMetaStoreManager.DropEntityResult dropTableLike(
       PolarisEntitySubType subType,
       TableIdentifier identifier,
@@ -1826,6 +1826,28 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
     PolarisEntity leafEntity = resolvedEntities.getRawLeafEntity();
+
+    // Check that purge is enabled, if it is set:
+    if (catalogPath != null && !catalogPath.isEmpty() && purge) {
+      boolean dropWithPurgeEnabled =
+          callContext
+              .getPolarisCallContext()
+              .getConfigurationStore()
+              .getConfiguration(
+                  callContext.getPolarisCallContext(),
+                  catalogEntity,
+                  PolarisConfiguration.DROP_WITH_PURGE_ENABLED);
+      if (!dropWithPurgeEnabled) {
+        throw new ForbiddenException(
+            String.format(
+                "Unable to purge entity: %s. To enable this feature, set the Polaris configuration %s "
+                    + "or the catalog configuration %s",
+                identifier.name(),
+                PolarisConfiguration.DROP_WITH_PURGE_ENABLED.key,
+                PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig()));
+      }
+    }
+
     return entityManager
         .getMetaStoreManager()
         .dropEntityIfExists(
@@ -1874,10 +1896,23 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                         .getMetaStoreManager()
                         .generateNewEntityId(getCurrentPolarisContext())
                         .getId())
+                .setLastNotificationTimestamp(request.getPayload().getTimestamp())
                 .build();
       } else {
+        // If the notification timestamp is out-of-order, we should not update the table
+        if (entity.getLastAdmittedNotificationTimestamp().isPresent()
+            && request.getPayload().getTimestamp()
+                <= entity.getLastAdmittedNotificationTimestamp().get()) {
+          throw new AlreadyExistsException(
+              "A notification with a newer timestamp has been processed for table %s",
+              tableIdentifier);
+        }
         existingLocation = entity.getMetadataLocation();
-        entity = new TableLikeEntity.Builder(entity).setMetadataLocation(newLocation).build();
+        entity =
+            new TableLikeEntity.Builder(entity)
+                .setMetadataLocation(newLocation)
+                .setLastNotificationTimestamp(request.getPayload().getTimestamp())
+                .build();
       }
       // first validate we can read the metadata file
       validateLocationForTableLike(tableIdentifier, newLocation);

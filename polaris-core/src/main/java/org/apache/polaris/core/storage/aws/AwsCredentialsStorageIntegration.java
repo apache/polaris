@@ -112,7 +112,7 @@ public class AwsCredentialsStorageIntegration
               if (allowList) {
                 bucketListStatmentBuilder
                     .computeIfAbsent(
-                        arnPrefix + uri.getHost(),
+                        arnPrefix + StorageUtil.getBucket(uri),
                         (String key) ->
                             IamStatement.builder()
                                 .effect(IamEffect.ALLOW)
@@ -164,7 +164,7 @@ public class AwsCredentialsStorageIntegration
   }
 
   private static @NotNull String parseS3Path(URI uri) {
-    String bucket = uri.getHost();
+    String bucket = StorageUtil.getBucket(uri);
     String path = trimLeadingSlash(uri.getPath());
     return String.join(
         "/", Stream.of(bucket, path).filter(Objects::nonNull).toArray(String[]::new));

@@ -122,7 +122,7 @@ public abstract class PolarisAuthzTestBase {
 
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
 
-  protected static final Schema SCHEMA =
+  public static final Schema SCHEMA =
       new Schema(
           required(3, "id", Types.IntegerType.get(), "unique ID 🤪"),
           required(4, "data", Types.StringType.get()));
