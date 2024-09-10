@@ -33,6 +33,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+/**
+ * Integration test that verifies the timeout behavior for fetching async rate limiters. This is in
+ * its own test class because the Dropwizard app is per test class and there isn't a great way to
+ * allow tests to clear the rate limiter cache.
+ */
 @ExtendWith({
   DropwizardExtensionsSupport.class,
   PolarisConnectionExtension.class,

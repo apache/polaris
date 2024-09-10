@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.service.test;
 
-// import io.opentelemetry.sdk.common.Clock;
 import org.apache.polaris.service.ratelimiting.Clock;
 
+/** Mock clock for setting the current time (as perceived by the rate limiter) to anything */
 public class MockClock implements Clock {
   long nanos;
 

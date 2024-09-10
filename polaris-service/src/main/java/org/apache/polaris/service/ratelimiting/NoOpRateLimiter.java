@@ -22,7 +22,6 @@ package org.apache.polaris.service.ratelimiting;
 public class NoOpRateLimiter implements RateLimiter {
   @Override
   public boolean trySpend(double itemCost) {
-    System.out.println("ANDREW: trySpend returning true");
     return true;
   }
 }

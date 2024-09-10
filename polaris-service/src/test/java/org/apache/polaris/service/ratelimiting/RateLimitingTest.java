@@ -35,6 +35,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+/** Main integration tests for rate limiting */
 @ExtendWith({
   DropwizardExtensionsSupport.class,
   PolarisConnectionExtension.class,

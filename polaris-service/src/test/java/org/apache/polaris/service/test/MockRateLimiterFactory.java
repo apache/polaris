@@ -27,6 +27,10 @@ import org.apache.polaris.service.ratelimiting.OpenTelemetryRateLimiter;
 import org.apache.polaris.service.ratelimiting.RateLimiter;
 import org.apache.polaris.service.ratelimiting.RateLimiterFactory;
 
+/**
+ * Factory that constructs a standard OpenTelemetryRateLimiter but with a mock Clock and an optional
+ * construction delay
+ */
 @JsonTypeName("mock")
 public class MockRateLimiterFactory implements RateLimiterFactory {
   public static MockClock clock = new MockClock();
@@ -49,7 +53,6 @@ public class MockRateLimiterFactory implements RateLimiterFactory {
           } catch (InterruptedException e) {
           }
 
-          System.out.println("ANDREW: got here");
           return new OpenTelemetryRateLimiter(
               requestsPerSecond, requestsPerSecond * windowSeconds, MockRateLimiterFactory.clock);
         });
