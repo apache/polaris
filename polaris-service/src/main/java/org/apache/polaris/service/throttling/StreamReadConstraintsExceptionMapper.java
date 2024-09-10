@@ -23,6 +23,10 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 
+/**
+ * Handles exceptions during the request that are a result of stream constraints such as the request
+ * being too large
+ */
 public class StreamReadConstraintsExceptionMapper
     implements ExceptionMapper<StreamConstraintsException> {
 
