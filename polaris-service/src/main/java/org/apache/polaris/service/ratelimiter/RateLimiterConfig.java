@@ -20,8 +20,14 @@ package org.apache.polaris.service.ratelimiter;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+/** Configuration for the rate limiter */
 public class RateLimiterConfig {
   private RateLimiterFactory rateLimiterFactory;
+
+  /**
+   * Rate limiters can be constructed asynchronously, so this config determines the construction
+   * timeout before we default to a NoOpRateLimiter.
+   */
   private long constructionTimeoutMillis;
 
   @JsonProperty("factory")
