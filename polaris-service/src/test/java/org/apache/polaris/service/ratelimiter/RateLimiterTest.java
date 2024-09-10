@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.ratelimiting;
+package org.apache.polaris.service.ratelimiter;
 
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
@@ -33,17 +33,13 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-/**
- * Integration test that verifies the timeout behavior for fetching async rate limiters. This is in
- * its own test class because the Dropwizard app is per test class and there isn't a great way to
- * allow tests to clear the rate limiter cache.
- */
+/** Main integration tests for rate limiting */
 @ExtendWith({
   DropwizardExtensionsSupport.class,
   PolarisConnectionExtension.class,
   SnowmanCredentialsExtension.class
 })
-public class AsyncFallbackTest {
+public class RateLimiterTest {
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
       new DropwizardAppExtension<>(
           PolarisApplication.class,
@@ -52,9 +48,7 @@ public class AsyncFallbackTest {
               "server.applicationConnectors[0].port",
               "0"), // Bind to random port to support parallelism
           ConfigOverride.config("server.adminConnectors[0].port", "0"),
-          ConfigOverride.config("rateLimiting.requestsPerSecond", "0"),
-          ConfigOverride.config("rateLimiting.windowSeconds", "0"),
-          ConfigOverride.config("rateLimiting.delaySeconds", "999"));
+          ConfigOverride.config("rateLimiter.factory.type", "mock"));
 
   private static String userToken;
   private static String realm;
@@ -62,13 +56,25 @@ public class AsyncFallbackTest {
   @BeforeAll
   public static void setup(PolarisConnectionExtension.PolarisToken userToken) {
     realm = PolarisConnectionExtension.getTestRealm(PolarisApplicationIntegrationTest.class);
-    AsyncFallbackTest.userToken = userToken.token();
+    RateLimiterTest.userToken = userToken.token();
   }
 
   @Test
-  public void testRequestNotLimitedBecauseConstructionShouldTimeOut() {
+  public void testRateLimiter() {
     Consumer<Response.Status> requestAsserter =
         TestUtil.constructRequestAsserter(EXT, userToken, realm);
-    requestAsserter.accept(Response.Status.OK);
+    MockRateLimiterFactory factory =
+        (MockRateLimiterFactory)
+            (EXT.getConfiguration().getRateLimiterConfig().getRateLimiterFactory());
+    long windowMillis = (long) (factory.windowSeconds * 1000);
+
+    MockClock clock = MockRateLimiterFactory.clock;
+    clock.setMillis(2 * windowMillis); // Clear any counters from before this test
+    for (int i = 0; i < factory.requestsPerSecond * factory.windowSeconds; i++) {
+      requestAsserter.accept(Response.Status.OK);
+    }
+    requestAsserter.accept(Response.Status.TOO_MANY_REQUESTS);
+
+    clock.setMillis(4 * windowMillis); // Clear any counters from this test
   }
 }

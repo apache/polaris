@@ -16,22 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.ratelimiting;
-
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import io.dropwizard.jackson.Discoverable;
-import java.util.concurrent.CompletableFuture;
+package org.apache.polaris.service.ratelimiter;
 
 /**
- * Interface for constructing a rate limiter given the rate limiting key and clock. Notably, rate
- * limiter construction may be asynchronous. This allows fetching information related to the key.
- * For example, implementors may wish to fetch per-account rate limit values, which require lookup
- * in an external database.
+ * Wrapper around the opentelemetry RateLimiter that implements the Polaris RateLimiter interface
  */
-@JsonTypeInfo(
-    use = JsonTypeInfo.Id.NAME,
-    include = JsonTypeInfo.As.PROPERTY,
-    property = "factoryType")
-public interface RateLimiterFactory extends Discoverable {
-  CompletableFuture<RateLimiter> createRateLimiter(String key, Clock clock);
+public class OpenTelemetryRateLimiter implements RateLimiter {
+  io.opentelemetry.sdk.internal.RateLimiter rateLimiter;
+
+  public OpenTelemetryRateLimiter(double creditsPerSecond, double maxBalance, Clock clock) {
+    rateLimiter =
+        new io.opentelemetry.sdk.internal.RateLimiter(
+            creditsPerSecond, maxBalance, new OpenTelemetryClock(clock));
+  }
+
+  @Override
+  public boolean trySpend(double credits) {
+    return rateLimiter.trySpend(credits);
+  }
 }

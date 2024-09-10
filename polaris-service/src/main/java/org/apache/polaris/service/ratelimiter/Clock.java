@@ -16,22 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.ratelimiting;
+package org.apache.polaris.service.ratelimiter;
 
-/**
- * Wrapper around the opentelemetry RateLimiter that implements the Polaris RateLimiter interface
- */
-public class OpenTelemetryRateLimiter implements RateLimiter {
-  io.opentelemetry.sdk.internal.RateLimiter rateLimiter;
-
-  public OpenTelemetryRateLimiter(double creditsPerSecond, double maxBalance, Clock clock) {
-    rateLimiter =
-        new io.opentelemetry.sdk.internal.RateLimiter(
-            creditsPerSecond, maxBalance, new OpenTelemetryClock(clock));
-  }
-
-  @Override
-  public boolean trySpend(double credits) {
-    return rateLimiter.trySpend(credits);
-  }
+/** An interface to specify how to retrieve the current wall clock time */
+public interface Clock {
+  long nanoTime();
 }

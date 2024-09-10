@@ -16,16 +16,41 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.ratelimiting;
+package org.apache.polaris.service.ratelimiter;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 
-/** Rate limiter factory that constructs a no-op rate limiter */
-@JsonTypeName("no-op")
-public class NoOpRateLimiterFactory implements RateLimiterFactory {
+/**
+ * Factory that constructs a standard OpenTelemetryRateLimiter but with a mock Clock and an optional
+ * construction delay
+ */
+@JsonTypeName("mock")
+public class MockRateLimiterFactory implements RateLimiterFactory {
+  public static MockClock clock = new MockClock();
+
+  @JsonProperty("requestsPerSecond")
+  public double requestsPerSecond;
+
+  @JsonProperty("windowSeconds")
+  public double windowSeconds;
+
+  @JsonProperty("delaySeconds")
+  public long delaySeconds;
+
   @Override
   public CompletableFuture<RateLimiter> createRateLimiter(String key, Clock clock) {
-    return CompletableFuture.supplyAsync(NoOpRateLimiter::new);
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            Thread.sleep(Duration.ofSeconds(delaySeconds));
+          } catch (InterruptedException e) {
+          }
+
+          return new OpenTelemetryRateLimiter(
+              requestsPerSecond, requestsPerSecond * windowSeconds, MockRateLimiterFactory.clock);
+        });
   }
 }

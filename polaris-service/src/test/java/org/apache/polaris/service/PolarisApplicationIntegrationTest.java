@@ -26,7 +26,6 @@ import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
-import io.opentelemetry.sdk.common.Clock;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
@@ -86,7 +85,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.MockedStatic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,7 +112,6 @@ public class PolarisApplicationIntegrationTest {
   private static SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials;
   private static Path testDir;
   private static String realm;
-  private static MockedStatic<Clock> mockClock;
 
   @BeforeAll
   public static void setup(

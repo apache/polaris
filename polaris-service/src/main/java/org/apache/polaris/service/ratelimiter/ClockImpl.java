@@ -16,12 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.ratelimiting;
+package org.apache.polaris.service.ratelimiter;
 
 /** An implementation of our Clock interface using opentelemetry's Clock implementation */
 public class ClockImpl implements Clock {
+  io.opentelemetry.sdk.common.Clock openTelemetryClock;
+
+  public ClockImpl() {
+    openTelemetryClock = io.opentelemetry.sdk.common.Clock.getDefault();
+  }
+
   @Override
   public long nanoTime() {
-    return io.opentelemetry.sdk.common.Clock.getDefault().nanoTime();
+    return openTelemetryClock.nanoTime();
   }
 }

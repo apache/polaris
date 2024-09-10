@@ -16,22 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.test;
+package org.apache.polaris.service.ratelimiter;
 
-import org.apache.polaris.service.ratelimiting.Clock;
-
-/** Mock clock for setting the current time (as perceived by the rate limiter) to anything */
-public class MockClock implements Clock {
-  long nanos;
-
-  public MockClock() {}
-
-  public void setMillis(long millis) {
-    nanos = millis * 1_000_000;
-  }
-
+/** Rate limiter that always allows the request */
+public class NoOpRateLimiter implements RateLimiter {
   @Override
-  public long nanoTime() {
-    return nanos;
+  public boolean trySpend(double itemCost) {
+    return true;
   }
 }

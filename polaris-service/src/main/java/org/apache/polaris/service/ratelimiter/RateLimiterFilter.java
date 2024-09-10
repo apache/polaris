@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.ratelimiting;
+package org.apache.polaris.service.ratelimiter;
 
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -39,18 +39,21 @@ import org.slf4j.LoggerFactory;
 
 /** Request filter that returns a 429 Too Many Requests if the rate limiter says so */
 @Priority(Priorities.AUTHORIZATION + 1)
-public class RateLimitingFilter implements Filter {
-  private static final Logger LOGGER = LoggerFactory.getLogger(RateLimitingFilter.class);
+public class RateLimiterFilter implements Filter {
+  private static final Logger LOGGER = LoggerFactory.getLogger(RateLimiterFilter.class);
   private static final RateLimiter NO_OP_LIMITER = new NoOpRateLimiter();
-  private static final int GET_RATE_LIMITER_TIMEOUT_SECONDS = 2;
 
+  private final RateLimiterConfig config;
   private final AsyncLoadingCache<String, RateLimiter> perRealmLimiters;
 
-  public RateLimitingFilter(RateLimiterFactory rateLimiterFactory) {
+  public RateLimiterFilter(RateLimiterConfig config) {
+    this.config = config;
+
     var clock = new ClockImpl();
     perRealmLimiters =
         Caffeine.newBuilder()
-            .buildAsync((key, executor) -> rateLimiterFactory.createRateLimiter(key, clock));
+            .buildAsync(
+                (key, executor) -> config.getRateLimiterFactory().createRateLimiter(key, clock));
   }
 
   @Override
@@ -67,7 +70,9 @@ public class RateLimitingFilter implements Filter {
 
   RateLimiter maybeBlockToGetRateLimiter(String realm) {
     try {
-      return perRealmLimiters.get(realm).get(GET_RATE_LIMITER_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+      return perRealmLimiters
+          .get(realm)
+          .get(config.getConstructionTimeoutMillis(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
       LOGGER.error("Failed to fetch rate limiter", e);
       return NO_OP_LIMITER;

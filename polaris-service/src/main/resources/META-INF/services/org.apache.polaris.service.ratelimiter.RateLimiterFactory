@@ -17,4 +17,4 @@
 # under the License.
 #
 
-org.apache.polaris.service.test.MockRateLimiterFactory
+org.apache.polaris.service.ratelimiter.DefaultRateLimiterFactory

@@ -16,9 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.ratelimiting;
+package org.apache.polaris.service.ratelimiter;
 
-/** An interface to specify how to retrieve the current wall clock time */
-public interface Clock {
-  long nanoTime();
+/** Mock clock for setting the current time (as perceived by the rate limiter) to anything */
+public class MockClock implements Clock {
+  long nanos;
+
+  public MockClock() {}
+
+  public void setMillis(long millis) {
+    nanos = millis * 1_000_000;
+  }
+
+  @Override
+  public long nanoTime() {
+    return nanos;
+  }
 }

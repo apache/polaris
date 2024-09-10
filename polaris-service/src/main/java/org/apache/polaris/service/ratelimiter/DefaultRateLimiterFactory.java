@@ -16,12 +16,29 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.ratelimiting;
+package org.apache.polaris.service.ratelimiter;
 
-/** Rate limiter that always allows the request */
-public class NoOpRateLimiter implements RateLimiter {
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import java.util.concurrent.CompletableFuture;
+
+/**
+ * Simple rate limiter factory that just constructs an OpenTelemetryRateLimiter and is
+ * indiscriminate of the key
+ */
+@JsonTypeName("default")
+public class DefaultRateLimiterFactory implements RateLimiterFactory {
+  @JsonProperty("requestsPerSecond")
+  private double requestsPerSecond;
+
+  @JsonProperty("windowSeconds")
+  private double windowSeconds;
+
   @Override
-  public boolean trySpend(double itemCost) {
-    return true;
+  public CompletableFuture<RateLimiter> createRateLimiter(String key, Clock clock) {
+    return CompletableFuture.supplyAsync(
+        () ->
+            new OpenTelemetryRateLimiter(
+                requestsPerSecond, requestsPerSecond * windowSeconds, clock));
   }
 }

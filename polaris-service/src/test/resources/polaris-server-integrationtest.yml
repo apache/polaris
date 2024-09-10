@@ -153,8 +153,9 @@ logging:
 # Limits the size of request bodies sent to Polaris. -1 means no limit.
 maxRequestBodyBytes: 1000000
 
-rateLimiting:
-  factoryType: mock
-  requestsPerSecond: 10
-  windowSeconds: 10
-  delaySeconds: 0
+rateLimiter:
+  constructionTimeoutMillis: 2000
+  factory:
+    type: default
+    requestsPerSecond: 10
+    windowSeconds: 10

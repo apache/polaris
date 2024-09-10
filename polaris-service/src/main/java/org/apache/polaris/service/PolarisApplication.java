@@ -101,7 +101,7 @@ import org.apache.polaris.service.context.CallContextResolver;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
-import org.apache.polaris.service.ratelimiting.RateLimitingFilter;
+import org.apache.polaris.service.ratelimiter.RateLimiterFilter;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
@@ -256,7 +256,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
 
     environment
         .servlets()
-        .addFilter("ratelimiting", new RateLimitingFilter(configuration.getRateLimiterFactory()))
+        .addFilter("ratelimiter", new RateLimiterFilter(configuration.getRateLimiterConfig()))
         .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
 
     DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> authenticator =
