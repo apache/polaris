@@ -76,4 +76,3 @@ threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 openapi-generator = { id = "org.openapi.generator", version = "7.6.0" }
 rat = { id = "org.nosphere.apache.rat", version = "0.8.1" }
 spotless = { id = "com.diffplug.spotless", version = "6.25.0" }
-shadow = { id = "com.gradleup.shadow", version = "8.3.0" }
