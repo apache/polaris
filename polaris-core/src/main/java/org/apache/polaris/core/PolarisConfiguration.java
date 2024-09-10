@@ -104,6 +104,7 @@ public class PolarisConfiguration<T> {
   public static final PolarisConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_TABLE_LOCATION_OVERLAP")
+          .catalogConfig("allow.overlapping.table.location")
           .description(
               "If set to true, allow one table's location to reside within another table's location. "
                   + "This is only enforced within a given namespace.")

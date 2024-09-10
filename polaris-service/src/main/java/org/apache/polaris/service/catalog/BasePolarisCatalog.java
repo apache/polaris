@@ -1006,12 +1006,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    * configuration of the service
    */
   private void validateNoLocationOverlap(
-      TableIdentifier identifier, List<PolarisEntity> resolvedNamespace, String location) {
+      CatalogEntity catalog,
+      TableIdentifier identifier,
+      List<PolarisEntity> resolvedNamespace,
+      String location) {
     if (callContext
         .getPolarisCallContext()
         .getConfigurationStore()
         .getConfiguration(
             callContext.getPolarisCallContext(),
+            catalog,
             PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP)) {
       LOGGER.debug("Skipping location overlap validation for identifier '{}'", identifier);
     } else { // if (entity.getSubType().equals(PolarisEntitySubType.TABLE)) {
@@ -1136,7 +1140,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               URI existing = URI.create(siblingLocation);
               if (isUnderParentLocation(target, existing)
                   || isUnderParentLocation(existing, target)) {
-                throw new org.apache.iceberg.exceptions.BadRequestException(
+                throw new org.apache.iceberg.exceptions.ForbiddenException(
                     "Unable to create table at location '%s' because it conflicts with existing table or namespace at location '%s'",
                     target, existing);
               }
@@ -1290,7 +1294,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         validateLocationsForTableLike(tableIdentifier, dataLocations, resolvedStorageEntity);
         // also validate that the table location doesn't overlap an existing table
         dataLocations.forEach(
-            location -> validateNoLocationOverlap(tableIdentifier, resolvedNamespace, location));
+            location ->
+                validateNoLocationOverlap(
+                    catalogEntity, tableIdentifier, resolvedNamespace, location));
         // and that the metadata file points to a location within the table's directory structure
         if (metadata.metadataFileLocation() != null) {
           validateMetadataFileInTableDir(tableIdentifier, metadata, catalog);
@@ -1503,7 +1509,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         // If location is changing then we must validate that the requested location is valid
         // for the storage configuration inherited under this entity's path.
         validateLocationForTableLike(identifier, metadata.location(), resolvedStorageEntity);
-        validateNoLocationOverlap(identifier, resolvedNamespace, metadata.location());
+        validateNoLocationOverlap(
+            catalogEntity, identifier, resolvedNamespace, metadata.location());
       }
 
       Map<String, String> tableProperties = new HashMap<>(metadata.properties());
