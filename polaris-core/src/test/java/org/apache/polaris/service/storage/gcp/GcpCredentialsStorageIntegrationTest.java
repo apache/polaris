@@ -165,7 +165,7 @@ class GcpCredentialsStorageIntegrationTest {
     List<String> allowedLoc = new ArrayList<>();
     allowedLoc.addAll(allowedReadLoc);
     allowedLoc.addAll(allowedWriteLoc);
-    GcpStorageConfigurationInfo gcpConfig = new GcpStorageConfigurationInfo(allowedLoc);
+    GcpStorageConfigurationInfo gcpConfig = GcpStorageConfigurationInfo.of(allowedLoc);
     GcpCredentialsStorageIntegration gcpCredsIntegration =
         new GcpCredentialsStorageIntegration(
             GoogleCredentials.getApplicationDefault(),

@@ -19,7 +19,7 @@
 package org.apache.polaris.core.storage;
 
 import java.util.List;
-import org.jetbrains.annotations.NotNull;
+import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
  * Allows overriding the allowed locations for specific entities. Only the allowedLocations
@@ -27,31 +27,40 @@ import org.jetbrains.annotations.NotNull;
  * storage configuration. All other storage configuration is inherited from the parent configuration
  * and cannot be overridden.
  */
-public class StorageConfigurationOverride extends PolarisStorageConfigurationInfo {
+@PolarisImmutable
+public abstract class StorageConfigurationOverride extends PolarisStorageConfigurationInfo {
 
-  private final PolarisStorageConfigurationInfo parentStorageConfiguration;
+  public static PolarisStorageConfigurationInfo of(
+      PolarisStorageConfigurationInfo parent, Iterable<String> allowedLocations) {
+    return ImmutableStorageConfigurationOverride.builder()
+        .parentStorageConfiguration(parent)
+        .allowedLocations(allowedLocations)
+        .build();
+  }
 
-  public StorageConfigurationOverride(
-      @NotNull PolarisStorageConfigurationInfo parentStorageConfiguration,
-      List<String> allowedLocations) {
-    super(parentStorageConfiguration.getStorageType(), allowedLocations, false);
-    this.parentStorageConfiguration = parentStorageConfiguration;
-    allowedLocations.forEach(this::validatePrefixForStorageType);
+  protected abstract PolarisStorageConfigurationInfo parentStorageConfiguration();
+
+  @Override
+  public abstract List<String> getAllowedLocations();
+
+  @Override
+  public StorageType getStorageType() {
+    return parentStorageConfiguration().getStorageType();
   }
 
   @Override
   public String getFileIoImplClassName() {
-    return parentStorageConfiguration.getFileIoImplClassName();
+    return parentStorageConfiguration().getFileIoImplClassName();
   }
 
   // delegate to the wrapped class in case they override the parent behavior
   @Override
   protected void validatePrefixForStorageType(String loc) {
-    parentStorageConfiguration.validatePrefixForStorageType(loc);
+    parentStorageConfiguration().validatePrefixForStorageType(loc);
   }
 
   @Override
   public void validateMaxAllowedLocations(int maxAllowedLocations) {
-    parentStorageConfiguration.validateMaxAllowedLocations(maxAllowedLocations);
+    parentStorageConfiguration().validateMaxAllowedLocations(maxAllowedLocations);
   }
 }

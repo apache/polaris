@@ -43,8 +43,7 @@ class InMemoryStorageIntegrationTest {
     MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
-            new AwsStorageConfigurationInfo(
-                PolarisStorageConfigurationInfo.StorageType.S3,
+            AwsStorageConfigurationInfo.of(
                 List.of(
                     "s3://bucket/path/to/warehouse",
                     "s3://bucket/anotherpath/to/warehouse",
@@ -95,7 +94,7 @@ class InMemoryStorageIntegrationTest {
             CallContext.of(RealmContext.of("realm"), polarisCallContext))) {
       Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
           storage.validateAccessToLocations(
-              new FileStorageConfigurationInfo(List.of("file://", "*")),
+              FileStorageConfigurationInfo.of(List.of("file://", "*")),
               Set.of(PolarisStorageActions.READ),
               Set.of(
                   "s3://bucket/path/to/warehouse/namespace/table",
@@ -135,10 +134,7 @@ class InMemoryStorageIntegrationTest {
     MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
-            new AwsStorageConfigurationInfo(
-                PolarisStorageConfigurationInfo.StorageType.S3,
-                List.of(),
-                "arn:aws:iam::012345678901:role/jdoe"),
+            AwsStorageConfigurationInfo.of(List.of(), "arn:aws:iam::012345678901:role/jdoe"),
             Set.of(PolarisStorageActions.READ),
             Set.of(
                 "s3://bucket/path/to/warehouse/namespace/table",
@@ -168,10 +164,8 @@ class InMemoryStorageIntegrationTest {
     MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
-            new AwsStorageConfigurationInfo(
-                PolarisStorageConfigurationInfo.StorageType.S3,
-                List.of("s3://bucket/path/to/warehouse"),
-                "arn:aws:iam::012345678901:role/jdoe"),
+            AwsStorageConfigurationInfo.of(
+                List.of("s3://bucket/path/to/warehouse"), "arn:aws:iam::012345678901:role/jdoe"),
             Set.of(PolarisStorageActions.READ),
             // trying to read a prefix under the allowed location
             Set.of("s3://bucket/path/to"));

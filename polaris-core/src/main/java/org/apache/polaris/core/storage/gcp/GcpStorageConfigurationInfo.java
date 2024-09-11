@@ -18,33 +18,37 @@
  */
 package org.apache.polaris.core.storage.gcp;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.MoreObjects;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.jetbrains.annotations.NotNull;
+import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value.Check;
 import org.jetbrains.annotations.Nullable;
 
 /** Gcp storage storage configuration information. */
-public class GcpStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
+@PolarisImmutable
+@JsonSerialize(as = ImmutableGcpStorageConfigurationInfo.class)
+@JsonDeserialize(as = ImmutableGcpStorageConfigurationInfo.class)
+public abstract class GcpStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
   // 8 is an experimental result from generating GCP accessBoundaryRules when subscoping creds,
   // when the rule is too large, GCS only returns error: 400 bad request "Invalid arguments
   // provided in the request"
-  @JsonIgnore private static final int MAX_ALLOWED_LOCATIONS = 8;
+  private static final int MAX_ALLOWED_LOCATIONS = 8;
 
-  /** The gcp service account */
-  @JsonProperty(value = "gcpServiceAccount", required = false)
-  private @Nullable String gcpServiceAccount = null;
+  public static GcpStorageConfigurationInfo of(Iterable<String> allowedLocations) {
+    return ImmutableGcpStorageConfigurationInfo.builder()
+        .allowedLocations(allowedLocations)
+        .build();
+  }
 
-  @JsonCreator
-  public GcpStorageConfigurationInfo(
-      @JsonProperty(value = "allowedLocations", required = true) @NotNull
-          List<String> allowedLocations) {
-    super(StorageType.GCS, allowedLocations);
-    validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
+  @Override
+  public abstract List<String> getAllowedLocations();
+
+  @Override
+  public StorageType getStorageType() {
+    return StorageType.GCS;
   }
 
   @Override
@@ -52,20 +56,14 @@ public class GcpStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     return "org.apache.iceberg.gcp.gcs.GCSFileIO";
   }
 
-  public void setGcpServiceAccount(String gcpServiceAccount) {
-    this.gcpServiceAccount = gcpServiceAccount;
-  }
+  /** The gcp service account. */
+  @Nullable
+  public abstract String getGcpServiceAccount();
 
-  public String getGcpServiceAccount() {
-    return gcpServiceAccount;
-  }
-
+  @Check
   @Override
-  public String toString() {
-    return MoreObjects.toStringHelper(this)
-        .add("storageType", getStorageType())
-        .add("allowedLocation", getAllowedLocations())
-        .add("gcpServiceAccount", gcpServiceAccount)
-        .toString();
+  protected void validate() {
+    super.validate();
+    validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
   }
 }

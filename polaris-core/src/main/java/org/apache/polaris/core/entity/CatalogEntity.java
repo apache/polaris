@@ -20,7 +20,6 @@ package org.apache.polaris.core.entity;
 
 import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum.AZURE;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -130,7 +129,6 @@ public class CatalogEntity extends PolarisEntity {
   private StorageConfigInfo getStorageInfo(Map<String, String> internalProperties) {
     if (internalProperties.containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName())) {
       PolarisStorageConfigurationInfo configInfo = getStorageConfigurationInfo();
-      PolarisStorageConfigurationInfo.StorageType storageType = configInfo.getStorageType();
       if (configInfo instanceof AwsStorageConfigurationInfo) {
         AwsStorageConfigurationInfo awsConfig = (AwsStorageConfigurationInfo) configInfo;
         return AwsStorageConfigInfo.builder()
@@ -241,24 +239,19 @@ public class CatalogEntity extends PolarisEntity {
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
             config =
-                new AwsStorageConfigurationInfo(
-                    PolarisStorageConfigurationInfo.StorageType.S3,
-                    new ArrayList<>(allowedLocations),
-                    awsConfigModel.getRoleArn(),
-                    awsConfigModel.getExternalId());
-            ((AwsStorageConfigurationInfo) config).validateArn(awsConfigModel.getRoleArn());
+                AwsStorageConfigurationInfo.of(
+                    allowedLocations, awsConfigModel.getRoleArn(), awsConfigModel.getExternalId());
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
             config =
-                new AzureStorageConfigurationInfo(
-                    new ArrayList<>(allowedLocations), azureConfigModel.getTenantId());
+                AzureStorageConfigurationInfo.of(allowedLocations, azureConfigModel.getTenantId());
             break;
           case GCS:
-            config = new GcpStorageConfigurationInfo(new ArrayList<>(allowedLocations));
+            config = GcpStorageConfigurationInfo.of(allowedLocations);
             break;
           case FILE:
-            config = new FileStorageConfigurationInfo(new ArrayList<>(allowedLocations));
+            config = FileStorageConfigurationInfo.of(allowedLocations);
             break;
           default:
             throw new IllegalStateException(

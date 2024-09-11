@@ -341,7 +341,7 @@ public class AzureCredentialStorageIntegrationTest {
     allowedLoc.addAll(allowedReadLoc);
     allowedLoc.addAll(allowedWriteLoc);
     AzureStorageConfigurationInfo azureConfig =
-        new AzureStorageConfigurationInfo(allowedLoc, tenantId);
+        AzureStorageConfigurationInfo.of(allowedLoc, tenantId);
     AzureCredentialsStorageIntegration azureCredsIntegration =
         new AzureCredentialsStorageIntegration();
     EnumMap<PolarisCredentialProperty, String> credsMap =

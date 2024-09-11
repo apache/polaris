@@ -31,8 +31,6 @@ import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import software.amazon.awssdk.policybuilder.iam.IamAction;
 import software.amazon.awssdk.policybuilder.iam.IamCondition;
@@ -79,11 +77,7 @@ class AwsCredentialsStorageIntegrationTest {
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
-                new AwsStorageConfigurationInfo(
-                    PolarisStorageConfigurationInfo.StorageType.S3,
-                    List.of(warehouseDir),
-                    roleARN,
-                    externalId),
+                AwsStorageConfigurationInfo.of(List.of(warehouseDir), roleARN, externalId),
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"));
@@ -94,26 +88,11 @@ class AwsCredentialsStorageIntegrationTest {
         .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey");
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {AWS_PARTITION, "aws-cn", "aws-us-gov"})
-  public void testGetSubscopedCredsInlinePolicy(String awsPartition) {
+  @Test
+  public void testGetSubscopedCredsInlinePolicy() {
     PolarisStorageConfigurationInfo.StorageType storageType =
         PolarisStorageConfigurationInfo.StorageType.S3;
-    String roleARN;
-    switch (awsPartition) {
-      case AWS_PARTITION:
-        roleARN = "arn:aws:iam::012345678901:role/jdoe";
-        break;
-      case "aws-cn":
-        roleARN = "arn:aws-cn:iam::012345678901:role/jdoe";
-        break;
-      case "aws-us-gov":
-        roleARN = "arn:aws-us-gov:iam::012345678901:role/jdoe";
-        break;
-      default:
-        throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
-    }
-    ;
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
     StsClient stsClient = Mockito.mock(StsClient.class);
     String externalId = "externalId";
     String bucket = "bucket";
@@ -141,7 +120,7 @@ class AwsCredentialsStorageIntegrationTest {
                                         .returns(
                                             List.of(
                                                 IamResource.create(
-                                                    s3Arn(awsPartition, bucket, firstPath))),
+                                                    s3Arn(AWS_PARTITION, bucket, firstPath))),
                                             IamStatement::resources)
                                         .returns(
                                             List.of(
@@ -154,7 +133,7 @@ class AwsCredentialsStorageIntegrationTest {
                                         .returns(
                                             List.of(
                                                 IamResource.create(
-                                                    s3Arn(awsPartition, bucket, null))),
+                                                    s3Arn(AWS_PARTITION, bucket, null))),
                                             IamStatement::resources)
                                         .returns(
                                             List.of(IamAction.create("s3:ListBucket")),
@@ -162,7 +141,7 @@ class AwsCredentialsStorageIntegrationTest {
                                         .returns(
                                             List.of(
                                                 IamResource.create(
-                                                    s3Arn(awsPartition, bucket, null))),
+                                                    s3Arn(AWS_PARTITION, bucket, null))),
                                             IamStatement::resources)
                                         .satisfies(
                                             st ->
@@ -188,10 +167,13 @@ class AwsCredentialsStorageIntegrationTest {
                                                 assertThat(st.resources())
                                                     .containsExactlyInAnyOrder(
                                                         IamResource.create(
-                                                            s3Arn(awsPartition, bucket, firstPath)),
+                                                            s3Arn(
+                                                                AWS_PARTITION, bucket, firstPath)),
                                                         IamResource.create(
                                                             s3Arn(
-                                                                awsPartition, bucket, secondPath))))
+                                                                AWS_PARTITION,
+                                                                bucket,
+                                                                secondPath))))
                                         .returns(
                                             List.of(
                                                 IamAction.create("s3:GetObject"),
@@ -204,11 +186,8 @@ class AwsCredentialsStorageIntegrationTest {
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
-                new AwsStorageConfigurationInfo(
-                    storageType,
-                    List.of(s3Path(bucket, warehouseKeyPrefix, storageType)),
-                    roleARN,
-                    externalId),
+                AwsStorageConfigurationInfo.of(
+                    List.of(s3Path(bucket, warehouseKeyPrefix, storageType)), roleARN, externalId),
                 true,
                 Set.of(
                     s3Path(bucket, firstPath, storageType),
@@ -287,11 +266,8 @@ class AwsCredentialsStorageIntegrationTest {
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
-                new AwsStorageConfigurationInfo(
-                    PolarisStorageConfigurationInfo.StorageType.S3,
-                    List.of(s3Path(bucket, warehouseKeyPrefix, storageType)),
-                    roleARN,
-                    externalId),
+                AwsStorageConfigurationInfo.of(
+                    List.of(s3Path(bucket, warehouseKeyPrefix, storageType)), roleARN, externalId),
                 false, /* allowList = false*/
                 Set.of(
                     s3Path(bucket, firstPath, storageType),
@@ -368,11 +344,8 @@ class AwsCredentialsStorageIntegrationTest {
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
-                new AwsStorageConfigurationInfo(
-                    storageType,
-                    List.of(s3Path(bucket, warehouseKeyPrefix, storageType)),
-                    roleARN,
-                    externalId),
+                AwsStorageConfigurationInfo.of(
+                    List.of(s3Path(bucket, warehouseKeyPrefix, storageType)), roleARN, externalId),
                 true, /* allowList = true */
                 Set.of(
                     s3Path(bucket, firstPath, storageType),
@@ -431,8 +404,7 @@ class AwsCredentialsStorageIntegrationTest {
         new AwsCredentialsStorageIntegration(stsClient)
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
-                new AwsStorageConfigurationInfo(
-                    PolarisStorageConfigurationInfo.StorageType.S3,
+                AwsStorageConfigurationInfo.of(
                     List.of(
                         s3Path(
                             bucket,

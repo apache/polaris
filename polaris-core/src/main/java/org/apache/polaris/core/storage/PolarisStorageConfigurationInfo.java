@@ -19,12 +19,12 @@
 package org.apache.polaris.core.storage;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -43,9 +43,10 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.TableLikeEntity;
-import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
-import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
-import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.core.storage.aws.ImmutableAwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.azure.ImmutableAzureStorageConfigurationInfo;
+import org.apache.polaris.core.storage.gcp.ImmutableGcpStorageConfigurationInfo;
+import org.immutables.value.Value.Check;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,50 +62,25 @@ import org.slf4j.LoggerFactory;
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes({
-  @JsonSubTypes.Type(value = AwsStorageConfigurationInfo.class),
-  @JsonSubTypes.Type(value = AzureStorageConfigurationInfo.class),
-  @JsonSubTypes.Type(value = GcpStorageConfigurationInfo.class),
-  @JsonSubTypes.Type(value = FileStorageConfigurationInfo.class),
+  @JsonSubTypes.Type(value = ImmutableAwsStorageConfigurationInfo.class),
+  @JsonSubTypes.Type(value = ImmutableAzureStorageConfigurationInfo.class),
+  @JsonSubTypes.Type(value = ImmutableGcpStorageConfigurationInfo.class),
+  @JsonSubTypes.Type(value = ImmutableFileStorageConfigurationInfo.class),
 })
 public abstract class PolarisStorageConfigurationInfo {
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisStorageConfigurationInfo.class);
 
-  // a list of allowed locations
-  private final List<String> allowedLocations;
+  public abstract List<String> getAllowedLocations();
 
-  // storage type
-  private final StorageType storageType;
-
-  public PolarisStorageConfigurationInfo(
-      @JsonProperty(value = "storageType", required = true) @NotNull StorageType storageType,
-      @JsonProperty(value = "allowedLocations", required = true) @NotNull
-          List<String> allowedLocations) {
-    this(storageType, allowedLocations, true);
-  }
-
-  protected PolarisStorageConfigurationInfo(
-      StorageType storageType, List<String> allowedLocations, boolean validatePrefix) {
-    this.allowedLocations = allowedLocations;
-    this.storageType = storageType;
-    if (validatePrefix) {
-      allowedLocations.forEach(this::validatePrefixForStorageType);
-    }
-  }
-
-  public List<String> getAllowedLocations() {
-    return allowedLocations;
-  }
-
-  public StorageType getStorageType() {
-    return storageType;
-  }
+  public abstract StorageType getStorageType();
 
   private static final ObjectMapper DEFAULT_MAPPER;
 
   static {
     DEFAULT_MAPPER = new ObjectMapper();
+    DEFAULT_MAPPER.registerModule(new GuavaModule());
     DEFAULT_MAPPER.setSerializationInclusion(JsonInclude.Include.NON_NULL);
     DEFAULT_MAPPER.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
   }
@@ -175,7 +151,7 @@ public abstract class PolarisStorageConfigurationInfo {
                 LOGGER.debug(
                     "Not allowing unstructured table location for entity: {}",
                     entityPathReversed.get(0).getName());
-                return new StorageConfigurationOverride(configInfo, List.of(baseLocation));
+                return StorageConfigurationOverride.of(configInfo, List.of(baseLocation));
               } else {
                 LOGGER.debug(
                     "Allowing unstructured table location for entity: {}",
@@ -183,7 +159,7 @@ public abstract class PolarisStorageConfigurationInfo {
 
                 List<String> locs =
                     userSpecifiedWriteLocations(entityPathReversed.get(0).getPropertiesAsMap());
-                return new StorageConfigurationOverride(
+                return StorageConfigurationOverride.of(
                     configInfo,
                     ImmutableList.<String>builder()
                         .addAll(configInfo.getAllowedLocations())
@@ -220,18 +196,24 @@ public abstract class PolarisStorageConfigurationInfo {
   /** Subclasses must provide the Iceberg FileIO impl associated with their type in this method. */
   public abstract String getFileIoImplClassName();
 
+  @Check
+  protected void validate() {
+    getAllowedLocations().forEach(this::validatePrefixForStorageType);
+  }
+
   /** Validate if the provided allowed locations are valid for the storage type */
   protected void validatePrefixForStorageType(String loc) {
-    if (!loc.toLowerCase(Locale.ROOT).startsWith(storageType.prefix)) {
+    if (!loc.toLowerCase(Locale.ROOT).startsWith(getStorageType().prefix)) {
       throw new IllegalArgumentException(
           String.format(
-              "Location prefix not allowed: '%s', expected prefix: '%s'", loc, storageType.prefix));
+              "Location prefix not allowed: '%s', expected prefix: '%s'",
+              loc, getStorageType().prefix));
     }
   }
 
   /** Validate the number of allowed locations not exceeding the max value. */
-  public void validateMaxAllowedLocations(int maxAllowedLocations) {
-    if (allowedLocations.size() > maxAllowedLocations) {
+  protected void validateMaxAllowedLocations(int maxAllowedLocations) {
+    if (getAllowedLocations().size() > maxAllowedLocations) {
       throw new IllegalArgumentException(
           "Number of allowed locations exceeds " + maxAllowedLocations);
     }

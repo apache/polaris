@@ -18,21 +18,33 @@
  */
 package org.apache.polaris.core.storage;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
-import org.jetbrains.annotations.NotNull;
+import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
  * Support for file:// URLs in storage configuration. This is pretty-much only used for testing.
  * Supports URLs that start with file:// or /, but also supports wildcard (*) to support certain
  * test cases.
  */
-public class FileStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
+@PolarisImmutable
+@JsonSerialize(as = ImmutableFileStorageConfigurationInfo.class)
+@JsonDeserialize(as = ImmutableFileStorageConfigurationInfo.class)
+public abstract class FileStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
-  public FileStorageConfigurationInfo(
-      @JsonProperty(value = "allowedLocations", required = true) @NotNull
-          List<String> allowedLocations) {
-    super(StorageType.FILE, allowedLocations);
+  public static FileStorageConfigurationInfo of(Iterable<String> allowedLocations) {
+    return ImmutableFileStorageConfigurationInfo.builder()
+        .allowedLocations(allowedLocations)
+        .build();
+  }
+
+  @Override
+  public abstract List<String> getAllowedLocations();
+
+  @Override
+  public StorageType getStorageType() {
+    return StorageType.FILE;
   }
 
   @Override
@@ -41,7 +53,7 @@ public class FileStorageConfigurationInfo extends PolarisStorageConfigurationInf
   }
 
   @Override
-  public void validatePrefixForStorageType(String loc) {
+  protected void validatePrefixForStorageType(String loc) {
     if (!loc.startsWith(getStorageType().getPrefix())
         && !loc.startsWith("file:/")
         && !loc.startsWith("/")
