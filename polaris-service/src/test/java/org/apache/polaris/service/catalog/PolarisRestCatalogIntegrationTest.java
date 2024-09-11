@@ -152,7 +152,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         .getTestMethod()
         .ifPresent(
             method -> {
-              currentCatalogName = method.getName();
+              currentCatalogName = method.getName() + UUID.randomUUID();
               AwsStorageConfigInfo awsConfigModel =
                   AwsStorageConfigInfo.builder()
                       .setRoleArn(TEST_ROLE_ARN)
