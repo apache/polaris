@@ -140,10 +140,11 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
                           CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY,
                           "file:")
                       .addProperty(
-                          PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(),
+                          PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfigOrThrow(),
                           "true")
                       .addProperty(
-                          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION
+                              .catalogConfigOrThrow(),
                           "true")
                       .build();
               Catalog catalog =

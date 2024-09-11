@@ -1846,8 +1846,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 "Unable to purge entity: %s. To enable this feature, set the Polaris configuration %s "
                     + "or the catalog configuration %s",
                 identifier.name(),
-                PolarisConfiguration.DROP_WITH_PURGE_ENABLED.key,
-                PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig()));
+                PolarisConfiguration.DROP_WITH_PURGE_ENABLED.key(),
+                PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfigOrThrow()));
       }
     }
 

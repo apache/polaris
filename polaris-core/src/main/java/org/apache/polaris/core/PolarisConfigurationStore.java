@@ -63,10 +63,10 @@ public interface PolarisConfigurationStore {
    */
   private <T> @NotNull T tryCast(PolarisConfiguration<T> config, Object value) {
     if (value == null) {
-      return config.defaultValue;
+      return config.defaultValue();
     }
 
-    if (config.defaultValue instanceof Boolean) {
+    if (config.defaultValue() instanceof Boolean) {
       return config.cast(Boolean.valueOf(String.valueOf(value)));
     } else {
       return config.cast(value);
@@ -82,7 +82,7 @@ public interface PolarisConfigurationStore {
    * @param <T> the type of the configuration value
    */
   default <T> @NotNull T getConfiguration(PolarisCallContext ctx, PolarisConfiguration<T> config) {
-    T result = getConfiguration(ctx, config.key, config.defaultValue);
+    T result = getConfiguration(ctx, config.key(), config.defaultValue());
     return tryCast(config, result);
   }
 
@@ -101,8 +101,8 @@ public interface PolarisConfigurationStore {
       @NotNull CatalogEntity catalogEntity,
       PolarisConfiguration<T> config) {
     if (config.hasCatalogConfig()
-        && catalogEntity.getPropertiesAsMap().containsKey(config.catalogConfig())) {
-      return tryCast(config, catalogEntity.getPropertiesAsMap().get(config.catalogConfig()));
+        && catalogEntity.getPropertiesAsMap().containsKey(config.catalogConfigOrThrow())) {
+      return tryCast(config, catalogEntity.getPropertiesAsMap().get(config.catalogConfigOrThrow()));
     } else {
       return getConfiguration(ctx, config);
     }

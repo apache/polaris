@@ -19,89 +19,55 @@
 package org.apache.polaris.core;
 
 import java.util.Optional;
+import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
-public class PolarisConfiguration<T> {
+@PolarisImmutable
+public interface PolarisConfiguration<T> {
 
-  public final String key;
-  public final String description;
-  public final T defaultValue;
-  private final Optional<String> catalogConfigImpl;
-  private final Class<T> typ;
+  String key();
 
-  @SuppressWarnings("unchecked")
-  public PolarisConfiguration(
-      String key, String description, T defaultValue, Optional<String> catalogConfig) {
-    this.key = key;
-    this.description = description;
-    this.defaultValue = defaultValue;
-    this.catalogConfigImpl = catalogConfig;
-    this.typ = (Class<T>) defaultValue.getClass();
+  String description();
+
+  T defaultValue();
+
+  Optional<String> catalogConfig();
+
+  @Value.Derived
+  default boolean hasCatalogConfig() {
+    return catalogConfig().isPresent();
   }
 
-  public boolean hasCatalogConfig() {
-    return catalogConfigImpl.isPresent();
+  @Value.Lazy
+  default String catalogConfigOrThrow() {
+    return catalogConfig()
+        .orElseThrow(
+            () ->
+                new IllegalStateException(
+                    "Attempted to read a catalog config key from a configuration that doesn't have one."));
   }
 
-  public String catalogConfig() {
-    return catalogConfigImpl.orElseThrow(
-        () ->
-            new IllegalStateException(
-                "Attempted to read a catalog config key from a configuration that doesn't have one."));
+  @Value.Lazy
+  default T cast(Object value) {
+    @SuppressWarnings("unchecked")
+    T cast = (T) defaultValue().getClass().cast(value);
+    return cast;
   }
 
-  T cast(Object value) {
-    return this.typ.cast(value);
+  static <T> ImmutablePolarisConfiguration.Builder<T> builder() {
+    return ImmutablePolarisConfiguration.builder();
   }
 
-  public static class Builder<T> {
-    private String key;
-    private String description;
-    private T defaultValue;
-    private Optional<String> catalogConfig = Optional.empty();
+  PolarisConfiguration<Boolean> ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING")
+          .description(
+              "If set to true, require that principals must rotate their credentials before being used "
+                  + "for anything else.")
+          .defaultValue(false)
+          .build();
 
-    public Builder<T> key(String key) {
-      this.key = key;
-      return this;
-    }
-
-    public Builder<T> description(String description) {
-      this.description = description;
-      return this;
-    }
-
-    public Builder<T> defaultValue(T defaultValue) {
-      this.defaultValue = defaultValue;
-      return this;
-    }
-
-    public Builder<T> catalogConfig(String catalogConfig) {
-      this.catalogConfig = Optional.of(catalogConfig);
-      return this;
-    }
-
-    public PolarisConfiguration<T> build() {
-      if (key == null || description == null || defaultValue == null) {
-        throw new IllegalArgumentException("key, description, and defaultValue are required");
-      }
-      return new PolarisConfiguration<>(key, description, defaultValue, catalogConfig);
-    }
-  }
-
-  public static <T> Builder<T> builder() {
-    return new Builder<>();
-  }
-
-  public static final PolarisConfiguration<Boolean>
-      ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING =
-          PolarisConfiguration.<Boolean>builder()
-              .key("ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING")
-              .description(
-                  "If set to true, require that principals must rotate their credentials before being used "
-                      + "for anything else.")
-              .defaultValue(false)
-              .build();
-
-  public static final PolarisConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
+  PolarisConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_TABLE_LOCATION_OVERLAP")
           .catalogConfig("allow.overlapping.table.location")
@@ -111,7 +77,7 @@ public class PolarisConfiguration<T> {
           .defaultValue(false)
           .build();
 
-  public static final PolarisConfiguration<Boolean> ALLOW_NAMESPACE_LOCATION_OVERLAP =
+  PolarisConfiguration<Boolean> ALLOW_NAMESPACE_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_NAMESPACE_LOCATION_OVERLAP")
           .description(
@@ -120,7 +86,7 @@ public class PolarisConfiguration<T> {
           .defaultValue(false)
           .build();
 
-  public static final PolarisConfiguration<Boolean> ALLOW_EXTERNAL_METADATA_FILE_LOCATION =
+  PolarisConfiguration<Boolean> ALLOW_EXTERNAL_METADATA_FILE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_METADATA_FILE_LOCATION")
           .description(
@@ -128,14 +94,14 @@ public class PolarisConfiguration<T> {
           .defaultValue(false)
           .build();
 
-  public static final PolarisConfiguration<Boolean> ALLOW_OVERLAPPING_CATALOG_URLS =
+  PolarisConfiguration<Boolean> ALLOW_OVERLAPPING_CATALOG_URLS =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_OVERLAPPING_CATALOG_URLS")
           .description("If set to true, allows catalog URLs to overlap.")
           .defaultValue(false)
           .build();
 
-  public static final PolarisConfiguration<Boolean> ALLOW_UNSTRUCTURED_TABLE_LOCATION =
+  PolarisConfiguration<Boolean> ALLOW_UNSTRUCTURED_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_UNSTRUCTURED_TABLE_LOCATION")
           .catalogConfig("allow.unstructured.table.location")
@@ -143,7 +109,7 @@ public class PolarisConfiguration<T> {
           .defaultValue(false)
           .build();
 
-  public static final PolarisConfiguration<Boolean> ALLOW_EXTERNAL_TABLE_LOCATION =
+  PolarisConfiguration<Boolean> ALLOW_EXTERNAL_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_TABLE_LOCATION")
           .catalogConfig("allow.external.table.location")
@@ -152,7 +118,7 @@ public class PolarisConfiguration<T> {
           .defaultValue(false)
           .build();
 
-  public static final PolarisConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
+  PolarisConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_NAMESPACE_DROP")
           .catalogConfig("cleanup.on.namespace.drop")
@@ -160,7 +126,7 @@ public class PolarisConfiguration<T> {
           .defaultValue(false)
           .build();
 
-  public static final PolarisConfiguration<Boolean> CLEANUP_ON_CATALOG_DROP =
+  PolarisConfiguration<Boolean> CLEANUP_ON_CATALOG_DROP =
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_CATALOG_DROP")
           .catalogConfig("cleanup.on.catalog.drop")
@@ -168,7 +134,7 @@ public class PolarisConfiguration<T> {
           .defaultValue(false)
           .build();
 
-  public static final PolarisConfiguration<Boolean> DROP_WITH_PURGE_ENABLED =
+  PolarisConfiguration<Boolean> DROP_WITH_PURGE_ENABLED =
       PolarisConfiguration.<Boolean>builder()
           .key("DROP_WITH_PURGE_ENABLED")
           .catalogConfig("drop-with-purge.enabled")

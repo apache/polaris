@@ -194,9 +194,11 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 .setDefaultBaseLocation(storageLocation)
                 .setReplaceNewLocationPrefixWithCatalogDefault("file:")
                 .addProperty(
-                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfigOrThrow(),
+                    "true")
                 .addProperty(
-                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfigOrThrow(),
+                    "true")
                 .setStorageConfigurationInfo(storageConfigModel, storageLocation)
                 .build());
 
@@ -465,9 +467,11 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             List.of(PolarisEntity.toCore(catalogEntity)),
             new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
                 .addProperty(
-                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
+                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfigOrThrow(),
+                    "false")
                 .addProperty(
-                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfigOrThrow(),
+                    "true")
                 .build());
     BasePolarisCatalog catalog = catalog();
     TableMetadata tableMetadata =
@@ -524,9 +528,11 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             List.of(PolarisEntity.toCore(catalogEntity)),
             new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
                 .addProperty(
-                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
+                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfigOrThrow(),
+                    "false")
                 .addProperty(
-                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfigOrThrow(),
+                    "true")
                 .build());
     BasePolarisCatalog catalog = catalog();
     TableMetadata tableMetadata =
@@ -580,9 +586,11 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             List.of(PolarisEntity.toCore(catalogEntity)),
             new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
                 .addProperty(
-                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
+                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfigOrThrow(),
+                    "false")
                 .addProperty(
-                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfigOrThrow(),
+                    "true")
                 .build());
     BasePolarisCatalog catalog = catalog();
     InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
@@ -1229,10 +1237,13 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             .setName(noPurgeCatalogName)
             .setDefaultBaseLocation(storageLocation)
             .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-            .addProperty(PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
             .addProperty(
-                PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-            .addProperty(PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
+                PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfigOrThrow(), "true")
+            .addProperty(
+                PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfigOrThrow(),
+                "true")
+            .addProperty(
+                PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfigOrThrow(), "false")
             .setStorageConfigurationInfo(noPurgeStorageConfigModel, storageLocation)
             .build());
     RealmContext realmContext = RealmContext.of("realm");
@@ -1270,7 +1281,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     // Attempt to drop the table:
     Assertions.assertThatThrownBy(() -> noPurgeCatalog.dropTable(TABLE, true))
         .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining(PolarisConfiguration.DROP_WITH_PURGE_ENABLED.key);
+        .hasMessageContaining(PolarisConfiguration.DROP_WITH_PURGE_ENABLED.key());
   }
 
   private TableMetadata createSampleTableMetadata(String tableLocation) {

@@ -151,10 +151,10 @@ public class PolarisOverlappingTableTest {
         if (!c.equals(defaultCatalog)) {
           propertiesBuilder
               .addProperty(
-                  PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                  PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfigOrThrow(),
                   String.valueOf(c.equals(laxCatalog)))
               .addProperty(
-                  PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.catalogConfig(),
+                  PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP.catalogConfigOrThrow(),
                   String.valueOf(c.equals(laxCatalog)));
         }
         StorageConfigInfo config =
