@@ -97,7 +97,7 @@ public class DefaultContextResolver
           REALM_PROPERTY_DEFAULT_VALUE);
       parsedProperties.put(REALM_PROPERTY_KEY, REALM_PROPERTY_DEFAULT_VALUE);
     }
-    return () -> parsedProperties.get(REALM_PROPERTY_KEY);
+    return RealmContext.of(parsedProperties.get(REALM_PROPERTY_KEY));
   }
 
   @Override

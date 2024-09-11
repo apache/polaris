@@ -302,7 +302,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     // different processes
     // and in-memory state will be lost b/w invocation of bootstrap command and running a server
     if (metaStoreManagerFactory instanceof InMemoryPolarisMetaStoreManagerFactory) {
-      metaStoreManagerFactory.getOrCreateMetaStoreManager(configuration::getDefaultRealm);
+      metaStoreManagerFactory.getOrCreateMetaStoreManager(
+          RealmContext.of(configuration.getDefaultRealm()));
     }
 
     LOGGER.info("Server started successfully.");

@@ -149,7 +149,7 @@ public abstract class PolarisAuthzTestBase {
         new InMemoryPolarisMetaStoreManagerFactory();
     managerFactory.setStorageIntegrationProvider(
         new PolarisStorageIntegrationProviderImpl(Mockito::mock));
-    RealmContext realmContext = () -> "realm";
+    RealmContext realmContext = RealmContext.of("realm");
     PolarisMetaStoreManager metaStoreManager =
         managerFactory.getOrCreateMetaStoreManager(realmContext);
 
@@ -171,15 +171,7 @@ public abstract class PolarisAuthzTestBase {
         new PolarisEntityManager(
             metaStoreManager, polarisContext::getMetaStore, new StorageCredentialCache());
 
-    callContext =
-        CallContext.of(
-            new RealmContext() {
-              @Override
-              public String getRealmIdentifier() {
-                return "test-realm";
-              }
-            },
-            polarisContext);
+    callContext = CallContext.of(RealmContext.of("test-realm"), polarisContext);
     CallContext.setCurrentContext(callContext);
 
     PrincipalEntity rootEntity =
@@ -195,7 +187,7 @@ public abstract class PolarisAuthzTestBase {
                         "root")
                     .getEntity()));
 
-    this.authenticatedRoot = new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
+    this.authenticatedRoot = AuthenticatedPolarisPrincipal.of(rootEntity);
 
     this.adminService =
         new PolarisAdminService(callContext, entityManager, authenticatedRoot, polarisAuthorizer);

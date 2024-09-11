@@ -68,7 +68,7 @@ public class TaskExecutorImpl implements TaskExecutor {
    */
   @Override
   public void addTaskHandlerContext(long taskEntityId, CallContext callContext) {
-    CallContext clone = CallContext.copyOf(callContext);
+    CallContext clone = CallContext.copyWithoutCloaseables(callContext);
     tryHandleTask(taskEntityId, clone, null, 1);
   }
 
@@ -80,7 +80,8 @@ public class TaskExecutorImpl implements TaskExecutor {
     return CompletableFuture.runAsync(
             () -> {
               // set the call context INSIDE the async task
-              try (CallContext ctx = CallContext.setCurrentContext(CallContext.copyOf(clone))) {
+              try (CallContext ctx =
+                  CallContext.setCurrentContext(CallContext.copyWithoutCloaseables(clone))) {
                 PolarisMetaStoreManager metaStoreManager =
                     metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
                 PolarisBaseEntity taskEntity =

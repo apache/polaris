@@ -22,51 +22,40 @@ import java.util.List;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
-import org.jetbrains.annotations.NotNull;
+import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
 /** Holds the results of request authentication. */
-public class AuthenticatedPolarisPrincipal implements java.security.Principal {
-  private final PolarisEntity principalEntity;
-  private final Set<String> activatedPrincipalRoleNames;
-  // only known and set after the above set of principal role names have been resolved. Before
-  // this, this list is null
-  private List<PrincipalRoleEntity> activatedPrincipalRoles;
+@PolarisImmutable
+public interface AuthenticatedPolarisPrincipal extends java.security.Principal {
 
-  public AuthenticatedPolarisPrincipal(
-      @NotNull PolarisEntity principalEntity, @NotNull Set<String> activatedPrincipalRoles) {
-    this.principalEntity = principalEntity;
-    this.activatedPrincipalRoleNames = activatedPrincipalRoles;
-    this.activatedPrincipalRoles = null;
-  }
-
+  @Value.Derived
   @Override
-  public String getName() {
-    return principalEntity.getName();
+  default String getName() {
+    return getPrincipalEntity().getName();
   }
 
-  public PolarisEntity getPrincipalEntity() {
-    return principalEntity;
+  PolarisEntity getPrincipalEntity();
+
+  Set<String> getActivatedPrincipalRoleNames();
+
+  /** Get the activated principal roles. Can be empty if roles weren't fully resolved yet. */
+  List<PrincipalRoleEntity> getActivatedPrincipalRoles();
+
+  AuthenticatedPolarisPrincipal withActivatedPrincipalRoles(
+      Iterable<? extends PrincipalRoleEntity> activatedPrincipalRoles);
+
+  static AuthenticatedPolarisPrincipal of(PolarisEntity principalEntity) {
+    return ImmutableAuthenticatedPolarisPrincipal.builder()
+        .principalEntity(principalEntity)
+        .build();
   }
 
-  public Set<String> getActivatedPrincipalRoleNames() {
-    return activatedPrincipalRoleNames;
-  }
-
-  public List<PrincipalRoleEntity> getActivatedPrincipalRoles() {
-    return activatedPrincipalRoles;
-  }
-
-  public void setActivatedPrincipalRoles(List<PrincipalRoleEntity> activatedPrincipalRoles) {
-    this.activatedPrincipalRoles = activatedPrincipalRoles;
-  }
-
-  @Override
-  public String toString() {
-    return "principalEntity="
-        + getPrincipalEntity()
-        + ";activatedPrincipalRoleNames="
-        + getActivatedPrincipalRoleNames()
-        + ";activatedPrincipalRoles="
-        + getActivatedPrincipalRoles();
+  static AuthenticatedPolarisPrincipal of(
+      PolarisEntity principalEntity, Set<String> activatedPrincipalRoleNames) {
+    return ImmutableAuthenticatedPolarisPrincipal.builder()
+        .principalEntity(principalEntity)
+        .activatedPrincipalRoleNames(activatedPrincipalRoleNames)
+        .build();
   }
 }

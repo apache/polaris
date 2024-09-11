@@ -53,7 +53,7 @@ class TableCleanupTaskHandlerTest {
   @BeforeEach
   void setUp() {
     metaStoreManagerFactory = new InMemoryPolarisMetaStoreManagerFactory();
-    realmContext = () -> "realmName";
+    realmContext = RealmContext.of("realmName");
   }
 
   @Test

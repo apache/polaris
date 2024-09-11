@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -104,7 +105,8 @@ public abstract class BasePolarisMetaStoreManagerTest {
   void testCreateEntities() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
     try (CallContext callCtx =
-        CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext)) {
+        CallContext.of(
+            RealmContext.of("testRealm"), polarisTestMetaStoreManager.polarisCallContext)) {
       if (CallContext.getCurrentContext() == null) {
         CallContext.setCurrentContext(callCtx);
       }
@@ -155,7 +157,8 @@ public abstract class BasePolarisMetaStoreManagerTest {
   void testCreateEntitiesAlreadyExisting() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
     try (CallContext callCtx =
-        CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext)) {
+        CallContext.of(
+            RealmContext.of("testRealm"), polarisTestMetaStoreManager.polarisCallContext)) {
       if (CallContext.getCurrentContext() == null) {
         CallContext.setCurrentContext(callCtx);
       }
@@ -199,7 +202,8 @@ public abstract class BasePolarisMetaStoreManagerTest {
   void testCreateEntitiesWithConflict() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
     try (CallContext callCtx =
-        CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext)) {
+        CallContext.of(
+            RealmContext.of("testRealm"), polarisTestMetaStoreManager.polarisCallContext)) {
       if (CallContext.getCurrentContext() == null) {
         CallContext.setCurrentContext(callCtx);
       }

@@ -130,7 +130,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   @SuppressWarnings("unchecked")
   public void before() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-    RealmContext realmContext = () -> "realm";
+    RealmContext realmContext = RealmContext.of("realm");
     PolarisStorageIntegrationProvider storageIntegrationProvider = Mockito.mock();
     InMemoryPolarisMetaStoreManagerFactory managerFactory =
         new InMemoryPolarisMetaStoreManagerFactory();
@@ -170,7 +170,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                         "root")
                     .getEntity()));
 
-    authenticatedRoot = new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
+    authenticatedRoot = AuthenticatedPolarisPrincipal.of(rootEntity);
 
     adminService =
         new PolarisAdminService(
@@ -1235,7 +1235,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             .addProperty(PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
             .setStorageConfigurationInfo(noPurgeStorageConfigModel, storageLocation)
             .build());
-    RealmContext realmContext = () -> "realm";
+    RealmContext realmContext = RealmContext.of("realm");
     CallContext callContext = CallContext.of(realmContext, polarisContext);
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
@@ -1315,7 +1315,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
   @Test
   public void testFileIOWrapper() {
-    RealmContext realmContext = () -> "realm";
+    RealmContext realmContext = RealmContext.of("realm");
     CallContext callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
     PolarisPassthroughResolutionView passthroughView =

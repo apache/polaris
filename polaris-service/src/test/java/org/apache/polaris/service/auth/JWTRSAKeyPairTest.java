@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.ImmutableCallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -80,22 +81,11 @@ public class JWTRSAKeyPairTest {
 
   public CallContext getTestCallContext(PolarisCallContext polarisCallContext) {
     return CallContext.setCurrentContext(
-        new CallContext() {
-          @Override
-          public RealmContext getRealmContext() {
-            return null;
-          }
-
-          @Override
-          public PolarisCallContext getPolarisCallContext() {
-            return polarisCallContext;
-          }
-
-          @Override
-          public Map<String, Object> contextVariables() {
-            return Map.of("token", "me");
-          }
-        });
+        ImmutableCallContext.builder()
+            .realmContext(RealmContext.of("realm"))
+            .polarisCallContext(polarisCallContext)
+            .putContextVariable("token", "me")
+            .build());
   }
 
   @Test

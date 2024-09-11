@@ -50,6 +50,9 @@ dependencies {
   compileOnly(libs.jetbrains.annotations)
   compileOnly(libs.spotbugs.annotations)
 
+  compileOnly(project(":polaris-immutables"))
+  annotationProcessor(project(":polaris-immutables", configuration = "processor"))
+
   implementation(libs.hadoop.common) {
     exclude("org.slf4j", "slf4j-reload4j")
     exclude("org.slf4j", "slf4j-log4j12")

@@ -85,7 +85,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
       String catalogName,
       PolarisCallContextCatalogFactory factory) {
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
+        AuthenticatedPolarisPrincipal.of(principalEntity, activatedPrincipalRoles);
     return new PolarisCatalogHandlerWrapper(
         callContext,
         entityManager,
@@ -221,8 +221,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     adminService.assignPrincipalRole(principalName, PRINCIPAL_ROLE2);
 
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        new AuthenticatedPolarisPrincipal(
-            PrincipalEntity.of(newPrincipal.getPrincipal()), Set.of());
+        AuthenticatedPolarisPrincipal.of(PrincipalEntity.of(newPrincipal.getPrincipal()));
     PolarisCatalogHandlerWrapper wrapper =
         new PolarisCatalogHandlerWrapper(
             callContext,
@@ -255,7 +254,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             credentials,
             callContext.getPolarisCallContext());
     final AuthenticatedPolarisPrincipal authenticatedPrincipal1 =
-        new AuthenticatedPolarisPrincipal(PrincipalEntity.of(refreshPrincipal), Set.of());
+        AuthenticatedPolarisPrincipal.of(PrincipalEntity.of(refreshPrincipal));
     PolarisCatalogHandlerWrapper refreshedWrapper =
         new PolarisCatalogHandlerWrapper(
             callContext,

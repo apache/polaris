@@ -27,6 +27,7 @@ import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.ImmutableCallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -111,11 +112,17 @@ public abstract class BasePolarisAuthenticator
     LOGGER.debug("Resolved principal: {}", principal);
 
     AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        new AuthenticatedPolarisPrincipal(new PrincipalEntity(principal), activatedPrincipalRoles);
+        AuthenticatedPolarisPrincipal.of(new PrincipalEntity(principal), activatedPrincipalRoles);
+
     LOGGER.debug("Populating authenticatedPrincipal into CallContext: {}", authenticatedPrincipal);
-    CallContext.getCurrentContext()
-        .contextVariables()
-        .put(CallContext.AUTHENTICATED_PRINCIPAL, authenticatedPrincipal);
+    CallContext currentContext = CallContext.getCurrentContext();
+    @SuppressWarnings("resource")
+    CallContext newContext =
+        ImmutableCallContext.builder()
+            .from(currentContext)
+            .putContextVariable(CallContext.AUTHENTICATED_PRINCIPAL, authenticatedPrincipal)
+            .build();
+    CallContext.setCurrentContext(newContext);
     return Optional.of(authenticatedPrincipal);
   }
 }

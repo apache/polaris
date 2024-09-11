@@ -20,6 +20,7 @@
 [versions]
 hadoop = "3.4.0"
 iceberg = "1.6.1"
+immutables = "2.10.1"
 dropwizard = "4.0.8"
 slf4j = "2.0.13"
 swagger = "1.6.14"
@@ -50,6 +51,9 @@ hadoop-client-api = { module = "org.apache.hadoop:hadoop-client-api", version.re
 hadoop-common = { module = "org.apache.hadoop:hadoop-common", version.ref = "hadoop" }
 hadoop-hdfs-client = { module = "org.apache.hadoop:hadoop-hdfs-client", version.ref = "hadoop" }
 iceberg-bom = { module = "org.apache.iceberg:iceberg-bom", version.ref = "iceberg" }
+immutables-builder = { module = "org.immutables:builder", version.ref = "immutables" }
+immutables-value-annotations = { module = "org.immutables:value-annotations", version.ref = "immutables" }
+immutables-value-processor = { module = "org.immutables:value-processor", version.ref = "immutables" }
 jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.17.2" }
 jakarta-annotation-api = { module = "jakarta.annotation:jakarta.annotation-api", version = "3.0.0" }
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version = "3.1.0" }

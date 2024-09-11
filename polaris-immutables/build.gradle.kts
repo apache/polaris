@@ -16,21 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.context;
 
-import org.apache.polaris.immutables.PolarisImmutable;
+plugins {
+  id("java-library")
+  id("polaris-client")
+}
 
-/**
- * Represents the elements of a REST request associated with routing to independent and isolated
- * "universes". This may include properties such as region, deployment environment (e.g. dev, qa,
- * prod), and/or account.
- */
-@PolarisImmutable
-public interface RealmContext {
+val processor: Configuration by configurations.creating
 
-  String getRealmIdentifier();
+processor.extendsFrom(configurations.api.get())
 
-  static RealmContext of(String realmIdentifier) {
-    return ImmutableRealmContext.builder().realmIdentifier(realmIdentifier).build();
-  }
+dependencies {
+  api(libs.immutables.builder)
+  api(libs.immutables.value.annotations)
+
+  processor(libs.immutables.value.processor)
+  processor(project)
 }

@@ -16,21 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.context;
+package org.apache.polaris.immutables;
 
-import org.apache.polaris.immutables.PolarisImmutable;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Target;
+import org.immutables.value.Value;
 
 /**
- * Represents the elements of a REST request associated with routing to independent and isolated
- * "universes". This may include properties such as region, deployment environment (e.g. dev, qa,
- * prod), and/or account.
+ * A <a href="http://immutables.github.io/style.html#custom-immutable-annotation">Custom
+ * {@code @Value.Immutable}</a> using {@code allParameters=true, lazyhash=true,
+ * forceJacksonPropertyNames = false, clearBuilder = true}.
  */
-@PolarisImmutable
-public interface RealmContext {
-
-  String getRealmIdentifier();
-
-  static RealmContext of(String realmIdentifier) {
-    return ImmutableRealmContext.builder().realmIdentifier(realmIdentifier).build();
-  }
-}
+@Documented
+@Target(ElementType.TYPE)
+@Value.Style(
+    defaults = @Value.Immutable(lazyhash = true),
+    allParameters = true,
+    forceJacksonPropertyNames = false,
+    clearBuilder = true,
+    depluralize = true,
+    get = {"get*", "is*"})
+public @interface PolarisImmutable {}

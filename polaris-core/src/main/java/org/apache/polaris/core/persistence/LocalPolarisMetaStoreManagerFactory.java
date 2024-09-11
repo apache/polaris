@@ -80,7 +80,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> results = new HashMap<>();
 
     for (String realm : realms) {
-      RealmContext realmContext = () -> realm;
+      RealmContext realmContext = RealmContext.of(realm);
       if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
         initializeForRealm(realmContext);
         PolarisMetaStoreManager.PrincipalSecretsResult secretsResult =
@@ -96,8 +96,9 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   @Override
   public void purgeRealms(List<String> realms) {
     for (String realm : realms) {
-      PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(() -> realm);
-      PolarisMetaStoreSession session = getOrCreateSessionSupplier(() -> realm).get();
+      RealmContext realmContext = RealmContext.of(realm);
+      PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
+      PolarisMetaStoreSession session = getOrCreateSessionSupplier(realmContext).get();
 
       PolarisCallContext callContext = new PolarisCallContext(session, diagServices);
       metaStoreManager.purge(callContext);

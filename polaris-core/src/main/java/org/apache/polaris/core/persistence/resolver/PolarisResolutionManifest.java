@@ -55,7 +55,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
   private final PolarisEntityManager entityManager;
   private final CallContext callContext;
-  private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
+  private AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final String catalogName;
   private final Resolver primaryResolver;
   private final PolarisDiagnostics diagnostics;
@@ -147,7 +147,8 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
           primaryResolver.getResolvedCallerPrincipalRoles().stream()
               .map(ce -> PrincipalRoleEntity.of(ce.getEntity()))
               .collect(Collectors.toList());
-      this.authenticatedPrincipal.setActivatedPrincipalRoles(activatedPrincipalRoles);
+      authenticatedPrincipal =
+          authenticatedPrincipal.withActivatedPrincipalRoles(activatedPrincipalRoles);
     }
     return primaryResolverStatus;
   }

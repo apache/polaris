@@ -28,6 +28,7 @@ import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
@@ -90,7 +91,8 @@ class InMemoryStorageIntegrationTest {
             },
             Clock.systemUTC());
     try (CallContext ignored =
-        CallContext.setCurrentContext(CallContext.of(() -> "realm", polarisCallContext))) {
+        CallContext.setCurrentContext(
+            CallContext.of(RealmContext.of("realm"), polarisCallContext))) {
       Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
           storage.validateAccessToLocations(
               new FileStorageConfigurationInfo(List.of("file://", "*")),

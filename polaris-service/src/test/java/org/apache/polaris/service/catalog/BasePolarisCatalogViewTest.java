@@ -23,7 +23,6 @@ import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.view.ViewCatalogTests;
@@ -61,7 +60,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
   @SuppressWarnings("unchecked")
   public void before() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-    RealmContext realmContext = () -> "realm";
+    RealmContext realmContext = RealmContext.of("realm");
     InMemoryPolarisMetaStoreManagerFactory managerFactory =
         new InMemoryPolarisMetaStoreManagerFactory();
     managerFactory.setStorageIntegrationProvider(
@@ -87,7 +86,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
         new PolarisEntityManager(
             metaStoreManager, polarisContext::getMetaStore, new StorageCredentialCache());
 
-    CallContext callContext = CallContext.of(null, polarisContext);
+    CallContext callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
 
     PrincipalEntity rootEntity =
@@ -102,8 +101,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
                         PolarisEntitySubType.NULL_SUBTYPE,
                         "root")
                     .getEntity()));
-    AuthenticatedPolarisPrincipal authenticatedRoot =
-        new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
+    AuthenticatedPolarisPrincipal authenticatedRoot = AuthenticatedPolarisPrincipal.of(rootEntity);
 
     PolarisAdminService adminService =
         new PolarisAdminService(

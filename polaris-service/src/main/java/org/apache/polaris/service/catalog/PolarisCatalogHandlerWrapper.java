@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog;
 
+import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import java.io.Closeable;
 import java.io.IOException;
@@ -73,6 +74,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.ImmutableCallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -105,7 +107,7 @@ import org.slf4j.LoggerFactory;
 public class PolarisCatalogHandlerWrapper {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisCatalogHandlerWrapper.class);
 
-  private final CallContext callContext;
+  private CallContext callContext;
   private final PolarisEntityManager entityManager;
   private final String catalogName;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
@@ -140,6 +142,14 @@ public class PolarisCatalogHandlerWrapper {
     this.baseCatalog =
         catalogFactory.createCallContextCatalog(
             callContext, authenticatedPrincipal, resolutionManifest);
+    ImmutableMap.Builder<String, Object> contextVariablesBuilder = ImmutableMap.builder();
+    contextVariablesBuilder.putAll(callContext.contextVariables());
+    contextVariablesBuilder.put(CallContext.REQUEST_PATH_CATALOG_INSTANCE_KEY, baseCatalog);
+    this.callContext =
+        ImmutableCallContext.builder()
+            .from(callContext)
+            .contextVariables(contextVariablesBuilder.buildKeepingLast())
+            .build();
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
     this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;

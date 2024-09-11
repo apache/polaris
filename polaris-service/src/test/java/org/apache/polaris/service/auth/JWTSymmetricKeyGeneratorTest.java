@@ -24,7 +24,6 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -44,23 +43,7 @@ public class JWTSymmetricKeyGeneratorTest {
   @Test
   public void testJWTSymmetricKeyGenerator() {
     PolarisCallContext polarisCallContext = new PolarisCallContext(null, null, null, null);
-    CallContext.setCurrentContext(
-        new CallContext() {
-          @Override
-          public RealmContext getRealmContext() {
-            return () -> "realm";
-          }
-
-          @Override
-          public PolarisCallContext getPolarisCallContext() {
-            return polarisCallContext;
-          }
-
-          @Override
-          public Map<String, Object> contextVariables() {
-            return Map.of();
-          }
-        });
+    CallContext.setCurrentContext(CallContext.of(RealmContext.of("realm"), polarisCallContext));
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     String mainSecret = "test_secret";
     String clientId = "test_client_id";

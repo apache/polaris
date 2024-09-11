@@ -19,13 +19,13 @@
 package org.apache.polaris.core.context;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
  * principal/role entities may be defined within a Realm-specific persistence layer, and the
  * underlying nature of the persistence layer may differ between different realms.
  */
+@PolarisImmutable
 public interface CallContext extends AutoCloseable {
   InheritableThreadLocal<CallContext> CURRENT_CONTEXT = new InheritableThreadLocal<>();
 
@@ -48,7 +49,6 @@ public interface CallContext extends AutoCloseable {
   // Authenticator filters should populate this field alongside resolving a SecurityContext.
   // Value type: AuthenticatedPolarisPrincipal
   String AUTHENTICATED_PRINCIPAL = "AUTHENTICATED_PRINCIPAL";
-  String CLOSEABLES = "closeables";
 
   static CallContext setCurrentContext(CallContext context) {
     CURRENT_CONTEXT.set(context);
@@ -73,55 +73,16 @@ public interface CallContext extends AutoCloseable {
   }
 
   static CallContext of(
-      final RealmContext realmContext, final PolarisCallContext polarisCallContext) {
-    Map<String, Object> map = new HashMap<>();
-    return new CallContext() {
-      @Override
-      public RealmContext getRealmContext() {
-        return realmContext;
-      }
-
-      @Override
-      public PolarisCallContext getPolarisCallContext() {
-        return polarisCallContext;
-      }
-
-      @Override
-      public Map<String, Object> contextVariables() {
-        return map;
-      }
-    };
+      @NotNull RealmContext realmContext, @NotNull PolarisCallContext polarisCallContext) {
+    return ImmutableCallContext.builder()
+        .realmContext(realmContext)
+        .polarisCallContext(polarisCallContext)
+        .build();
   }
 
-  /**
-   * Copy the {@link CallContext}. {@link #contextVariables()} will be copied except for {@link
-   * #closeables()}. The original {@link #contextVariables()} map is untouched and {@link
-   * #closeables()} in the original {@link CallContext} should be closed along with the {@link
-   * CallContext}.
-   */
-  static CallContext copyOf(CallContext base) {
-    RealmContext realmContext = base.getRealmContext();
-    PolarisCallContext polarisCallContext = base.getPolarisCallContext();
-    Map<String, Object> contextVariables =
-        base.contextVariables().entrySet().stream()
-            .filter(e -> !e.getKey().equals(CLOSEABLES))
-            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-    return new CallContext() {
-      @Override
-      public RealmContext getRealmContext() {
-        return realmContext;
-      }
-
-      @Override
-      public PolarisCallContext getPolarisCallContext() {
-        return polarisCallContext;
-      }
-
-      @Override
-      public Map<String, Object> contextVariables() {
-        return contextVariables;
-      }
-    };
+  /** Copy the {@link CallContext} except its closeables. */
+  static CallContext copyWithoutCloaseables(CallContext base) {
+    return ImmutableCallContext.builder().from(base).closeables(new CloseableGroup()).build();
   }
 
   RealmContext getRealmContext();
@@ -133,9 +94,9 @@ public interface CallContext extends AutoCloseable {
 
   Map<String, Object> contextVariables();
 
-  default @NotNull CloseableGroup closeables() {
-    return (CloseableGroup)
-        contextVariables().computeIfAbsent(CLOSEABLES, key -> new CloseableGroup());
+  @Value.Default
+  default CloseableGroup closeables() {
+    return new CloseableGroup();
   }
 
   @Override
