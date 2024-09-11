@@ -83,7 +83,7 @@ metaStoreManager:
 #  type: remote
 #  url: http://sdp-devvm-mcollado:8080
 # type: eclipse-link # uncomment to use eclipse-link as metastore
-# persistence-unit: polaris-dev
+# persistence-unit: polaris
 
 io:
   factoryType: default

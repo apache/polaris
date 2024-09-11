@@ -29,6 +29,7 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -79,10 +80,14 @@ public class PolarisSparkIntegrationTest {
   private static String realm;
 
   @BeforeAll
-  public static void setup(PolarisConnectionExtension.PolarisToken polarisToken) {
+  public static void setup(PolarisConnectionExtension.PolarisToken polarisToken)
+      throws IOException {
     s3Container.start();
     PolarisSparkIntegrationTest.polarisToken = polarisToken;
     realm = PolarisConnectionExtension.getTestRealm(PolarisSparkIntegrationTest.class);
+
+    // Set up test location
+    PolarisConnectionExtension.createTestDir(realm);
   }
 
   @AfterAll

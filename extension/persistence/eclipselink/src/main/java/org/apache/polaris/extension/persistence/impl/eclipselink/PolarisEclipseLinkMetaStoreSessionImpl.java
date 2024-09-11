@@ -111,7 +111,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       @NotNull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName) {
-    LOGGER.debug("Create EclipseLink Meta Store Session for {}", realmContext.getRealmIdentifier());
+    LOGGER.debug(
+        "Creating EclipseLink Meta Store Session for realm {}", realmContext.getRealmIdentifier());
     emf = createEntityManagerFactory(realmContext, confFile, persistenceUnitName);
 
     // init store
@@ -153,8 +154,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
           prefixUrl = new File(jarPrefixPath).toURI().toURL();
         }
 
-        LOGGER.info(
-            "Created a new ClassLoader with the jar {} in classpath to load the config file",
+        LOGGER.debug(
+            "Creating a new ClassLoader with the jar {} in classpath to load the config file",
             prefixUrl);
 
         URLClassLoader currentClassLoader =

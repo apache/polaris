@@ -99,9 +99,12 @@ public class PolarisServiceImplIntegrationTest {
   private static String realm;
 
   @BeforeAll
-  public static void setup(PolarisConnectionExtension.PolarisToken adminToken) {
+  public static void setup(PolarisConnectionExtension.PolarisToken adminToken) throws IOException {
     userToken = adminToken.token();
     realm = PolarisConnectionExtension.getTestRealm(PolarisServiceImplIntegrationTest.class);
+
+    // Set up test location
+    PolarisConnectionExtension.createTestDir(realm);
   }
 
   @AfterEach

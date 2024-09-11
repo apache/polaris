@@ -28,6 +28,7 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -60,9 +61,12 @@ public class PolarisOverlappingCatalogTest {
   private static String realm;
 
   @BeforeAll
-  public static void setup(PolarisConnectionExtension.PolarisToken adminToken) {
+  public static void setup(PolarisConnectionExtension.PolarisToken adminToken) throws IOException {
     userToken = adminToken.token();
-    realm = PolarisConnectionExtension.getTestRealm(PolarisServiceImplIntegrationTest.class);
+    realm = PolarisConnectionExtension.getTestRealm(PolarisOverlappingCatalogTest.class);
+
+    // Set up the database location
+    PolarisConnectionExtension.createTestDir(realm);
   }
 
   private Response createCatalog(String prefix, String defaultBaseLocation, boolean isExternal) {
