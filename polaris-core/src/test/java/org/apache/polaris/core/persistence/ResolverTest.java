@@ -96,7 +96,7 @@ public class ResolverTest {
     diagServices = new PolarisDefaultDiagServiceImpl();
     store = new PolarisTreeMapStore(diagServices);
     metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock());
-    callCtx = new PolarisCallContext(metaStore, diagServices);
+    callCtx = PolarisCallContext.of(metaStore, diagServices);
     metaStoreManager = new PolarisMetaStoreManagerImpl();
 
     // bootstrap the mata store with our test schema

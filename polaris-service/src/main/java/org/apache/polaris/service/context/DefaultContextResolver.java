@@ -131,7 +131,7 @@ public class DefaultContextResolver
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     PolarisMetaStoreSession metaStoreSession = entityManager.newMetaStoreSession();
     PolarisCallContext polarisContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             metaStoreSession,
             diagServices,
             configurationStore,

@@ -71,7 +71,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     configMap.put("ALLOW_WILDCARD_LOCATION", true);
     configMap.put("ALLOW_SPECIFYING_FILE_IO_IMPL", true);
     PolarisCallContext polarisContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             new PolarisConfigurationStore() {

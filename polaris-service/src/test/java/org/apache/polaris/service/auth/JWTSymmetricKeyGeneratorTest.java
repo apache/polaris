@@ -25,6 +25,7 @@ import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -33,6 +34,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -42,7 +44,9 @@ public class JWTSymmetricKeyGeneratorTest {
   /** Sanity test to verify that we can generate a token */
   @Test
   public void testJWTSymmetricKeyGenerator() {
-    PolarisCallContext polarisCallContext = new PolarisCallContext(null, null, null, null);
+    PolarisMetaStoreSession metaStoreSession = Mockito.mock(PolarisMetaStoreSession.class);
+    PolarisDiagnostics diagServices = Mockito.mock(PolarisDiagnostics.class);
+    PolarisCallContext polarisCallContext = PolarisCallContext.of(metaStoreSession, diagServices);
     CallContext.setCurrentContext(CallContext.of(RealmContext.of("realm"), polarisCallContext));
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     String mainSecret = "test_secret";

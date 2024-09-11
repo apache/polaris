@@ -140,7 +140,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     configMap.put("ALLOW_SPECIFYING_FILE_IO_IMPL", true);
     configMap.put("INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST", true);
     polarisContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             new PolarisConfigurationStore() {

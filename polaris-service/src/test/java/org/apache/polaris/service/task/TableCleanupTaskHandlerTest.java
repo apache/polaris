@@ -59,7 +59,7 @@ class TableCleanupTaskHandlerTest {
   @Test
   public void testTableCleanup() throws IOException {
     PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
     try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
@@ -119,7 +119,7 @@ class TableCleanupTaskHandlerTest {
   @Test
   public void testTableCleanupHandlesAlreadyDeletedMetadata() throws IOException {
     PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
     try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
@@ -178,7 +178,7 @@ class TableCleanupTaskHandlerTest {
   @Test
   public void testTableCleanupDuplicatesTasksIfFileStillExists() throws IOException {
     PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
     try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
@@ -270,7 +270,7 @@ class TableCleanupTaskHandlerTest {
   @Test
   public void testTableCleanupMultipleSnapshots() throws IOException {
     PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
     try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {

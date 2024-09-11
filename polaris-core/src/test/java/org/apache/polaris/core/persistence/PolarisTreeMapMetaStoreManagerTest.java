@@ -31,7 +31,7 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     PolarisTreeMapStore store = new PolarisTreeMapStore(diagServices);
     PolarisCallContext callCtx =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock()),
             diagServices,
             new PolarisConfigurationStore() {},

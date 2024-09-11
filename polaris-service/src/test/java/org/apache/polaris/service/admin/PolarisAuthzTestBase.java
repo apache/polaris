@@ -157,7 +157,7 @@ public abstract class PolarisAuthzTestBase {
         Map.of(
             "ALLOW_SPECIFYING_FILE_IO_IMPL", true, "ALLOW_EXTERNAL_METADATA_FILE_LOCATION", true);
     PolarisCallContext polarisContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
             new PolarisConfigurationStore() {

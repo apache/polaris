@@ -59,7 +59,7 @@ class ManifestFileCleanupTaskHandlerTest {
   @Test
   public void testCleanupFileNotExists() throws IOException {
     PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
     try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
@@ -90,7 +90,7 @@ class ManifestFileCleanupTaskHandlerTest {
   @Test
   public void testCleanupFileManifestExistsDataFilesDontExist() throws IOException {
     PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
     try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
@@ -120,7 +120,7 @@ class ManifestFileCleanupTaskHandlerTest {
   @Test
   public void testCleanupFiles() throws IOException {
     PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
     try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
@@ -167,7 +167,7 @@ class ManifestFileCleanupTaskHandlerTest {
   @Test
   public void testCleanupFilesWithRetries() throws IOException {
     PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
     try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {

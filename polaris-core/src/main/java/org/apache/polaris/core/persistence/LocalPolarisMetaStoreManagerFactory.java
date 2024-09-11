@@ -100,7 +100,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realmContext);
       PolarisMetaStoreSession session = getOrCreateSessionSupplier(realmContext).get();
 
-      PolarisCallContext callContext = new PolarisCallContext(session, diagServices);
+      PolarisCallContext callContext = PolarisCallContext.of(session, diagServices);
       metaStoreManager.purge(callContext);
 
       storageCredentialCacheMap.remove(realm);
@@ -164,7 +164,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     // While bootstrapping we need to act as a fake privileged context since the real
     // CallContext hasn't even been resolved yet.
     PolarisCallContext polarisContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(), diagServices);
     CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
 
@@ -220,7 +220,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   private void checkPolarisServiceBootstrappedForRealm(
       RealmContext realmContext, PolarisMetaStoreManager metaStoreManager) {
     PolarisCallContext polarisContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(), diagServices);
     CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
 

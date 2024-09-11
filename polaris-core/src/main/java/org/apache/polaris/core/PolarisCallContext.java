@@ -21,56 +21,39 @@ package org.apache.polaris.core;
 import java.time.Clock;
 import java.time.ZoneId;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.immutables.PolarisImmutable;
 import org.jetbrains.annotations.NotNull;
 
 /**
  * The Call context is allocated each time a new REST request is processed. It contains instances of
  * low-level services required to process that request
  */
-public class PolarisCallContext {
+@PolarisImmutable
+public interface PolarisCallContext {
 
-  // meta store which is used to persist Polaris entity metadata
-  private final PolarisMetaStoreSession metaStore;
+  PolarisMetaStoreSession getMetaStore();
 
-  // diag services
-  private final PolarisDiagnostics diagServices;
+  PolarisDiagnostics getDiagServices();
 
-  private final PolarisConfigurationStore configurationStore;
+  PolarisConfigurationStore getConfigurationStore();
 
-  private final Clock clock;
+  Clock getClock();
 
-  public PolarisCallContext(
-      @NotNull PolarisMetaStoreSession metaStore,
+  static PolarisCallContext of(
+      @NotNull PolarisMetaStoreSession metaStoreSession,
       @NotNull PolarisDiagnostics diagServices,
       @NotNull PolarisConfigurationStore configurationStore,
       @NotNull Clock clock) {
-    this.metaStore = metaStore;
-    this.diagServices = diagServices;
-    this.configurationStore = configurationStore;
-    this.clock = clock;
+    return ImmutablePolarisCallContext.of(
+        metaStoreSession, diagServices, configurationStore, clock);
   }
 
-  public PolarisCallContext(
+  static PolarisCallContext of(
       @NotNull PolarisMetaStoreSession metaStore, @NotNull PolarisDiagnostics diagServices) {
-    this.metaStore = metaStore;
-    this.diagServices = diagServices;
-    this.configurationStore = new PolarisConfigurationStore() {};
-    this.clock = Clock.system(ZoneId.systemDefault());
-  }
-
-  public PolarisMetaStoreSession getMetaStore() {
-    return metaStore;
-  }
-
-  public PolarisDiagnostics getDiagServices() {
-    return diagServices;
-  }
-
-  public PolarisConfigurationStore getConfigurationStore() {
-    return configurationStore;
-  }
-
-  public Clock getClock() {
-    return clock;
+    return of(
+        metaStore,
+        diagServices,
+        new PolarisConfigurationStore() {},
+        Clock.system(ZoneId.systemDefault()));
   }
 }

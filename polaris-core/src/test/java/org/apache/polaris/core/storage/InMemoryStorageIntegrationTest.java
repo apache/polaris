@@ -79,7 +79,7 @@ class InMemoryStorageIntegrationTest {
     MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
     Map<String, Boolean> config = Map.of("ALLOW_WILDCARD_LOCATION", true);
     PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
+        PolarisCallContext.of(
             Mockito.mock(),
             new PolarisDefaultDiagServiceImpl(),
             new PolarisConfigurationStore() {

@@ -32,10 +32,12 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.time.Clock;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.ImmutableCallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -45,6 +47,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.junit.jupiter.api.Test;
@@ -103,7 +106,11 @@ public class JWTRSAKeyPairTest {
     config.put("LOCAL_PUBLIC_LOCATION_KEY", publicFileLocation);
 
     DefaultConfigurationStore store = new DefaultConfigurationStore(config);
-    PolarisCallContext polarisCallContext = new PolarisCallContext(null, null, store, null);
+
+    PolarisMetaStoreSession metaStoreSession = Mockito.mock(PolarisMetaStoreSession.class);
+    PolarisDiagnostics diagServices = Mockito.mock(PolarisDiagnostics.class);
+    PolarisCallContext polarisCallContext =
+        PolarisCallContext.of(metaStoreSession, diagServices, store, Clock.systemUTC());
     CallContext.setCurrentContext(getTestCallContext(polarisCallContext));
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     String mainSecret = "client-secret";
