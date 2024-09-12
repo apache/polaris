@@ -1164,6 +1164,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     public BasePolarisCatalogViewBuilder(TableIdentifier identifier) {
       super(identifier);
+      withProperties(
+          PropertyUtil.propertiesWithPrefix(
+              BasePolarisCatalog.this.properties(), "table-default."));
     }
 
     @Override
