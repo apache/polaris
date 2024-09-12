@@ -44,6 +44,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
+import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
@@ -80,11 +81,11 @@ public class PolarisSparkIntegrationTest {
   private static String realm;
 
   @BeforeAll
-  public static void setup(PolarisConnectionExtension.PolarisToken polarisToken)
+  public static void setup(PolarisConnectionExtension.PolarisToken polarisToken, @PolarisRealm String realm)
       throws IOException {
     s3Container.start();
     PolarisSparkIntegrationTest.polarisToken = polarisToken;
-    realm = PolarisConnectionExtension.getTestRealm();
+    PolarisSparkIntegrationTest.realm = realm;
 
     // Set up test location
     PolarisConnectionExtension.createTestDir(realm);

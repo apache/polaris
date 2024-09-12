@@ -53,6 +53,7 @@ import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisConnectionExtension.PolarisToken;
+import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension.SnowmanCredentials;
 import org.junit.jupiter.api.BeforeAll;
@@ -90,8 +91,8 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
   private static String realm;
 
   @BeforeAll
-  public static void setup() throws IOException {
-    realm = PolarisConnectionExtension.getTestRealm();
+  public static void setup(@PolarisRealm String realm) throws IOException {
+    PolarisRestCatalogViewIntegrationTest.realm = realm;
 
     // Set up test location
     PolarisConnectionExtension.createTestDir(realm);

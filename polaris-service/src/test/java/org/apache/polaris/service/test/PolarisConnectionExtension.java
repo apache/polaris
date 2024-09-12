@@ -127,10 +127,6 @@ public class PolarisConnectionExtension
     }
   }
 
-  public static String getTestRealm() {
-    return realm;
-  }
-
   public static void createTestDir(String realm) throws IOException {
     // Set up the database location
     Path testDir = Path.of("build/test_data/polaris/" + realm);
@@ -183,7 +179,8 @@ public class PolarisConnectionExtension
             .getType()
             .equals(PolarisConnectionExtension.PolarisToken.class)
         || parameterContext.getParameter().getType().equals(MetaStoreManagerFactory.class)
-        || parameterContext.getParameter().getType().equals(PolarisPrincipalSecrets.class);
+        || parameterContext.getParameter().getType().equals(PolarisPrincipalSecrets.class)
+            || (parameterContext.getParameter().getType().equals(String.class) && parameterContext.getParameter().isAnnotationPresent(PolarisRealm.class));
   }
 
   @Override
@@ -199,6 +196,8 @@ public class PolarisConnectionExtension
               adminSecrets.getMainSecret(),
               realm);
       return new PolarisToken(token);
+    } else if (parameterContext.getParameter().getType().equals(String.class) && parameterContext.getParameter().isAnnotationPresent(PolarisRealm.class)) {
+      return realm;
     } else {
       return metaStoreManagerFactory;
     }
