@@ -62,7 +62,7 @@ params:
   active_releases:
     # Mention all active releases here, in semver descending order
     - "1.0.0"
-    - "0.1.0"
+    - "0.1.1"
 
   ui:
     ul_show: 1
