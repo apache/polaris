@@ -68,6 +68,11 @@ nested namespaces. Iceberg tables belong to namespaces.
 In an internal catalog, an Iceberg table is registered in Polaris, but read and written via query engines. The table data and
 metadata is stored in your external cloud storage. The table uses Polaris as the Iceberg catalog.
 
+If you have tables housed in another Iceberg catalog, you can sync these tables to an external catalog in Polaris.
+If you sync this catalog to Polaris, it appears as an external catalog in Polaris. Clients connecting to the external
+catalog can read from or write to these tables. However, clients connecting to Polaris will only be able to
+read from these tables.
+
 > **Important**
 >
 > For the access privileges defined for a catalog to be enforced correctly, the following conditions must be met:
