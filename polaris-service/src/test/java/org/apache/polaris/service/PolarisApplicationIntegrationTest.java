@@ -112,9 +112,9 @@ public class PolarisApplicationIntegrationTest {
 
   @BeforeAll
   public static void setup(
-          PolarisConnectionExtension.PolarisToken userToken,
-          SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials,
-          @PolarisRealm String realm)
+      PolarisConnectionExtension.PolarisToken userToken,
+      SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials,
+      @PolarisRealm String realm)
       throws IOException {
     PolarisApplicationIntegrationTest.realm = realm;
 

@@ -180,7 +180,8 @@ public class PolarisConnectionExtension
             .equals(PolarisConnectionExtension.PolarisToken.class)
         || parameterContext.getParameter().getType().equals(MetaStoreManagerFactory.class)
         || parameterContext.getParameter().getType().equals(PolarisPrincipalSecrets.class)
-            || (parameterContext.getParameter().getType().equals(String.class) && parameterContext.getParameter().isAnnotationPresent(PolarisRealm.class));
+        || (parameterContext.getParameter().getType().equals(String.class)
+            && parameterContext.getParameter().isAnnotationPresent(PolarisRealm.class));
   }
 
   @Override
@@ -196,7 +197,8 @@ public class PolarisConnectionExtension
               adminSecrets.getMainSecret(),
               realm);
       return new PolarisToken(token);
-    } else if (parameterContext.getParameter().getType().equals(String.class) && parameterContext.getParameter().isAnnotationPresent(PolarisRealm.class)) {
+    } else if (parameterContext.getParameter().getType().equals(String.class)
+        && parameterContext.getParameter().isAnnotationPresent(PolarisRealm.class)) {
       return realm;
     } else {
       return metaStoreManagerFactory;

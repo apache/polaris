@@ -62,7 +62,9 @@ public class PolarisOverlappingCatalogTest {
   private static String realm;
 
   @BeforeAll
-  public static void setup(PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String realm) throws IOException {
+  public static void setup(
+      PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String realm)
+      throws IOException {
     userToken = adminToken.token();
     PolarisOverlappingCatalogTest.realm = realm;
 

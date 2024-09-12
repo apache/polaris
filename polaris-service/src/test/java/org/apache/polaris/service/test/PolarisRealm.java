@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.test;
 
 import java.lang.annotation.ElementType;
@@ -24,8 +23,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/** Annotation used to specify where to inject the Polaris test realm identifier. This is provided by PolarisConnectionExtension. */
+/**
+ * Annotation used to specify where to inject the Polaris test realm identifier. This is provided by
+ * PolarisConnectionExtension.
+ */
 @Target({ElementType.PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface PolarisRealm {
-}
+public @interface PolarisRealm {}
