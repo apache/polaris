@@ -160,8 +160,8 @@ includes the following users:
     create service principals. She can also create catalogs and
     namespaces and configure access control for Polaris resources.
 
-- **Bob:** A data engineer who uses Snowpipe Streaming (in Snowflake)
-    and Apache Spark&trade; connections to interact with Polaris.
+- **Bob:** A data engineer who uses Apache Spark&trade; to 
+    interact with Polaris.
 
     - Alice has created a service principal for Bob. It has been
         granted the Data_engineer principal role, which in turn has been
@@ -175,8 +175,8 @@ includes the following users:
     - The Data administrator roles grant full administrative rights to
         the Silver zone catalog and Gold zone catalog.
 
-- **Mark:** A data scientist who uses Snowflake AI services to
-    interact with Polaris.
+- **Mark:** A data scientist who uses trains models with data managed
+    by Polaris.
 
     - Alice has created a service principal for Mark. It has been
         granted the Data_scientist principal role, which in turn has

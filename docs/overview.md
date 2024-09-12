@@ -156,12 +156,11 @@ In the following example workflow, Bob creates an Apache Iceberg&trade; table na
     service connection with a service principal that has
     the privileges to perform these actions.
 
-2.  Alice uses Snowflake to read data from Table1.
+2.  Alice uses Trino to read data from Table1.
 
     Alice can read data from Table1 because she is using a service
-    connection with a service principal with a catalog integration that
-    has the privileges to perform this action. Alice
-    creates an unmanaged table in Snowflake to read data from Table1.
+    connection with a service principal that has the privileges to 
+    perform this action.
 
 ![Diagram that shows an example workflow for Apache Polaris (Incubating)](img/example-workflow.svg "Example workflow for Apache Polaris (Incubating)")
 

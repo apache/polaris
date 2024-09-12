@@ -80,10 +80,6 @@ featureConfiguration:
 
 metaStoreManager:
   type: in-memory
-#  type: remote
-#  url: http://sdp-devvm-mcollado:8080
-# type: eclipse-link # uncomment to use eclipse-link as metastore
-# persistence-unit: polaris
 
 io:
   factoryType: default
@@ -93,10 +89,6 @@ oauth2:
   tokenBroker:
     type: symmetric-key
     secret: polaris
-#  type: snowflake
-#  clientId: ${GS_POLARIS_SERVICE_CLIENT_ID}
-#  clientSecret: ${GS_POLARIS_SERVICE_CLIENT_SECRET}
-#  clientSecret2: ${GS_POLARIS_SERVICE_CLIENT_SECRET2}
 
 authenticator:
   class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator
@@ -107,25 +99,15 @@ authenticator:
 
 callContextResolver:
   type: default
-#  type: snowflake
-#  account: ${SNOWFLAKE_ACCOUNT:-SNOWFLAKE}
-#  scheme: ${GS_SCHEME:-http}
-#  host: ${GS_HOST:-localhost}
-#  port: ${GS_PORT:-8080}
 
 realmContextResolver:
   type: default
-#  type: snowflake
-#  account: ${SNOWFLAKE_ACCOUNT:-SNOWFLAKE}
-#  scheme: ${GS_SCHEME:-http}
-#  host: ${GS_HOST:-localhost}
-#  port: ${GS_PORT:-8080}
 
-defaultRealm: SNOWFLAKE
+defaultRealm: POLARIS
 
 cors:
   allowed-origins:
-    - snowflake.com
+    - localhost
 
   # Logging settings.
 logging:
@@ -162,8 +144,8 @@ logging:
 
       # The file to which statements will be logged.
       currentLogFilename: ./logs/iceberg-rest.log
-      #  When the log file rolls over, the file will be archived to snowflake-2012-03-15.log.gz,
-      # snowflake.log will be truncated, and new statements written to it.
+      # When the log file rolls over, the file will be archived to polaris-2012-03-15.log.gz,
+      # polaris.log will be truncated, and new statements written to it.
       archivedLogFilenamePattern: ./logs/iceberg-rest-%d.log.gz
       # The maximum number of log files to archive.
       archivedFileCount: 14

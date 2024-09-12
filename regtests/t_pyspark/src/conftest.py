@@ -72,13 +72,13 @@ def catalog_client(polaris_catalog_url):
 
 
 @pytest.fixture
-def snowflake_catalog(root_client, catalog_client, test_bucket, aws_role_arn):
+def snowman_catalog(root_client, catalog_client, test_bucket, aws_role_arn):
   storage_conf = AwsStorageConfigInfo(storage_type="S3",
                                       allowed_locations=[f"s3://{test_bucket}/polaris_test/"],
                                       role_arn=aws_role_arn)
-  catalog_name = 'snowflake'
+  catalog_name = 'snowman'
   catalog = Catalog(name=catalog_name, type='INTERNAL', properties={
-    "default-base-location": f"s3://{test_bucket}/polaris_test/snowflake_catalog",
+    "default-base-location": f"s3://{test_bucket}/polaris_test/snowman_catalog",
     "client.credentials-provider": "software.amazon.awssdk.auth.credentials.SystemPropertyCredentialsProvider"
   },
                     storage_config_info=storage_conf)
