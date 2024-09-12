@@ -24,7 +24,6 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
-  runtimeOnly(project(":polaris-service"))
   implementation(libs.eclipselink)
   implementation(platform(libs.dropwizard.bom))
   implementation("io.dropwizard:dropwizard-jackson")
