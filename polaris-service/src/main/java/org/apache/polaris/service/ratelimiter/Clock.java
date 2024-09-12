@@ -20,5 +20,6 @@ package org.apache.polaris.service.ratelimiter;
 
 /** An interface to specify how to retrieve the current wall clock time */
 public interface Clock {
+  /** @return the current time in nanoseconds */
   long nanoTime();
 }

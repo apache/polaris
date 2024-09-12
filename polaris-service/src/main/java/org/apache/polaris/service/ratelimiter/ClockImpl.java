@@ -20,7 +20,7 @@ package org.apache.polaris.service.ratelimiter;
 
 /** An implementation of our Clock interface using opentelemetry's Clock implementation */
 public class ClockImpl implements Clock {
-  io.opentelemetry.sdk.common.Clock openTelemetryClock;
+  private final io.opentelemetry.sdk.common.Clock openTelemetryClock;
 
   public ClockImpl() {
     openTelemetryClock = io.opentelemetry.sdk.common.Clock.getDefault();

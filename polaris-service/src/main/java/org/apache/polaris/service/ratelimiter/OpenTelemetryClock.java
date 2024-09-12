@@ -18,13 +18,11 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import io.opentelemetry.sdk.common.Clock;
-
 /** Implementation of the opentelemetry Clock interface using the Polaris Clock interface */
-public class OpenTelemetryClock implements Clock {
-  org.apache.polaris.service.ratelimiter.Clock clock;
+public class OpenTelemetryClock implements io.opentelemetry.sdk.common.Clock {
+  private final Clock clock;
 
-  public OpenTelemetryClock(org.apache.polaris.service.ratelimiter.Clock clock) {
+  public OpenTelemetryClock(Clock clock) {
     this.clock = clock;
   }
 

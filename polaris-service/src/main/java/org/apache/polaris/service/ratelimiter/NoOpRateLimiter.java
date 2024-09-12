@@ -21,7 +21,7 @@ package org.apache.polaris.service.ratelimiter;
 /** Rate limiter that always allows the request */
 public class NoOpRateLimiter implements RateLimiter {
   @Override
-  public boolean trySpend(double itemCost) {
+  public boolean tryAcquire() {
     return true;
   }
 }

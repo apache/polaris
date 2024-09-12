@@ -49,19 +49,27 @@ public class RateLimiterFilter implements Filter {
   public RateLimiterFilter(RateLimiterConfig config) {
     this.config = config;
 
-    var clock = new ClockImpl();
+    Clock clock = new ClockImpl();
     perRealmLimiters =
         Caffeine.newBuilder()
             .buildAsync(
                 (key, executor) -> config.getRateLimiterFactory().createRateLimiter(key, clock));
   }
 
+  /**
+   * Returns a 429 if the rate limiter says so. Otherwise, forwards the request along.
+   * @param request the <code>ServletRequest</code> object contains the client's request
+   * @param response the <code>ServletResponse</code> object contains the filter's response
+   * @param chain the <code>FilterChain</code> for invoking the next filter or the resource
+   * @throws IOException
+   * @throws ServletException
+   */
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
     String realm = CallContext.getCurrentContext().getRealmContext().getRealmIdentifier();
     RateLimiter rateLimiter = maybeBlockToGetRateLimiter(realm);
-    if (!rateLimiter.trySpend(1)) {
+    if (!rateLimiter.tryAcquire()) {
       ((HttpServletResponse) response).setStatus(Response.Status.TOO_MANY_REQUESTS.getStatusCode());
       return;
     }

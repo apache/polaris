@@ -20,9 +20,10 @@ package org.apache.polaris.service.ratelimiter;
 
 /**
  * Wrapper around the opentelemetry RateLimiter that implements the Polaris RateLimiter interface
+ * The opentelemetry limiter uses a credits/balance system. We treat 1 request as 1 credit.
  */
 public class OpenTelemetryRateLimiter implements RateLimiter {
-  io.opentelemetry.sdk.internal.RateLimiter rateLimiter;
+  private final io.opentelemetry.sdk.internal.RateLimiter rateLimiter;
 
   public OpenTelemetryRateLimiter(double creditsPerSecond, double maxBalance, Clock clock) {
     rateLimiter =
@@ -31,7 +32,7 @@ public class OpenTelemetryRateLimiter implements RateLimiter {
   }
 
   @Override
-  public boolean trySpend(double credits) {
-    return rateLimiter.trySpend(credits);
+  public boolean tryAcquire() {
+    return rateLimiter.trySpend(1);
   }
 }
