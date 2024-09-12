@@ -641,24 +641,27 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testRequestHeaderTooLarge() {
-    Invocation.Builder request = EXT.client()
+    Invocation.Builder request =
+        EXT.client()
             .target(
-                    String.format(
-                            "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
+                String.format(
+                    "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
             .request("application/json");
 
-    // The default limit is 8KiB and each of these headers is at least 8 bytes, so 1500 definitely exceeds the limit
-    for(int i = 0; i < 1500; i++) {
+    // The default limit is 8KiB and each of these headers is at least 8 bytes, so 1500 definitely
+    // exceeds the limit
+    for (int i = 0; i < 1500; i++) {
       request = request.header("header" + i, "" + i);
     }
 
     try (Response response =
-                 request
-                         .header("Authorization", "Bearer " + userToken)
-                         .header(REALM_PROPERTY_KEY, realm)
-                         .post(Entity.json(new PrincipalRole("r")))) {
+        request
+            .header("Authorization", "Bearer " + userToken)
+            .header(REALM_PROPERTY_KEY, realm)
+            .post(Entity.json(new PrincipalRole("r")))) {
       assertThat(response)
-              .returns(Response.Status.REQUEST_HEADER_FIELDS_TOO_LARGE.getStatusCode(), Response::getStatus);
+          .returns(
+              Response.Status.REQUEST_HEADER_FIELDS_TOO_LARGE.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -668,21 +671,21 @@ public class PolarisApplicationIntegrationTest {
     Entity<PrincipalRole> largeRequest = Entity.json(new PrincipalRole("r".repeat(1000001)));
 
     try (Response response =
-                 EXT.client()
-                         .target(
-                                 String.format(
-                                         "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
-                         .request("application/json")
-                         .header("Authorization", "Bearer " + userToken)
-                         .header(REALM_PROPERTY_KEY, realm)
-                         .post(largeRequest)) {
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
+            .request("application/json")
+            .header("Authorization", "Bearer " + userToken)
+            .header(REALM_PROPERTY_KEY, realm)
+            .post(largeRequest)) {
       assertThat(response)
-              .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
-              .matches(
-                      r ->
-                              r.readEntity(RequestThrottlingErrorResponse.class)
-                                      .getError()
-                                      .equals(RequestThrottlingErrorResponse.Error.REQUEST_TOO_LARGE));
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
+          .matches(
+              r ->
+                  r.readEntity(RequestThrottlingErrorResponse.class)
+                      .getError()
+                      .equals(RequestThrottlingErrorResponse.Error.REQUEST_TOO_LARGE));
     }
   }
 }
