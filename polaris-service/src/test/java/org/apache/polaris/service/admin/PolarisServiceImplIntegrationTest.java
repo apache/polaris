@@ -101,10 +101,10 @@ public class PolarisServiceImplIntegrationTest {
 
   @BeforeAll
   public static void setup(
-      PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String realm)
+      PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String polarisRealm)
       throws IOException {
     userToken = adminToken.token();
-    PolarisServiceImplIntegrationTest.realm = realm;
+    realm = polarisRealm;
 
     // Set up test location
     PolarisConnectionExtension.createTestDir(realm);

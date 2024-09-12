@@ -137,9 +137,9 @@ public class PolarisOverlappingTableTest {
 
   @BeforeEach
   public void setup(
-      PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String realm) {
+      PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String polarisRealm) {
     userToken = adminToken.token();
-    PolarisOverlappingTableTest.realm = realm;
+    realm = polarisRealm;
     defaultCatalog.catalog = String.format("default_catalog_%s", UUID.randomUUID().toString());
     laxCatalog.catalog = String.format("lax_catalog_%s", UUID.randomUUID().toString());
     strictCatalog.catalog = String.format("strict_catalog_%s", UUID.randomUUID().toString());

@@ -114,9 +114,9 @@ public class PolarisApplicationIntegrationTest {
   public static void setup(
       PolarisConnectionExtension.PolarisToken userToken,
       SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials,
-      @PolarisRealm String realm)
+      @PolarisRealm String polarisRealm)
       throws IOException {
-    PolarisApplicationIntegrationTest.realm = realm;
+    realm = polarisRealm;
 
     testDir = Path.of("build/test_data/iceberg/" + realm);
     FileUtils.deleteQuietly(testDir.toFile());
