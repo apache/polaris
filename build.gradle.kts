@@ -122,6 +122,9 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("client/python/.openapi-generator/**")
   excludes.add("regtests/output/**")
 
+  excludes.add("releases/test/bats/**")
+  excludes.add("releases/test/test_helper/**")
+
   excludes.add("**/*.ipynb")
   excludes.add("**/*.iml")
   excludes.add("**/*.iws")
