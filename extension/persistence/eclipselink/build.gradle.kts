@@ -31,9 +31,7 @@ dependencies {
   val eclipseLinkDeps: String? = project.findProperty("eclipseLinkDeps") as String?
   eclipseLinkDeps?.let {
     val dependenciesList = it.split(",")
-    dependenciesList.forEach { dep ->
-      implementation(dep.trim())
-    }
+    dependenciesList.forEach { dep -> implementation(dep.trim()) }
   }
   compileOnly(libs.jetbrains.annotations)
 
