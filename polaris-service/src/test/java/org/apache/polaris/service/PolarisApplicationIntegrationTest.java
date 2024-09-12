@@ -640,6 +640,29 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
+  public void testRequestHeaderTooLarge() {
+    Invocation.Builder request = EXT.client()
+            .target(
+                    String.format(
+                            "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
+            .request("application/json");
+
+    // The default limit is 8KiB and each of these headers is at least 8 bytes, so 1500 definitely exceeds the limit
+    for(int i = 0; i < 1500; i++) {
+      request = request.header("header" + i, "" + i);
+    }
+
+    try (Response response =
+                 request
+                         .header("Authorization", "Bearer " + userToken)
+                         .header(REALM_PROPERTY_KEY, realm)
+                         .post(Entity.json(new PrincipalRole("r")))) {
+      assertThat(response)
+              .returns(Response.Status.REQUEST_HEADER_FIELDS_TOO_LARGE.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
   public void testRequestBodyTooLarge() {
     // The size is set to be higher than the limit in polaris-server-integrationtest.yml
     Entity<PrincipalRole> largeRequest = Entity.json(new PrincipalRole("r".repeat(1000001)));
