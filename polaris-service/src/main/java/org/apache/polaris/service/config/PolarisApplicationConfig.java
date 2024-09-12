@@ -54,7 +54,9 @@ public class PolarisApplicationConfig extends Configuration {
   private String awsAccessKey;
   private String awsSecretKey;
   private FileIOFactory fileIOFactory;
-  private long maxDocumentBytes;
+
+  public static final long REQUEST_BODY_BYTES_NO_LIMIT = -1;
+  private long maxRequestBodyBytes = REQUEST_BODY_BYTES_NO_LIMIT;
 
   @JsonProperty("metaStoreManager")
   public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
@@ -147,13 +149,17 @@ public class PolarisApplicationConfig extends Configuration {
     this.configurationStore = new DefaultConfigurationStore(featureConfiguration);
   }
 
-  @JsonProperty("maxDocumentBytes")
-  public void setMaxDocumentBytes(long maxDocumentBytes) {
-    this.maxDocumentBytes = maxDocumentBytes;
+  @JsonProperty("maxRequestBodyBytes")
+  public void setMaxRequestBodyBytes(long maxRequestBodyBytes) {
+    if(maxRequestBodyBytes == 0) {
+      // The underlying library that we use to implement the limit treats -1 and 0 as the same, so we block 0 to prevent ambiguity.
+      throw new IllegalArgumentException(String.format("maxRequestBodyBytes may not be 0. Use %d to specify no limit.", REQUEST_BODY_BYTES_NO_LIMIT));
+    }
+    this.maxRequestBodyBytes = maxRequestBodyBytes;
   }
 
-  public long getMaxDocumentBytes() {
-    return maxDocumentBytes;
+  public long getMaxRequestBodyBytes() {
+    return maxRequestBodyBytes;
   }
 
   public PolarisConfigurationStore getConfigurationStore() {

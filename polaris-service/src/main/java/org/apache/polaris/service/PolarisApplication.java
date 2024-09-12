@@ -20,6 +20,7 @@ package org.apache.polaris.service;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
+import static org.apache.polaris.service.config.PolarisApplicationConfig.REQUEST_BODY_BYTES_NO_LIMIT;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -276,13 +277,13 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     objectMapper.setPropertyNamingStrategy(new PropertyNamingStrategies.KebabCaseStrategy());
 
-    long maxDocumentBytes = configuration.getMaxDocumentBytes();
-    if (maxDocumentBytes > 0) {
+    long maxRequestBodyBytes = configuration.getMaxRequestBodyBytes();
+    if (maxRequestBodyBytes != REQUEST_BODY_BYTES_NO_LIMIT) {
       objectMapper
           .getFactory()
           .setStreamReadConstraints(
-              StreamReadConstraints.builder().maxDocumentLength(maxDocumentBytes).build());
-      LOGGER.info("Limiting document size to {} bytes", maxDocumentBytes);
+              StreamReadConstraints.builder().maxDocumentLength(maxRequestBodyBytes).build());
+      LOGGER.info("Limiting request body size to {} bytes", maxRequestBodyBytes);
     }
 
     environment.jersey().register(new StreamReadConstraintsExceptionMapper());

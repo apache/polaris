@@ -27,6 +27,7 @@ import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -639,26 +640,26 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testRequestTooLarge() {
+  public void testRequestBodyTooLarge() {
     // The size is set to be higher than the limit in polaris-server-integrationtest.yml
     Entity<PrincipalRole> largeRequest = Entity.json(new PrincipalRole("r".repeat(1000001)));
 
     try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .post(largeRequest)) {
+                 EXT.client()
+                         .target(
+                                 String.format(
+                                         "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
+                         .request("application/json")
+                         .header("Authorization", "Bearer " + userToken)
+                         .header(REALM_PROPERTY_KEY, realm)
+                         .post(largeRequest)) {
       assertThat(response)
-          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
-          .matches(
-              r ->
-                  r.readEntity(RequestThrottlingErrorResponse.class)
-                      .getError()
-                      .equals(RequestThrottlingErrorResponse.Error.REQUEST_TOO_LARGE));
+              .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
+              .matches(
+                      r ->
+                              r.readEntity(RequestThrottlingErrorResponse.class)
+                                      .getError()
+                                      .equals(RequestThrottlingErrorResponse.Error.REQUEST_TOO_LARGE));
     }
   }
 }
