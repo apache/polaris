@@ -28,8 +28,8 @@ dependencies {
   implementation(libs.eclipselink)
   implementation(platform(libs.dropwizard.bom))
   implementation("io.dropwizard:dropwizard-jackson")
-  val eclipselinkDeps: String? = project.findProperty("eclipselinkDeps") as String?
-  eclipselinkDeps?.let {
+  val eclipseLinkDeps: String? = project.findProperty("eclipseLinkDeps") as String?
+  eclipseLinkDeps?.let {
     val dependenciesList = it.split(",")
     dependenciesList.forEach { dep ->
       implementation(dep.trim())
