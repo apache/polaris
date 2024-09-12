@@ -261,5 +261,8 @@ tasks.register<Sync>("prepareDockerDist") {
 
 tasks.named("build").configure {
   dependsOn("prepareDockerDist")
+}
+
+tasks.named("assemble").configure {
   dependsOn("testJar")
 }
