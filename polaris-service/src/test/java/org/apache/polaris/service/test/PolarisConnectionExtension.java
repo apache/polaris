@@ -77,7 +77,7 @@ public class PolarisConnectionExtension
     }
 
     // Generate unique realm using test name for each test since the tests can run in parallel
-    realm = getTestRealm(extensionContext.getRequiredTestClass());
+    realm = extensionContext.getRequiredTestClass().getName().replace('.', '_');
     extensionContext
         .getStore(Namespace.create(extensionContext.getRequiredTestClass()))
         .put(REALM_PROPERTY_KEY, realm);
@@ -127,8 +127,8 @@ public class PolarisConnectionExtension
     }
   }
 
-  public static String getTestRealm(Class testClassName) {
-    return testClassName.getName().replace('.', '_');
+  public static String getTestRealm() {
+    return realm;
   }
 
   public static void createTestDir(String realm) throws IOException {

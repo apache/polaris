@@ -63,7 +63,7 @@ public class PolarisOverlappingCatalogTest {
   @BeforeAll
   public static void setup(PolarisConnectionExtension.PolarisToken adminToken) throws IOException {
     userToken = adminToken.token();
-    realm = PolarisConnectionExtension.getTestRealm(PolarisOverlappingCatalogTest.class);
+    realm = PolarisConnectionExtension.getTestRealm();
 
     // Set up the database location
     PolarisConnectionExtension.createTestDir(realm);

@@ -84,7 +84,7 @@ public class PolarisSparkIntegrationTest {
       throws IOException {
     s3Container.start();
     PolarisSparkIntegrationTest.polarisToken = polarisToken;
-    realm = PolarisConnectionExtension.getTestRealm(PolarisSparkIntegrationTest.class);
+    realm = PolarisConnectionExtension.getTestRealm();
 
     // Set up test location
     PolarisConnectionExtension.createTestDir(realm);

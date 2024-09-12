@@ -128,7 +128,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   @BeforeAll
   public static void setup() throws IOException {
-    realm = PolarisConnectionExtension.getTestRealm(PolarisRestCatalogIntegrationTest.class);
+    realm = PolarisConnectionExtension.getTestRealm();
 
     // Set up test location
     PolarisConnectionExtension.createTestDir(realm);
