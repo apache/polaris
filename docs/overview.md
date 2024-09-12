@@ -68,11 +68,6 @@ nested namespaces. Iceberg tables belong to namespaces.
 In an internal catalog, an Iceberg table is registered in Polaris, but read and written via query engines. The table data and
 metadata is stored in your external cloud storage. The table uses Polaris as the Iceberg catalog.
 
-If you have tables that use Snowflake as the Iceberg catalog (Snowflake-managed tables), you can sync these tables to an external
-catalog in Polaris. If you sync this catalog to Polaris, it appears as an external catalog in Polaris. The table data and
-metadata is stored in your external cloud storage. The Snowflake query engine can read from or write to these tables. However, the other query
-engines can only read from these tables.
-
 > **Important**
 >
 > For the access privileges defined for a catalog to be enforced correctly, the following conditions must be met:
