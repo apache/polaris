@@ -259,10 +259,6 @@ tasks.register<Sync>("prepareDockerDist") {
   doFirst { delete(project.layout.buildDirectory.dir("regtest-dist")) }
 }
 
-tasks.named("build").configure {
-  dependsOn("prepareDockerDist")
-}
+tasks.named("build").configure { dependsOn("prepareDockerDist") }
 
-tasks.named("assemble").configure {
-  dependsOn("testJar")
-}
+tasks.named("assemble").configure { dependsOn("testJar") }
