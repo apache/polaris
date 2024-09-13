@@ -77,7 +77,7 @@ public class PolarisConnectionExtension
     }
 
     // Generate unique realm using test name for each test since the tests can run in parallel
-    realm = getTestRealm(extensionContext.getRequiredTestClass());
+    realm = extensionContext.getRequiredTestClass().getName().replace('.', '_');
     extensionContext
         .getStore(Namespace.create(extensionContext.getRequiredTestClass()))
         .put(REALM_PROPERTY_KEY, realm);
@@ -125,10 +125,6 @@ public class PolarisConnectionExtension
     if (!(metaStoreManagerFactory instanceof InMemoryPolarisMetaStoreManagerFactory)) {
       metaStoreManagerFactory.purgeRealms(List.of(realm));
     }
-  }
-
-  public static String getTestRealm(Class testClassName) {
-    return testClassName.getName().replace('.', '_');
   }
 
   public static void createTestDir(String realm) throws IOException {
@@ -183,7 +179,9 @@ public class PolarisConnectionExtension
             .getType()
             .equals(PolarisConnectionExtension.PolarisToken.class)
         || parameterContext.getParameter().getType().equals(MetaStoreManagerFactory.class)
-        || parameterContext.getParameter().getType().equals(PolarisPrincipalSecrets.class);
+        || parameterContext.getParameter().getType().equals(PolarisPrincipalSecrets.class)
+        || (parameterContext.getParameter().getType().equals(String.class)
+            && parameterContext.getParameter().isAnnotationPresent(PolarisRealm.class));
   }
 
   @Override
@@ -199,6 +197,9 @@ public class PolarisConnectionExtension
               adminSecrets.getMainSecret(),
               realm);
       return new PolarisToken(token);
+    } else if (parameterContext.getParameter().getType().equals(String.class)
+        && parameterContext.getParameter().isAnnotationPresent(PolarisRealm.class)) {
+      return realm;
     } else {
       return metaStoreManagerFactory;
     }
