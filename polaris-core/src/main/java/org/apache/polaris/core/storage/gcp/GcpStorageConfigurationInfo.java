@@ -21,9 +21,9 @@ package org.apache.polaris.core.storage.gcp;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
+import java.util.OptionalInt;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.immutables.PolarisImmutable;
-import org.immutables.value.Value.Check;
 import org.jetbrains.annotations.Nullable;
 
 /** Gcp storage storage configuration information. */
@@ -60,10 +60,8 @@ public abstract class GcpStorageConfigurationInfo extends PolarisStorageConfigur
   @Nullable
   public abstract String getGcpServiceAccount();
 
-  @Check
   @Override
-  protected void validate() {
-    super.validate();
-    validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
+  protected OptionalInt getMaxAllowedLocations() {
+    return OptionalInt.of(MAX_ALLOWED_LOCATIONS);
   }
 }

@@ -47,7 +47,7 @@ public interface PolarisConfiguration<T> {
                     "Attempted to read a catalog config key from a configuration that doesn't have one."));
   }
 
-  @Value.Lazy
+  @Value.Derived
   default T cast(Object value) {
     @SuppressWarnings("unchecked")
     T cast = (T) defaultValue().getClass().cast(value);

@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage;
 
 import java.util.List;
+import java.util.OptionalInt;
 import org.apache.polaris.immutables.PolarisImmutable;
 
 /**
@@ -60,7 +61,7 @@ public abstract class StorageConfigurationOverride extends PolarisStorageConfigu
   }
 
   @Override
-  public void validateMaxAllowedLocations(int maxAllowedLocations) {
-    parentStorageConfiguration().validateMaxAllowedLocations(maxAllowedLocations);
+  protected OptionalInt getMaxAllowedLocations() {
+    return parentStorageConfiguration().getMaxAllowedLocations();
   }
 }

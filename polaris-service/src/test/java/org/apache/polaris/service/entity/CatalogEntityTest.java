@@ -204,19 +204,12 @@ public class CatalogEntityTest {
             .setProperties(prop)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    String expectedMessage = "";
-    switch (roleArn) {
-      case "":
-        expectedMessage = "ARN cannot be null or empty";
-        break;
-      case "aws-cn":
-      case "aws-us-gov":
-        expectedMessage = "AWS China or Gov Cloud are temporarily not supported";
-        break;
-      default:
-        expectedMessage = "Invalid role ARN format";
-    }
-    ;
+    String expectedMessage =
+        switch (roleArn) {
+          case "" -> "ARN cannot be null or empty";
+          case "aws-cn", "aws-us-gov" -> "ARN domain temporarily not supported: " + roleArn;
+          default -> "Invalid role ARN format";
+        };
     Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(awsCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);

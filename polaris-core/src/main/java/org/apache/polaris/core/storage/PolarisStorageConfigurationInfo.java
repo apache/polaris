@@ -33,6 +33,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisConfiguration;
@@ -199,6 +200,11 @@ public abstract class PolarisStorageConfigurationInfo {
   @Check
   protected void validate() {
     getAllowedLocations().forEach(this::validatePrefixForStorageType);
+    getMaxAllowedLocations().ifPresent(this::validateMaxAllowedLocations);
+  }
+
+  protected OptionalInt getMaxAllowedLocations() {
+    return OptionalInt.empty();
   }
 
   /** Validate if the provided allowed locations are valid for the storage type */
@@ -211,7 +217,10 @@ public abstract class PolarisStorageConfigurationInfo {
     }
   }
 
-  /** Validate the number of allowed locations not exceeding the max value. */
+  /**
+   * Validate the number of allowed locations not exceeding the max value. Only called from
+   * subclasses because the number of max allowed locations depends on the subtype.
+   */
   protected void validateMaxAllowedLocations(int maxAllowedLocations) {
     if (getAllowedLocations().size() > maxAllowedLocations) {
       throw new IllegalArgumentException(

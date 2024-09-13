@@ -21,6 +21,8 @@ package org.apache.polaris.core.storage.aws;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
+import java.util.OptionalInt;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.immutables.PolarisImmutable;
@@ -38,8 +40,8 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   // for allowed read and write locations for subscoping creds.
   private static final int MAX_ALLOWED_LOCATIONS = 5;
 
-  // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::\d{12}:role/.+$,
-  private static final String ROLE_ARN_PATTERN = "^arn:aws:iam::\\d{12}:role/.+$";
+  private static final String ROLE_ARN_PATTERN =
+      "^arn:(aws|aws-cn|aws-us-gov):iam::\\d{12}:role/.+$";
 
   public static AwsStorageConfigurationInfo of(Iterable<String> allowedLocations, String roleARN) {
     return of(allowedLocations, roleARN, null);
@@ -78,11 +80,20 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @Nullable
   public abstract String getUserARN();
 
+  @Value.Default
+  public Set<String> getAllowedArnDomains() {
+    return Set.of("aws");
+  }
+
+  @Override
+  protected OptionalInt getMaxAllowedLocations() {
+    return OptionalInt.of(MAX_ALLOWED_LOCATIONS);
+  }
+
   @Check
   @Override
   protected void validate() {
     super.validate();
-    validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
     validateArn();
   }
 
@@ -91,9 +102,8 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
     if (arn.isEmpty()) {
       throw new IllegalArgumentException("ARN cannot be null or empty");
     }
-    // specifically throw errors for China and Gov
-    if (arn.contains("aws-cn") || arn.contains("aws-us-gov")) {
-      throw new IllegalArgumentException("AWS China or Gov Cloud are temporarily not supported");
+    if (getAllowedArnDomains().stream().noneMatch(s -> arn.contains(":" + s + ":"))) {
+      throw new IllegalArgumentException("ARN domain temporarily not supported: " + arn);
     }
     if (!Pattern.matches(ROLE_ARN_PATTERN, arn)) {
       throw new IllegalArgumentException("Invalid role ARN format");

@@ -22,10 +22,10 @@ import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
 import java.util.Objects;
+import java.util.OptionalInt;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
-import org.immutables.value.Value.Check;
 import org.jetbrains.annotations.Nullable;
 
 /** Azure storage configuration information. */
@@ -70,11 +70,9 @@ public abstract class AzureStorageConfigurationInfo extends PolarisStorageConfig
   @Nullable
   public abstract String getConsentUrl();
 
-  @Check
   @Override
-  protected void validate() {
-    super.validate();
-    validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
+  protected OptionalInt getMaxAllowedLocations() {
+    return OptionalInt.of(MAX_ALLOWED_LOCATIONS);
   }
 
   @Override
