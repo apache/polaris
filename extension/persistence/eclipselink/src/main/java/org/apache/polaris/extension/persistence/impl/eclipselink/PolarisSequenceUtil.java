@@ -90,8 +90,8 @@ class PolarisSequenceUtil {
   }
 
   /**
-   * Prepare the `PolarisSequenceUtil` to generate IDs. This may run a failing query, so it
-   * should be called for the first time outside the context of a transaction.
+   * Prepare the `PolarisSequenceUtil` to generate IDs. This may run a failing query, so it should
+   * be called for the first time outside the context of a transaction.
    */
   public static void initialize(EntityManager session) {
     // Trigger cleanup of the POLARIS_SEQ if it is present
