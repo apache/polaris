@@ -20,7 +20,7 @@
 services:
   polaris:
     build:
-      context: .
+      context: ../../
     ports:
       - "8181:8181"
       - "8182"
