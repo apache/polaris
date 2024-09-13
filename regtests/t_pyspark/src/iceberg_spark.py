@@ -35,7 +35,7 @@ class IcebergSparkSession:
           polaris_url="http://polaris:8181/api/catalog",
           catalog_name="catalog_name"
   ) as spark:
-      spark.sql(f"USE snowflake.{hybrid_executor.database}.{hybrid_executor.schema}")
+      spark.sql(f"USE catalog.{hybrid_executor.database}.{hybrid_executor.schema}")
       table_list = spark.sql("SHOW TABLES").collect()
   """
 

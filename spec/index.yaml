@@ -168,16 +168,16 @@ tags:
       as the Iceberg catalog.
 
 
-      If you have tables that use Snowflake as the Iceberg catalog
-      (Snowflake-managed tables), you can sync these tables to an external
+      If you have tables housed in another Iceberg catalog, you can sync these
+      tables to an external catalog in Polaris.
 
-      catalog in Polaris. If you sync this catalog to Polaris, it appears as an
-      external catalog in Polaris. The table data and
+      If you sync this catalog to Polaris, it appears as an external catalog in
+      Polaris. Clients connecting to the external
 
-      metadata is stored in your external cloud storage. The Snowflake query
-      engine can read from or write to these tables. However, the other query
+      catalog can read from or write to these tables. However, clients
+      connecting to Polaris will only be able to
 
-      engines can only read from these tables.
+      read from these tables.
 
 
       > **Important**
@@ -348,12 +348,11 @@ tags:
           service connection with a service principal that has
           the privileges to perform these actions.
 
-      2.  Alice uses Snowflake to read data from Table1.
+      2.  Alice uses Trino to read data from Table1.
 
           Alice can read data from Table1 because she is using a service
-          connection with a service principal with a catalog integration that
-          has the privileges to perform this action. Alice
-          creates an unmanaged table in Snowflake to read data from Table1.
+          connection with a service principal that has the privileges to 
+          perform this action.
 
       ![Diagram that shows an example workflow for Apache Polaris
       (Incubating)](img/example-workflow.svg "Example workflow for Apache
@@ -918,8 +917,8 @@ tags:
           create service principals. She can also create catalogs and
           namespaces and configure access control for Polaris resources.
 
-      - **Bob:** A data engineer who uses Snowpipe Streaming (in Snowflake)
-          and Apache Spark&trade; connections to interact with Polaris.
+      - **Bob:** A data engineer who uses Apache Spark&trade; to 
+          interact with Polaris.
 
           - Alice has created a service principal for Bob. It has been
               granted the Data_engineer principal role, which in turn has been
@@ -933,8 +932,8 @@ tags:
           - The Data administrator roles grant full administrative rights to
               the Silver zone catalog and Gold zone catalog.
 
-      - **Mark:** A data scientist who uses Snowflake AI services to
-          interact with Polaris.
+      - **Mark:** A data scientist who uses trains models with data managed
+          by Polaris.
 
           - Alice has created a service principal for Mark. It has been
               granted the Data_scientist principal role, which in turn has
@@ -3106,7 +3105,16 @@ paths:
       summary: Sends a notification to the table
       operationId: sendNotification
       requestBody:
-        description: The request containing the notification to be sent
+        description: >-
+          The request containing the notification to be sent.
+
+          For each table, Polaris will reject any notification where the
+          timestamp in the request body is older than or equal to the most
+          recent time Polaris has already processed for the table. The
+          responsibility of ensuring the correct order of timestamps for a
+          sequence of notifications lies with the caller of the API. This
+          includes managing potential clock skew or inconsistencies when
+          notifications are sent from multiple sources.
         content:
           application/json:
             schema:
@@ -3136,6 +3144,28 @@ paths:
                 TableToLoadDoesNotExist:
                   $ref: >-
                     #/components/examples/Apache_Iceberg_REST_Catalog_API_NoSuchTableError
+        '409':
+          description: >-
+            Conflict - The timestamp of the received notification is older than
+            or equal to the most recent timestamp Polaris has already processed
+            for the specified table.
+          content:
+            application/json:
+              schema:
+                $ref: >-
+                  #/components/schemas/Apache_Iceberg_REST_Catalog_API_IcebergErrorResponse
+              example:
+                summary: >-
+                  The timestamp of the received notification is older than or
+                  equal to the most recent timestamp Polaris has already
+                  processed for the specified table.
+                value:
+                  error:
+                    message: >-
+                      A notification with a newer timestamp has been admitted
+                      for table
+                    type: AlreadyExistsException
+                    code: 409
         '419':
           $ref: >-
             #/components/responses/Apache_Iceberg_REST_Catalog_API_AuthenticationTimeoutResponse
@@ -6044,6 +6074,7 @@ components:
     Apache_Iceberg_REST_Catalog_API_NotificationRequest:
       required:
         - notification-type
+        - payload
       properties:
         notification-type:
           $ref: >-
@@ -7016,6 +7047,16 @@ components:
           - bar
         updates:
           owner: Raoul
+    Apache_Iceberg_REST_Catalog_API_OutOfOrderNotificationError:
+      summary: >-
+        The timestamp of the received notification is older than or equal to the
+        most recent timestamp Polaris has already processed for the specified
+        table.
+      value:
+        error:
+          message: A notification with a newer timestamp has been admitted for table
+          type: AlreadyExistsException
+          code: 409
 x-tagGroups:
   - name: Apache Polaris (Incubating) Documentation
     tags:
