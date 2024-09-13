@@ -44,6 +44,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
+import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
@@ -77,14 +78,14 @@ public class PolarisSparkIntegrationTest {
       new S3MockContainer("3.9.1").withInitialBuckets("my-bucket,my-old-bucket");
   private static PolarisConnectionExtension.PolarisToken polarisToken;
   private static SparkSession spark;
-  private static String realm;
+  private String realm;
 
   @BeforeAll
-  public static void setup(PolarisConnectionExtension.PolarisToken polarisToken)
+  public static void setup(
+      PolarisConnectionExtension.PolarisToken polarisToken, @PolarisRealm String realm)
       throws IOException {
     s3Container.start();
     PolarisSparkIntegrationTest.polarisToken = polarisToken;
-    realm = PolarisConnectionExtension.getTestRealm(PolarisSparkIntegrationTest.class);
 
     // Set up test location
     PolarisConnectionExtension.createTestDir(realm);
@@ -96,7 +97,8 @@ public class PolarisSparkIntegrationTest {
   }
 
   @BeforeEach
-  public void before() {
+  public void before(@PolarisRealm String realm) {
+    this.realm = realm;
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")

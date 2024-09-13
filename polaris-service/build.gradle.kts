@@ -234,6 +234,11 @@ tasks.named<Jar>("jar") {
   manifest { attributes["Main-Class"] = "org.apache.polaris.service.PolarisApplication" }
 }
 
+tasks.register<Jar>("testJar") {
+  archiveClassifier.set("tests")
+  from(sourceSets.test.get().output)
+}
+
 val shadowJar =
   tasks.named<ShadowJar>("shadowJar") {
     manifest { attributes["Main-Class"] = "org.apache.polaris.service.PolarisApplication" }
@@ -255,3 +260,5 @@ tasks.register<Sync>("prepareDockerDist") {
 }
 
 tasks.named("build").configure { dependsOn("prepareDockerDist") }
+
+tasks.named("assemble").configure { dependsOn("testJar") }

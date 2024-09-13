@@ -72,6 +72,7 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
+import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -112,9 +113,10 @@ public class PolarisApplicationIntegrationTest {
   @BeforeAll
   public static void setup(
       PolarisConnectionExtension.PolarisToken userToken,
-      SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials)
+      SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials,
+      @PolarisRealm String polarisRealm)
       throws IOException {
-    realm = PolarisConnectionExtension.getTestRealm(PolarisApplicationIntegrationTest.class);
+    realm = polarisRealm;
 
     testDir = Path.of("build/test_data/iceberg/" + realm);
     FileUtils.deleteQuietly(testDir.toFile());

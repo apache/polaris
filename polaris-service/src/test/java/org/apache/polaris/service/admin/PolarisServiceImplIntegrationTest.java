@@ -70,6 +70,7 @@ import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
+import org.apache.polaris.service.test.PolarisRealm;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -99,9 +100,11 @@ public class PolarisServiceImplIntegrationTest {
   private static String realm;
 
   @BeforeAll
-  public static void setup(PolarisConnectionExtension.PolarisToken adminToken) throws IOException {
+  public static void setup(
+      PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String polarisRealm)
+      throws IOException {
     userToken = adminToken.token();
-    realm = PolarisConnectionExtension.getTestRealm(PolarisServiceImplIntegrationTest.class);
+    realm = polarisRealm;
 
     // Set up test location
     PolarisConnectionExtension.createTestDir(realm);

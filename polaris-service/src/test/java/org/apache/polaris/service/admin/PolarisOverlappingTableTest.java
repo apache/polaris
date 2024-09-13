@@ -44,6 +44,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
+import org.apache.polaris.service.test.PolarisRealm;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -135,9 +136,10 @@ public class PolarisOverlappingTableTest {
   }
 
   @BeforeEach
-  public void setup(PolarisConnectionExtension.PolarisToken adminToken) {
+  public void setup(
+      PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String polarisRealm) {
     userToken = adminToken.token();
-    realm = PolarisConnectionExtension.getTestRealm(PolarisServiceImplIntegrationTest.class);
+    realm = polarisRealm;
     defaultCatalog.catalog = String.format("default_catalog_%s", UUID.randomUUID().toString());
     laxCatalog.catalog = String.format("lax_catalog_%s", UUID.randomUUID().toString());
     strictCatalog.catalog = String.format("strict_catalog_%s", UUID.randomUUID().toString());
