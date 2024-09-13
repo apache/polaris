@@ -32,7 +32,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class PolarisStorageConfigurationInfoTest {
 
-  public static Stream<Arguments> serialize() {
+  static Stream<Arguments> serialize() {
     return Stream.of(
         Arguments.of(
             ImmutableAwsStorageConfigurationInfo.builder()
