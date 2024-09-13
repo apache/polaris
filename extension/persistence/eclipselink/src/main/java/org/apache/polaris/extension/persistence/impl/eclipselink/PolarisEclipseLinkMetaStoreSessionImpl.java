@@ -283,7 +283,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
           LOGGER.debug("transaction committed");
         }
       } catch (Exception e) {
-        LOGGER.debug("Rolled back transaction due to an error", e);
+        LOGGER.debug("Rolling back transaction due to an error", e);
         tr.rollback();
 
         if (e instanceof OptimisticLockException

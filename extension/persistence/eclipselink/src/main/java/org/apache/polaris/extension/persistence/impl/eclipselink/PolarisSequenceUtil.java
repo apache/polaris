@@ -33,10 +33,12 @@ import org.slf4j.LoggerFactory;
  * available it will be used then cleaned up. In all other cases the `POLARIS_SEQUENCE` table is
  * used directly.
  */
-public class PolarisSequenceManager {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisSequenceManager.class);
+class PolarisSequenceUtil {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisSequenceUtil.class);
 
   private static AtomicBoolean sequenceCleaned = new AtomicBoolean(false);
+
+  private PolarisSequenceUtil() {}
 
   /* Get the database platform associated with the `EntityManager` */
   private static DatabasePlatform getDatabasePlatform(EntityManager session) {
@@ -50,6 +52,7 @@ public class PolarisSequenceManager {
     session.createNativeQuery(renameSequenceQuery).executeUpdate();
   }
 
+  // TODO simplify this logic once all usage can safely be assumed to have migrated from POLARIS_SEQ
   private static synchronized Optional<Long> getSequenceId(EntityManager session) {
     DatabasePlatform databasePlatform = getDatabasePlatform(session);
     if (databasePlatform instanceof PostgreSQLPlatform) {
@@ -82,13 +85,12 @@ public class PolarisSequenceManager {
       }
       return result;
     } else {
-      LOGGER.info("Skipping POLARIS_SEQ / NEXTVAL check for platform " + databasePlatform);
       return Optional.empty();
     }
   }
 
   /**
-   * Prepare the `PolarisSequenceManager` to generate IDs. This may run a failing query, so it
+   * Prepare the `PolarisSequenceUtil` to generate IDs. This may run a failing query, so it
    * should be called for the first time outside the context of a transaction.
    */
   public static void initialize(EntityManager session) {

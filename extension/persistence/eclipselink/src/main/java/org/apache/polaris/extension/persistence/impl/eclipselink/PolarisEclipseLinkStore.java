@@ -68,7 +68,7 @@ public class PolarisEclipseLinkStore {
 
   /** Initialize the store. This should be called before other methods. */
   public void initialize(EntityManager session) {
-    PolarisSequenceManager.initialize(session);
+    PolarisSequenceUtil.initialize(session);
     initialized.set(true);
   }
 
@@ -76,7 +76,7 @@ public class PolarisEclipseLinkStore {
     diagnosticServices.check(session != null, "session_is_null");
     checkInitialized();
 
-    return PolarisSequenceManager.getNewId(session);
+    return PolarisSequenceUtil.getNewId(session);
   }
 
   void writeToEntities(EntityManager session, PolarisBaseEntity entity) {
