@@ -16,11 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.storage;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.List;
 import java.util.stream.Stream;
@@ -46,7 +44,8 @@ class PolarisStorageConfigurationInfoTest {
                 .roleARN("arn:aws:iam::012345678901:role/jdoe")
                 .externalId("externalId")
                 .userARN("userARN")
-                .build()),
+                .build(),
+            "AwsStorageConfigurationInfo"),
         Arguments.of(
             ImmutableAzureStorageConfigurationInfo.builder()
                 .allowedLocations(
@@ -57,7 +56,8 @@ class PolarisStorageConfigurationInfoTest {
                 .consentUrl("https://login.microsoftonline.com/tenantId/oauth2/authorize")
                 .multiTenantAppName("appName")
                 .tenantId("tenantId")
-                .build()),
+                .build(),
+            "AzureStorageConfigurationInfo"),
         Arguments.of(
             ImmutableGcpStorageConfigurationInfo.builder()
                 .allowedLocations(
@@ -66,14 +66,24 @@ class PolarisStorageConfigurationInfoTest {
                         "gs://bucket/anotherpath/to/warehouse",
                         "gs://bucket2/warehouse/"))
                 .gcpServiceAccount("serviceAccount")
-                .build()));
+                .build(),
+            "GcpStorageConfigurationInfo"),
+        Arguments.of(
+            ImmutableFileStorageConfigurationInfo.builder()
+                .allowedLocations(
+                    List.of(
+                        "file:///path/to/warehouse",
+                        "file:///anotherpath/to/warehouse",
+                        "file:///warehouse/"))
+                .build(),
+            "FileStorageConfigurationInfo"));
   }
 
   @ParameterizedTest
   @MethodSource
-  void serialize(PolarisStorageConfigurationInfo instance) {
+  void serialize(PolarisStorageConfigurationInfo instance, String typeName) {
     String json = instance.serialize();
-    System.out.println(json);
+    assertThat(json).contains("\"@type\":\"" + typeName + "\"");
     PolarisStorageConfigurationInfo deserialized =
         PolarisStorageConfigurationInfo.deserialize(new PolarisDefaultDiagServiceImpl(), json);
     assertThat(deserialized).isEqualTo(instance);

@@ -44,9 +44,9 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.TableLikeEntity;
-import org.apache.polaris.core.storage.aws.ImmutableAwsStorageConfigurationInfo;
-import org.apache.polaris.core.storage.azure.ImmutableAzureStorageConfigurationInfo;
-import org.apache.polaris.core.storage.gcp.ImmutableGcpStorageConfigurationInfo;
+import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
+import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.immutables.value.Value.Check;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -63,10 +63,10 @@ import org.slf4j.LoggerFactory;
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes({
-  @JsonSubTypes.Type(value = ImmutableAwsStorageConfigurationInfo.class),
-  @JsonSubTypes.Type(value = ImmutableAzureStorageConfigurationInfo.class),
-  @JsonSubTypes.Type(value = ImmutableGcpStorageConfigurationInfo.class),
-  @JsonSubTypes.Type(value = ImmutableFileStorageConfigurationInfo.class),
+  @JsonSubTypes.Type(value = AwsStorageConfigurationInfo.class),
+  @JsonSubTypes.Type(value = AzureStorageConfigurationInfo.class),
+  @JsonSubTypes.Type(value = GcpStorageConfigurationInfo.class),
+  @JsonSubTypes.Type(value = FileStorageConfigurationInfo.class),
 })
 public abstract class PolarisStorageConfigurationInfo {
 

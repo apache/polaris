@@ -18,18 +18,21 @@
  */
 package org.apache.polaris.core.storage.gcp;
 
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
 import java.util.OptionalInt;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 import org.jetbrains.annotations.Nullable;
 
 /** Gcp storage storage configuration information. */
 @PolarisImmutable
 @JsonSerialize(as = ImmutableGcpStorageConfigurationInfo.class)
 @JsonDeserialize(as = ImmutableGcpStorageConfigurationInfo.class)
+@JsonTypeName("GcpStorageConfigurationInfo")
 public abstract class GcpStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
   // 8 is an experimental result from generating GCP accessBoundaryRules when subscoping creds,
@@ -46,11 +49,13 @@ public abstract class GcpStorageConfigurationInfo extends PolarisStorageConfigur
   @Override
   public abstract List<String> getAllowedLocations();
 
+  @Value.Default
   @Override
   public StorageType getStorageType() {
     return StorageType.GCS;
   }
 
+  @Value.Default
   @Override
   public String getFileIoImplClassName() {
     return "org.apache.iceberg.gcp.gcs.GCSFileIO";

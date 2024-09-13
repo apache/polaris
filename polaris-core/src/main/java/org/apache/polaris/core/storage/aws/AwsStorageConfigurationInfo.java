@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage.aws;
 
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
@@ -34,6 +35,7 @@ import org.jetbrains.annotations.Nullable;
 @PolarisImmutable
 @JsonSerialize(as = ImmutableAwsStorageConfigurationInfo.class)
 @JsonDeserialize(as = ImmutableAwsStorageConfigurationInfo.class)
+@JsonTypeName("AwsStorageConfigurationInfo")
 public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
   // 5 is the approximate max allowed locations for the size of AccessPolicy when LIST is required
@@ -59,6 +61,7 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @Override
   public abstract List<String> getAllowedLocations();
 
+  @Value.Default
   @Override
   public StorageType getStorageType() {
     return StorageType.S3;
@@ -81,7 +84,7 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   public abstract String getUserARN();
 
   @Value.Default
-  public Set<String> getAllowedArnDomains() {
+  protected Set<String> getAllowedArnDomains() {
     return Set.of("aws");
   }
 

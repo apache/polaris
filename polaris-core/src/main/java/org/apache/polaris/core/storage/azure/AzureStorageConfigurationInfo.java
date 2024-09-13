@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage.azure;
 
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
@@ -32,6 +33,7 @@ import org.jetbrains.annotations.Nullable;
 @PolarisImmutable
 @JsonSerialize(as = ImmutableAzureStorageConfigurationInfo.class)
 @JsonDeserialize(as = ImmutableAzureStorageConfigurationInfo.class)
+@JsonTypeName("AzureStorageConfigurationInfo")
 public abstract class AzureStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
   // technically there is no limitation since expectation for Azure locations are for the same
@@ -49,6 +51,7 @@ public abstract class AzureStorageConfigurationInfo extends PolarisStorageConfig
   @Override
   public abstract List<String> getAllowedLocations();
 
+  @Value.Default
   @Override
   public StorageType getStorageType() {
     return StorageType.AZURE;
