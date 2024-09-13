@@ -41,6 +41,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
+import org.apache.polaris.service.test.PolarisRealm;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -61,9 +62,11 @@ public class PolarisOverlappingCatalogTest {
   private static String realm;
 
   @BeforeAll
-  public static void setup(PolarisConnectionExtension.PolarisToken adminToken) throws IOException {
+  public static void setup(
+      PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String polarisRealm)
+      throws IOException {
     userToken = adminToken.token();
-    realm = PolarisConnectionExtension.getTestRealm(PolarisOverlappingCatalogTest.class);
+    realm = polarisRealm;
 
     // Set up the database location
     PolarisConnectionExtension.createTestDir(realm);
