@@ -21,6 +21,7 @@ package org.apache.polaris.service.ratelimiter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 /**
  * Simple rate limiter factory that just constructs an OpenTelemetryRateLimiter and is
@@ -35,7 +36,7 @@ public class DefaultRateLimiterFactory implements RateLimiterFactory {
   private double windowSeconds;
 
   @Override
-  public CompletableFuture<RateLimiter> createRateLimiter(String key, Clock clock) {
+  public Future<RateLimiter> createRateLimiter(String key, Clock clock) {
     return CompletableFuture.supplyAsync(
         () ->
             new OpenTelemetryRateLimiter(

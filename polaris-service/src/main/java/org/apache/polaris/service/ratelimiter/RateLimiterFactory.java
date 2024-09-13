@@ -20,7 +20,7 @@ package org.apache.polaris.service.ratelimiter;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.dropwizard.jackson.Discoverable;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 /**
  * Interface for constructing a rate limiter given the rate limiting key and clock. Notably, rate
@@ -30,5 +30,13 @@ import java.util.concurrent.CompletableFuture;
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 public interface RateLimiterFactory extends Discoverable {
-  CompletableFuture<RateLimiter> createRateLimiter(String key, Clock clock);
+  /**
+   * Constructs a rate limiter asynchronously. Callers may choose to set a timeout on construction.
+   *
+   * @param key The rate limiting key. Rate limiters may optionally choose to discriminate their
+   *     behavior by the key.
+   * @param clock The clock which tells you the current time
+   * @return a Future with the constructed RateLimiter
+   */
+  Future<RateLimiter> createRateLimiter(String key, Clock clock);
 }

@@ -20,12 +20,13 @@ package org.apache.polaris.service.ratelimiter;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 /** Rate limiter factory that constructs a no-op rate limiter */
 @JsonTypeName("no-op")
 public class NoOpRateLimiterFactory implements RateLimiterFactory {
   @Override
-  public CompletableFuture<RateLimiter> createRateLimiter(String key, Clock clock) {
+  public Future<RateLimiter> createRateLimiter(String key, Clock clock) {
     return CompletableFuture.supplyAsync(NoOpRateLimiter::new);
   }
 }

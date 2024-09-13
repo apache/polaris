@@ -68,7 +68,7 @@ public class RateLimiterTest {
             (EXT.getConfiguration().getRateLimiterConfig().getRateLimiterFactory());
     long windowMillis = (long) (factory.windowSeconds * 1000);
 
-    MockClock clock = MockRateLimiterFactory.clock;
+    MockClock clock = MockRateLimiterFactory.CLOCK;
     clock.setMillis(2 * windowMillis); // Clear any counters from before this test
     for (int i = 0; i < factory.requestsPerSecond * factory.windowSeconds; i++) {
       requestAsserter.accept(Response.Status.OK);

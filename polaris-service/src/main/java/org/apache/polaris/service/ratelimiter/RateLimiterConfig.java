@@ -30,6 +30,12 @@ public class RateLimiterConfig {
    */
   private long constructionTimeoutMillis;
 
+  /**
+   * Since rate limiter construction is asynchronous and has a timeout, construction may fail. If
+   * this option is enabled, the request will still be allowed when construction fails.
+   */
+  private boolean allowRequestOnConstructionTimeout;
+
   @JsonProperty("factory")
   public void setRateLimiterFactory(RateLimiterFactory rateLimiterFactory) {
     this.rateLimiterFactory = rateLimiterFactory;
@@ -48,5 +54,15 @@ public class RateLimiterConfig {
   @JsonProperty("constructionTimeoutMillis")
   public long getConstructionTimeoutMillis() {
     return constructionTimeoutMillis;
+  }
+
+  @JsonProperty("allowRequestOnConstructionTimeout")
+  public void setAllowRequestOnConstructionTimeout(boolean allowRequestOnConstructionTimeout) {
+    this.allowRequestOnConstructionTimeout = allowRequestOnConstructionTimeout;
+  }
+
+  @JsonProperty("allowRequestOnConstructionTimeout")
+  public boolean getAllowRequestOnConstructionTimeout() {
+    return allowRequestOnConstructionTimeout;
   }
 }

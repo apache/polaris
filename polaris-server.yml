@@ -169,5 +169,6 @@ maxRequestBodyBytes: -1
 
 rateLimiter:
   constructionTimeoutMillis: 2000
+  allowRequestOnConstructionTimeout: true
   factory:
     type: no-op

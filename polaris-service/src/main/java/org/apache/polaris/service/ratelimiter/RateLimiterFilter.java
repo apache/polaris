@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import com.github.benmanes.caffeine.cache.AsyncLoadingCache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.annotation.Priority;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
@@ -30,6 +28,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -42,28 +42,18 @@ import org.slf4j.LoggerFactory;
 public class RateLimiterFilter implements Filter {
   private static final Logger LOGGER = LoggerFactory.getLogger(RateLimiterFilter.class);
   private static final RateLimiter NO_OP_LIMITER = new NoOpRateLimiter();
+  private static final RateLimiter ALWAYS_REJECT_LIMITER =
+      new OpenTelemetryRateLimiter(0, 0, new ClockImpl());
+  private static final Clock CLOCK = new ClockImpl();
 
   private final RateLimiterConfig config;
-  private final AsyncLoadingCache<String, RateLimiter> perRealmLimiters;
+  private final Map<String, RateLimiter> perRealmLimiters = new ConcurrentHashMap<>();
 
   public RateLimiterFilter(RateLimiterConfig config) {
     this.config = config;
-
-    Clock clock = new ClockImpl();
-    perRealmLimiters =
-        Caffeine.newBuilder()
-            .buildAsync(
-                (key, executor) -> config.getRateLimiterFactory().createRateLimiter(key, clock));
   }
 
-  /**
-   * Returns a 429 if the rate limiter says so. Otherwise, forwards the request along.
-   * @param request the <code>ServletRequest</code> object contains the client's request
-   * @param response the <code>ServletResponse</code> object contains the filter's response
-   * @param chain the <code>FilterChain</code> for invoking the next filter or the resource
-   * @throws IOException
-   * @throws ServletException
-   */
+  /** Returns a 429 if the rate limiter says so. Otherwise, forwards the request along. */
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
@@ -76,14 +66,29 @@ public class RateLimiterFilter implements Filter {
     chain.doFilter(request, response);
   }
 
-  RateLimiter maybeBlockToGetRateLimiter(String realm) {
+  private RateLimiter maybeBlockToGetRateLimiter(String realm) {
+    return perRealmLimiters.computeIfAbsent(realm, this::createRateLimiterBlocking);
+  }
+
+  /** Creates a rate limiter, enforcing a timeout on how long creation can take. */
+  private RateLimiter createRateLimiterBlocking(String key) {
     try {
-      return perRealmLimiters
-          .get(realm)
+      return config
+          .getRateLimiterFactory()
+          .createRateLimiter(key, CLOCK)
           .get(config.getConstructionTimeoutMillis(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
-      LOGGER.error("Failed to fetch rate limiter", e);
+      return getDefaultRateLimiterOnConstructionFailed(e);
+    }
+  }
+
+  private RateLimiter getDefaultRateLimiterOnConstructionFailed(Exception e) {
+    if (config.getAllowRequestOnConstructionTimeout()) {
+      LOGGER.error("Failed to fetch rate limiter, allowing the request", e);
       return NO_OP_LIMITER;
+    } else {
+      LOGGER.error("Failed to fetch rate limiter, rejecting the request", e);
+      return ALWAYS_REJECT_LIMITER;
     }
   }
 }

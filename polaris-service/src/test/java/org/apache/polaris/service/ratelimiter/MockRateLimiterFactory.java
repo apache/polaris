@@ -20,8 +20,8 @@ package org.apache.polaris.service.ratelimiter;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
-import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 
 /**
  * Factory that constructs a standard OpenTelemetryRateLimiter but with a mock Clock and an optional
@@ -29,7 +29,7 @@ import java.util.concurrent.CompletableFuture;
  */
 @JsonTypeName("mock")
 public class MockRateLimiterFactory implements RateLimiterFactory {
-  public static MockClock clock = new MockClock();
+  public static MockClock CLOCK = new MockClock();
 
   @JsonProperty("requestsPerSecond")
   public double requestsPerSecond;
@@ -37,20 +37,18 @@ public class MockRateLimiterFactory implements RateLimiterFactory {
   @JsonProperty("windowSeconds")
   public double windowSeconds;
 
-  @JsonProperty("delaySeconds")
-  public long delaySeconds;
+  @JsonProperty("neverFinishConstruction")
+  public boolean neverFinishConstruction;
 
   @Override
-  public CompletableFuture<RateLimiter> createRateLimiter(String key, Clock clock) {
+  public Future<RateLimiter> createRateLimiter(String key, Clock clock) {
+    if (neverFinishConstruction) {
+      // This future will never finish
+      return new CompletableFuture<>();
+    }
     return CompletableFuture.supplyAsync(
-        () -> {
-          try {
-            Thread.sleep(Duration.ofSeconds(delaySeconds));
-          } catch (InterruptedException e) {
-          }
-
-          return new OpenTelemetryRateLimiter(
-              requestsPerSecond, requestsPerSecond * windowSeconds, MockRateLimiterFactory.clock);
-        });
+        () ->
+            new OpenTelemetryRateLimiter(
+                requestsPerSecond, requestsPerSecond * windowSeconds, CLOCK));
   }
 }

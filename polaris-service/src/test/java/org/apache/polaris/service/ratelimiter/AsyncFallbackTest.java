@@ -55,7 +55,7 @@ public class AsyncFallbackTest {
           ConfigOverride.config("rateLimiter.factory.type", "mock"),
           ConfigOverride.config("rateLimiter.factory.requestsPerSecond", "0"),
           ConfigOverride.config("rateLimiter.factory.windowSeconds", "0"),
-          ConfigOverride.config("rateLimiter.factory.delaySeconds", "999"));
+          ConfigOverride.config("rateLimiter.factory.neverFinishConstruction", "true"));
 
   private static String userToken;
   private static String realm;

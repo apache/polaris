@@ -21,9 +21,10 @@ package org.apache.polaris.service.ratelimiter;
 /** Interface for rate limiting requests */
 public interface RateLimiter {
   /**
-   * This signifies that a request is being made. That is, the rate limiter should count the request at this point.
+   * This signifies that a request is being made. That is, the rate limiter should count the request
+   * at this point.
    *
    * @return Whether the request is allowed to proceed by the rate limiter
-   *  */
+   */
   boolean tryAcquire();
 }
