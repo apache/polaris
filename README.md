@@ -60,6 +60,10 @@ insert into db1.table1 values (1, 'a');
 select * from db1.table1;
 ```
 
+Apache Polaris supports the following optional build options:
+- `-PeclipseLink=true` – Enables the EclipseLink extension.
+- `-PeclipseLinkDeps=[groupId]:[artifactId]:[version],...` – Specifies one or more additional dependencies for EclipseLink (e.g., JDBC drivers), separated by commas.
+
 ### More build and run options
 Running in Docker
 - `docker build -t localhost:5001/polaris:latest .` - To build the image.
