@@ -48,6 +48,7 @@ Apache Polaris is organized into the following modules:
  
 Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
+(_Note_: For the very first run. `git clone https://github.com/tabular-io/docker-spark-iceberg.git && cd docker-spark-iceberg && docker-compose up`. This starts rest endpoint at 8181.)
 - `./gradlew assemble` - To skip tests.
 - `./gradlew test` - To run unit tests and integration tests.
 - `./gradlew runApp` - To run the Polaris server locally on localhost:8181. 
