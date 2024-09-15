@@ -20,7 +20,7 @@
 
 # Configuring Apache Polaris (Incubating) for Production
 
-The default `polaris-server.yml` configuration is intended for develoment and testing. When deploying Polaris in production, there are several best practices to keep in mind.
+The default `polaris-server.yml` configuration is intended for development and testing. When deploying Polaris in production, there are several best practices to keep in mind.
 
 ## Security
 
@@ -56,7 +56,7 @@ Be sure to secure your metastore backend since it will be storing credentials an
 
 ### Configuring EclipseLink
 
-To use [EclipseLink](https://eclipse.dev/eclipselink/) for metastore management, specify the configuration `metaStoreManager.conf-file` to point to an [EclipseLink `persistence.xml` file](https://eclipse.dev/eclipselink/documentation/2.5/solutions/testingjpa002.htm). This file, local to the Polaris service, will contain information on what database to use for metastore management and how to connect to it.
+To use [EclipseLink](https://eclipse.dev/eclipselink/) for metastore management, specify the configuration `metaStoreManager.conf-file` to point to an [EclipseLink `persistence.xml` file](https://eclipse.dev/eclipselink/documentation/4.0/solutions/solutions.html#TESTINGJPA002). This file, local to the Polaris service, will contain information on what database to use for metastore management and how to connect to it.
 
 ### Bootstrapping
 
