@@ -20,7 +20,7 @@
 services:
   polaris:
     build:
-      context: .
+      context: ../../
       network: host
     ports:
       - "8181:8181"
@@ -37,7 +37,7 @@ services:
       retries: 5
   jupyter:
     build:
-      context: .
+      context: ../../
       dockerfile: ./notebooks/Dockerfile
       network: host
     ports:
@@ -57,4 +57,4 @@ volumes:
     driver_opts:
       o: bind
       type: none
-      device: ./notebooks
+      device: ../../notebooks
