@@ -61,8 +61,8 @@ class PolarisSequenceUtil {
 
   /**
    * Prepare the `PolarisSequenceUtil` to generate IDs. This may run a failing query, so it should
-   * be called for the first time outside the context of a transaction.
-   * TODO: after a sufficient amount of time to migrate existing usage, this can be removed or altered
+   * be called for the first time outside the context of a transaction. TODO: after a sufficient
+   * amount of time to migrate existing usage, this can be removed or altered
    */
   public static void initialize(EntityManager session) {
     // Trigger cleanup of the POLARIS_SEQ if it is present
@@ -73,8 +73,8 @@ class PolarisSequenceUtil {
         try {
           LOGGER.info("Checking if the sequence POLARIS_SEQ exists");
           String checkSequenceQuery =
-              "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_name IN " +
-                  "('polaris_seq', 'POLARIS_SEQ')";
+              "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_name IN "
+                  + "('polaris_seq', 'POLARIS_SEQ')";
           int sequenceExists =
               ((Number) session.createNativeQuery(checkSequenceQuery).getSingleResult()).intValue();
 
