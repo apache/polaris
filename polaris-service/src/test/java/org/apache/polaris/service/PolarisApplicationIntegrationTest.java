@@ -26,6 +26,7 @@ import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
@@ -654,14 +655,21 @@ public class PolarisApplicationIntegrationTest {
       request = request.header("header" + i, "" + i);
     }
 
-    try (Response response =
-        request
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .post(Entity.json(new PrincipalRole("r")))) {
-      assertThat(response)
-          .returns(
-              Response.Status.REQUEST_HEADER_FIELDS_TOO_LARGE.getStatusCode(), Response::getStatus);
+    try {
+      try (Response response =
+          request
+              .header("Authorization", "Bearer " + userToken)
+              .header(REALM_PROPERTY_KEY, realm)
+              .post(Entity.json(new PrincipalRole("r")))) {
+        assertThat(response)
+            .returns(
+                Response.Status.REQUEST_HEADER_FIELDS_TOO_LARGE.getStatusCode(),
+                Response::getStatus);
+      }
+    } catch (ProcessingException e) {
+      // In some runtime environments the request above will return a 431 but in others it'll result
+      // in a ProcessingException from the socket being closed. The test asserts that one of those
+      // things happens.
     }
   }
 
