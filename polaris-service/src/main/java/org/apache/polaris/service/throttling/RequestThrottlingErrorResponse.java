@@ -26,19 +26,20 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * limits
  */
 public class RequestThrottlingErrorResponse {
-  public enum Error {
+  public enum RequestThrottlingErrorType {
     REQUEST_TOO_LARGE,
     ;
   }
 
-  private final Error error;
+  private final RequestThrottlingErrorType errorType;
 
   @JsonCreator
-  public RequestThrottlingErrorResponse(@JsonProperty("error") Error error) {
-    this.error = error;
+  public RequestThrottlingErrorResponse(
+      @JsonProperty("error_type") RequestThrottlingErrorType errorType) {
+    this.errorType = errorType;
   }
 
-  public Error getError() {
-    return error;
+  public RequestThrottlingErrorType getErrorType() {
+    return errorType;
   }
 }

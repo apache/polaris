@@ -36,7 +36,7 @@ public class StreamReadConstraintsExceptionMapper
         .type(MediaType.APPLICATION_JSON_TYPE)
         .entity(
             new RequestThrottlingErrorResponse(
-                RequestThrottlingErrorResponse.Error.REQUEST_TOO_LARGE))
+                RequestThrottlingErrorResponse.RequestThrottlingErrorType.REQUEST_TOO_LARGE))
         .build();
   }
 }

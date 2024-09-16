@@ -151,12 +151,13 @@ public class PolarisApplicationConfig extends Configuration {
 
   @JsonProperty("maxRequestBodyBytes")
   public void setMaxRequestBodyBytes(long maxRequestBodyBytes) {
-    if (maxRequestBodyBytes == 0) {
-      // The underlying library that we use to implement the limit treats -1 and 0 as the same, so
-      // we block 0 to prevent ambiguity.
+    if (maxRequestBodyBytes <= 0 && maxRequestBodyBytes != -1) {
+      // The underlying library that we use to implement the limit treats all values <= 0 as the
+      // same, so
+      // we block all but -1 to prevent ambiguity.
       throw new IllegalArgumentException(
           String.format(
-              "maxRequestBodyBytes may not be 0. Use %d to specify no limit.",
+              "maxRequestBodyBytes must be a positive integer or %d to specify no limit.",
               REQUEST_BODY_BYTES_NO_LIMIT));
     }
     this.maxRequestBodyBytes = maxRequestBodyBytes;

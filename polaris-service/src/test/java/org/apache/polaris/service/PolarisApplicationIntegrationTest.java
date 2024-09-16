@@ -684,8 +684,10 @@ public class PolarisApplicationIntegrationTest {
           .matches(
               r ->
                   r.readEntity(RequestThrottlingErrorResponse.class)
-                      .getError()
-                      .equals(RequestThrottlingErrorResponse.Error.REQUEST_TOO_LARGE));
+                      .getErrorType()
+                      .equals(
+                          RequestThrottlingErrorResponse.RequestThrottlingErrorType
+                              .REQUEST_TOO_LARGE));
     }
   }
 }
