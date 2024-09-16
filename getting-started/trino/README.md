@@ -24,10 +24,10 @@ This getting started guide provides a docker-compose file to set up [Trino](http
 ## Run the docker-compose file
 To start the docker-compose file, run this command from the repo's root directory:
 ```
-docker-compose -f getting-started/trino/docker-compose-trino.yml up 
+docker-compose -f getting-started/trino/docker-compose.yml up 
 ```
 
-## Run Trino queries via Trino ClI
+## Run Trino queries via Trino CLI
 To access the Trino CLI, run this command
 ```
 docker exec -it trino-trino-1 trino
