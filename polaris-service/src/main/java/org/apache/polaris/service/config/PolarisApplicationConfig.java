@@ -153,8 +153,7 @@ public class PolarisApplicationConfig extends Configuration {
   public void setMaxRequestBodyBytes(long maxRequestBodyBytes) {
     if (maxRequestBodyBytes <= 0 && maxRequestBodyBytes != -1) {
       // The underlying library that we use to implement the limit treats all values <= 0 as the
-      // same, so
-      // we block all but -1 to prevent ambiguity.
+      // same, so we block all but -1 to prevent ambiguity.
       throw new IllegalArgumentException(
           String.format(
               "maxRequestBodyBytes must be a positive integer or %d to specify no limit.",
