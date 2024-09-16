@@ -35,8 +35,7 @@ public interface RateLimiterFactory extends Discoverable {
    *
    * @param key The rate limiting key. Rate limiters may optionally choose to discriminate their
    *     behavior by the key.
-   * @param clock The clock which tells you the current time
    * @return a Future with the constructed RateLimiter
    */
-  Future<RateLimiter> createRateLimiter(String key, Clock clock);
+  Future<RateLimiter> createRateLimiter(String key);
 }

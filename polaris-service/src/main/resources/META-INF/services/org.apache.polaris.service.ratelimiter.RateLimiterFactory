@@ -18,3 +18,4 @@
 #
 
 org.apache.polaris.service.ratelimiter.DefaultRateLimiterFactory
+org.apache.polaris.service.ratelimiter.NoOpRateLimiterFactory

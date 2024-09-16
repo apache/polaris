@@ -41,7 +41,7 @@ public class MockRateLimiterFactory implements RateLimiterFactory {
   public boolean neverFinishConstruction;
 
   @Override
-  public Future<RateLimiter> createRateLimiter(String key, Clock clock) {
+  public Future<RateLimiter> createRateLimiter(String key) {
     if (neverFinishConstruction) {
       // This future will never finish
       return new CompletableFuture<>();

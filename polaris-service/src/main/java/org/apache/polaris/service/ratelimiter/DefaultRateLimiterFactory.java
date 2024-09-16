@@ -36,10 +36,10 @@ public class DefaultRateLimiterFactory implements RateLimiterFactory {
   private double windowSeconds;
 
   @Override
-  public Future<RateLimiter> createRateLimiter(String key, Clock clock) {
+  public Future<RateLimiter> createRateLimiter(String key) {
     return CompletableFuture.supplyAsync(
         () ->
             new OpenTelemetryRateLimiter(
-                requestsPerSecond, requestsPerSecond * windowSeconds, clock));
+                requestsPerSecond, requestsPerSecond * windowSeconds, new ClockImpl()));
   }
 }

@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.polaris.core.context.CallContext;
@@ -47,7 +48,7 @@ public class RateLimiterFilter implements Filter {
   private static final Clock CLOCK = new ClockImpl();
 
   private final RateLimiterConfig config;
-  private final Map<String, RateLimiter> perRealmLimiters = new ConcurrentHashMap<>();
+  private final Map<String, Future<RateLimiter>> perRealmLimiters = new ConcurrentHashMap<>();
 
   public RateLimiterFilter(RateLimiterConfig config) {
     this.config = config;
@@ -67,16 +68,10 @@ public class RateLimiterFilter implements Filter {
   }
 
   private RateLimiter maybeBlockToGetRateLimiter(String realm) {
-    return perRealmLimiters.computeIfAbsent(realm, this::createRateLimiterBlocking);
-  }
-
-  /** Creates a rate limiter, enforcing a timeout on how long creation can take. */
-  private RateLimiter createRateLimiterBlocking(String key) {
     try {
-      return config
-          .getRateLimiterFactory()
-          .createRateLimiter(key, CLOCK)
-          .get(config.getConstructionTimeoutMillis(), TimeUnit.MILLISECONDS);
+      return perRealmLimiters.computeIfAbsent(realm, (key) -> config
+              .getRateLimiterFactory()
+              .createRateLimiter(key)).get(config.getConstructionTimeoutMillis(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
       return getDefaultRateLimiterOnConstructionFailed(e);
     }

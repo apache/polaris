@@ -26,7 +26,7 @@ import java.util.concurrent.Future;
 @JsonTypeName("no-op")
 public class NoOpRateLimiterFactory implements RateLimiterFactory {
   @Override
-  public Future<RateLimiter> createRateLimiter(String key, Clock clock) {
+  public Future<RateLimiter> createRateLimiter(String key) {
     return CompletableFuture.supplyAsync(NoOpRateLimiter::new);
   }
 }
