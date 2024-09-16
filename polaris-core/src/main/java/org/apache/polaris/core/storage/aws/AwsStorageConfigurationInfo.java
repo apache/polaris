@@ -18,16 +18,15 @@
  */
 package org.apache.polaris.core.storage.aws;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import java.util.List;
 import java.util.OptionalInt;
-import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.immutables.PolarisImmutable;
-import org.immutables.value.Value;
 import org.immutables.value.Value.Check;
 import org.jetbrains.annotations.Nullable;
 
@@ -61,15 +60,15 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
   @Override
   public abstract List<String> getAllowedLocations();
 
-  @Value.Default
+  @JsonIgnore
   @Override
-  public StorageType getStorageType() {
+  public final StorageType getStorageType() {
     return StorageType.S3;
   }
 
-  @Value.Default
+  @JsonIgnore
   @Override
-  public String getFileIoImplClassName() {
+  public final String getFileIoImplClassName() {
     return "org.apache.iceberg.aws.s3.S3FileIO";
   }
 
@@ -82,11 +81,6 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
 
   @Nullable
   public abstract String getUserARN();
-
-  @Value.Default
-  protected Set<String> getAllowedArnDomains() {
-    return Set.of("aws");
-  }
 
   @Override
   protected OptionalInt getMaxAllowedLocations() {
@@ -105,8 +99,9 @@ public abstract class AwsStorageConfigurationInfo extends PolarisStorageConfigur
     if (arn.isEmpty()) {
       throw new IllegalArgumentException("ARN cannot be null or empty");
     }
-    if (getAllowedArnDomains().stream().noneMatch(s -> arn.contains(":" + s + ":"))) {
-      throw new IllegalArgumentException("ARN domain temporarily not supported: " + arn);
+    // specifically throw errors for China and Gov
+    if (arn.contains("aws-cn") || arn.contains("aws-us-gov")) {
+      throw new IllegalArgumentException("AWS China or Gov Cloud are temporarily not supported");
     }
     if (!Pattern.matches(ROLE_ARN_PATTERN, arn)) {
       throw new IllegalArgumentException("Invalid role ARN format");
