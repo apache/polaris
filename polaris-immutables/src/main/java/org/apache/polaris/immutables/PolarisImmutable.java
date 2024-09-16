@@ -25,14 +25,13 @@ import org.immutables.value.Value;
 
 /**
  * A <a href="http://immutables.github.io/style.html#custom-immutable-annotation">Custom
- * {@code @Value.Immutable}</a> using {@code allParameters=true, lazyhash=true,
- * forceJacksonPropertyNames = false, clearBuilder = true}.
+ * {@code @Value.Immutable}</a> using {@code lazyhash=true, forceJacksonPropertyNames = false,
+ * clearBuilder = true, depluralize = true, and JavaBeans-style getters}.
  */
 @Documented
 @Target(ElementType.TYPE)
 @Value.Style(
     defaults = @Value.Immutable(lazyhash = true),
-    allParameters = true,
     forceJacksonPropertyNames = false,
     clearBuilder = true,
     depluralize = true,

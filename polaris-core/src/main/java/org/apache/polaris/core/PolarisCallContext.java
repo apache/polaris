@@ -22,6 +22,7 @@ import java.time.Clock;
 import java.time.ZoneId;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -31,12 +32,16 @@ import org.jetbrains.annotations.NotNull;
 @PolarisImmutable
 public interface PolarisCallContext {
 
+  @Value.Parameter(order = 0)
   PolarisMetaStoreSession getMetaStore();
 
+  @Value.Parameter(order = 1)
   PolarisDiagnostics getDiagServices();
 
+  @Value.Parameter(order = 2)
   PolarisConfigurationStore getConfigurationStore();
 
+  @Value.Parameter(order = 3)
   Clock getClock();
 
   static PolarisCallContext of(
