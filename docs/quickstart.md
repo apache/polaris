@@ -121,7 +121,7 @@ At this point, Polaris is running.
 
 ## Bootstrapping Polaris
 
-For this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. It also means that Polaris will automatically bootstrap itself with root credentials. For more information on how to configure Polaris for production usage, see the [docs](./configuring-polaris-for-production.md).
+For this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. It also means that Polaris will automatically bootstrap itself with root credentials. For more information on how to configure Polaris for production usage, see the [docs](#configuring-apache-polaris-incubating-for-production).
 
 When Polaris is launched using in-memory mode the root principal credentials can be found in stdout on initial startup. For example:
 
@@ -138,7 +138,7 @@ export CLIENT_SECRET=<client-secret>
 
 ## Defining a Catalog
 
-In Polaris, the [catalog](./entities.md#catalog) is the top-level entity that objects like [tables](./entities.md#table) and [views](./entities.md#view) are organized under. With a Polaris service running, you can create a catalog like so:
+In Polaris, the [catalog](#tag/Polaris-Entities/Catalog) is the top-level entity that objects like [tables](#tag/Polaris-Entities/Table) and [views](#tag/Polaris-Entities/View) are organized under. With a Polaris service running, you can create a catalog like so:
 
 ```shell
 cd ~/polaris
@@ -158,14 +158,14 @@ This will create a new catalog called **quickstart_catalog**.
 
 The `DEFAULT_BASE_LOCATION` you provide will be the default location that objects in this catalog should be stored in, and the `ROLE_ARN` you provide should be a [Role ARN](https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html) with access to read and write data in that location. These credentials will be provided to engines reading data from the catalog once they have authenticated with Polaris using credentials that have access to those resources.
 
-If you’re using a storage type other than S3, such as Azure, you’ll provide a different type of credential than a Role ARN. For more details on supported storage types, see the [docs](./entities.md#storage-type).
+If you’re using a storage type other than S3, such as Azure, you’ll provide a different type of credential than a Role ARN. For more details on supported storage types, see the [docs](#storage-type).
 
-Additionally, if Polaris is running somewhere other than `localhost:8181`, you can specify the correct hostname and port by providing `--host` and `--port` flags. For the full set of options supported by the CLI, please refer to the [docs](./command-line-interface.md).
+Additionally, if Polaris is running somewhere other than `localhost:8181`, you can specify the correct hostname and port by providing `--host` and `--port` flags. For the full set of options supported by the CLI, please refer to the [docs](https://github.com/apache/polaris/blob/main/docs/command-line-interface.md).
 
 
 ### Creating a Principal and Assigning it Privileges
 
-With a catalog created, we can create a [principal](./entities.md#principal) that has access to manage that catalog. For details on how to configure the Polaris CLI, see [the section above](#defining-a-catalog) or refer to the [docs](./command-line-interface.md).
+With a catalog created, we can create a [principal](#tag/Polaris-Catalog-Entities/Principal) that has access to manage that catalog. For details on how to configure the Polaris CLI, see [the section above](#defining-a-catalog) or refer to the [docs](https://github.com/apache/polaris/blob/main/docs/command-line-interface.md).
 
 ```shell
 ./polaris \
@@ -200,7 +200,7 @@ When the `principals create` command completes successfully, it will return the 
 {"clientId": "XXXX", "clientSecret": "YYYY"}
 ```
 
-Now, we grant the principal the [principal role](./entities.md#principal-role) we created, and grant the [catalog role](./entities.md#catalog-role) the principal role we created. For more information on these entities, please refer to the linked documentation.
+Now, we grant the principal the [principal role](#tag/Polaris-Entities/Principal-Role) we created, and grant the [catalog role](#tag/Polaris-Entities/Catalog-Role) the principal role we created. For more information on these entities, please refer to the linked documentation.
 
 ```shell
 ./polaris \
@@ -225,7 +225,7 @@ Now, we’ve linked our principal to the catalog via roles like so:
 
 ![Principal to Catalog](./img/quickstart/privilege-illustration-1.png "Principal to Catalog")
 
-In order to give this principal the ability to interact with the catalog, we must assign some [privileges](./entities.md#privilege). For the time being, we will give this principal the ability to fully manage content in our new catalog. We can do this with the CLI like so:
+In order to give this principal the ability to interact with the catalog, we must assign some [privileges](#tag/Polaris-Entities/Privilege). For the time being, we will give this principal the ability to fully manage content in our new catalog. We can do this with the CLI like so:
 
 ```shell
 ./polaris \
@@ -239,7 +239,7 @@ In order to give this principal the ability to interact with the catalog, we mus
   CATALOG_MANAGE_CONTENT
 ```
 
-This grants the [catalog privileges](./entities.md#privilege) `CATALOG_MANAGE_CONTENT` to our catalog role, linking everything together like so:
+This grants the [catalog privileges](#tag/Polaris-Entities/Privilege) `CATALOG_MANAGE_CONTENT` to our catalog role, linking everything together like so:
 
 ![Principal to Catalog with Catalog Role](./img/quickstart/privilege-illustration-2.png "Principal to Catalog with Catalog Role")
 
