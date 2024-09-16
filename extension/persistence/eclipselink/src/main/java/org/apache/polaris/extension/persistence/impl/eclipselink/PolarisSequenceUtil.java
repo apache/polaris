@@ -91,17 +91,18 @@ class PolarisSequenceUtil {
               "Encountered an exception when checking sequence or calling `NEXTVAL('POLARIS_SEQ')`",
               e);
         }
-        result.ifPresent(r -> {
-          ModelSequenceId modelSequenceId = new ModelSequenceId();
-          modelSequenceId.setId(r);
+        result.ifPresent(
+            r -> {
+              ModelSequenceId modelSequenceId = new ModelSequenceId();
+              modelSequenceId.setId(r);
 
-          // Persist the new ID:
-          session.persist(modelSequenceId);
-          session.flush();
+              // Persist the new ID:
+              session.persist(modelSequenceId);
+              session.flush();
 
-          // Clean the sequence:
-          removeSequence(session);
-        });
+              // Clean the sequence:
+              removeSequence(session);
+            });
       }
       initialized.set(true);
     }
