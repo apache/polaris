@@ -44,7 +44,7 @@ public class RateLimiterFilter implements Filter {
   private static final Logger LOGGER = LoggerFactory.getLogger(RateLimiterFilter.class);
   private static final RateLimiter NO_OP_LIMITER = new NoOpRateLimiter();
   private static final RateLimiter ALWAYS_REJECT_LIMITER =
-      new OpenTelemetryRateLimiter(0, 0, new ClockImpl());
+      new TokenBucketRateLimiter(0, 0, new ClockImpl());
   private static final Clock CLOCK = new ClockImpl();
 
   private final RateLimiterConfig config;
@@ -69,9 +69,9 @@ public class RateLimiterFilter implements Filter {
 
   private RateLimiter maybeBlockToGetRateLimiter(String realm) {
     try {
-      return perRealmLimiters.computeIfAbsent(realm, (key) -> config
-              .getRateLimiterFactory()
-              .createRateLimiter(key)).get(config.getConstructionTimeoutMillis(), TimeUnit.MILLISECONDS);
+      return perRealmLimiters
+          .computeIfAbsent(realm, (key) -> config.getRateLimiterFactory().createRateLimiter(key))
+          .get(config.getConstructionTimeoutMillis(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
       return getDefaultRateLimiterOnConstructionFailed(e);
     }

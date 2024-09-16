@@ -48,7 +48,7 @@ public class MockRateLimiterFactory implements RateLimiterFactory {
     }
     return CompletableFuture.supplyAsync(
         () ->
-            new OpenTelemetryRateLimiter(
+            new TokenBucketRateLimiter(
                 requestsPerSecond, requestsPerSecond * windowSeconds, CLOCK));
   }
 }

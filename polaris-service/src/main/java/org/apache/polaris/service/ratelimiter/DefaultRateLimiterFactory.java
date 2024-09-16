@@ -37,9 +37,8 @@ public class DefaultRateLimiterFactory implements RateLimiterFactory {
 
   @Override
   public Future<RateLimiter> createRateLimiter(String key) {
-    return CompletableFuture.supplyAsync(
-        () ->
-            new OpenTelemetryRateLimiter(
-                requestsPerSecond, requestsPerSecond * windowSeconds, new ClockImpl()));
+    return CompletableFuture.completedFuture(
+        new TokenBucketRateLimiter(
+            requestsPerSecond, requestsPerSecond * windowSeconds, new ClockImpl()));
   }
 }

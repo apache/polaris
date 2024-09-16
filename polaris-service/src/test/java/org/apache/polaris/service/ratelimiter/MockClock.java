@@ -28,6 +28,10 @@ public class MockClock implements Clock {
     nanos = millis * 1_000_000;
   }
 
+  public void setSeconds(long seconds) {
+    setMillis(seconds * 1000);
+  }
+
   @Override
   public long nanoTime() {
     return nanos;

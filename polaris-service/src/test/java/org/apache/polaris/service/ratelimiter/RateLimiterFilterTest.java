@@ -39,7 +39,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
   PolarisConnectionExtension.class,
   SnowmanCredentialsExtension.class
 })
-public class RateLimiterTest {
+public class RateLimiterFilterTest {
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
       new DropwizardAppExtension<>(
           PolarisApplication.class,
@@ -56,7 +56,7 @@ public class RateLimiterTest {
   @BeforeAll
   public static void setup(PolarisConnectionExtension.PolarisToken userToken) {
     realm = PolarisConnectionExtension.getTestRealm(PolarisApplicationIntegrationTest.class);
-    RateLimiterTest.userToken = userToken.token();
+    RateLimiterFilterTest.userToken = userToken.token();
   }
 
   @Test
