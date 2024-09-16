@@ -19,20 +19,20 @@
 
 # Getting Started with Trino and Apache Polaris
 
-This getting started guide provides a docker-compose file to set up [Trino](https://trino.io/) with Apache Polaris. Apache Polaris is configured as an Iceberg REST Catalog in Trino. 
+This getting started guide provides a `docker-compose` file to set up [Trino](https://trino.io/) with Apache Polaris. Apache Polaris is configured as an Iceberg REST Catalog in Trino. 
 
-## Run the docker-compose file
-To start the docker-compose file, run this command from the repo's root directory:
+## Run the `docker-compose` file
+To start the `docker-compose` file, run this command from the repo's root directory:
 ```
 docker-compose -f getting-started/trino/docker-compose.yml up 
 ```
 
 ## Run Trino queries via Trino CLI
-To access the Trino CLI, run this command
+To access the Trino CLI, run this command:
 ```
 docker exec -it trino-trino-1 trino
 ```
-Note, `trino-trino-1` is the name docker container.
+Note, `trino-trino-1` is the name of the Docker container.
 
 Example Trino queries:
 ```
@@ -47,6 +47,6 @@ SELECT * FROM iceberg.tpch.test_polaris;
 ```
 
 ## Note
-The polaris catalog setup script use the credential `principal:root;realm:default-realm`. This credential is used so users do not need to fetch credentials from Apache Polaris' console output.
+The Polaris catalog setup script uses the credential `principal:root;realm:default-realm`. This credential is used so users do not need to fetch credentials from Apache Polaris' console output.
 
 An example catalog is created in Apache Polaris using the `curl` command. See `create-polaris-catalog.sh` for details.
