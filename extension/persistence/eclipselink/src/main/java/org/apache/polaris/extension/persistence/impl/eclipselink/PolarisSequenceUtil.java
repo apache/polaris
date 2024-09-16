@@ -70,26 +70,20 @@ class PolarisSequenceUtil {
     if (!initialized.get()) {
       if (databasePlatform instanceof PostgreSQLPlatform) {
         Optional<Long> result = Optional.empty();
-        try {
-          LOGGER.info("Checking if the sequence POLARIS_SEQ exists");
-          String checkSequenceQuery =
-              "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_name IN "
-                  + "('polaris_seq', 'POLARIS_SEQ')";
-          int sequenceExists =
-              ((Number) session.createNativeQuery(checkSequenceQuery).getSingleResult()).intValue();
+        LOGGER.info("Checking if the sequence POLARIS_SEQ exists");
+        String checkSequenceQuery =
+            "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_name IN "
+                + "('polaris_seq', 'POLARIS_SEQ')";
+        int sequenceExists =
+            ((Number) session.createNativeQuery(checkSequenceQuery).getSingleResult()).intValue();
 
-          if (sequenceExists > 0) {
-            LOGGER.info("POLARIS_SEQ exists, calling NEXTVAL");
-            long queryResult =
-                (long) session.createNativeQuery("SELECT NEXTVAL('POLARIS_SEQ')").getSingleResult();
-            result = Optional.of(queryResult);
-          } else {
-            LOGGER.info("POLARIS_SEQ does not exist, skipping NEXTVAL");
-          }
-        } catch (Exception e) {
-          LOGGER.info(
-              "Encountered an exception when checking sequence or calling `NEXTVAL('POLARIS_SEQ')`",
-              e);
+        if (sequenceExists > 0) {
+          LOGGER.info("POLARIS_SEQ exists, calling NEXTVAL");
+          long queryResult =
+              (long) session.createNativeQuery("SELECT NEXTVAL('POLARIS_SEQ')").getSingleResult();
+          result = Optional.of(queryResult);
+        } else {
+          LOGGER.info("POLARIS_SEQ does not exist, skipping NEXTVAL");
         }
         result.ifPresent(
             r -> {
