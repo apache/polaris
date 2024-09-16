@@ -61,8 +61,9 @@ class PolarisSequenceUtil {
 
   /**
    * Prepare the `PolarisSequenceUtil` to generate IDs. This may run a failing query, so it should
-   * be called for the first time outside the context of a transaction. TODO: after a sufficient
-   * amount of time to migrate existing usage, this can be removed or altered
+   * be called for the first time outside the context of a transaction. This method should be called
+   * before any other methods.
+   * TODO: after a sufficient this can eventually be removed or altered
    */
   public static void initialize(EntityManager session) {
     // Trigger cleanup of the POLARIS_SEQ if it is present
@@ -109,8 +110,8 @@ class PolarisSequenceUtil {
   }
 
   /**
-   * Generates a new ID from `POLARIS_SEQUENCE` or `POLARIS_SEQ` depending on availability. If
-   * `POLARIS_SEQ` exists, it will be renamed to `POLARIS_SEQ_UNUSED`.
+   * Generates a new ID from `POLARIS_SEQUENCE` or `POLARIS_SEQ` depending on availability. `initialize`
+   * should be called before this method.
    */
   public static Long getNewId(EntityManager session) {
     throwIfNotInitialized();
