@@ -37,8 +37,16 @@ class PolarisSequenceUtil {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisSequenceUtil.class);
 
   private static AtomicBoolean sequenceCleaned = new AtomicBoolean(false);
+  private static AtomicBoolean initialized = new AtomicBoolean(false);
 
   private PolarisSequenceUtil() {}
+
+  /* If `initialize` was never called, throw an exception */
+  private static void throwIfNotInitialized() {
+    if (!initialized.get()) {
+      throw new IllegalStateException("Sequence util has not been initialized");
+    }
+  }
 
   /* Get the database platform associated with the `EntityManager` */
   private static DatabasePlatform getDatabasePlatform(EntityManager session) {
@@ -96,6 +104,7 @@ class PolarisSequenceUtil {
   public static void initialize(EntityManager session) {
     // Trigger cleanup of the POLARIS_SEQ if it is present
     getSequenceId(session);
+    initialized.set(true);
   }
 
   /**
@@ -103,6 +112,8 @@ class PolarisSequenceUtil {
    * `POLARIS_SEQ` exists, it will be renamed to `POLARIS_SEQ_UNUSED`.
    */
   public static Long getNewId(EntityManager session) {
+    throwIfNotInitialized();
+
     ModelSequenceId modelSequenceId = new ModelSequenceId();
 
     // If a legacy sequence ID is present, use that as an override:
