@@ -117,6 +117,9 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
     // init store
     this.store = store;
+    try (EntityManager session = emf.createEntityManager()) {
+      this.store.initialize(session);
+    }
     this.storageIntegrationProvider = storageIntegrationProvider;
   }
 
@@ -281,8 +284,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
           LOGGER.debug("transaction committed");
         }
       } catch (Exception e) {
+        LOGGER.debug("Rolling back transaction due to an error", e);
         tr.rollback();
-        LOGGER.debug("transaction rolled back", e);
 
         if (e instanceof OptimisticLockException
             || e.getCause() instanceof OptimisticLockException) {
