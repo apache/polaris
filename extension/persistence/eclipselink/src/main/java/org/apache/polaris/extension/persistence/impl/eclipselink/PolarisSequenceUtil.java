@@ -36,8 +36,7 @@ import org.slf4j.LoggerFactory;
 class PolarisSequenceUtil {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisSequenceUtil.class);
 
-  private static AtomicBoolean sequenceCleaned = new AtomicBoolean(false);
-  private static AtomicBoolean initialized = new AtomicBoolean(false);
+  private static final AtomicBoolean initialized = new AtomicBoolean(false);
 
   private PolarisSequenceUtil() {}
 
@@ -60,16 +59,22 @@ class PolarisSequenceUtil {
     session.createNativeQuery(renameSequenceQuery).executeUpdate();
   }
 
-  // TODO simplify this logic once all usage can safely be assumed to have migrated from POLARIS_SEQ
-  private static synchronized Optional<Long> getSequenceId(EntityManager session) {
+  /**
+   * Prepare the `PolarisSequenceUtil` to generate IDs. This may run a failing query, so it should
+   * be called for the first time outside the context of a transaction.
+   * TODO: after a sufficient amount of time to migrate existing usage, this can be removed or altered
+   */
+  public static void initialize(EntityManager session) {
+    // Trigger cleanup of the POLARIS_SEQ if it is present
     DatabasePlatform databasePlatform = getDatabasePlatform(session);
-    if (databasePlatform instanceof PostgreSQLPlatform) {
-      Optional<Long> result = Optional.empty();
-      if (!sequenceCleaned.get()) {
+    if (!initialized.get()) {
+      if (databasePlatform instanceof PostgreSQLPlatform) {
+        Optional<Long> result = Optional.empty();
         try {
           LOGGER.info("Checking if the sequence POLARIS_SEQ exists");
           String checkSequenceQuery =
-              "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_name IN ('polaris_seq', 'POLARIS_SEQ')";
+              "SELECT COUNT(*) FROM information_schema.sequences WHERE sequence_name IN " +
+                  "('polaris_seq', 'POLARIS_SEQ')";
           int sequenceExists =
               ((Number) session.createNativeQuery(checkSequenceQuery).getSingleResult()).intValue();
 
@@ -89,22 +94,9 @@ class PolarisSequenceUtil {
         if (result.isPresent()) {
           removeSequence(session);
         }
-        sequenceCleaned.set(true);
       }
-      return result;
-    } else {
-      return Optional.empty();
+      initialized.set(true);
     }
-  }
-
-  /**
-   * Prepare the `PolarisSequenceUtil` to generate IDs. This may run a failing query, so it should
-   * be called for the first time outside the context of a transaction.
-   */
-  public static void initialize(EntityManager session) {
-    // Trigger cleanup of the POLARIS_SEQ if it is present
-    getSequenceId(session);
-    initialized.set(true);
   }
 
   /**
@@ -115,9 +107,6 @@ class PolarisSequenceUtil {
     throwIfNotInitialized();
 
     ModelSequenceId modelSequenceId = new ModelSequenceId();
-
-    // If a legacy sequence ID is present, use that as an override:
-    getSequenceId(session).ifPresent(modelSequenceId::setId);
 
     // Persist the new ID:
     session.persist(modelSequenceId);
