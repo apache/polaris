@@ -18,7 +18,10 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-/** Token bucket implementation of a Polaris RateLimiter. */
+/**
+ * Token bucket implementation of a Polaris RateLimiter. Acquires tokens at a fixed rate and has a
+ * maximum amount of tokens. Each "acquire" costs 1 token.
+ */
 public class TokenBucketRateLimiter implements RateLimiter {
   private final double tokensPerNano;
   private final double maxTokens;
@@ -36,6 +39,11 @@ public class TokenBucketRateLimiter implements RateLimiter {
     lastAcquireNanos = clock.nanoTime();
   }
 
+  /**
+   * Tries to acquire and spend 1 token. Doesn't block if a token isn't available.
+   *
+   * @return whether a token was successfully acquired & spent
+   */
   @Override
   public synchronized boolean tryAcquire() {
     // Grant tokens for the time that has passed since our last tryAcquire()
