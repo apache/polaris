@@ -29,7 +29,7 @@ metaStoreManager:
 ```
 `conf-file` points to the EclipseLink configuration file and `persistence-unit` tells which unit from the configuration file to use for database connection.
 
-E.g., `polaris-dev` and `polaris` persistence units are configured in the same configuration file to connect to development database and production database respectively. Updating `persistence-unit` from `polaris-dev` to `polaris` switch from the development to the production.
+E.g., `polaris-dev` and `polaris` persistence units are configured in `persistence.xml` to connect to development database and production database respectively. Updating `persistence-unit` from `polaris-dev` to `polaris` switch from the development to the production.
 
 `conf-file` by default points to the embedded resource file `META-INF/persistence.xml` in `polaris-eclipselink` module.
 To specify an external configuration file,
@@ -37,12 +37,12 @@ To specify an external configuration file,
 2) Use `conf-file: /tmp/conf.jar!/persistence.xml`.
 
 ## EclipseLink Configuration - persistence.xml
-Configuration file `persistence.xml` is to configure the database connection properties, and the properties vary based on different databases and database setup.
+The configuration file `persistence.xml` is used to set up the database connection properties, which can differ depending on the type of database and its configuration.
 
-Check out [default persistence.xml](https://github.com/apache/polaris/blob/main/extension/persistence/eclipselink/src/main/resources/META-INF/persistence.xml) for the complete sample and the following shows the database connection properties against file-based H2 database. `Polaris` has a separate database for each realm. Internally `{realm}` in `jakarta.persistence.jdbc.url` is replaced by actual realm name so Polaris server connects to different database given the different realm.
+Check out [default persistence.xml](https://github.com/apache/polaris/blob/main/extension/persistence/eclipselink/src/main/resources/META-INF/persistence.xml) for the complete sample and the following shows the database connection properties against file-based H2 database. Polaris creates and connects to a separate database for each realm. Specifically, `{realm}` placeholder in `jakarta.persistence.jdbc.url` is substituted with the actual realm name, allowing the Polaris server to connect to different databases based on the realm.
 
 > Note: some database systems such as Postgres don't create databases automatically. Database admins need to create them manually before running Polaris server.
-```angular2html
+```xml
 <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
     <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
     <class>org.apache.polaris.core.persistence.models.ModelEntity</class>
@@ -64,15 +64,16 @@ Check out [default persistence.xml](https://github.com/apache/polaris/blob/main/
 ```
 
 Build with H2 dependency and run Polaris service:
-> polaris> ./gradlew --no-daemon --info -PeclipseLink=true -PeclipseLinkDeps=com.h2database:h2:2.3.232 clean shadowJar
->
-> polaris> java -jar  polaris-service/build/libs/polaris-service-*.jar server ./polaris-server.yml
+```bash
+polaris> ./gradlew --no-daemon --info -PeclipseLink=true -PeclipseLinkDeps=com.h2database:h2:2.3.232 clean shadowJar
+polaris> java -jar  polaris-service/build/libs/polaris-service-*.jar server ./polaris-server.yml
+```
 
 ### Postgres
 
 The following shows a sample configuration for Postgres database.
 
-```angular2html
+```xml
 <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
   <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
   <class>org.apache.polaris.core.persistence.models.ModelEntity</class>
@@ -94,6 +95,7 @@ The following shows a sample configuration for Postgres database.
 </persistence-unit>
 ```
 Build with Postgres dependency and run Polaris service:
-> polaris> ./gradlew --no-daemon --info -PeclipseLink=true -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 clean shadowJar
->
-> polaris> java -jar  polaris-service/build/libs/polaris-service-*.jar server ./polaris-server.yml
+```bash
+polaris> ./gradlew --no-daemon --info -PeclipseLink=true -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 clean shadowJar
+polaris> java -jar  polaris-service/build/libs/polaris-service-*.jar server ./polaris-server.yml
+```
