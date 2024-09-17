@@ -56,7 +56,7 @@ Be sure to secure your metastore backend since it will be storing credentials an
 
 ### Configuring EclipseLink
 
-To use [EclipseLink](https://eclipse.dev/eclipselink/) for metastore management, specify the configuration `metaStoreManager.conf-file` to point to an [EclipseLink `persistence.xml` file](https://eclipse.dev/eclipselink/documentation/4.0/solutions/solutions.html#TESTINGJPA002). This file, local to the Polaris service, contains details of the database used for metastore management and the connection settings. For more information, refer to [metastore documentation](./metastores.md) for details.
+To use EclipseLink for metastore management, specify the configuration `metaStoreManager.conf-file` to point to an EclipseLink `persistence.xml` file. This file, local to the Polaris service, contains details of the database used for metastore management and the connection settings. For more information, refer to [metastore documentation](./metastores.md) for details.
 
 ### Bootstrapping
 
