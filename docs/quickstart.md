@@ -165,7 +165,7 @@ Additionally, if Polaris is running somewhere other than `localhost:8181`, you c
 
 ### Creating a Principal and Assigning it Privileges
 
-With a catalog created, we can create a [principal](#tag/Polaris-Catalog-Entities/Principal) that has access to manage that catalog. For details on how to configure the Polaris CLI, see [the section above](#defining-a-catalog) or refer to the [docs](https://github.com/apache/polaris/blob/main/docs/command-line-interface.md).
+With a catalog created, we can create a [principal](#tag/Polaris-Entities/Principal) that has access to manage that catalog. For details on how to configure the Polaris CLI, see [the section above](#defining-a-catalog) or refer to the [docs](https://github.com/apache/polaris/blob/main/docs/command-line-interface.md).
 
 ```shell
 ./polaris \

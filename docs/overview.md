@@ -117,7 +117,7 @@ A service connection represents a REST-compatible engine (such as Apache Spark&t
 Catalog. When creating a new service connection, the Polaris administrator grants the service principal that is created with the new service 
 connection either a new or existing principal role. A principal role is a resource in Polaris that you can use to logically group Polaris 
 service principals together and grant privileges on securable objects. For more information, see [Principal role](#tag/Access-Control/Principal-role "Principal role"). Polaris uses a role-based access control (RBAC) model to grant service principals access to resources. For more information, 
-see [Access control](#tag/Access-Control "Access control"). For a diagram of this model, see [RBAC model](access-control.md#rbac-model "RBAC model").
+see [Access control](#tag/Access-Control "Access control"). For a diagram of this model, see [RBAC model](#tag/Access-Control/RBAC-model "RBAC model").
 
 If the Polaris administrator grants the service principal for the new service connection a new principal role, the service principal
 doesn't have any privileges granted to it yet. When securing the catalog that the new service connection will connect to, the Polaris
