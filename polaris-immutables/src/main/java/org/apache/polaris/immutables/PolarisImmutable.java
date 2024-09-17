@@ -25,15 +25,26 @@ import org.immutables.value.Value;
 
 /**
  * A <a href="http://immutables.github.io/style.html#custom-immutable-annotation">Custom
- * {@code @Value.Immutable}</a> using {@code lazyhash=true, forceJacksonPropertyNames = false,
- * clearBuilder = true, depluralize = true, and JavaBeans-style getters}.
+ * {@code @Value.Immutable}</a> with the following defaults:
+ *
+ * <ul>
+ *   <li><b>lazyhash</b> - Set to {@code true} to generate hash code lazily for performance
+ *       benefits.
+ *   <li><b>clearBuilder</b> - Set to {@code true} to be able to reuse builder instances.
+ *   <li><b>depluralize</b> - Set to {@code true} to use singular names for collections and arrays
+ *       in JavaBeans-style accessors and builder methods.
+ *   <li><b>get</b> - Accessor prefixes set to {@code get*} and {@code is*} to emulate
+ *       JavaBeans-style getters.
+ *   <li><b>forceJacksonPropertyNames</b> - Set to {@code false} since we use JavaBeans-style
+ *       getters, and for better compatibility with custom naming strategies.
+ * </ul>
  */
 @Documented
 @Target(ElementType.TYPE)
 @Value.Style(
     defaults = @Value.Immutable(lazyhash = true),
-    forceJacksonPropertyNames = false,
     clearBuilder = true,
     depluralize = true,
-    get = {"get*", "is*"})
+    get = {"get*", "is*"},
+    forceJacksonPropertyNames = false)
 public @interface PolarisImmutable {}

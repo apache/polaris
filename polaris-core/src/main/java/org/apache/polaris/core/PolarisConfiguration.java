@@ -38,7 +38,7 @@ public interface PolarisConfiguration<T> {
     return catalogConfig().isPresent();
   }
 
-  @Value.Lazy
+  @Value.NonAttribute
   default String catalogConfigOrThrow() {
     return catalogConfig()
         .orElseThrow(
@@ -47,7 +47,6 @@ public interface PolarisConfiguration<T> {
                     "Attempted to read a catalog config key from a configuration that doesn't have one."));
   }
 
-  @Value.NonAttribute
   default T cast(Object value) {
     @SuppressWarnings("unchecked")
     T cast = (T) defaultValue().getClass().cast(value);
