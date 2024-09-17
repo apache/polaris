@@ -60,11 +60,12 @@ Check out [default persistence.xml](https://github.com/apache/polaris/blob/main/
       <property name="jakarta.persistence.jdbc.password" value=""/>
       <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
     </properties>
-  </persistence-unit>
+</persistence-unit>
 ```
 
 Build with H2 dependency and run Polaris service:
 > polaris> ./gradlew --no-daemon --info -PeclipseLink=true -PeclipseLinkDeps=com.h2database:h2:2.3.232 clean shadowJar
+>
 > polaris> java -jar  polaris-service/build/libs/polaris-service-*.jar server ./polaris-server.yml
 
 ### Postgres
@@ -72,7 +73,7 @@ Build with H2 dependency and run Polaris service:
 The following shows a sample configuration for Postgres database.
 
 ```angular2html
-  <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
+<persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
   <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
   <class>org.apache.polaris.core.persistence.models.ModelEntity</class>
   <class>org.apache.polaris.core.persistence.models.ModelEntityActive</class>
@@ -94,5 +95,5 @@ The following shows a sample configuration for Postgres database.
 ```
 Build with Postgres dependency and run Polaris service:
 > polaris> ./gradlew --no-daemon --info -PeclipseLink=true -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 clean shadowJar
+>
 > polaris> java -jar  polaris-service/build/libs/polaris-service-*.jar server ./polaris-server.yml
-
