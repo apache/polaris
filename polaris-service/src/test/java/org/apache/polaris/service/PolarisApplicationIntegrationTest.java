@@ -26,7 +26,9 @@ import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -74,6 +76,7 @@ import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
+import org.apache.polaris.service.throttling.RequestThrottlingErrorResponse;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
@@ -636,6 +639,65 @@ public class PolarisApplicationIntegrationTest {
                           realm)))
           .isInstanceOf(BadRequestException.class)
           .hasMessage("Malformed request: Please specify a warehouse");
+    }
+  }
+
+  @Test
+  public void testRequestHeaderTooLarge() {
+    Invocation.Builder request =
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
+            .request("application/json");
+
+    // The default limit is 8KiB and each of these headers is at least 8 bytes, so 1500 definitely
+    // exceeds the limit
+    for (int i = 0; i < 1500; i++) {
+      request = request.header("header" + i, "" + i);
+    }
+
+    try {
+      try (Response response =
+          request
+              .header("Authorization", "Bearer " + userToken)
+              .header(REALM_PROPERTY_KEY, realm)
+              .post(Entity.json(new PrincipalRole("r")))) {
+        assertThat(response)
+            .returns(
+                Response.Status.REQUEST_HEADER_FIELDS_TOO_LARGE.getStatusCode(),
+                Response::getStatus);
+      }
+    } catch (ProcessingException e) {
+      // In some runtime environments the request above will return a 431 but in others it'll result
+      // in a ProcessingException from the socket being closed. The test asserts that one of those
+      // things happens.
+    }
+  }
+
+  @Test
+  public void testRequestBodyTooLarge() {
+    // The size is set to be higher than the limit in polaris-server-integrationtest.yml
+    Entity<PrincipalRole> largeRequest = Entity.json(new PrincipalRole("r".repeat(1000001)));
+
+    try (Response response =
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
+            .request("application/json")
+            .header("Authorization", "Bearer " + userToken)
+            .header(REALM_PROPERTY_KEY, realm)
+            .post(largeRequest)) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
+          .matches(
+              r ->
+                  r.readEntity(RequestThrottlingErrorResponse.class)
+                      .getErrorType()
+                      .equals(
+                          RequestThrottlingErrorResponse.RequestThrottlingErrorType
+                              .REQUEST_TOO_LARGE));
     }
   }
 }

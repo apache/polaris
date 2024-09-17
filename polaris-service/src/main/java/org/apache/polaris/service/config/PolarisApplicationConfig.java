@@ -19,6 +19,7 @@
 package org.apache.polaris.service.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Preconditions;
 import io.dropwizard.core.Configuration;
 import java.util.HashMap;
 import java.util.List;
@@ -54,6 +55,9 @@ public class PolarisApplicationConfig extends Configuration {
   private String awsAccessKey;
   private String awsSecretKey;
   private FileIOFactory fileIOFactory;
+
+  public static final long REQUEST_BODY_BYTES_NO_LIMIT = -1;
+  private long maxRequestBodyBytes = REQUEST_BODY_BYTES_NO_LIMIT;
 
   @JsonProperty("metaStoreManager")
   public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
@@ -144,6 +148,22 @@ public class PolarisApplicationConfig extends Configuration {
   @JsonProperty("featureConfiguration")
   public void setFeatureConfiguration(Map<String, Object> featureConfiguration) {
     this.configurationStore = new DefaultConfigurationStore(featureConfiguration);
+  }
+
+  @JsonProperty("maxRequestBodyBytes")
+  public void setMaxRequestBodyBytes(long maxRequestBodyBytes) {
+    // The underlying library that we use to implement the limit treats all values <= 0 as the
+    // same, so we block all but -1 to prevent ambiguity.
+    Preconditions.checkArgument(
+        maxRequestBodyBytes == -1 || maxRequestBodyBytes > 0,
+        "maxRequestBodyBytes must be a positive integer or %s to specify no limit.",
+        REQUEST_BODY_BYTES_NO_LIMIT);
+
+    this.maxRequestBodyBytes = maxRequestBodyBytes;
+  }
+
+  public long getMaxRequestBodyBytes() {
+    return maxRequestBodyBytes;
   }
 
   public PolarisConfigurationStore getConfigurationStore() {

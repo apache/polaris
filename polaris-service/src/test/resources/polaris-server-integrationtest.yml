@@ -149,3 +149,6 @@ logging:
       archivedLogFilenamePattern: ./logs/iceberg-rest-%d.log.gz
       # The maximum number of log files to archive.
       archivedFileCount: 14
+
+# Limits the size of request bodies sent to Polaris. -1 means no limit.
+maxRequestBodyBytes: 1000000
