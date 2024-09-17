@@ -147,7 +147,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       // Currently eclipseLink can only support configuration as a resource inside a jar. To support
       // external configuration, persistence.xml needs be placed inside a jar and here is to add the
       // jar to the classpath.
-      // Supported configuration file: META-INFO/persistence.xml, /tmp/conf.jar!/persistence.xml
+      // Supported configuration file: META-INF/persistence.xml, /tmp/conf.jar!/persistence.xml
       int splitPosition = confFile.indexOf("!/");
       if (splitPosition != -1) {
         String jarPrefixPath = confFile.substring(0, splitPosition);
