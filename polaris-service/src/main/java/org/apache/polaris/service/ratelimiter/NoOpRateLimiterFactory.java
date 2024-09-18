@@ -27,6 +27,6 @@ import java.util.concurrent.Future;
 public class NoOpRateLimiterFactory implements RateLimiterFactory {
   @Override
   public Future<RateLimiter> createRateLimiter(String key) {
-    return CompletableFuture.supplyAsync(NoOpRateLimiter::new);
+    return CompletableFuture.completedFuture(new NoOpRateLimiter());
   }
 }
