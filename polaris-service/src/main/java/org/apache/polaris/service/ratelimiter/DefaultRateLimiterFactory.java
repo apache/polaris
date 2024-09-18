@@ -24,8 +24,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
 
 /**
- * Simple rate limiter factory that just constructs an OpenTelemetryRateLimiter and is
- * indiscriminate of the key
+ * Simple rate limiter factory that just constructs a TokenBucketRateLimiter and is indiscriminate
+ * of the key
  */
 @JsonTypeName("default")
 public class DefaultRateLimiterFactory implements RateLimiterFactory {
