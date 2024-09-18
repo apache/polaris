@@ -29,6 +29,7 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
+import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
@@ -76,13 +78,17 @@ public class PolarisSparkIntegrationTest {
       new S3MockContainer("3.9.1").withInitialBuckets("my-bucket,my-old-bucket");
   private static PolarisConnectionExtension.PolarisToken polarisToken;
   private static SparkSession spark;
-  private static String realm;
+  private String realm;
 
   @BeforeAll
-  public static void setup(PolarisConnectionExtension.PolarisToken polarisToken) {
+  public static void setup(
+      PolarisConnectionExtension.PolarisToken polarisToken, @PolarisRealm String realm)
+      throws IOException {
     s3Container.start();
     PolarisSparkIntegrationTest.polarisToken = polarisToken;
-    realm = PolarisConnectionExtension.getTestRealm(PolarisSparkIntegrationTest.class);
+
+    // Set up test location
+    PolarisConnectionExtension.createTestDir(realm);
   }
 
   @AfterAll
@@ -91,7 +97,8 @@ public class PolarisSparkIntegrationTest {
   }
 
   @BeforeEach
-  public void before() {
+  public void before(@PolarisRealm String realm) {
+    this.realm = realm;
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
@@ -235,6 +242,10 @@ public class PolarisSparkIntegrationTest {
       for (Row table : tables) {
         onSpark("DROP TABLE " + namespace.getString(0) + "." + table.getString(1));
       }
+      List<Row> views = onSpark("SHOW VIEWS IN " + namespace.getString(0)).collectAsList();
+      for (Row view : views) {
+        onSpark("DROP VIEW " + namespace.getString(0) + "." + view.getString(1));
+      }
       onSpark("DROP NAMESPACE " + namespace.getString(0));
     }
     try (Response response =
@@ -344,6 +355,20 @@ public class PolarisSparkIntegrationTest {
     onSpark("REFRESH TABLE mytb1");
     rowCount = onSpark("SELECT * FROM mytb1").count();
     assertThat(rowCount).isEqualTo(4);
+  }
+
+  @Test
+  public void testCreateView() {
+    long namespaceCount = onSpark("SHOW NAMESPACES").count();
+    assertThat(namespaceCount).isEqualTo(0L);
+
+    onSpark("CREATE NAMESPACE ns1");
+    onSpark("USE ns1");
+    onSpark("CREATE TABLE tb1 (col1 integer, col2 string)");
+    onSpark("INSERT INTO tb1 VALUES (1, 'a'), (2, 'b'), (3, 'c')");
+    onSpark("CREATE VIEW view1 AS SELECT * FROM tb1");
+    long recordCount = onSpark("SELECT * FROM view1").count();
+    assertThat(recordCount).isEqualTo(3);
   }
 
   private LoadTableResponse loadTable(String catalog, String namespace, String table) {

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage;
 
+import java.net.URI;
 import org.jetbrains.annotations.NotNull;
 
 public class StorageUtil {
@@ -39,5 +40,26 @@ public class StorageUtil {
     } else {
       return leftPath + rightPath;
     }
+  }
+
+  /**
+   * Given a path, extract the bucket (authority).
+   *
+   * @param path A path to parse
+   * @return The bucket/authority of the path
+   */
+  public static @NotNull String getBucket(String path) {
+    URI uri = URI.create(path);
+    return getBucket(uri);
+  }
+
+  /**
+   * Given a URI, extract the bucket (authority).
+   *
+   * @param uri A path to parse
+   * @return The bucket/authority of the URI
+   */
+  public static @NotNull String getBucket(URI uri) {
+    return uri.getAuthority();
   }
 }

@@ -19,8 +19,8 @@
 
 [versions]
 hadoop = "3.4.0"
-iceberg = "1.5.0"
-dropwizard = "4.0.7"
+iceberg = "1.6.1"
+dropwizard = "4.0.8"
 slf4j = "2.0.13"
 swagger = "1.6.14"
 
@@ -33,18 +33,18 @@ swagger = "1.6.14"
 # (aka mention of the dependency removed).
 #
 assertj-core = { module = "org.assertj:assertj-core", version = "3.26.3" }
-auth0-jwt = { module = "com.auth0:java-jwt", version = "4.2.1" }
+auth0-jwt = { module = "com.auth0:java-jwt", version = "4.4.0" }
 awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.26.31" }
-azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.25" }
+azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.27" }
 bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version = "1.78.1" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.1.8" }
-commons-codec1 = { module = "commons-codec:commons-codec", version = "1.17.0" }
+commons-codec1 = { module = "commons-codec:commons-codec", version = "1.17.1" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
-dropwizard-bom = { module = "io.dropwizard:dropwizard-bom", version = "4.0.7" }
+dropwizard-bom = { module = "io.dropwizard:dropwizard-bom", version.ref = "dropwizard" }
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.4" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.29.2" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.42.0" }
-guava = { module = "com.google.guava:guava", version = "33.2.1-jre" }
+guava = { module = "com.google.guava:guava", version = "33.3.0-jre" }
 h2 = { module = "com.h2database:h2", version = "2.3.232" }
 hadoop-client-api = { module = "org.apache.hadoop:hadoop-client-api", version.ref = "hadoop" }
 hadoop-common = { module = "org.apache.hadoop:hadoop-common", version.ref = "hadoop" }
@@ -76,4 +76,3 @@ threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 openapi-generator = { id = "org.openapi.generator", version = "7.6.0" }
 rat = { id = "org.nosphere.apache.rat", version = "0.8.1" }
 spotless = { id = "com.diffplug.spotless", version = "6.25.0" }
-shadow = { id = "com.gradleup.shadow", version = "8.3.0" }

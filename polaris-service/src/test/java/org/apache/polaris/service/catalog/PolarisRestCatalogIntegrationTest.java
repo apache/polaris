@@ -30,14 +30,11 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.apache.commons.io.FileUtils;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.BaseTransaction;
 import org.apache.iceberg.CatalogProperties;
@@ -87,6 +84,7 @@ import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisConnectionExtension.PolarisToken;
+import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension.SnowmanCredentials;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -131,23 +129,24 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private RESTCatalog restCatalog;
   private String currentCatalogName;
   private String userToken;
-  private static String realm;
+  private String realm;
 
   private final String catalogBaseLocation =
       S3_BUCKET_BASE + "/" + System.getenv("USER") + "/path/to/data";
 
   @BeforeAll
-  public static void setup() throws IOException {
-    realm = PolarisConnectionExtension.getTestRealm(PolarisRestCatalogIntegrationTest.class);
-
-    Path testDir = Path.of("build/test_data/iceberg/" + realm);
-    FileUtils.deleteQuietly(testDir.toFile());
-    Files.createDirectories(testDir);
+  public static void setup(@PolarisRealm String realm) throws IOException {
+    // Set up test location
+    PolarisConnectionExtension.createTestDir(realm);
   }
 
   @BeforeEach
   public void before(
-      TestInfo testInfo, PolarisToken adminToken, SnowmanCredentials snowmanCredentials) {
+      TestInfo testInfo,
+      PolarisToken adminToken,
+      SnowmanCredentials snowmanCredentials,
+      @PolarisRealm String realm) {
+    this.realm = realm;
     userToken =
         TokenUtils.getTokenFromSecrets(
             EXT.client(),
@@ -159,7 +158,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         .getTestMethod()
         .ifPresent(
             method -> {
-              currentCatalogName = method.getName();
+              currentCatalogName = method.getName() + UUID.randomUUID();
               AwsStorageConfigInfo awsConfigModel =
                   AwsStorageConfigInfo.builder()
                       .setRoleArn(TEST_ROLE_ARN)
@@ -691,7 +690,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                     .buildTable(TableIdentifier.of(Namespace.of("ns1", "ns1a"), "tbl2"), SCHEMA)
                     .withLocation(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override")
                     .create())
-        .isInstanceOf(BadRequestException.class)
+        .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("because it conflicts with existing table or namespace");
   }
 

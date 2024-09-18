@@ -47,6 +47,7 @@ import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
@@ -623,7 +624,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setMetadataLocation(maliciousMetadataFile);
     update.setTableName(table.name());
     update.setTableUuid(UUID.randomUUID().toString());
-    update.setTimestamp(230950845L);
+    update.setTimestamp(230950849L);
     updateRequest.setPayload(update);
 
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, updateRequest))
@@ -914,6 +915,71 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   }
 
   @Test
+  public void testUpdateNotificationRejectOutOfOrderTimestamp() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    final String tableLocation = "s3://externally-owned-bucket/table/";
+    final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
+    BasePolarisCatalog catalog = catalog();
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+
+    long timestamp = 230950845L;
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.CREATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(tableMetadataLocation);
+    update.setTableName(table.name());
+    update.setTableUuid(UUID.randomUUID().toString());
+    update.setTimestamp(timestamp);
+    request.setPayload(update);
+
+    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+
+    fileIO.addFile(
+        tableMetadataLocation,
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
+
+    catalog.sendNotification(table, request);
+
+    // Send a notification with a timestamp same as that of the previous notification, should fail
+    NotificationRequest request2 = new NotificationRequest();
+    request2.setNotificationType(NotificationType.UPDATE);
+    TableUpdateNotification update2 = new TableUpdateNotification();
+    update2.setMetadataLocation(tableLocation + "metadata/v2.metadata.json");
+    update2.setTableName(table.name());
+    update2.setTableUuid(UUID.randomUUID().toString());
+    update2.setTimestamp(timestamp);
+    request2.setPayload(update2);
+
+    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request2))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining(
+            "A notification with a newer timestamp has been processed for table parent.child1.table");
+
+    // Verify that DROP notification won't be rejected due to timestamp
+    NotificationRequest request3 = new NotificationRequest();
+    request3.setNotificationType(NotificationType.DROP);
+    TableUpdateNotification update3 = new TableUpdateNotification();
+    update3.setMetadataLocation(tableLocation + "metadata/v2.metadata.json");
+    update3.setTableName(table.name());
+    update3.setTableUuid(UUID.randomUUID().toString());
+    update3.setTimestamp(timestamp);
+    request3.setPayload(update3);
+
+    Assertions.assertThat(catalog.sendNotification(table, request3))
+        .as("Drop notification should not fail despite timestamp being outdated")
+        .isTrue();
+  }
+
+  @Test
   public void testUpdateNotificationWhenTableExistsFileSpecifiesDisallowedLocation() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
@@ -1144,6 +1210,67 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         new TaskFileIOSupplier(createMockMetaStoreManagerFactory(), new DefaultFileIOFactory())
             .apply(taskEntity);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(InMemoryFileIO.class);
+  }
+
+  @Test
+  public void testDropTableWithPurgeDisabled() {
+    // Create a catalog with purge disabled:
+    String noPurgeCatalogName = CATALOG_NAME + "_no_purge";
+    String storageLocation = "s3://testDropTableWithPurgeDisabled/data";
+    AwsStorageConfigInfo noPurgeStorageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setExternalId("externalId")
+            .setUserArn("aws::a:user:arn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .build();
+    adminService.createCatalog(
+        new CatalogEntity.Builder()
+            .setName(noPurgeCatalogName)
+            .setDefaultBaseLocation(storageLocation)
+            .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+            .addProperty(PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+            .addProperty(
+                PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+            .addProperty(PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
+            .setStorageConfigurationInfo(noPurgeStorageConfigModel, storageLocation)
+            .build());
+    RealmContext realmContext = () -> "realm";
+    CallContext callContext = CallContext.of(realmContext, polarisContext);
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            callContext, entityManager, authenticatedRoot, noPurgeCatalogName);
+    BasePolarisCatalog noPurgeCatalog =
+        new BasePolarisCatalog(
+            entityManager,
+            callContext,
+            passthroughView,
+            authenticatedRoot,
+            Mockito.mock(),
+            new DefaultFileIOFactory());
+    noPurgeCatalog.initialize(
+        noPurgeCatalogName,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    if (this.requiresNamespaceCreate()) {
+      ((SupportsNamespaces) noPurgeCatalog).createNamespace(NS);
+    }
+
+    Assertions.assertThatPredicate(noPurgeCatalog::tableExists)
+        .as("Table should not exist before create")
+        .rejects(TABLE);
+
+    Table table = noPurgeCatalog.buildTable(TABLE, SCHEMA).create();
+    Assertions.assertThatPredicate(noPurgeCatalog::tableExists)
+        .as("Table should exist after create")
+        .accepts(TABLE);
+    Assertions.assertThat(table).isInstanceOf(BaseTable.class);
+
+    // Attempt to drop the table:
+    Assertions.assertThatThrownBy(() -> noPurgeCatalog.dropTable(TABLE, true))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining(PolarisConfiguration.DROP_WITH_PURGE_ENABLED.key);
   }
 
   private TableMetadata createSampleTableMetadata(String tableLocation) {

@@ -24,5 +24,7 @@ dependencies {
   implementation(baselibs.errorprone)
   implementation(baselibs.idea.ext)
   implementation(baselibs.license.report)
+  implementation(baselibs.nexus.publish)
+  implementation(baselibs.shadow)
   implementation(baselibs.spotless)
 }

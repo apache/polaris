@@ -127,32 +127,33 @@ dependencies {
 
 openApiValidate { inputSpec = "$rootDir/spec/polaris-management-service.yml" }
 
-tasks.register<GenerateTask>("generatePolarisService").configure {
-  inputSpec = "$rootDir/spec/polaris-management-service.yml"
-  generatorName = "jaxrs-resteasy"
-  outputDir = "$projectDir/build/generated"
-  modelPackage = "org.apache.polaris.core.admin.model"
-  ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
-  removeOperationIdPrefix = true
-  templateDir = "$rootDir/server-templates"
-  globalProperties.put("apis", "false")
-  globalProperties.put("models", "")
-  globalProperties.put("apiDocs", "false")
-  globalProperties.put("modelTests", "false")
-  configOptions.put("useBeanValidation", "true")
-  configOptions.put("sourceFolder", "src/main/java")
-  configOptions.put("useJakartaEe", "true")
-  configOptions.put("generateBuilders", "true")
-  configOptions.put("generateConstructorWithAllArgs", "true")
-  additionalProperties.put("apiNamePrefix", "Polaris")
-  additionalProperties.put("apiNameSuffix", "Api")
-  additionalProperties.put("metricsPrefix", "polaris")
-  serverVariables = mapOf("basePath" to "api/v1")
+val generatePolarisService by
+  tasks.registering(GenerateTask::class) {
+    inputSpec = "$rootDir/spec/polaris-management-service.yml"
+    generatorName = "jaxrs-resteasy"
+    outputDir = "$projectDir/build/generated"
+    modelPackage = "org.apache.polaris.core.admin.model"
+    ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
+    removeOperationIdPrefix = true
+    templateDir = "$rootDir/server-templates"
+    globalProperties.put("apis", "false")
+    globalProperties.put("models", "")
+    globalProperties.put("apiDocs", "false")
+    globalProperties.put("modelTests", "false")
+    configOptions.put("useBeanValidation", "true")
+    configOptions.put("sourceFolder", "src/main/java")
+    configOptions.put("useJakartaEe", "true")
+    configOptions.put("generateBuilders", "true")
+    configOptions.put("generateConstructorWithAllArgs", "true")
+    additionalProperties.put("apiNamePrefix", "Polaris")
+    additionalProperties.put("apiNameSuffix", "Api")
+    additionalProperties.put("metricsPrefix", "polaris")
+    serverVariables = mapOf("basePath" to "api/v1")
+  }
 
-  doFirst { delete(outputDir.get()) }
+listOf("sourcesJar", "compileJava").forEach { task ->
+  tasks.named(task) { dependsOn(generatePolarisService) }
 }
-
-tasks.named("compileJava").configure { dependsOn("generatePolarisService") }
 
 sourceSets {
   main { java { srcDir(project.layout.buildDirectory.dir("generated/src/main/java")) } }

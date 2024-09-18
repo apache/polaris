@@ -22,18 +22,21 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
 
+/** Used to manage unique IDs in Polaris */
 @Entity
 @Table(name = "POLARIS_SEQUENCE")
 public class ModelSequenceId {
   @Id
-  @SequenceGenerator(
-      name = "sequenceGen",
-      sequenceName = "POLARIS_SEQ",
-      initialValue = 1000,
-      allocationSize = 25)
-  @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sequenceGen")
+  @GeneratedValue(strategy = GenerationType.AUTO)
   private Long id;
+
+  public void setId(Long id) {
+    this.id = id;
+  }
+
+  public Long getId() {
+    return id;
+  }
 }

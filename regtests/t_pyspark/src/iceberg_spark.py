@@ -35,7 +35,7 @@ class IcebergSparkSession:
           polaris_url="http://polaris:8181/api/catalog",
           catalog_name="catalog_name"
   ) as spark:
-      spark.sql(f"USE snowflake.{hybrid_executor.database}.{hybrid_executor.schema}")
+      spark.sql(f"USE catalog.{hybrid_executor.database}.{hybrid_executor.schema}")
       table_list = spark.sql("SHOW TABLES").collect()
   """
 
@@ -72,7 +72,7 @@ class IcebergSparkSession:
     """Initial method for Iceberg Spark session. Creates a Spark session with specified configs.
     """
     packages = [
-      "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.0",
+      "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2",
       "org.apache.hadoop:hadoop-aws:3.4.0",
       "software.amazon.awssdk:bundle:2.23.19",
       "software.amazon.awssdk:url-connection-client:2.23.19",
