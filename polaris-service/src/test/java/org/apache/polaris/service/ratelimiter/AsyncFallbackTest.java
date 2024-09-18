@@ -25,9 +25,9 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.core.Response;
 import java.util.function.Consumer;
 import org.apache.polaris.service.PolarisApplication;
-import org.apache.polaris.service.PolarisApplicationIntegrationTest;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
+import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -61,8 +61,9 @@ public class AsyncFallbackTest {
   private static String realm;
 
   @BeforeAll
-  public static void setup(PolarisConnectionExtension.PolarisToken userToken) {
-    realm = PolarisConnectionExtension.getTestRealm(PolarisApplicationIntegrationTest.class);
+  public static void setup(
+      PolarisConnectionExtension.PolarisToken userToken, @PolarisRealm String polarisRealm) {
+    realm = polarisRealm;
     AsyncFallbackTest.userToken = userToken.token();
   }
 
