@@ -53,6 +53,13 @@ import org.jetbrains.annotations.Nullable;
 public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreManager {
   private final PolarisMetaStoreManager delegate;
 
+  // TODO: If we want to support the semantic of opening a transaction in which multiple
+  // reads and writes occur on the same entities, where the reads are expected to see the writes
+  // within the transaction workspace that haven't actually been committed, we can augment this
+  // class by allowing these pendingUpdates to represent the latest state of the entity if we
+  // also increment entityVersion. We'd need to store both a "latest view" of all updated entities
+  // to serve reads within the same transaction while also storing the ordered list of
+  // pendingUpdates that ultimately need to be applied in order within the real MetaStoreManager.
   private final List<EntityWithPath> pendingUpdates = new ArrayList<>();
 
   public TransactionWorkspaceMetaStoreManager(PolarisMetaStoreManager delegate) {
