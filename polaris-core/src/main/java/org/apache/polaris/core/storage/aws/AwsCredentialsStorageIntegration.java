@@ -98,6 +98,7 @@ public class AwsCredentialsStorageIntegration
             .addAction("s3:GetObject")
             .addAction("s3:GetObjectVersion");
     Map<String, IamStatement.Builder> bucketListStatmentBuilder = new HashMap<>();
+    Map<String, IamStatement.Builder> bucketGetLocationStatmentBuilder = new HashMap<>();
 
     String arnPrefix = getArnPrefixFor(roleArn);
     Stream.concat(readLocations.stream(), writeLocations.stream())
@@ -109,10 +110,11 @@ public class AwsCredentialsStorageIntegration
                   // TODO add support for CN and GOV
                   IamResource.create(
                       arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
+              final var bucket = arnPrefix + StorageUtil.getBucket(uri);
               if (allowList) {
                 bucketListStatmentBuilder
                     .computeIfAbsent(
-                        arnPrefix + StorageUtil.getBucket(uri),
+                        bucket,
                         (String key) ->
                             IamStatement.builder()
                                 .effect(IamEffect.ALLOW)
@@ -123,6 +125,13 @@ public class AwsCredentialsStorageIntegration
                         "s3:prefix",
                         StorageUtil.concatFilePrefixes(trimLeadingSlash(uri.getPath()), "*", "/"));
               }
+              bucketGetLocationStatmentBuilder.computeIfAbsent(
+                  bucket,
+                  key ->
+                      IamStatement.builder()
+                          .effect(IamEffect.ALLOW)
+                          .addAction("s3:GetBucketLocation")
+                          .addResource(key));
             });
 
     if (!writeLocations.isEmpty()) {
@@ -150,6 +159,10 @@ public class AwsCredentialsStorageIntegration
       policyBuilder.addStatement(
           IamStatement.builder().effect(IamEffect.ALLOW).addAction("s3:ListBucket").build());
     }
+
+    bucketGetLocationStatmentBuilder
+        .values()
+        .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
     return policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
   }
 
