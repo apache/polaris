@@ -34,7 +34,6 @@ import io.dropwizard.auth.oauth.OAuthCredentialAuthFilter;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
-import io.dropwizard.core.Configuration;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
@@ -188,7 +187,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     environment
         .servlets()
         .addFilter(
-            "realmContext", new ContextResolverFilter(realmContextResolver, callContextResolver, configuration))
+            "realmContext",
+            new ContextResolverFilter(realmContextResolver, callContextResolver, configuration))
         .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
 
     FileIOFactory fileIOFactory = configuration.getFileIOFactory();

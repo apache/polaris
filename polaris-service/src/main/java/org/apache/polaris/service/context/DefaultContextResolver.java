@@ -91,9 +91,7 @@ public class DefaultContextResolver
 
     if (!parsedProperties.containsKey(REALM_PROPERTY_KEY)) {
       LOGGER.warn(
-          "Failed to parse {} from headers; using {}",
-          REALM_PROPERTY_KEY,
-          getDefaultRealm());
+          "Failed to parse {} from headers; using {}", REALM_PROPERTY_KEY, getDefaultRealm());
       parsedProperties.put(REALM_PROPERTY_KEY, getDefaultRealm());
     }
     return () -> parsedProperties.get(REALM_PROPERTY_KEY);
