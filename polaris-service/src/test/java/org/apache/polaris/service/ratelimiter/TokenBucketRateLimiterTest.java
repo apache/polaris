@@ -94,24 +94,4 @@ public class TokenBucketRateLimiterTest {
     endLatch.await();
     Assertions.assertEquals(maxTokens, numAcquired.get());
   }
-
-  static class RateLimitResultAsserter {
-    private final RateLimiter rateLimiter;
-
-    RateLimitResultAsserter(RateLimiter rateLimiter) {
-      this.rateLimiter = rateLimiter;
-    }
-
-    private void canAcquire(int times) {
-      for (int i = 0; i < times; i++) {
-        Assertions.assertTrue(rateLimiter.tryAcquire());
-      }
-    }
-
-    private void cantAcquire() {
-      for (int i = 0; i < 5; i++) {
-        Assertions.assertFalse(rateLimiter.tryAcquire());
-      }
-    }
-  }
 }

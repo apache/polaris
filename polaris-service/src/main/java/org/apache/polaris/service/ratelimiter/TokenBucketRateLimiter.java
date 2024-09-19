@@ -31,7 +31,7 @@ public class TokenBucketRateLimiter implements RateLimiter {
   private long lastAcquireNanos;
 
   public TokenBucketRateLimiter(long tokensPerSecond, long maxTokens, Clock clock) {
-    this.tokensPerNano = ((double)tokensPerSecond) / 1e9;
+    this.tokensPerNano = ((double) tokensPerSecond) / 1e9;
     this.maxTokens = maxTokens;
     this.clock = clock;
 
