@@ -34,6 +34,7 @@ import io.dropwizard.auth.oauth.OAuthCredentialAuthFilter;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
+import io.dropwizard.core.Configuration;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
@@ -187,7 +188,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     environment
         .servlets()
         .addFilter(
-            "realmContext", new ContextResolverFilter(realmContextResolver, callContextResolver))
+            "realmContext", new ContextResolverFilter(realmContextResolver, callContextResolver, configuration))
         .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
 
     FileIOFactory fileIOFactory = configuration.getFileIOFactory();
@@ -346,11 +347,15 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
   private static class ContextResolverFilter implements Filter {
     private final RealmContextResolver realmContextResolver;
     private final CallContextResolver callContextResolver;
+    private final PolarisApplicationConfig configuration;
 
     public ContextResolverFilter(
-        RealmContextResolver realmContextResolver, CallContextResolver callContextResolver) {
+        RealmContextResolver realmContextResolver,
+        CallContextResolver callContextResolver,
+        PolarisApplicationConfig configuration) {
       this.realmContextResolver = realmContextResolver;
       this.callContextResolver = callContextResolver;
+      this.configuration = configuration;
     }
 
     @Override
@@ -368,7 +373,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
               request.getParameterMap().entrySet().stream()
                   .collect(
                       Collectors.toMap(Map.Entry::getKey, (e) -> ((String[]) e.getValue())[0])),
-              headers);
+              headers,
+              configuration.getDefaultRealm());
       CallContext currentCallContext =
           callContextResolver.resolveCallContext(
               currentRealmContext,

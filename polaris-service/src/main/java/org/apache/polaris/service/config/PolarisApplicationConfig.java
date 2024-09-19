@@ -91,6 +91,7 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   public RealmContextResolver getRealmContextResolver() {
+    realmContextResolver.setDefaultRealm(this.defaultRealm);
     return realmContextResolver;
   }
 
