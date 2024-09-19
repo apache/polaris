@@ -26,7 +26,7 @@ import org.apache.polaris.service.config.HasEntityManagerFactory;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 public abstract class RealmContextResolver implements Discoverable, HasEntityManagerFactory {
-  private String defaultRealm;
+  private String defaultRealm = "default-realm";
 
   public abstract RealmContext resolveRealmContext(
       String requestURL,
