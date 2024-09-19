@@ -348,8 +348,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     private final CallContextResolver callContextResolver;
 
     public ContextResolverFilter(
-        RealmContextResolver realmContextResolver,
-        CallContextResolver callContextResolver) {
+        RealmContextResolver realmContextResolver, CallContextResolver callContextResolver) {
       this.realmContextResolver = realmContextResolver;
       this.callContextResolver = callContextResolver;
     }
