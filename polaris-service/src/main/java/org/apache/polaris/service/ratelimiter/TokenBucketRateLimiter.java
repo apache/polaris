@@ -24,14 +24,14 @@ package org.apache.polaris.service.ratelimiter;
  */
 public class TokenBucketRateLimiter implements RateLimiter {
   private final double tokensPerNano;
-  private final double maxTokens;
+  private final long maxTokens;
   private final Clock clock;
 
   private double tokens;
   private long lastAcquireNanos;
 
-  public TokenBucketRateLimiter(double tokensPerSecond, double maxTokens, Clock clock) {
-    this.tokensPerNano = tokensPerSecond / 1e9;
+  public TokenBucketRateLimiter(long tokensPerSecond, long maxTokens, Clock clock) {
+    this.tokensPerNano = ((double)tokensPerSecond) / 1e9;
     this.maxTokens = maxTokens;
     this.clock = clock;
 

@@ -32,10 +32,10 @@ public class MockRateLimiterFactory implements RateLimiterFactory {
   public static MockClock CLOCK = new MockClock();
 
   @JsonProperty("requestsPerSecond")
-  public double requestsPerSecond;
+  public long requestsPerSecond;
 
   @JsonProperty("windowSeconds")
-  public double windowSeconds;
+  public long windowSeconds;
 
   @JsonProperty("neverFinishConstruction")
   public boolean neverFinishConstruction;

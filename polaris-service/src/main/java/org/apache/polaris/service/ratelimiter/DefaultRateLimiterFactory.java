@@ -30,10 +30,10 @@ import java.util.concurrent.Future;
 @JsonTypeName("default")
 public class DefaultRateLimiterFactory implements RateLimiterFactory {
   @JsonProperty("requestsPerSecond")
-  private double requestsPerSecond;
+  private long requestsPerSecond;
 
   @JsonProperty("windowSeconds")
-  private double windowSeconds;
+  private long windowSeconds;
 
   @Override
   public Future<RateLimiter> createRateLimiter(String key) {

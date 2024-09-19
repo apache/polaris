@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-/** An implementation of our Clock interface using opentelemetry's Clock implementation */
+/** An implementation of our Clock interface that just uses System.nanoTime() */
 public class ClockImpl implements Clock {
   public ClockImpl() {}
 
