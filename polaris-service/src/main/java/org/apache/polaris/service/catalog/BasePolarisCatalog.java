@@ -171,6 +171,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private Map<String, String> catalogProperties;
   private Map<String, String> tableDefaultProperties;
   private final FileIOFactory fileIOFactory;
+  private PolarisMetaStoreManager metaStoreManager;
 
   /**
    * @param entityManager provides handle to underlying PolarisMetaStoreManager with which to
@@ -197,6 +198,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     this.catalogId = catalogEntity.getId();
     this.catalogName = catalogEntity.getName();
     this.fileIOFactory = fileIOFactory;
+    this.metaStoreManager = entityManager.getMetaStoreManager();
   }
 
   @Override
@@ -273,6 +275,10 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       LOGGER.debug("Not initializing default catalogFileIO");
       this.catalogFileIO = null;
     }
+  }
+
+  public void setMetaStoreManager(PolarisMetaStoreManager newMetaStoreManager) {
+    this.metaStoreManager = newMetaStoreManager;
   }
 
   @Override
@@ -489,11 +495,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     NamespaceEntity entity =
         new NamespaceEntity.Builder(namespace)
             .setCatalogId(getCatalogId())
-            .setId(
-                entityManager
-                    .getMetaStoreManager()
-                    .generateNewEntityId(getCurrentPolarisContext())
-                    .getId())
+            .setId(getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
             .setParentId(resolvedParent.getRawLeafEntity().getId())
             .setProperties(metadata)
             .setCreateTimestamp(System.currentTimeMillis())
@@ -513,8 +515,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
     PolarisEntity returnedEntity =
         PolarisEntity.of(
-            entityManager
-                .getMetaStoreManager()
+            getMetaStoreManager()
                 .createEntityIfNotExists(
                     getCurrentPolarisContext(),
                     PolarisEntity.toCoreList(resolvedParent.getRawFullPath()),
@@ -610,8 +611,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // drop if exists and is empty
     PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
     PolarisMetaStoreManager.DropEntityResult dropEntityResult =
-        entityManager
-            .getMetaStoreManager()
+        getMetaStoreManager()
             .dropEntityIfExists(
                 getCurrentPolarisContext(),
                 PolarisEntity.toCoreList(catalogPath),
@@ -663,8 +663,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     List<PolarisEntity> parentPath = resolvedEntities.getRawFullPath();
     PolarisEntity returnedEntity =
         Optional.ofNullable(
-                entityManager
-                    .getMetaStoreManager()
+                getMetaStoreManager()
                     .updateEntityPropertiesIfNotChanged(
                         getCurrentPolarisContext(),
                         PolarisEntity.toCoreList(parentPath),
@@ -696,8 +695,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     List<PolarisEntity> parentPath = resolvedEntities.getRawFullPath();
     PolarisEntity returnedEntity =
         Optional.ofNullable(
-                entityManager
-                    .getMetaStoreManager()
+                getMetaStoreManager()
                     .updateEntityPropertiesIfNotChanged(
                         getCurrentPolarisContext(),
                         PolarisEntity.toCoreList(parentPath),
@@ -743,8 +741,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
     List<PolarisEntity.NameAndId> entities =
         PolarisEntity.toNameAndIdList(
-            entityManager
-                .getMetaStoreManager()
+            getMetaStoreManager()
                 .listEntities(
                     getCurrentPolarisContext(),
                     PolarisEntity.toCoreList(catalogPath),
@@ -885,7 +882,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         entityManager
             .getCredentialCache()
             .getOrGenerateSubScopeCreds(
-                entityManager.getMetaStoreManager(),
+                getMetaStoreManager(),
                 callContext.getPolarisCallContext(),
                 entity,
                 allowList,
@@ -977,7 +974,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           // implementation, then the validation should go through that API instead as follows:
           //
           // PolarisMetaStoreManager.ValidateAccessResult validateResult =
-          //     entityManager.getMetaStoreManager().validateAccessToLocations(
+          //     getMetaStoreManager().validateAccessToLocations(
           //         getCurrentPolarisContext(),
           //         storageInfoHolderEntity.getCatalogId(),
           //         storageInfoHolderEntity.getId(),
@@ -1036,8 +1033,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private void validateNoLocationOverlap(
       String location, List<PolarisEntity> parentPath, String name) {
     PolarisMetaStoreManager.ListEntitiesResult siblingNamespacesResult =
-        entityManager
-            .getMetaStoreManager()
+        getMetaStoreManager()
             .listEntities(
                 callContext.getPolarisCallContext(),
                 parentPath.stream().map(PolarisEntity::toCore).collect(Collectors.toList()),
@@ -1060,8 +1056,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             .map(
                 ns -> {
                   PolarisMetaStoreManager.ListEntitiesResult siblingTablesResult =
-                      entityManager
-                          .getMetaStoreManager()
+                      getMetaStoreManager()
                           .listEntities(
                               callContext.getPolarisCallContext(),
                               parentPath.stream()
@@ -1335,10 +1330,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 .setSubType(PolarisEntitySubType.TABLE)
                 .setBaseLocation(metadata.location())
                 .setId(
-                    entityManager
-                        .getMetaStoreManager()
-                        .generateNewEntityId(getCurrentPolarisContext())
-                        .getId())
+                    getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
                 .build();
       } else {
         existingLocation = entity.getMetadataLocation();
@@ -1539,10 +1531,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 .setCatalogId(getCatalogId())
                 .setSubType(PolarisEntitySubType.VIEW)
                 .setId(
-                    entityManager
-                        .getMetaStoreManager()
-                        .generateNewEntityId(getCurrentPolarisContext())
-                        .getId())
+                    getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
                 .build();
       } else {
         existingLocation = entity.getMetadataLocation();
@@ -1610,6 +1599,10 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     return callContext.getPolarisCallContext();
   }
 
+  private PolarisMetaStoreManager getMetaStoreManager() {
+    return metaStoreManager;
+  }
+
   @VisibleForTesting
   long getCatalogId() {
     // TODO: Properly handle initialization
@@ -1660,8 +1653,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     // rename the entity now
     PolarisMetaStoreManager.EntityResult returnedEntityResult =
-        entityManager
-            .getMetaStoreManager()
+        getMetaStoreManager()
             .renameEntity(
                 getCurrentPolarisContext(),
                 PolarisEntity.toCoreList(catalogPath),
@@ -1724,8 +1716,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             .addKeyValue("toEntity.getTableIdentifier()", toEntity.getTableIdentifier())
             .addKeyValue("returnedEntity.getTableIdentifier()", returnedEntity.getTableIdentifier())
             .log("Returned entity identifier doesn't match toEntity identifier");
-        entityManager
-            .getMetaStoreManager()
+        getMetaStoreManager()
             .updateEntityPropertiesIfNotChanged(
                 getCurrentPolarisContext(),
                 PolarisEntity.toCoreList(newCatalogPath),
@@ -1771,8 +1762,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     PolarisEntity returnedEntity =
         PolarisEntity.of(
-            entityManager
-                .getMetaStoreManager()
+            getMetaStoreManager()
                 .createEntityIfNotExists(
                     getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity));
     LOGGER.debug("Created TableLike entity {} with TableIdentifier {}", entity, identifier);
@@ -1801,8 +1791,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
     PolarisEntity returnedEntity =
         Optional.ofNullable(
-                entityManager
-                    .getMetaStoreManager()
+                getMetaStoreManager()
                     .updateEntityPropertiesIfNotChanged(
                         getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity)
                     .getEntity())
@@ -1851,8 +1840,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       }
     }
 
-    return entityManager
-        .getMetaStoreManager()
+    return getMetaStoreManager()
         .dropEntityIfExists(
             getCurrentPolarisContext(),
             PolarisEntity.toCoreList(catalogPath),
@@ -1895,10 +1883,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 .setCatalogId(getCatalogId())
                 .setSubType(PolarisEntitySubType.TABLE)
                 .setId(
-                    entityManager
-                        .getMetaStoreManager()
-                        .generateNewEntityId(getCurrentPolarisContext())
-                        .getId())
+                    getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
                 .setLastNotificationTimestamp(request.getPayload().getTimestamp())
                 .build();
       } else {
@@ -1984,8 +1969,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
     List<PolarisEntity.NameAndId> entities =
         PolarisEntity.toNameAndIdList(
-            entityManager
-                .getMetaStoreManager()
+            getMetaStoreManager()
                 .listEntities(
                     getCurrentPolarisContext(),
                     PolarisEntity.toCoreList(catalogPath),
