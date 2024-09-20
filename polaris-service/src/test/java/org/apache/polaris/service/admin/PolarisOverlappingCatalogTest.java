@@ -18,15 +18,12 @@
  */
 package org.apache.polaris.service.admin;
 
-import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -36,9 +33,9 @@ import java.util.UUID;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
-import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.PolarisApplication;
+import org.apache.polaris.service.catalog.PolarisTestClient;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
@@ -58,30 +55,21 @@ public class PolarisOverlappingCatalogTest {
           ConfigOverride.config("server.adminConnectors[0].port", "0"),
           // Block overlapping catalog paths:
           ConfigOverride.config("featureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS", "false"));
-  private static String userToken;
-  private static String realm;
+  private static PolarisTestClient userClient;
 
   @BeforeAll
   public static void setup(
       PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String polarisRealm)
       throws IOException {
-    userToken = adminToken.token();
-    realm = polarisRealm;
+    String userToken = adminToken.token();
+    userClient = new PolarisTestClient(EXT.client(), EXT.getLocalPort(), userToken, polarisRealm);
 
     // Set up the database location
-    PolarisConnectionExtension.createTestDir(realm);
+    PolarisConnectionExtension.createTestDir(polarisRealm);
   }
 
   private Response createCatalog(String prefix, String defaultBaseLocation, boolean isExternal) {
     return createCatalog(prefix, defaultBaseLocation, isExternal, new ArrayList<String>());
-  }
-
-  private static Invocation.Builder request() {
-    return EXT.client()
-        .target(String.format("http://localhost:%d/api/management/v1/catalogs", EXT.getLocalPort()))
-        .request("application/json")
-        .header("Authorization", "Bearer " + userToken)
-        .header(REALM_PROPERTY_KEY, realm);
   }
 
   private Response createCatalog(
@@ -113,7 +101,7 @@ public class PolarisOverlappingCatalogTest {
             System.currentTimeMillis(),
             1,
             config);
-    try (Response response = request().post(Entity.json(new CreateCatalogRequest(catalog)))) {
+    try (Response response = userClient.createCatalog(catalog)) {
       return response;
     }
   }
