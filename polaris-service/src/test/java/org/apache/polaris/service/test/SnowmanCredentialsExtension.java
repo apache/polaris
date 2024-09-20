@@ -31,6 +31,7 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.service.auth.TokenUtils;
+import org.apache.polaris.service.catalog.PolarisTestClient;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -76,35 +77,18 @@ public class SnowmanCredentialsExtension
             adminSecrets.getPrincipalClientId(),
             adminSecrets.getMainSecret(),
             realm);
+    PolarisTestClient userClient =
+        new PolarisTestClient(dropwizard.client(), dropwizard.getLocalPort(), userToken, realm);
 
     PrincipalRole principalRole = new PrincipalRole("catalog-admin");
-    try (Response createPrResponse =
-        dropwizard
-            .client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principal-roles",
-                    dropwizard.getLocalPort()))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .post(Entity.json(principalRole))) {
+    try (Response createPrResponse = userClient.createPrincipalRole(principalRole)) {
       assertThat(createPrResponse)
           .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
 
     Principal principal = new Principal("snowman");
 
-    try (Response createPResponse =
-        dropwizard
-            .client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principals", dropwizard.getLocalPort()))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken) // how is token getting used?
-            .header(REALM_PROPERTY_KEY, realm)
-            .post(Entity.json(principal))) {
+    try (Response createPResponse = userClient.createPrincipal(principal)) {
       assertThat(createPResponse)
           .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
       PrincipalWithCredentials snowmanWithCredentials =
@@ -140,16 +124,7 @@ public class SnowmanCredentialsExtension
               snowmanWithCredentials.getCredentials().getClientSecret());
     }
     try (Response assignPrResponse =
-        dropwizard
-            .client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principals/snowman/principal-roles",
-                    dropwizard.getLocalPort()))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken) // how is token getting used?
-            .header(REALM_PROPERTY_KEY, realm)
-            .put(Entity.json(new GrantPrincipalRoleRequest(principalRole)))) {
+        userClient.grantPrincipalRole("snowman", new GrantPrincipalRoleRequest(principalRole))) {
       assertThat(assignPrResponse)
           .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
@@ -183,29 +158,12 @@ public class SnowmanCredentialsExtension
             adminSecrets.getMainSecret(),
             realm);
 
-    dropwizard
-        .client()
-        .target(
-            String.format(
-                "http://localhost:%d/api/management/v1/principal-roles/%s",
-                dropwizard.getLocalPort(), "catalog-admin"))
-        .request("application/json")
-        .header("Authorization", "Bearer " + userToken)
-        .header(REALM_PROPERTY_KEY, realm)
-        .delete()
-        .close();
+    PolarisTestClient userClient =
+        new PolarisTestClient(dropwizard.client(), dropwizard.getLocalPort(), userToken, realm);
 
-    dropwizard
-        .client()
-        .target(
-            String.format(
-                "http://localhost:%d/api/management/v1/principals/%s",
-                dropwizard.getLocalPort(), "snowman"))
-        .request("application/json")
-        .header("Authorization", "Bearer " + userToken)
-        .header(REALM_PROPERTY_KEY, realm)
-        .delete()
-        .close();
+    userClient.deletePrincipalRole("catalog-admin").close();
+
+    userClient.deletePrincipal("snowman").close();
   }
 
   // FIXME - this would be better done with a Credentials-specific annotation processor so

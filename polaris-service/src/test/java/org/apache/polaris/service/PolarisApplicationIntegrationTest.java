@@ -80,6 +80,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.auth.BasePolarisAuthenticator;
+import org.apache.polaris.service.catalog.PolarisTestClient;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
@@ -121,6 +122,7 @@ public class PolarisApplicationIntegrationTest {
   private static SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials;
   private static Path testDir;
   private static String realm;
+  private static PolarisTestClient userClient;
 
   @BeforeAll
   public static void setup(
@@ -136,30 +138,14 @@ public class PolarisApplicationIntegrationTest {
     PolarisApplicationIntegrationTest.userToken = userToken.token();
     PolarisApplicationIntegrationTest.snowmanCredentials = snowmanCredentials;
 
+    userClient = new PolarisTestClient(EXT.client(), EXT.getLocalPort(), userToken.token(), realm);
     PrincipalRole principalRole = new PrincipalRole(PRINCIPAL_ROLE_NAME);
-    try (Response createPrResponse =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
-            .post(Entity.json(principalRole))) {
+    try (Response createPrResponse = userClient.createPrincipalRole(principalRole)) {
       assertThat(createPrResponse)
           .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
 
-    try (Response assignPrResponse =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principals/snowman/principal-roles",
-                    EXT.getLocalPort()))
-            .request("application/json")
-            .header("Authorization", "Bearer " + PolarisApplicationIntegrationTest.userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .put(Entity.json(principalRole))) {
+    try (Response assignPrResponse = userClient.assignPrincipalRole("snowman", principalRole)) {
       assertThat(assignPrResponse)
           .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
@@ -167,16 +153,7 @@ public class PolarisApplicationIntegrationTest {
 
   @AfterAll
   public static void deletePrincipalRole() {
-    EXT.client()
-        .target(
-            String.format(
-                "http://localhost:%d/api/management/v1/principal-roles/%s",
-                EXT.getLocalPort(), PRINCIPAL_ROLE_NAME))
-        .request("application/json")
-        .header("Authorization", "Bearer " + userToken)
-        .header(REALM_PROPERTY_KEY, realm)
-        .delete()
-        .close();
+    userClient.deletePrincipalRole(PRINCIPAL_ROLE_NAME).close();
   }
 
   /**
@@ -238,41 +215,17 @@ public class PolarisApplicationIntegrationTest {
                 .setProperties(props)
                 .setStorageConfigInfo(storageConfig)
                 .build();
-    try (Response response =
-        EXT.client()
-            .target(
-                String.format("http://localhost:%d/api/management/v1/catalogs", EXT.getLocalPort()))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .post(Entity.json(catalog))) {
+    try (Response response = userClient.createCatalog(catalog)) {
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
     try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/%s",
-                    EXT.getLocalPort(),
-                    catalogName,
-                    PolarisEntityConstants.getNameOfCatalogAdminRole()))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .get()) {
+        userClient.getCatalogRole(
+            catalogName, PolarisEntityConstants.getNameOfCatalogAdminRole())) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       CatalogRole catalogRole = response.readEntity(CatalogRole.class);
 
       try (Response assignResponse =
-          EXT.client()
-              .target(
-                  String.format(
-                      "http://localhost:%d/api/management/v1/principal-roles/%s/catalog-roles/%s",
-                      EXT.getLocalPort(), principalRoleName, catalogName))
-              .request("application/json")
-              .header("Authorization", "Bearer " + userToken)
-              .header(REALM_PROPERTY_KEY, realm)
-              .put(Entity.json(catalogRole))) {
+          userClient.grantCatalogRoleToPrincipalRole(principalRoleName, catalogName, catalogRole)) {
         assertThat(assignResponse)
             .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
       }
