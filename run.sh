@@ -21,13 +21,52 @@
 
 # Runs Polaris as a mini-deployment locally. Creates two pods that bind themselves to port 8181.
 
-# deploy the registry
+# Initialize variables
+BUILD_ARGS=""  # Initialize an empty string to store Docker build arguments
+
+# Function to display usage information
+usage() {
+  echo "Usage: $0 [-b build-arg1=value1,build-arg2=value2,...] [-h]"
+  echo "  -b    Pass a set of arbitrary build arguments to docker build, separated by commas"
+  echo "  -h    Display this help message"
+  exit 1
+}
+
+# Parse command-line arguments
+while getopts "b:h" opt; do
+  case ${opt} in
+    b)
+      IFS=',' read -ra ARGS <<< "${OPTARG}"  # Split the comma-separated list into an array
+      for arg in "${ARGS[@]}"; do
+        BUILD_ARGS+=" --build-arg ${arg}"  # Append each build argument to the list
+      done
+      ;;
+    h)
+      usage
+      ;;
+    *)
+      usage
+      ;;
+  esac
+done
+
+# Shift off the options and arguments
+shift $((OPTIND-1))
+
+# Deploy the registry
 echo "Building Kind Registry..."
 sh ./kind-registry.sh
 
-# build and deploy the server image
+# Check if BUILD_ARGS is not empty and print the build arguments
+if [[ -n "$BUILD_ARGS" ]]; then
+  echo "Building polaris image with build arguments: $BUILD_ARGS"
+else
+  echo "Building polaris image without any additional build arguments."
+fi
+
+# Build and deploy the server image
 echo "Building polaris image..."
-docker build -t localhost:5001/polaris -f Dockerfile .
+docker build -t localhost:5001/polaris $BUILD_ARGS -f Dockerfile .
 echo "Pushing polaris image..."
 docker push localhost:5001/polaris
 echo "Loading polaris image to kind..."
