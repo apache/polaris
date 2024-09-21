@@ -18,19 +18,25 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.threeten.extra.MutableClock;
 
 /** Main unit test class for TokenBucketRateLimiter */
 public class TokenBucketRateLimiterTest {
   @Test
   void testBasic() {
-    MockClock clock = new MockClock();
-    clock.setSeconds(5);
+    MutableClock clock = MutableClock.of(Instant.now(), ZoneOffset.UTC);
+    //    MockClock clock = new MockClock();
+    clock.add(Duration.ofSeconds(5));
 
     RateLimitResultAsserter asserter =
         new RateLimitResultAsserter(new TokenBucketRateLimiter(10, 100, clock));
@@ -38,11 +44,11 @@ public class TokenBucketRateLimiterTest {
     asserter.canAcquire(100);
     asserter.cantAcquire();
 
-    clock.setSeconds(6);
+    clock.add(Duration.ofSeconds(1));
     asserter.canAcquire(10);
     asserter.cantAcquire();
 
-    clock.setSeconds(16);
+    clock.add(Duration.ofSeconds(10));
     asserter.canAcquire(100);
     asserter.cantAcquire();
   }
@@ -60,7 +66,8 @@ public class TokenBucketRateLimiterTest {
     int maxSleepMillis = 5;
 
     TokenBucketRateLimiter rl =
-        new TokenBucketRateLimiter(tokensPerSecond, maxTokens, new MockClock());
+        new TokenBucketRateLimiter(
+            tokensPerSecond, maxTokens, Clock.fixed(Instant.now(), ZoneOffset.UTC));
     AtomicInteger numAcquired = new AtomicInteger();
     CountDownLatch startLatch = new CountDownLatch(numTasks);
     CountDownLatch endLatch = new CountDownLatch(numTasks);

@@ -21,12 +21,13 @@ package org.apache.polaris.service.ratelimiter;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
+import org.apache.polaris.core.context.RealmContext;
 
 /** Rate limiter factory that constructs a no-op rate limiter */
 @JsonTypeName("no-op")
 public class NoOpRateLimiterFactory implements RateLimiterFactory {
   @Override
-  public Future<RateLimiter> createRateLimiter(String key) {
+  public Future<RateLimiter> createRateLimiter(RealmContext realmContext) {
     return CompletableFuture.completedFuture(new NoOpRateLimiter());
   }
 }

@@ -19,6 +19,7 @@
 package org.apache.polaris.service.ratelimiter;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.apache.hadoop.util.Preconditions;
 
 /** Configuration for the rate limiter */
 public class RateLimiterConfig {
@@ -38,6 +39,9 @@ public class RateLimiterConfig {
 
   @JsonProperty("factory")
   public void setRateLimiterFactory(RateLimiterFactory rateLimiterFactory) {
+    Preconditions.checkNotNull(
+        rateLimiterFactory,
+        "rateLimiterFactory must not be null. Set it using rateLimiter.factory.");
     this.rateLimiterFactory = rateLimiterFactory;
   }
 
@@ -48,20 +52,15 @@ public class RateLimiterConfig {
 
   @JsonProperty("constructionTimeoutMillis")
   public void setConstructionTimeoutMillis(long constructionTimeoutMillis) {
+    Preconditions.checkArgument(
+        constructionTimeoutMillis >= 0, "constructionTimeoutMillis must be non-negative");
     this.constructionTimeoutMillis = constructionTimeoutMillis;
   }
 
-  @JsonProperty("constructionTimeoutMillis")
   public long getConstructionTimeoutMillis() {
     return constructionTimeoutMillis;
   }
 
-  @JsonProperty("allowRequestOnConstructionTimeout")
-  public void setAllowRequestOnConstructionTimeout(boolean allowRequestOnConstructionTimeout) {
-    this.allowRequestOnConstructionTimeout = allowRequestOnConstructionTimeout;
-  }
-
-  @JsonProperty("allowRequestOnConstructionTimeout")
   public boolean getAllowRequestOnConstructionTimeout() {
     return allowRequestOnConstructionTimeout;
   }

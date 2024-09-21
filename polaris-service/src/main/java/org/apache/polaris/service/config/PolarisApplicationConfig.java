@@ -24,6 +24,7 @@ import io.dropwizard.core.Configuration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
@@ -145,7 +146,7 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   @JsonProperty("rateLimiter")
-  public void setRateLimiterConfig(RateLimiterConfig rateLimiterConfig) {
+  public void setRateLimiterConfig(@Nullable RateLimiterConfig rateLimiterConfig) {
     this.rateLimiterConfig = rateLimiterConfig;
   }
 

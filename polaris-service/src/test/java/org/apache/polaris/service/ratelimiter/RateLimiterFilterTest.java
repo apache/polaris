@@ -23,6 +23,7 @@ import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.core.Response;
+import java.time.Duration;
 import java.util.function.Consumer;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
@@ -32,6 +33,7 @@ import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.threeten.extra.MutableClock;
 
 /** Main integration tests for rate limiting */
 @ExtendWith({
@@ -67,15 +69,15 @@ public class RateLimiterFilterTest {
     MockRateLimiterFactory factory =
         (MockRateLimiterFactory)
             (EXT.getConfiguration().getRateLimiterConfig().getRateLimiterFactory());
-    long windowMillis = (long) (factory.windowSeconds * 1000);
+    long windowMillis = factory.windowSeconds * 1000;
 
-    MockClock clock = MockRateLimiterFactory.CLOCK;
-    clock.setMillis(2 * windowMillis); // Clear any counters from before this test
+    MutableClock clock = MockRateLimiterFactory.CLOCK;
+    clock.add(Duration.ofMillis(2 * windowMillis)); // Clear any counters from before this test
     for (int i = 0; i < factory.requestsPerSecond * factory.windowSeconds; i++) {
       requestAsserter.accept(Response.Status.OK);
     }
     requestAsserter.accept(Response.Status.TOO_MANY_REQUESTS);
 
-    clock.setMillis(4 * windowMillis); // Clear any counters from this test
+    clock.add(Duration.ofMillis(4 * windowMillis)); // Clear any counters from during this test
   }
 }

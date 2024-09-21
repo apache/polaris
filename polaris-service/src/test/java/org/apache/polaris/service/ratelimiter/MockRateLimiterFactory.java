@@ -20,8 +20,12 @@ package org.apache.polaris.service.ratelimiter;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
+import org.apache.polaris.core.context.RealmContext;
+import org.threeten.extra.MutableClock;
 
 /**
  * Factory that constructs a standard OpenTelemetryRateLimiter but with a mock Clock and an optional
@@ -29,7 +33,7 @@ import java.util.concurrent.Future;
  */
 @JsonTypeName("mock")
 public class MockRateLimiterFactory implements RateLimiterFactory {
-  public static MockClock CLOCK = new MockClock();
+  public static MutableClock CLOCK = MutableClock.of(Instant.now(), ZoneOffset.UTC);
 
   @JsonProperty("requestsPerSecond")
   public long requestsPerSecond;
@@ -41,7 +45,7 @@ public class MockRateLimiterFactory implements RateLimiterFactory {
   public boolean neverFinishConstruction;
 
   @Override
-  public Future<RateLimiter> createRateLimiter(String key) {
+  public Future<RateLimiter> createRateLimiter(RealmContext realmContext) {
     if (neverFinishConstruction) {
       // This future will never finish
       return new CompletableFuture<>();

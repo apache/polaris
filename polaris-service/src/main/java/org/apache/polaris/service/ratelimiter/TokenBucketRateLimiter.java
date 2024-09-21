@@ -18,25 +18,27 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
+import java.time.InstantSource;
+
 /**
  * Token bucket implementation of a Polaris RateLimiter. Acquires tokens at a fixed rate and has a
  * maximum amount of tokens. Each "acquire" costs 1 token.
  */
 public class TokenBucketRateLimiter implements RateLimiter {
-  private final double tokensPerNano;
+  private final double tokensPerMilli;
   private final long maxTokens;
-  private final Clock clock;
+  private final InstantSource instantSource;
 
   private double tokens;
-  private long lastAcquireNanos;
+  private long lastAcquireMillis;
 
-  public TokenBucketRateLimiter(long tokensPerSecond, long maxTokens, Clock clock) {
-    this.tokensPerNano = ((double) tokensPerSecond) / 1e9;
+  public TokenBucketRateLimiter(long tokensPerSecond, long maxTokens, InstantSource instantSource) {
+    this.tokensPerMilli = tokensPerSecond / 1000D;
     this.maxTokens = maxTokens;
-    this.clock = clock;
+    this.instantSource = instantSource;
 
     tokens = maxTokens;
-    lastAcquireNanos = clock.nanoTime();
+    lastAcquireMillis = instantSource.millis();
   }
 
   /**
@@ -47,10 +49,10 @@ public class TokenBucketRateLimiter implements RateLimiter {
   @Override
   public synchronized boolean tryAcquire() {
     // Grant tokens for the time that has passed since our last tryAcquire()
-    long t = clock.nanoTime();
-    long nanosPassed = t - lastAcquireNanos;
-    lastAcquireNanos = t;
-    tokens = Math.min(maxTokens, tokens + (nanosPassed * tokensPerNano));
+    long t = instantSource.millis();
+    long millisPassed = t - lastAcquireMillis;
+    lastAcquireMillis = t;
+    tokens = Math.min(maxTokens, tokens + (millisPassed * tokensPerMilli));
 
     // Take a token if they have one available
     if (tokens >= 1) {
