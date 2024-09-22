@@ -22,10 +22,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
 import org.apache.commons.codec.binary.Base64;
+import org.apache.iceberg.DataFile;
+import org.apache.iceberg.DeleteFile;
 import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.ManifestFiles;
+import org.apache.iceberg.PartitionStatisticsFile;
 import org.apache.iceberg.Snapshot;
+import org.apache.iceberg.StatisticsFile;
+import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
@@ -43,6 +53,7 @@ import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFac
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +75,7 @@ class TableCleanupTaskHandlerTest {
             new PolarisDefaultDiagServiceImpl());
     try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
       CallContext.setCurrentContext(callCtx);
-      FileIO fileIO = new InMemoryFileIO();
+      FileIO fileIO = createMockFileIO(new InMemoryFileIO());
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       TableCleanupTaskHandler handler =
@@ -91,6 +102,21 @@ class TableCleanupTaskHandlerTest {
               .build();
       Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
+      PolarisBaseEntity baseEntity = task.readData(PolarisBaseEntity.class);
+      TableLikeEntity tableEntity = TableLikeEntity.of(baseEntity);
+      TableMetadata tableMetadata =
+              TableMetadataParser.read(fileIO, tableEntity.getMetadataLocation());
+      Set<String> manifestListLocations = manifestListLocations(tableMetadata.snapshots());
+      Set<String> manifestLocations = manifestLocations(tableMetadata.snapshots(), fileIO);
+      Set<String> metadataLocations = metadataLocations(tableMetadata);
+      Set<String> statsLocations = statsLocations(tableMetadata);
+      Set<String> partitionStatsLocations = partitionStatsLocations(tableMetadata);
+      assertThat(manifestListLocations).hasSize(1);
+      assertThat(manifestLocations).hasSize(1);
+      assertThat(metadataLocations).hasSize(1);
+      assertThat(statsLocations).hasSize(0);
+      assertThat(partitionStatsLocations).hasSize(0);
+
       CallContext.setCurrentContext(CallContext.of(realmContext, polarisCallContext));
       handler.handleTask(task);
 
@@ -113,6 +139,35 @@ class TableCleanupTaskHandlerTest {
                           entity ->
                               entity.readData(
                                   ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
+
+      ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+      Mockito.verify(
+              fileIO,
+              Mockito.times(
+                      manifestListLocations.size()
+                              + manifestLocations.size()
+                              + metadataLocations.size()
+                              + statsLocations.size()
+                              + partitionStatsLocations.size()
+              )
+      ).deleteFile(argumentCaptor.capture());
+
+      List<String> deletedPaths = argumentCaptor.getAllValues();
+      assertThat(deletedPaths)
+              .as("should contain all created manifest lists")
+              .containsAll(manifestListLocations);
+      assertThat(deletedPaths)
+              .as("should contain all created manifests")
+              .containsAll(manifestLocations);
+      assertThat(deletedPaths)
+              .as("should contain all created metadata locations")
+              .containsAll(metadataLocations);
+      assertThat(deletedPaths)
+              .as("should contain all created statistics")
+              .containsAll(statsLocations);
+      assertThat(deletedPaths)
+              .as("should contain all created partition stats files")
+              .containsAll(partitionStatsLocations);
     }
   }
 
@@ -275,7 +330,7 @@ class TableCleanupTaskHandlerTest {
             new PolarisDefaultDiagServiceImpl());
     try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
       CallContext.setCurrentContext(callCtx);
-      FileIO fileIO = new InMemoryFileIO();
+      FileIO fileIO = createMockFileIO(new InMemoryFileIO());
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       TableCleanupTaskHandler handler =
@@ -318,6 +373,22 @@ class TableCleanupTaskHandlerTest {
       Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
       CallContext.setCurrentContext(CallContext.of(realmContext, polarisCallContext));
+
+      PolarisBaseEntity baseEntity = task.readData(PolarisBaseEntity.class);
+      TableLikeEntity tableEntity = TableLikeEntity.of(baseEntity);
+      TableMetadata tableMetadata =
+              TableMetadataParser.read(fileIO, tableEntity.getMetadataLocation());
+      Set<String> manifestListLocations = manifestListLocations(tableMetadata.snapshots());
+      Set<String> manifestLocations = manifestLocations(tableMetadata.snapshots(), fileIO);
+      Set<String> metadataLocations = metadataLocations(tableMetadata);
+      Set<String> statsLocations = statsLocations(tableMetadata);
+      Set<String> partitionStatsLocations = partitionStatsLocations(tableMetadata);
+      assertThat(manifestListLocations).hasSize(2);
+      assertThat(manifestLocations).hasSize(3);
+      assertThat(metadataLocations).hasSize(1);
+      assertThat(statsLocations).hasSize(0);
+      assertThat(partitionStatsLocations).hasSize(0);
+
       handler.handleTask(task);
 
       assertThat(
@@ -362,6 +433,96 @@ class TableCleanupTaskHandlerTest {
                           entity ->
                               entity.readData(
                                   ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
+
+      ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
+      Mockito.verify(
+              fileIO,
+              Mockito.times(
+                      manifestListLocations.size()
+                              + manifestLocations.size()
+                              + metadataLocations.size()
+                              + statsLocations.size()
+                              + partitionStatsLocations.size()
+              )
+      ).deleteFile(argumentCaptor.capture());
+
+      List<String> deletedPaths = argumentCaptor.getAllValues();
+      assertThat(deletedPaths)
+              .as("should contain all created manifest lists")
+              .containsAll(manifestListLocations);
+      assertThat(deletedPaths)
+              .as("should contain all created manifests")
+              .containsAll(manifestLocations);
+      assertThat(deletedPaths)
+              .as("should contain all created metadata locations")
+              .containsAll(metadataLocations);
+      assertThat(deletedPaths)
+              .as("should contain all created statistics")
+              .containsAll(statsLocations);
+      assertThat(deletedPaths)
+              .as("should contain all created partition stats files")
+              .containsAll(partitionStatsLocations);
     }
+  }
+
+  private FileIO createMockFileIO(InMemoryFileIO wrapped) {
+    InMemoryFileIO mockIO = Mockito.mock(InMemoryFileIO.class);
+
+    Mockito.when(mockIO.newInputFile(Mockito.anyString()))
+            .thenAnswer(invocation -> wrapped.newInputFile((String) invocation.getArgument(0)));
+    Mockito.when(mockIO.newInputFile(Mockito.anyString(), Mockito.anyLong()))
+            .thenAnswer(
+                    invocation ->
+                            wrapped.newInputFile(invocation.getArgument(0), invocation.getArgument(1)));
+    Mockito.when(mockIO.newInputFile(Mockito.any(ManifestFile.class)))
+            .thenAnswer(invocation -> wrapped.newInputFile((ManifestFile) invocation.getArgument(0)));
+    Mockito.when(mockIO.newInputFile(Mockito.any(DataFile.class)))
+            .thenAnswer(invocation -> wrapped.newInputFile((DataFile) invocation.getArgument(0)));
+    Mockito.when(mockIO.newInputFile(Mockito.any(DeleteFile.class)))
+            .thenAnswer(invocation -> wrapped.newInputFile((DeleteFile) invocation.getArgument(0)));
+    Mockito.when(mockIO.newOutputFile(Mockito.anyString()))
+            .thenAnswer(invocation -> wrapped.newOutputFile((String) invocation.getArgument(0)));
+
+    return mockIO;
+  }
+
+  private Set<String> manifestListLocations(List<Snapshot> snapshotList) {
+    return snapshotList.stream().map(Snapshot::manifestListLocation).collect(Collectors.toSet());
+  }
+
+  private Set<String> manifestLocations(List<Snapshot> snapshotSet, FileIO io) {
+    return snapshotSet.stream()
+            .flatMap(snapshot -> snapshot.allManifests(io).stream())
+            .map(ManifestFile::path)
+            .collect(Collectors.toSet());
+  }
+
+  private Set<String> dataLocations(List<Snapshot> snapshotList, FileIO io) {
+    return snapshotList.stream()
+            .flatMap(snapshot -> StreamSupport.stream(snapshot.addedDataFiles(io).spliterator(), false))
+            .map(dataFile -> dataFile.path().toString())
+            .collect(Collectors.toSet());
+  }
+
+
+  private Set<String> metadataLocations(TableMetadata tableMetadata) {
+    Set<String> metadataLocations =
+            tableMetadata.previousFiles().stream()
+                    .map(TableMetadata.MetadataLogEntry::file)
+                    .collect(Collectors.toSet());
+    metadataLocations.add(tableMetadata.metadataFileLocation());
+    return metadataLocations;
+  }
+
+  private Set<String> statsLocations(TableMetadata tableMetadata) {
+    return tableMetadata.statisticsFiles().stream()
+            .map(StatisticsFile::path)
+            .collect(Collectors.toSet());
+  }
+
+  private Set<String> partitionStatsLocations(TableMetadata tableMetadata) {
+    return tableMetadata.partitionStatisticsFiles().stream()
+            .map(PartitionStatisticsFile::path)
+            .collect(Collectors.toSet());
   }
 }
