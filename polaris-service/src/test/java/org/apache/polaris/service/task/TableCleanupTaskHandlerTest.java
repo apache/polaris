@@ -504,7 +504,6 @@ class TableCleanupTaskHandlerTest {
             .collect(Collectors.toSet());
   }
 
-
   private Set<String> metadataLocations(TableMetadata tableMetadata) {
     Set<String> metadataLocations =
             tableMetadata.previousFiles().stream()
