@@ -167,16 +167,16 @@ public class TableCleanupTaskHandler implements TaskHandler {
                 // remove duplication
                 .collect(Collectors.toMap(ManifestFile::path, Function.identity(), (mf1, mf2) -> mf1))
                 .keySet()
-                .forEach(file -> fileIO.deleteFile(file));
+                .forEach(fileIO::deleteFile);
         tableMetadata.snapshots().stream()
                 .map(Snapshot::manifestListLocation)
-                .forEach(file -> fileIO.deleteFile(file));
+                .forEach(fileIO::deleteFile);
         tableMetadata.previousFiles().stream()
                 .map(TableMetadata.MetadataLogEntry::file)
-                .forEach(file -> fileIO.deleteFile(file));
+                .forEach(fileIO::deleteFile);
         tableMetadata.statisticsFiles().stream()
                 .map(StatisticsFile::path)
-                .forEach(file -> fileIO.deleteFile(file));
+                .forEach(fileIO::deleteFile);
         fileIO.deleteFile(tableEntity.getMetadataLocation());
 
         return true;
