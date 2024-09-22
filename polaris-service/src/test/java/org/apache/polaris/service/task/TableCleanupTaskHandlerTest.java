@@ -481,7 +481,7 @@ class TableCleanupTaskHandlerTest {
     Mockito.when(mockIO.newInputFile(Mockito.any(DeleteFile.class)))
             .thenAnswer(invocation -> wrapped.newInputFile((DeleteFile) invocation.getArgument(0)));
     Mockito.when(mockIO.newOutputFile(Mockito.anyString()))
-            .thenAnswer(invocation -> wrapped.newOutputFile((String) invocation.getArgument(0)));
+            .thenAnswer(invocation -> wrapped.newOutputFile(invocation.getArgument(0)));
 
     return mockIO;
   }
@@ -494,13 +494,6 @@ class TableCleanupTaskHandlerTest {
     return snapshotSet.stream()
             .flatMap(snapshot -> snapshot.allManifests(io).stream())
             .map(ManifestFile::path)
-            .collect(Collectors.toSet());
-  }
-
-  private Set<String> dataLocations(List<Snapshot> snapshotList, FileIO io) {
-    return snapshotList.stream()
-            .flatMap(snapshot -> StreamSupport.stream(snapshot.addedDataFiles(io).spliterator(), false))
-            .map(dataFile -> dataFile.path().toString())
             .collect(Collectors.toSet());
   }
 
