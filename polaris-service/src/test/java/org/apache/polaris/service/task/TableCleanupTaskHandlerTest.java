@@ -109,13 +109,9 @@ class TableCleanupTaskHandlerTest {
       Set<String> manifestListLocations = manifestListLocations(tableMetadata.snapshots());
       Set<String> manifestLocations = manifestLocations(tableMetadata.snapshots(), fileIO);
       Set<String> metadataLocations = metadataLocations(tableMetadata);
-      Set<String> statsLocations = statsLocations(tableMetadata);
-      Set<String> partitionStatsLocations = partitionStatsLocations(tableMetadata);
       assertThat(manifestListLocations).hasSize(1);
       assertThat(manifestLocations).hasSize(1);
       assertThat(metadataLocations).hasSize(1);
-      assertThat(statsLocations).hasSize(0);
-      assertThat(partitionStatsLocations).hasSize(0);
 
       CallContext.setCurrentContext(CallContext.of(realmContext, polarisCallContext));
       handler.handleTask(task);
@@ -147,8 +143,6 @@ class TableCleanupTaskHandlerTest {
                       manifestListLocations.size()
                               + manifestLocations.size()
                               + metadataLocations.size()
-                              + statsLocations.size()
-                              + partitionStatsLocations.size()
               )
       ).deleteFile(argumentCaptor.capture());
 
@@ -162,12 +156,6 @@ class TableCleanupTaskHandlerTest {
       assertThat(deletedPaths)
               .as("should contain all created metadata locations")
               .containsAll(metadataLocations);
-      assertThat(deletedPaths)
-              .as("should contain all created statistics")
-              .containsAll(statsLocations);
-      assertThat(deletedPaths)
-              .as("should contain all created partition stats files")
-              .containsAll(partitionStatsLocations);
     }
   }
 
@@ -381,13 +369,9 @@ class TableCleanupTaskHandlerTest {
       Set<String> manifestListLocations = manifestListLocations(tableMetadata.snapshots());
       Set<String> manifestLocations = manifestLocations(tableMetadata.snapshots(), fileIO);
       Set<String> metadataLocations = metadataLocations(tableMetadata);
-      Set<String> statsLocations = statsLocations(tableMetadata);
-      Set<String> partitionStatsLocations = partitionStatsLocations(tableMetadata);
       assertThat(manifestListLocations).hasSize(2);
       assertThat(manifestLocations).hasSize(3);
       assertThat(metadataLocations).hasSize(1);
-      assertThat(statsLocations).hasSize(0);
-      assertThat(partitionStatsLocations).hasSize(0);
 
       handler.handleTask(task);
 
@@ -441,8 +425,6 @@ class TableCleanupTaskHandlerTest {
                       manifestListLocations.size()
                               + manifestLocations.size()
                               + metadataLocations.size()
-                              + statsLocations.size()
-                              + partitionStatsLocations.size()
               )
       ).deleteFile(argumentCaptor.capture());
 
@@ -456,12 +438,6 @@ class TableCleanupTaskHandlerTest {
       assertThat(deletedPaths)
               .as("should contain all created metadata locations")
               .containsAll(metadataLocations);
-      assertThat(deletedPaths)
-              .as("should contain all created statistics")
-              .containsAll(statsLocations);
-      assertThat(deletedPaths)
-              .as("should contain all created partition stats files")
-              .containsAll(partitionStatsLocations);
     }
   }
 
@@ -504,17 +480,5 @@ class TableCleanupTaskHandlerTest {
                     .collect(Collectors.toSet());
     metadataLocations.add(tableMetadata.metadataFileLocation());
     return metadataLocations;
-  }
-
-  private Set<String> statsLocations(TableMetadata tableMetadata) {
-    return tableMetadata.statisticsFiles().stream()
-            .map(StatisticsFile::path)
-            .collect(Collectors.toSet());
-  }
-
-  private Set<String> partitionStatsLocations(TableMetadata tableMetadata) {
-    return tableMetadata.partitionStatisticsFiles().stream()
-            .map(PartitionStatisticsFile::path)
-            .collect(Collectors.toSet());
   }
 }
