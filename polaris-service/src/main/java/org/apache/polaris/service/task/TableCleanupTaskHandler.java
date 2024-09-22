@@ -22,7 +22,10 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 import org.apache.iceberg.ManifestFile;
+import org.apache.iceberg.Snapshot;
+import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.io.FileIO;
@@ -158,6 +161,22 @@ public class TableCleanupTaskHandler implements TaskHandler {
         for (PolarisBaseEntity createdTask : createdTasks) {
           taskExecutor.addTaskHandlerContext(createdTask.getId(), CallContext.getCurrentContext());
         }
+
+        tableMetadata.snapshots().stream()
+                .flatMap(sn -> sn.allManifests(fileIO).stream())
+                // remove duplication
+                .collect(Collectors.toMap(ManifestFile::path, Function.identity(), (mf1, mf2) -> mf1))
+                .keySet()
+                .forEach(file -> fileIO.deleteFile(file));
+        tableMetadata.snapshots().stream()
+                .map(Snapshot::manifestListLocation)
+                .forEach(file -> fileIO.deleteFile(file));
+        tableMetadata.previousFiles().stream()
+                .map(TableMetadata.MetadataLogEntry::file)
+                .forEach(file -> fileIO.deleteFile(file));
+        tableMetadata.statisticsFiles().stream()
+                .map(StatisticsFile::path)
+                .forEach(file -> fileIO.deleteFile(file));
         fileIO.deleteFile(tableEntity.getMetadataLocation());
 
         return true;
