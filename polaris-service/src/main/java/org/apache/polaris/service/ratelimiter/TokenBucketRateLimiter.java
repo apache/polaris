@@ -30,7 +30,7 @@ public class TokenBucketRateLimiter implements RateLimiter {
   private final InstantSource instantSource;
 
   private double tokens;
-  private long lastAcquireMillis;
+  private long lastTokenGenerationMillis;
 
   public TokenBucketRateLimiter(long tokensPerSecond, long maxTokens, InstantSource instantSource) {
     this.tokensPerMilli = tokensPerSecond / 1000D;
@@ -38,7 +38,7 @@ public class TokenBucketRateLimiter implements RateLimiter {
     this.instantSource = instantSource;
 
     tokens = maxTokens;
-    lastAcquireMillis = instantSource.millis();
+    lastTokenGenerationMillis = instantSource.millis();
   }
 
   /**
@@ -50,8 +50,8 @@ public class TokenBucketRateLimiter implements RateLimiter {
   public synchronized boolean tryAcquire() {
     // Grant tokens for the time that has passed since our last tryAcquire()
     long t = instantSource.millis();
-    long millisPassed = Math.subtractExact(t, lastAcquireMillis);
-    lastAcquireMillis = t;
+    long millisPassed = Math.subtractExact(t, lastTokenGenerationMillis);
+    lastTokenGenerationMillis = t;
     tokens = Math.min(maxTokens, tokens + (millisPassed * tokensPerMilli));
 
     // Take a token if they have one available
