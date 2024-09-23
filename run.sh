@@ -59,7 +59,7 @@ sh ./kind-registry.sh
 
 # Check if BUILD_ARGS is not empty and print the build arguments
 if [[ -n "$BUILD_ARGS" ]]; then
-  echo "Building polaris image with build arguments: $BUILD_ARGS"
+  echo "Building polaris image with build arguments:$BUILD_ARGS"
 else
   echo "Building polaris image without any additional build arguments."
 fi
