@@ -23,7 +23,6 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.time.Clock;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
-import org.apache.polaris.core.context.RealmContext;
 
 /**
  * Simple rate limiter factory that just constructs a TokenBucketRateLimiter and is indiscriminate
@@ -38,9 +37,11 @@ public class DefaultRateLimiterFactory implements RateLimiterFactory {
   private long windowSeconds;
 
   @Override
-  public Future<RateLimiter> createRateLimiter(RealmContext realmContext) {
+  public Future<RateLimiter> createRateLimiter(RateLimiterKey key) {
     return CompletableFuture.completedFuture(
         new TokenBucketRateLimiter(
-            requestsPerSecond, requestsPerSecond * windowSeconds, Clock.systemUTC()));
+            requestsPerSecond,
+            Math.multiplyExact(requestsPerSecond, windowSeconds),
+            Clock.systemUTC()));
   }
 }

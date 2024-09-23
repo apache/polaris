@@ -18,15 +18,11 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import com.fasterxml.jackson.annotation.JsonTypeName;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
-
-/** Rate limiter factory that constructs a no-op rate limiter */
-@JsonTypeName("no-op")
-public class NoOpRateLimiterFactory implements RateLimiterFactory {
-  @Override
-  public Future<RateLimiter> createRateLimiter(RateLimiterKey key) {
-    return CompletableFuture.completedFuture(new NoOpRateLimiter());
-  }
-}
+/**
+ * Context about the type of entity that will be rate limited.
+ *
+ * <p>Note that this holds the realmIdentifier directly rather than the RealmContext because
+ * RealmContexts don't necessarily have to follow the guarantees of being a Map Key: hashCode,
+ * equals, immutability.
+ */
+public record RateLimiterKey(String realmIdentifier) {}

@@ -30,6 +30,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.time.Clock;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -49,7 +50,8 @@ public class RateLimiterFilter implements Filter {
       new TokenBucketRateLimiter(0, 0, Clock.systemUTC());
 
   private final RateLimiterConfig config;
-  private final Map<String, Future<RateLimiter>> perRealmLimiters = new ConcurrentHashMap<>();
+  private final Map<RateLimiterKey, Future<RateLimiter>> perRealmLimiters =
+      new ConcurrentHashMap<>();
 
   public RateLimiterFilter(RateLimiterConfig config) {
     this.config = config;
@@ -59,21 +61,28 @@ public class RateLimiterFilter implements Filter {
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
-    RealmContext realmContext = CallContext.getCurrentContext().getRealmContext();
-    RateLimiter rateLimiter = maybeBlockToGetRateLimiter(realmContext);
-    if (!rateLimiter.tryAcquire()) {
-      ((HttpServletResponse) response).setStatus(Response.Status.TOO_MANY_REQUESTS.getStatusCode());
+    // Build the rate limiting key
+    String realmIdentifier =
+        Optional.ofNullable(CallContext.getCurrentContext())
+            .map(CallContext::getRealmContext)
+            .map(RealmContext::getRealmIdentifier)
+            .orElse("");
+    RateLimiterKey key = new RateLimiterKey(realmIdentifier);
+
+    // Maybe enforce the rate limit
+    RateLimiter rateLimiter = maybeBlockToGetRateLimiter(key);
+    if (response instanceof HttpServletResponse servletResponse && !rateLimiter.tryAcquire()) {
+      servletResponse.setStatus(Response.Status.TOO_MANY_REQUESTS.getStatusCode());
       return;
     }
     chain.doFilter(request, response);
   }
 
-  private RateLimiter maybeBlockToGetRateLimiter(RealmContext realmContext) {
+  private RateLimiter maybeBlockToGetRateLimiter(RateLimiterKey key) {
     try {
+      System.out.println("ANDREW keys = " + perRealmLimiters.keySet());
       return perRealmLimiters
-          .computeIfAbsent(
-              realmContext.getRealmIdentifier(),
-              (key) -> config.getRateLimiterFactory().createRateLimiter(realmContext))
+          .computeIfAbsent(key, (k) -> config.getRateLimiterFactory().createRateLimiter(k))
           .get(config.getConstructionTimeoutMillis(), TimeUnit.MILLISECONDS);
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
       return getDefaultRateLimiterOnConstructionFailed(e);

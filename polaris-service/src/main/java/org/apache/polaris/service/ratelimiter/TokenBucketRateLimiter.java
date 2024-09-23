@@ -22,7 +22,7 @@ import java.time.InstantSource;
 
 /**
  * Token bucket implementation of a Polaris RateLimiter. Acquires tokens at a fixed rate and has a
- * maximum amount of tokens. Each "acquire" costs 1 token.
+ * maximum amount of tokens. Each successful "tryAcquire" costs 1 token.
  */
 public class TokenBucketRateLimiter implements RateLimiter {
   private final double tokensPerMilli;
@@ -50,7 +50,7 @@ public class TokenBucketRateLimiter implements RateLimiter {
   public synchronized boolean tryAcquire() {
     // Grant tokens for the time that has passed since our last tryAcquire()
     long t = instantSource.millis();
-    long millisPassed = t - lastAcquireMillis;
+    long millisPassed = Math.subtractExact(t, lastAcquireMillis);
     lastAcquireMillis = t;
     tokens = Math.min(maxTokens, tokens + (millisPassed * tokensPerMilli));
 

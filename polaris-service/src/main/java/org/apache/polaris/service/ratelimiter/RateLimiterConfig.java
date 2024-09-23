@@ -28,14 +28,18 @@ public class RateLimiterConfig {
   /**
    * Rate limiters can be constructed asynchronously, so this config determines the construction
    * timeout before we default to a NoOpRateLimiter.
+   *
+   * <p>The default value is 2000ms.
    */
-  private long constructionTimeoutMillis;
+  private long constructionTimeoutMillis = 2000;
 
   /**
    * Since rate limiter construction is asynchronous and has a timeout, construction may fail. If
    * this option is enabled, the request will still be allowed when construction fails.
+   *
+   * <p>The default value is true which allows requests when rate limiter construction times out.
    */
-  private boolean allowRequestOnConstructionTimeout;
+  private boolean allowRequestOnConstructionTimeout = true;
 
   @JsonProperty("factory")
   public void setRateLimiterFactory(RateLimiterFactory rateLimiterFactory) {

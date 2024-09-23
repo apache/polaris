@@ -25,6 +25,7 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.function.Consumer;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
@@ -69,15 +70,18 @@ public class RateLimiterFilterTest {
     MockRateLimiterFactory factory =
         (MockRateLimiterFactory)
             (EXT.getConfiguration().getRateLimiterConfig().getRateLimiterFactory());
-    long windowMillis = factory.windowSeconds * 1000;
+    CallContext.setCurrentContext(CallContext.of(() -> "myrealm", null));
 
     MutableClock clock = MockRateLimiterFactory.CLOCK;
-    clock.add(Duration.ofMillis(2 * windowMillis)); // Clear any counters from before this test
+    clock.add(
+        Duration.ofSeconds(2 * factory.windowSeconds)); // Clear any counters from before this test
+
     for (int i = 0; i < factory.requestsPerSecond * factory.windowSeconds; i++) {
       requestAsserter.accept(Response.Status.OK);
     }
     requestAsserter.accept(Response.Status.TOO_MANY_REQUESTS);
 
-    clock.add(Duration.ofMillis(4 * windowMillis)); // Clear any counters from during this test
+    clock.add(
+        Duration.ofSeconds(4 * factory.windowSeconds)); // Clear any counters from during this test
   }
 }

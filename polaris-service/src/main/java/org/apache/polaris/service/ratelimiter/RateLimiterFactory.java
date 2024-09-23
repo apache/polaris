@@ -21,7 +21,6 @@ package org.apache.polaris.service.ratelimiter;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.dropwizard.jackson.Discoverable;
 import java.util.concurrent.Future;
-import org.apache.polaris.core.context.RealmContext;
 
 /**
  * Interface for constructing a rate limiter given the rate limiting key and clock. Notably, rate
@@ -34,9 +33,8 @@ public interface RateLimiterFactory extends Discoverable {
   /**
    * Constructs a rate limiter asynchronously. Callers may choose to set a timeout on construction.
    *
-   * @param realmContext The associated realm context. Rate limiters may optionally choose to
-   *     discriminate their behavior by this.
+   * @param key contains context about the type of entity that will be rate limited
    * @return a Future with the constructed RateLimiter
    */
-  Future<RateLimiter> createRateLimiter(RealmContext realmContext);
+  Future<RateLimiter> createRateLimiter(RateLimiterKey key);
 }

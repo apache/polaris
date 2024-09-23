@@ -24,7 +24,6 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
-import org.apache.polaris.core.context.RealmContext;
 import org.threeten.extra.MutableClock;
 
 /**
@@ -45,14 +44,13 @@ public class MockRateLimiterFactory implements RateLimiterFactory {
   public boolean neverFinishConstruction;
 
   @Override
-  public Future<RateLimiter> createRateLimiter(RealmContext realmContext) {
+  public Future<RateLimiter> createRateLimiter(RateLimiterKey key) {
     if (neverFinishConstruction) {
       // This future will never finish
       return new CompletableFuture<>();
     }
-    return CompletableFuture.supplyAsync(
-        () ->
-            new TokenBucketRateLimiter(
-                requestsPerSecond, requestsPerSecond * windowSeconds, CLOCK));
+    return CompletableFuture.completedFuture(
+        new TokenBucketRateLimiter(
+            requestsPerSecond, Math.multiplyExact(requestsPerSecond, windowSeconds), CLOCK));
   }
 }

@@ -35,7 +35,6 @@ public class TokenBucketRateLimiterTest {
   @Test
   void testBasic() {
     MutableClock clock = MutableClock.of(Instant.now(), ZoneOffset.UTC);
-    //    MockClock clock = new MockClock();
     clock.add(Duration.ofSeconds(5));
 
     RateLimitResultAsserter asserter =
