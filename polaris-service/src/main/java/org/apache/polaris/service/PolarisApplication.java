@@ -254,10 +254,10 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         .addFilter("tracing", new TracingFilter(openTelemetry))
         .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
 
-    if (configuration.getRateLimiterConfig() != null) {
+    if (configuration.getRateLimiter() != null) {
       environment
           .servlets()
-          .addFilter("ratelimiter", new RateLimiterFilter(configuration.getRateLimiterConfig()))
+          .addFilter("ratelimiter", new RateLimiterFilter(configuration.getRateLimiter()))
           .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
     }
 

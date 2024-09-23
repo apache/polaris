@@ -43,6 +43,8 @@ import org.threeten.extra.MutableClock;
   SnowmanCredentialsExtension.class
 })
 public class RateLimiterFilterTest {
+  private static final long REQUESTS_PER_SECOND = 5;
+  private static final long WINDOW_SECONDS = 10;
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
       new DropwizardAppExtension<>(
           PolarisApplication.class,
@@ -51,7 +53,10 @@ public class RateLimiterFilterTest {
               "server.applicationConnectors[0].port",
               "0"), // Bind to random port to support parallelism
           ConfigOverride.config("server.adminConnectors[0].port", "0"),
-          ConfigOverride.config("rateLimiter.factory.type", "mock"));
+          ConfigOverride.config("rateLimiter.type", "mock-realm-token-bucket"),
+          ConfigOverride.config(
+              "rateLimiter.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
+          ConfigOverride.config("rateLimiter.windowSeconds", String.valueOf(WINDOW_SECONDS)));
 
   private static String userToken;
   private static String realm;
@@ -67,21 +72,16 @@ public class RateLimiterFilterTest {
   public void testRateLimiter() {
     Consumer<Response.Status> requestAsserter =
         TestUtil.constructRequestAsserter(EXT, userToken, realm);
-    MockRateLimiterFactory factory =
-        (MockRateLimiterFactory)
-            (EXT.getConfiguration().getRateLimiterConfig().getRateLimiterFactory());
     CallContext.setCurrentContext(CallContext.of(() -> "myrealm", null));
 
-    MutableClock clock = MockRateLimiterFactory.CLOCK;
-    clock.add(
-        Duration.ofSeconds(2 * factory.windowSeconds)); // Clear any counters from before this test
+    MutableClock clock = MockRealmTokenBucketRateLimiter.CLOCK;
+    clock.add(Duration.ofSeconds(2 * WINDOW_SECONDS)); // Clear any counters from before this test
 
-    for (int i = 0; i < factory.requestsPerSecond * factory.windowSeconds; i++) {
+    for (int i = 0; i < REQUESTS_PER_SECOND * WINDOW_SECONDS; i++) {
       requestAsserter.accept(Response.Status.OK);
     }
     requestAsserter.accept(Response.Status.TOO_MANY_REQUESTS);
 
-    clock.add(
-        Duration.ofSeconds(4 * factory.windowSeconds)); // Clear any counters from during this test
+    clock.add(Duration.ofSeconds(4 * WINDOW_SECONDS)); // Clear any counters from during this test
   }
 }

@@ -169,7 +169,4 @@ maxRequestBodyBytes: -1
 
 # Optional, not specifying a "rateLimiter" section means no rate limiter
 rateLimiter:
-  constructionTimeoutMillis: 2000
-  allowRequestOnConstructionTimeout: true
-  factory:
-    type: no-op
+  type: no-op

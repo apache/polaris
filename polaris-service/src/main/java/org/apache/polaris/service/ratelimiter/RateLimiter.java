@@ -18,8 +18,12 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import io.dropwizard.jackson.Discoverable;
+
 /** Interface for rate limiting requests */
-public interface RateLimiter {
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+public interface RateLimiter extends Discoverable {
   /**
    * This signifies that a request is being made. That is, the rate limiter should count the request
    * at this point.

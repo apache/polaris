@@ -17,4 +17,5 @@
 # under the License.
 #
 
-org.apache.polaris.service.ratelimiter.MockRateLimiterFactory
+org.apache.polaris.service.ratelimiter.RealmTokenBucketRateLimiter
+org.apache.polaris.service.ratelimiter.NoOpRateLimiter

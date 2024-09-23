@@ -18,15 +18,28 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import org.threeten.extra.MutableClock;
 
-/** Rate limiter factory that constructs a no-op rate limiter */
-@JsonTypeName("no-op")
-public class NoOpRateLimiterFactory implements RateLimiterFactory {
+/** RealmTokenBucketRateLimiter with a mock clock */
+@JsonTypeName("mock-realm-token-bucket")
+public class MockRealmTokenBucketRateLimiter extends RealmTokenBucketRateLimiter {
+  public static MutableClock CLOCK = MutableClock.of(Instant.now(), ZoneOffset.UTC);
+
+  @JsonCreator
+  public MockRealmTokenBucketRateLimiter(
+      @JsonProperty("requestsPerSecond") final long requestsPerSecond,
+      @JsonProperty("windowSeconds") final long windowSeconds) {
+    super(requestsPerSecond, windowSeconds);
+  }
+
   @Override
-  public Future<RateLimiter> createRateLimiter(RateLimiterKey key) {
-    return CompletableFuture.completedFuture(new NoOpRateLimiter());
+  protected Clock getClock() {
+    return CLOCK;
   }
 }

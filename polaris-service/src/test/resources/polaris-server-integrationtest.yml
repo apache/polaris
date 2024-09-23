@@ -154,9 +154,6 @@ logging:
 maxRequestBodyBytes: 1000000
 
 rateLimiter:
-  constructionTimeoutMillis: 2000
-  allowRequestOnConstructionTimeout: true
-  factory:
-    type: default
-    requestsPerSecond: 10
-    windowSeconds: 10
+  type: realm-token-bucket
+  requestsPerSecond: 10
+  windowSeconds: 10

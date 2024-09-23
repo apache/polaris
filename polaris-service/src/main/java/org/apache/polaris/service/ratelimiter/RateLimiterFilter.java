@@ -28,16 +28,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.time.Clock;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,56 +35,22 @@ import org.slf4j.LoggerFactory;
 @Priority(Priorities.AUTHORIZATION + 1)
 public class RateLimiterFilter implements Filter {
   private static final Logger LOGGER = LoggerFactory.getLogger(RateLimiterFilter.class);
-  private static final RateLimiter NO_OP_LIMITER = new NoOpRateLimiter();
-  private static final RateLimiter ALWAYS_REJECT_LIMITER =
-      new TokenBucketRateLimiter(0, 0, Clock.systemUTC());
 
-  private final RateLimiterConfig config;
-  private final Map<RateLimiterKey, Future<RateLimiter>> perRealmLimiters =
-      new ConcurrentHashMap<>();
+  private final RateLimiter rateLimiter;
 
-  public RateLimiterFilter(RateLimiterConfig config) {
-    this.config = config;
+  public RateLimiterFilter(RateLimiter rateLimiter) {
+    this.rateLimiter = rateLimiter;
   }
 
   /** Returns a 429 if the rate limiter says so. Otherwise, forwards the request along. */
   @Override
   public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
       throws IOException, ServletException {
-    // Build the rate limiting key
-    String realmIdentifier =
-        Optional.ofNullable(CallContext.getCurrentContext())
-            .map(CallContext::getRealmContext)
-            .map(RealmContext::getRealmIdentifier)
-            .orElse("");
-    RateLimiterKey key = new RateLimiterKey(realmIdentifier);
-
-    // Maybe enforce the rate limit
-    RateLimiter rateLimiter = maybeBlockToGetRateLimiter(key);
     if (response instanceof HttpServletResponse servletResponse && !rateLimiter.tryAcquire()) {
       servletResponse.setStatus(Response.Status.TOO_MANY_REQUESTS.getStatusCode());
+      LOGGER.atDebug().log("Rate limiting request");
       return;
     }
     chain.doFilter(request, response);
-  }
-
-  private RateLimiter maybeBlockToGetRateLimiter(RateLimiterKey key) {
-    try {
-      return perRealmLimiters
-          .computeIfAbsent(key, (k) -> config.getRateLimiterFactory().createRateLimiter(k))
-          .get(config.getConstructionTimeoutMillis(), TimeUnit.MILLISECONDS);
-    } catch (InterruptedException | ExecutionException | TimeoutException e) {
-      return getDefaultRateLimiterOnConstructionFailed(e);
-    }
-  }
-
-  private RateLimiter getDefaultRateLimiterOnConstructionFailed(Exception e) {
-    if (config.getAllowRequestOnConstructionTimeout()) {
-      LOGGER.error("Failed to fetch rate limiter, allowing the request", e);
-      return NO_OP_LIMITER;
-    } else {
-      LOGGER.error("Failed to fetch rate limiter, rejecting the request", e);
-      return ALWAYS_REJECT_LIMITER;
-    }
   }
 }
