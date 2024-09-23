@@ -80,7 +80,6 @@ public class RateLimiterFilter implements Filter {
 
   private RateLimiter maybeBlockToGetRateLimiter(RateLimiterKey key) {
     try {
-      System.out.println("ANDREW keys = " + perRealmLimiters.keySet());
       return perRealmLimiters
           .computeIfAbsent(key, (k) -> config.getRateLimiterFactory().createRateLimiter(k))
           .get(config.getConstructionTimeoutMillis(), TimeUnit.MILLISECONDS);
