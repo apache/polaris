@@ -167,6 +167,6 @@ logging:
 # Limits the size of request bodies sent to Polaris. -1 means no limit.
 maxRequestBodyBytes: -1
 
-# Optional, not specifying a "rateLimiter" section means no rate limiter
+# Optional, not specifying a "rateLimiter" section also means no rate limiter
 rateLimiter:
   type: no-op

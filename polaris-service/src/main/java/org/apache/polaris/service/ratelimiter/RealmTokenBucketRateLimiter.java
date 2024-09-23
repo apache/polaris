@@ -74,6 +74,7 @@ public class RealmTokenBucketRateLimiter implements RateLimiter {
         .tryAcquire();
   }
 
+  @VisibleForTesting
   protected Clock getClock() {
     return Clock.systemUTC();
   }
