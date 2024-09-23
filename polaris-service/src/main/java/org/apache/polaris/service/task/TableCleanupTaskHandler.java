@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
 import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.StatisticsFile;
@@ -163,20 +162,20 @@ public class TableCleanupTaskHandler implements TaskHandler {
         }
 
         tableMetadata.snapshots().stream()
-                .flatMap(sn -> sn.allManifests(fileIO).stream())
-                // remove duplication
-                .collect(Collectors.toMap(ManifestFile::path, Function.identity(), (mf1, mf2) -> mf1))
-                .keySet()
-                .forEach(fileIO::deleteFile);
+            .flatMap(sn -> sn.allManifests(fileIO).stream())
+            // remove duplication
+            .collect(Collectors.toMap(ManifestFile::path, Function.identity(), (mf1, mf2) -> mf1))
+            .keySet()
+            .forEach(fileIO::deleteFile);
         tableMetadata.snapshots().stream()
-                .map(Snapshot::manifestListLocation)
-                .forEach(fileIO::deleteFile);
+            .map(Snapshot::manifestListLocation)
+            .forEach(fileIO::deleteFile);
         tableMetadata.previousFiles().stream()
-                .map(TableMetadata.MetadataLogEntry::file)
-                .forEach(fileIO::deleteFile);
+            .map(TableMetadata.MetadataLogEntry::file)
+            .forEach(fileIO::deleteFile);
         tableMetadata.statisticsFiles().stream()
-                .map(StatisticsFile::path)
-                .forEach(fileIO::deleteFile);
+            .map(StatisticsFile::path)
+            .forEach(fileIO::deleteFile);
         fileIO.deleteFile(tableEntity.getMetadataLocation());
 
         return true;

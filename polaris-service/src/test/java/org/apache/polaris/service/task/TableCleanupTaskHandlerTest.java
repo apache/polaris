@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DeleteFile;
@@ -102,7 +101,7 @@ class TableCleanupTaskHandlerTest {
       PolarisBaseEntity baseEntity = task.readData(PolarisBaseEntity.class);
       TableLikeEntity tableEntity = TableLikeEntity.of(baseEntity);
       TableMetadata tableMetadata =
-              TableMetadataParser.read(fileIO, tableEntity.getMetadataLocation());
+          TableMetadataParser.read(fileIO, tableEntity.getMetadataLocation());
       Set<String> manifestListLocations = manifestListLocations(tableMetadata.snapshots());
       Set<String> manifestLocations = manifestLocations(tableMetadata.snapshots(), fileIO);
       Set<String> metadataLocations = metadataLocations(tableMetadata);
@@ -137,22 +136,21 @@ class TableCleanupTaskHandlerTest {
       Mockito.verify(
               fileIO,
               Mockito.times(
-                      manifestListLocations.size()
-                              + manifestLocations.size()
-                              + metadataLocations.size()
-              )
-      ).deleteFile(argumentCaptor.capture());
+                  manifestListLocations.size()
+                      + manifestLocations.size()
+                      + metadataLocations.size()))
+          .deleteFile(argumentCaptor.capture());
 
       List<String> deletedPaths = argumentCaptor.getAllValues();
       assertThat(deletedPaths)
-              .as("should contain all created manifest lists")
-              .containsAll(manifestListLocations);
+          .as("should contain all created manifest lists")
+          .containsAll(manifestListLocations);
       assertThat(deletedPaths)
-              .as("should contain all created manifests")
-              .containsAll(manifestLocations);
+          .as("should contain all created manifests")
+          .containsAll(manifestLocations);
       assertThat(deletedPaths)
-              .as("should contain all created metadata locations")
-              .containsAll(metadataLocations);
+          .as("should contain all created metadata locations")
+          .containsAll(metadataLocations);
     }
   }
 
@@ -362,7 +360,7 @@ class TableCleanupTaskHandlerTest {
       PolarisBaseEntity baseEntity = task.readData(PolarisBaseEntity.class);
       TableLikeEntity tableEntity = TableLikeEntity.of(baseEntity);
       TableMetadata tableMetadata =
-              TableMetadataParser.read(fileIO, tableEntity.getMetadataLocation());
+          TableMetadataParser.read(fileIO, tableEntity.getMetadataLocation());
       Set<String> manifestListLocations = manifestListLocations(tableMetadata.snapshots());
       Set<String> manifestLocations = manifestLocations(tableMetadata.snapshots(), fileIO);
       Set<String> metadataLocations = metadataLocations(tableMetadata);
@@ -419,22 +417,21 @@ class TableCleanupTaskHandlerTest {
       Mockito.verify(
               fileIO,
               Mockito.times(
-                      manifestListLocations.size()
-                              + manifestLocations.size()
-                              + metadataLocations.size()
-              )
-      ).deleteFile(argumentCaptor.capture());
+                  manifestListLocations.size()
+                      + manifestLocations.size()
+                      + metadataLocations.size()))
+          .deleteFile(argumentCaptor.capture());
 
       List<String> deletedPaths = argumentCaptor.getAllValues();
       assertThat(deletedPaths)
-              .as("should contain all created manifest lists")
-              .containsAll(manifestListLocations);
+          .as("should contain all created manifest lists")
+          .containsAll(manifestListLocations);
       assertThat(deletedPaths)
-              .as("should contain all created manifests")
-              .containsAll(manifestLocations);
+          .as("should contain all created manifests")
+          .containsAll(manifestLocations);
       assertThat(deletedPaths)
-              .as("should contain all created metadata locations")
-              .containsAll(metadataLocations);
+          .as("should contain all created metadata locations")
+          .containsAll(metadataLocations);
     }
   }
 
@@ -442,19 +439,19 @@ class TableCleanupTaskHandlerTest {
     InMemoryFileIO mockIO = Mockito.mock(InMemoryFileIO.class);
 
     Mockito.when(mockIO.newInputFile(Mockito.anyString()))
-            .thenAnswer(invocation -> wrapped.newInputFile((String) invocation.getArgument(0)));
+        .thenAnswer(invocation -> wrapped.newInputFile((String) invocation.getArgument(0)));
     Mockito.when(mockIO.newInputFile(Mockito.anyString(), Mockito.anyLong()))
-            .thenAnswer(
-                    invocation ->
-                            wrapped.newInputFile(invocation.getArgument(0), invocation.getArgument(1)));
+        .thenAnswer(
+            invocation ->
+                wrapped.newInputFile(invocation.getArgument(0), invocation.getArgument(1)));
     Mockito.when(mockIO.newInputFile(Mockito.any(ManifestFile.class)))
-            .thenAnswer(invocation -> wrapped.newInputFile((ManifestFile) invocation.getArgument(0)));
+        .thenAnswer(invocation -> wrapped.newInputFile((ManifestFile) invocation.getArgument(0)));
     Mockito.when(mockIO.newInputFile(Mockito.any(DataFile.class)))
-            .thenAnswer(invocation -> wrapped.newInputFile((DataFile) invocation.getArgument(0)));
+        .thenAnswer(invocation -> wrapped.newInputFile((DataFile) invocation.getArgument(0)));
     Mockito.when(mockIO.newInputFile(Mockito.any(DeleteFile.class)))
-            .thenAnswer(invocation -> wrapped.newInputFile((DeleteFile) invocation.getArgument(0)));
+        .thenAnswer(invocation -> wrapped.newInputFile((DeleteFile) invocation.getArgument(0)));
     Mockito.when(mockIO.newOutputFile(Mockito.anyString()))
-            .thenAnswer(invocation -> wrapped.newOutputFile(invocation.getArgument(0)));
+        .thenAnswer(invocation -> wrapped.newOutputFile(invocation.getArgument(0)));
 
     return mockIO;
   }
@@ -465,16 +462,16 @@ class TableCleanupTaskHandlerTest {
 
   private Set<String> manifestLocations(List<Snapshot> snapshotSet, FileIO io) {
     return snapshotSet.stream()
-            .flatMap(snapshot -> snapshot.allManifests(io).stream())
-            .map(ManifestFile::path)
-            .collect(Collectors.toSet());
+        .flatMap(snapshot -> snapshot.allManifests(io).stream())
+        .map(ManifestFile::path)
+        .collect(Collectors.toSet());
   }
 
   private Set<String> metadataLocations(TableMetadata tableMetadata) {
     Set<String> metadataLocations =
-            tableMetadata.previousFiles().stream()
-                    .map(TableMetadata.MetadataLogEntry::file)
-                    .collect(Collectors.toSet());
+        tableMetadata.previousFiles().stream()
+            .map(TableMetadata.MetadataLogEntry::file)
+            .collect(Collectors.toSet());
     metadataLocations.add(tableMetadata.metadataFileLocation());
     return metadataLocations;
   }
