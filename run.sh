@@ -55,7 +55,7 @@ shift $((OPTIND-1))
 
 # Deploy the registry
 echo "Building Kind Registry..."
-#sh ./kind-registry.sh
+sh ./kind-registry.sh
 
 # Check if BUILD_ARGS is not empty and print the build arguments
 if [[ -n "$BUILD_ARGS" ]]; then
@@ -68,10 +68,10 @@ fi
 echo "Building polaris image..."
 docker build -t localhost:5001/polaris $BUILD_ARGS -f Dockerfile .
 echo "Pushing polaris image..."
-#docker push localhost:5001/polaris
+docker push localhost:5001/polaris
 echo "Loading polaris image to kind..."
-#kind load docker-image localhost:5001/polaris:latest
+kind load docker-image localhost:5001/polaris:latest
 
 echo "Applying kubernetes manifests..."
-#kubectl delete -f k8/deployment.yaml --ignore-not-found
-#kubectl apply -f k8/deployment.yaml
+kubectl delete -f k8/deployment.yaml --ignore-not-found
+kubectl apply -f k8/deployment.yaml
