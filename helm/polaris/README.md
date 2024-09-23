@@ -37,7 +37,7 @@ A Helm chart for Polaris.
 
 ## Source Code
 
-* <https://github.com/polaris-catalog/polaris>
+* <https://github.com/apache/polaris>
 
 ## Installation
 

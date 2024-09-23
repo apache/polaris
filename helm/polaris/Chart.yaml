@@ -23,9 +23,9 @@ description: A Helm chart for Polaris
 type: application
 version: 0.1.0
 home: https://polaris.io/
-icon: https://raw.githubusercontent.com/polaris-catalog/polaris/main/docs/img/logos/polaris-brandmark.png
+icon: https://raw.githubusercontent.com/apache/polaris/main/docs/img/logos/polaris-brandmark.png
 sources:
-  - https://github.com/polaris-catalog/polaris
+  - https://github.com/apache/polaris
 keywords:
   - polaris
   - iceberg
