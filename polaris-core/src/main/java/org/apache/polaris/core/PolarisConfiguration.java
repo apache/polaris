@@ -154,7 +154,6 @@ public class PolarisConfiguration<T> {
           .defaultValue(false)
           .build();
 
-<<<<<<< HEAD
   public static final PolarisConfiguration<List<String>> SUPPORTED_CATALOG_STORAGE_TYPES =
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_STORAGE_TYPES")
@@ -166,7 +165,8 @@ public class PolarisConfiguration<T> {
                   StorageConfigInfo.StorageTypeEnum.AZURE.name(),
                   StorageConfigInfo.StorageTypeEnum.GCS.name(),
                   StorageConfigInfo.StorageTypeEnum.FILE.name()))
-=======
+          .build();
+
   public static final PolarisConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_NAMESPACE_DROP")
@@ -190,6 +190,5 @@ public class PolarisConfiguration<T> {
           .description(
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
           .defaultValue(true)
->>>>>>> 81ec424de5bf4e466660b15dca1778026be07e9e
           .build();
 }
