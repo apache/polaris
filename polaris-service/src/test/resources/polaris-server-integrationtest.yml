@@ -152,3 +152,9 @@ logging:
 
 # Limits the size of request bodies sent to Polaris. -1 means no limit.
 maxRequestBodyBytes: 1000000
+
+# Limits the request rate per realm
+rateLimiter:
+  type: realm-token-bucket
+  requestsPerSecond: 10
+  windowSeconds: 10
