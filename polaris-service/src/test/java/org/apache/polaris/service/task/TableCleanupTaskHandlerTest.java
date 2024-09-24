@@ -92,7 +92,12 @@ class TableCleanupTaskHandlerTest {
       TestSnapshot snapshot =
           TaskTestUtils.newSnapshot(fileIO, "manifestList.avro", 1, snapshotId, 99L, manifestFile);
       String metadataFile = "v1-49494949.metadata.json";
-      StatisticsFile statisticsFile = writeStatsFile(snapshot.snapshotId(), snapshot.sequenceNumber(), "/metadata/" + UUID.randomUUID() + ".stats", fileIO);
+      StatisticsFile statisticsFile =
+          writeStatsFile(
+              snapshot.snapshotId(),
+              snapshot.sequenceNumber(),
+              "/metadata/" + UUID.randomUUID() + ".stats",
+              fileIO);
       TaskTestUtils.writeTableMetadata(fileIO, metadataFile, List.of(statisticsFile), snapshot);
 
       TaskEntity task =
@@ -149,8 +154,8 @@ class TableCleanupTaskHandlerTest {
           .as("should contain all created metadata locations")
           .containsAll(metadataLocations);
       assertThat(deletedPaths)
-              .as("should contain all created stats locations")
-              .containsAll(statsLocation);
+          .as("should contain all created stats locations")
+          .containsAll(statsLocation);
     }
   }
 
@@ -341,9 +346,20 @@ class TableCleanupTaskHandlerTest {
               manifestFile1,
               manifestFile3); // exclude manifest2 from the new snapshot
       String metadataFile = "v1-295495059.metadata.json";
-      StatisticsFile statisticsFile1 = writeStatsFile(snapshot.snapshotId(), snapshot.sequenceNumber(), "/metadata/" + UUID.randomUUID() + ".stats", fileIO);
-      StatisticsFile statisticsFile2 = writeStatsFile(snapshot2.snapshotId(), snapshot2.sequenceNumber(), "/metadata/" + UUID.randomUUID() + ".stats", fileIO);
-      TaskTestUtils.writeTableMetadata(fileIO, metadataFile, List.of(statisticsFile1, statisticsFile2), snapshot, snapshot2);
+      StatisticsFile statisticsFile1 =
+          writeStatsFile(
+              snapshot.snapshotId(),
+              snapshot.sequenceNumber(),
+              "/metadata/" + UUID.randomUUID() + ".stats",
+              fileIO);
+      StatisticsFile statisticsFile2 =
+          writeStatsFile(
+              snapshot2.snapshotId(),
+              snapshot2.sequenceNumber(),
+              "/metadata/" + UUID.randomUUID() + ".stats",
+              fileIO);
+      TaskTestUtils.writeTableMetadata(
+          fileIO, metadataFile, List.of(statisticsFile1, statisticsFile2), snapshot, snapshot2);
 
       TaskEntity task =
           new TaskEntity.Builder()
@@ -422,8 +438,8 @@ class TableCleanupTaskHandlerTest {
           .as("should contain all created metadata locations")
           .containsAll(metadataLocations);
       assertThat(deletedPaths)
-        .as("should contain all created stats locations")
-              .containsAll(statsLocations);
+          .as("should contain all created stats locations")
+          .containsAll(statsLocations);
     }
   }
 
