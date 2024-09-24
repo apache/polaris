@@ -21,21 +21,30 @@ package org.apache.polaris.service.task;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DeleteFile;
+import org.apache.iceberg.GenericBlobMetadata;
+import org.apache.iceberg.GenericStatisticsFile;
 import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.Snapshot;
+import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
+import org.apache.iceberg.puffin.Blob;
+import org.apache.iceberg.puffin.Puffin;
+import org.apache.iceberg.puffin.PuffinWriter;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.CallContext;
@@ -83,7 +92,8 @@ class TableCleanupTaskHandlerTest {
       TestSnapshot snapshot =
           TaskTestUtils.newSnapshot(fileIO, "manifestList.avro", 1, snapshotId, 99L, manifestFile);
       String metadataFile = "v1-49494949.metadata.json";
-      TaskTestUtils.writeTableMetadata(fileIO, metadataFile, snapshot);
+      StatisticsFile statisticsFile = writeStatsFile(snapshot.snapshotId(), snapshot.sequenceNumber(), "/metadata/" + UUID.randomUUID() + ".stats", fileIO);
+      TaskTestUtils.writeTableMetadata(fileIO, metadataFile, List.of(statisticsFile), snapshot);
 
       TaskEntity task =
           new TaskEntity.Builder()
@@ -102,12 +112,10 @@ class TableCleanupTaskHandlerTest {
       TableLikeEntity tableEntity = TableLikeEntity.of(baseEntity);
       TableMetadata tableMetadata =
           TableMetadataParser.read(fileIO, tableEntity.getMetadataLocation());
-      Set<String> manifestListLocations = manifestListLocations(tableMetadata.snapshots());
-      Set<String> manifestLocations = manifestLocations(tableMetadata.snapshots(), fileIO);
       Set<String> metadataLocations = metadataLocations(tableMetadata);
-      assertThat(manifestListLocations).hasSize(1);
-      assertThat(manifestLocations).hasSize(1);
+      Set<String> statsLocation = statsLocations(tableMetadata);
       assertThat(metadataLocations).hasSize(1);
+      assertThat(statsLocation).hasSize(1);
 
       CallContext.setCurrentContext(CallContext.of(realmContext, polarisCallContext));
       handler.handleTask(task);
@@ -133,24 +141,16 @@ class TableCleanupTaskHandlerTest {
                                   ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
 
       ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-      Mockito.verify(
-              fileIO,
-              Mockito.times(
-                  manifestListLocations.size()
-                      + manifestLocations.size()
-                      + metadataLocations.size()))
+      Mockito.verify(fileIO, Mockito.times(metadataLocations.size() + statsLocation.size()))
           .deleteFile(argumentCaptor.capture());
 
       List<String> deletedPaths = argumentCaptor.getAllValues();
       assertThat(deletedPaths)
-          .as("should contain all created manifest lists")
-          .containsAll(manifestListLocations);
-      assertThat(deletedPaths)
-          .as("should contain all created manifests")
-          .containsAll(manifestLocations);
-      assertThat(deletedPaths)
           .as("should contain all created metadata locations")
           .containsAll(metadataLocations);
+      assertThat(deletedPaths)
+              .as("should contain all created stats locations")
+              .containsAll(statsLocation);
     }
   }
 
@@ -341,7 +341,9 @@ class TableCleanupTaskHandlerTest {
               manifestFile1,
               manifestFile3); // exclude manifest2 from the new snapshot
       String metadataFile = "v1-295495059.metadata.json";
-      TaskTestUtils.writeTableMetadata(fileIO, metadataFile, snapshot, snapshot2);
+      StatisticsFile statisticsFile1 = writeStatsFile(snapshot.snapshotId(), snapshot.sequenceNumber(), "/metadata/" + UUID.randomUUID() + ".stats", fileIO);
+      StatisticsFile statisticsFile2 = writeStatsFile(snapshot2.snapshotId(), snapshot2.sequenceNumber(), "/metadata/" + UUID.randomUUID() + ".stats", fileIO);
+      TaskTestUtils.writeTableMetadata(fileIO, metadataFile, List.of(statisticsFile1, statisticsFile2), snapshot, snapshot2);
 
       TaskEntity task =
           new TaskEntity.Builder()
@@ -361,12 +363,10 @@ class TableCleanupTaskHandlerTest {
       TableLikeEntity tableEntity = TableLikeEntity.of(baseEntity);
       TableMetadata tableMetadata =
           TableMetadataParser.read(fileIO, tableEntity.getMetadataLocation());
-      Set<String> manifestListLocations = manifestListLocations(tableMetadata.snapshots());
-      Set<String> manifestLocations = manifestLocations(tableMetadata.snapshots(), fileIO);
       Set<String> metadataLocations = metadataLocations(tableMetadata);
-      assertThat(manifestListLocations).hasSize(2);
-      assertThat(manifestLocations).hasSize(3);
+      Set<String> statsLocations = statsLocations(tableMetadata);
       assertThat(metadataLocations).hasSize(1);
+      assertThat(statsLocations).hasSize(2);
 
       handler.handleTask(task);
 
@@ -414,24 +414,16 @@ class TableCleanupTaskHandlerTest {
                                   ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
 
       ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-      Mockito.verify(
-              fileIO,
-              Mockito.times(
-                  manifestListLocations.size()
-                      + manifestLocations.size()
-                      + metadataLocations.size()))
+      Mockito.verify(fileIO, Mockito.times(metadataLocations.size() + statsLocations.size()))
           .deleteFile(argumentCaptor.capture());
 
       List<String> deletedPaths = argumentCaptor.getAllValues();
       assertThat(deletedPaths)
-          .as("should contain all created manifest lists")
-          .containsAll(manifestListLocations);
-      assertThat(deletedPaths)
-          .as("should contain all created manifests")
-          .containsAll(manifestLocations);
-      assertThat(deletedPaths)
           .as("should contain all created metadata locations")
           .containsAll(metadataLocations);
+      assertThat(deletedPaths)
+        .as("should contain all created stats locations")
+              .containsAll(statsLocations);
     }
   }
 
@@ -456,17 +448,6 @@ class TableCleanupTaskHandlerTest {
     return mockIO;
   }
 
-  private Set<String> manifestListLocations(List<Snapshot> snapshotList) {
-    return snapshotList.stream().map(Snapshot::manifestListLocation).collect(Collectors.toSet());
-  }
-
-  private Set<String> manifestLocations(List<Snapshot> snapshotSet, FileIO io) {
-    return snapshotSet.stream()
-        .flatMap(snapshot -> snapshot.allManifests(io).stream())
-        .map(ManifestFile::path)
-        .collect(Collectors.toSet());
-  }
-
   private Set<String> metadataLocations(TableMetadata tableMetadata) {
     Set<String> metadataLocations =
         tableMetadata.previousFiles().stream()
@@ -474,5 +455,33 @@ class TableCleanupTaskHandlerTest {
             .collect(Collectors.toSet());
     metadataLocations.add(tableMetadata.metadataFileLocation());
     return metadataLocations;
+  }
+
+  private Set<String> statsLocations(TableMetadata tableMetadata) {
+    return tableMetadata.statisticsFiles().stream()
+        .map(StatisticsFile::path)
+        .collect(Collectors.toSet());
+  }
+
+  private StatisticsFile writeStatsFile(
+      long snapshotId, long snapshotSequenceNumber, String statsLocation, FileIO fileIO)
+      throws IOException {
+    try (PuffinWriter puffinWriter = Puffin.write(fileIO.newOutputFile(statsLocation)).build()) {
+      puffinWriter.add(
+          new Blob(
+              "some-blob-type",
+              List.of(1),
+              snapshotId,
+              snapshotSequenceNumber,
+              ByteBuffer.wrap("blob content".getBytes(StandardCharsets.UTF_8))));
+      puffinWriter.finish();
+
+      return new GenericStatisticsFile(
+          snapshotId,
+          statsLocation,
+          puffinWriter.fileSize(),
+          puffinWriter.footerSize(),
+          puffinWriter.writtenBlobsMetadata().stream().map(GenericBlobMetadata::from).toList());
+    }
   }
 }

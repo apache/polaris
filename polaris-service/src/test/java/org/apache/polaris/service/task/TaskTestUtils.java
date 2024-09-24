@@ -33,6 +33,7 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.SortOrder;
+import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.avro.Avro;
@@ -64,7 +65,16 @@ public class TaskTestUtils {
 
   static void writeTableMetadata(FileIO fileIO, String metadataFile, Snapshot... snapshots)
       throws IOException {
-    TableMetadata.Builder tmBuidler =
+    writeTableMetadata(fileIO, metadataFile, null, snapshots);
+  }
+
+  static void writeTableMetadata(
+      FileIO fileIO,
+      String metadataFile,
+      List<StatisticsFile> statisticsFiles,
+      Snapshot... snapshots)
+      throws IOException {
+    TableMetadata.Builder tmBuilder =
         TableMetadata.buildFromEmpty()
             .setLocation("path/to/table")
             .addSchema(
@@ -74,10 +84,15 @@ public class TaskTestUtils {
             .addSortOrder(SortOrder.unsorted())
             .assignUUID(UUID.randomUUID().toString())
             .addPartitionSpec(PartitionSpec.unpartitioned());
+
+    int statisticsFileIndex = 0;
     for (Snapshot snapshot : snapshots) {
-      tmBuidler.addSnapshot(snapshot);
+      tmBuilder.addSnapshot(snapshot);
+      if (statisticsFiles != null) {
+        tmBuilder.setStatistics(snapshot.snapshotId(), statisticsFiles.get(statisticsFileIndex++));
+      }
     }
-    TableMetadata tableMetadata = tmBuidler.build();
+    TableMetadata tableMetadata = tmBuilder.build();
     PositionOutputStream out = fileIO.newOutputFile(metadataFile).createOrOverwrite();
     out.write(TableMetadataParser.toJson(tableMetadata).getBytes(StandardCharsets.UTF_8));
     out.close();
