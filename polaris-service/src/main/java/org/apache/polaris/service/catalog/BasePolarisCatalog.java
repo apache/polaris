@@ -75,6 +75,7 @@ import org.apache.iceberg.view.ViewOperations;
 import org.apache.iceberg.view.ViewUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfiguration;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
@@ -986,14 +987,23 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           // }
         },
         () -> {
-          List<String> invalidLocations =
-              locations.stream()
-                  .filter(location -> location.startsWith("file:") || location.startsWith("http"))
-                  .collect(Collectors.toList());
-          if (!invalidLocations.isEmpty()) {
-            throw new ForbiddenException(
-                "Invalid locations '%s' for identifier '%s': File locations are not allowed",
-                invalidLocations, identifier);
+          List<String> allowedStorageTypes =
+              callContext
+                  .getPolarisCallContext()
+                  .getConfigurationStore()
+                  .getConfiguration(
+                      callContext.getPolarisCallContext(),
+                      PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+          if (!allowedStorageTypes.contains(StorageConfigInfo.StorageTypeEnum.FILE.name())) {
+            List<String> invalidLocations =
+                locations.stream()
+                    .filter(location -> location.startsWith("file:") || location.startsWith("http"))
+                    .collect(Collectors.toList());
+            if (!invalidLocations.isEmpty()) {
+              throw new ForbiddenException(
+                  "Invalid locations '%s' for identifier '%s': File locations are not allowed",
+                  invalidLocations, identifier);
+            }
           }
         });
   }

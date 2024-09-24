@@ -688,9 +688,15 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         metadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
-    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
-        .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("Invalid location");
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
+    if (!polarisCallContext
+        .getConfigurationStore()
+        .getConfiguration(polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+        .contains("FILE")) {
+      Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
+          .isInstanceOf(ForbiddenException.class)
+          .hasMessageContaining("Invalid location");
+    }
   }
 
   @Test
@@ -748,9 +754,15 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         metadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
-    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
-        .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("Invalid location");
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
+    if (!polarisCallContext
+        .getConfigurationStore()
+        .getConfiguration(polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+        .contains("FILE")) {
+      Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
+          .isInstanceOf(ForbiddenException.class)
+          .hasMessageContaining("Invalid location");
+    }
 
     // It also fails if we try to use https
     final String httpsMetadataLocation = "https://maliciousdomain.com/metadata.json";
@@ -764,9 +776,14 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         httpsMetadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
-    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, newRequest))
-        .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("Invalid location");
+    if (!polarisCallContext
+        .getConfigurationStore()
+        .getConfiguration(polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+        .contains("FILE")) {
+      Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, newRequest))
+          .isInstanceOf(ForbiddenException.class)
+          .hasMessageContaining("Invalid location");
+    }
   }
 
   @Test
