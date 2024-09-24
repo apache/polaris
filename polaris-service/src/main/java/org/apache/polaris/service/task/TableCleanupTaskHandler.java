@@ -23,7 +23,6 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.iceberg.ManifestFile;
-import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
@@ -161,15 +160,6 @@ public class TableCleanupTaskHandler implements TaskHandler {
           taskExecutor.addTaskHandlerContext(createdTask.getId(), CallContext.getCurrentContext());
         }
 
-        tableMetadata.snapshots().stream()
-            .flatMap(sn -> sn.allManifests(fileIO).stream())
-            // remove duplication
-            .collect(Collectors.toMap(ManifestFile::path, Function.identity(), (mf1, mf2) -> mf1))
-            .keySet()
-            .forEach(fileIO::deleteFile);
-        tableMetadata.snapshots().stream()
-            .map(Snapshot::manifestListLocation)
-            .forEach(fileIO::deleteFile);
         tableMetadata.previousFiles().stream()
             .map(TableMetadata.MetadataLogEntry::file)
             .forEach(fileIO::deleteFile);
