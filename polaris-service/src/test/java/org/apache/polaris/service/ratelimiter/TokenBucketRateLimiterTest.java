@@ -61,8 +61,6 @@ public class TokenBucketRateLimiterTest {
     int maxTokens = 100;
     int numTasks = 50000;
     int tokensPerSecond = 10; // Can be anything above 0
-    int sleepPerNThreads = 100; // Making this too low will result in the test taking a long time
-    int maxSleepMillis = 5;
 
     TokenBucketRateLimiter rl =
         new TokenBucketRateLimiter(
@@ -81,14 +79,10 @@ public class TokenBucketRateLimiterTest {
                 startLatch.countDown();
                 startLatch.await();
 
-                // Make some threads sleep
-                if (i_ % sleepPerNThreads == 0) {
-                  Thread.sleep((int) (Math.random() * (maxSleepMillis + 1)));
-                }
-
                 if (rl.tryAcquire()) {
                   numAcquired.incrementAndGet();
                 }
+
                 endLatch.countDown();
               } catch (InterruptedException e) {
                 throw new RuntimeException(e);
