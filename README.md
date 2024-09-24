@@ -62,21 +62,21 @@ select * from db1.table1;
 
 Apache Polaris supports the following optional build options:
 - `-PeclipseLink=true` – Enables the EclipseLink extension.
-- `-PeclipseLinkDeps=[groupId]:[artifactId]:[version],...` – Specifies one or more additional dependencies for EclipseLink (e.g., JDBC drivers), separated by commas.
+- `-PeclipseLinkDeps=[groupId]:[artifactId]:[version],...` – Specifies one or more additional dependencies for EclipseLink (e.g., JDBC drivers) separated by commas.
 
 ### More build and run options
 Running in Docker
 - `docker build -t localhost:5001/polaris:latest .` - To build the image.
   - Optional build options:
     - `docker build -t localhost:5001/polaris:latest --build-arg ECLIPSELINK=true .` - Enables the EclipseLink extension.
-    - `docker build -t localhost:5001/polaris:latest --build-arg ECLIPSELINK=true --build-arg ECLIPSELINK_DEPS=[groupId]:[artifactId]:[version],... .` – Enabled the EclipseLink extension with one or more additional dependencies for EclipseLink (e.g., JDBC drivers), separated by commas.
+    - `docker build -t localhost:5001/polaris:latest --build-arg ECLIPSELINK=true --build-arg ECLIPSELINK_DEPS=[groupId]:[artifactId]:[version],... .` – Enables the EclipseLink extension with one or more additional dependencies for EclipseLink (e.g. JDBC drivers) separated by commas.
 - `docker run -p 8181:8181 localhost:5001/polaris:latest` - To run the image in standalone mode.
 
 Running in Kubernetes
 - `./run.sh` - To run Polaris as a mini-deployment locally. This will create one pod that bind itself to ports `8181` and `8182`.
   - Optional run options:
     - `./run.sh -b "ECLIPSELINK=true"` - Enables the EclipseLink extension.
-    - `./run.sh -b "ECLIPSELINK=true;ECLIPSELINK_DEPS=[groupId]:[artifactId]:[version],..."` – Enabled the EclipseLink extension with one or more additional dependencies for EclipseLink (e.g., JDBC drivers), separated by commas.
+    - `./run.sh -b "ECLIPSELINK=true;ECLIPSELINK_DEPS=[groupId]:[artifactId]:[version],..."` – Enables the EclipseLink extension with one or more additional dependencies for EclipseLink (e.g. JDBC drivers) separated by commas.
 - `kubectl port-forward svc/polaris-service -n polaris 8181:8181 8182:8182` - To create secure connections between a local machine and a pod within the cluster for both service and metrics endpoints.
   - Currently supported metrics endpoints:
     - localhost:8182/metrics
