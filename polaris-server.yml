@@ -73,10 +73,6 @@ featureConfiguration:
     - AZURE
     - FILE
 
-
-# Whether we want to enable Snowflake OAuth locally. Setting this to true requires
-# that you go through the setup outlined in the `README.md` file, specifically the
-# `OAuth + Snowflake: Local Testing And Then Some` section
 callContextResolver:
   type: default
 
@@ -91,6 +87,8 @@ metaStoreManager:
   # type: eclipse-link # uncomment to use eclipse-link as metastore
   # persistence-unit: polaris
 
+io:
+  factoryType: default
 
 # TODO - avoid duplicating token broker config
 oauth2:
@@ -160,8 +158,15 @@ logging:
 
       # The file to which statements will be logged.
       currentLogFilename: ./logs/polaris.log
-      #  When the log file rolls over, the file will be archived to snowflake-2012-03-15.log.gz,
-      # snowflake.log will be truncated, and new statements written to it.
+      #  When the log file rolls over, the file will be archived to polaris-2012-03-15.log.gz,
+      # polaris.log will be truncated, and new statements written to it.
       archivedLogFilenamePattern: ./logs/polaris-%d.log.gz
       # The maximum number of log files to archive.
       archivedFileCount: 14
+
+# Limits the size of request bodies sent to Polaris. -1 means no limit.
+maxRequestBodyBytes: -1
+
+# Optional, not specifying a "rateLimiter" section also means no rate limiter
+rateLimiter:
+  type: no-op

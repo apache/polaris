@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.catalog;
 
-import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -31,24 +30,28 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import org.apache.commons.io.FileUtils;
 import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.BaseTransaction;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.Transaction;
+import org.apache.iceberg.UpdatePartitionSpec;
+import org.apache.iceberg.UpdateSchema;
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SessionCatalog;
+import org.apache.iceberg.catalog.TableCommit;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
@@ -80,6 +83,7 @@ import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisConnectionExtension.PolarisToken;
+import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension.SnowmanCredentials;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -119,29 +123,29 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
           ConfigOverride.config(
               "server.adminConnectors[0].port", "0")); // Bind to random port to support parallelism
 
-  protected static final Schema SCHEMA = new Schema(required(4, "data", Types.StringType.get()));
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
 
   private RESTCatalog restCatalog;
   private String currentCatalogName;
   private String userToken;
-  private static String realm;
+  private String realm;
 
   private final String catalogBaseLocation =
       S3_BUCKET_BASE + "/" + System.getenv("USER") + "/path/to/data";
 
   @BeforeAll
-  public static void setup() throws IOException {
-    realm = PolarisConnectionExtension.getTestRealm(PolarisRestCatalogIntegrationTest.class);
-
-    Path testDir = Path.of("build/test_data/iceberg/" + realm);
-    FileUtils.deleteQuietly(testDir.toFile());
-    Files.createDirectories(testDir);
+  public static void setup(@PolarisRealm String realm) throws IOException {
+    // Set up test location
+    PolarisConnectionExtension.createTestDir(realm);
   }
 
   @BeforeEach
   public void before(
-      TestInfo testInfo, PolarisToken adminToken, SnowmanCredentials snowmanCredentials) {
+      TestInfo testInfo,
+      PolarisToken adminToken,
+      SnowmanCredentials snowmanCredentials,
+      @PolarisRealm String realm) {
+    this.realm = realm;
     userToken =
         TokenUtils.getTokenFromSecrets(
             EXT.client(),
@@ -153,7 +157,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         .getTestMethod()
         .ifPresent(
             method -> {
-              currentCatalogName = method.getName();
+              currentCatalogName = method.getName() + UUID.randomUUID();
               AwsStorageConfigInfo awsConfigModel =
                   AwsStorageConfigInfo.builder()
                       .setRoleArn(TEST_ROLE_ARN)
@@ -685,7 +689,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                     .buildTable(TableIdentifier.of(Namespace.of("ns1", "ns1a"), "tbl2"), SCHEMA)
                     .withLocation(catalogBaseLocation + "/ns1/ns1a-override/tbl1-override")
                     .create())
-        .isInstanceOf(BadRequestException.class)
+        .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("because it conflicts with existing table or namespace");
   }
 
@@ -770,5 +774,192 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
           .extracting(r -> r.readEntity(ErrorResponse.class))
           .returns("Cannot update internal catalog via notifications", ErrorResponse::message);
     }
+  }
+
+  // Test copied from iceberg/core/src/test/java/org/apache/iceberg/rest/TestRESTCatalog.java
+  // TODO: If TestRESTCatalog can be refactored to be more usable as a shared base test class,
+  // just inherit these test cases from that instead of copying them here.
+  @Test
+  public void diffAgainstSingleTable() {
+    Namespace namespace = Namespace.of("namespace");
+    TableIdentifier identifier = TableIdentifier.of(namespace, "multipleDiffsAgainstSingleTable");
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    Table table = catalog().buildTable(identifier, SCHEMA).create();
+    Transaction transaction = table.newTransaction();
+
+    UpdateSchema updateSchema =
+        transaction.updateSchema().addColumn("new_col", Types.LongType.get());
+    Schema expectedSchema = updateSchema.apply();
+    updateSchema.commit();
+
+    UpdatePartitionSpec updateSpec =
+        transaction.updateSpec().addField("shard", Expressions.bucket("id", 16));
+    PartitionSpec expectedSpec = updateSpec.apply();
+    updateSpec.commit();
+
+    TableCommit tableCommit =
+        TableCommit.create(
+            identifier,
+            ((BaseTransaction) transaction).startMetadata(),
+            ((BaseTransaction) transaction).currentMetadata());
+
+    restCatalog.commitTransaction(tableCommit);
+
+    Table loaded = catalog().loadTable(identifier);
+    assertThat(loaded.schema().asStruct()).isEqualTo(expectedSchema.asStruct());
+    assertThat(loaded.spec().fields()).isEqualTo(expectedSpec.fields());
+  }
+
+  // Test copied from iceberg/core/src/test/java/org/apache/iceberg/rest/TestRESTCatalog.java
+  // TODO: If TestRESTCatalog can be refactored to be more usable as a shared base test class,
+  // just inherit these test cases from that instead of copying them here.
+  @Test
+  public void multipleDiffsAgainstMultipleTables() {
+    Namespace namespace = Namespace.of("multiDiffNamespace");
+    TableIdentifier identifier1 = TableIdentifier.of(namespace, "multiDiffTable1");
+    TableIdentifier identifier2 = TableIdentifier.of(namespace, "multiDiffTable2");
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    Table table1 = catalog().buildTable(identifier1, SCHEMA).create();
+    Table table2 = catalog().buildTable(identifier2, SCHEMA).create();
+    Transaction t1Transaction = table1.newTransaction();
+    Transaction t2Transaction = table2.newTransaction();
+
+    UpdateSchema updateSchema =
+        t1Transaction.updateSchema().addColumn("new_col", Types.LongType.get());
+    Schema expectedSchema = updateSchema.apply();
+    updateSchema.commit();
+
+    UpdateSchema updateSchema2 =
+        t2Transaction.updateSchema().addColumn("new_col2", Types.LongType.get());
+    Schema expectedSchema2 = updateSchema2.apply();
+    updateSchema2.commit();
+
+    TableCommit tableCommit1 =
+        TableCommit.create(
+            identifier1,
+            ((BaseTransaction) t1Transaction).startMetadata(),
+            ((BaseTransaction) t1Transaction).currentMetadata());
+
+    TableCommit tableCommit2 =
+        TableCommit.create(
+            identifier2,
+            ((BaseTransaction) t2Transaction).startMetadata(),
+            ((BaseTransaction) t2Transaction).currentMetadata());
+
+    restCatalog.commitTransaction(tableCommit1, tableCommit2);
+
+    assertThat(catalog().loadTable(identifier1).schema().asStruct())
+        .isEqualTo(expectedSchema.asStruct());
+
+    assertThat(catalog().loadTable(identifier2).schema().asStruct())
+        .isEqualTo(expectedSchema2.asStruct());
+  }
+
+  // Test copied from iceberg/core/src/test/java/org/apache/iceberg/rest/TestRESTCatalog.java
+  // TODO: If TestRESTCatalog can be refactored to be more usable as a shared base test class,
+  // just inherit these test cases from that instead of copying them here.
+  @Test
+  public void multipleDiffsAgainstMultipleTablesLastFails() {
+    Namespace namespace = Namespace.of("multiDiffNamespace");
+    TableIdentifier identifier1 = TableIdentifier.of(namespace, "multiDiffTable1");
+    TableIdentifier identifier2 = TableIdentifier.of(namespace, "multiDiffTable2");
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    catalog().createTable(identifier1, SCHEMA);
+    catalog().createTable(identifier2, SCHEMA);
+
+    Table table1 = catalog().loadTable(identifier1);
+    Table table2 = catalog().loadTable(identifier2);
+    Schema originalSchemaOne = table1.schema();
+
+    Transaction t1Transaction = catalog().loadTable(identifier1).newTransaction();
+    t1Transaction.updateSchema().addColumn("new_col1", Types.LongType.get()).commit();
+
+    Transaction t2Transaction = catalog().loadTable(identifier2).newTransaction();
+    t2Transaction.updateSchema().renameColumn("data", "new-column").commit();
+
+    // delete the colum that is being renamed in the above TX to cause a conflict
+    table2.updateSchema().deleteColumn("data").commit();
+    Schema updatedSchemaTwo = table2.schema();
+
+    TableCommit tableCommit1 =
+        TableCommit.create(
+            identifier1,
+            ((BaseTransaction) t1Transaction).startMetadata(),
+            ((BaseTransaction) t1Transaction).currentMetadata());
+
+    TableCommit tableCommit2 =
+        TableCommit.create(
+            identifier2,
+            ((BaseTransaction) t2Transaction).startMetadata(),
+            ((BaseTransaction) t2Transaction).currentMetadata());
+
+    assertThatThrownBy(() -> restCatalog.commitTransaction(tableCommit1, tableCommit2))
+        .isInstanceOf(CommitFailedException.class)
+        .hasMessageContaining("Requirement failed: current schema changed: expected id 0 != 1");
+
+    Schema schema1 = catalog().loadTable(identifier1).schema();
+    assertThat(schema1.asStruct()).isEqualTo(originalSchemaOne.asStruct());
+
+    Schema schema2 = catalog().loadTable(identifier2).schema();
+    assertThat(schema2.asStruct()).isEqualTo(updatedSchemaTwo.asStruct());
+    assertThat(schema2.findField("data")).isNull();
+    assertThat(schema2.findField("new-column")).isNull();
+    assertThat(schema2.columns()).hasSize(1);
+  }
+
+  @Test
+  public void testMultipleConflictingCommitsToSingleTableInTransaction() {
+    Namespace namespace = Namespace.of("ns1");
+    TableIdentifier identifier =
+        TableIdentifier.of(namespace, "multipleConflictingCommitsAgainstSingleTable");
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    // Start two independent transactions on the same base table.
+    Table table = catalog().buildTable(identifier, SCHEMA).create();
+    Schema originalSchema = catalog().loadTable(identifier).schema();
+    Transaction transaction1 = table.newTransaction();
+    Transaction transaction2 = table.newTransaction();
+
+    transaction1.updateSchema().renameColumn("data", "new-column1").commit();
+    transaction2.updateSchema().renameColumn("data", "new-column2").commit();
+
+    TableCommit tableCommit1 =
+        TableCommit.create(
+            identifier,
+            ((BaseTransaction) transaction1).startMetadata(),
+            ((BaseTransaction) transaction1).currentMetadata());
+    TableCommit tableCommit2 =
+        TableCommit.create(
+            identifier,
+            ((BaseTransaction) transaction2).startMetadata(),
+            ((BaseTransaction) transaction2).currentMetadata());
+
+    // "Initial" commit requirements will succeed for both commits being based on the original
+    // table but should fail the entire transaction on the second commit.
+    assertThatThrownBy(() -> restCatalog.commitTransaction(tableCommit1, tableCommit2))
+        .isInstanceOf(CommitFailedException.class);
+
+    // If an implementation validates all UpdateRequirements up-front, then it might pass
+    // tests where the UpdateRequirement fails up-front without being atomic. Here we can
+    // catch such scenarios where update requirements appear to be fine up-front but will
+    // fail when trying to commit the second update, and verify that nothing was actually
+    // committed in the end.
+    Schema latestCommittedSchema = catalog().loadTable(identifier).schema();
+    assertThat(latestCommittedSchema.asStruct()).isEqualTo(originalSchema.asStruct());
   }
 }

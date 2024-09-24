@@ -19,6 +19,7 @@
 package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
@@ -30,6 +31,9 @@ public class TableLikeEntity extends PolarisEntity {
 
   public static final String USER_SPECIFIED_WRITE_DATA_LOCATION_KEY = "write.data.path";
   public static final String USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY = "write.metadata.path";
+
+  public static final String LAST_ADMITTED_NOTIFICATION_TIMESTAMP_KEY =
+      "last-notification-timestamp";
 
   public TableLikeEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
@@ -61,6 +65,13 @@ public class TableLikeEntity extends PolarisEntity {
   @JsonIgnore
   public String getMetadataLocation() {
     return getInternalPropertiesAsMap().get(METADATA_LOCATION_KEY);
+  }
+
+  @JsonIgnore
+  public Optional<Long> getLastAdmittedNotificationTimestamp() {
+    return Optional.ofNullable(
+            getInternalPropertiesAsMap().get(LAST_ADMITTED_NOTIFICATION_TIMESTAMP_KEY))
+        .map(Long::parseLong);
   }
 
   @JsonIgnore
@@ -107,6 +118,11 @@ public class TableLikeEntity extends PolarisEntity {
 
     public Builder setMetadataLocation(String location) {
       internalProperties.put(METADATA_LOCATION_KEY, location);
+      return this;
+    }
+
+    public Builder setLastNotificationTimestamp(long timestamp) {
+      internalProperties.put(LAST_ADMITTED_NOTIFICATION_TIMESTAMP_KEY, String.valueOf(timestamp));
       return this;
     }
   }

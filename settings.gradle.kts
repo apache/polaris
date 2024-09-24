@@ -36,6 +36,8 @@ if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
 
 rootProject.name = "polaris"
 
+val baseVersion = file("version.txt").readText().trim()
+
 fun loadProperties(file: File): Properties {
   val props = Properties()
   file.reader().use { reader -> props.load(reader) }
@@ -69,3 +71,5 @@ dependencyResolutionManagement {
     gradlePluginPortal()
   }
 }
+
+gradle.beforeProject { version = baseVersion }

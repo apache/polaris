@@ -17,6 +17,11 @@
  * under the License.
  */
 
+fun isValidDep(dep: String): Boolean {
+  val depRegex = "^[\\w.]+:[\\w\\-.]+:[\\w\\-.]+$".toRegex()
+  return dep.matches(depRegex)
+}
+
 plugins {
   id("polaris-server")
   `java-library`
@@ -24,10 +29,22 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
-  runtimeOnly(project(":polaris-service"))
   implementation(libs.eclipselink)
   implementation(platform(libs.dropwizard.bom))
   implementation("io.dropwizard:dropwizard-jackson")
+  val eclipseLinkDeps: String? = project.findProperty("eclipseLinkDeps") as String?
+  eclipseLinkDeps?.let {
+    val dependenciesList = it.split(",")
+    dependenciesList.forEach { dep ->
+      val trimmedDep = dep.trim()
+      if (isValidDep(trimmedDep)) {
+        implementation(trimmedDep)
+      } else {
+        throw GradleException("Invalid dependency format: $trimmedDep")
+      }
+    }
+  }
+
   compileOnly(libs.jetbrains.annotations)
 
   testImplementation(libs.h2)
@@ -44,7 +61,7 @@ tasks.register<Jar>("archiveConf") {
   archiveFileName = "conf.jar"
   destinationDirectory = layout.buildDirectory.dir("conf")
 
-  from("src/test/resources/META-INF/") { include("persistence.xml") }
+  from("src/main/resources/META-INF/") { include("persistence.xml") }
 }
 
 tasks.named("test") { dependsOn("archiveConf") }

@@ -41,6 +41,7 @@ import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.StorageUtil;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.slf4j.Logger;
@@ -139,7 +140,7 @@ public class GcpCredentialsStorageIntegration
         .forEach(
             location -> {
               URI uri = URI.create(location);
-              String bucket = uri.getHost();
+              String bucket = StorageUtil.getBucket(uri);
               readBuckets.add(bucket);
               String path = uri.getPath().substring(1);
               List<String> resourceExpressions =

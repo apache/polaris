@@ -61,6 +61,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
+import org.apache.polaris.service.catalog.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
@@ -121,7 +122,7 @@ public abstract class PolarisAuthzTestBase {
 
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
 
-  protected static final Schema SCHEMA =
+  public static final Schema SCHEMA =
       new Schema(
           required(3, "id", Types.IntegerType.get(), "unique ID 🤪"),
           required(4, "data", Types.StringType.get()));
@@ -353,7 +354,12 @@ public abstract class PolarisAuthzTestBase {
             callContext, entityManager, authenticatedRoot, CATALOG_NAME);
     this.baseCatalog =
         new BasePolarisCatalog(
-            entityManager, callContext, passthroughView, authenticatedRoot, Mockito.mock());
+            entityManager,
+            callContext,
+            passthroughView,
+            authenticatedRoot,
+            Mockito.mock(),
+            new DefaultFileIOFactory());
     this.baseCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -369,7 +375,8 @@ public abstract class PolarisAuthzTestBase {
               return entityManager;
             }
           },
-          Mockito.mock());
+          Mockito.mock(),
+          new DefaultFileIOFactory());
     }
 
     @Override

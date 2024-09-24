@@ -68,10 +68,10 @@ nested namespaces. Iceberg tables belong to namespaces.
 In an internal catalog, an Iceberg table is registered in Polaris, but read and written via query engines. The table data and
 metadata is stored in your external cloud storage. The table uses Polaris as the Iceberg catalog.
 
-If you have tables that use Snowflake as the Iceberg catalog (Snowflake-managed tables), you can sync these tables to an external
-catalog in Polaris. If you sync this catalog to Polaris, it appears as an external catalog in Polaris. The table data and
-metadata is stored in your external cloud storage. The Snowflake query engine can read from or write to these tables. However, the other query
-engines can only read from these tables.
+If you have tables housed in another Iceberg catalog, you can sync these tables to an external catalog in Polaris.
+If you sync this catalog to Polaris, it appears as an external catalog in Polaris. Clients connecting to the external
+catalog can read from or write to these tables. However, clients connecting to Polaris will only be able to
+read from these tables.
 
 > **Important**
 >
@@ -156,12 +156,11 @@ In the following example workflow, Bob creates an Apache Iceberg&trade; table na
     service connection with a service principal that has
     the privileges to perform these actions.
 
-2.  Alice uses Snowflake to read data from Table1.
+2.  Alice uses Trino to read data from Table1.
 
     Alice can read data from Table1 because she is using a service
-    connection with a service principal with a catalog integration that
-    has the privileges to perform this action. Alice
-    creates an unmanaged table in Snowflake to read data from Table1.
+    connection with a service principal that has the privileges to 
+    perform this action.
 
 ![Diagram that shows an example workflow for Apache Polaris (Incubating)](img/example-workflow.svg "Example workflow for Apache Polaris (Incubating)")
 

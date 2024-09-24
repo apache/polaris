@@ -133,7 +133,7 @@ class AwsCredentialsStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(3)
+                            .hasSize(4)
                             .satisfiesExactly(
                                 statement ->
                                     assertThat(statement)
@@ -180,6 +180,18 @@ class AwsCredentialsStorageIntegrationTest {
                                                             .key("s3:prefix")
                                                             .value(firstPath + "/*")
                                                             .build())),
+                                statement ->
+                                    assertThat(statement)
+                                        .returns(IamEffect.ALLOW, IamStatement::effect)
+                                        .satisfies(
+                                            st ->
+                                                assertThat(st.resources())
+                                                    .contains(
+                                                        IamResource.create(
+                                                            s3Arn(awsPartition, bucket, null))))
+                                        .returns(
+                                            List.of(IamAction.create("s3:GetBucketLocation")),
+                                            IamStatement::actions),
                                 statement ->
                                     assertThat(statement)
                                         .returns(IamEffect.ALLOW, IamStatement::effect)
@@ -243,7 +255,7 @@ class AwsCredentialsStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(2)
+                            .hasSize(3)
                             .satisfiesExactly(
                                 statement ->
                                     assertThat(statement)
@@ -257,6 +269,18 @@ class AwsCredentialsStorageIntegrationTest {
                                             List.of(
                                                 IamAction.create("s3:PutObject"),
                                                 IamAction.create("s3:DeleteObject")),
+                                            IamStatement::actions),
+                                statement ->
+                                    assertThat(statement)
+                                        .returns(IamEffect.ALLOW, IamStatement::effect)
+                                        .satisfies(
+                                            st ->
+                                                assertThat(st.resources())
+                                                    .contains(
+                                                        IamResource.create(
+                                                            s3Arn(AWS_PARTITION, bucket, null))))
+                                        .returns(
+                                            List.of(IamAction.create("s3:GetBucketLocation")),
                                             IamStatement::actions),
                                 statement ->
                                     assertThat(statement)
@@ -326,7 +350,7 @@ class AwsCredentialsStorageIntegrationTest {
                         assertThat(policy)
                             .extracting(IamPolicy::statements)
                             .asInstanceOf(InstanceOfAssertFactories.list(IamStatement.class))
-                            .hasSize(2)
+                            .hasSize(3)
                             .satisfiesExactly(
                                 statement ->
                                     assertThat(statement)
@@ -338,6 +362,18 @@ class AwsCredentialsStorageIntegrationTest {
                                             IamStatement::resources)
                                         .returns(
                                             List.of(IamAction.create("s3:ListBucket")),
+                                            IamStatement::actions),
+                                statement ->
+                                    assertThat(statement)
+                                        .returns(IamEffect.ALLOW, IamStatement::effect)
+                                        .satisfies(
+                                            st ->
+                                                assertThat(st.resources())
+                                                    .contains(
+                                                        IamResource.create(
+                                                            s3Arn(AWS_PARTITION, bucket, null))))
+                                        .returns(
+                                            List.of(IamAction.create("s3:GetBucketLocation")),
                                             IamStatement::actions),
                                 statement ->
                                     assertThat(statement)

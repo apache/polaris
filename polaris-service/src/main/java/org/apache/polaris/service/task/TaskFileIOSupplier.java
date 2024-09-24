@@ -22,21 +22,23 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.service.catalog.FileIOFactory;
 
 public class TaskFileIOSupplier implements Function<TaskEntity, FileIO> {
   private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final FileIOFactory fileIOFactory;
 
-  public TaskFileIOSupplier(MetaStoreManagerFactory metaStoreManagerFactory) {
+  public TaskFileIOSupplier(
+      MetaStoreManagerFactory metaStoreManagerFactory, FileIOFactory fileIOFactory) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.fileIOFactory = fileIOFactory;
   }
 
   @Override
@@ -60,6 +62,6 @@ public class TaskFileIOSupplier implements Function<TaskEntity, FileIO> {
     String ioImpl =
         properties.getOrDefault(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.io.ResolvingFileIO");
-    return CatalogUtil.loadFileIO(ioImpl, properties, new Configuration());
+    return fileIOFactory.loadFileIO(ioImpl, properties);
   }
 }

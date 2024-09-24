@@ -28,6 +28,7 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -40,9 +41,11 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
+import org.apache.polaris.service.test.PolarisRealm;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @ExtendWith({DropwizardExtensionsSupport.class, PolarisConnectionExtension.class})
 public class PolarisOverlappingCatalogTest {
@@ -59,9 +62,14 @@ public class PolarisOverlappingCatalogTest {
   private static String realm;
 
   @BeforeAll
-  public static void setup(PolarisConnectionExtension.PolarisToken adminToken) {
+  public static void setup(
+      PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String polarisRealm)
+      throws IOException {
     userToken = adminToken.token();
-    realm = PolarisConnectionExtension.getTestRealm(PolarisServiceImplIntegrationTest.class);
+    realm = polarisRealm;
+
+    // Set up the database location
+    PolarisConnectionExtension.createTestDir(realm);
   }
 
   private Response createCatalog(String prefix, String defaultBaseLocation, boolean isExternal) {
@@ -110,101 +118,60 @@ public class PolarisOverlappingCatalogTest {
     }
   }
 
-  @Test
-  public void testBasicOverlappingCatalogs() {
-    Arrays.asList(false, true)
-        .forEach(
-            initiallyExternal -> {
-              Arrays.asList(false, true)
-                  .forEach(
-                      laterExternal -> {
-                        String prefix = UUID.randomUUID().toString();
+  @ParameterizedTest
+  @CsvSource({"true, true", "true, false", "false, true", "false, false"})
+  public void testBasicOverlappingCatalogs(boolean initiallyExternal, boolean laterExternal) {
+    String prefix = UUID.randomUUID().toString();
 
-                        assertThat(createCatalog(prefix, "root", initiallyExternal))
-                            .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    assertThat(createCatalog(prefix, "root", initiallyExternal))
+        .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
 
-                        // OK, non-overlapping
-                        assertThat(createCatalog(prefix, "boot", laterExternal))
-                            .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    // OK, non-overlapping
+    assertThat(createCatalog(prefix, "boot", laterExternal))
+        .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
 
-                        // OK, non-overlapping due to no `/`
-                        assertThat(createCatalog(prefix, "roo", laterExternal))
-                            .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    // OK, non-overlapping due to no `/`
+    assertThat(createCatalog(prefix, "roo", laterExternal))
+        .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
 
-                        // Also OK due to no `/`
-                        assertThat(createCatalog(prefix, "root.child", laterExternal))
-                            .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    // Also OK due to no `/`
+    assertThat(createCatalog(prefix, "root.child", laterExternal))
+        .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
 
-                        // inside `root`
-                        assertThat(createCatalog(prefix, "root/child", laterExternal))
-                            .returns(
-                                Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    // inside `root`
+    assertThat(createCatalog(prefix, "root/child", laterExternal))
+        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
 
-                        // `root` is inside this
-                        assertThat(createCatalog(prefix, "", laterExternal))
-                            .returns(
-                                Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
-                      });
-            });
+    // `root` is inside this
+    assertThat(createCatalog(prefix, "", laterExternal))
+        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
   }
 
-  @Test
-  public void testAllowedLocationOverlappingCatalogs() {
-    Arrays.asList(false, true)
-        .forEach(
-            initiallyExternal -> {
-              Arrays.asList(false, true)
-                  .forEach(
-                      laterExternal -> {
-                        String prefix = UUID.randomUUID().toString();
+  @ParameterizedTest
+  @CsvSource({"true, true", "true, false", "false, true", "false, false"})
+  public void testAllowedLocationOverlappingCatalogs(
+      boolean initiallyExternal, boolean laterExternal) {
+    String prefix = UUID.randomUUID().toString();
 
-                        assertThat(
-                                createCatalog(
-                                    prefix,
-                                    "animals",
-                                    initiallyExternal,
-                                    Arrays.asList("dogs", "cats")))
-                            .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    assertThat(createCatalog(prefix, "animals", initiallyExternal, Arrays.asList("dogs", "cats")))
+        .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
 
-                        // OK, non-overlapping
-                        assertThat(
-                                createCatalog(
-                                    prefix,
-                                    "danimals",
-                                    laterExternal,
-                                    Arrays.asList("dan", "daniel")))
-                            .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    // OK, non-overlapping
+    assertThat(createCatalog(prefix, "danimals", laterExternal, Arrays.asList("dan", "daniel")))
+        .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
 
-                        // This DBL overlaps with initial AL
-                        assertThat(
-                                createCatalog(
-                                    prefix,
-                                    "dogs",
-                                    initiallyExternal,
-                                    Arrays.asList("huskies", "labs")))
-                            .returns(
-                                Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    // This DBL overlaps with initial AL
+    assertThat(createCatalog(prefix, "dogs", initiallyExternal, Arrays.asList("huskies", "labs")))
+        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
 
-                        // This AL overlaps with initial DBL
-                        assertThat(
-                                createCatalog(
-                                    prefix,
-                                    "kingdoms",
-                                    initiallyExternal,
-                                    Arrays.asList("plants", "animals")))
-                            .returns(
-                                Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    // This AL overlaps with initial DBL
+    assertThat(
+            createCatalog(
+                prefix, "kingdoms", initiallyExternal, Arrays.asList("plants", "animals")))
+        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
 
-                        // This AL overlaps with an initial AL
-                        assertThat(
-                                createCatalog(
-                                    prefix,
-                                    "plays",
-                                    initiallyExternal,
-                                    Arrays.asList("rent", "cats")))
-                            .returns(
-                                Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
-                      });
-            });
+    // This AL overlaps with an initial AL
+    assertThat(createCatalog(prefix, "plays", initiallyExternal, Arrays.asList("rent", "cats")))
+        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
   }
 }

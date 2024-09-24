@@ -17,10 +17,5 @@
 # under the License.
 #
 
----
-version: 2
-updates:
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "weekly"
+org.apache.polaris.service.ratelimiter.RealmTokenBucketRateLimiter
+org.apache.polaris.service.ratelimiter.NoOpRateLimiter

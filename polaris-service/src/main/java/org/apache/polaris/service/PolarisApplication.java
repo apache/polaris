@@ -20,9 +20,11 @@ package org.apache.polaris.service;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
+import static org.apache.polaris.service.config.PolarisApplicationConfig.REQUEST_BODY_BYTES_NO_LIMIT;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
@@ -74,6 +76,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.monitor.MetricRegistryAware;
 import org.apache.polaris.core.monitor.PolarisMetricRegistry;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
@@ -81,6 +84,7 @@ import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApi;
 import org.apache.polaris.service.auth.DiscoverableAuthenticator;
+import org.apache.polaris.service.catalog.FileIOFactory;
 import org.apache.polaris.service.catalog.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
@@ -97,11 +101,13 @@ import org.apache.polaris.service.context.CallContextResolver;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.service.ratelimiter.RateLimiterFilter;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutorImpl;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
+import org.apache.polaris.service.throttling.StreamReadConstraintsExceptionMapper;
 import org.apache.polaris.service.tracing.OpenTelemetryAware;
 import org.apache.polaris.service.tracing.TracingFilter;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
@@ -185,10 +191,22 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
             "realmContext", new ContextResolverFilter(realmContextResolver, callContextResolver))
         .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
 
+    FileIOFactory fileIOFactory = configuration.getFileIOFactory();
+    if (fileIOFactory instanceof MetricRegistryAware mrAware) {
+      mrAware.setMetricRegistry(polarisMetricRegistry);
+    }
+    if (fileIOFactory instanceof OpenTelemetryAware otAware) {
+      otAware.setOpenTelemetry(openTelemetry);
+    }
+    if (fileIOFactory instanceof ConfigurationStoreAware csAware) {
+      csAware.setConfigurationStore(configurationStore);
+    }
+
     TaskHandlerConfiguration taskConfig = configuration.getTaskHandler();
     TaskExecutorImpl taskExecutor =
         new TaskExecutorImpl(taskConfig.executorService(), metaStoreManagerFactory);
-    TaskFileIOSupplier fileIOSupplier = new TaskFileIOSupplier(metaStoreManagerFactory);
+    TaskFileIOSupplier fileIOSupplier =
+        new TaskFileIOSupplier(metaStoreManagerFactory, fileIOFactory);
     taskExecutor.addTaskHandler(
         new TableCleanupTaskHandler(taskExecutor, metaStoreManagerFactory, fileIOSupplier));
     taskExecutor.addTaskHandler(
@@ -199,7 +217,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         "Initializing PolarisCallContextCatalogFactory for metaStoreManagerType {}",
         metaStoreManagerFactory);
     CallContextCatalogFactory catalogFactory =
-        new PolarisCallContextCatalogFactory(entityManagerFactory, taskExecutor);
+        new PolarisCallContextCatalogFactory(entityManagerFactory, taskExecutor, fileIOFactory);
 
     PolarisAuthorizer authorizer = new PolarisAuthorizer(configurationStore);
     IcebergCatalogAdapter catalogAdapter =
@@ -235,6 +253,14 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         .servlets()
         .addFilter("tracing", new TracingFilter(openTelemetry))
         .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
+
+    if (configuration.getRateLimiter() != null) {
+      environment
+          .servlets()
+          .addFilter("ratelimiter", new RateLimiterFilter(configuration.getRateLimiter()))
+          .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
+    }
+
     DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> authenticator =
         configuration.getPolarisAuthenticator();
     authenticator.setEntityManagerFactory(entityManagerFactory);
@@ -259,6 +285,17 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
     objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     objectMapper.setPropertyNamingStrategy(new PropertyNamingStrategies.KebabCaseStrategy());
+
+    long maxRequestBodyBytes = configuration.getMaxRequestBodyBytes();
+    if (maxRequestBodyBytes != REQUEST_BODY_BYTES_NO_LIMIT) {
+      objectMapper
+          .getFactory()
+          .setStreamReadConstraints(
+              StreamReadConstraints.builder().maxDocumentLength(maxRequestBodyBytes).build());
+      LOGGER.info("Limiting request body size to {} bytes", maxRequestBodyBytes);
+    }
+
+    environment.jersey().register(new StreamReadConstraintsExceptionMapper());
     RESTSerializers.registerAll(objectMapper);
     Serializers.registerSerializers(objectMapper);
     environment.jersey().register(new IcebergJsonProcessingExceptionMapper());

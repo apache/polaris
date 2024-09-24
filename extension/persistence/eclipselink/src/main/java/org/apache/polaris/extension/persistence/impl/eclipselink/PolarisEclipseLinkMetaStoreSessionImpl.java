@@ -111,11 +111,15 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       @NotNull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName) {
-    LOGGER.debug("Create EclipseLink Meta Store Session for {}", realmContext.getRealmIdentifier());
+    LOGGER.debug(
+        "Creating EclipseLink Meta Store Session for realm {}", realmContext.getRealmIdentifier());
     emf = createEntityManagerFactory(realmContext, confFile, persistenceUnitName);
 
     // init store
     this.store = store;
+    try (EntityManager session = emf.createEntityManager()) {
+      this.store.initialize(session);
+    }
     this.storageIntegrationProvider = storageIntegrationProvider;
   }
 
@@ -143,7 +147,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       // Currently eclipseLink can only support configuration as a resource inside a jar. To support
       // external configuration, persistence.xml needs be placed inside a jar and here is to add the
       // jar to the classpath.
-      // Supported configuration file: META-INFO/persistence.xml, /tmp/conf.jar!/persistence.xml
+      // Supported configuration file: META-INF/persistence.xml, /tmp/conf.jar!/persistence.xml
       int splitPosition = confFile.indexOf("!/");
       if (splitPosition != -1) {
         String jarPrefixPath = confFile.substring(0, splitPosition);
@@ -153,8 +157,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
           prefixUrl = new File(jarPrefixPath).toURI().toURL();
         }
 
-        LOGGER.info(
-            "Created a new ClassLoader with the jar {} in classpath to load the config file",
+        LOGGER.debug(
+            "Creating a new ClassLoader with the jar {} in classpath to load the config file",
             prefixUrl);
 
         URLClassLoader currentClassLoader =
@@ -280,8 +284,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
           LOGGER.debug("transaction committed");
         }
       } catch (Exception e) {
+        LOGGER.debug("Rolling back transaction due to an error", e);
         tr.rollback();
-        LOGGER.debug("transaction rolled back", e);
 
         if (e instanceof OptimisticLockException
             || e.getCause() instanceof OptimisticLockException) {
