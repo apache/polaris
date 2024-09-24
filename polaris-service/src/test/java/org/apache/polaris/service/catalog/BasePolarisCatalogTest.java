@@ -691,8 +691,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
     if (!polarisCallContext
         .getConfigurationStore()
-        .getConfiguration(
-            polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES).contains("FILE")) {
+        .getConfiguration(polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+        .contains("FILE")) {
       Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
           .isInstanceOf(ForbiddenException.class)
           .hasMessageContaining("Invalid location");
@@ -757,8 +757,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
     if (!polarisCallContext
         .getConfigurationStore()
-        .getConfiguration(
-            polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES).contains("FILE")) {
+        .getConfiguration(polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+        .contains("FILE")) {
       Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
           .isInstanceOf(ForbiddenException.class)
           .hasMessageContaining("Invalid location");
@@ -778,8 +778,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     if (!polarisCallContext
         .getConfigurationStore()
-        .getConfiguration(
-            polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES).contains("FILE")) {
+        .getConfiguration(polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+        .contains("FILE")) {
       Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, newRequest))
           .isInstanceOf(ForbiddenException.class)
           .hasMessageContaining("Invalid location");
