@@ -7,7 +7,7 @@
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
 #
-#   http://www.apache.org/licenses/LICENSE-2.0
+#  http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -17,11 +17,15 @@
 # under the License.
 #
 
-org.apache.polaris.service.auth.DiscoverableAuthenticator
-org.apache.polaris.core.persistence.MetaStoreManagerFactory
-org.apache.polaris.service.config.OAuth2ApiService
-org.apache.polaris.service.context.RealmContextResolver
-org.apache.polaris.service.context.CallContextResolver
-org.apache.polaris.service.auth.TokenBrokerFactory
-org.apache.polaris.service.catalog.FileIOFactory
-org.apache.polaris.service.ratelimiter.RateLimiter
+apiVersion: v2
+name: polaris
+description: A Helm chart for Polaris
+type: application
+version: 0.1.0
+home: https://polaris.io/
+icon: https://raw.githubusercontent.com/apache/polaris/main/docs/img/logos/polaris-brandmark.png
+sources:
+  - https://github.com/apache/polaris
+keywords:
+  - polaris
+  - iceberg
