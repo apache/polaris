@@ -251,12 +251,12 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       if (storageConfigurationInfo != null) {
         ioImplClassName = storageConfigurationInfo.getFileIoImplClassName();
         LOGGER.debug(
-            "Resolved ioImplClassName {} for storageConfiguration {}",
+            "Resolved ioImplClassName {} from storageConfiguration {}",
             ioImplClassName,
             storageConfigurationInfo);
       } else {
-        throw new ValidationException(
-            "Cannot resolve property '%s' for null storageConfiguration.",
+        LOGGER.warn(
+            "Cannot resolve property '{}' for null storageConfiguration.",
             CatalogProperties.FILE_IO_IMPL);
       }
     }
