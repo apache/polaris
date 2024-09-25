@@ -19,6 +19,7 @@
 package org.apache.polaris.service;
 
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
+import static org.apache.polaris.service.throttling.RequestThrottlingErrorResponse.RequestThrottlingErrorType.REQUEST_TOO_LARGE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -694,10 +695,8 @@ public class PolarisApplicationIntegrationTest {
           .matches(
               r ->
                   r.readEntity(RequestThrottlingErrorResponse.class)
-                      .getErrorType()
-                      .equals(
-                          RequestThrottlingErrorResponse.RequestThrottlingErrorType
-                              .REQUEST_TOO_LARGE));
+                      .errorType()
+                      .equals(REQUEST_TOO_LARGE));
     }
   }
 }
