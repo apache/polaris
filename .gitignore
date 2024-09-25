@@ -26,8 +26,8 @@ regtests/output/
 /polaris-venv/
 /pyproject.toml
 
-# Notebooks
-notebooks/.ipynb_checkpoints/
+# Notebook Checkpoints
+**/.ipynb_checkpoints/
 
 # Metastore
 metastore_db/
