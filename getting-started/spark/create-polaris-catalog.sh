@@ -26,7 +26,7 @@ curl -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
     http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
     -d '{
           "catalog": {
-            "name": "manual_spark",
+            "name": "polaris_demo",
             "type": "INTERNAL",
             "readOnly": false,
             "properties": {
@@ -43,13 +43,13 @@ curl -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
 
 # Add TABLE_WRITE_DATA to the catalog's catalog_admin role since by default it can only manage access and metadata
 curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
-  http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/manual_spark/catalog-roles/catalog_admin/grants \
+  http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/polaris_demo/catalog-roles/catalog_admin/grants \
   -d '{"type": "catalog", "privilege": "TABLE_WRITE_DATA"}' > /dev/stderr
 
 # Assign the catalog_admin to the service_admin.
 curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
-  http://${POLARIS_HOST:-localhost}:8181/api/management/v1/principal-roles/service_admin/catalog-roles/manual_spark \
+  http://${POLARIS_HOST:-localhost}:8181/api/management/v1/principal-roles/service_admin/catalog-roles/polaris_demo \
   -d '{"name": "catalog_admin"}' > /dev/stderr
 
 curl -X GET -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
-  http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/manual_spark
+  http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/polaris_demo
