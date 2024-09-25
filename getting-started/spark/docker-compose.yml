@@ -50,6 +50,16 @@ services:
       POLARIS_HOST: polaris
     volumes:
       - notebooks:/home/jovyan/notebooks
+  create-polaris-catalog:
+    image: curlimages/curl
+    depends_on:
+      polaris:
+        condition: service_healthy
+    environment:
+      POLARIS_HOST: polaris
+    volumes:
+      - ./create-polaris-catalog.sh:/create-polaris-catalog.sh
+    command: ["/bin/sh", "/create-polaris-catalog.sh"]
 
 volumes:
   notebooks:
