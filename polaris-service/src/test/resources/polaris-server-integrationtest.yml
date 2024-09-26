@@ -156,5 +156,5 @@ maxRequestBodyBytes: 1000000
 # Limits the request rate per realm
 rateLimiter:
   type: realm-token-bucket
-  requestsPerSecond: 10
+  requestsPerSecond: 100
   windowSeconds: 10
