@@ -464,7 +464,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     Assumptions.assumeTrue(
         supportsNotifications(), "Only applicable if notifications are supported");
 
-    // The location of the metadata JSON file specified in the create will be forbidden.
+    // The location of the metadata JSON file specified in the create will be allowed, but
+    // we'll inject a separate ForbiddenException during FileIO instantiation.
     // For a VALIDATE call we can pass in the metadata/ prefix itself instead of a metadata JSON
     // filename.
     final String tableLocation = "s3://externally-owned-bucket/validate_table/";

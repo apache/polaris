@@ -1901,7 +1901,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       }
 
       if (resolvedStorageEntity == null || storageInfoEntity.isEmpty()) {
-        throw new org.apache.iceberg.exceptions.BadRequestException(
+        throw new BadRequestException(
             "Failed to find StorageInfo entity for TableIdentifier %s", tableIdentifier);
       }
 
