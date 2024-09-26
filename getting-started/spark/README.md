@@ -17,9 +17,9 @@
   under the License.
 -->
 
-# Getting Started with Spark and Apache Polaris
+# Getting Started with Apache Spark and Apache Polaris
 
-This getting started guide provides a `docker-compose` file to set up [Spark](https://spark.apache.org/) with Apache Polaris. Apache Polaris is configured as an Iceberg REST Catalog in Spark. 
+This getting started guide provides a `docker-compose` file to set up [Apache Spark](https://spark.apache.org/) with Apache Polaris. Apache Polaris is configured as an Iceberg REST Catalog in Spark. 
 A Jupyter notebook is used to run PySpark.
 
 ## Run the `docker-compose` file
@@ -28,13 +28,13 @@ To start the `docker-compose` file, run this command from the repo's root direct
 docker-compose -f getting-started/spark/docker-compose.yml up 
 ```
 
-This will spin up 3 containers services
+This will spin up 3 container services
 * The `polaris` service for running Apache Polaris
 * The `jupyter` service for running Jupyter notebook with PySpark
 * The `create-polaris-catalog` service to run setup script and create local catalog in Polaris
 
 ## Access the Jupyter notebook interface
-In the Jupyter notebook container log, look for the URL to access Jupyter notebook. The url should be in the format, `http://127.0.0.1:8888/lab?token=<token>`.
+In the Jupyter notebook container log, look for the URL to access the Jupyter notebook. The url should be in the format, `http://127.0.0.1:8888/lab?token=<token>`.
 
 Open the Jupyter notebook in a browser.
 Navigate to [`notebooks/SparkPolaris.ipynb`](http://127.0.0.1:8888/lab/tree/notebooks/SparkPolaris.ipynb) <!-- markdown-link-check-disable-line -->
