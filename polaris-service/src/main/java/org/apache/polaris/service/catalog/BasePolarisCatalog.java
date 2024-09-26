@@ -23,7 +23,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import jakarta.ws.rs.BadRequestException;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
@@ -53,6 +52,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NamespaceNotEmptyException;
@@ -1403,7 +1403,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       if (!isUnderParentLocation(
           URI.create(metadata.metadataFileLocation()),
           URI.create(metadata.location() + "/metadata").normalize())) {
-        throw new org.apache.iceberg.exceptions.BadRequestException(
+        throw new BadRequestException(
             "Metadata location %s is not allowed outside of table location %s",
             metadata.metadataFileLocation(), metadata.location());
       }
@@ -1713,7 +1713,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
           // some entities cannot be renamed
         case PolarisMetaStoreManager.ReturnStatus.ENTITY_CANNOT_BE_RENAMED:
-          throw new BadRequestException("Cannot rename built-in object " + leafEntity.getName());
+          throw new BadRequestException("Cannot rename built-in object %s", leafEntity.getName());
 
           // some entities cannot be renamed
         default:
