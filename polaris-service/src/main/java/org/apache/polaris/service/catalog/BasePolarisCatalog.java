@@ -171,7 +171,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private CloseableGroup closeableGroup;
   private Map<String, String> catalogProperties;
   private Map<String, String> tableDefaultProperties;
-  private final FileIOFactory fileIOFactory;
+  private FileIOFactory fileIOFactory;
   private PolarisMetaStoreManager metaStoreManager;
 
   /**
@@ -1614,6 +1614,11 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   @VisibleForTesting
+  void setFileIOFactory(FileIOFactory newFactory) {
+    this.fileIOFactory = newFactory;
+  }
+
+  @VisibleForTesting
   long getCatalogId() {
     // TODO: Properly handle initialization
     if (catalogId <= 0) {
@@ -1873,6 +1878,51 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     if (notificationType == NotificationType.DROP) {
       return dropTableLike(PolarisEntitySubType.TABLE, tableIdentifier, Map.of(), false /* purge */)
           .isSuccess();
+    } else if (notificationType == NotificationType.VALIDATE) {
+      // In this mode we don't want to make any mutations, so we won't auto-create non-existing
+      // parent namespaces. This means when we want to validate allowedLocations for the proposed
+      // table metadata location, we must independently find the deepest non-null parent namespace
+      // of the TableIdentifier, which may even be the base CatalogEntity if no parent namespaces
+      // actually exist yet. We can then extract the right StorageInfo entity via a normal call
+      // to findStorageInfoFromHierarchy.
+      PolarisResolvedPathWrapper resolvedStorageEntity = null;
+      Optional<PolarisEntity> storageInfoEntity = Optional.empty();
+      for (int i = tableIdentifier.namespace().length(); i >= 0; i--) {
+        Namespace nsLevel =
+            Namespace.of(
+                Arrays.stream(tableIdentifier.namespace().levels())
+                    .limit(i)
+                    .toArray(String[]::new));
+        resolvedStorageEntity = resolvedEntityView.getResolvedPath(nsLevel);
+        if (resolvedStorageEntity != null) {
+          storageInfoEntity = findStorageInfoFromHierarchy(resolvedStorageEntity);
+          break;
+        }
+      }
+
+      if (resolvedStorageEntity == null || storageInfoEntity.isEmpty()) {
+        throw new BadRequestException(
+            "Failed to find StorageInfo entity for TableIdentifier %s", tableIdentifier);
+      }
+
+      // Validate location against the resolvedStorageEntity
+      String metadataLocation =
+          transformTableLikeLocation(request.getPayload().getMetadataLocation());
+      validateLocationForTableLike(tableIdentifier, metadataLocation, resolvedStorageEntity);
+
+      // Validate that we can construct a FileIO
+      String locationDir = metadataLocation.substring(0, metadataLocation.lastIndexOf("/"));
+      refreshIOWithCredentials(
+          tableIdentifier,
+          Set.of(locationDir),
+          resolvedStorageEntity,
+          new HashMap<>(tableDefaultProperties),
+          Set.of(PolarisStorageActions.READ));
+
+      LOGGER.debug(
+          "Successful VALIDATE notification for tableIdentifier {}, metadataLocation {}",
+          tableIdentifier,
+          metadataLocation);
     } else if (notificationType == NotificationType.CREATE
         || notificationType == NotificationType.UPDATE) {
 
