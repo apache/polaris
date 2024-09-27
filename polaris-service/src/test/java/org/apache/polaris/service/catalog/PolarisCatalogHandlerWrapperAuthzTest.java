@@ -1713,7 +1713,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             return catalog;
           }
         };
-    doTestSufficientPrivilegeSets(
+
+    List<Set<PolarisPrivilege>> sufficientPrivilegeSets =
         List.of(
             Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT),
             Set.of(PolarisPrivilege.TABLE_FULL_METADATA, PolarisPrivilege.NAMESPACE_FULL_METADATA),
@@ -1731,7 +1732,9 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
                 PolarisPrivilege.TABLE_DROP,
                 PolarisPrivilege.TABLE_WRITE_PROPERTIES,
                 PolarisPrivilege.NAMESPACE_CREATE,
-                PolarisPrivilege.NAMESPACE_DROP)),
+                PolarisPrivilege.NAMESPACE_DROP));
+    doTestSufficientPrivilegeSets(
+        sufficientPrivilegeSets,
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
               .sendNotification(table, createRequest);
@@ -1750,6 +1753,17 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         },
         PRINCIPAL_NAME,
         externalCatalog);
+
+    // Also test VALIDATE in isolation
+    doTestSufficientPrivilegeSets(
+        sufficientPrivilegeSets,
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
+              .sendNotification(table, validateRequest);
+        },
+        null /* cleanupAction */,
+        PRINCIPAL_NAME,
+        externalCatalog);
   }
 
   @Test
@@ -1758,7 +1772,6 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     TableIdentifier table = TableIdentifier.of(namespace, "tbl1");
 
     NotificationRequest request = new NotificationRequest();
-    request.setNotificationType(NotificationType.UPDATE);
     TableUpdateNotification update = new TableUpdateNotification();
     update.setMetadataLocation("file:///tmp/bucket/table/metadata/v1.metadata.json");
     update.setTableName(table.name());
@@ -1766,11 +1779,37 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    doTestInsufficientPrivileges(
+    List<PolarisPrivilege> insufficientPrivileges =
         List.of(
             PolarisPrivilege.NAMESPACE_FULL_METADATA,
             PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA),
+            PolarisPrivilege.VIEW_FULL_METADATA);
+
+    // Independently test insufficient privileges in isolation.
+    request.setNotificationType(NotificationType.CREATE);
+    doTestInsufficientPrivileges(
+        insufficientPrivileges,
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, request);
+        });
+
+    request.setNotificationType(NotificationType.UPDATE);
+    doTestInsufficientPrivileges(
+        insufficientPrivileges,
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, request);
+        });
+
+    request.setNotificationType(NotificationType.DROP);
+    doTestInsufficientPrivileges(
+        insufficientPrivileges,
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, request);
+        });
+
+    request.setNotificationType(NotificationType.VALIDATE);
+    doTestInsufficientPrivileges(
+        insufficientPrivileges,
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, request);
         });
