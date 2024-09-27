@@ -31,7 +31,7 @@
 
 A Helm chart for Polaris.
 
-**Homepage:** <https://polaris.io/>
+**Homepage:** <https://polaris.apache.org/>
 
 ## Maintainers
 
@@ -45,7 +45,7 @@ A Helm chart for Polaris.
 
 When using a custom `persistence.xml`, a Kubernetes Secret must be created for `.persistenceConfigSecret`. Below is a sample command:
 ```bash
-kubectl create secret generic  polaris-secret -n polaris --from-file=persistence.xml
+kubectl create secret generic polaris-secret -n polaris --from-file=persistence.xml
 ```
 
 ### From local directory (for development purposes)
@@ -96,7 +96,7 @@ $ helm uninstall --namespace polaris polaris
 | podAnnotations | object | `{}` | Annotations to apply to polaris pods. |
 | podLabels | object | `{}` | Additional Labels to apply to polaris pods. |
 | podSecurityContext | object | `{}` | Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
-| polarisServerConfig | object | `{"authenticator":{"class":"org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator"},"callContextResolver":{"type":"default"},"cors":{"allowed-credentials":true,"allowed-headers":["*"],"allowed-methods":["PATCH","POST","DELETE","GET","PUT"],"allowed-origins":["http://localhost:8080"],"allowed-timing-origins":["http://localhost:8080"],"exposed-headers":["*"],"preflight-max-age":600},"defaultRealms":["default-realm"],"featureConfiguration":{"DISABLE_TOKEN_GENERATION_FOR_USER_PRINCIPALS":true,"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING":false,"SUPPORTED_CATALOG_STORAGE_TYPES":["S3","GCS","AZURE","FILE"]},"logging":{"appenders":[{"logFormat":"%-5p [%d{ISO8601} - %-6r] [%t] [%X{aid}%X{sid}%X{tid}%X{wid}%X{oid}%X{srv}%X{job}%X{rid}] %c{30}: %m %kvp%n%ex","threshold":"ALL","type":"console"}],"level":"INFO","loggers":{"io.polaris":"DEBUG","org.apache.iceberg.rest":"DEBUG"}},"metaStoreManager":{"type":"in-memory"},"oauth2":{"type":"test"},"realmContextResolver":{"type":"default"},"server":{"adminConnectors":[{"port":8182,"type":"http"}],"applicationConnectors":[{"port":8181,"type":"http"}],"maxThreads":200,"minThreads":10,"requestLog":{"appenders":[{"type":"console"}]}}}` | Configures for polaris-server.yml |
+| polarisServerConfig | object | `{"authenticator":{"class":"org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator"},"callContextResolver":{"type":"default"},"cors":{"allowed-credentials":true,"allowed-headers":["*"],"allowed-methods":["PATCH","POST","DELETE","GET","PUT"],"allowed-origins":["http://localhost:8080"],"allowed-timing-origins":["http://localhost:8080"],"exposed-headers":["*"],"preflight-max-age":600},"defaultRealms":["default-realm"],"featureConfiguration":{"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING":false,"SUPPORTED_CATALOG_STORAGE_TYPES":["S3","GCS","AZURE","FILE"]},"io":{"factoryType":"default"},"logging":{"appenders":[{"logFormat":"%-5p [%d{ISO8601} - %-6r] [%t] [%X{aid}%X{sid}%X{tid}%X{wid}%X{oid}%X{srv}%X{job}%X{rid}] %c{30}: %m %kvp%n%ex","threshold":"ALL","type":"console"}],"level":"INFO","loggers":{"org.apache.iceberg.rest":"DEBUG","org.apache.polaris":"DEBUG"}},"maxRequestBodyBytes":-1,"metaStoreManager":{"type":"in-memory"},"oauth2":{"type":"test"},"rateLimiter":{"type":"no-op"},"realmContextResolver":{"type":"default"},"server":{"adminConnectors":[{"port":8182,"type":"http"}],"applicationConnectors":[{"port":8181,"type":"http"}],"maxThreads":200,"minThreads":10,"requestLog":{"appenders":[{"type":"console"}]}}}` | Configures for polaris-server.yml |
 | readinessProbe | object | `{"failureThreshold":3,"initialDelaySeconds":5,"periodSeconds":10,"successThreshold":1,"timeoutSeconds":10}` | Configures the readiness probe for polaris pods. |
 | readinessProbe.failureThreshold | int | `3` | Minimum consecutive failures for the probe to be considered failed after having succeeded. Minimum value is 1. |
 | readinessProbe.initialDelaySeconds | int | `5` | Number of seconds after the container has started before readiness probes are initiated. Minimum value is 0. |
