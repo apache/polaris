@@ -971,7 +971,7 @@ tags:
       # Configuring Apache Polaris (Incubating) for Production
 
 
-      The default `polaris-server.yml` configuration is intended for develoment
+      The default `polaris-server.yml` configuration is intended for development
       and testing. When deploying Polaris in production, there are several best
       practices to keep in mind.
 
@@ -1052,12 +1052,12 @@ tags:
       ### Configuring EclipseLink
 
 
-      To use [EclipseLink](https://eclipse.dev/eclipselink/) for metastore
-      management, specify the configuration `metaStoreManager.conf-file` to
-      point to an [EclipseLink `persistence.xml`
-      file](https://eclipse.dev/eclipselink/documentation/2.5/solutions/testingjpa002.htm).
-      This file, local to the Polaris service, will contain information on what
-      database to use for metastore management and how to connect to it.
+      To use EclipseLink for metastore management, specify the configuration
+      `metaStoreManager.conf-file` to point to an EclipseLink `persistence.xml`
+      file. This file, local to the Polaris service, contains details of the
+      database used for metastore management and the connection settings. For
+      more information, refer to [metastore documentation](./metastores.md) for
+      details.
 
 
       ### Bootstrapping
@@ -3115,6 +3115,18 @@ paths:
           sequence of notifications lies with the caller of the API. This
           includes managing potential clock skew or inconsistencies when
           notifications are sent from multiple sources.
+
+          A VALIDATE request behaves like a dry-run of a CREATE or UPDATE
+          request up to but not including loading the contents of a metadata
+          file; this includes validations of permissions, the specified metadata
+          path being within ALLOWED_LOCATIONS, having an EXTERNAL catalog, etc.
+          The intended use case for a VALIDATE notification is to allow a remote
+          catalog to pre-validate the general settings of a receiving catalog
+          against an intended new table location before possibly creating a
+          table intended for sending notifcations in the remote catalog at all.
+          For a VALIDATE request, the specified metadata-location can either be
+          a prospective full metadata file path, or a relevant parent directory
+          of the intended table to validate against ALLOWED_LOCATIONS.
         content:
           application/json:
             schema:
@@ -3795,7 +3807,7 @@ components:
     Polaris_Management_Service_Catalog:
       type: object
       description: >-
-        A catalog object. A catalog may be internal or external. Internal
+        A catalog object. A catalog may be internal or external. External
         catalogs are managed entirely by an external catalog interface. Third
         party catalogs may be other Iceberg REST implementations or other
         services with their own proprietary APIs
@@ -6089,6 +6101,7 @@ components:
         - CREATE
         - UPDATE
         - DROP
+        - VALIDATE
     Apache_Iceberg_REST_Catalog_API_TableUpdateNotification:
       type: object
       required:
