@@ -52,8 +52,7 @@ jobs:
         if: github.event_name == 'push' && github.repository == 'apache/polaris'
         uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4
         with:
-          external_repository: apache/polaris-site
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: asf-site
-          deploy_key: ${{ secrets.APACHE_SITE_DEPLOY_KEY }}
           publish_dir: ./site/build/apache-site
           cname: polaris.apache.org
