@@ -22,6 +22,10 @@ title: "Apache Polaris Guides"
 weight: 200
 cascade:
     type: docs
+# TODO remove when adding the first proposal
+top_hidden: true
+toc_hide: true
+hide_summary: true
 ---
 
 = Guides

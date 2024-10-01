@@ -90,11 +90,12 @@ Running regression tests
 - `docker compose up --build --exit-code-from regtest` - To run regression tests in a Docker environment.
 
 Building docs
-- Docs are generated using [Redocly](https://redocly.com/docs/cli/installation). To regenerate them, run the following
-commands from the project root directory.
-```bash
-docs/build
-```
+- Docs are generated using [Hugo](https://gohugo.io/) using the [Docsy](https://www.docsy.dev/docs/) theme.
+- To view the site locally, run
+  ```bash
+  site/bin/run-hugo-in-docker.sh
+  ```
+- See [README in `site/`](site/README.md) for more information.
 
 ## License
 

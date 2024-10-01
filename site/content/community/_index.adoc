@@ -22,6 +22,8 @@ title: 'Apache Polaris Community'
 weight: 300
 params:
   contributingUrl: "/community/contributing-guidelines"
+cascade:
+  type: docs
 ---
 
 {{< blocks/section color="white" type="row" >}}

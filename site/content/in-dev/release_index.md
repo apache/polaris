@@ -20,9 +20,13 @@
 title: 'POLARIS VERSION INDEX MD TEMPLATE'
 toc_hide: true
 hide_summary: true
+params:
+  show_page_toc: false
 cascade:
   # The latest release specifies 'false', all others must be 'true'
   exclude_search: false
+  params:
+    show_page_toc: true
 # This file will be copied as `_index.md` into a new release's versioned docs folder.
 ---
 

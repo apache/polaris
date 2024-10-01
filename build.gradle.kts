@@ -88,9 +88,11 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("polaris-service/logs")
 
   excludes.add("site/node_modules/**")
+  excludes.add("site/layouts/robots.txt")
+  // Ignore generated stuff, when the Hugo is run w/o Docker
   excludes.add("site/public/**")
   excludes.add("site/resources/_gen/**")
-  excludes.add("site/layouts/robots.txt")
+  excludes.add("node_modules/**")
 
   excludes.add("**/polaris-venv/**")
 

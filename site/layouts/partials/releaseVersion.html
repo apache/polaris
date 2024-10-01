@@ -16,4 +16,14 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 */}}
-{{- partial "releaseVersion.html" . -}}
+{{- $releaseVersion := "[unreleased]" -}}
+{{- with .Page.Params.release_version -}}
+{{- $releaseVersion = . -}}
+{{- else -}}
+{{- range .Page.Ancestors -}}
+{{- with .Params.release_version -}}
+{{- $releaseVersion = . -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- return $releaseVersion -}}

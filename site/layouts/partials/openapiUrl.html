@@ -16,4 +16,12 @@ KIND, either express or implied.  See the License for the
 specific language governing permissions and limitations
 under the License.
 */}}
-{{- partial "releaseVersion.html" . -}}
+{{- $ver := partial "releaseVersion.html" . -}}
+{{- $spec := ( .Get 0 ) -}}
+{{- $url := "" -}}
+{{- if eq $ver "[unreleased]" -}}
+{{- $url = printf "https://github.com/apache/polaris/raw/refs/heads/main/spec/%s" $spec }}
+{{- else -}}
+{{- $url = printf "https://github.com/apache/polaris/raw/refs/tags/polaris-%s/spec/%s" $ver $spec }}
+{{- end -}}
+{{- return $url -}}

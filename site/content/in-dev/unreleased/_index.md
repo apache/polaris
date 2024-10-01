@@ -23,8 +23,11 @@ type: docs
 weight: 200
 params:
   top_hidden: true
+  show_page_toc: false
 cascade:
   type: docs
+  params:
+    show_page_toc: true
 # This file will NOT be copied into a new release's versioned docs folder.
 ---
 
@@ -34,4 +37,8 @@ These pages refer to the current state of the main branch, which is still under 
 Functionalities can be changed, removed or added without prior notice.
 {{< /alert >}}
 
+Checkout the [Quick Start](./quickstart.md) page.
+
+<!--
 Testing the `releaseVersion` shortcode here: version is: {{< releaseVersion >}}
+-->

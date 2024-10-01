@@ -23,19 +23,22 @@ title: 'Apache Polaris Community Meetings in 2024'
 
 == Upcoming Meetings
 
-https://polaris.apache.org/[Agenda for upcoming Community Meetings]
+We will have a community meeting shortly, stay tuned...
 
+////
+https://polaris.apache.org/[Agenda for upcoming Community Meetings]
+////
+
+////
 == Past Meetings
 
 [cols="1,3,3"]
 |===
 | Date | Notes | Recording
 
-| 2024-08-29
-| Meeting Notes 1
-| {{< youtube id=w7Ft2ymGmfc loading=lazy title="Not a Polaris meeting" >}}
-
 | 2024-08-30
-| Meeting Notes 2
-| {{< youtube id=w7Ft2ymGmfc loading=lazy title="Not a Polaris meeting" >}}
+| Meeting Notes
+| {{< youtube id=xyz loading=lazy title="Not a Polaris meeting" >}}
+
 |===
+////

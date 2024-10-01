@@ -22,6 +22,10 @@ title: "Apache Polaris Blog"
 weight: 200
 cascade:
   - type: "blog"
+# TODO remove when adding the first post
+top_hidden: true
+toc_hide: true
+hide_summary: true
 ---
 
 = Blog

@@ -17,40 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: 'Proposals'
-title: 'Apache Polaris Proposals'
-weight: 200
-type: docs
-# TODO remove when adding the first proposal
-toc_hide: true
-hide_summary: true
+title: 'Apache Iceberg OpenAPI'
+linkTitle: 'Iceberg OpenAPI'
+weight: 900
+params:
+  show_page_toc: false
 ---
 
-== Active Proposals
-
-[cols="4,2,4,4"]
-|===
-| Topic | Date Created | Proposal Document | Dev-list discussion
-
-| Sample topic placeholder
-| 2024/09/06
-| Link to Google Doc
-| Link to dev-mailing list discussion
-
-|===
-
-
-== Previous Proposals
-
-
-[cols="4,2,4,4,2"]
-|===
-| Topic | Date Created | Proposal Document | Dev-list discussion + vote | Resolution
-
-| Sample topic placeholder
-| 2024/09/06
-| Link to Google Doc
-| Link to dev-mailing list discussion
-| Accepted
-
-|===
+{{< redoc-polaris "rest-catalog-open-api.yaml" >}}
