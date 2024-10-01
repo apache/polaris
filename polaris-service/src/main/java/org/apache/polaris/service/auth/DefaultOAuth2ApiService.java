@@ -80,8 +80,8 @@ public class DefaultOAuth2ApiService implements OAuth2ApiService, HasEntityManag
       }
       LOGGER.debug("Found credentials in auth header - treating as client_credentials");
       String[] parts = credentials.split(":", 2);
-      clientId = URLDecoder.decode(parts[0], Charset.defaultCharset());
-      clientSecret = URLDecoder.decode(parts[1], Charset.defaultCharset());
+      clientId = parts[0];
+      clientSecret = parts[1];
     }
     TokenResponse tokenResponse =
         switch (subjectTokenType) {
