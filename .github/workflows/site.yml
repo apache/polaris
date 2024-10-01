@@ -30,6 +30,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: "versioned-docs"
+          path: site/content/releases
 
       - name: Install docker-compose
         run: |
@@ -44,6 +48,9 @@ jobs:
 
       - name: Dummy to be removed
         run: ls -al site/build/apache-site
+
+      - name: Dummy to be removed
+        run: ls -al site/build/apache-site/releases
 
       - name: Deploy Static Site to GitHub
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository == 'apache/polaris'
