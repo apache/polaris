@@ -74,18 +74,24 @@ cascade:
 {{% blocks/feature icon="fa-solid fa-people-group" title="Team" %}}
 [cols="4,1,3"]
 |===
+
+| https://github.com/annafil[Anna Filippova] | Committer | link:https://www.snowflake.com/[Snowflake]
 | Anoop Johnson | PPMC | link:https://www.google.com/[Google]
 | https://github.com/ashvina[Ashvin Agrawal] | PPMC | link:https://www.microsoft.com/[Microsoft]
 | Bertrand Delacretaz | Mentor |
+| https://github.com/eric-maynard[Eric Maynard] | Committer | link:https://www.snowflake.com/[Snowflake]
 | Holden Karau | Mentor |
 | https://github.com/jackye1995[Jack Ye] | PPMC | link:https://aws.amazon.com/[Amazon]
 | https://github.com/jbonofre[JB Onofre] | PPMC & Mentor | link:https://www.dremio.com/[Dremio]
 | https://github.com/vvcephei[John Roesler] | PPMC | link:https://www.confluent.io/[Confluent]
 | Kent Yao | Mentor |
+| https://github.com/collado-mike[Michael Collado] | Committer | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/snazy[Robert Stupp] | PPMC | link:https://www.dremio.com/[Dremio]
 | https://github.com/russellspitzer[Russell Spitzer] | PPMC | link:https://www.snowflake.com/[Snowflake]
 | Ryan Blue | Mentor |
 | https://github.com/takidau:[Tyler Akidau] | PPMC | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/flyrain[Yufei Gu] | Committer | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/ebyhr[Yuya Ebihara] | Committer | link:https://www.starburst.io/[Starburst]
 |===
 {{% /blocks/feature %}}
 {{< /blocks/section >}}
