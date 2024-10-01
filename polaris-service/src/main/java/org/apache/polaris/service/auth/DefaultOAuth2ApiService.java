@@ -23,8 +23,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import java.net.URLDecoder;
-import java.nio.charset.Charset;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.hdfs.web.oauth2.OAuth2Constants;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
