@@ -26,7 +26,7 @@ cascade:
 Apache Polaris is an open-source, fully-featured catalog for Apache Iceberg™. It implements Iceberg's REST API, enabling seamless multi-engine interoperability across a wide range of platforms, including Apache Doris™, Apache Flink®, Apache Spark™, StarRocks, and Trino.
 {{< /blocks/cover >}}
 
-image::images/Polaris-Catalog-BLOG-symmetrical-subhead.png[Polaris Catalog]
+image::img/Polaris-Catalog-BLOG-symmetrical-subhead.png[Polaris Catalog]
 
 {{< blocks/section color="dark" type="row" >}}
 {{% blocks/feature icon="fa-lightbulb" title="Join the community!" url="https://polaris-catalog.zulipchat.com/" url_text="Chat with us" %}}
@@ -42,7 +42,7 @@ For announcement and discussions about the project.
 
 {{< blocks/section color="dark" >}}
 <p>
-<a href="https://incubator.apache.org/"><img src="images/apache-incubator.svg" width="200em"></a>
+<a href="https://incubator.apache.org/"><img src="img/apache-incubator.svg" width="200em"></a>
 </p>
 <p>
 Apache Polaris™ is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.
