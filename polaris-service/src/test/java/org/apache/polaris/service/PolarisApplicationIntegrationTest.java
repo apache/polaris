@@ -64,6 +64,7 @@ import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.RESTSessionCatalog;
 import org.apache.iceberg.rest.auth.AuthConfig;
+import org.apache.iceberg.rest.auth.ImmutableAuthConfig;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.types.Types;
@@ -710,18 +711,23 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testRefreshToken() throws IOException {
-    String path = String.format("http://localhost:%d/api/v1/oauth/tokens", EXT.getLocalPort());
-    try (RESTClient client = HTTPClient.builder(ImmutableMap.of()).uri(path).build()) {
+    String path = String.format("http://localhost:%d/api/catalog/v1/oauth/tokens", EXT.getLocalPort());
+    try (RESTClient client = HTTPClient.builder(ImmutableMap.of())
+        .withHeader(REALM_PROPERTY_KEY, realm)
+        .uri(path)
+        .build()) {
       String credentialString =
           Base64.encode(snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret())
               .toString();
-      var parentSession =
-          new OAuth2Util.AuthSession(
-              Map.of(),
-              AuthConfig.builder()
-                  .credential(credentialString)
-                  .scope("PRINCIPAL_ROLE:ALL")
-                  .build());
+      var authConfig = AuthConfig.builder()
+          .credential(credentialString)
+          .scope("PRINCIPAL_ROLE:ALL")
+          .build();
+      ImmutableAuthConfig configSpy = spy(authConfig);
+      when(configSpy.expiresAtMillis()).thenReturn(0L);
+      assertThat(configSpy.expiresAtMillis()).isEqualTo(0L);
+
+      var parentSession = new OAuth2Util.AuthSession(Map.of(), configSpy);
       var session =
           OAuth2Util.AuthSession.fromAccessToken(client, null, userToken, 0L, parentSession);
 
@@ -730,7 +736,7 @@ public class PolarisApplicationIntegrationTest {
       assertThat(sessionSpy.expiresAtMillis()).isEqualTo(0L);
       assertThat(sessionSpy.token()).isEqualTo(userToken);
 
-      session.refresh(client);
+      sessionSpy.refresh(client);
       assertThat(sessionSpy.credential()).isNotNull();
       assertThat(sessionSpy.credential()).isNotEqualTo(userToken);
     }
