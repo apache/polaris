@@ -40,7 +40,6 @@ import java.util.List;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.shaded.com.nimbusds.jose.util.Base64;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.PartitionData;
 import org.apache.iceberg.PartitionSpec;
@@ -718,7 +717,8 @@ public class PolarisApplicationIntegrationTest {
             .withHeader(REALM_PROPERTY_KEY, realm)
             .uri(path)
             .build()) {
-      String credentialString = snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret();
+      String credentialString =
+          snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret();
       var authConfig =
           AuthConfig.builder().credential(credentialString).scope("PRINCIPAL_ROLE:ALL").build();
       ImmutableAuthConfig configSpy = spy(authConfig);
