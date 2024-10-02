@@ -59,7 +59,7 @@ Be sure to secure your metastore backend since it will be storing credentials an
 
 ### Configuring EclipseLink
 
-To use EclipseLink for metastore management, specify the configuration `metaStoreManager.conf-file` to point to an EclipseLink `persistence.xml` file. This file, local to the Polaris service, contains details of the database used for metastore management and the connection settings. For more information, refer to [metastore documentation]({{% ref "metastores" %}}) for details.
+To use EclipseLink for metastore management, specify the configuration `metaStoreManager.conf-file` to point to an EclipseLink `persistence.xml` file. This file, local to the Polaris service, contains details of the database used for metastore management and the connection settings. For more information, refer to the [metastore documentation]({{% ref "metastores" %}}).
 
 ### Bootstrapping
 
@@ -71,7 +71,7 @@ To bootstrap Polaris, run:
 java -jar /path/to/jar/polaris-service-all.jar bootstrap polaris-server.yml
 ```
 
-Afterwards, Polaris can be launched normally:
+Afterward, Polaris can be launched normally:
 
 ```bash
 java -jar /path/to/jar/polaris-service-all.jar server polaris-server.yml
