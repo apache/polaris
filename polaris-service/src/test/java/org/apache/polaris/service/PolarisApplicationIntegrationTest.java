@@ -710,7 +710,7 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testRefreshToken() throws IOException {
-    String path = String.format("http://localhost:%d", EXT.getLocalPort());
+    String path = String.format("http://localhost:%d/api/v1/oauth/tokens", EXT.getLocalPort());
     try (RESTClient client = HTTPClient.builder(ImmutableMap.of()).uri(path).build()) {
       String credentialString =
           Base64.encode(snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret())
@@ -730,7 +730,7 @@ public class PolarisApplicationIntegrationTest {
       assertThat(sessionSpy.expiresAtMillis()).isEqualTo(0L);
       assertThat(sessionSpy.token()).isEqualTo(userToken);
 
-      sessionSpy.refresh(client);
+      session.refresh(client);
       assertThat(sessionSpy.credential()).isNotNull();
       assertThat(sessionSpy.credential()).isNotEqualTo(userToken);
     }
