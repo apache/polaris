@@ -46,8 +46,6 @@ jobs:
       - name: Build Apache Site
         run: site/bin/create-static-site.sh
 
-      # TODO Do we want to deploy from 'asf-site' in the 'polaris-site' repo or in the 'polaris' repo?
-      #   The former requires a secret
       - name: Deploy Static Site to GitHub
         if: github.event_name == 'push' && github.repository == 'apache/polaris'
         uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4
