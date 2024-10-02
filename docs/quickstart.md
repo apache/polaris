@@ -94,7 +94,7 @@ To start using Polaris in Docker, launch Polaris while Docker is running:
 
 ```shell
 cd ~/polaris
-docker compose -f docker-compose.yml up --build
+docker-compose -f docker-compose.yml up --build
 ```
 
 Once the `polaris-polaris` container is up, you can continue to [Defining a Catalog](#defining-a-catalog).
