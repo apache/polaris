@@ -718,14 +718,13 @@ public class PolarisApplicationIntegrationTest {
             .withHeader(REALM_PROPERTY_KEY, realm)
             .uri(path)
             .build()) {
-      String credentialString =
-          Base64.encode(snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret())
-              .toString();
+      String credentialString = snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret();
       var authConfig =
           AuthConfig.builder().credential(credentialString).scope("PRINCIPAL_ROLE:ALL").build();
       ImmutableAuthConfig configSpy = spy(authConfig);
       when(configSpy.expiresAtMillis()).thenReturn(0L);
       assertThat(configSpy.expiresAtMillis()).isEqualTo(0L);
+      when(configSpy.oauth2ServerUri()).thenReturn(path);
 
       var parentSession = new OAuth2Util.AuthSession(Map.of(), configSpy);
       var session =
