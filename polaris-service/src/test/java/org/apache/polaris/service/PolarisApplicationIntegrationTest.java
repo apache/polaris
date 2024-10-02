@@ -25,7 +25,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
-import com.google.api.client.googleapis.auth.oauth2.OAuth2Utils;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
@@ -94,7 +93,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
@@ -715,11 +713,17 @@ public class PolarisApplicationIntegrationTest {
     String path = String.format("http://localhost:%d", EXT.getLocalPort());
     try (RESTClient client = HTTPClient.builder(ImmutableMap.of()).uri(path).build()) {
       String credentialString =
-          Base64.encode(snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret()).toString();
-      var parentSession = new OAuth2Util.AuthSession(
-          Map.of(), AuthConfig.builder().credential(credentialString).scope("PRINCIPAL_ROLE:ALL").build());
-      var session = OAuth2Util.AuthSession.fromAccessToken(
-          client, null, userToken, 0L, parentSession);
+          Base64.encode(snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret())
+              .toString();
+      var parentSession =
+          new OAuth2Util.AuthSession(
+              Map.of(),
+              AuthConfig.builder()
+                  .credential(credentialString)
+                  .scope("PRINCIPAL_ROLE:ALL")
+                  .build());
+      var session =
+          OAuth2Util.AuthSession.fromAccessToken(client, null, userToken, 0L, parentSession);
 
       OAuth2Util.AuthSession sessionSpy = spy(session);
       when(sessionSpy.expiresAtMillis()).thenReturn(0L);
