@@ -711,18 +711,18 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testRefreshToken() throws IOException {
-    String path = String.format("http://localhost:%d/api/catalog/v1/oauth/tokens", EXT.getLocalPort());
-    try (RESTClient client = HTTPClient.builder(ImmutableMap.of())
-        .withHeader(REALM_PROPERTY_KEY, realm)
-        .uri(path)
-        .build()) {
+    String path =
+        String.format("http://localhost:%d/api/catalog/v1/oauth/tokens", EXT.getLocalPort());
+    try (RESTClient client =
+        HTTPClient.builder(ImmutableMap.of())
+            .withHeader(REALM_PROPERTY_KEY, realm)
+            .uri(path)
+            .build()) {
       String credentialString =
           Base64.encode(snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret())
               .toString();
-      var authConfig = AuthConfig.builder()
-          .credential(credentialString)
-          .scope("PRINCIPAL_ROLE:ALL")
-          .build();
+      var authConfig =
+          AuthConfig.builder().credential(credentialString).scope("PRINCIPAL_ROLE:ALL").build();
       ImmutableAuthConfig configSpy = spy(authConfig);
       when(configSpy.expiresAtMillis()).thenReturn(0L);
       assertThat(configSpy.expiresAtMillis()).isEqualTo(0L);
