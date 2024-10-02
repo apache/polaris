@@ -22,7 +22,10 @@ import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PR
 import static org.apache.polaris.service.throttling.RequestThrottlingErrorResponse.RequestThrottlingErrorType.REQUEST_TOO_LARGE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
+import com.google.api.client.googleapis.auth.oauth2.OAuth2Utils;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
@@ -38,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.shaded.com.nimbusds.jose.util.Base64;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.PartitionData;
 import org.apache.iceberg.PartitionSpec;
@@ -57,8 +61,12 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.hadoop.HadoopFileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
+import org.apache.iceberg.rest.HTTPClient;
+import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.RESTSessionCatalog;
+import org.apache.iceberg.rest.auth.AuthConfig;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
+import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -86,8 +94,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 @ExtendWith({
   DropwizardExtensionsSupport.class,
@@ -697,6 +707,28 @@ public class PolarisApplicationIntegrationTest {
                   r.readEntity(RequestThrottlingErrorResponse.class)
                       .errorType()
                       .equals(REQUEST_TOO_LARGE));
+    }
+  }
+
+  @Test
+  public void testRefreshToken() throws IOException {
+    String path = String.format("http://localhost:%d", EXT.getLocalPort());
+    try (RESTClient client = HTTPClient.builder(ImmutableMap.of()).uri(path).build()) {
+      String credentialString =
+          Base64.encode(snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret()).toString();
+      var parentSession = new OAuth2Util.AuthSession(
+          Map.of(), AuthConfig.builder().credential(credentialString).scope("PRINCIPAL_ROLE:ALL").build());
+      var session = OAuth2Util.AuthSession.fromAccessToken(
+          client, null, userToken, 0L, parentSession);
+
+      OAuth2Util.AuthSession sessionSpy = spy(session);
+      when(sessionSpy.expiresAtMillis()).thenReturn(0L);
+      assertThat(sessionSpy.expiresAtMillis()).isEqualTo(0L);
+      assertThat(sessionSpy.token()).isEqualTo(userToken);
+
+      sessionSpy.refresh(client);
+      assertThat(sessionSpy.credential()).isNotNull();
+      assertThat(sessionSpy.credential()).isNotEqualTo(userToken);
     }
   }
 }
