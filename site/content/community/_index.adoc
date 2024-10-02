@@ -33,22 +33,22 @@ cascade:
 | link:https://polaris-catalog.zulipchat.com/[Zulip]
 | Our public chat, open to everybody
 
-| link:./meetings/[Community Meetings]
+| link:{{% ref "meetings" %}}[Community Meetings]
 | Upcoming, live and recorded Community Meetings
 
-| link:./proposals/[Proposals]
+| link:{{% ref "proposals" %}}[Proposals]
 | Proposals about bigger topics
 
 | link:https://github.com/apache/polaris[GitHub]
 | Development takes place here!
 
-| link:./code-of-conduct/[Code of Conduct]
+| link:{{% ref "code-of-conduct" %}}[Code of Conduct]
 | Code of Conduct
 
-| link:./chat-bylaws/[Chat Bylaws]
+| link:{{% ref "chat-bylaws" %}}[Chat Bylaws]
 | A few rules around our public chat as a collaboration tool for the project.
 
-| link:./contributing-guidelines/[Contribution Guidelines]
+| link:{{% ref "contributing-guidelines" %}}[Contribution Guidelines]
 | How to contribute to Apache Polaris
 |===
 {{% /blocks/feature %}}
