@@ -103,6 +103,7 @@ import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.exception.IcebergJerseyViolationExceptionMapper;
 import org.apache.polaris.service.exception.IcebergJsonProcessingExceptionMapper;
+import org.apache.polaris.service.exception.PolarisExceptionMapper;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilter;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -280,6 +281,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     }
     environment.jersey().register(new IcebergRestOAuth2Api(oauth2Service));
     environment.jersey().register(new IcebergExceptionMapper());
+    environment.jersey().register(new PolarisExceptionMapper());
     PolarisServiceImpl polarisService = new PolarisServiceImpl(entityManagerFactory, authorizer);
     environment.jersey().register(new PolarisCatalogsApi(polarisService));
     environment.jersey().register(new PolarisPrincipalsApi(polarisService));
