@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service;
+package org.apache.polaris.service.exception;
 
 import io.dropwizard.jersey.validation.JerseyViolationException;
 import jakarta.ws.rs.core.MediaType;

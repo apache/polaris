@@ -20,6 +20,7 @@
 plugins {
   id("polaris-server")
   `java-library`
+  kotlin("jvm") version "2.0.20"
 }
 
 dependencies {
@@ -30,9 +31,6 @@ dependencies {
   implementation("io.dropwizard:dropwizard-jackson")
   compileOnly(libs.jetbrains.annotations)
 
-  implementation(platform(libs.iceberg.bom))
-  implementation("org.apache.iceberg:iceberg-api")
-
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
 
@@ -41,6 +39,7 @@ dependencies {
   testImplementation(libs.assertj.core)
   testImplementation(libs.mockito.core)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+  implementation(kotlin("stdlib-jdk8"))
 }
 
 tasks.register<Jar>("archiveConf") {
@@ -51,3 +50,9 @@ tasks.register<Jar>("archiveConf") {
 }
 
 tasks.named("test") { dependsOn("archiveConf") }
+repositories {
+  mavenCentral()
+}
+kotlin {
+  jvmToolchain(21)
+}
