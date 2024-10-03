@@ -29,11 +29,8 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
-import org.apache.commons.io.FileUtils;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.rest.HTTPClient;
@@ -56,6 +53,7 @@ import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisConnectionExtension.PolarisToken;
+import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension.SnowmanCredentials;
 import org.junit.jupiter.api.BeforeAll;
@@ -90,20 +88,19 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
               "server.adminConnectors[0].port", "0")); // Bind to random port to support parallelism
 
   private RESTCatalog restCatalog;
-  private static String realm;
 
   @BeforeAll
-  public static void setup() throws IOException {
-    realm = PolarisConnectionExtension.getTestRealm(PolarisRestCatalogViewIntegrationTest.class);
-
-    Path testDir = Path.of("build/test_data/iceberg/" + realm);
-    FileUtils.deleteQuietly(testDir.toFile());
-    Files.createDirectories(testDir);
+  public static void setup(@PolarisRealm String realm) throws IOException {
+    // Set up test location
+    PolarisConnectionExtension.createTestDir(realm);
   }
 
   @BeforeEach
   public void before(
-      TestInfo testInfo, PolarisToken adminToken, SnowmanCredentials snowmanCredentials) {
+      TestInfo testInfo,
+      PolarisToken adminToken,
+      SnowmanCredentials snowmanCredentials,
+      @PolarisRealm String realm) {
     String userToken = adminToken.token();
     testInfo
         .getTestMethod()

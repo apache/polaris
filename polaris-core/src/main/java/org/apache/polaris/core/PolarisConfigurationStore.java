@@ -19,6 +19,7 @@
 package org.apache.polaris.core;
 
 import com.google.common.base.Preconditions;
+import java.util.List;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -68,6 +69,8 @@ public interface PolarisConfigurationStore {
 
     if (config.defaultValue instanceof Boolean) {
       return config.cast(Boolean.valueOf(String.valueOf(value)));
+    } else if (config.defaultValue instanceof List<?>) {
+      return config.cast(List.copyOf((List<?>) value));
     } else {
       return config.cast(value);
     }

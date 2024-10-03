@@ -43,15 +43,21 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class ManifestFileCleanupTaskHandlerTest {
+  private InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory;
+  private RealmContext realmContext;
+
+  @BeforeEach
+  void setUp() {
+    metaStoreManagerFactory = new InMemoryPolarisMetaStoreManagerFactory();
+    realmContext = () -> "realmName";
+  }
 
   @Test
   public void testCleanupFileNotExists() throws IOException {
-    InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory();
-    RealmContext realmContext = () -> "realmName";
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -83,9 +89,6 @@ class ManifestFileCleanupTaskHandlerTest {
 
   @Test
   public void testCleanupFileManifestExistsDataFilesDontExist() throws IOException {
-    InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory();
-    RealmContext realmContext = () -> "realmName";
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -116,9 +119,6 @@ class ManifestFileCleanupTaskHandlerTest {
 
   @Test
   public void testCleanupFiles() throws IOException {
-    InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory();
-    RealmContext realmContext = () -> "realmName";
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -166,9 +166,6 @@ class ManifestFileCleanupTaskHandlerTest {
 
   @Test
   public void testCleanupFilesWithRetries() throws IOException {
-    InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory();
-    RealmContext realmContext = () -> "realmName";
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),

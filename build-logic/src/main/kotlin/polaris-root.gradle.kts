@@ -20,11 +20,15 @@
 import org.jetbrains.gradle.ext.copyright
 import org.jetbrains.gradle.ext.encodings
 import org.jetbrains.gradle.ext.settings
+import publishing.PublishingHelperExtension
+import publishing.PublishingHelperPlugin
 
 plugins {
   id("com.diffplug.spotless")
   id("org.jetbrains.gradle.plugin.idea-ext")
 }
+
+apply<PublishingHelperPlugin>()
 
 spotless {
   kotlinGradle {
@@ -56,4 +60,23 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
       encodings.properties.encoding = "UTF-8"
     }
   }
+}
+
+extensions.getByType<PublishingHelperExtension>().apply {
+  asfProjectName = "polaris"
+
+  mailingLists.addAll("dev", "issues", "commits")
+
+  podlingPpmcAsfIds.addAll(
+    "anoop",
+    "ashvin",
+    "jackye",
+    "jbonofre",
+    "russellspitzer",
+    "snazy",
+    "takidau",
+    "vvcephei"
+  )
+  podlingMentorsAsfIds.addAll("bdelacretaz", "blue", "holden", "jbonofre", "yao")
+  podlingCommitterAsfIds.addAll()
 }

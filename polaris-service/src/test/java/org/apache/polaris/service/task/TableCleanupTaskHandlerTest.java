@@ -41,17 +41,23 @@ import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 
 class TableCleanupTaskHandlerTest {
+  private InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory;
+  private RealmContext realmContext;
+
+  @BeforeEach
+  void setUp() {
+    metaStoreManagerFactory = new InMemoryPolarisMetaStoreManagerFactory();
+    realmContext = () -> "realmName";
+  }
 
   @Test
   public void testTableCleanup() throws IOException {
-    InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory();
-    RealmContext realmContext = () -> "realmName";
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -112,9 +118,6 @@ class TableCleanupTaskHandlerTest {
 
   @Test
   public void testTableCleanupHandlesAlreadyDeletedMetadata() throws IOException {
-    InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory();
-    RealmContext realmContext = () -> "realmName";
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -174,9 +177,6 @@ class TableCleanupTaskHandlerTest {
 
   @Test
   public void testTableCleanupDuplicatesTasksIfFileStillExists() throws IOException {
-    InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory();
-    RealmContext realmContext = () -> "realmName";
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -269,9 +269,6 @@ class TableCleanupTaskHandlerTest {
 
   @Test
   public void testTableCleanupMultipleSnapshots() throws IOException {
-    InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory();
-    RealmContext realmContext = () -> "realmName";
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),

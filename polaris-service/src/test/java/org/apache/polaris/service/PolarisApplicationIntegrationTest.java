@@ -19,14 +19,19 @@
 package org.apache.polaris.service;
 
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
+import static org.apache.polaris.service.throttling.RequestThrottlingErrorResponse.RequestThrottlingErrorType.REQUEST_TOO_LARGE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
+import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -54,8 +59,13 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.hadoop.HadoopFileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
+import org.apache.iceberg.rest.HTTPClient;
+import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.RESTSessionCatalog;
+import org.apache.iceberg.rest.auth.AuthConfig;
+import org.apache.iceberg.rest.auth.ImmutableAuthConfig;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
+import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -72,7 +82,9 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
+import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
+import org.apache.polaris.service.throttling.RequestThrottlingErrorResponse;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
@@ -83,6 +95,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 @ExtendWith({
   DropwizardExtensionsSupport.class,
@@ -112,9 +125,10 @@ public class PolarisApplicationIntegrationTest {
   @BeforeAll
   public static void setup(
       PolarisConnectionExtension.PolarisToken userToken,
-      SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials)
+      SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials,
+      @PolarisRealm String polarisRealm)
       throws IOException {
-    realm = PolarisConnectionExtension.getTestRealm(PolarisApplicationIntegrationTest.class);
+    realm = polarisRealm;
 
     testDir = Path.of("build/test_data/iceberg/" + realm);
     FileUtils.deleteQuietly(testDir.toFile());
@@ -634,6 +648,96 @@ public class PolarisApplicationIntegrationTest {
                           realm)))
           .isInstanceOf(BadRequestException.class)
           .hasMessage("Malformed request: Please specify a warehouse");
+    }
+  }
+
+  @Test
+  public void testRequestHeaderTooLarge() {
+    Invocation.Builder request =
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
+            .request("application/json");
+
+    // The default limit is 8KiB and each of these headers is at least 8 bytes, so 1500 definitely
+    // exceeds the limit
+    for (int i = 0; i < 1500; i++) {
+      request = request.header("header" + i, "" + i);
+    }
+
+    try {
+      try (Response response =
+          request
+              .header("Authorization", "Bearer " + userToken)
+              .header(REALM_PROPERTY_KEY, realm)
+              .post(Entity.json(new PrincipalRole("r")))) {
+        assertThat(response)
+            .returns(
+                Response.Status.REQUEST_HEADER_FIELDS_TOO_LARGE.getStatusCode(),
+                Response::getStatus);
+      }
+    } catch (ProcessingException e) {
+      // In some runtime environments the request above will return a 431 but in others it'll result
+      // in a ProcessingException from the socket being closed. The test asserts that one of those
+      // things happens.
+    }
+  }
+
+  @Test
+  public void testRequestBodyTooLarge() {
+    // The size is set to be higher than the limit in polaris-server-integrationtest.yml
+    Entity<PrincipalRole> largeRequest = Entity.json(new PrincipalRole("r".repeat(1000001)));
+
+    try (Response response =
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
+            .request("application/json")
+            .header("Authorization", "Bearer " + userToken)
+            .header(REALM_PROPERTY_KEY, realm)
+            .post(largeRequest)) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
+          .matches(
+              r ->
+                  r.readEntity(RequestThrottlingErrorResponse.class)
+                      .errorType()
+                      .equals(REQUEST_TOO_LARGE));
+    }
+  }
+
+  @Test
+  public void testRefreshToken() throws IOException {
+    String path =
+        String.format("http://localhost:%d/api/catalog/v1/oauth/tokens", EXT.getLocalPort());
+    try (RESTClient client =
+        HTTPClient.builder(ImmutableMap.of())
+            .withHeader(REALM_PROPERTY_KEY, realm)
+            .uri(path)
+            .build()) {
+      String credentialString =
+          snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret();
+      var authConfig =
+          AuthConfig.builder().credential(credentialString).scope("PRINCIPAL_ROLE:ALL").build();
+      ImmutableAuthConfig configSpy = spy(authConfig);
+      when(configSpy.expiresAtMillis()).thenReturn(0L);
+      assertThat(configSpy.expiresAtMillis()).isEqualTo(0L);
+      when(configSpy.oauth2ServerUri()).thenReturn(path);
+
+      var parentSession = new OAuth2Util.AuthSession(Map.of(), configSpy);
+      var session =
+          OAuth2Util.AuthSession.fromAccessToken(client, null, userToken, 0L, parentSession);
+
+      OAuth2Util.AuthSession sessionSpy = spy(session);
+      when(sessionSpy.expiresAtMillis()).thenReturn(0L);
+      assertThat(sessionSpy.expiresAtMillis()).isEqualTo(0L);
+      assertThat(sessionSpy.token()).isEqualTo(userToken);
+
+      sessionSpy.refresh(client);
+      assertThat(sessionSpy.credential()).isNotNull();
+      assertThat(sessionSpy.credential()).isNotEqualTo(userToken);
     }
   }
 }

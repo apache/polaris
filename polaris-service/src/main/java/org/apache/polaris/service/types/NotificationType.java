@@ -30,7 +30,8 @@ public enum NotificationType {
   UNKNOWN(0, "UNKNOWN"),
   CREATE(1, "CREATE"),
   UPDATE(2, "UPDATE"),
-  DROP(3, "DROP");
+  DROP(3, "DROP"),
+  VALIDATE(4, "VALIDATE");
 
   NotificationType(int id, String displayName) {
     this.id = id;

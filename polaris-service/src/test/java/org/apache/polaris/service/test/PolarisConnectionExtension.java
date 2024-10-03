@@ -24,9 +24,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.polaris.core.context.CallContext;
@@ -40,7 +45,9 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
+import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.jetbrains.annotations.Nullable;
+import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
@@ -50,7 +57,8 @@ import org.junit.jupiter.api.extension.ParameterResolver;
 import org.junit.platform.commons.util.ReflectionUtils;
 import org.slf4j.LoggerFactory;
 
-public class PolarisConnectionExtension implements BeforeAllCallback, ParameterResolver {
+public class PolarisConnectionExtension
+    implements BeforeAllCallback, AfterAllCallback, ParameterResolver {
 
   public static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private MetaStoreManagerFactory metaStoreManagerFactory;
@@ -69,7 +77,7 @@ public class PolarisConnectionExtension implements BeforeAllCallback, ParameterR
     }
 
     // Generate unique realm using test name for each test since the tests can run in parallel
-    realm = getTestRealm(extensionContext.getRequiredTestClass());
+    realm = extensionContext.getRequiredTestClass().getName().replace('.', '_');
     extensionContext
         .getStore(Namespace.create(extensionContext.getRequiredTestClass()))
         .put(REALM_PROPERTY_KEY, realm);
@@ -78,6 +86,9 @@ public class PolarisConnectionExtension implements BeforeAllCallback, ParameterR
       PolarisApplicationConfig config =
           (PolarisApplicationConfig) dropwizardAppExtension.getConfiguration();
       metaStoreManagerFactory = config.getMetaStoreManagerFactory();
+      if (!(metaStoreManagerFactory instanceof InMemoryPolarisMetaStoreManagerFactory)) {
+        metaStoreManagerFactory.bootstrapRealms(List.of(realm));
+      }
 
       RealmContext realmContext =
           config
@@ -109,8 +120,34 @@ public class PolarisConnectionExtension implements BeforeAllCallback, ParameterR
     }
   }
 
-  public static String getTestRealm(Class testClassName) {
-    return testClassName.getName().replace('.', '_');
+  @Override
+  public void afterAll(ExtensionContext context) {
+    if (!(metaStoreManagerFactory instanceof InMemoryPolarisMetaStoreManagerFactory)) {
+      metaStoreManagerFactory.purgeRealms(List.of(realm));
+    }
+  }
+
+  public static void createTestDir(String realm) throws IOException {
+    // Set up the database location
+    Path testDir = Path.of("build/test_data/polaris/" + realm);
+    if (Files.exists(testDir)) {
+      if (Files.isDirectory(testDir)) {
+        Files.walk(testDir)
+            .sorted(Comparator.reverseOrder())
+            .forEach(
+                path -> {
+                  try {
+                    Files.delete(path);
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                });
+
+      } else {
+        Files.delete(testDir);
+      }
+    }
+    Files.createDirectories(testDir);
   }
 
   static PolarisPrincipalSecrets getAdminSecrets() {
@@ -137,8 +174,14 @@ public class PolarisConnectionExtension implements BeforeAllCallback, ParameterR
   public boolean supportsParameter(
       ParameterContext parameterContext, ExtensionContext extensionContext)
       throws ParameterResolutionException {
-    return parameterContext.getParameter().getType().equals(PolarisToken.class)
-        || parameterContext.getParameter().getType().equals(PolarisPrincipalSecrets.class);
+    return parameterContext
+            .getParameter()
+            .getType()
+            .equals(PolarisConnectionExtension.PolarisToken.class)
+        || parameterContext.getParameter().getType().equals(MetaStoreManagerFactory.class)
+        || parameterContext.getParameter().getType().equals(PolarisPrincipalSecrets.class)
+        || (parameterContext.getParameter().getType().equals(String.class)
+            && parameterContext.getParameter().isAnnotationPresent(PolarisRealm.class));
   }
 
   @Override
@@ -154,6 +197,9 @@ public class PolarisConnectionExtension implements BeforeAllCallback, ParameterR
               adminSecrets.getMainSecret(),
               realm);
       return new PolarisToken(token);
+    } else if (parameterContext.getParameter().getType().equals(String.class)
+        && parameterContext.getParameter().isAnnotationPresent(PolarisRealm.class)) {
+      return realm;
     } else {
       return metaStoreManagerFactory;
     }

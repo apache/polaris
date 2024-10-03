@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import java.io.Closeable;
 import java.io.IOException;
@@ -31,6 +32,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.MetadataUpdate;
@@ -38,8 +40,7 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
-import org.apache.iceberg.Transaction;
-import org.apache.iceberg.Transactions;
+import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.UpdateRequirement;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
@@ -48,6 +49,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.catalog.ViewCatalog;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
@@ -68,6 +70,7 @@ import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
+import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -77,7 +80,9 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -134,6 +139,27 @@ public class PolarisCatalogHandlerWrapper {
     this.authenticatedPrincipal = authenticatedPrincipal;
     this.authorizer = authorizer;
     this.catalogFactory = catalogFactory;
+  }
+
+  /**
+   * TODO: Make the helper in org.apache.iceberg.rest.CatalogHandlers public instead of needing to
+   * copy/paste here.
+   */
+  public static boolean isCreate(UpdateTableRequest request) {
+    boolean isCreate =
+        request.requirements().stream()
+            .anyMatch(UpdateRequirement.AssertTableDoesNotExist.class::isInstance);
+
+    if (isCreate) {
+      List<UpdateRequirement> invalidRequirements =
+          request.requirements().stream()
+              .filter(req -> !(req instanceof UpdateRequirement.AssertTableDoesNotExist))
+              .collect(Collectors.toList());
+      Preconditions.checkArgument(
+          invalidRequirements.isEmpty(), "Invalid create requirements: %s", invalidRequirements);
+    }
+
+    return isCreate;
   }
 
   private void initializeCatalog() {
@@ -679,7 +705,7 @@ public class PolarisCatalogHandlerWrapper {
   }
 
   public LoadTableResponse createTableStagedWithWriteDelegation(
-      Namespace namespace, CreateTableRequest request, String xIcebergAccessDelegation) {
+      Namespace namespace, CreateTableRequest request) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.CREATE_TABLE_STAGED_WITH_WRITE_DELEGATION;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
@@ -770,7 +796,7 @@ public class PolarisCatalogHandlerWrapper {
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
-      TableIdentifier tableIdentifier, String xIcebergAccessDelegation, String snapshots) {
+      TableIdentifier tableIdentifier, String snapshots) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -954,25 +980,91 @@ public class PolarisCatalogHandlerWrapper {
       throw new BadRequestException("Cannot update table on external catalogs.");
     }
 
-    // TODO: Implement this properly
-    List<Transaction> transactions =
-        commitTransactionRequest.tableChanges().stream()
-            .map(
-                change -> {
-                  Table table = baseCatalog.loadTable(change.identifier());
-                  if (!(table instanceof BaseTable)) {
-                    throw new IllegalStateException(
-                        "Cannot wrap catalog that does not produce BaseTable");
-                  }
-                  Transaction transaction =
-                      Transactions.newTransaction(
-                          change.identifier().toString(), ((BaseTable) table).operations());
-                  CatalogHandlers.updateTable(baseCatalog, change.identifier(), change);
-                  return transaction;
-                })
-            .toList();
+    if (!(baseCatalog instanceof BasePolarisCatalog)) {
+      throw new BadRequestException(
+          "Unsupported operation: commitTransaction with baseCatalog type: %s",
+          baseCatalog.getClass().getName());
+    }
 
-    transactions.forEach(Transaction::commitTransaction);
+    // Swap in TransactionWorkspaceMetaStoreManager for all mutations made by this baseCatalog to
+    // only go into an in-memory collection that we can commit as a single atomic unit after all
+    // validations.
+    TransactionWorkspaceMetaStoreManager transactionMetaStoreManager =
+        new TransactionWorkspaceMetaStoreManager(entityManager.getMetaStoreManager());
+    ((BasePolarisCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
+
+    commitTransactionRequest.tableChanges().stream()
+        .forEach(
+            change -> {
+              Table table = baseCatalog.loadTable(change.identifier());
+              if (!(table instanceof BaseTable)) {
+                throw new IllegalStateException(
+                    "Cannot wrap catalog that does not produce BaseTable");
+              }
+              if (isCreate(change)) {
+                throw new BadRequestException(
+                    "Unsupported operation: commitTranaction with updateForStagedCreate: %s",
+                    change);
+              }
+
+              TableOperations tableOps = ((BaseTable) table).operations();
+              TableMetadata currentMetadata = tableOps.current();
+
+              // Validate requirements; any CommitFailedExceptions will fail the overall request
+              change.requirements().forEach(requirement -> requirement.validate(currentMetadata));
+
+              // Apply changes
+              TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
+              change.updates().stream()
+                  .forEach(
+                      singleUpdate -> {
+                        // Note: If location-overlap checking is refactored to be atomic, we could
+                        // support validation within a single multi-table transaction as well, but
+                        // will need to update the TransactionWorkspaceMetaStoreManager to better
+                        // expose the concept of being able to read uncommitted updates.
+                        if (singleUpdate instanceof MetadataUpdate.SetLocation) {
+                          if (!currentMetadata
+                                  .location()
+                                  .equals(((MetadataUpdate.SetLocation) singleUpdate).location())
+                              && !callContext
+                                  .getPolarisCallContext()
+                                  .getConfigurationStore()
+                                  .getConfiguration(
+                                      callContext.getPolarisCallContext(),
+                                      PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+                            throw new BadRequestException(
+                                "Unsupported operation: commitTransaction containing SetLocation"
+                                    + " for table '%s' and new location '%s'",
+                                change.identifier(),
+                                ((MetadataUpdate.SetLocation) singleUpdate).location());
+                          }
+                        }
+
+                        // Apply updates to builder
+                        singleUpdate.applyTo(metadataBuilder);
+                      });
+
+              // Commit into transaction workspace we swapped the baseCatalog to use
+              TableMetadata updatedMetadata = metadataBuilder.build();
+              if (!updatedMetadata.changes().isEmpty()) {
+                tableOps.commit(currentMetadata, updatedMetadata);
+              }
+            });
+
+    // Commit the collected updates in a single atomic operation
+    List<PolarisMetaStoreManager.EntityWithPath> pendingUpdates =
+        transactionMetaStoreManager.getPendingUpdates();
+    PolarisMetaStoreManager.EntitiesResult result =
+        entityManager
+            .getMetaStoreManager()
+            .updateEntitiesPropertiesIfNotChanged(
+                callContext.getPolarisCallContext(), pendingUpdates);
+    if (!result.isSuccess()) {
+      // TODO: Retries and server-side cleanup on failure
+      throw new CommitFailedException(
+          "Transaction commit failed with status: %s, extraInfo: %s",
+          result.getReturnStatus(), result.getExtraInformation());
+    }
   }
 
   public ListTablesResponse listViews(Namespace namespace) {

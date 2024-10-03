@@ -73,7 +73,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                           HttpTransportFactory.class, NetHttpTransport::new));
         } catch (IOException e) {
           throw new RuntimeException(
-              "Error initializing default google credentials" + e.getMessage());
+              "Error initializing default google credentials. " + e.getMessage());
         }
         break;
       case AZURE:

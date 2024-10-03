@@ -20,9 +20,11 @@ package org.apache.polaris.service;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Objects.requireNonNull;
+import static org.apache.polaris.service.config.PolarisApplicationConfig.REQUEST_BODY_BYTES_NO_LIMIT;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
@@ -102,11 +104,13 @@ import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.exception.IcebergJerseyViolationExceptionMapper;
 import org.apache.polaris.service.exception.IcebergJsonProcessingExceptionMapper;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.service.ratelimiter.RateLimiterFilter;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutorImpl;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
+import org.apache.polaris.service.throttling.StreamReadConstraintsExceptionMapper;
 import org.apache.polaris.service.tracing.OpenTelemetryAware;
 import org.apache.polaris.service.tracing.TracingFilter;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
@@ -252,6 +256,14 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         .servlets()
         .addFilter("tracing", new TracingFilter(openTelemetry))
         .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
+
+    if (configuration.getRateLimiter() != null) {
+      environment
+          .servlets()
+          .addFilter("ratelimiter", new RateLimiterFilter(configuration.getRateLimiter()))
+          .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
+    }
+
     DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> authenticator =
         configuration.getPolarisAuthenticator();
     authenticator.setEntityManagerFactory(entityManagerFactory);
@@ -276,6 +288,17 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     objectMapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
     objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     objectMapper.setPropertyNamingStrategy(new PropertyNamingStrategies.KebabCaseStrategy());
+
+    long maxRequestBodyBytes = configuration.getMaxRequestBodyBytes();
+    if (maxRequestBodyBytes != REQUEST_BODY_BYTES_NO_LIMIT) {
+      objectMapper
+          .getFactory()
+          .setStreamReadConstraints(
+              StreamReadConstraints.builder().maxDocumentLength(maxRequestBodyBytes).build());
+      LOGGER.info("Limiting request body size to {} bytes", maxRequestBodyBytes);
+    }
+
+    environment.jersey().register(new StreamReadConstraintsExceptionMapper());
     RESTSerializers.registerAll(objectMapper);
     Serializers.registerSerializers(objectMapper);
     environment.jersey().register(new IcebergJsonProcessingExceptionMapper());

@@ -706,8 +706,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT)),
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createTableStagedWithWriteDelegation(
-                  NS2, createStagedWithWriteDelegationRequest, "vended-credentials");
+              .createTableStagedWithWriteDelegation(NS2, createStagedWithWriteDelegationRequest);
         },
         // createTableStagedWithWriteDelegation doesn't actually commit any metadata
         null,
@@ -736,8 +735,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_LIST),
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1))
-              .createTableStagedWithWriteDelegation(
-                  NS2, createStagedWithWriteDelegationRequest, "vended-credentials");
+              .createTableStagedWithWriteDelegation(NS2, createStagedWithWriteDelegationRequest);
         });
   }
 
@@ -855,7 +853,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "vended-credentials", "all"),
+        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all"),
         null /* cleanupAction */);
   }
 
@@ -871,8 +869,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_CREATE,
             PolarisPrivilege.TABLE_LIST,
             PolarisPrivilege.TABLE_DROP),
-        () ->
-            newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "vended-credentials", "all"));
+        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all"));
   }
 
   @Test
@@ -885,7 +882,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "vended-credentials", "all"),
+        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all"),
         null /* cleanupAction */);
   }
 
@@ -901,8 +898,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_CREATE,
             PolarisPrivilege.TABLE_LIST,
             PolarisPrivilege.TABLE_DROP),
-        () ->
-            newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "vended-credentials", "all"));
+        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all"));
   }
 
   @Test
@@ -1640,33 +1636,43 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
 
     String tableUuid = UUID.randomUUID().toString();
 
-    NotificationRequest request = new NotificationRequest();
-    request.setNotificationType(NotificationType.CREATE);
-    TableUpdateNotification update = new TableUpdateNotification();
-    update.setMetadataLocation(
+    NotificationRequest createRequest = new NotificationRequest();
+    createRequest.setNotificationType(NotificationType.CREATE);
+    TableUpdateNotification createPayload = new TableUpdateNotification();
+    createPayload.setMetadataLocation(
         String.format("%s/bucket/table/metadata/v1.metadata.json", storageLocation));
-    update.setTableName(table.name());
-    update.setTableUuid(tableUuid);
-    update.setTimestamp(230950845L);
-    request.setPayload(update);
+    createPayload.setTableName(table.name());
+    createPayload.setTableUuid(tableUuid);
+    createPayload.setTimestamp(230950845L);
+    createRequest.setPayload(createPayload);
 
-    NotificationRequest request2 = new NotificationRequest();
-    request2.setNotificationType(NotificationType.UPDATE);
-    TableUpdateNotification update2 = new TableUpdateNotification();
-    update2.setMetadataLocation(
+    NotificationRequest updateRequest = new NotificationRequest();
+    updateRequest.setNotificationType(NotificationType.UPDATE);
+    TableUpdateNotification updatePayload = new TableUpdateNotification();
+    updatePayload.setMetadataLocation(
         String.format("%s/bucket/table/metadata/v2.metadata.json", storageLocation));
-    update2.setTableName(table.name());
-    update2.setTableUuid(tableUuid);
-    update2.setTimestamp(330950845L);
-    request2.setPayload(update2);
+    updatePayload.setTableName(table.name());
+    updatePayload.setTableUuid(tableUuid);
+    updatePayload.setTimestamp(330950845L);
+    updateRequest.setPayload(updatePayload);
 
-    NotificationRequest request3 = new NotificationRequest();
-    request3.setNotificationType(NotificationType.DROP);
-    TableUpdateNotification update3 = new TableUpdateNotification();
-    update3.setTableName(table.name());
-    update3.setTableUuid(tableUuid);
-    update3.setTimestamp(430950845L);
-    request3.setPayload(update3);
+    NotificationRequest dropRequest = new NotificationRequest();
+    dropRequest.setNotificationType(NotificationType.DROP);
+    TableUpdateNotification dropPayload = new TableUpdateNotification();
+    dropPayload.setTableName(table.name());
+    dropPayload.setTableUuid(tableUuid);
+    dropPayload.setTimestamp(430950845L);
+    dropRequest.setPayload(dropPayload);
+
+    NotificationRequest validateRequest = new NotificationRequest();
+    validateRequest.setNotificationType(NotificationType.VALIDATE);
+    TableUpdateNotification validatePayload = new TableUpdateNotification();
+    validatePayload.setMetadataLocation(
+        String.format("%s/bucket/table/metadata/v1.metadata.json", storageLocation));
+    validatePayload.setTableName(table.name());
+    validatePayload.setTableUuid(tableUuid);
+    validatePayload.setTimestamp(530950845L);
+    validateRequest.setPayload(validatePayload);
 
     PolarisCallContextCatalogFactory factory =
         new PolarisCallContextCatalogFactory(
@@ -1701,13 +1707,14 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
                     .assignUUID()
                     .build();
             TableMetadataParser.overwrite(
-                tableMetadata, fileIO.newOutputFile(update.getMetadataLocation()));
+                tableMetadata, fileIO.newOutputFile(createPayload.getMetadataLocation()));
             TableMetadataParser.overwrite(
-                tableMetadata, fileIO.newOutputFile(update2.getMetadataLocation()));
+                tableMetadata, fileIO.newOutputFile(updatePayload.getMetadataLocation()));
             return catalog;
           }
         };
-    doTestSufficientPrivilegeSets(
+
+    List<Set<PolarisPrivilege>> sufficientPrivilegeSets =
         List.of(
             Set.of(PolarisPrivilege.CATALOG_MANAGE_CONTENT),
             Set.of(PolarisPrivilege.TABLE_FULL_METADATA, PolarisPrivilege.NAMESPACE_FULL_METADATA),
@@ -1725,14 +1732,18 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
                 PolarisPrivilege.TABLE_DROP,
                 PolarisPrivilege.TABLE_WRITE_PROPERTIES,
                 PolarisPrivilege.NAMESPACE_CREATE,
-                PolarisPrivilege.NAMESPACE_DROP)),
+                PolarisPrivilege.NAMESPACE_DROP));
+    doTestSufficientPrivilegeSets(
+        sufficientPrivilegeSets,
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
-              .sendNotification(table, request);
+              .sendNotification(table, createRequest);
           newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
-              .sendNotification(table, request2);
+              .sendNotification(table, updateRequest);
           newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
-              .sendNotification(table, request3);
+              .sendNotification(table, dropRequest);
+          newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
+              .sendNotification(table, validateRequest);
         },
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE2), externalCatalog, factory)
@@ -1740,6 +1751,17 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
           newWrapper(Set.of(PRINCIPAL_ROLE2), externalCatalog, factory)
               .dropNamespace(Namespace.of("extns1"));
         },
+        PRINCIPAL_NAME,
+        externalCatalog);
+
+    // Also test VALIDATE in isolation
+    doTestSufficientPrivilegeSets(
+        sufficientPrivilegeSets,
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
+              .sendNotification(table, validateRequest);
+        },
+        null /* cleanupAction */,
         PRINCIPAL_NAME,
         externalCatalog);
   }
@@ -1750,7 +1772,6 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     TableIdentifier table = TableIdentifier.of(namespace, "tbl1");
 
     NotificationRequest request = new NotificationRequest();
-    request.setNotificationType(NotificationType.UPDATE);
     TableUpdateNotification update = new TableUpdateNotification();
     update.setMetadataLocation("file:///tmp/bucket/table/metadata/v1.metadata.json");
     update.setTableName(table.name());
@@ -1758,11 +1779,37 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    doTestInsufficientPrivileges(
+    List<PolarisPrivilege> insufficientPrivileges =
         List.of(
             PolarisPrivilege.NAMESPACE_FULL_METADATA,
             PolarisPrivilege.TABLE_FULL_METADATA,
-            PolarisPrivilege.VIEW_FULL_METADATA),
+            PolarisPrivilege.VIEW_FULL_METADATA);
+
+    // Independently test insufficient privileges in isolation.
+    request.setNotificationType(NotificationType.CREATE);
+    doTestInsufficientPrivileges(
+        insufficientPrivileges,
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, request);
+        });
+
+    request.setNotificationType(NotificationType.UPDATE);
+    doTestInsufficientPrivileges(
+        insufficientPrivileges,
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, request);
+        });
+
+    request.setNotificationType(NotificationType.DROP);
+    doTestInsufficientPrivileges(
+        insufficientPrivileges,
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, request);
+        });
+
+    request.setNotificationType(NotificationType.VALIDATE);
+    doTestInsufficientPrivileges(
+        insufficientPrivileges,
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE1)).sendNotification(table, request);
         });
