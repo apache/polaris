@@ -21,8 +21,7 @@ package org.apache.polaris.core.exceptions;
 /**
  * Base class for Polaris-specific runtime exceptions.
  *
- * <p>All custom exceptions in Polaris should extend this class to provide
- * specific error details.
+ * <p>All custom exceptions in Polaris should extend this class to provide specific error details.
  */
 public abstract class PolarisException extends RuntimeException {
 
