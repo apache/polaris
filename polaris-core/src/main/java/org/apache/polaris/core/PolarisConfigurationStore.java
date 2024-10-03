@@ -69,6 +69,16 @@ public interface PolarisConfigurationStore {
 
     if (config.defaultValue instanceof Boolean) {
       return config.cast(Boolean.valueOf(String.valueOf(value)));
+    } else if (config.defaultValue instanceof Short) {
+      return config.cast(Short.valueOf(String.valueOf(value)));
+    } else if (config.defaultValue instanceof Integer) {
+      return config.cast(Integer.valueOf(String.valueOf(value)));
+    } else if (config.defaultValue instanceof Long) {
+      return config.cast(Long.valueOf(String.valueOf(value)));
+    } else if (config.defaultValue instanceof Float) {
+      return config.cast(Float.valueOf(String.valueOf(value)));
+    } else if (config.defaultValue instanceof Double) {
+      return config.cast(Double.valueOf(String.valueOf(value)));
     } else if (config.defaultValue instanceof List<?>) {
       return config.cast(List.copyOf((List<?>) value));
     } else {
