@@ -17,18 +17,34 @@
  * under the License.
  */
 
+fun isValidDep(dep: String): Boolean {
+  val depRegex = "^[\\w.]+:[\\w\\-.]+:[\\w\\-.]+$".toRegex()
+  return dep.matches(depRegex)
+}
+
 plugins {
   id("polaris-server")
   `java-library`
-  kotlin("jvm") version "2.0.20"
 }
 
 dependencies {
   implementation(project(":polaris-core"))
-  runtimeOnly(project(":polaris-service"))
   implementation(libs.eclipselink)
   implementation(platform(libs.dropwizard.bom))
   implementation("io.dropwizard:dropwizard-jackson")
+  val eclipseLinkDeps: String? = project.findProperty("eclipseLinkDeps") as String?
+  eclipseLinkDeps?.let {
+    val dependenciesList = it.split(",")
+    dependenciesList.forEach { dep ->
+      val trimmedDep = dep.trim()
+      if (isValidDep(trimmedDep)) {
+        implementation(trimmedDep)
+      } else {
+        throw GradleException("Invalid dependency format: $trimmedDep")
+      }
+    }
+  }
+
   compileOnly(libs.jetbrains.annotations)
 
   testImplementation(libs.h2)
@@ -39,20 +55,13 @@ dependencies {
   testImplementation(libs.assertj.core)
   testImplementation(libs.mockito.core)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-  implementation(kotlin("stdlib-jdk8"))
 }
 
 tasks.register<Jar>("archiveConf") {
   archiveFileName = "conf.jar"
   destinationDirectory = layout.buildDirectory.dir("conf")
 
-  from("src/test/resources/META-INF/") { include("persistence.xml") }
+  from("src/main/resources/META-INF/") { include("persistence.xml") }
 }
 
 tasks.named("test") { dependsOn("archiveConf") }
-repositories {
-  mavenCentral()
-}
-kotlin {
-  jvmToolchain(21)
-}

@@ -16,19 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.exceptions;
 
 /**
- * A {@link PolarisException} implementation for when Polaris is unable to create an entity
- * that already exists.
+ * A {@link PolarisException} implementation for when Polaris is unable to create an entity that
+ * already exists.
  */
 public class AlreadyExistsException extends PolarisException {
-    public AlreadyExistsException(String message) {
-        super(message);
-    }
+  public AlreadyExistsException(String message) {
+    super(message);
+  }
 
-    public AlreadyExistsException(String message, Throwable cause) {
-        super(message, cause);
-    }
+  public AlreadyExistsException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

@@ -16,9 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.exception;
-
 
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -29,31 +27,32 @@ import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.exceptions.PolarisException;
 
 /**
- * An {@link ExceptionMapper} implementation for {@link PolarisException}s modeled after
- * {@link IcebergExceptionMapper}
+ * An {@link ExceptionMapper} implementation for {@link PolarisException}s modeled after {@link
+ * IcebergExceptionMapper}
  */
 @Provider
 public class PolarisExceptionMapper implements ExceptionMapper<PolarisException> {
 
-    private Response.Status getStatus(PolarisException exception) {
-        if (exception instanceof AlreadyExistsException alreadyExistsException) {
-            return Response.Status.CONFLICT;
-        } else {
-            throw new IllegalArgumentException("No mapping found for " + exception);
-        }
+  private Response.Status getStatus(PolarisException exception) {
+    if (exception instanceof AlreadyExistsException alreadyExistsException) {
+      return Response.Status.CONFLICT;
+    } else {
+      throw new IllegalArgumentException("No mapping found for " + exception);
     }
+  }
 
-    @Override
-    public Response toResponse(PolarisException exception) {
-        Response.Status status = getStatus(exception);
-        ErrorResponse errorResponse = ErrorResponse.builder()
+  @Override
+  public Response toResponse(PolarisException exception) {
+    Response.Status status = getStatus(exception);
+    ErrorResponse errorResponse =
+        ErrorResponse.builder()
             .responseCode(status.getStatusCode())
             .withType(exception.getClass().getSimpleName())
             .withMessage(exception.getMessage())
             .build();
-        return Response.status(status)
-            .entity(errorResponse)
-            .type(MediaType.APPLICATION_JSON_TYPE)
-            .build();
-    }
+    return Response.status(status)
+        .entity(errorResponse)
+        .type(MediaType.APPLICATION_JSON_TYPE)
+        .build();
+  }
 }

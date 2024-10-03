@@ -16,19 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.exceptions;
 
-/**
- * Used for Polaris-native exceptions
- */
+/** Used for Polaris-native exceptions */
 public abstract class PolarisException extends RuntimeException {
 
-    public PolarisException(String message) {
-        super(message);
-    }
+  public PolarisException(String message) {
+    super(message);
+  }
 
-    public PolarisException(String message, Throwable cause) {
-        super(message, cause);
-    }
+  public PolarisException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }
