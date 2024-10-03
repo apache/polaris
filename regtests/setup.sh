@@ -1,18 +1,21 @@
 #!/bin/bash
 #
-# Copyright (c) 2024 Snowflake Computing Inc.
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+#   http://www.apache.org/licenses/LICENSE-2.0
 #
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 #
 # Idempotent setup for regression tests. Run manually or let run.sh auto-run.
 #
@@ -27,6 +30,7 @@ if [ -z "${SPARK_HOME}" ]; then
   SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
 fi
 SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
+DERBY_HOME="/tmp/derby"
 export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
 
 # Ensure binaries are downloaded locally
@@ -103,18 +107,22 @@ spark.hadoop.fs.s3.impl org.apache.hadoop.fs.s3a.S3AFileSystem
 spark.hadoop.fs.AbstractFileSystem.s3.impl org.apache.hadoop.fs.s3a.S3A
 spark.sql.variable.substitute true
 
-spark.driver.extraJavaOptions -Dderby.system.home=/tmp/derby
+spark.driver.extraJavaOptions -Dderby.system.home=${DERBY_HOME}
 
 spark.sql.catalog.polaris=org.apache.iceberg.spark.SparkCatalog
 spark.sql.catalog.polaris.type=rest
 spark.sql.catalog.polaris.uri=http://${POLARIS_HOST:-localhost}:8181/api/catalog
-spark.sql.catalog.polaris.warehouse=snowflake
-spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=true
+spark.sql.catalog.polaris.header.X-Iceberg-Access-Delegation=vended-credentials
 spark.sql.catalog.polaris.client.region=us-west-2
 EOF
   echo 'Success!'
 fi
 
+# cleanup derby home if existed
+if [ -d "${DERBY_HOME}" ]; then
+  echo "Directory ${DERBY_HOME} exists. Deleting it..."
+  rm -rf "${DERBY_HOME}"
+fi
 # setup python venv and install polaris client library and test dependencies
 pushd $SCRIPT_DIR && ./pyspark-setup.sh && popd
 

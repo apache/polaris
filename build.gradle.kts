@@ -1,19 +1,23 @@
 /*
- * Copyright (c) 2024 Snowflake Computing Inc.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
+import java.net.URI
 import org.nosphere.apache.rat.RatTask
 
 buildscript {
@@ -42,16 +46,11 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
 
   val icon = ideaDir.file("icon.png").asFile
   if (!icon.exists()) {
-    val img =
-      java.net
-        .URI(
-          "https://raw.githubusercontent.com/apache/polaris/main/docs/img/logos/polaris-brandmark.png"
-        )
-        .toURL()
-        .openConnection()
-        .getInputStream()
-        .use { inp -> inp.readAllBytes() }
-    ideaDir.file("icon.png").asFile.outputStream().use { out -> out.write(img) }
+    copy {
+      from("docs/img/logos/polaris-brandmark.png")
+      into(ideaDir)
+      rename { _ -> "icon.png" }
+    }
   }
 }
 
@@ -84,8 +83,16 @@ tasks.named<RatTask>("rat").configure {
 
   excludes.add("gradle/wrapper/gradle-wrapper*.jar*")
 
+  excludes.add("logs/**")
   excludes.add("polaris-service/src/**/banner.txt")
   excludes.add("polaris-service/logs")
+
+  excludes.add("site/node_modules/**")
+  excludes.add("site/layouts/robots.txt")
+  // Ignore generated stuff, when the Hugo is run w/o Docker
+  excludes.add("site/public/**")
+  excludes.add("site/resources/_gen/**")
+  excludes.add("node_modules/**")
 
   excludes.add("**/polaris-venv/**")
 
@@ -96,6 +103,7 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("regtests/derby.log")
   excludes.add("regtests/metastore_db/**")
   excludes.add("regtests/client/python/.openapi-generator/**")
+  excludes.add("regtests/output/**")
 
   excludes.add("**/*.ipynb")
   excludes.add("**/*.iml")
@@ -107,4 +115,40 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("**/*.svg")
 
   excludes.add("**/*.lock")
+
+  excludes.add("**/*.env*")
+
+  excludes.add("**/go.sum")
+}
+
+// Pass environment variables:
+//    ORG_GRADLE_PROJECT_apacheUsername
+//    ORG_GRADLE_PROJECT_apachePassword
+// OR in ~/.gradle/gradle.properties set
+//    apacheUsername
+//    apachePassword
+// Call targets:
+//    publishToApache
+//    closeApacheStagingRepository
+//    releaseApacheStagingRepository
+//       or closeAndReleaseApacheStagingRepository
+//
+// Username is your ASF ID
+// Password: your ASF LDAP password - or better: a token generated via
+// https://repository.apache.org/
+nexusPublishing {
+  transitionCheckOptions {
+    // default==60 (10 minutes), wait up to 120 minutes
+    maxRetries = 720
+    // default 10s
+    delayBetween = java.time.Duration.ofSeconds(10)
+  }
+
+  repositories {
+    register("apache") {
+      nexusUrl = URI.create("https://repository.apache.org/service/local/")
+      snapshotRepositoryUrl =
+        URI.create("https://repository.apache.org/content/repositories/snapshots/")
+    }
+  }
 }

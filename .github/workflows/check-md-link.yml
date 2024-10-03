@@ -1,17 +1,20 @@
 #
-# Copyright (c) 2024 Snowflake Computing Inc.
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+#   http://www.apache.org/licenses/LICENSE-2.0
 #
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
 #
 
 # This workflow uses actions that are not certified by GitHub.
@@ -25,12 +28,6 @@ name: Check Markdown links
 
 on:
   push:
-    paths:
-      - '*.md'  # Top-level .md files
-      - docs/**
-      - regtests/README.md
-      - regtests/client/python/docs/**
-      - regtests/client/python/README.md
     branches:
       - 'main'
   pull_request:
@@ -42,6 +39,7 @@ jobs:
     - uses: actions/checkout@master
     - uses: gaurav-nelson/github-action-markdown-link-check@v1
       with:
+        use-quiet-mode: 'yes'
         config-file: '.github/workflows/check-md-link-config.json'
-        folder-path: '., docs, regtests, regtests/client/python/docs, regtests/client/python'
-        use-quiet-mode: true
+        folder-path: 'regtests, regtests/client/python/docs, regtests/client/python, .github, build-logic, polaris-core, polaris-service, extension, spec, k8, notebooks'
+        file-path: 'CHAT_BYLAWS.md, CODE_OF_CONDUCT.md, CONTRIBUTING.md, README.md SECURITY.md'

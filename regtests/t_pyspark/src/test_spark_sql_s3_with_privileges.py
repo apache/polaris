@@ -1,16 +1,21 @@
-# Copyright (c) 2024 Snowflake Computing Inc.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
 #
-#      http://www.apache.org/licenses/LICENSE-2.0
+#   http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
 
 import codecs
 import os
@@ -34,7 +39,7 @@ from polaris.catalog.configuration import Configuration
 from polaris.management import ApiClient as ManagementApiClient
 from polaris.management import PolarisDefaultApi, Principal, PrincipalRole, CatalogRole, \
   CatalogGrant, CatalogPrivilege, ApiException, CreateCatalogRoleRequest, CreatePrincipalRoleRequest, \
-  CreatePrincipalRequest, AddGrantRequest, GrantCatalogRoleRequest, GrantPrincipalRoleRequest
+  CreatePrincipalRequest, AddGrantRequest, GrantCatalogRoleRequest, GrantPrincipalRoleRequest, UpdateCatalogRequest
 from polaris.management.exceptions import ForbiddenException
 
 
@@ -509,6 +514,201 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
 
 
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
+def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_catalog, polaris_catalog_url, snowman,
+                                                  snowman_catalog_client, test_bucket):
+  """
+  Update the catalog configuration to support unstructured table locations. Using snowman, create namespaces and a
+  table configured to use object-store layout in a folder under the catalog root, outside of the default table
+  directory. Insert into the table in multiple operations and update existing records to generate multiple metadata.json
+  files and manifests. Validate the data files are present under the expected subdirectory. Delete the files afterward.
+
+  Using the reader principal's credentials verify read access. Validate the reader cannot insert into the table.
+  :param root_client:
+  :param snowflake_catalog:
+  :param polaris_catalog_url:
+  :param snowman:
+  :param reader:
+  :return:
+  """
+  snowflake_catalog.properties.additional_properties['allow.unstructured.table.location'] = 'true'
+  root_client.update_catalog(catalog_name=snowflake_catalog.name,
+                             update_catalog_request=UpdateCatalogRequest(properties=snowflake_catalog.properties.to_dict(),
+                                                                         current_entity_version=snowflake_catalog.entity_version))
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+                           catalog_name=snowflake_catalog.name,
+                           polaris_url=polaris_catalog_url) as spark:
+    table_name = f'iceberg_test_table_{str(uuid.uuid4())[-10:]}'
+    spark.sql(f'USE {snowflake_catalog.name}')
+    spark.sql('CREATE NAMESPACE db1')
+    spark.sql('CREATE NAMESPACE db1.schema')
+    spark.sql('SHOW NAMESPACES')
+    spark.sql('USE db1.schema')
+    spark.sql(f"CREATE TABLE {table_name} (col1 int, col2 string) TBLPROPERTIES ('write.object-storage.enabled'='true','write.data.path'='s3://{test_bucket}/polaris_test/snowflake_catalog/{table_name}data')")
+    spark.sql('SHOW TABLES')
+
+    # several inserts and an update, which should cause earlier files to show up as deleted in the later manifests
+    spark.sql(f"""INSERT INTO {table_name} VALUES 
+        (10, 'mystring'),
+        (20, 'anotherstring'),
+        (30, null)
+        """)
+    spark.sql(f"""INSERT INTO {table_name} VALUES 
+        (40, 'mystring'),
+        (50, 'anotherstring'),
+        (60, null)
+        """)
+    spark.sql(f"""INSERT INTO {table_name} VALUES 
+        (70, 'mystring'),
+        (80, 'anotherstring'),
+        (90, null)
+        """)
+    spark.sql(f"UPDATE {table_name} SET col2='changed string' WHERE col1 BETWEEN 20 AND 50")
+    count = spark.sql(f"SELECT * FROM {table_name}").count()
+
+    assert count == 9
+
+    # fetch aws credentials to examine the metadata files
+    response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'), table_name,
+                                                 "true")
+    assert response.config is not None
+    assert 's3.access-key-id' in response.config
+    assert 's3.secret-access-key' in response.config
+    assert 's3.session-token' in response.config
+
+    s3 = boto3.client('s3',
+                      aws_access_key_id=response.config['s3.access-key-id'],
+                      aws_secret_access_key=response.config['s3.secret-access-key'],
+                      aws_session_token=response.config['s3.session-token'])
+
+    objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
+                              Prefix=f'polaris_test/snowflake_catalog/{table_name}data/')
+    assert objects is not None
+    assert len(objects['CommonPrefixes']) >= 3
+
+    print(f"Found common prefixes in S3 {objects['CommonPrefixes']}")
+    objs_to_delete = []
+    for prefix in objects['CommonPrefixes']:
+      data_objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
+                                Prefix=f'{prefix["Prefix"]}schema/{table_name}/')
+      assert data_objects is not None
+      print(data_objects)
+      assert 'Contents' in data_objects
+      objs_to_delete.extend([{'Key': obj['Key']} for obj in data_objects['Contents']])
+
+    objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
+                              Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/metadata/')
+    assert objects is not None
+    assert 'Contents' in objects
+    assert len(objects['Contents']) == 15  # 5 metadata.json files, 4 manifest lists, and 6 manifests
+    print(f"Found {len(objects['Contents'])} metadata files in S3 before drop")
+
+    # use the api client to ensure the purge flag is set to true
+    snowman_catalog_client.drop_table(snowflake_catalog.name,
+                                      codecs.decode("1F", "hex").decode("UTF-8").join(['db1', 'schema']), table_name,
+                                      purge_requested=True)
+    spark.sql('DROP NAMESPACE db1.schema')
+    spark.sql('DROP NAMESPACE db1')
+    s3.delete_objects(Bucket=test_bucket,
+                      Delete={'Objects': objs_to_delete})
+
+
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
+def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalog, polaris_catalog_url, snowman,
+                                                  snowman_catalog_client, test_bucket):
+  """
+  Using snowman, create namespaces and a table configured to use object-store layout, using a folder under the default
+  table directory structure. Insert into the table in multiple operations and update existing records
+  to generate multiple metadata.json files and manifests. Validate the data files are present under the expected
+  subdirectory. Delete the files afterward.
+
+  Using the reader principal's credentials verify read access. Validate the reader cannot insert into the table.
+  :param root_client:
+  :param snowflake_catalog:
+  :param polaris_catalog_url:
+  :param snowman:
+  :param reader:
+  :return:
+  """
+  with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
+                           catalog_name=snowflake_catalog.name,
+                           polaris_url=polaris_catalog_url) as spark:
+    table_name = f'iceberg_test_table_{str(uuid.uuid4())[-10:]}'
+    spark.sql(f'USE {snowflake_catalog.name}')
+    spark.sql('CREATE NAMESPACE db1')
+    spark.sql('CREATE NAMESPACE db1.schema')
+    spark.sql('SHOW NAMESPACES')
+    spark.sql('USE db1.schema')
+    table_base_dir = f'polaris_test/snowflake_catalog/db1/schema/{table_name}/obj_layout/'
+    spark.sql(f"CREATE TABLE {table_name} (col1 int, col2 string) TBLPROPERTIES ('write.object-storage.enabled'='true','write.data.path'='s3://{test_bucket}/{table_base_dir}')")
+    spark.sql('SHOW TABLES')
+
+    # several inserts and an update, which should cause earlier files to show up as deleted in the later manifests
+    spark.sql(f"""INSERT INTO {table_name} VALUES 
+        (10, 'mystring'),
+        (20, 'anotherstring'),
+        (30, null)
+        """)
+    spark.sql(f"""INSERT INTO {table_name} VALUES 
+        (40, 'mystring'),
+        (50, 'anotherstring'),
+        (60, null)
+        """)
+    spark.sql(f"""INSERT INTO {table_name} VALUES 
+        (70, 'mystring'),
+        (80, 'anotherstring'),
+        (90, null)
+        """)
+    spark.sql(f"UPDATE {table_name} SET col2='changed string' WHERE col1 BETWEEN 20 AND 50")
+    count = spark.sql(f"SELECT * FROM {table_name}").count()
+
+    assert count == 9
+
+    # fetch aws credentials to examine the metadata files
+    response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'), table_name,
+                                                 "true")
+    assert response.config is not None
+    assert 's3.access-key-id' in response.config
+    assert 's3.secret-access-key' in response.config
+    assert 's3.session-token' in response.config
+
+    s3 = boto3.client('s3',
+                      aws_access_key_id=response.config['s3.access-key-id'],
+                      aws_secret_access_key=response.config['s3.secret-access-key'],
+                      aws_session_token=response.config['s3.session-token'])
+
+    objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
+                              Prefix=table_base_dir)
+    assert objects is not None
+    assert len(objects['CommonPrefixes']) >= 3
+
+    print(f"Found common prefixes in S3 {objects['CommonPrefixes']}")
+    objs_to_delete = []
+    for prefix in objects['CommonPrefixes']:
+      data_objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
+                                Prefix=f'{prefix["Prefix"]}')
+      assert data_objects is not None
+      print(data_objects)
+      assert 'Contents' in data_objects
+      objs_to_delete.extend([{'Key': obj['Key']} for obj in data_objects['Contents']])
+
+    objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
+                              Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/metadata/')
+    assert objects is not None
+    assert 'Contents' in objects
+    assert len(objects['Contents']) == 15  # 5 metadata.json files, 4 manifest lists, and 6 manifests
+    print(f"Found {len(objects['Contents'])} metadata files in S3 before drop")
+
+    # use the api client to ensure the purge flag is set to true
+    snowman_catalog_client.drop_table(snowflake_catalog.name,
+                                      codecs.decode("1F", "hex").decode("UTF-8").join(['db1', 'schema']), table_name,
+                                      purge_requested=True)
+    spark.sql('DROP NAMESPACE db1.schema')
+    spark.sql('DROP NAMESPACE db1')
+    s3.delete_objects(Bucket=test_bucket,
+                      Delete={'Objects': objs_to_delete})
+
+
+@pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true', reason='AWS_TEST_ENABLED is not set or is false')
 # @pytest.mark.skip(reason="This test is flaky")
 def test_spark_credentials_can_create_views(snowflake_catalog, polaris_catalog_url, snowman):
   """
@@ -604,6 +804,12 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
                     aws_access_key_id=response.config['s3.access-key-id'],
                     aws_secret_access_key=response.config['s3.secret-access-key'],
                     aws_session_token=response.config['s3.session-token'])
+
+  objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
+                            Prefix='polaris_test/snowflake_catalog/db1/schema/iceberg_table/')
+  assert objects is not None
+  assert 'CommonPrefixes' in objects
+  assert len(objects['CommonPrefixes']) > 0
 
   objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
                             Prefix='polaris_test/snowflake_catalog/db1/schema/iceberg_table/metadata/')
@@ -851,7 +1057,7 @@ def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, sno
         objects = client.list_objects(Bucket=test_bucket, Delimiter='/',
                                       Prefix=f'{prefix}/metadata/')
         assert objects is not None
-        assert 'Contents' in objects , f'list medata files failed in prefix: {prefix}/metadata/'
+        assert 'Contents' in objects , f'list metadata files failed in prefix: {prefix}/metadata/'
 
         objects = client.list_objects(Bucket=test_bucket, Delimiter='/',
                                       Prefix=f'{prefix}/data/')
@@ -859,15 +1065,11 @@ def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, sno
         # no insert executed, so should not have any data files
         assert 'Contents' not in objects , f'No contents should be in prefix: {prefix}/data/'
 
-        # list files fail in the same table's other directory. The access policy should restrict this
-        # even metadata and data, it needs an ending `/`
-        for invalidPrefix in [f'{prefix}/other_directory/', f'{prefix}/metadata', f'{prefix}/data']:
-            try:
-                client.list_objects(Bucket=test_bucket, Delimiter='/',
-                                          Prefix=invalidPrefix)
-                pytest.fail(f'Expected exception listing files outside of allowed table directories, but succeeds on location: {invalidPrefix}')
-            except botocore.exceptions.ClientError as error:
-                assert error.response['Error']['Code'] == 'AccessDenied', 'Expected exception AccessDenied, but got: ' + error.response['Error']['Code'] + ' on location: ' + invalidPrefix
+        objects = client.list_objects(Bucket=test_bucket, Delimiter='/',
+                                  Prefix=f'{prefix}/')
+        assert objects is not None
+        assert 'CommonPrefixes' in objects , f'list prefixes failed in prefix: {prefix}/'
+        assert len(objects['CommonPrefixes']) > 0
 
     with IcebergSparkSession(credentials=f'{snowman.principal.client_id}:{snowman.credentials.client_secret}',
                              catalog_name=snowflake_catalog.name,

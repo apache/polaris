@@ -1,16 +1,21 @@
-# Copyright (c) 2024 Snowflake Computing Inc.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
 #
-#      http://www.apache.org/licenses/LICENSE-2.0
+#   http://www.apache.org/licenses/LICENSE-2.0
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
 
 """Spark connector with different catalog types."""
 from typing import Any, Dict, List, Optional, Union
@@ -30,7 +35,7 @@ class IcebergSparkSession:
           polaris_url="http://polaris:8181/api/catalog",
           catalog_name="catalog_name"
   ) as spark:
-      spark.sql(f"USE snowflake.{hybrid_executor.database}.{hybrid_executor.schema}")
+      spark.sql(f"USE catalog.{hybrid_executor.database}.{hybrid_executor.schema}")
       table_list = spark.sql("SHOW TABLES").collect()
   """
 
@@ -67,7 +72,7 @@ class IcebergSparkSession:
     """Initial method for Iceberg Spark session. Creates a Spark session with specified configs.
     """
     packages = [
-      "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.0",
+      "org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2",
       "org.apache.hadoop:hadoop-aws:3.4.0",
       "software.amazon.awssdk:bundle:2.23.19",
       "software.amazon.awssdk:url-connection-client:2.23.19",
@@ -97,7 +102,7 @@ class IcebergSparkSession:
       .config(
         f"spark.sql.catalog.{catalog_name}", "org.apache.iceberg.spark.SparkCatalog"
       )
-      .config(f"spark.sql.catalog.{catalog_name}.header.X-Iceberg-Access-Delegation", "true")
+      .config(f"spark.sql.catalog.{catalog_name}.header.X-Iceberg-Access-Delegation", "vended-credentials")
       .config(f"spark.sql.catalog.{catalog_name}.type", "rest")
       .config(f"spark.sql.catalog.{catalog_name}.uri", self.polaris_url)
       .config(f"spark.sql.catalog.{catalog_name}.warehouse", self.catalog_name)

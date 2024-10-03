@@ -28,9 +28,13 @@ Documentation is available at https://polaris.apache.org, including
 [Polaris management API doc](https://polaris.apache.org/index.html#tag/polaris-management-service_other)
 and [Apache Iceberg REST API doc](https://polaris.apache.org/index.html#tag/Configuration-API).
 
-## Development
+Subscribe to the [dev mailing list][dev-list] to join discussions. Check out the [CONTRIBUTING guide](CONTRIBUTING.md)
+for contribution guidelines.
 
-See [CONTRIBUTING](CONTRIBUTING.md) for contribution requirements.
+[![Zulip](https://img.shields.io/badge/Zulip-Chat-blue?color=3d4db3&logo=zulip&style=for-the-badge&logoColor=white)](https://polaris-catalog.zulipchat.com/)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/apache/polaris/gradle.yml?branch=main&label=Main%20CI&logo=Github&style=for-the-badge)](https://github.com/apache/polaris/actions/workflows/gradle.yml?query=branch%3Amain)
+
+[dev-list]: mailto:dev@polaris.apache.org
 
 ## Building and Running 
 
@@ -44,50 +48,51 @@ Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 - `./gradlew assemble` - To skip tests.
 - `./gradlew test` - To run unit tests and integration tests.
 - `./gradlew runApp` - To run the Polaris server locally on localhost:8181. 
-  - The server starts with the in-memory mode, and it prints the auto-generated credentials to STDOUT in a message like this `realm: default-realm root principal credentials: <id>:<secret>`
-  - These credentials can be used as "Client ID" and "Client Secret" in OAuth2 requests (e.g. the `curl` command below).
-- `./regtests/run.sh` - To run regression tests or end-to-end tests in another terminal.
+- `./regtests/run_spark_sql.sh` - To connect from Spark SQL. Here are some example commands to run in the Spark SQL shell:
+```sql
+create database db1;
+show databases;
+create table db1.table1 (id int, name string);
+insert into db1.table1 values (1, 'a');
+select * from db1.table1;
+```
 
+Apache Polaris supports the following optional build options:
+- `-PeclipseLink=true` – Enables the EclipseLink extension.
+- `-PeclipseLinkDeps=[groupId]:[artifactId]:[version],...` – Specifies one or more additional dependencies for EclipseLink (e.g., JDBC drivers) separated by commas.
+
+### More build and run options
 Running in Docker
 - `docker build -t localhost:5001/polaris:latest .` - To build the image.
+  - Optional build options:
+    - `docker build -t localhost:5001/polaris:latest --build-arg ECLIPSELINK=true .` - Enables the EclipseLink extension.
+    - `docker build -t localhost:5001/polaris:latest --build-arg ECLIPSELINK=true --build-arg ECLIPSELINK_DEPS=[groupId]:[artifactId]:[version],... .` – Enables the EclipseLink extension with one or more additional dependencies for EclipseLink (e.g. JDBC drivers) separated by commas.
 - `docker run -p 8181:8181 localhost:5001/polaris:latest` - To run the image in standalone mode.
-- `docker compose up --build --exit-code-from regtest` - To run regression tests in a Docker environment.
 
 Running in Kubernetes
 - `./run.sh` - To run Polaris as a mini-deployment locally. This will create one pod that bind itself to ports `8181` and `8182`.
+  - Optional run options:
+    - `./run.sh -b "ECLIPSELINK=true"` - Enables the EclipseLink extension.
+    - `./run.sh -b "ECLIPSELINK=true;ECLIPSELINK_DEPS=[groupId]:[artifactId]:[version],..."` – Enables the EclipseLink extension with one or more additional dependencies for EclipseLink (e.g. JDBC drivers) separated by commas.
 - `kubectl port-forward svc/polaris-service -n polaris 8181:8181 8182:8182` - To create secure connections between a local machine and a pod within the cluster for both service and metrics endpoints.
-  - Currrently supported metrics endpoints:
+  - Currently supported metrics endpoints:
     - localhost:8182/metrics
     - localhost:8182/healthcheck
 - `kubectl get pods -n polaris` - To check the status of the pods.
 - `kubectl get deployment -n polaris` - To check the status of the deployment.
 - `kubectl describe deployment polaris-deployment -n polaris` - To troubleshoot if things aren't working as expected.
 
+Running regression tests
+- `./regtests/run.sh` - To run regression tests in another terminal.
+- `docker compose up --build --exit-code-from regtest` - To run regression tests in a Docker environment.
+
 Building docs
-- Docs are generated using [Redocly](https://redocly.com/docs/cli/installation). To regenerate them, run the following
-commands from the project root directory.
-```bash
-docker run -p 8080:80 -v ${PWD}:/spec docker.io/redocly/cli join spec/docs.yaml spec/polaris-management-service.yml spec/rest-catalog-open-api.yaml -o spec/index.yaml --prefix-components-with-info-prop title
-docker run -p 8080:80 -v ${PWD}:/spec docker.io/redocly/cli build-docs spec/index.yaml --output=docs/index.html --config=spec/redocly.yaml
-```
-
-## Connecting from an Engine
-To connect from an engine like Spark, first create a catalog with these steps:
-```bash
-# Generate a token for the root principal, replacing <CLIENT_ID> and <CLIENT_SECRET> with
-# the values from the Polaris server output.
-export PRINCIPAL_TOKEN=$(curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
-  -d 'grant_type=client_credentials&client_id=<CLIENT_ID>&client_secret=<CLIENT_SECRET>&scope=PRINCIPAL_ROLE:ALL' \
-   | jq -r '.access_token')
-   
-# Create a catalog named `polaris`
-curl -i -X POST -H "Authorization: Bearer $PRINCIPAL_TOKEN" -H 'Accept: application/json' -H 'Content-Type: application/json' \
-  http://localhost:8181/api/management/v1/catalogs \
-  -d '{"name": "polaris", "id": 100, "type": "INTERNAL", "readOnly": false, "storageConfigInfo": {"storageType": "FILE"}, "properties": {"default-base-location": "file:///tmp/polaris"}}'
-```
-
-From here, you can use Spark to create namespaces, tables, etc. More details can be found in the
-[Quick Start Guide](https://polaris.apache.org/#section/Quick-Start/Using-Iceberg-and-Polaris).
+- Docs are generated using [Hugo](https://gohugo.io/) using the [Docsy](https://www.docsy.dev/docs/) theme.
+- To view the site locally, run
+  ```bash
+  site/bin/run-hugo-in-docker.sh
+  ```
+- See [README in `site/`](site/README.md) for more information.
 
 ## License
 

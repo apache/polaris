@@ -1,26 +1,30 @@
 /*
- * Copyright (c) 2024 Snowflake Computing Inc.
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
+ *   http://www.apache.org/licenses/LICENSE-2.0
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
  */
 
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
 
 plugins {
-  alias(libs.plugins.shadow)
   alias(libs.plugins.openapi.generator)
   id("polaris-server")
+  id("polaris-license-report")
+  id("polaris-shadow-jar")
   id("application")
 }
 
@@ -76,7 +80,6 @@ dependencies {
   implementation("com.google.cloud:google-cloud-storage")
   implementation(platform(libs.awssdk.bom))
   implementation("software.amazon.awssdk:sts")
-  implementation("software.amazon.awssdk:sts")
   implementation("software.amazon.awssdk:iam-policy-builder")
   implementation("software.amazon.awssdk:s3")
 
@@ -105,6 +108,8 @@ dependencies {
   testImplementation(libs.assertj.core)
   testImplementation(libs.mockito.core)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+
+  testRuntimeOnly(project(":polaris-eclipselink"))
 }
 
 if (project.properties.get("eclipseLink") == "true") {
@@ -115,7 +120,7 @@ openApiGenerate {
   inputSpec = "$rootDir/spec/rest-catalog-open-api.yaml"
   generatorName = "jaxrs-resteasy"
   outputDir = "$projectDir/build/generated"
-  apiPackage = "io.polaris.service.catalog.api"
+  apiPackage = "org.apache.polaris.service.catalog.api"
   ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
@@ -161,42 +166,43 @@ openApiGenerate {
       "OAuthError" to "org.apache.iceberg.rest.responses.ErrorResponse",
 
       // Custom types defined below
-      "CommitViewRequest" to "io.polaris.service.types.CommitViewRequest",
-      "TokenType" to "io.polaris.service.types.TokenType",
-      "CommitTableRequest" to "io.polaris.service.types.CommitTableRequest",
-      "NotificationRequest" to "io.polaris.service.types.NotificationRequest",
-      "TableUpdateNotification" to "io.polaris.service.types.TableUpdateNotification",
-      "NotificationType" to "io.polaris.service.types.NotificationType"
+      "CommitViewRequest" to "org.apache.polaris.service.types.CommitViewRequest",
+      "TokenType" to "org.apache.polaris.service.types.TokenType",
+      "CommitTableRequest" to "org.apache.polaris.service.types.CommitTableRequest",
+      "NotificationRequest" to "org.apache.polaris.service.types.NotificationRequest",
+      "TableUpdateNotification" to "org.apache.polaris.service.types.TableUpdateNotification",
+      "NotificationType" to "org.apache.polaris.service.types.NotificationType"
     )
 }
 
-tasks.register<GenerateTask>("generatePolarisService").configure {
-  inputSpec = "$rootDir/spec/polaris-management-service.yml"
-  generatorName = "jaxrs-resteasy"
-  outputDir = "$projectDir/build/generated"
-  apiPackage = "io.polaris.service.admin.api"
-  modelPackage = "io.polaris.core.admin.model"
-  ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
-  removeOperationIdPrefix = true
-  templateDir = "$rootDir/server-templates"
-  globalProperties.put("apis", "")
-  globalProperties.put("models", "false")
-  globalProperties.put("apiDocs", "false")
-  globalProperties.put("modelTests", "false")
-  configOptions.put("useBeanValidation", "true")
-  configOptions.put("sourceFolder", "src/main/java")
-  configOptions.put("useJakartaEe", "true")
-  configOptions.put("generateBuilders", "true")
-  configOptions.put("generateConstructorWithAllArgs", "true")
-  additionalProperties.put("apiNamePrefix", "Polaris")
-  additionalProperties.put("apiNameSuffix", "Api")
-  additionalProperties.put("metricsPrefix", "polaris")
-  serverVariables.put("basePath", "api/v1")
+val generatePolarisService by
+  tasks.registering(GenerateTask::class) {
+    inputSpec = "$rootDir/spec/polaris-management-service.yml"
+    generatorName = "jaxrs-resteasy"
+    outputDir = "$projectDir/build/generated"
+    apiPackage = "org.apache.polaris.service.admin.api"
+    modelPackage = "org.apache.polaris.core.admin.model"
+    ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
+    removeOperationIdPrefix = true
+    templateDir = "$rootDir/server-templates"
+    globalProperties.put("apis", "")
+    globalProperties.put("models", "false")
+    globalProperties.put("apiDocs", "false")
+    globalProperties.put("modelTests", "false")
+    configOptions.put("useBeanValidation", "true")
+    configOptions.put("sourceFolder", "src/main/java")
+    configOptions.put("useJakartaEe", "true")
+    configOptions.put("generateBuilders", "true")
+    configOptions.put("generateConstructorWithAllArgs", "true")
+    additionalProperties.put("apiNamePrefix", "Polaris")
+    additionalProperties.put("apiNameSuffix", "Api")
+    additionalProperties.put("metricsPrefix", "polaris")
+    serverVariables.put("basePath", "api/v1")
+  }
 
-  doFirst { delete(outputDir.get()) }
+listOf("sourcesJar", "compileJava").forEach { task ->
+  tasks.named(task) { dependsOn("openApiGenerate", generatePolarisService) }
 }
-
-tasks.named("compileJava").configure { dependsOn("openApiGenerate", "generatePolarisService") }
 
 sourceSets {
   main { java { srcDir(project.layout.buildDirectory.dir("generated/src/main/java")) } }
@@ -216,23 +222,41 @@ tasks.register<JavaExec>("runApp").configure {
     environment("AWS_REGION", "us-west-2")
   }
   classpath = sourceSets["main"].runtimeClasspath
-  mainClass = "io.polaris.service.PolarisApplication"
+  mainClass = "org.apache.polaris.service.PolarisApplication"
   args("server", "$rootDir/polaris-server.yml")
 }
 
-application { mainClass = "io.polaris.service.PolarisApplication" }
+application { mainClass = "org.apache.polaris.service.PolarisApplication" }
 
 tasks.named<Jar>("jar") {
-  manifest { attributes["Main-Class"] = "io.polaris.service.PolarisApplication" }
+  manifest { attributes["Main-Class"] = "org.apache.polaris.service.PolarisApplication" }
 }
 
-tasks.named<ShadowJar>("shadowJar") {
-  manifest { attributes["Main-Class"] = "io.polaris.service.PolarisApplication" }
-  archiveVersion.set("")
-  mergeServiceFiles()
-  isZip64 = true
+tasks.register<Jar>("testJar") {
+  archiveClassifier.set("tests")
+  from(sourceSets.test.get().output)
 }
 
-tasks.named<CreateStartScripts>("startScripts") { classpath = files("polaris-service-all.jar") }
+val shadowJar =
+  tasks.named<ShadowJar>("shadowJar") {
+    manifest { attributes["Main-Class"] = "org.apache.polaris.service.PolarisApplication" }
+    mergeServiceFiles()
+    isZip64 = true
+    finalizedBy("startScripts")
+  }
 
-tasks.named("build").configure { dependsOn("shadowJar") }
+val startScripts =
+  tasks.named<CreateStartScripts>("startScripts") {
+    classpath = files(provider { shadowJar.get().archiveFileName })
+  }
+
+tasks.register<Sync>("prepareDockerDist") {
+  into(project.layout.buildDirectory.dir("docker-dist"))
+  from(startScripts) { into("bin") }
+  from(shadowJar) { into("lib") }
+  doFirst { delete(project.layout.buildDirectory.dir("regtest-dist")) }
+}
+
+tasks.named("build").configure { dependsOn("prepareDockerDist") }
+
+tasks.named("assemble").configure { dependsOn("testJar") }

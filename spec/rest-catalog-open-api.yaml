@@ -976,7 +976,23 @@ paths:
       summary: Sends a notification to the table
       operationId: sendNotification
       requestBody:
-        description: The request containing the notification to be sent
+        description:
+          The request containing the notification to be sent.
+        
+          For each table, Polaris will reject any notification where the timestamp in the request body
+          is older than or equal to the most recent time Polaris has already processed for the table.
+          The responsibility of ensuring the correct order of timestamps for a sequence of notifications 
+          lies with the caller of the API. This includes managing potential clock skew or inconsistencies 
+          when notifications are sent from multiple sources.
+
+          A VALIDATE request behaves like a dry-run of a CREATE or UPDATE request up to but not including
+          loading the contents of a metadata file; this includes validations of permissions, the specified
+          metadata path being within ALLOWED_LOCATIONS, having an EXTERNAL catalog, etc. The intended use
+          case for a VALIDATE notification is to allow a remote catalog to pre-validate the general
+          settings of a receiving catalog against an intended new table location before possibly creating
+          a table intended for sending notifcations in the remote catalog at all. For a VALIDATE request,
+          the specified metadata-location can either be a prospective full metadata file path, or a
+          relevant parent directory of the intended table to validate against ALLOWED_LOCATIONS.
         content:
           application/json:
             schema:
@@ -1001,6 +1017,16 @@ paths:
               examples:
                 TableToLoadDoesNotExist:
                   $ref: '#/components/examples/NoSuchTableError'
+        409:
+          description:
+            Conflict - The timestamp of the received notification is older than or equal to the 
+            most recent timestamp Polaris has already processed for the specified table.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              example:
+                $ref: '#/components/examples/OutOfOrderNotificationError'
         419:
           $ref: '#/components/responses/AuthenticationTimeoutResponse'
         503:
@@ -3213,6 +3239,7 @@ components:
     NotificationRequest:
       required:
         - notification-type
+        - payload
       properties:
         notification-type:
           $ref: '#/components/schemas/NotificationType'
@@ -3226,6 +3253,7 @@ components:
         - CREATE
         - UPDATE
         - DROP
+        - VALIDATE
 
     TableUpdateNotification:
       type: object
@@ -4128,6 +4156,18 @@ components:
       value: {
         "removals": ["foo", "bar"],
         "updates": {"owner": "Raoul"}
+      }
+
+    OutOfOrderNotificationError:
+      summary:
+        The timestamp of the received notification is older than or equal to the most recent timestamp 
+        Polaris has already processed for the specified table.
+      value: {
+        "error": {
+          "message": "A notification with a newer timestamp has been admitted for table",
+          "type": "AlreadyExistsException",
+          "code": 409
+        }
       }
 
   securitySchemes:
