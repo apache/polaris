@@ -41,6 +41,10 @@ public class PolarisConfigurationStoreTest {
 
     PolarisConfigurationStore store =
         new PolarisConfigurationStore() {
+          /**
+           * Ad-hoc configuration store implementation that just returns the stringified version of
+           * the config's default value
+           */
           @SuppressWarnings("unchecked")
           @Override
           public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
@@ -57,6 +61,8 @@ public class PolarisConfigurationStoreTest {
           }
         };
 
+    // Ensure that we can fetch all the configs and that the value is what we expect, which
+    // is the config's default value based on how we've implemented PolarisConfigurationStore above.
     for (PolarisConfiguration<?> c : configs) {
       Assertions.assertEquals(c.defaultValue, store.getConfiguration(null, c));
     }
