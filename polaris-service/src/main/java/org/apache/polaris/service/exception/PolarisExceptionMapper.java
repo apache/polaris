@@ -34,10 +34,10 @@ import org.apache.polaris.core.exceptions.PolarisException;
 public class PolarisExceptionMapper implements ExceptionMapper<PolarisException> {
 
   private Response.Status getStatus(PolarisException exception) {
-    if (exception instanceof AlreadyExistsException alreadyExistsException) {
+    if (exception instanceof AlreadyExistsException) {
       return Response.Status.CONFLICT;
     } else {
-      throw new IllegalArgumentException("No mapping found for " + exception);
+      return Response.Status.INTERNAL_SERVER_ERROR;
     }
   }
 
