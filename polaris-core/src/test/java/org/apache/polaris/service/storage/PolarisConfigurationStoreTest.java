@@ -33,11 +33,11 @@ public class PolarisConfigurationStoreTest {
     List<PolarisConfiguration<?>> configs =
         List.of(
             buildConfig("bool", true),
-            buildConfig("short", (short) 5),
-            buildConfig("int", 5),
-            buildConfig("long", 5L),
-            buildConfig("float", 5F),
-            buildConfig("double", 5D));
+            buildConfig("short", (short) 12),
+            buildConfig("int", 34),
+            buildConfig("long", 56L),
+            buildConfig("float", 7.8F),
+            buildConfig("double", 9.1D));
 
     PolarisConfigurationStore store =
         new PolarisConfigurationStore() {
