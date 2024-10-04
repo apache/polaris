@@ -37,8 +37,8 @@ public class StorageLocation {
   protected StorageLocation(@NotNull String location) {
     if (location == null) {
       this.location = null;
-    } else if (location.startsWith("file://") && !location.startsWith("file:///")) {
-      this.location = URI.create(location.replaceFirst("file://", "file:///")).toString();
+    } else if (location.startsWith("file:/") && !location.startsWith("file:///")) {
+      this.location = URI.create(location.replaceFirst("file:/+", "file:///")).toString();
     } else {
       this.location = URI.create(location).toString();
     }
