@@ -19,9 +19,8 @@
 package org.apache.polaris.core.storage;
 
 import jakarta.validation.constraints.NotNull;
-import org.apache.polaris.core.storage.azure.AzureLocation;
-
 import java.net.URI;
+import org.apache.polaris.core.storage.azure.AzureLocation;
 
 /** An abstraction over a storage location */
 public class StorageLocation {
@@ -45,9 +44,7 @@ public class StorageLocation {
     }
   }
 
-  /**
-   * If a path doesn't end in `/`, this will add one
-   */
+  /** If a path doesn't end in `/`, this will add one */
   protected final String ensureTrailingSlash(String location) {
     if (location == null || location.endsWith("/")) {
       return location;

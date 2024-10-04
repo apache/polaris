@@ -1406,7 +1406,10 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       if (!metadataFileLocation.isChildOf(baseLocation)) {
         throw new BadRequestException(
             "Metadata location %s is not allowed outside of table location %s (%s / %s)",
-            metadata.metadataFileLocation(), metadata.location(), metadataFileLocation, baseLocation);
+            metadata.metadataFileLocation(),
+            metadata.location(),
+            metadataFileLocation,
+            baseLocation);
       }
     }
   }

@@ -100,7 +100,7 @@ public class AzureLocation extends StorageLocation {
     if (potentialParent instanceof AzureLocation) {
       AzureLocation potentialAzureParent = (AzureLocation) potentialParent;
       String slashTerminatedFilePath = ensureTrailingSlash(this.filePath);
-      String slashTerminatedParentFilePath= ensureTrailingSlash(potentialAzureParent.filePath);
+      String slashTerminatedParentFilePath = ensureTrailingSlash(potentialAzureParent.filePath);
       return slashTerminatedFilePath.startsWith(slashTerminatedParentFilePath);
     } else {
       return false;
