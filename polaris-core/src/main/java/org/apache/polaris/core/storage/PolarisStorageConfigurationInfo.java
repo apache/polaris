@@ -226,8 +226,7 @@ public abstract class PolarisStorageConfigurationInfo {
       throw new IllegalArgumentException(
           String.format(
               "Location prefix not allowed: '%s', expected prefixes: '%s'",
-              loc,
-              String.join(",", storageType.prefixes)));
+              loc, String.join(",", storageType.prefixes)));
     }
   }
 
