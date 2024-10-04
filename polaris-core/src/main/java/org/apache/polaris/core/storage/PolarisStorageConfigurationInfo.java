@@ -247,7 +247,7 @@ public abstract class PolarisStorageConfigurationInfo {
     FILE("file://"),
     ;
 
-    final List<String> prefixes;
+    private final List<String> prefixes;
 
     StorageType(String prefix) {
       this.prefixes = List.of(prefix);

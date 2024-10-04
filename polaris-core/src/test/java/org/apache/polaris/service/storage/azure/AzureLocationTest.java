@@ -35,11 +35,17 @@ public class AzureLocationTest {
   }
 
   @Test
+  public void testWasbLocation() {
+    String uri = "wasb://container@storageaccount.blob.core.windows.net/myfile";
+    AzureLocation azureLocation = new AzureLocation(uri);
+    Assertions.assertThat(azureLocation.getContainer()).isEqualTo("container");
+    Assertions.assertThat(azureLocation.getStorageAccount()).isEqualTo("storageaccount");
+    Assertions.assertThat(azureLocation.getEndpoint()).isEqualTo("blob.core.windows.net");
+    Assertions.assertThat(azureLocation.getFilePath()).isEqualTo("myfile");
+  }
+
+  @Test
   public void testLocation_negative_cases() {
-    Assertions.assertThatThrownBy(
-            () ->
-                new AzureLocation("wasbs://container@storageaccount.blob.core.windows.net/myfile"))
-        .isInstanceOf(IllegalArgumentException.class);
     Assertions.assertThatThrownBy(
             () -> new AzureLocation("abfss://storageaccount.blob.core.windows.net/myfile"))
         .isInstanceOf(IllegalArgumentException.class);

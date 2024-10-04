@@ -56,7 +56,7 @@ public class CatalogEntityTest {
     Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(awsCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
-            "Location prefix not allowed: 'unsupportPrefix://mybucket/path', expected prefix: 's3://'");
+            "Location prefix not allowed: 'unsupportPrefix://mybucket/path', expected prefixes");
 
     // Invalid azure prefix
     AzureStorageConfigInfo azureStorageConfigModel =
@@ -76,7 +76,7 @@ public class CatalogEntityTest {
             .build();
     Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(azureCatalog))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Invalid azure adls location uri unsupportPrefix://mybucket/path");
+        .hasMessageContaining("Invalid azure location uri unsupportPrefix://mybucket/path");
 
     // invalid gcp prefix
     GcpStorageConfigInfo gcpStorageConfigModel =
@@ -94,7 +94,7 @@ public class CatalogEntityTest {
     Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(gcpCatalog))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining(
-            "Location prefix not allowed: 'unsupportPrefix://mybucket/path', expected prefix: 'gs://'");
+            "Location prefix not allowed: 'unsupportPrefix://mybucket/path', expected prefixes");
   }
 
   @Test
