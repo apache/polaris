@@ -69,9 +69,9 @@ public class AzureCredentialStorageIntegrationTest {
 
   private void assumeEnvVariablesNotNull() {
     Assumptions.assumeThat(
-        Strings.isNullOrEmpty(clientId) ||
-            Strings.isNullOrEmpty(clientSecret) ||
-            Strings.isNullOrEmpty(tenantId))
+            Strings.isNullOrEmpty(clientId)
+                || Strings.isNullOrEmpty(clientSecret)
+                || Strings.isNullOrEmpty(tenantId))
         .describedAs("Null Azure testing environment variables!")
         .isFalse();
   }
