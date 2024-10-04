@@ -21,6 +21,8 @@ package org.apache.polaris.core.storage;
 import jakarta.validation.constraints.NotNull;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 
+import java.net.URI;
+
 /** An abstraction over a storage location */
 public class StorageLocation {
   private final String location;
@@ -34,7 +36,24 @@ public class StorageLocation {
   }
 
   protected StorageLocation(@NotNull String location) {
-    this.location = location;
+    if (location == null) {
+      this.location = null;
+    } else if (location.startsWith("file://") && !location.startsWith("file:///")) {
+      this.location = URI.create(location.replaceFirst("file://", "file:///")).toString();
+    } else {
+      this.location = URI.create(location).toString();
+    }
+  }
+
+  /**
+   * If a path doesn't end in `/`, this will add one
+   */
+  protected final String ensureTrailingSlash(String location) {
+    if (location == null || location.endsWith("/")) {
+      return location;
+    } else {
+      return location + "/";
+    }
   }
 
   @Override
@@ -64,7 +83,9 @@ public class StorageLocation {
     if (this.location == null || potentialParent.location == null) {
       return false;
     } else {
-      return this.location.startsWith(potentialParent.location);
+      String slashTerminatedLocation = ensureTrailingSlash(this.location);
+      String slashTerminatedParentLocation = ensureTrailingSlash(potentialParent.location);
+      return slashTerminatedLocation.startsWith(slashTerminatedParentLocation);
     }
   }
 }
