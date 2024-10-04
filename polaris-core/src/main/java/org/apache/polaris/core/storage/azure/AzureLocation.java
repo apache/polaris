@@ -24,8 +24,7 @@ import org.jetbrains.annotations.NotNull;
 
 /** This class represents all information for a azure location */
 public class AzureLocation {
-  /** The pattern only allows abfs[s] now because the ResovlingFileIO only accept ADLSFileIO */
-  private static final Pattern URI_PATTERN = Pattern.compile("^abfss?://([^/?#]+)(.*)?$");
+  private static final Pattern URI_PATTERN = Pattern.compile("^(abfss?|wasbs?)://([^/?#]+)(.*)?$");
 
   public static final String ADLS_ENDPOINT = "dfs.core.windows.net";
 
@@ -47,9 +46,10 @@ public class AzureLocation {
   public AzureLocation(@NotNull String location) {
     Matcher matcher = URI_PATTERN.matcher(location);
     if (!matcher.matches()) {
-      throw new IllegalArgumentException("Invalid azure adls location uri " + location);
+      throw new IllegalArgumentException("Invalid azure location uri " + location);
     }
-    String authority = matcher.group(1);
+    String scheme = matcher.group(1);
+    String authority = matcher.group(2);
     // look for <container>@<storage account host>
     String[] parts = authority.split("@", -1);
 
@@ -65,7 +65,7 @@ public class AzureLocation {
     }
     this.storageAccount = hostParts[0];
     this.endpoint = hostParts[1];
-    String path = matcher.group(2);
+    String path = matcher.group(3);
     filePath = path == null ? "" : path.startsWith("/") ? path.substring(1) : path;
   }
 
