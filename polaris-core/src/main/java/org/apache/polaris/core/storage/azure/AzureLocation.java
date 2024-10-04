@@ -99,12 +99,15 @@ public class AzureLocation extends StorageLocation {
   public boolean isChildOf(@NotNull StorageLocation potentialParent) {
     if (potentialParent instanceof AzureLocation) {
       AzureLocation potentialAzureParent = (AzureLocation) potentialParent;
-      String slashTerminatedFilePath = ensureTrailingSlash(this.filePath);
-      String slashTerminatedParentFilePath = ensureTrailingSlash(potentialAzureParent.filePath);
-      return slashTerminatedFilePath.startsWith(slashTerminatedParentFilePath);
-    } else {
-      return false;
+      if (this.container.equals(potentialAzureParent.container)) {
+        if (this.storageAccount.equals(potentialAzureParent.storageAccount)) {
+          String slashTerminatedFilePath = ensureTrailingSlash(this.filePath);
+          String slashTerminatedParentFilePath = ensureTrailingSlash(potentialAzureParent.filePath);
+          return slashTerminatedFilePath.startsWith(slashTerminatedParentFilePath);
+        }
+      }
     }
+    return false;
   }
 
   /** Return true if the input location appears to be an Azure path */
