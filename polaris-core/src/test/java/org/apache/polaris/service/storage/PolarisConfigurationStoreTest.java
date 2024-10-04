@@ -33,11 +33,9 @@ public class PolarisConfigurationStoreTest {
     List<PolarisConfiguration<?>> configs =
         List.of(
             buildConfig("bool", true),
-            buildConfig("short", (short) 12),
-            buildConfig("int", 34),
-            buildConfig("long", 56L),
-            buildConfig("float", 7.8F),
-            buildConfig("double", 9.1D));
+            buildConfig("int", 12),
+            buildConfig("long", 34L),
+            buildConfig("double", 5.6D));
 
     PolarisConfigurationStore store =
         new PolarisConfigurationStore() {
@@ -56,7 +54,7 @@ public class PolarisConfigurationStoreTest {
 
             throw new IllegalStateException(
                 String.format(
-                    "Didn't find config value for %s, the test isn't set up incorrectly",
+                    "Didn't find config value for %s, the test isn't set up correctly",
                     configName));
           }
         };
