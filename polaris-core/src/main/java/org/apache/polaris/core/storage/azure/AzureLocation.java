@@ -20,7 +20,6 @@ package org.apache.polaris.core.storage.azure;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import org.apache.polaris.core.storage.StorageLocation;
 import org.jetbrains.annotations.NotNull;
 
@@ -93,8 +92,8 @@ public class AzureLocation extends StorageLocation {
   }
 
   /**
-   * Returns true if the object this StorageLocation refers to is a child of the
-   * object referred to by the other StorageLocation.
+   * Returns true if the object this StorageLocation refers to is a child of the object referred to
+   * by the other StorageLocation.
    */
   @Override
   public boolean isChildOf(@NotNull StorageLocation potentialParent) {
@@ -106,9 +105,7 @@ public class AzureLocation extends StorageLocation {
     }
   }
 
-  /**
-   * Return true if the input location appears to be an Azure path
-   */
+  /** Return true if the input location appears to be an Azure path */
   public static boolean isAzureLocation(String location) {
     if (location == null) {
       return false;

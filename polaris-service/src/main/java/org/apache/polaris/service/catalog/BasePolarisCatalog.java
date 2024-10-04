@@ -25,7 +25,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1145,7 +1144,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .map(StorageLocation::of)
         .forEach(
             siblingLocation -> {
-              if (targetLocation.isChildOf(siblingLocation) || siblingLocation.isChildOf(targetLocation)) {
+              if (targetLocation.isChildOf(siblingLocation)
+                  || siblingLocation.isChildOf(targetLocation)) {
                 throw new org.apache.iceberg.exceptions.ForbiddenException(
                     "Unable to create table at location '%s' because it conflicts with existing table or namespace at location '%s'",
                     targetLocation, siblingLocation);

@@ -16,58 +16,55 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.storage;
 
 import jakarta.validation.constraints.NotNull;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 
-/**
- * An abstraction over a storage location
- */
+/** An abstraction over a storage location */
 public class StorageLocation {
-    private final String location;
+  private final String location;
 
-    public static StorageLocation of(String location) {
-        if (AzureLocation.isAzureLocation(location)) {
-            return new AzureLocation(location);
-        } else {
-            return new StorageLocation(location);
-        }
+  public static StorageLocation of(String location) {
+    if (AzureLocation.isAzureLocation(location)) {
+      return new AzureLocation(location);
+    } else {
+      return new StorageLocation(location);
     }
+  }
 
-    protected StorageLocation(@NotNull String location) {
-        this.location = location;
-    }
+  protected StorageLocation(@NotNull String location) {
+    this.location = location;
+  }
 
-    @Override
-    public int hashCode() {
-        return location.hashCode();
-    }
+  @Override
+  public int hashCode() {
+    return location.hashCode();
+  }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (obj instanceof StorageLocation) {
-            return location.equals(((StorageLocation) obj).location);
-        } else {
-            return false;
-        }
+  @Override
+  public boolean equals(Object obj) {
+    if (obj instanceof StorageLocation) {
+      return location.equals(((StorageLocation) obj).location);
+    } else {
+      return false;
     }
+  }
 
-    @Override
-    public String toString() {
-        return location;
-    }
+  @Override
+  public String toString() {
+    return location;
+  }
 
-    /**
-     * Returns true if this StorageLocation's location string starts with the
-     * other StorageLocation's location string
-     */
-    public boolean isChildOf(StorageLocation potentialParent) {
-        if (this.location == null || potentialParent.location == null) {
-            return false;
-        } else {
-            return this.location.startsWith(potentialParent.location);
-        }
+  /**
+   * Returns true if this StorageLocation's location string starts with the other StorageLocation's
+   * location string
+   */
+  public boolean isChildOf(StorageLocation potentialParent) {
+    if (this.location == null || potentialParent.location == null) {
+      return false;
+    } else {
+      return this.location.startsWith(potentialParent.location);
     }
+  }
 }

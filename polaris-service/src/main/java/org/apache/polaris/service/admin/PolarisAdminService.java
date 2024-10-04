@@ -517,15 +517,15 @@ public class PolarisAdminService {
               if (existingCatalog.getName().equals(catalogEntity.getName())) {
                 return false;
               }
-              return getCatalogLocations(existingCatalog)
-                  .stream()
+              return getCatalogLocations(existingCatalog).stream()
                   .map(StorageLocation::of)
                   .anyMatch(
                       existingLocation -> {
                         return newCatalogLocations.stream()
                             .anyMatch(
                                 newLocationString -> {
-                                  StorageLocation newLocation = StorageLocation.of(newLocationString);
+                                  StorageLocation newLocation =
+                                      StorageLocation.of(newLocationString);
                                   return newLocation.isChildOf(existingLocation)
                                       || existingLocation.isChildOf(newLocation);
                                 });
