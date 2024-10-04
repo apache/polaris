@@ -65,7 +65,7 @@ public class AzureCredentialStorageIntegrationTest {
 
   private final String clientId = System.getenv("AZURE_CLIENT_ID");
   private final String clientSecret = System.getenv("AZURE_CLIENT_SECRET");
-  private final String tenantId = "d479c7c9-2632-445a-b22d-7c19e68774f6";
+  private final String tenantId = System.getenv("AZURE_CLIENT_SECRET");
 
   private void assumeEnvVariablesNotNull() {
     Assumptions.assumeThat(Strings.isNullOrEmpty(clientId) || Strings.isNullOrEmpty(clientSecret))
