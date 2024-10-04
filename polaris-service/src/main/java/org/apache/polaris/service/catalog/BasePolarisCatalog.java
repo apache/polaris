@@ -1141,6 +1141,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .filter(java.util.Objects::nonNull)
         .forEach(
             siblingLocation -> {
+              // TODO normalize schemes here
               URI target = URI.create(location);
               URI existing = URI.create(siblingLocation);
               if (isUnderParentLocation(target, existing)

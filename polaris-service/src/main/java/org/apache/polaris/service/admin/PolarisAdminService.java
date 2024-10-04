@@ -525,6 +525,7 @@ public class PolarisAdminService {
                                     if (newLocation == null || existingLocation == null) {
                                       return false;
                                     }
+                                    // TODO normalize the locations here
                                     return newLocation.startsWith(existingLocation)
                                         || existingLocation.startsWith(newLocation);
                                   }));

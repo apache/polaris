@@ -48,7 +48,6 @@ public class AzureLocation {
     if (!matcher.matches()) {
       throw new IllegalArgumentException("Invalid azure location uri " + location);
     }
-    String scheme = matcher.group(1);
     String authority = matcher.group(2);
     // look for <container>@<storage account host>
     String[] parts = authority.split("@", -1);
