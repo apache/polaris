@@ -66,6 +66,26 @@ public class PolarisConfigurationStoreTest {
     }
   }
 
+  @Test
+  public void testInvalidCastThrowsException() {
+    // Bool not included because Boolean.valueOf turns non-boolean strings to false
+    List<PolarisConfiguration<?>> configs =
+        List.of(buildConfig("int", 12), buildConfig("long", 34L), buildConfig("double", 5.6D));
+
+    PolarisConfigurationStore store =
+        new PolarisConfigurationStore() {
+          @SuppressWarnings("unchecked")
+          @Override
+          public <T> T getConfiguration(PolarisCallContext ctx, String configName) {
+            return (T) "abc123";
+          }
+        };
+
+    for (PolarisConfiguration<?> c : configs) {
+      Assertions.assertThrows(NumberFormatException.class, () -> store.getConfiguration(null, c));
+    }
+  }
+
   private static <T> PolarisConfiguration<T> buildConfig(String key, T defaultValue) {
     return PolarisConfiguration.<T>builder()
         .key(key)
