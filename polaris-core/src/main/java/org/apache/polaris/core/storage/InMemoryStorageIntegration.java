@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
 import java.util.Optional;
@@ -62,8 +63,7 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
           @NotNull Set<String> locations) {
     // trim trailing / from allowed locations so that locations missing the trailing slash still
     // match
-    // TODO: Canonicalize with URI and compare scheme/authority/path components separately
-    TreeSet<String> allowedLocations =
+    Set<String> allowedLocationStrings =
         storageConfig.getAllowedLocations().stream()
             .map(
                 str -> {
@@ -74,7 +74,12 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
                   }
                 })
             .map(str -> str.replace("file:///", "file:/"))
-            .collect(Collectors.toCollection(TreeSet::new));
+            .collect(Collectors.toSet());
+    List<StorageLocation> allowedLocations = allowedLocationStrings
+        .stream()
+        .map(StorageLocation::of)
+        .collect(Collectors.toList());
+
     boolean allowWildcardLocation =
         Optional.ofNullable(CallContext.getCurrentContext())
             .flatMap(c -> Optional.ofNullable(c.getPolarisCallContext()))
@@ -84,7 +89,7 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
                         .getConfiguration(pc, "ALLOW_WILDCARD_LOCATION", false))
             .orElse(false);
 
-    if (allowWildcardLocation && allowedLocations.contains("*")) {
+    if (allowWildcardLocation && allowedLocationStrings.contains("*")) {
       return locations.stream()
           .collect(
               Collectors.toMap(
@@ -100,21 +105,8 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
     }
     Map<String, Map<PolarisStorageActions, ValidationResult>> resultMap = new HashMap<>();
     for (String rawLocation : locations) {
-      String location = rawLocation.replace("file:///", "file:/");
-      StringBuilder builder = new StringBuilder();
-      NavigableSet<String> prefixes = allowedLocations;
-      boolean validLocation = false;
-      for (char c : location.toCharArray()) {
-        builder.append(c);
-        prefixes = allowedLocations.tailSet(builder.toString(), true);
-        if (prefixes.isEmpty()) {
-          break;
-        } else if (prefixes.first().equals(builder.toString())) {
-          validLocation = true;
-          break;
-        }
-      }
-      final boolean isValidLocation = validLocation;
+      StorageLocation storageLocation = StorageLocation.of(rawLocation);
+      final boolean isValidLocation = allowedLocations.stream().anyMatch(storageLocation::isChildOf);;
       Map<PolarisStorageActions, ValidationResult> locationResult =
           actions.stream()
               .collect(
