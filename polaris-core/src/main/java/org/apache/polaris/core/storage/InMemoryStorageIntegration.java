@@ -21,10 +21,8 @@ package org.apache.polaris.core.storage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NavigableSet;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.context.CallContext;
@@ -75,10 +73,8 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
                 })
             .map(str -> str.replace("file:///", "file:/"))
             .collect(Collectors.toSet());
-    List<StorageLocation> allowedLocations = allowedLocationStrings
-        .stream()
-        .map(StorageLocation::of)
-        .collect(Collectors.toList());
+    List<StorageLocation> allowedLocations =
+        allowedLocationStrings.stream().map(StorageLocation::of).collect(Collectors.toList());
 
     boolean allowWildcardLocation =
         Optional.ofNullable(CallContext.getCurrentContext())
@@ -106,7 +102,9 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
     Map<String, Map<PolarisStorageActions, ValidationResult>> resultMap = new HashMap<>();
     for (String rawLocation : locations) {
       StorageLocation storageLocation = StorageLocation.of(rawLocation);
-      final boolean isValidLocation = allowedLocations.stream().anyMatch(storageLocation::isChildOf);;
+      final boolean isValidLocation =
+          allowedLocations.stream().anyMatch(storageLocation::isChildOf);
+      ;
       Map<PolarisStorageActions, ValidationResult> locationResult =
           actions.stream()
               .collect(
