@@ -16,18 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.catalog.io;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import io.dropwizard.jackson.Discoverable;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.Map;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.io.FileIO;
 
-/** Interface for providing a way to construct FileIO objects, such as for reading/writing S3. */
-@JsonTypeInfo(
-    use = JsonTypeInfo.Id.NAME,
-    include = JsonTypeInfo.As.PROPERTY,
-    property = "factoryType")
-public interface FileIOFactory extends Discoverable {
-  FileIO loadFileIO(String impl, Map<String, String> properties);
+/** A simple FileIOFactory implementation that defers all the work to the Iceberg SDK */
+@JsonTypeName("default")
+public class DefaultFileIOFactory implements FileIOFactory {
+  @Override
+  public FileIO loadFileIO(String impl, Map<String, String> properties) {
+    return CatalogUtil.loadFileIO(impl, properties, new Configuration());
+  }
 }
