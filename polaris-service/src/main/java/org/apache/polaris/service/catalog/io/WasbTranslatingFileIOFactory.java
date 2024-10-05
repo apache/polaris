@@ -70,7 +70,7 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
             "%s://%s@%s.dfs.core.windows.net/%s",
             scheme,
             azureLocation.getContainer(),
-            azureLocation.getEndpoint(),
+            azureLocation.getStorageAccount(),
             azureLocation.getFilePath());
       }
     }
