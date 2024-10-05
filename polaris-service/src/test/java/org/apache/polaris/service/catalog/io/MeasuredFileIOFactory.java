@@ -18,11 +18,10 @@
  */
 package org.apache.polaris.service.catalog.io;
 
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
-import com.fasterxml.jackson.annotation.JsonTypeName;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.DataFile;
