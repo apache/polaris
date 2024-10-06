@@ -43,7 +43,8 @@ public class TableContentCleanupTaskHandler implements TaskHandler {
     private final Function<TaskEntity, FileIO> fileIOSupplier;
     private final ExecutorService executorService;
 
-    public TableContentCleanupTaskHandler(Function<TaskEntity, FileIO> fileIOSupplier, ExecutorService executorService) {
+    public TableContentCleanupTaskHandler(Function<TaskEntity, FileIO> fileIOSupplier,
+                                          ExecutorService executorService) {
         this.fileIOSupplier = fileIOSupplier;
         this.executorService = executorService;
     }
@@ -94,29 +95,28 @@ public class TableContentCleanupTaskHandler implements TaskHandler {
         }
 
         return CompletableFuture.runAsync(() -> {
-           if (TaskUtils.exists(filePath, fileIO)) {
-               fileIO.deleteFile(filePath);
-               LOGGER.atInfo()
-                       .addKeyValue("filePath", filePath)
-                       .addKeyValue("tableId", tableId)
-                       .log("Successfully deleted file");
-           } else {
-               LOGGER.atInfo()
-                       .addKeyValue("filePath", filePath)
-                       .addKeyValue("tableId", tableId)
-                       .log("File doesn't exist, likely already deleted");
-           }
-        }, executorService).exceptionallyComposeAsync(newEx -> {
-            return tryDelete(tableId, fileIO, filePath, newEx, attempt + 1);
-        },  CompletableFuture.delayedExecutor(FILE_DELETION_RETRY_MILLIS, TimeUnit.MILLISECONDS, executorService));
+            if (TaskUtils.exists(filePath, fileIO)) {
+                fileIO.deleteFile(filePath);
+                LOGGER.atInfo()
+                        .addKeyValue("filePath", filePath)
+                        .addKeyValue("tableId", tableId)
+                        .log("Successfully deleted file");
+            } else {
+                LOGGER.atInfo()
+                        .addKeyValue("filePath", filePath)
+                        .addKeyValue("tableId", tableId)
+                        .log("File doesn't exist, likely already deleted");
+            }
+        }, executorService).exceptionallyComposeAsync(newEx -> tryDelete(tableId, fileIO, filePath, newEx, attempt + 1),
+                CompletableFuture.delayedExecutor(FILE_DELETION_RETRY_MILLIS, TimeUnit.MILLISECONDS, executorService));
     }
-
 
     public static final class TableContentCleanupTask {
         private TableIdentifier tableId;
         private String filePath;
 
-        public TableContentCleanupTask() {}
+        public TableContentCleanupTask() {
+        }
 
         public TableContentCleanupTask(TableIdentifier tableId, String filePath) {
             this.tableId = tableId;
