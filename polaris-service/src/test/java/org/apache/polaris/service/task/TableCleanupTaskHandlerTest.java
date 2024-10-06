@@ -21,30 +21,18 @@ package org.apache.polaris.service.task;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.iceberg.DataFile;
-import org.apache.iceberg.DeleteFile;
-import org.apache.iceberg.GenericBlobMetadata;
-import org.apache.iceberg.GenericStatisticsFile;
 import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
-import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
-import org.apache.iceberg.puffin.Blob;
-import org.apache.iceberg.puffin.Puffin;
-import org.apache.iceberg.puffin.PuffinWriter;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.CallContext;
@@ -58,7 +46,6 @@ import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFac
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 
@@ -80,7 +67,7 @@ class TableCleanupTaskHandlerTest {
             new PolarisDefaultDiagServiceImpl());
     try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
       CallContext.setCurrentContext(callCtx);
-      FileIO fileIO = createMockFileIO(new InMemoryFileIO());
+      FileIO fileIO = new InMemoryFileIO();
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       TableCleanupTaskHandler handler =
@@ -92,8 +79,7 @@ class TableCleanupTaskHandlerTest {
       TestSnapshot snapshot =
           TaskTestUtils.newSnapshot(fileIO, "manifestList.avro", 1, snapshotId, 99L, manifestFile);
       String metadataFile = "v1-49494949.metadata.json";
-      StatisticsFile statisticsFile =
-          writeStatsFile(
+      StatisticsFile statisticsFile = TaskTestUtils.writeStatsFile(
               snapshot.snapshotId(),
               snapshot.sequenceNumber(),
               "/metadata/" + UUID.randomUUID() + ".stats",
@@ -113,29 +99,20 @@ class TableCleanupTaskHandlerTest {
               .build();
       Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
-      PolarisBaseEntity baseEntity = task.readData(PolarisBaseEntity.class);
-      TableLikeEntity tableEntity = TableLikeEntity.of(baseEntity);
-      TableMetadata tableMetadata =
-          TableMetadataParser.read(fileIO, tableEntity.getMetadataLocation());
-      Set<String> metadataLocations = metadataLocations(tableMetadata);
-      Set<String> statsLocation = statsLocations(tableMetadata);
-      assertThat(metadataLocations).hasSize(1);
-      assertThat(statsLocation).hasSize(1);
-
       CallContext.setCurrentContext(CallContext.of(realmContext, polarisCallContext));
       handler.handleTask(task);
 
       assertThat(
               metaStoreManagerFactory
                   .getOrCreateMetaStoreManager(realmContext)
-                  .loadTasks(polarisCallContext, "test", 1)
+                  .loadTasks(polarisCallContext, "test", 2)
                   .getEntities())
-          .hasSize(1)
-          .satisfiesExactly(
+          .hasSize(2)
+          .satisfiesExactlyInAnyOrder(
               taskEntity ->
                   assertThat(taskEntity)
                       .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
-                      .extracting(entity -> TaskEntity.of(entity))
+                      .extracting(TaskEntity::of)
                       .returns(AsyncTaskType.FILE_CLEANUP, TaskEntity::getTaskType)
                       .returns(
                           new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
@@ -143,19 +120,15 @@ class TableCleanupTaskHandlerTest {
                               Base64.encodeBase64String(ManifestFiles.encode(manifestFile))),
                           entity ->
                               entity.readData(
-                                  ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
-
-      ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-      Mockito.verify(fileIO, Mockito.times(metadataLocations.size() + statsLocation.size()))
-          .deleteFile(argumentCaptor.capture());
-
-      List<String> deletedPaths = argumentCaptor.getAllValues();
-      assertThat(deletedPaths)
-          .as("should contain all created metadata locations")
-          .containsAll(metadataLocations);
-      assertThat(deletedPaths)
-          .as("should contain all created stats locations")
-          .containsAll(statsLocation);
+                                  ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
+                  taskEntity -> assertThat(taskEntity)
+                          .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
+                          .extracting(TaskEntity::of)
+                          .returns(AsyncTaskType.TABLE_CONTENT_CLEANUP, TaskEntity::getTaskType)
+                          .returns(
+                                  new TableContentCleanupTaskHandler.TableContentCleanupTask(tableIdentifier, statisticsFile.path()),
+                                  entity -> entity.readData(TableContentCleanupTaskHandler.TableContentCleanupTask.class))
+          );
     }
   }
 
@@ -286,7 +259,7 @@ class TableCleanupTaskHandlerTest {
               taskEntity ->
                   assertThat(taskEntity)
                       .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
-                      .extracting(entity -> TaskEntity.of(entity))
+                      .extracting(TaskEntity::of)
                       .returns(AsyncTaskType.FILE_CLEANUP, TaskEntity::getTaskType)
                       .returns(
                           new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
@@ -298,7 +271,7 @@ class TableCleanupTaskHandlerTest {
               taskEntity ->
                   assertThat(taskEntity)
                       .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
-                      .extracting(entity -> TaskEntity.of(entity))
+                      .extracting(TaskEntity::of)
                       .returns(AsyncTaskType.FILE_CLEANUP, TaskEntity::getTaskType)
                       .returns(
                           new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
@@ -318,7 +291,7 @@ class TableCleanupTaskHandlerTest {
             new PolarisDefaultDiagServiceImpl());
     try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
       CallContext.setCurrentContext(callCtx);
-      FileIO fileIO = createMockFileIO(new InMemoryFileIO());
+      FileIO fileIO = new InMemoryFileIO();
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       TableCleanupTaskHandler handler =
@@ -346,14 +319,12 @@ class TableCleanupTaskHandlerTest {
               manifestFile1,
               manifestFile3); // exclude manifest2 from the new snapshot
       String metadataFile = "v1-295495059.metadata.json";
-      StatisticsFile statisticsFile1 =
-          writeStatsFile(
+      StatisticsFile statisticsFile1 = TaskTestUtils.writeStatsFile(
               snapshot.snapshotId(),
               snapshot.sequenceNumber(),
               "/metadata/" + UUID.randomUUID() + ".stats",
               fileIO);
-      StatisticsFile statisticsFile2 =
-          writeStatsFile(
+      StatisticsFile statisticsFile2 = TaskTestUtils.writeStatsFile(
               snapshot2.snapshotId(),
               snapshot2.sequenceNumber(),
               "/metadata/" + UUID.randomUUID() + ".stats",
@@ -375,22 +346,26 @@ class TableCleanupTaskHandlerTest {
 
       CallContext.setCurrentContext(CallContext.of(realmContext, polarisCallContext));
 
-      PolarisBaseEntity baseEntity = task.readData(PolarisBaseEntity.class);
-      TableLikeEntity tableEntity = TableLikeEntity.of(baseEntity);
-      TableMetadata tableMetadata =
-          TableMetadataParser.read(fileIO, tableEntity.getMetadataLocation());
-      Set<String> metadataLocations = metadataLocations(tableMetadata);
-      Set<String> statsLocations = statsLocations(tableMetadata);
-      assertThat(metadataLocations).hasSize(1);
-      assertThat(statsLocations).hasSize(2);
-
       handler.handleTask(task);
 
-      assertThat(
-              metaStoreManagerFactory
-                  .getOrCreateMetaStoreManager(realmContext)
-                  .loadTasks(polarisCallContext, "test", 5)
-                  .getEntities())
+      List<PolarisBaseEntity> entities = metaStoreManagerFactory
+              .getOrCreateMetaStoreManager(realmContext)
+              .loadTasks(polarisCallContext, "test", 5)
+              .getEntities();
+
+      List<PolarisBaseEntity> manifestCleanupTasks = entities.stream()
+              .filter(entity -> {
+                AsyncTaskType taskType = TaskEntity.of(entity).getTaskType();
+                return taskType == AsyncTaskType.FILE_CLEANUP;
+              }).toList();
+
+      List<PolarisBaseEntity> StatsCleanupTasks = entities.stream()
+              .filter(entity -> {
+                AsyncTaskType taskType = TaskEntity.of(entity).getTaskType();
+                return taskType == AsyncTaskType.TABLE_CONTENT_CLEANUP;
+              }).toList();
+
+      assertThat(manifestCleanupTasks)
           // all three manifests should be present, even though one is excluded from the latest
           // snapshot
           .hasSize(3)
@@ -398,7 +373,7 @@ class TableCleanupTaskHandlerTest {
               taskEntity ->
                   assertThat(taskEntity)
                       .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
-                      .extracting(entity -> TaskEntity.of(entity))
+                      .extracting(TaskEntity::of)
                       .returns(
                           new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                               tableIdentifier,
@@ -409,7 +384,7 @@ class TableCleanupTaskHandlerTest {
               taskEntity ->
                   assertThat(taskEntity)
                       .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
-                      .extracting(entity -> TaskEntity.of(entity))
+                      .extracting(TaskEntity::of)
                       .returns(
                           new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                               tableIdentifier,
@@ -420,84 +395,207 @@ class TableCleanupTaskHandlerTest {
               taskEntity ->
                   assertThat(taskEntity)
                       .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
-                      .extracting(entity -> TaskEntity.of(entity))
+                      .extracting(TaskEntity::of)
                       .returns(
                           new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                               tableIdentifier,
                               Base64.encodeBase64String(ManifestFiles.encode(manifestFile3))),
                           entity ->
                               entity.readData(
-                                  ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
+                                  ManifestFileCleanupTaskHandler.ManifestCleanupTask.class))
+          );
 
-      ArgumentCaptor<String> argumentCaptor = ArgumentCaptor.forClass(String.class);
-      Mockito.verify(fileIO, Mockito.times(metadataLocations.size() + statsLocations.size()))
-          .deleteFile(argumentCaptor.capture());
-
-      List<String> deletedPaths = argumentCaptor.getAllValues();
-      assertThat(deletedPaths)
-          .as("should contain all created metadata locations")
-          .containsAll(metadataLocations);
-      assertThat(deletedPaths)
-          .as("should contain all created stats locations")
-          .containsAll(statsLocations);
+      assertThat(StatsCleanupTasks)
+              .hasSize(2)
+              .satisfiesExactlyInAnyOrder(
+                      taskEntity ->
+                              assertThat(taskEntity)
+                                      .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
+                                      .extracting(TaskEntity::of)
+                                      .returns(AsyncTaskType.TABLE_CONTENT_CLEANUP, TaskEntity::getTaskType)
+                                      .returns(
+                                              new TableContentCleanupTaskHandler.TableContentCleanupTask(
+                                                      tableIdentifier, statisticsFile1.path()),
+                                              entity -> entity.readData(
+                                                      TableContentCleanupTaskHandler.TableContentCleanupTask.class)),
+                      taskEntity ->
+                              assertThat(taskEntity)
+                                      .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
+                                      .extracting(TaskEntity::of)
+                                      .returns(AsyncTaskType.TABLE_CONTENT_CLEANUP, TaskEntity::getTaskType)
+                                      .returns(
+                                              new TableContentCleanupTaskHandler.TableContentCleanupTask(
+                                                      tableIdentifier, statisticsFile2.path()),
+                                              entity -> entity.readData(
+                                                      TableContentCleanupTaskHandler.TableContentCleanupTask.class))
+              );
     }
   }
 
-  private FileIO createMockFileIO(InMemoryFileIO wrapped) {
-    InMemoryFileIO mockIO = Mockito.mock(InMemoryFileIO.class);
+  @Test
+  public void testTableCleanupMultipleMetadata() throws IOException {
+    PolarisCallContext polarisCallContext =
+            new PolarisCallContext(
+                    metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+                    new PolarisDefaultDiagServiceImpl());
+    try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
+      CallContext.setCurrentContext(callCtx);
+      FileIO fileIO = new InMemoryFileIO();
+      TableIdentifier tableIdentifier =
+              TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
+      TableCleanupTaskHandler handler =
+              new TableCleanupTaskHandler(Mockito.mock(), metaStoreManagerFactory, (task) -> fileIO);
+      long snapshotId1 = 100L;
+      ManifestFile manifestFile1 =
+              TaskTestUtils.manifestFile(
+                      fileIO, "manifest1.avro", snapshotId1, "dataFile1.parquet", "dataFile2.parquet");
+      ManifestFile manifestFile2 =
+              TaskTestUtils.manifestFile(
+                      fileIO, "manifest2.avro", snapshotId1, "dataFile3.parquet", "dataFile4.parquet");
+      Snapshot snapshot =
+              TaskTestUtils.newSnapshot(
+                      fileIO, "manifestList.avro", 1, snapshotId1, 99L, manifestFile1, manifestFile2);
+      StatisticsFile statisticsFile1 = TaskTestUtils.writeStatsFile(
+              snapshot.snapshotId(),
+              snapshot.sequenceNumber(),
+              "/metadata/" + UUID.randomUUID() + ".stats",
+              fileIO);
+      String firstMetadataFile = "v1-295495059.metadata.json";
+      TableMetadata firstMetadata = TaskTestUtils.writeTableMetadata(
+              fileIO, firstMetadataFile, List.of(statisticsFile1), snapshot);
+      assertThat(TaskUtils.exists(firstMetadataFile, fileIO)).isTrue();
 
-    Mockito.when(mockIO.newInputFile(Mockito.anyString()))
-        .thenAnswer(invocation -> wrapped.newInputFile((String) invocation.getArgument(0)));
-    Mockito.when(mockIO.newInputFile(Mockito.anyString(), Mockito.anyLong()))
-        .thenAnswer(
-            invocation ->
-                wrapped.newInputFile(invocation.getArgument(0), invocation.getArgument(1)));
-    Mockito.when(mockIO.newInputFile(Mockito.any(ManifestFile.class)))
-        .thenAnswer(invocation -> wrapped.newInputFile((ManifestFile) invocation.getArgument(0)));
-    Mockito.when(mockIO.newInputFile(Mockito.any(DataFile.class)))
-        .thenAnswer(invocation -> wrapped.newInputFile((DataFile) invocation.getArgument(0)));
-    Mockito.when(mockIO.newInputFile(Mockito.any(DeleteFile.class)))
-        .thenAnswer(invocation -> wrapped.newInputFile((DeleteFile) invocation.getArgument(0)));
-    Mockito.when(mockIO.newOutputFile(Mockito.anyString()))
-        .thenAnswer(invocation -> wrapped.newOutputFile(invocation.getArgument(0)));
+      ManifestFile manifestFile3 =
+              TaskTestUtils.manifestFile(
+                      fileIO, "manifest3.avro", snapshot.snapshotId() + 1, "dataFile5.parquet");
+      Snapshot snapshot2 =
+              TaskTestUtils.newSnapshot(
+                      fileIO,
+                      "manifestList2.avro",
+                      snapshot.sequenceNumber() + 1,
+                      snapshot.snapshotId() + 1,
+                      snapshot.snapshotId(),
+                      manifestFile1,
+                      manifestFile3); // exclude manifest2 from the new snapshot
+      StatisticsFile statisticsFile2 = TaskTestUtils.writeStatsFile(
+              snapshot2.snapshotId(),
+              snapshot2.sequenceNumber(),
+              "/metadata/" + UUID.randomUUID() + ".stats",
+              fileIO);
+      String secondMetadataFile = "v1-295495060.metadata.json";
+      TaskTestUtils.writeTableMetadata(
+              fileIO, secondMetadataFile, firstMetadata, firstMetadataFile, List.of(statisticsFile2), snapshot2);
+      assertThat(TaskUtils.exists(firstMetadataFile, fileIO)).isTrue();
+      assertThat(TaskUtils.exists(secondMetadataFile, fileIO)).isTrue();
 
-    return mockIO;
-  }
+      TaskEntity task =
+              new TaskEntity.Builder()
+                      .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
+                      .withData(
+                              new TableLikeEntity.Builder(tableIdentifier, secondMetadataFile)
+                                      .setName("table1")
+                                      .setCatalogId(1)
+                                      .setCreateTimestamp(100)
+                                      .build())
+                      .build();
 
-  private Set<String> metadataLocations(TableMetadata tableMetadata) {
-    Set<String> metadataLocations =
-        tableMetadata.previousFiles().stream()
-            .map(TableMetadata.MetadataLogEntry::file)
-            .collect(Collectors.toSet());
-    metadataLocations.add(tableMetadata.metadataFileLocation());
-    return metadataLocations;
-  }
+      Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
-  private Set<String> statsLocations(TableMetadata tableMetadata) {
-    return tableMetadata.statisticsFiles().stream()
-        .map(StatisticsFile::path)
-        .collect(Collectors.toSet());
-  }
+      CallContext.setCurrentContext(CallContext.of(realmContext, polarisCallContext));
 
-  private StatisticsFile writeStatsFile(
-      long snapshotId, long snapshotSequenceNumber, String statsLocation, FileIO fileIO)
-      throws IOException {
-    try (PuffinWriter puffinWriter = Puffin.write(fileIO.newOutputFile(statsLocation)).build()) {
-      puffinWriter.add(
-          new Blob(
-              "some-blob-type",
-              List.of(1),
-              snapshotId,
-              snapshotSequenceNumber,
-              ByteBuffer.wrap("blob content".getBytes(StandardCharsets.UTF_8))));
-      puffinWriter.finish();
+      handler.handleTask(task);
 
-      return new GenericStatisticsFile(
-          snapshotId,
-          statsLocation,
-          puffinWriter.fileSize(),
-          puffinWriter.footerSize(),
-          puffinWriter.writtenBlobsMetadata().stream().map(GenericBlobMetadata::from).toList());
+      List<PolarisBaseEntity> entities = metaStoreManagerFactory
+              .getOrCreateMetaStoreManager(realmContext)
+              .loadTasks(polarisCallContext, "test", 6)
+              .getEntities();
+
+      List<PolarisBaseEntity> manifestCleanupTasks = entities.stream()
+              .filter(entity -> {
+                AsyncTaskType taskType = TaskEntity.of(entity).getTaskType();
+                return taskType == AsyncTaskType.FILE_CLEANUP;
+              }).toList();
+
+      List<PolarisBaseEntity> PrevMetadataNStatCleanupTasks = entities.stream()
+              .filter(entity -> {
+                AsyncTaskType taskType = TaskEntity.of(entity).getTaskType();
+                return taskType == AsyncTaskType.TABLE_CONTENT_CLEANUP;
+              }).toList();
+
+      assertThat(manifestCleanupTasks)
+              // all three manifests should be present, even though one is excluded from the latest
+              // snapshot
+              .hasSize(3)
+              .satisfiesExactlyInAnyOrder(
+                      taskEntity ->
+                              assertThat(taskEntity)
+                                      .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
+                                      .extracting(TaskEntity::of)
+                                      .returns(
+                                              new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                                                      tableIdentifier,
+                                                      Base64.encodeBase64String(ManifestFiles.encode(manifestFile1))),
+                                              entity ->
+                                                      entity.readData(
+                                                              ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
+                      taskEntity ->
+                              assertThat(taskEntity)
+                                      .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
+                                      .extracting(TaskEntity::of)
+                                      .returns(
+                                              new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                                                      tableIdentifier,
+                                                      Base64.encodeBase64String(ManifestFiles.encode(manifestFile2))),
+                                              entity ->
+                                                      entity.readData(
+                                                              ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
+                      taskEntity ->
+                              assertThat(taskEntity)
+                                      .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
+                                      .extracting(TaskEntity::of)
+                                      .returns(
+                                              new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                                                      tableIdentifier,
+                                                      Base64.encodeBase64String(ManifestFiles.encode(manifestFile3))),
+                                              entity ->
+                                                      entity.readData(
+                                                              ManifestFileCleanupTaskHandler.ManifestCleanupTask.class))
+              );
+
+      assertThat(PrevMetadataNStatCleanupTasks)
+              .hasSize(3)
+              .satisfiesExactlyInAnyOrder(
+                      taskEntity ->
+                              assertThat(taskEntity)
+                                      .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
+                                      .extracting(TaskEntity::of)
+                                      .returns(AsyncTaskType.TABLE_CONTENT_CLEANUP, TaskEntity::getTaskType)
+                                      .returns(
+                                              new TableContentCleanupTaskHandler.TableContentCleanupTask(
+                                                      tableIdentifier, statisticsFile1.path()),
+                                              entity -> entity.readData(
+                                                      TableContentCleanupTaskHandler.TableContentCleanupTask.class)),
+                      taskEntity ->
+                              assertThat(taskEntity)
+                                      .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
+                                      .extracting(TaskEntity::of)
+                                      .returns(AsyncTaskType.TABLE_CONTENT_CLEANUP, TaskEntity::getTaskType)
+                                      .returns(
+                                              new TableContentCleanupTaskHandler.TableContentCleanupTask(
+                                                      tableIdentifier, statisticsFile2.path()),
+                                              entity -> entity.readData(
+                                                      TableContentCleanupTaskHandler.TableContentCleanupTask.class)),
+                      taskEntity ->
+                              assertThat(taskEntity)
+                                      .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
+                                      .extracting(TaskEntity::of)
+                                      .returns(AsyncTaskType.TABLE_CONTENT_CLEANUP, TaskEntity::getTaskType)
+                                      .returns(
+                                              new TableContentCleanupTaskHandler.TableContentCleanupTask(
+                                                      tableIdentifier, firstMetadataFile),
+                                              entity -> entity.readData(
+                                                      TableContentCleanupTaskHandler.TableContentCleanupTask.class))
+              );
     }
   }
 }
