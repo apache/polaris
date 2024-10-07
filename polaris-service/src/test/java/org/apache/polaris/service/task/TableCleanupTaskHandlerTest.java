@@ -126,7 +126,7 @@ class TableCleanupTaskHandlerTest {
                           .extracting(TaskEntity::of)
                           .returns(AsyncTaskType.TABLE_CONTENT_CLEANUP, TaskEntity::getTaskType)
                           .returns(
-                                  new TableContentCleanupTaskHandler.TableContentCleanupTask(tableIdentifier, statisticsFile.path()),
+                                  new TableContentCleanupTaskHandler.TableContentCleanupTask(tableIdentifier, List.of(statisticsFile.path())),
                                   entity -> entity.readData(TableContentCleanupTaskHandler.TableContentCleanupTask.class))
           );
     }
@@ -406,7 +406,7 @@ class TableCleanupTaskHandlerTest {
           );
 
       assertThat(StatsCleanupTasks)
-              .hasSize(2)
+              .hasSize(1)
               .satisfiesExactlyInAnyOrder(
                       taskEntity ->
                               assertThat(taskEntity)
@@ -415,17 +415,7 @@ class TableCleanupTaskHandlerTest {
                                       .returns(AsyncTaskType.TABLE_CONTENT_CLEANUP, TaskEntity::getTaskType)
                                       .returns(
                                               new TableContentCleanupTaskHandler.TableContentCleanupTask(
-                                                      tableIdentifier, statisticsFile1.path()),
-                                              entity -> entity.readData(
-                                                      TableContentCleanupTaskHandler.TableContentCleanupTask.class)),
-                      taskEntity ->
-                              assertThat(taskEntity)
-                                      .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
-                                      .extracting(TaskEntity::of)
-                                      .returns(AsyncTaskType.TABLE_CONTENT_CLEANUP, TaskEntity::getTaskType)
-                                      .returns(
-                                              new TableContentCleanupTaskHandler.TableContentCleanupTask(
-                                                      tableIdentifier, statisticsFile2.path()),
+                                                      tableIdentifier, List.of(statisticsFile1.path(), statisticsFile2.path())),
                                               entity -> entity.readData(
                                                       TableContentCleanupTaskHandler.TableContentCleanupTask.class))
               );
@@ -563,7 +553,7 @@ class TableCleanupTaskHandlerTest {
               );
 
       assertThat(PrevMetadataNStatCleanupTasks)
-              .hasSize(3)
+              .hasSize(2)
               .satisfiesExactlyInAnyOrder(
                       taskEntity ->
                               assertThat(taskEntity)
@@ -572,7 +562,7 @@ class TableCleanupTaskHandlerTest {
                                       .returns(AsyncTaskType.TABLE_CONTENT_CLEANUP, TaskEntity::getTaskType)
                                       .returns(
                                               new TableContentCleanupTaskHandler.TableContentCleanupTask(
-                                                      tableIdentifier, statisticsFile1.path()),
+                                                      tableIdentifier, List.of(statisticsFile1.path(), statisticsFile2.path())),
                                               entity -> entity.readData(
                                                       TableContentCleanupTaskHandler.TableContentCleanupTask.class)),
                       taskEntity ->
@@ -582,17 +572,7 @@ class TableCleanupTaskHandlerTest {
                                       .returns(AsyncTaskType.TABLE_CONTENT_CLEANUP, TaskEntity::getTaskType)
                                       .returns(
                                               new TableContentCleanupTaskHandler.TableContentCleanupTask(
-                                                      tableIdentifier, statisticsFile2.path()),
-                                              entity -> entity.readData(
-                                                      TableContentCleanupTaskHandler.TableContentCleanupTask.class)),
-                      taskEntity ->
-                              assertThat(taskEntity)
-                                      .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
-                                      .extracting(TaskEntity::of)
-                                      .returns(AsyncTaskType.TABLE_CONTENT_CLEANUP, TaskEntity::getTaskType)
-                                      .returns(
-                                              new TableContentCleanupTaskHandler.TableContentCleanupTask(
-                                                      tableIdentifier, firstMetadataFile),
+                                                      tableIdentifier, List.of(firstMetadataFile)),
                                               entity -> entity.readData(
                                                       TableContentCleanupTaskHandler.TableContentCleanupTask.class))
               );
