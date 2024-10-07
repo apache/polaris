@@ -74,8 +74,12 @@ public class TaskTestUtils {
     return writeTableMetadata(fileIO, metadataFile, null, null, null, snapshots);
   }
 
-  static TableMetadata writeTableMetadata(FileIO fileIO, String metadataFile, List<StatisticsFile> statisticsFiles, Snapshot... snapshots)
-          throws IOException {
+  static TableMetadata writeTableMetadata(
+      FileIO fileIO,
+      String metadataFile,
+      List<StatisticsFile> statisticsFiles,
+      Snapshot... snapshots)
+      throws IOException {
     return writeTableMetadata(fileIO, metadataFile, null, null, statisticsFiles, snapshots);
   }
 
@@ -86,23 +90,21 @@ public class TaskTestUtils {
       String prevMetadataFile,
       List<StatisticsFile> statisticsFiles,
       Snapshot... snapshots)
-          throws IOException {
+      throws IOException {
     TableMetadata.Builder tmBuilder;
     if (prevMetadata == null) {
       tmBuilder = TableMetadata.buildFromEmpty();
     } else {
-      tmBuilder = TableMetadata.buildFrom(prevMetadata)
-              .setPreviousFileLocation(prevMetadataFile);
+      tmBuilder = TableMetadata.buildFrom(prevMetadata).setPreviousFileLocation(prevMetadataFile);
     }
     tmBuilder
-            .setLocation("path/to/table")
-            .addSchema(
-                new Schema(
-                    List.of(Types.NestedField.of(1, false, "field1", Types.StringType.get()))),
-                1)
-            .addSortOrder(SortOrder.unsorted())
-            .assignUUID(UUID.randomUUID().toString())
-            .addPartitionSpec(PartitionSpec.unpartitioned());
+        .setLocation("path/to/table")
+        .addSchema(
+            new Schema(List.of(Types.NestedField.of(1, false, "field1", Types.StringType.get()))),
+            1)
+        .addSortOrder(SortOrder.unsorted())
+        .assignUUID(UUID.randomUUID().toString())
+        .addPartitionSpec(PartitionSpec.unpartitioned());
 
     int statisticsFileIndex = 0;
     for (Snapshot snapshot : snapshots) {
@@ -139,25 +141,25 @@ public class TaskTestUtils {
     return snapshot;
   }
 
-  static public StatisticsFile writeStatsFile(
-          long snapshotId, long snapshotSequenceNumber, String statsLocation, FileIO fileIO)
-          throws IOException {
+  public static StatisticsFile writeStatsFile(
+      long snapshotId, long snapshotSequenceNumber, String statsLocation, FileIO fileIO)
+      throws IOException {
     try (PuffinWriter puffinWriter = Puffin.write(fileIO.newOutputFile(statsLocation)).build()) {
       puffinWriter.add(
-              new Blob(
-                      "some-blob-type",
-                      List.of(1),
-                      snapshotId,
-                      snapshotSequenceNumber,
-                      ByteBuffer.wrap("blob content".getBytes(StandardCharsets.UTF_8))));
+          new Blob(
+              "some-blob-type",
+              List.of(1),
+              snapshotId,
+              snapshotSequenceNumber,
+              ByteBuffer.wrap("blob content".getBytes(StandardCharsets.UTF_8))));
       puffinWriter.finish();
 
       return new GenericStatisticsFile(
-              snapshotId,
-              statsLocation,
-              puffinWriter.fileSize(),
-              puffinWriter.footerSize(),
-              puffinWriter.writtenBlobsMetadata().stream().map(GenericBlobMetadata::from).toList());
+          snapshotId,
+          statsLocation,
+          puffinWriter.fileSize(),
+          puffinWriter.footerSize(),
+          puffinWriter.writtenBlobsMetadata().stream().map(GenericBlobMetadata::from).toList());
     }
   }
 }

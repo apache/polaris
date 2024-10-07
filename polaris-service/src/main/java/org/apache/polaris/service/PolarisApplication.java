@@ -213,8 +213,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         new ManifestFileCleanupTaskHandler(
             fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
     taskExecutor.addTaskHandler(
-            new TableContentCleanupTaskHandler(
-                    fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+        new TableContentCleanupTaskHandler(
+            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
 
     LOGGER.info(
         "Initializing PolarisCallContextCatalogFactory for metaStoreManagerType {}",
