@@ -44,7 +44,8 @@ import org.slf4j.LoggerFactory;
  * <p>Example: principal:data-engineer;password:test;realm:acct123
  */
 @JsonTypeName("default")
-public class DefaultContextResolver implements RealmContextResolver, CallContextResolver, ConfigurationStoreAware {
+public class DefaultContextResolver
+    implements RealmContextResolver, CallContextResolver, ConfigurationStoreAware {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultContextResolver.class);
 
   public static final String REALM_PROPERTY_KEY = "realm";
