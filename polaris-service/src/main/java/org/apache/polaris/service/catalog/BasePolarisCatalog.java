@@ -23,7 +23,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
-import jakarta.ws.rs.BadRequestException;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
@@ -53,6 +52,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NamespaceNotEmptyException;
@@ -75,6 +75,7 @@ import org.apache.iceberg.view.ViewOperations;
 import org.apache.iceberg.view.ViewUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfiguration;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
@@ -170,7 +171,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private CloseableGroup closeableGroup;
   private Map<String, String> catalogProperties;
   private Map<String, String> tableDefaultProperties;
-  private final FileIOFactory fileIOFactory;
+  private FileIOFactory fileIOFactory;
   private PolarisMetaStoreManager metaStoreManager;
 
   /**
@@ -992,14 +993,23 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           // }
         },
         () -> {
-          List<String> invalidLocations =
-              locations.stream()
-                  .filter(location -> location.startsWith("file:") || location.startsWith("http"))
-                  .collect(Collectors.toList());
-          if (!invalidLocations.isEmpty()) {
-            throw new ForbiddenException(
-                "Invalid locations '%s' for identifier '%s': File locations are not allowed",
-                invalidLocations, identifier);
+          List<String> allowedStorageTypes =
+              callContext
+                  .getPolarisCallContext()
+                  .getConfigurationStore()
+                  .getConfiguration(
+                      callContext.getPolarisCallContext(),
+                      PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+          if (!allowedStorageTypes.contains(StorageConfigInfo.StorageTypeEnum.FILE.name())) {
+            List<String> invalidLocations =
+                locations.stream()
+                    .filter(location -> location.startsWith("file:") || location.startsWith("http"))
+                    .collect(Collectors.toList());
+            if (!invalidLocations.isEmpty()) {
+              throw new ForbiddenException(
+                  "Invalid locations '%s' for identifier '%s': File locations are not allowed",
+                  invalidLocations, identifier);
+            }
           }
         });
   }
@@ -1399,7 +1409,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       if (!isUnderParentLocation(
           URI.create(metadata.metadataFileLocation()),
           URI.create(metadata.location() + "/metadata").normalize())) {
-        throw new org.apache.iceberg.exceptions.BadRequestException(
+        throw new BadRequestException(
             "Metadata location %s is not allowed outside of table location %s",
             metadata.metadataFileLocation(), metadata.location());
       }
@@ -1610,6 +1620,11 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   @VisibleForTesting
+  void setFileIOFactory(FileIOFactory newFactory) {
+    this.fileIOFactory = newFactory;
+  }
+
+  @VisibleForTesting
   long getCatalogId() {
     // TODO: Properly handle initialization
     if (catalogId <= 0) {
@@ -1704,7 +1719,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
           // some entities cannot be renamed
         case PolarisMetaStoreManager.ReturnStatus.ENTITY_CANNOT_BE_RENAMED:
-          throw new BadRequestException("Cannot rename built-in object " + leafEntity.getName());
+          throw new BadRequestException("Cannot rename built-in object %s", leafEntity.getName());
 
           // some entities cannot be renamed
         default:
@@ -1869,6 +1884,51 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     if (notificationType == NotificationType.DROP) {
       return dropTableLike(PolarisEntitySubType.TABLE, tableIdentifier, Map.of(), false /* purge */)
           .isSuccess();
+    } else if (notificationType == NotificationType.VALIDATE) {
+      // In this mode we don't want to make any mutations, so we won't auto-create non-existing
+      // parent namespaces. This means when we want to validate allowedLocations for the proposed
+      // table metadata location, we must independently find the deepest non-null parent namespace
+      // of the TableIdentifier, which may even be the base CatalogEntity if no parent namespaces
+      // actually exist yet. We can then extract the right StorageInfo entity via a normal call
+      // to findStorageInfoFromHierarchy.
+      PolarisResolvedPathWrapper resolvedStorageEntity = null;
+      Optional<PolarisEntity> storageInfoEntity = Optional.empty();
+      for (int i = tableIdentifier.namespace().length(); i >= 0; i--) {
+        Namespace nsLevel =
+            Namespace.of(
+                Arrays.stream(tableIdentifier.namespace().levels())
+                    .limit(i)
+                    .toArray(String[]::new));
+        resolvedStorageEntity = resolvedEntityView.getResolvedPath(nsLevel);
+        if (resolvedStorageEntity != null) {
+          storageInfoEntity = findStorageInfoFromHierarchy(resolvedStorageEntity);
+          break;
+        }
+      }
+
+      if (resolvedStorageEntity == null || storageInfoEntity.isEmpty()) {
+        throw new BadRequestException(
+            "Failed to find StorageInfo entity for TableIdentifier %s", tableIdentifier);
+      }
+
+      // Validate location against the resolvedStorageEntity
+      String metadataLocation =
+          transformTableLikeLocation(request.getPayload().getMetadataLocation());
+      validateLocationForTableLike(tableIdentifier, metadataLocation, resolvedStorageEntity);
+
+      // Validate that we can construct a FileIO
+      String locationDir = metadataLocation.substring(0, metadataLocation.lastIndexOf("/"));
+      refreshIOWithCredentials(
+          tableIdentifier,
+          Set.of(locationDir),
+          resolvedStorageEntity,
+          new HashMap<>(tableDefaultProperties),
+          Set.of(PolarisStorageActions.READ));
+
+      LOGGER.debug(
+          "Successful VALIDATE notification for tableIdentifier {}, metadataLocation {}",
+          tableIdentifier,
+          metadataLocation);
     } else if (notificationType == NotificationType.CREATE
         || notificationType == NotificationType.UPDATE) {
 

@@ -28,16 +28,13 @@ Documentation is available at https://polaris.apache.org, including
 [Polaris management API doc](https://polaris.apache.org/index.html#tag/polaris-management-service_other)
 and [Apache Iceberg REST API doc](https://polaris.apache.org/index.html#tag/Configuration-API).
 
+Subscribe to the [dev mailing list][dev-list] to join discussions. Check out the [CONTRIBUTING guide](CONTRIBUTING.md)
+for contribution guidelines.
+
 [![Zulip](https://img.shields.io/badge/Zulip-Chat-blue?color=3d4db3&logo=zulip&style=for-the-badge&logoColor=white)](https://polaris-catalog.zulipchat.com/)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/apache/polaris/gradle.yml?branch=main&label=Main%20CI&logo=Github&style=for-the-badge)](https://github.com/apache/polaris/actions/workflows/gradle.yml?query=branch%3Amain)
 
-## Community
-
-Join us on the [Apache Polaris public chat](https://polaris-catalog.zulipchat.com/) (no invite needed).
-
-## Development
-
-See [CONTRIBUTING](CONTRIBUTING.md) for contribution requirements.
+[dev-list]: mailto:dev@polaris.apache.org
 
 ## Building and Running 
 
@@ -62,15 +59,21 @@ select * from db1.table1;
 
 Apache Polaris supports the following optional build options:
 - `-PeclipseLink=true` – Enables the EclipseLink extension.
-- `-PeclipseLinkDeps=[groupId]:[artifactId]:[version],...` – Specifies one or more additional dependencies for EclipseLink (e.g., JDBC drivers), separated by commas.
+- `-PeclipseLinkDeps=[groupId]:[artifactId]:[version],...` – Specifies one or more additional dependencies for EclipseLink (e.g., JDBC drivers) separated by commas.
 
 ### More build and run options
 Running in Docker
 - `docker build -t localhost:5001/polaris:latest .` - To build the image.
+  - Optional build options:
+    - `docker build -t localhost:5001/polaris:latest --build-arg ECLIPSELINK=true .` - Enables the EclipseLink extension.
+    - `docker build -t localhost:5001/polaris:latest --build-arg ECLIPSELINK=true --build-arg ECLIPSELINK_DEPS=[groupId]:[artifactId]:[version],... .` – Enables the EclipseLink extension with one or more additional dependencies for EclipseLink (e.g. JDBC drivers) separated by commas.
 - `docker run -p 8181:8181 localhost:5001/polaris:latest` - To run the image in standalone mode.
 
 Running in Kubernetes
 - `./run.sh` - To run Polaris as a mini-deployment locally. This will create one pod that bind itself to ports `8181` and `8182`.
+  - Optional run options:
+    - `./run.sh -b "ECLIPSELINK=true"` - Enables the EclipseLink extension.
+    - `./run.sh -b "ECLIPSELINK=true;ECLIPSELINK_DEPS=[groupId]:[artifactId]:[version],..."` – Enables the EclipseLink extension with one or more additional dependencies for EclipseLink (e.g. JDBC drivers) separated by commas.
 - `kubectl port-forward svc/polaris-service -n polaris 8181:8181 8182:8182` - To create secure connections between a local machine and a pod within the cluster for both service and metrics endpoints.
   - Currently supported metrics endpoints:
     - localhost:8182/metrics
@@ -84,11 +87,12 @@ Running regression tests
 - `docker compose up --build --exit-code-from regtest` - To run regression tests in a Docker environment.
 
 Building docs
-- Docs are generated using [Redocly](https://redocly.com/docs/cli/installation). To regenerate them, run the following
-commands from the project root directory.
-```bash
-docs/build
-```
+- Docs are generated using [Hugo](https://gohugo.io/) using the [Docsy](https://www.docsy.dev/docs/) theme.
+- To view the site locally, run
+  ```bash
+  site/bin/run-hugo-in-docker.sh
+  ```
+- See [README in `site/`](site/README.md) for more information.
 
 ## License
 
