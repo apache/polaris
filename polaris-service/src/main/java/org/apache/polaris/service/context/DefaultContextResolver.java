@@ -44,8 +44,7 @@ import org.slf4j.LoggerFactory;
  * <p>Example: principal:data-engineer;password:test;realm:acct123
  */
 @JsonTypeName("default")
-public class DefaultContextResolver extends RealmContextResolver
-    implements CallContextResolver, ConfigurationStoreAware {
+public class DefaultContextResolver implements RealmContextResolver, CallContextResolver, ConfigurationStoreAware {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultContextResolver.class);
 
   public static final String REALM_PROPERTY_KEY = "realm";
@@ -55,6 +54,7 @@ public class DefaultContextResolver extends RealmContextResolver
 
   private RealmEntityManagerFactory entityManagerFactory;
   private PolarisConfigurationStore configurationStore;
+  private String defaultRealm = "default-realm";
 
   /**
    * During CallContext resolution that might depend on RealmContext, the {@code
@@ -95,6 +95,16 @@ public class DefaultContextResolver extends RealmContextResolver
       parsedProperties.put(REALM_PROPERTY_KEY, getDefaultRealm());
     }
     return () -> parsedProperties.get(REALM_PROPERTY_KEY);
+  }
+
+  @Override
+  public void setDefaultRealm(String defaultRealm) {
+    this.defaultRealm = defaultRealm;
+  }
+
+  @Override
+  public String getDefaultRealm() {
+    return this.defaultRealm;
   }
 
   @Override
