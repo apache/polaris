@@ -31,6 +31,7 @@ public class AzureLocation extends StorageLocation {
 
   public static final String BLOB_ENDPOINT = "blob.core.windows.net";
 
+  private final String scheme;
   private final String storageAccount;
   private final String container;
 
@@ -51,6 +52,7 @@ public class AzureLocation extends StorageLocation {
     if (!matcher.matches()) {
       throw new IllegalArgumentException("Invalid azure location uri " + location);
     }
+    this.scheme = matcher.group(1);
     String authority = matcher.group(2);
     // look for <container>@<storage account host>
     String[] parts = authority.split("@", -1);
@@ -89,6 +91,13 @@ public class AzureLocation extends StorageLocation {
   /** Get the file path */
   public String getFilePath() {
     return filePath;
+  }
+
+  /**
+   * Get the scheme
+   */
+  public String getScheme() {
+    return scheme;
   }
 
   /**
