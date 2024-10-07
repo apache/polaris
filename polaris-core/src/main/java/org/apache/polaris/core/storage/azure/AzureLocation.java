@@ -93,9 +93,7 @@ public class AzureLocation extends StorageLocation {
     return filePath;
   }
 
-  /**
-   * Get the scheme
-   */
+  /** Get the scheme */
   public String getScheme() {
     return scheme;
   }
