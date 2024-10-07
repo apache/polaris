@@ -19,24 +19,14 @@
 package org.apache.polaris.service.catalog.io;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
-
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
-import org.apache.iceberg.ContentFile;
-import org.apache.iceberg.DataFile;
-import org.apache.iceberg.DeleteFile;
-import org.apache.iceberg.FileContent;
-import org.apache.iceberg.FileFormat;
-import org.apache.iceberg.ManifestFile;
-import org.apache.iceberg.StructLike;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.OutputFile;
-import org.apache.iceberg.io.SeekableInputStream;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 
