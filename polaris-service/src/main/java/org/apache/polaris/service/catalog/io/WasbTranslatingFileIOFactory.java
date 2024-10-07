@@ -47,7 +47,7 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
     return wrapped;
   }
 
-  public static class WasbTranslatingFileIO implements FileIO {
+  public static final class WasbTranslatingFileIO implements FileIO {
     private final FileIO io;
 
     private static final String WASB_SCHEME = "wasb";
