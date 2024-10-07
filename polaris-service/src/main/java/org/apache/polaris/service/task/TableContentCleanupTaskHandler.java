@@ -26,6 +26,7 @@ import org.apache.polaris.core.entity.TaskEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -39,7 +40,7 @@ public class TableContentCleanupTaskHandler implements TaskHandler {
     public static final int MAX_ATTEMPTS = 3;
     public static final int FILE_DELETION_RETRY_MILLIS = 100;
     private static final Logger LOGGER =
-            LoggerFactory.getLogger(ManifestFileCleanupTaskHandler.class);
+            LoggerFactory.getLogger(TableContentCleanupTaskHandler.class);
     private final Function<TaskEntity, FileIO> fileIOSupplier;
     private final ExecutorService executorService;
 
@@ -57,22 +58,39 @@ public class TableContentCleanupTaskHandler implements TaskHandler {
     @Override
     public boolean handleTask(TaskEntity task) {
         TableContentCleanupTask cleanupTask = task.readData(TableContentCleanupTask.class);
-        String filePath = cleanupTask.getFilePath();
+        List<String> fileBatch = cleanupTask.getFileBatch();
         TableIdentifier tableId = cleanupTask.getTableId();
         try (FileIO authorizedFileIO = fileIOSupplier.apply(task)) {
-            if (!TaskUtils.exists(filePath, authorizedFileIO)) {
+            List<String> validFiles = fileBatch.stream()
+                    .filter(file -> TaskUtils.exists(file, authorizedFileIO))
+                    .toList();
+            if (validFiles.isEmpty()) {
                 LOGGER.atWarn()
-                        .addKeyValue("filePath", filePath)
+                        .addKeyValue("taskName", task.getName())
+                        .addKeyValue("fileBatch", fileBatch.toString())
                         .addKeyValue("tableId", tableId)
-                        .log("Table content cleanup task scheduled, but the file doesn't exist");
+                        .log("Table content cleanup task scheduled, but the none of the file in batch exists");
                 return true;
             }
 
-            tryDelete(tableId, authorizedFileIO, filePath, null, 1);
+            // Schedule the deletion for each file asynchronously
+            List<CompletableFuture<Void>> deleteFutures = validFiles.stream()
+                    .map(file -> tryDelete(tableId, authorizedFileIO, file, null, 1))
+                    .toList();
+
+            // Wait for all delete operations to finish
+            CompletableFuture<Void> allDeletes = CompletableFuture.allOf(deleteFutures.toArray(new CompletableFuture[0]));
+            allDeletes.join();
+
+            LOGGER.atInfo()
+                    .addKeyValue("taskName", task.getName())
+                    .addKeyValue("fileBatch", fileBatch.toString())
+                    .addKeyValue("tableId", tableId)
+                    .log("All the files in task have been deleted");
 
             return true;
         } catch (Exception e) {
-            LOGGER.error("Error during table content cleanup for file {}", filePath, e);
+            LOGGER.error("Error during table content cleanup for file batch {}", fileBatch.toString(), e);
             return false;
         }
     }
@@ -82,7 +100,7 @@ public class TableContentCleanupTaskHandler implements TaskHandler {
                                               String filePath,
                                               Throwable e,
                                               int attempt) {
-        if (e != null && attempt < MAX_ATTEMPTS) {
+        if (e != null && attempt <= MAX_ATTEMPTS) {
             LOGGER.atWarn()
                     .addKeyValue("filePath", filePath)
                     .addKeyValue("attempt", attempt)
@@ -100,27 +118,36 @@ public class TableContentCleanupTaskHandler implements TaskHandler {
                 LOGGER.atInfo()
                         .addKeyValue("filePath", filePath)
                         .addKeyValue("tableId", tableId)
-                        .log("Successfully deleted file");
+                        .addKeyValue("attempt", attempt)
+                        .log("Successfully deleted file {}", filePath);
             } else {
                 LOGGER.atInfo()
                         .addKeyValue("filePath", filePath)
                         .addKeyValue("tableId", tableId)
                         .log("File doesn't exist, likely already deleted");
             }
-        }, executorService).exceptionallyComposeAsync(newEx -> tryDelete(tableId, fileIO, filePath, newEx, attempt + 1),
-                CompletableFuture.delayedExecutor(FILE_DELETION_RETRY_MILLIS, TimeUnit.MILLISECONDS, executorService));
+        }, executorService).exceptionallyComposeAsync(
+                newEx -> {
+                    LOGGER.atWarn()
+                            .addKeyValue("filePath", filePath)
+                            .addKeyValue("tableId", tableId)
+                            .log("Exception caught deleting table content file", newEx);
+                    return tryDelete(tableId, fileIO, filePath, newEx, attempt + 1);
+                },
+                CompletableFuture.delayedExecutor(FILE_DELETION_RETRY_MILLIS, TimeUnit.MILLISECONDS, executorService)
+        );
     }
 
     public static final class TableContentCleanupTask {
         private TableIdentifier tableId;
-        private String filePath;
+        private List<String> fileBatch;
 
         public TableContentCleanupTask() {
         }
 
-        public TableContentCleanupTask(TableIdentifier tableId, String filePath) {
+        public TableContentCleanupTask(TableIdentifier tableId, List<String> fileBatch) {
             this.tableId = tableId;
-            this.filePath = filePath;
+            this.fileBatch = fileBatch;
         }
 
         public TableIdentifier getTableId() {
@@ -131,12 +158,12 @@ public class TableContentCleanupTaskHandler implements TaskHandler {
             this.tableId = tableId;
         }
 
-        public String getFilePath() {
-            return filePath;
+        public List<String> getFileBatch() {
+            return fileBatch;
         }
 
-        public void setFilePath(String filePath) {
-            this.filePath = filePath;
+        public void setFileBatch(List<String> fileBatch) {
+            this.fileBatch = fileBatch;
         }
 
         @Override
@@ -144,15 +171,15 @@ public class TableContentCleanupTaskHandler implements TaskHandler {
             if (this == object) {
                 return true;
             }
-            if (!(object instanceof TableContentCleanupTask that)) {
+            if (!(object instanceof TableContentCleanupTask other)) {
                 return false;
             }
-            return Objects.equals(tableId, that.tableId) && Objects.equals(filePath, that.filePath);
+            return Objects.equals(tableId, other.tableId) && Objects.equals(fileBatch, other.fileBatch);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(tableId, filePath);
+            return Objects.hash(tableId, fileBatch.toString());
         }
     }
 }
