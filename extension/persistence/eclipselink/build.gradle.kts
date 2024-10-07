@@ -45,6 +45,7 @@ dependencies {
     }
   }
 
+  runtimeOnly("org.postgresql:postgresql:42.7.4")
   compileOnly(libs.jetbrains.annotations)
 
   testImplementation(libs.h2)
