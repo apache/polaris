@@ -104,6 +104,7 @@ import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFac
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
+import org.apache.polaris.service.task.TableContentCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutorImpl;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.apache.polaris.service.throttling.StreamReadConstraintsExceptionMapper;
@@ -211,6 +212,9 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     taskExecutor.addTaskHandler(
         new ManifestFileCleanupTaskHandler(
             fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+    taskExecutor.addTaskHandler(
+            new TableContentCleanupTaskHandler(
+                    fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
 
     LOGGER.info(
         "Initializing PolarisCallContextCatalogFactory for metaStoreManagerType {}",
