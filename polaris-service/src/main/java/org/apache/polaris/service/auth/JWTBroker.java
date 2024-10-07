@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
 import java.time.Instant;
@@ -57,35 +58,53 @@ abstract class JWTBroker implements TokenBroker {
   @Override
   public DecodedToken verify(String token) {
     JWTVerifier verifier = JWT.require(getAlgorithm()).build();
-    DecodedJWT decodedJWT = verifier.verify(token);
+    try {
+      DecodedJWT decodedJWT = verifier.verify(token);
+      validateDecodedJWT(decodedJWT);
+      return new DecodedToken() {
+        @Override
+        public Long getPrincipalId() {
+          return decodedJWT.getClaim("principalId").asLong();
+        }
+
+        @Override
+        public String getClientId() {
+          return decodedJWT.getClaim("client_id").asString();
+        }
+
+        @Override
+        public String getSub() {
+          return decodedJWT.getSubject();
+        }
+
+        @Override
+        public String getScope() {
+          return decodedJWT.getClaim("scope").asString();
+        }
+      };
+
+    } catch (JWTVerificationException e) {
+      // Token verification can fail because of following reasons
+      // AlgorithmMismatchException - if the algorithm stated in the token's header it's not
+      // equal to the one defined in the JWTVerifier.
+      // SignatureVerificationException - if the signature is invalid.
+      // TokenExpiredException - if the token has expired.
+      // InvalidClaimException - if a claim contained a different value than the expected one.
+      throw new NotAuthorizedException(
+          "Failed to verify the token with cause %s and reason %s", e.getCause(), e.getMessage());
+    }
+  }
+
+  private void validateDecodedJWT(DecodedJWT decodedJWT) {
     Boolean isActive = decodedJWT.getClaim(CLAIM_KEY_ACTIVE).asBoolean();
     if (isActive == null || !isActive) {
       throw new NotAuthorizedException("Token is not active");
     }
+
+    // TokenExpiredException can be thrown during token verification.
     if (decodedJWT.getExpiresAtAsInstant().isBefore(Instant.now())) {
       throw new NotAuthorizedException("Token has expired");
     }
-    return new DecodedToken() {
-      @Override
-      public Long getPrincipalId() {
-        return decodedJWT.getClaim("principalId").asLong();
-      }
-
-      @Override
-      public String getClientId() {
-        return decodedJWT.getClaim("client_id").asString();
-      }
-
-      @Override
-      public String getSub() {
-        return decodedJWT.getSubject();
-      }
-
-      @Override
-      public String getScope() {
-        return decodedJWT.getClaim("scope").asString();
-      }
-    };
   }
 
   @Override
