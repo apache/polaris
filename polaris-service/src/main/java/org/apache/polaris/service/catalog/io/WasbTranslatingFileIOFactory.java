@@ -19,18 +19,25 @@
 package org.apache.polaris.service.catalog.io;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
+
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.ContentFile;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DeleteFile;
+import org.apache.iceberg.FileContent;
+import org.apache.iceberg.FileFormat;
 import org.apache.iceberg.ManifestFile;
+import org.apache.iceberg.StructLike;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.io.SeekableInputStream;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 
 /** A FileIOFactory that translates WASB paths to ABFS ones */
@@ -53,6 +60,9 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
   public static class WasbTranslatingFileIO implements FileIO {
     private final FileIO io;
 
+    private static final String WASB_SCHEME = "wasb";
+    private static final String ABFS_SCHEME = "abfs";
+
     public WasbTranslatingFileIO(FileIO io) {
       this.io = io;
     }
@@ -61,71 +71,27 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
       if (path == null) {
         return null;
       } else {
-        AzureLocation azureLocation = new AzureLocation(path);
-        String scheme = azureLocation.getScheme();
-        if (scheme.startsWith("wasb")) {
-          scheme = scheme.replaceAll("wasb", "abfs");
+        StorageLocation storageLocation = StorageLocation.of(path);
+        if (storageLocation instanceof AzureLocation azureLocation) {
+          String scheme = azureLocation.getScheme();
+          if (scheme.startsWith(WASB_SCHEME)) {
+            scheme = scheme.replaceAll(WASB_SCHEME, ABFS_SCHEME);
+          }
+          return String.format(
+              "%s://%s@%s.dfs.core.windows.net/%s",
+              scheme,
+              azureLocation.getContainer(),
+              azureLocation.getStorageAccount(),
+              azureLocation.getFilePath());
+        } else {
+          return path;
         }
-        return String.format(
-            "%s://%s@%s.dfs.core.windows.net/%s",
-            scheme,
-            azureLocation.getContainer(),
-            azureLocation.getStorageAccount(),
-            azureLocation.getFilePath());
-      }
-    }
-
-    public static InputFile translate(InputFile inputFile) {
-      if (inputFile == null) {
-        return null;
-      } else {
-        return new InputFile() {
-          @Override
-          public long getLength() {
-            return inputFile.getLength();
-          }
-
-          @Override
-          public SeekableInputStream newStream() {
-            return inputFile.newStream();
-          }
-
-          @Override
-          public String location() {
-            return translate(inputFile.location());
-          }
-
-          @Override
-          public boolean exists() {
-            return inputFile.exists();
-          }
-        };
       }
     }
 
     @Override
     public InputFile newInputFile(String path) {
       return io.newInputFile(translate(path));
-    }
-
-    @Override
-    public InputFile newInputFile(String path, long length) {
-      return io.newInputFile(translate(path), length);
-    }
-
-    @Override
-    public InputFile newInputFile(DataFile file) {
-      throw new UnsupportedOperationException("DataFile translation not supported");
-    }
-
-    @Override
-    public InputFile newInputFile(DeleteFile file) {
-      throw new UnsupportedOperationException("DeleteFile translation not supported");
-    }
-
-    @Override
-    public InputFile newInputFile(ManifestFile manifest) {
-      throw new UnsupportedOperationException("ManifestFile translation not supported");
     }
 
     @Override
@@ -136,16 +102,6 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
     @Override
     public void deleteFile(String path) {
       io.deleteFile(translate(path));
-    }
-
-    @Override
-    public void deleteFile(InputFile file) {
-      io.deleteFile(translate(file));
-    }
-
-    @Override
-    public void deleteFile(OutputFile file) {
-      throw new UnsupportedOperationException("OutputFile translation not supported");
     }
 
     @Override
