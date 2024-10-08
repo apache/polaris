@@ -87,8 +87,7 @@ abstract class JWTBroker implements TokenBroker {
       };
 
     } catch (JWTVerificationException e) {
-      LOGGER.error(
-          "Failed to verify the token with cause {} and message {}", e.getCause(), e.getMessage());
+      LOGGER.error("Failed to verify the token with error", e);
       throw new NotAuthorizedException("Failed to verify the token");
     }
   }
