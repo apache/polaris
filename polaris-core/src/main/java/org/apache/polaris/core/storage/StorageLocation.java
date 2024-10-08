@@ -26,7 +26,11 @@ import org.apache.polaris.core.storage.azure.AzureLocation;
 public class StorageLocation {
   private final String location;
 
+  /**
+   * Create a StorageLocation from a String path
+   */
   public static StorageLocation of(String location) {
+    // TODO implement StorageLocation for all supported file systems and add isValidLocation
     if (AzureLocation.isAzureLocation(location)) {
       return new AzureLocation(location);
     } else {

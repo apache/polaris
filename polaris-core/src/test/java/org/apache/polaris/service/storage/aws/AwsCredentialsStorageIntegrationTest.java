@@ -496,6 +496,6 @@ class AwsCredentialsStorageIntegrationTest {
 
   private static @NotNull String s3Path(
       String bucket, String keyPrefix, PolarisStorageConfigurationInfo.StorageType storageType) {
-    return storageType.getPrefixes().get(0) + bucket + "/" + keyPrefix;
+    return "s3://" + bucket + "/" + keyPrefix;
   }
 }
