@@ -21,16 +21,15 @@ package org.apache.polaris.core.monitor;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import java.lang.reflect.Method;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.TimeUnit;
-
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
+import java.lang.reflect.Method;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.resource.TimedApi;
 
 /**
@@ -55,7 +54,8 @@ public class PolarisMetricRegistry {
     new JvmMemoryMetrics().bindTo(meterRegistry);
     new JvmGcMetrics().bindTo(meterRegistry);
     new ProcessorMetrics().bindTo(meterRegistry);
-    new JvmThreadMetrics().bindTo(meterRegistry);   }
+    new JvmThreadMetrics().bindTo(meterRegistry);
+  }
 
   public MeterRegistry getMeterRegistry() {
     return meterRegistry;
