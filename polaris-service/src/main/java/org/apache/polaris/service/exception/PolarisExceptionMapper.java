@@ -16,34 +16,43 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service;
+package org.apache.polaris.service.exception;
 
-import io.dropwizard.jersey.validation.JerseyViolationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.polaris.core.exceptions.AlreadyExistsException;
+import org.apache.polaris.core.exceptions.PolarisException;
 
 /**
- * Override of the default JerseyViolationExceptionMapper to provide an Iceberg ErrorResponse with
- * the exception details.
+ * An {@link ExceptionMapper} implementation for {@link PolarisException}s modeled after {@link
+ * IcebergExceptionMapper}
  */
 @Provider
-public class IcebergJerseyViolationExceptionMapper
-    implements ExceptionMapper<JerseyViolationException> {
+public class PolarisExceptionMapper implements ExceptionMapper<PolarisException> {
+
+  private Response.Status getStatus(PolarisException exception) {
+    if (exception instanceof AlreadyExistsException) {
+      return Response.Status.CONFLICT;
+    } else {
+      return Response.Status.INTERNAL_SERVER_ERROR;
+    }
+  }
+
   @Override
-  public Response toResponse(JerseyViolationException exception) {
-    final String message = "Invalid value: " + exception.getMessage();
-    ErrorResponse icebergErrorResponse =
+  public Response toResponse(PolarisException exception) {
+    Response.Status status = getStatus(exception);
+    ErrorResponse errorResponse =
         ErrorResponse.builder()
-            .responseCode(Response.Status.BAD_REQUEST.getStatusCode())
+            .responseCode(status.getStatusCode())
             .withType(exception.getClass().getSimpleName())
-            .withMessage(message)
+            .withMessage(exception.getMessage())
             .build();
-    return Response.status(Response.Status.BAD_REQUEST)
+    return Response.status(status)
+        .entity(errorResponse)
         .type(MediaType.APPLICATION_JSON_TYPE)
-        .entity(icebergErrorResponse)
         .build();
   }
 }
