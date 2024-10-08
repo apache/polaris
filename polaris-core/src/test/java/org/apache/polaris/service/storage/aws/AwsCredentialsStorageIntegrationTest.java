@@ -217,14 +217,9 @@ class AwsCredentialsStorageIntegrationTest {
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
-                    storageType,
-                    List.of(s3Path(bucket, warehouseKeyPrefix)),
-                    roleARN,
-                    externalId),
+                    storageType, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId),
                 true,
-                Set.of(
-                    s3Path(bucket, firstPath),
-                    s3Path(bucket, secondPath)),
+                Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)));
     assertThat(credentials)
         .isNotEmpty()
@@ -317,9 +312,7 @@ class AwsCredentialsStorageIntegrationTest {
                     roleARN,
                     externalId),
                 false, /* allowList = false*/
-                Set.of(
-                    s3Path(bucket, firstPath),
-                    s3Path(bucket, secondPath)),
+                Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)));
     assertThat(credentials)
         .isNotEmpty()
@@ -405,14 +398,9 @@ class AwsCredentialsStorageIntegrationTest {
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
-                    storageType,
-                    List.of(s3Path(bucket, warehouseKeyPrefix)),
-                    roleARN,
-                    externalId),
+                    storageType, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId),
                 true, /* allowList = true */
-                Set.of(
-                    s3Path(bucket, firstPath),
-                    s3Path(bucket, secondPath)),
+                Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of());
     assertThat(credentials)
         .isNotEmpty()
@@ -469,10 +457,7 @@ class AwsCredentialsStorageIntegrationTest {
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
-                    List.of(
-                        s3Path(
-                            bucket,
-                            warehouseKeyPrefix)),
+                    List.of(s3Path(bucket, warehouseKeyPrefix)),
                     roleARN,
                     externalId),
                 true, /* allowList = true */
