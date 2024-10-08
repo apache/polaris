@@ -218,14 +218,14 @@ class AwsCredentialsStorageIntegrationTest {
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
                     storageType,
-                    List.of(s3Path(bucket, warehouseKeyPrefix, storageType)),
+                    List.of(s3Path(bucket, warehouseKeyPrefix)),
                     roleARN,
                     externalId),
                 true,
                 Set.of(
-                    s3Path(bucket, firstPath, storageType),
-                    s3Path(bucket, secondPath, storageType)),
-                Set.of(s3Path(bucket, firstPath, storageType)));
+                    s3Path(bucket, firstPath),
+                    s3Path(bucket, secondPath)),
+                Set.of(s3Path(bucket, firstPath)));
     assertThat(credentials)
         .isNotEmpty()
         .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
@@ -313,14 +313,14 @@ class AwsCredentialsStorageIntegrationTest {
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
-                    List.of(s3Path(bucket, warehouseKeyPrefix, storageType)),
+                    List.of(s3Path(bucket, warehouseKeyPrefix)),
                     roleARN,
                     externalId),
                 false, /* allowList = false*/
                 Set.of(
-                    s3Path(bucket, firstPath, storageType),
-                    s3Path(bucket, secondPath, storageType)),
-                Set.of(s3Path(bucket, firstPath, storageType)));
+                    s3Path(bucket, firstPath),
+                    s3Path(bucket, secondPath)),
+                Set.of(s3Path(bucket, firstPath)));
     assertThat(credentials)
         .isNotEmpty()
         .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
@@ -406,13 +406,13 @@ class AwsCredentialsStorageIntegrationTest {
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
                     storageType,
-                    List.of(s3Path(bucket, warehouseKeyPrefix, storageType)),
+                    List.of(s3Path(bucket, warehouseKeyPrefix)),
                     roleARN,
                     externalId),
                 true, /* allowList = true */
                 Set.of(
-                    s3Path(bucket, firstPath, storageType),
-                    s3Path(bucket, secondPath, storageType)),
+                    s3Path(bucket, firstPath),
+                    s3Path(bucket, secondPath)),
                 Set.of());
     assertThat(credentials)
         .isNotEmpty()
@@ -472,8 +472,7 @@ class AwsCredentialsStorageIntegrationTest {
                     List.of(
                         s3Path(
                             bucket,
-                            warehouseKeyPrefix,
-                            PolarisStorageConfigurationInfo.StorageType.S3)),
+                            warehouseKeyPrefix)),
                     roleARN,
                     externalId),
                 true, /* allowList = true */
@@ -494,12 +493,7 @@ class AwsCredentialsStorageIntegrationTest {
     return bucketArn + "/" + keyPrefix + "/*";
   }
 
-  private static @NotNull String s3Path(
-      String bucket, String keyPrefix, PolarisStorageConfigurationInfo.StorageType storageType) {
-<<<<<<< HEAD
-    return storageType.getPrefixes().get(0) + bucket + "/" + keyPrefix;
-=======
+  private static @NotNull String s3Path(String bucket, String keyPrefix) {
     return "s3://" + bucket + "/" + keyPrefix;
->>>>>>> 6c02252e339cedd53d7ac64a87ce52b3bb4d27d2
   }
 }

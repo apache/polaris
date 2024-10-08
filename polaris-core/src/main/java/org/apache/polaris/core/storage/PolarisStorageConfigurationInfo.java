@@ -241,11 +241,7 @@ public abstract class PolarisStorageConfigurationInfo {
   /** Polaris' storage type, each has a fixed prefix for its location */
   public enum StorageType {
     S3("s3://"),
-<<<<<<< HEAD
-    AZURE(List.of("abfs", "wasb", "abfss", "wasbs")),
-=======
     AZURE(List.of("abfs://", "wasb://", "abfss://", "wasbs://")),
->>>>>>> 6c02252e339cedd53d7ac64a87ce52b3bb4d27d2
     GCS("gs://"),
     FILE("file://"),
     ;

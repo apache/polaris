@@ -46,8 +46,6 @@ public class AzureLocationTest {
   }
 
   @Test
-<<<<<<< HEAD
-=======
   public void testCrossSchemeComparisons() {
     StorageLocation abfsLocation =
         AzureLocation.of("abfss://container@acc.dev.core.windows.net/some/file/x");
@@ -58,7 +56,6 @@ public class AzureLocationTest {
   }
 
   @Test
->>>>>>> 6c02252e339cedd53d7ac64a87ce52b3bb4d27d2
   public void testLocation_negative_cases() {
     Assertions.assertThatThrownBy(
             () -> new AzureLocation("abfss://storageaccount.blob.core.windows.net/myfile"))
