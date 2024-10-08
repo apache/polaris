@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.storage.azure;
 
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -35,11 +36,27 @@ public class AzureLocationTest {
   }
 
   @Test
+  public void testWasbLocation() {
+    String uri = "wasb://container@storageaccount.blob.core.windows.net/myfile";
+    AzureLocation azureLocation = new AzureLocation(uri);
+    Assertions.assertThat(azureLocation.getContainer()).isEqualTo("container");
+    Assertions.assertThat(azureLocation.getStorageAccount()).isEqualTo("storageaccount");
+    Assertions.assertThat(azureLocation.getEndpoint()).isEqualTo("blob.core.windows.net");
+    Assertions.assertThat(azureLocation.getFilePath()).isEqualTo("myfile");
+  }
+
+  @Test
+  public void testCrossSchemeComparisons() {
+    StorageLocation abfsLocation =
+        AzureLocation.of("abfss://container@acc.dev.core.windows.net/some/file/x");
+    StorageLocation wasbLocation =
+        AzureLocation.of("wasb://container@acc.blob.core.windows.net/some/file");
+    Assertions.assertThat(abfsLocation).isNotEqualTo(wasbLocation);
+    Assertions.assertThat(abfsLocation.isChildOf(wasbLocation)).isTrue();
+  }
+
+  @Test
   public void testLocation_negative_cases() {
-    Assertions.assertThatThrownBy(
-            () ->
-                new AzureLocation("wasbs://container@storageaccount.blob.core.windows.net/myfile"))
-        .isInstanceOf(IllegalArgumentException.class);
     Assertions.assertThatThrownBy(
             () -> new AzureLocation("abfss://storageaccount.blob.core.windows.net/myfile"))
         .isInstanceOf(IllegalArgumentException.class);

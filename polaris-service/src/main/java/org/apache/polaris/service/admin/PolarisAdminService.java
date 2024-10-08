@@ -78,6 +78,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.jetbrains.annotations.NotNull;
@@ -517,17 +518,18 @@ public class PolarisAdminService {
                 return false;
               }
               return getCatalogLocations(existingCatalog).stream()
+                  .map(StorageLocation::of)
                   .anyMatch(
-                      existingLocation ->
-                          newCatalogLocations.stream()
-                              .anyMatch(
-                                  newLocation -> {
-                                    if (newLocation == null || existingLocation == null) {
-                                      return false;
-                                    }
-                                    return newLocation.startsWith(existingLocation)
-                                        || existingLocation.startsWith(newLocation);
-                                  }));
+                      existingLocation -> {
+                        return newCatalogLocations.stream()
+                            .anyMatch(
+                                newLocationString -> {
+                                  StorageLocation newLocation =
+                                      StorageLocation.of(newLocationString);
+                                  return newLocation.isChildOf(existingLocation)
+                                      || existingLocation.isChildOf(newLocation);
+                                });
+                      });
             });
   }
 

@@ -20,6 +20,7 @@ package org.apache.polaris.core.storage;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
+import java.util.Locale;
 import org.jetbrains.annotations.NotNull;
 
 /**
@@ -42,7 +43,8 @@ public class FileStorageConfigurationInfo extends PolarisStorageConfigurationInf
 
   @Override
   public void validatePrefixForStorageType(String loc) {
-    if (!loc.startsWith(getStorageType().getPrefix())
+    if (getStorageType().getPrefixes().stream()
+            .noneMatch(p -> loc.toLowerCase(Locale.ROOT).startsWith(p))
         && !loc.startsWith("file:/")
         && !loc.startsWith("/")
         && !loc.equals("*")) {
