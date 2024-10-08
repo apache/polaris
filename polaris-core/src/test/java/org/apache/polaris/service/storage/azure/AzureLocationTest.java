@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.storage.azure;
 
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -45,6 +46,19 @@ public class AzureLocationTest {
   }
 
   @Test
+<<<<<<< HEAD
+=======
+  public void testCrossSchemeComparisons() {
+    StorageLocation abfsLocation =
+        AzureLocation.of("abfss://container@acc.dev.core.windows.net/some/file/x");
+    StorageLocation wasbLocation =
+        AzureLocation.of("wasb://container@acc.blob.core.windows.net/some/file");
+    Assertions.assertThat(abfsLocation).isNotEqualTo(wasbLocation);
+    Assertions.assertThat(abfsLocation.isChildOf(wasbLocation)).isTrue();
+  }
+
+  @Test
+>>>>>>> 6c02252e339cedd53d7ac64a87ce52b3bb4d27d2
   public void testLocation_negative_cases() {
     Assertions.assertThatThrownBy(
             () -> new AzureLocation("abfss://storageaccount.blob.core.windows.net/myfile"))

@@ -222,7 +222,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         this.catalogName);
 
     // Base location from catalogEntity is primary source of truth, otherwise fall through
-    // to the same key from the properties map, annd finally fall through to WAREHOUSE_LOCATION.
+    // to the same key from the properties map, and finally fall through to WAREHOUSE_LOCATION.
     String baseLocation =
         Optional.ofNullable(catalogEntity.getDefaultBaseLocation())
             .orElse(
@@ -250,11 +250,17 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           ioImplClassName,
           storageConfigurationInfo);
     } else {
-      ioImplClassName = storageConfigurationInfo.getFileIoImplClassName();
-      LOGGER.debug(
-          "Resolved ioImplClassName {} for storageConfiguration {}",
-          ioImplClassName,
-          storageConfigurationInfo);
+      if (storageConfigurationInfo != null) {
+        ioImplClassName = storageConfigurationInfo.getFileIoImplClassName();
+        LOGGER.debug(
+            "Resolved ioImplClassName {} from storageConfiguration {}",
+            ioImplClassName,
+            storageConfigurationInfo);
+      } else {
+        LOGGER.warn(
+            "Cannot resolve property '{}' for null storageConfiguration.",
+            CatalogProperties.FILE_IO_IMPL);
+      }
     }
     this.closeableGroup = CallContext.getCurrentContext().closeables();
     closeableGroup.addCloseable(metricsReporter());

@@ -104,7 +104,10 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
       StorageLocation storageLocation = StorageLocation.of(rawLocation);
       final boolean isValidLocation =
           allowedLocations.stream().anyMatch(storageLocation::isChildOf);
+<<<<<<< HEAD
       ;
+=======
+>>>>>>> 6c02252e339cedd53d7ac64a87ce52b3bb4d27d2
       Map<PolarisStorageActions, ValidationResult> locationResult =
           actions.stream()
               .collect(

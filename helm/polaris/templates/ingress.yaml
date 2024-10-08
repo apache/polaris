@@ -20,7 +20,7 @@
 # {{- $kubeVersion := .Capabilities.KubeVersion.Version -}}
 {{- if .Values.ingress.enabled -}}
 {{- $fullName := include "polaris.fullname" . -}}
-{{- $svcPort := coalesce .Values.service.port (index .Values.service.ports "polaris-service") -}}
+{{- $svcPort := index .Values.service.ports "polaris-service" -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
