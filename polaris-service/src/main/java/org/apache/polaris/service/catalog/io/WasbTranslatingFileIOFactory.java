@@ -30,83 +30,13 @@ import org.apache.iceberg.io.OutputFile;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 
-/** A FileIOFactory that translates WASB paths to ABFS ones */
+/** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
 @JsonTypeName("wasb")
 public class WasbTranslatingFileIOFactory implements FileIOFactory {
-  private final List<FileIO> ios;
-
-  public WasbTranslatingFileIOFactory() {
-    ios = new ArrayList<>();
-  }
-
   @Override
   public FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
     WasbTranslatingFileIO wrapped =
         new WasbTranslatingFileIO(CatalogUtil.loadFileIO(ioImpl, properties, new Configuration()));
-    ios.add(wrapped);
     return wrapped;
-  }
-
-  public static final class WasbTranslatingFileIO implements FileIO {
-    private final FileIO io;
-
-    private static final String WASB_SCHEME = "wasb";
-    private static final String ABFS_SCHEME = "abfs";
-
-    public WasbTranslatingFileIO(FileIO io) {
-      this.io = io;
-    }
-
-    private static String translate(String path) {
-      if (path == null) {
-        return null;
-      } else {
-        StorageLocation storageLocation = StorageLocation.of(path);
-        if (storageLocation instanceof AzureLocation azureLocation) {
-          String scheme = azureLocation.getScheme();
-          if (scheme.startsWith(WASB_SCHEME)) {
-            scheme = scheme.replaceAll(WASB_SCHEME, ABFS_SCHEME);
-          }
-          return String.format(
-              "%s://%s@%s.dfs.core.windows.net/%s",
-              scheme,
-              azureLocation.getContainer(),
-              azureLocation.getStorageAccount(),
-              azureLocation.getFilePath());
-        } else {
-          return path;
-        }
-      }
-    }
-
-    @Override
-    public InputFile newInputFile(String path) {
-      return io.newInputFile(translate(path));
-    }
-
-    @Override
-    public OutputFile newOutputFile(String path) {
-      return io.newOutputFile(translate(path));
-    }
-
-    @Override
-    public void deleteFile(String path) {
-      io.deleteFile(translate(path));
-    }
-
-    @Override
-    public Map<String, String> properties() {
-      return io.properties();
-    }
-
-    @Override
-    public void initialize(Map<String, String> properties) {
-      io.initialize(properties);
-    }
-
-    @Override
-    public void close() {
-      io.close();
-    }
   }
 }
