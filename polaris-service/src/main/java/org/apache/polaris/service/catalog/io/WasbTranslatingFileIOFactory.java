@@ -19,16 +19,10 @@
 package org.apache.polaris.service.catalog.io;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.io.FileIO;
-import org.apache.iceberg.io.InputFile;
-import org.apache.iceberg.io.OutputFile;
-import org.apache.polaris.core.storage.StorageLocation;
-import org.apache.polaris.core.storage.azure.AzureLocation;
 
 /** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
 @JsonTypeName("wasb")

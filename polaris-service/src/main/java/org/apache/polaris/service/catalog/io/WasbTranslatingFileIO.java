@@ -16,80 +16,78 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.catalog.io;
 
+import java.util.Map;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 
-import java.util.Map;
-
 /**
- * A {@link FileIO} implementation that translates WASB paths into ABFS paths and then
- * delegates to another underlying FileIO implementation
+ * A {@link FileIO} implementation that translates WASB paths into ABFS paths and then delegates to
+ * another underlying FileIO implementation
  */
 public class WasbTranslatingFileIO implements FileIO {
-    private final FileIO io;
+  private final FileIO io;
 
-    private static final String WASB_SCHEME = "wasb";
-    private static final String ABFS_SCHEME = "abfs";
+  private static final String WASB_SCHEME = "wasb";
+  private static final String ABFS_SCHEME = "abfs";
 
-    public WasbTranslatingFileIO(FileIO io) {
-        this.io = io;
-    }
+  public WasbTranslatingFileIO(FileIO io) {
+    this.io = io;
+  }
 
-    private static String translate(String path) {
-        if (path == null) {
-            return null;
-        } else {
-            StorageLocation storageLocation = StorageLocation.of(path);
-            if (storageLocation instanceof AzureLocation azureLocation) {
-                String scheme = azureLocation.getScheme();
-                if (scheme.startsWith(WASB_SCHEME)) {
-                    scheme = scheme.replaceAll(WASB_SCHEME, ABFS_SCHEME);
-                }
-                return String.format(
-                    "%s://%s@%s.dfs.core.windows.net/%s",
-                    scheme,
-                    azureLocation.getContainer(),
-                    azureLocation.getStorageAccount(),
-                    azureLocation.getFilePath());
-            } else {
-                return path;
-            }
+  private static String translate(String path) {
+    if (path == null) {
+      return null;
+    } else {
+      StorageLocation storageLocation = StorageLocation.of(path);
+      if (storageLocation instanceof AzureLocation azureLocation) {
+        String scheme = azureLocation.getScheme();
+        if (scheme.startsWith(WASB_SCHEME)) {
+          scheme = scheme.replaceAll(WASB_SCHEME, ABFS_SCHEME);
         }
+        return String.format(
+            "%s://%s@%s.dfs.core.windows.net/%s",
+            scheme,
+            azureLocation.getContainer(),
+            azureLocation.getStorageAccount(),
+            azureLocation.getFilePath());
+      } else {
+        return path;
+      }
     }
+  }
 
-    @Override
-    public InputFile newInputFile(String path) {
-        return io.newInputFile(translate(path));
-    }
+  @Override
+  public InputFile newInputFile(String path) {
+    return io.newInputFile(translate(path));
+  }
 
-    @Override
-    public OutputFile newOutputFile(String path) {
-        return io.newOutputFile(translate(path));
-    }
+  @Override
+  public OutputFile newOutputFile(String path) {
+    return io.newOutputFile(translate(path));
+  }
 
-    @Override
-    public void deleteFile(String path) {
-        io.deleteFile(translate(path));
-    }
+  @Override
+  public void deleteFile(String path) {
+    io.deleteFile(translate(path));
+  }
 
-    @Override
-    public Map<String, String> properties() {
-        return io.properties();
-    }
+  @Override
+  public Map<String, String> properties() {
+    return io.properties();
+  }
 
-    @Override
-    public void initialize(Map<String, String> properties) {
-        io.initialize(properties);
-    }
+  @Override
+  public void initialize(Map<String, String> properties) {
+    io.initialize(properties);
+  }
 
-    @Override
-    public void close() {
-        io.close();
-    }
+  @Override
+  public void close() {
+    io.close();
+  }
 }
