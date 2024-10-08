@@ -35,15 +35,18 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.types.TokenType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Generates a JWT Token. */
 abstract class JWTBroker implements TokenBroker {
+  private static final Logger LOGGER = LoggerFactory.getLogger(JWTBroker.class);
 
-  private static final String ISSUER_KEY = "polaris";
-  private static final String CLAIM_KEY_ACTIVE = "active";
-  private static final String CLAIM_KEY_CLIENT_ID = "client_id";
-  private static final String CLAIM_KEY_PRINCIPAL_ID = "principalId";
-  private static final String CLAIM_KEY_SCOPE = "scope";
+  static final String ISSUER_KEY = "polaris";
+  static final String CLAIM_KEY_ACTIVE = "active";
+  static final String CLAIM_KEY_CLIENT_ID = "client_id";
+  static final String CLAIM_KEY_PRINCIPAL_ID = "principalId";
+  static final String CLAIM_KEY_SCOPE = "scope";
 
   private final PolarisEntityManager entityManager;
   private final int maxTokenGenerationInSeconds;
@@ -57,10 +60,10 @@ abstract class JWTBroker implements TokenBroker {
 
   @Override
   public DecodedToken verify(String token) {
-    JWTVerifier verifier = JWT.require(getAlgorithm()).build();
+    JWTVerifier verifier = JWT.require(getAlgorithm()).withClaim(CLAIM_KEY_ACTIVE, true).build();
+
     try {
       DecodedJWT decodedJWT = verifier.verify(token);
-      validateDecodedJWT(decodedJWT);
       return new DecodedToken() {
         @Override
         public Long getPrincipalId() {
@@ -84,26 +87,9 @@ abstract class JWTBroker implements TokenBroker {
       };
 
     } catch (JWTVerificationException e) {
-      // Token verification can fail because of following reasons
-      // AlgorithmMismatchException - if the algorithm stated in the token's header it's not
-      // equal to the one defined in the JWTVerifier.
-      // SignatureVerificationException - if the signature is invalid.
-      // TokenExpiredException - if the token has expired.
-      // InvalidClaimException - if a claim contained a different value than the expected one.
-      throw new NotAuthorizedException(
-          "Failed to verify the token with cause %s and reason %s", e.getCause(), e.getMessage());
-    }
-  }
-
-  private void validateDecodedJWT(DecodedJWT decodedJWT) {
-    Boolean isActive = decodedJWT.getClaim(CLAIM_KEY_ACTIVE).asBoolean();
-    if (isActive == null || !isActive) {
-      throw new NotAuthorizedException("Token is not active");
-    }
-
-    // TokenExpiredException can be thrown during token verification.
-    if (decodedJWT.getExpiresAtAsInstant().isBefore(Instant.now())) {
-      throw new NotAuthorizedException("Token has expired");
+      LOGGER.error(
+          "Failed to verify the token with cause {} and message {}", e.getCause(), e.getMessage());
+      throw new NotAuthorizedException("Failed to verify the token");
     }
   }
 
