@@ -22,7 +22,9 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.iceberg.ManifestFile;
+import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.io.FileIO;
@@ -49,6 +51,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
   private final TaskExecutor taskExecutor;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final Function<TaskEntity, FileIO> fileIOSupplier;
+  private static final int BATCH_SIZE = 10;
 
   public TableCleanupTaskHandler(
       TaskExecutor taskExecutor,
@@ -158,11 +161,98 @@ public class TableCleanupTaskHandler implements TaskHandler {
         for (PolarisBaseEntity createdTask : createdTasks) {
           taskExecutor.addTaskHandlerContext(createdTask.getId(), CallContext.getCurrentContext());
         }
+
+        // Schedule and dispatch prev metadata and stat files in seperated tasks
+        scheduleTableContentCleanupTask(
+            tableMetadata.previousFiles().stream().map(TableMetadata.MetadataLogEntry::file),
+            CleanupTableContentFileType.PREV_METADATA,
+            fileIO,
+            cleanupTask,
+            metaStoreManager,
+            polarisCallContext);
+        scheduleTableContentCleanupTask(
+            tableMetadata.statisticsFiles().stream().map(StatisticsFile::path),
+            CleanupTableContentFileType.STATISTICS,
+            fileIO,
+            cleanupTask,
+            metaStoreManager,
+            polarisCallContext);
+
         fileIO.deleteFile(tableEntity.getMetadataLocation());
 
         return true;
       }
     }
     return false;
+  }
+
+  private void scheduleTableContentCleanupTask(
+      Stream<String> fileStream,
+      CleanupTableContentFileType fileType,
+      FileIO fileIO,
+      TaskEntity cleanupTask,
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisCallContext polarisCallContext) {
+    PolarisBaseEntity entity = cleanupTask.readData(PolarisBaseEntity.class);
+    TableLikeEntity tableEntity = TableLikeEntity.of(entity);
+
+    List<String> validFiles = fileStream.filter(file -> TaskUtils.exists(file, fileIO)).toList();
+
+    for (int i = 0; i < validFiles.size(); i += BATCH_SIZE) {
+      List<String> fileBatch = validFiles.subList(i, Math.min(i + BATCH_SIZE, validFiles.size()));
+      String taskName = cleanupTask.getName() + "_batch" + i + "_" + UUID.randomUUID();
+      LOGGER
+          .atDebug()
+          .addKeyValue("taskName", taskName)
+          .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
+          .addKeyValue("fileBatch", fileBatch.toString())
+          .log("Queueing task to delete a batch of " + fileType.getTypeName());
+
+      TaskEntity batchTask =
+          new TaskEntity.Builder()
+              .setName(taskName)
+              .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
+              .setCreateTimestamp(polarisCallContext.getClock().millis())
+              .withTaskType(AsyncTaskType.TABLE_CONTENT_CLEANUP)
+              .withData(
+                  new TableContentCleanupTaskHandler.TableContentCleanupTask(
+                      tableEntity.getTableIdentifier(), fileBatch))
+              .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
+              .build();
+
+      List<PolarisBaseEntity> createdTasks =
+          metaStoreManager
+              .createEntitiesIfNotExist(polarisCallContext, null, List.of(batchTask))
+              .getEntities();
+
+      if (createdTasks != null) {
+        LOGGER
+            .atInfo()
+            .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
+            .addKeyValue("taskCount", createdTasks.size())
+            .addKeyValue("fileBatch", fileBatch.toString())
+            .log("Successfully queued task to delete a batch of " + fileType.getTypeName() + "s");
+
+        for (PolarisBaseEntity createdTask : createdTasks) {
+          taskExecutor.addTaskHandlerContext(createdTask.getId(), CallContext.getCurrentContext());
+        }
+      }
+    }
+  }
+
+  private enum CleanupTableContentFileType {
+    PREV_METADATA("previous metadata file"),
+    STATISTICS("statistics file"),
+    ;
+
+    private final String typeName;
+
+    CleanupTableContentFileType(String typeName) {
+      this.typeName = typeName;
+    }
+
+    public String getTypeName() {
+      return typeName;
+    }
   }
 }
