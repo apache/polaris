@@ -20,7 +20,7 @@
 services:
   polaris:
     build:
-      context: .
+      context: ../../
       network: host
     ports:
       - "8181:8181"
@@ -37,8 +37,8 @@ services:
       retries: 5
   jupyter:
     build:
-      context: .
-      dockerfile: ./notebooks/Dockerfile
+      context: ../../ # this is necessary to expose `regtests/` dir to notebooks/Dockerfile
+      dockerfile: ./getting-started/spark/notebooks/Dockerfile
       network: host
     ports:
       - "8888:8888"
@@ -48,8 +48,20 @@ services:
     environment:
       AWS_REGION: us-west-2
       POLARIS_HOST: polaris
+      POLARIS_CATALOG_NAME: polaris_demo # this is used both for `jupyter` and `create-polaris-catalog`, and must be kept in sync
     volumes:
       - notebooks:/home/jovyan/notebooks
+  create-polaris-catalog:
+    image: curlimages/curl
+    depends_on:
+      polaris:
+        condition: service_healthy
+    environment:
+      POLARIS_HOST: polaris
+      POLARIS_CATALOG_NAME: polaris_demo # this is used both for `jupyter` and `create-polaris-catalog`, and must be kept in sync
+    volumes:
+      - ./create-polaris-catalog.sh:/create-polaris-catalog.sh
+    command: ["/bin/sh", "/create-polaris-catalog.sh"]
 
 volumes:
   notebooks:
@@ -57,4 +69,4 @@ volumes:
     driver_opts:
       o: bind
       type: none
-      device: ./notebooks
+      device: ./notebooks/
