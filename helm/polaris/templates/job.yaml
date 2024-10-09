@@ -22,6 +22,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: {{ include "polaris.fullname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "polaris.labels" . | nindent 4 }}
     {{- if .Values.podLabels }}
