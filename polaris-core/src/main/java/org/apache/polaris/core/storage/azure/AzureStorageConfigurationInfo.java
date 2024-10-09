@@ -64,19 +64,19 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
     return tenantId;
   }
 
-  public String getMultiTenantAppName() {
+  public @Nullable String getMultiTenantAppName() {
     return multiTenantAppName;
   }
 
-  public void setMultiTenantAppName(String multiTenantAppName) {
+  public void setMultiTenantAppName(@Nullable String multiTenantAppName) {
     this.multiTenantAppName = multiTenantAppName;
   }
 
-  public String getConsentUrl() {
+  public @Nullable String getConsentUrl() {
     return consentUrl;
   }
 
-  public void setConsentUrl(String consentUrl) {
+  public void setConsentUrl(@Nullable String consentUrl) {
     this.consentUrl = consentUrl;
   }
 
