@@ -94,6 +94,7 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   public RealmContextResolver getRealmContextResolver() {
+    realmContextResolver.setDefaultRealm(this.defaultRealm);
     return realmContextResolver;
   }
 
@@ -128,6 +129,7 @@ public class PolarisApplicationConfig extends Configuration {
   @JsonProperty("defaultRealm")
   public void setDefaultRealm(String defaultRealm) {
     this.defaultRealm = defaultRealm;
+    realmContextResolver.setDefaultRealm(defaultRealm);
   }
 
   @JsonProperty("cors")
