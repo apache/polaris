@@ -47,7 +47,7 @@ public class WasbTranslatingFileIO implements FileIO {
       if (storageLocation instanceof AzureLocation azureLocation) {
         String scheme = azureLocation.getScheme();
         if (scheme.startsWith(WASB_SCHEME)) {
-          scheme = scheme.replaceAll(WASB_SCHEME, ABFS_SCHEME);
+          scheme = scheme.replaceFirst(WASB_SCHEME, ABFS_SCHEME);
         }
         return String.format(
             "%s://%s@%s.dfs.core.windows.net/%s",
