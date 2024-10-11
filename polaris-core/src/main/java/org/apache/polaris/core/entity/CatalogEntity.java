@@ -130,7 +130,6 @@ public class CatalogEntity extends PolarisEntity {
   private StorageConfigInfo getStorageInfo(Map<String, String> internalProperties) {
     if (internalProperties.containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName())) {
       PolarisStorageConfigurationInfo configInfo = getStorageConfigurationInfo();
-      PolarisStorageConfigurationInfo.StorageType storageType = configInfo.getStorageType();
       if (configInfo instanceof AwsStorageConfigurationInfo) {
         AwsStorageConfigurationInfo awsConfig = (AwsStorageConfigurationInfo) configInfo;
         return AwsStorageConfigInfo.builder()

@@ -25,7 +25,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.URI;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -98,7 +97,9 @@ import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.PolarisS3FileIOClientFactory;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -221,7 +222,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         this.catalogName);
 
     // Base location from catalogEntity is primary source of truth, otherwise fall through
-    // to the same key from the properties map, annd finally fall through to WAREHOUSE_LOCATION.
+    // to the same key from the properties map, and finally fall through to WAREHOUSE_LOCATION.
     String baseLocation =
         Optional.ofNullable(catalogEntity.getDefaultBaseLocation())
             .orElse(
@@ -249,11 +250,17 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           ioImplClassName,
           storageConfigurationInfo);
     } else {
-      ioImplClassName = storageConfigurationInfo.getFileIoImplClassName();
-      LOGGER.debug(
-          "Resolved ioImplClassName {} for storageConfiguration {}",
-          ioImplClassName,
-          storageConfigurationInfo);
+      if (storageConfigurationInfo != null) {
+        ioImplClassName = storageConfigurationInfo.getFileIoImplClassName();
+        LOGGER.debug(
+            "Resolved ioImplClassName {} from storageConfiguration {}",
+            ioImplClassName,
+            storageConfigurationInfo);
+      } else {
+        LOGGER.warn(
+            "Cannot resolve property '{}' for null storageConfiguration.",
+            CatalogProperties.FILE_IO_IMPL);
+      }
     }
     this.closeableGroup = CallContext.getCurrentContext().closeables();
     closeableGroup.addCloseable(metricsReporter());
@@ -1119,6 +1126,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           "Unable to resolve sibling entities to validate location - could not resolve"
               + status.getFailedToResolvedEntityName());
     }
+
+    StorageLocation targetLocation = StorageLocation.of(location);
     Stream.concat(
             siblingTables.stream()
                 .filter(tbl -> !tbl.name().equals(name))
@@ -1139,15 +1148,14 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                           .getBaseLocation();
                     }))
         .filter(java.util.Objects::nonNull)
+        .map(StorageLocation::of)
         .forEach(
             siblingLocation -> {
-              URI target = URI.create(location);
-              URI existing = URI.create(siblingLocation);
-              if (isUnderParentLocation(target, existing)
-                  || isUnderParentLocation(existing, target)) {
+              if (targetLocation.isChildOf(siblingLocation)
+                  || siblingLocation.isChildOf(targetLocation)) {
                 throw new org.apache.iceberg.exceptions.ForbiddenException(
                     "Unable to create table at location '%s' because it conflicts with existing table or namespace at location '%s'",
-                    target, existing);
+                    targetLocation, siblingLocation);
               }
             });
   }
@@ -1400,9 +1408,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           metadata.location(),
           identifier,
           metadata.metadataFileLocation());
-      if (!isUnderParentLocation(
-          URI.create(metadata.metadataFileLocation()),
-          URI.create(metadata.location() + "/metadata").normalize())) {
+      StorageLocation metadataFileLocation = StorageLocation.of(metadata.metadataFileLocation());
+      StorageLocation baseLocation = StorageLocation.of(metadata.location());
+      if (!metadataFileLocation.isChildOf(baseLocation)) {
         throw new BadRequestException(
             "Metadata location %s is not allowed outside of table location %s",
             metadata.metadataFileLocation(), metadata.location());
@@ -1784,10 +1792,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     if (returnedEntity == null) {
       // TODO: Error or retry?
     }
-  }
-
-  private static boolean isUnderParentLocation(URI childLocation, URI expectedParentLocation) {
-    return !expectedParentLocation.relativize(childLocation).equals(childLocation);
   }
 
   private void updateTableLike(TableIdentifier identifier, PolarisEntity entity) {
