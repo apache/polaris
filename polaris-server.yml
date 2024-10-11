@@ -88,7 +88,7 @@ metaStoreManager:
   # persistence-unit: polaris
 
 io:
-  factoryType: default
+  factoryType: wasb
 
 # TODO - avoid duplicating token broker config
 oauth2:
