@@ -50,6 +50,8 @@ RUN ./setup.sh
 COPY --chown=spark . /home/spark/regtests
 
 # /home/spark/regtests might not be writable in all situations, see https://github.com/apache/polaris/pull/205
+USER root
 RUN chmod -R go+rwx /home/spark/regtests
+USER spark
 
 CMD ["./run.sh"]
