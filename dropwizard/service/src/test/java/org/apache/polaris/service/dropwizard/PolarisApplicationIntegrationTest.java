@@ -33,11 +33,13 @@ import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
@@ -94,6 +96,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
@@ -105,6 +108,11 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
   SnowmanCredentialsExtension.class
 })
 public class PolarisApplicationIntegrationTest {
+  @TempDir
+  private static Path tempDir;
+  private static Supplier<String> CURRENT_LOG = () -> tempDir.resolve("application.log").toString();
+  private static Supplier<String> ARCHIVED_LOG = () -> tempDir.resolve("application-%d-%i.log.gz").toString();
+
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisApplicationIntegrationTest.class);
 
@@ -117,7 +125,16 @@ public class PolarisApplicationIntegrationTest {
               "server.applicationConnectors[0].port",
               "0"), // Bind to random port to support parallelism
           ConfigOverride.config(
-              "server.adminConnectors[0].port", "0")); // Bind to random port to support parallelism
+              "server.adminConnectors[0].port", "0"), // Bind to random port to support parallelism
+          ConfigOverride.config(
+              "logging.appenders[1].type", "file"),
+          ConfigOverride.config(
+              "logging.appenders[1].currentLogFilename", CURRENT_LOG),
+          ConfigOverride.config(
+              "logging.appenders[1].archivedLogFilenamePattern", ARCHIVED_LOG),
+          ConfigOverride.config(
+              "logging.appenders[1].maxFileSize", "2000000")
+          );
 
   private static String userToken;
   private static SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials;
@@ -131,6 +148,11 @@ public class PolarisApplicationIntegrationTest {
       @PolarisRealm String polarisRealm)
       throws IOException {
     realm = polarisRealm;
+
+    assertThat(new File(CURRENT_LOG.get()))
+        .exists()
+        .content()
+        .contains("PolarisApplication: Server started successfully");
 
     testDir = Path.of("build/test_data/iceberg/" + realm);
     FileUtils.deleteQuietly(testDir.toFile());
@@ -165,6 +187,8 @@ public class PolarisApplicationIntegrationTest {
       assertThat(assignPrResponse)
           .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
+
+    assertZeroErrorsInApplicationLog();
   }
 
   @AfterAll
@@ -179,6 +203,14 @@ public class PolarisApplicationIntegrationTest {
         .header(REALM_PROPERTY_KEY, realm)
         .delete()
         .close();
+  }
+
+  private static void assertZeroErrorsInApplicationLog() {
+    assertThat(new File(CURRENT_LOG.get()))
+        .exists()
+        .content()
+        .hasSizeGreaterThan(0)
+        .doesNotContain("ERROR", "FATAL", "Exception");
   }
 
   /**
