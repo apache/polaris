@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.catalog.io;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.Map;
@@ -24,11 +24,13 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.io.FileIO;
 
-/** A simple FileIOFactory implementation that defers all the work to the Iceberg SDK */
-@JsonTypeName("default")
-public class DefaultFileIOFactory implements FileIOFactory {
+/** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
+@JsonTypeName("wasb")
+public class WasbTranslatingFileIOFactory implements FileIOFactory {
   @Override
-  public FileIO loadFileIO(String impl, Map<String, String> properties) {
-    return CatalogUtil.loadFileIO(impl, properties, new Configuration());
+  public FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
+    WasbTranslatingFileIO wrapped =
+        new WasbTranslatingFileIO(CatalogUtil.loadFileIO(ioImpl, properties, new Configuration()));
+    return wrapped;
   }
 }
