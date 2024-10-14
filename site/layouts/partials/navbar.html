@@ -62,7 +62,7 @@ under the License.
           {{- end -}}
         </ul>
       </div>
-      {{ else }}
+      {{ else -}}
       <!-- Menu items without children -->
       {{ $topHidden := false }}
       {{ if .Page }}
@@ -80,16 +80,11 @@ under the License.
         {{ else -}}
           {{ $href = .URL | relLangURL -}}
         {{ end -}}
-        {{ $siteURL := urls.Parse $s.BaseURL }}
-        {{ $linkURL := urls.Parse $href }}
-        {{ $isExternal := false }}
-        {{ if and $siteURL $linkURL }}
-        {{ $isExternal = ne $siteURL.Host $linkURL.Host }}
-        {{ end }}
-        <a
-                class="nav-link{{ if $active }} active{{ end }}"
-                href="{{ $href }}"
-                {{ if $isExternal }} target="_blank" rel="noopener"{{ end }}
+        {{ $isExternal := ne $baseURL.Host (urls.Parse .URL).Host -}}
+        <a {{/**/ -}}
+          class="nav-link {{- if $active }} active {{- end }}" {{/**/ -}}
+          href="{{ $href }}"
+          {{- if $isExternal }} target="_blank" rel="noopener" {{- end -}}
         >
             {{- .Pre -}}
             <span>{{ .Name }}</span>
