@@ -43,23 +43,23 @@ under the License.
       <!-- Menu items with children -->
       <div class="dropdown">
         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-          {{ .Pre }}
+          {{- .Pre -}}
           <span>{{ .Name }}</span>
         </a>
         <ul class="dropdown-menu">
-          {{ $children := .Children.ByWeight }}
-          {{ if eq .Identifier "releases" }}
-          {{ with (partial "releasePages.html" (dict "site" $s)).active }}
-          {{ range . }}
+          {{ $children := .Children.ByWeight -}}
+          {{ if eq .Identifier "releases" -}}
+          {{ with (partial "releasePages.html" (dict "site" $s)).active -}}
+          {{ range . -}}
           <a class="dropdown-item" href="{{ .RelPermalink }}">{{ .Params.LinkTitle | default .Params.Title }}</a>
-          {{ end }}
-          {{ else }}
-          {{ $children = where .Children.ByWeight "Identifier" "ne" "all-releases-page" }}
-          {{ end }}
-          {{ end }}
-          {{ range $children }}
+          {{- end -}}
+          {{ else -}}
+          {{ $children = where .Children.ByWeight "Identifier" "ne" "all-releases-page" -}}
+          {{ end -}}
+          {{ end -}}
+          {{ range $children -}}
           <a class="dropdown-item" href="{{ .URL }}">{{ .Name }}</a>
-          {{ end }}
+          {{- end -}}
         </ul>
       </div>
       {{ else }}
@@ -91,9 +91,9 @@ under the License.
                 href="{{ $href }}"
                 {{ if $isExternal }} target="_blank" rel="noopener"{{ end }}
         >
-          {{ .Pre }}
+          {{- .Pre -}}
           <span>{{ .Name }}</span>
-          {{ .Post }}
+          {{- .Post -}}
         </a>
       </li>
       {{ end -}}
@@ -105,12 +105,12 @@ under the License.
         {{ partial "navbar-version-selector.html" . -}}
       </li>
       {{ end -}}
-      {{ if gt (len .Site.Home.Translations) 0 -}}
+      {{ if (gt (len .Site.Home.Translations) 0) -}}
       <li class="nav-item dropdown d-none d-lg-block">
-        {{ partial "navbar-lang-selector.html" . }}
+        {{ partial "navbar-lang-selector.html" . -}}
       </li>
       {{ end -}}
-      {{ if .Site.Params.ui.showLightDarkModeMenu }}
+      {{ if .Site.Params.ui.showLightDarkModeMenu -}}
       <li class="td-light-dark-menu nav-item dropdown">
         {{ partial "theme-toggler" . }}
       </li>
