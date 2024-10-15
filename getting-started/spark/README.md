@@ -28,10 +28,9 @@ To start the `docker-compose` file, run this command from the repo's root direct
 docker-compose -f getting-started/spark/docker-compose.yml up 
 ```
 
-This will spin up 3 container services
+This will spin up 2 container services
 * The `polaris` service for running Apache Polaris using an in-memory metastore
 * The `jupyter` service for running Jupyter notebook with PySpark
-* The `create-polaris-catalog` service to run setup script and create a catalog in Polaris backed by the local file system
 
 ## Access the Jupyter notebook interface
 In the Jupyter notebook container log, look for the URL to access the Jupyter notebook. The url should be in the format, `http://127.0.0.1:8888/lab?token=<token>`.
@@ -44,8 +43,3 @@ The Polaris service will create a new root crendential on startup, find this cre
 
 ## Run the Jupyter notebook
 You can now run all cells in the notebook or write your own code!
-
-## Note
-The Polaris catalog setup script uses the credential `principal:root;realm:default-realm`. This credential is used so users do not need to fetch credentials from Apache Polaris' console output.
-
-An example catalog is created in Apache Polaris using the `curl` command. See `create-polaris-catalog.sh` for details.
