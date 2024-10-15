@@ -28,6 +28,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
@@ -217,15 +218,17 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   public Supplier<GoogleCredentials> getGcpCredentialsProvider() {
-    return gcpAccessToken != null
-        ? () -> GoogleCredentials.create(gcpAccessToken)
-        : () -> {
-          try {
-            return GoogleCredentials.getApplicationDefault();
-          } catch (IOException e) {
-            throw new RuntimeException("Failed to get GCP credentials", e);
-          }
-        };
+    return () ->
+        Optional.ofNullable(gcpAccessToken)
+            .map(GoogleCredentials::create)
+            .orElseGet(
+                () -> {
+                  try {
+                    return GoogleCredentials.getApplicationDefault();
+                  } catch (IOException e) {
+                    throw new RuntimeException("Failed to get GCP credentials", e);
+                  }
+                });
   }
 
   @JsonProperty("gcp_credentials")
