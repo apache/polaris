@@ -239,13 +239,14 @@ public class CatalogEntity extends PolarisEntity {
         switch (storageConfigModel.getStorageType()) {
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
-            config =
+            AwsStorageConfigurationInfo awsConfig =
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     new ArrayList<>(allowedLocations),
                     awsConfigModel.getRoleArn(),
                     awsConfigModel.getExternalId());
-            ((AwsStorageConfigurationInfo) config).validateArn(awsConfigModel.getRoleArn());
+            awsConfig.validateArn(awsConfigModel.getRoleArn());
+            config = awsConfig;
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
