@@ -17,4 +17,5 @@
 # under the License.
 #
 
-org.apache.polaris.service.catalog.DefaultFileIOFactory
+org.apache.polaris.service.catalog.io.DefaultFileIOFactory
+org.apache.polaris.service.catalog.io.WasbTranslatingFileIOFactory
