@@ -50,10 +50,11 @@ public class WasbTranslatingFileIO implements FileIO {
           scheme = scheme.replaceFirst(WASB_SCHEME, ABFS_SCHEME);
         }
         return String.format(
-            "%s://%s@%s.dfs.core.windows.net/%s",
+            "%s://%s@%s.%s/%s",
             scheme,
             azureLocation.getContainer(),
             azureLocation.getStorageAccount(),
+            azureLocation.getEndpoint(),
             azureLocation.getFilePath());
       } else {
         return path;

@@ -26,7 +26,6 @@ under the License.
             {{- if $cover }} td-navbar-cover {{- end }}" data-bs-theme="dark">
 <div class="container-fluid flex-column flex-md-row">
   <a class="navbar-brand" href="{{ .Site.Home.RelPermalink }}">
-    {{- /**/ -}}
     <span class="navbar-brand__logo navbar-logo">
       {{- if ne .Site.Params.ui.navbar_logo false -}}
         {{ with resources.Get "icons/logo.svg" -}}
@@ -34,11 +33,6 @@ under the License.
         {{ end -}}
       {{ end -}}
     </span>
-    {{- /**/ -}}
-    <span class="navbar-brand__name">
-      {{- /* .Site.Title */ -}}
-    </span>
-    {{- /**/ -}}
   </a>
   <div class="td-navbar-nav-scroll ms-md-auto" id="main_navbar">
     <ul class="navbar-nav">
@@ -46,9 +40,7 @@ under the License.
       {{ $s := .Site -}}
       {{ range .Site.Menus.main -}}
       {{ if .HasChildren }}
-      {{/*
-        Customized to have drop-down menus in the navbar and 'Releases' not at the very right
-      */}}
+      <!-- Menu items with children -->
       <div class="dropdown">
         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
           {{- .Pre -}}
@@ -71,10 +63,14 @@ under the License.
         </ul>
       </div>
       {{ else -}}
-      {{/*
-      Customized to allow hiding items from the navbar
-      */}}
-      {{ if ne .Page.Params.top_hidden true -}}
+      <!-- Menu items without children -->
+      {{ $topHidden := false }}
+      {{ if .Page }}
+      {{ $topHidden = .Page.Params.top_hidden | default false }}
+      {{ else }}
+      {{ $topHidden = .Params.top_hidden | default false }}
+      {{ end }}
+      {{ if not $topHidden }}
       <li class="nav-item">
         {{ $active := or ($p.IsMenuCurrent "main" .) ($p.HasMenuCurrent "main" .) -}}
         {{ $href := "" -}}
@@ -98,6 +94,7 @@ under the License.
       {{ end -}}
       {{ end -}}
       {{ end -}}
+      <!-- Other navbar items -->
       {{ if .Site.Params.versions -}}
       <li class="nav-item dropdown d-none d-lg-block">
         {{ partial "navbar-version-selector.html" . -}}

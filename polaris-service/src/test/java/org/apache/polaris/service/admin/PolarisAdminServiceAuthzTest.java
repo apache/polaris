@@ -1042,4 +1042,799 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         (privilege) ->
             adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
   }
+
+  @Test
+  public void testAssignPrincipalRoleSufficientPrivileges() {
+    adminService.createPrincipal(new PrincipalEntity.Builder().setName("newprincipal").build());
+
+    // Assign only requires privileges on the securable.
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .assignPrincipalRole("newprincipal", PRINCIPAL_ROLE2),
+        null, // cleanupAction
+        (privilege) ->
+            adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
+                PRINCIPAL_ROLE1, privilege));
+  }
+
+  @Test
+  public void testAssignPrincipalRoleInsufficientPrivileges() {
+    adminService.createPrincipal(new PrincipalEntity.Builder().setName("newprincipal").build());
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .assignPrincipalRole("newprincipal", PRINCIPAL_ROLE2),
+        (privilege) ->
+            adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
+                PRINCIPAL_ROLE1, privilege));
+  }
+
+  @Test
+  public void testRevokePrincipalRoleSufficientPrivileges() {
+    adminService.createPrincipal(new PrincipalEntity.Builder().setName("newprincipal").build());
+
+    // Revoke requires privileges both on the "securable" (PrincipalRole) as well as the "grantee"
+    // (Principal).
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+            Set.of(
+                PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+                PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE)),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrincipalRole("newprincipal", PRINCIPAL_ROLE2),
+        null, // cleanupAction
+        PRINCIPAL_NAME,
+        (privilege) ->
+            adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
+                PRINCIPAL_ROLE1, privilege));
+  }
+
+  @Test
+  public void testRevokePrincipalRoleInsufficientPrivileges() {
+    adminService.createPrincipal(new PrincipalEntity.Builder().setName("newprincipal").build());
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrincipalRole("newprincipal", PRINCIPAL_ROLE2),
+        (privilege) ->
+            adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
+                PRINCIPAL_ROLE1, privilege));
+  }
+
+  @Test
+  public void testAssignCatalogRoleToPrincipalRoleSufficientPrivileges() {
+    // Assign only requires privileges on the securable.
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE1),
+        null, // cleanupAction
+        (privilege) ->
+            adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
+                PRINCIPAL_ROLE1, privilege));
+  }
+
+  @Test
+  public void testAssignCatalogRoleToPrincipalRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .assignCatalogRoleToPrincipalRole(PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE1),
+        (privilege) ->
+            adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
+                PRINCIPAL_ROLE1, privilege));
+  }
+
+  @Test
+  public void testRevokeCatalogRoleFromPrincipalRoleSufficientPrivileges() {
+    // Revoke requires privileges both on the "securable" (CatalogRole) as well as the "grantee"
+    // (PrincipalRole); neither CATALOG_MANAGE_ACCESS nor SERVICE_MANAGE_ACCESS alone are
+    // sufficient.
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_ACCESS, PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+            Set.of(
+                PolarisPrivilege.CATALOG_MANAGE_ACCESS,
+                PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE),
+            Set.of(
+                PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+                PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE)),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokeCatalogRoleFromPrincipalRole(PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE1),
+        null, // cleanupAction
+        PRINCIPAL_NAME,
+        (privilege) ->
+            adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
+                PRINCIPAL_ROLE1, privilege));
+  }
+
+  @Test
+  public void testRevokeCatalogRoleFromPrincipalRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS,
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokeCatalogRoleFromPrincipalRole(PRINCIPAL_ROLE2, CATALOG_NAME, CATALOG_ROLE1),
+        (privilege) ->
+            adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
+                PRINCIPAL_ROLE1, privilege));
+  }
+
+  @Test
+  public void testGrantPrivilegeOnRootContainerToPrincipalRoleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnRootContainerToPrincipalRole(
+                    PRINCIPAL_ROLE2, PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        null, // cleanupAction
+        (privilege) ->
+            adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
+                PRINCIPAL_ROLE1, privilege));
+  }
+
+  @Test
+  public void testGrantPrivilegeOnRootContainerToPrincipalRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnRootContainerToPrincipalRole(
+                    PRINCIPAL_ROLE2, PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        (privilege) ->
+            adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
+                PRINCIPAL_ROLE1, privilege));
+  }
+
+  @Test
+  public void testRevokePrivilegeOnRootContainerFromPrincipalRoleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnRootContainerFromPrincipalRole(
+                    PRINCIPAL_ROLE2, PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        null, // cleanupAction
+        (privilege) ->
+            adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
+                PRINCIPAL_ROLE1, privilege));
+  }
+
+  @Test
+  public void testRevokePrivilegeOnRootContainerFromPrincipalRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnRootContainerFromPrincipalRole(
+                    PRINCIPAL_ROLE2, PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        (privilege) ->
+            adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
+                PRINCIPAL_ROLE1, privilege));
+  }
+
+  @Test
+  public void testGrantPrivilegeOnCatalogToRoleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnCatalogToRole(
+                    CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        null, // cleanupAction
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testGrantPrivilegeOnCatalogToRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnCatalogToRole(
+                    CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testRevokePrivilegeOnCatalogFromRoleSufficientPrivileges() {
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+            Set.of(
+                PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+                PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE)),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnCatalogFromRole(
+                    CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        null, // cleanupAction
+        PRINCIPAL_NAME,
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testRevokePrivilegeOnCatalogFromRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnCatalogFromRole(
+                    CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testGrantPrivilegeOnNamespaceToRoleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnNamespaceToRole(
+                    CATALOG_NAME, CATALOG_ROLE2, NS1, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        null, // cleanupAction
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testGrantPrivilegeOnNamespaceToRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnNamespaceToRole(
+                    CATALOG_NAME, CATALOG_ROLE2, NS1, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testRevokePrivilegeOnNamespaceFromRoleSufficientPrivileges() {
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+            Set.of(
+                PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+                PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE)),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnNamespaceFromRole(
+                    CATALOG_NAME, CATALOG_ROLE2, NS1, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        null, // cleanupAction
+        PRINCIPAL_NAME,
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testRevokePrivilegeOnNamespaceFromRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnNamespaceFromRole(
+                    CATALOG_NAME, CATALOG_ROLE2, NS1, PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testGrantPrivilegeOnTableToRoleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnTableToRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    TABLE_NS1_1,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        null, // cleanupAction
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testGrantPrivilegeOnTableToRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnTableToRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    TABLE_NS1_1,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testRevokePrivilegeOnTableFromRoleSufficientPrivileges() {
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+            Set.of(
+                PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+                PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE)),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnTableFromRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    TABLE_NS1_1,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        null, // cleanupAction
+        PRINCIPAL_NAME,
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testRevokePrivilegeOnTableFromRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnTableFromRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    TABLE_NS1_1,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testGrantPrivilegeOnViewToRoleSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnViewToRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    VIEW_NS1_1,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        null, // cleanupAction
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testGrantPrivilegeOnViewToRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .grantPrivilegeOnViewToRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    VIEW_NS1_1,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testRevokePrivilegeOnViewFromRoleSufficientPrivileges() {
+    doTestSufficientPrivilegeSets(
+        List.of(
+            Set.of(PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+            Set.of(
+                PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+                PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE)),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnViewFromRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    VIEW_NS1_1,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        null, // cleanupAction
+        PRINCIPAL_NAME,
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
+
+  @Test
+  public void testRevokePrivilegeOnViewFromRoleInsufficientPrivileges() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.PRINCIPAL_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.PRINCIPAL_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_FOR_GRANTEE,
+            PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_ROLE_LIST_GRANTS,
+            PolarisPrivilege.CATALOG_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.CATALOG_LIST_GRANTS,
+            PolarisPrivilege.NAMESPACE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.NAMESPACE_LIST_GRANTS,
+            PolarisPrivilege.TABLE_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.TABLE_LIST_GRANTS,
+            PolarisPrivilege.VIEW_MANAGE_GRANTS_ON_SECURABLE,
+            PolarisPrivilege.VIEW_LIST_GRANTS,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT,
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS),
+        () ->
+            newTestAdminService(Set.of(PRINCIPAL_ROLE1))
+                .revokePrivilegeOnViewFromRole(
+                    CATALOG_NAME,
+                    CATALOG_ROLE2,
+                    VIEW_NS1_1,
+                    PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        (privilege) ->
+            adminService.grantPrivilegeOnCatalogToRole(CATALOG_NAME, CATALOG_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnCatalogFromRole(CATALOG_NAME, CATALOG_ROLE1, privilege));
+  }
 }

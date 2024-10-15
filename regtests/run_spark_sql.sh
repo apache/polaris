@@ -46,7 +46,7 @@ fi
 REGTEST_HOME=$(dirname $(realpath $0))
 cd ${REGTEST_HOME}
 
-export SPARK_VERSION=spark-3.5.2
+export SPARK_VERSION=spark-3.5.3
 export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3
 
 ./setup.sh
