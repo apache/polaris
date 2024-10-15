@@ -51,6 +51,7 @@ github:
           - build
           - regtest
           - site
+          - helm-tests
 
   features:
     wiki: false
