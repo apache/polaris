@@ -29,9 +29,9 @@ docker-compose -f getting-started/spark/docker-compose.yml up
 ```
 
 This will spin up 3 container services
-* The `polaris` service for running Apache Polaris
+* The `polaris` service for running Apache Polaris using an in-memory metastore
 * The `jupyter` service for running Jupyter notebook with PySpark
-* The `create-polaris-catalog` service to run setup script and create local catalog in Polaris
+* The `create-polaris-catalog` service to run setup script and create a catalog in Polaris backed by the local file system
 
 ## Access the Jupyter notebook interface
 In the Jupyter notebook container log, look for the URL to access the Jupyter notebook. The url should be in the format, `http://127.0.0.1:8888/lab?token=<token>`.
