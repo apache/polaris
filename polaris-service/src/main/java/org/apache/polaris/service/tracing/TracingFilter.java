@@ -45,7 +45,7 @@ import org.slf4j.MDC;
  * Servlet {@link Filter} that starts an OpenTracing {@link Span}, propagating the calling context
  * from HTTP headers, if present. "spanId" and "traceId" are added to the logging MDC so that all
  * logs recorded in the request will contain the current span and trace id. Downstream HTTP calls
- * should use the OpenTelementry {@link io.opentelemetry.context.propagation.ContextPropagators} to
+ * should use the OpenTelemetry {@link io.opentelemetry.context.propagation.ContextPropagators} to
  * include the current trace id in the request headers.
  */
 @Priority(Priorities.AUTHENTICATION - 1)

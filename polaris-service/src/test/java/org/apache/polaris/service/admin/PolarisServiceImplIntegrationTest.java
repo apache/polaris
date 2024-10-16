@@ -265,7 +265,7 @@ public class PolarisServiceImplIntegrationTest {
   public void testListCatalogs() {
     try (Response response = newRequest("http://localhost:%d/api/management/v1/catalogs").get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(Catalogs.class))
           .returns(
               List.of(),
@@ -283,7 +283,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals")
             .post(Entity.json(principal))) {
-      assertThat(response).returns(201, Response::getStatus);
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
       PrincipalWithCredentials creds = response.readEntity(PrincipalWithCredentials.class);
       newToken =
           TokenUtils.getTokenFromSecrets(
@@ -295,7 +295,7 @@ public class PolarisServiceImplIntegrationTest {
     }
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs", newToken).get()) {
-      assertThat(response).returns(403, Response::getStatus);
+      assertThat(response).returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -312,7 +312,7 @@ public class PolarisServiceImplIntegrationTest {
     // 204 Successful delete
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/my-catalog").delete()) {
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -529,7 +529,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/" + catalogName, userToken)
             .get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = response.readEntity(Catalog.class);
 
       assertThat(fetchedCatalog.getName()).isEqualTo(catalogName);
@@ -601,7 +601,7 @@ public class PolarisServiceImplIntegrationTest {
     // 204 Successful delete
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/" + catalogName).delete()) {
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -663,7 +663,7 @@ public class PolarisServiceImplIntegrationTest {
     Catalog fetchedCatalog = null;
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/myazurecatalog").get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = response.readEntity(Catalog.class);
 
       assertThat(fetchedCatalog.getName()).isEqualTo("myazurecatalog");
@@ -703,7 +703,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/myazurecatalog")
             .put(Entity.json(updateRequest))) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = response.readEntity(Catalog.class);
 
       assertThat(fetchedCatalog.getProperties().toMap())
@@ -714,7 +714,7 @@ public class PolarisServiceImplIntegrationTest {
     // 204 Successful delete
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/myazurecatalog").delete()) {
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -744,7 +744,7 @@ public class PolarisServiceImplIntegrationTest {
     Catalog fetchedCatalog = null;
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog").get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = response.readEntity(Catalog.class);
 
       assertThat(fetchedCatalog.getName()).isEqualTo("mycatalog");
@@ -756,7 +756,7 @@ public class PolarisServiceImplIntegrationTest {
     // Should list the catalog.
     try (Response response = newRequest("http://localhost:%d/api/management/v1/catalogs").get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(Catalogs.class))
           .extracting(Catalogs::getCatalogs)
           .asInstanceOf(InstanceOfAssertFactories.list(Catalog.class))
@@ -796,7 +796,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog")
             .put(Entity.json(updateRequest))) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = response.readEntity(Catalog.class);
 
       assertThat(fetchedCatalog.getProperties().toMap())
@@ -806,7 +806,7 @@ public class PolarisServiceImplIntegrationTest {
     // 200 GET after update should show new properties
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog").get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = response.readEntity(Catalog.class);
 
       assertThat(fetchedCatalog.getProperties().toMap())
@@ -816,19 +816,19 @@ public class PolarisServiceImplIntegrationTest {
     // 204 Successful delete
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog").delete()) {
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // NOT_FOUND after deletion
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog").get()) {
-      assertThat(response).returns(404, Response::getStatus);
+      assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
     }
 
     // Empty list
     try (Response response = newRequest("http://localhost:%d/api/management/v1/catalogs").get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(Catalogs.class))
           .returns(
               List.of(),
@@ -856,7 +856,7 @@ public class PolarisServiceImplIntegrationTest {
     // there's no catalog yet. Expect 404
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog").get()) {
-      assertThat(response).returns(404, Response::getStatus);
+      assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -930,7 +930,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals")
             .post(Entity.json(principal))) {
-      assertThat(response).returns(201, Response::getStatus);
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
       PrincipalWithCredentials creds = response.readEntity(PrincipalWithCredentials.class);
       newToken =
           TokenUtils.getTokenFromSecrets(
@@ -942,7 +942,7 @@ public class PolarisServiceImplIntegrationTest {
     }
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals", newToken).get()) {
-      assertThat(response).returns(403, Response::getStatus);
+      assertThat(response).returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -1042,7 +1042,7 @@ public class PolarisServiceImplIntegrationTest {
     Principal fetchedPrincipal = null;
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals/myprincipal").get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipal = response.readEntity(Principal.class);
 
       assertThat(fetchedPrincipal.getName()).isEqualTo("myprincipal");
@@ -1053,7 +1053,7 @@ public class PolarisServiceImplIntegrationTest {
     // Should list the principal.
     try (Response response = newRequest("http://localhost:%d/api/management/v1/principals").get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(Principals.class))
           .extracting(Principals::getPrincipals)
           .asInstanceOf(InstanceOfAssertFactories.list(Principal.class))
@@ -1068,7 +1068,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals/myprincipal")
             .put(Entity.json(updateRequest))) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipal = response.readEntity(Principal.class);
 
       assertThat(fetchedPrincipal.getProperties()).isEqualTo(Map.of("custom-tag", "updated"));
@@ -1077,7 +1077,7 @@ public class PolarisServiceImplIntegrationTest {
     // 200 GET after update should show new properties
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals/myprincipal").get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipal = response.readEntity(Principal.class);
 
       assertThat(fetchedPrincipal.getProperties()).isEqualTo(Map.of("custom-tag", "updated"));
@@ -1086,19 +1086,19 @@ public class PolarisServiceImplIntegrationTest {
     // 204 Successful delete
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals/myprincipal").delete()) {
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // NOT_FOUND after deletion
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals/myprincipal").get()) {
-      assertThat(response).returns(404, Response::getStatus);
+      assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
     }
 
     // Empty list
     try (Response response = newRequest("http://localhost:%d/api/management/v1/principals").get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(Principals.class))
           .extracting(Principals::getPrincipals)
           .asInstanceOf(InstanceOfAssertFactories.list(Principal.class))
@@ -1192,7 +1192,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principal-roles/myprincipalrole").get()) {
 
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipalRole = response.readEntity(PrincipalRole.class);
 
       assertThat(fetchedPrincipalRole.getName()).isEqualTo("myprincipalrole");
@@ -1205,7 +1205,7 @@ public class PolarisServiceImplIntegrationTest {
         newRequest("http://localhost:%d/api/management/v1/principal-roles").get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .extracting(PrincipalRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(PrincipalRole.class))
@@ -1220,7 +1220,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principal-roles/myprincipalrole")
             .put(Entity.json(updateRequest))) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipalRole = response.readEntity(PrincipalRole.class);
 
       assertThat(fetchedPrincipalRole.getProperties()).isEqualTo(Map.of("custom-tag", "updated"));
@@ -1229,7 +1229,7 @@ public class PolarisServiceImplIntegrationTest {
     // 200 GET after update should show new properties
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principal-roles/myprincipalrole").get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipalRole = response.readEntity(PrincipalRole.class);
 
       assertThat(fetchedPrincipalRole.getProperties()).isEqualTo(Map.of("custom-tag", "updated"));
@@ -1240,14 +1240,14 @@ public class PolarisServiceImplIntegrationTest {
         newRequest("http://localhost:%d/api/management/v1/principal-roles/myprincipalrole")
             .delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // NOT_FOUND after deletion
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principal-roles/myprincipalrole").get()) {
 
-      assertThat(response).returns(404, Response::getStatus);
+      assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
     }
 
     // Empty list
@@ -1255,7 +1255,7 @@ public class PolarisServiceImplIntegrationTest {
         newRequest("http://localhost:%d/api/management/v1/principal-roles").get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .extracting(PrincipalRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(PrincipalRole.class))
@@ -1371,7 +1371,7 @@ public class PolarisServiceImplIntegrationTest {
                 "http://localhost:%d/api/management/v1/catalogs/mycatalog1/catalog-roles/mycatalogrole")
             .get()) {
 
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalogRole = response.readEntity(CatalogRole.class);
 
       assertThat(fetchedCatalogRole.getName()).isEqualTo("mycatalogrole");
@@ -1385,7 +1385,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .extracting(CatalogRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(CatalogRole.class))
@@ -1398,7 +1398,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .extracting(CatalogRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(CatalogRole.class))
@@ -1419,7 +1419,7 @@ public class PolarisServiceImplIntegrationTest {
         newRequest(
                 "http://localhost:%d/api/management/v1/catalogs/mycatalog1/catalog-roles/mycatalogrole")
             .put(Entity.json(updateRequest))) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalogRole = response.readEntity(CatalogRole.class);
 
       assertThat(fetchedCatalogRole.getProperties()).isEqualTo(Map.of("custom-tag", "updated"));
@@ -1430,7 +1430,7 @@ public class PolarisServiceImplIntegrationTest {
         newRequest(
                 "http://localhost:%d/api/management/v1/catalogs/mycatalog1/catalog-roles/mycatalogrole")
             .get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalogRole = response.readEntity(CatalogRole.class);
 
       assertThat(fetchedCatalogRole.getProperties()).isEqualTo(Map.of("custom-tag", "updated"));
@@ -1442,7 +1442,7 @@ public class PolarisServiceImplIntegrationTest {
                 "http://localhost:%d/api/management/v1/catalogs/mycatalog1/catalog-roles/mycatalogrole")
             .delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // NOT_FOUND after deletion
@@ -1451,7 +1451,7 @@ public class PolarisServiceImplIntegrationTest {
                 "http://localhost:%d/api/management/v1/catalogs/mycatalog1/catalog-roles/mycatalogrole")
             .get()) {
 
-      assertThat(response).returns(404, Response::getStatus);
+      assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
     }
 
     // Empty list
@@ -1460,7 +1460,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .extracting(CatalogRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(CatalogRole.class))
@@ -1471,14 +1471,14 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog1").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete mycatalog2
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog2").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -1519,7 +1519,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .extracting(PrincipalRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(PrincipalRole.class))
@@ -1535,7 +1535,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(Principals.class))
           .extracting(Principals::getPrincipals)
           .asInstanceOf(InstanceOfAssertFactories.list(Principal.class))
@@ -1549,7 +1549,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .returns(List.of(), PrincipalRoles::getRoles);
     }
@@ -1560,7 +1560,7 @@ public class PolarisServiceImplIntegrationTest {
                 "http://localhost:%d/api/management/v1/principals/myprincipal1/principal-roles/myprincipalrole")
             .delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // Empty list
@@ -1569,7 +1569,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .returns(List.of(), PrincipalRoles::getRoles);
     }
@@ -1579,7 +1579,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(Principals.class))
           .returns(List.of(), Principals::getPrincipals);
     }
@@ -1588,14 +1588,14 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals/myprincipal1").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete myprincipal2
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals/myprincipal2").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete myprincipalrole
@@ -1603,7 +1603,7 @@ public class PolarisServiceImplIntegrationTest {
         newRequest("http://localhost:%d/api/management/v1/principal-roles/myprincipalrole")
             .delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -1679,7 +1679,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .extracting(CatalogRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(CatalogRole.class))
@@ -1694,7 +1694,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .extracting(PrincipalRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(PrincipalRole.class))
@@ -1709,7 +1709,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .returns(List.of(), CatalogRoles::getRoles);
     }
@@ -1720,7 +1720,7 @@ public class PolarisServiceImplIntegrationTest {
                 "http://localhost:%d/api/management/v1/principal-roles/mypr1/catalog-roles/mycatalog/mycr")
             .delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // Empty list
@@ -1730,7 +1730,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .returns(List.of(), CatalogRoles::getRoles);
     }
@@ -1740,7 +1740,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .returns(List.of(), PrincipalRoles::getRoles);
     }
@@ -1749,14 +1749,14 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principal-roles/mypr1").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete mypr2
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principal-roles/mypr2").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete mycr
@@ -1764,14 +1764,14 @@ public class PolarisServiceImplIntegrationTest {
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog/catalog-roles/mycr")
             .delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete mycatalog
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete myothercr
@@ -1780,14 +1780,14 @@ public class PolarisServiceImplIntegrationTest {
                 "http://localhost:%d/api/management/v1/catalogs/othercatalog/catalog-roles/myothercr")
             .delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete othercatalog
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/othercatalog").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
 
