@@ -257,7 +257,7 @@ polarisServerConfig:
 
     # The hostname of the interface to which the HTTP server socket wil be found. If omitted, the
     # socket will listen on all interfaces.
-    #bindHost: localhost
+    # bindHost: localhost
 
     #  ssl:
     #    keyStore: ./example.keystore

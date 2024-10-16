@@ -29,7 +29,7 @@ import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.service.catalog.FileIOFactory;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
 
 public class TaskFileIOSupplier implements Function<TaskEntity, FileIO> {
   private final MetaStoreManagerFactory metaStoreManagerFactory;
