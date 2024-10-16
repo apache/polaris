@@ -57,7 +57,7 @@ public class TokenUtils {
                         clientId,
                         "client_secret",
                         clientSecret))))) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       token = response.readEntity(OAuthTokenResponse.class).token();
     }
     return token;
