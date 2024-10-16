@@ -29,7 +29,7 @@ cascade:
 
 We have bi-weekly community meeting using Google Meet.
 
-Join the https://groups.google.com/u/1/g/polaris-community-sync[polaris-community-sync Google group].
+Join the https://groups.google.com/u/1/g/polaris-community-sync[polaris-community-sync Google Group].
 
 == Scheduled Meetings
 
