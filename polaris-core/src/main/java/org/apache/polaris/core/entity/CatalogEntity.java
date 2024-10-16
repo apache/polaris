@@ -239,22 +239,30 @@ public class CatalogEntity extends PolarisEntity {
         switch (storageConfigModel.getStorageType()) {
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
-            config =
+            AwsStorageConfigurationInfo awsConfig =
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     new ArrayList<>(allowedLocations),
                     awsConfigModel.getRoleArn(),
                     awsConfigModel.getExternalId());
-            ((AwsStorageConfigurationInfo) config).validateArn(awsConfigModel.getRoleArn());
+            awsConfig.validateArn(awsConfigModel.getRoleArn());
+            config = awsConfig;
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
-            config =
+            AzureStorageConfigurationInfo azureconfigInfo =
                 new AzureStorageConfigurationInfo(
                     new ArrayList<>(allowedLocations), azureConfigModel.getTenantId());
+            azureconfigInfo.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
+            azureconfigInfo.setConsentUrl(azureConfigModel.getConsentUrl());
+            config = azureconfigInfo;
             break;
           case GCS:
-            config = new GcpStorageConfigurationInfo(new ArrayList<>(allowedLocations));
+            GcpStorageConfigurationInfo gcpConfig =
+                new GcpStorageConfigurationInfo(new ArrayList<>(allowedLocations));
+            gcpConfig.setGcpServiceAccount(
+                ((GcpStorageConfigInfo) storageConfigModel).getGcsServiceAccount());
+            config = gcpConfig;
             break;
           case FILE:
             config = new FileStorageConfigurationInfo(new ArrayList<>(allowedLocations));
