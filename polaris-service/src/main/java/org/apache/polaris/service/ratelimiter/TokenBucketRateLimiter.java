@@ -44,7 +44,7 @@ public class TokenBucketRateLimiter implements RateLimiter {
   /**
    * Tries to acquire and spend 1 token. Doesn't block if a token isn't available.
    *
-   * @return whether a token was successfully acquired & spent
+   * @return whether a token was successfully acquired and spent
    */
   @Override
   public synchronized boolean tryAcquire() {

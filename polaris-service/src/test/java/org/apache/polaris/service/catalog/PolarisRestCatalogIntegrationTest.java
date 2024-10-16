@@ -493,7 +493,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             .header(REALM_PROPERTY_KEY, realm)
             .get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(GrantResources.class))
           .extracting(GrantResources::getGrants)
           .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
@@ -512,7 +512,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             .header(REALM_PROPERTY_KEY, realm)
             .get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(GrantResources.class))
           .extracting(GrantResources::getGrants)
           .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
@@ -563,7 +563,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             .header(REALM_PROPERTY_KEY, realm)
             .get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(GrantResources.class))
           .extracting(GrantResources::getGrants)
           .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
