@@ -18,28 +18,16 @@
  */
 package org.apache.polaris.service.throttling;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 /**
  * Response object for errors caused by DoS-prevention throttling mechanisms, such as request size
  * limits
  */
-public class RequestThrottlingErrorResponse {
+public record RequestThrottlingErrorResponse(
+    @JsonProperty("error_type") RequestThrottlingErrorType errorType) {
   public enum RequestThrottlingErrorType {
     REQUEST_TOO_LARGE,
     ;
-  }
-
-  private final RequestThrottlingErrorType errorType;
-
-  @JsonCreator
-  public RequestThrottlingErrorResponse(
-      @JsonProperty("error_type") RequestThrottlingErrorType errorType) {
-    this.errorType = errorType;
-  }
-
-  public RequestThrottlingErrorType getErrorType() {
-    return errorType;
   }
 }

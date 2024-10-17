@@ -19,8 +19,11 @@
 package org.apache.polaris.service;
 
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
+import static org.apache.polaris.service.throttling.RequestThrottlingErrorResponse.RequestThrottlingErrorType.REQUEST_TOO_LARGE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
@@ -56,8 +59,13 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.hadoop.HadoopFileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
+import org.apache.iceberg.rest.HTTPClient;
+import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.RESTSessionCatalog;
+import org.apache.iceberg.rest.auth.AuthConfig;
+import org.apache.iceberg.rest.auth.ImmutableAuthConfig;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
+import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -87,6 +95,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 @ExtendWith({
   DropwizardExtensionsSupport.class,
@@ -694,10 +703,41 @@ public class PolarisApplicationIntegrationTest {
           .matches(
               r ->
                   r.readEntity(RequestThrottlingErrorResponse.class)
-                      .getErrorType()
-                      .equals(
-                          RequestThrottlingErrorResponse.RequestThrottlingErrorType
-                              .REQUEST_TOO_LARGE));
+                      .errorType()
+                      .equals(REQUEST_TOO_LARGE));
+    }
+  }
+
+  @Test
+  public void testRefreshToken() throws IOException {
+    String path =
+        String.format("http://localhost:%d/api/catalog/v1/oauth/tokens", EXT.getLocalPort());
+    try (RESTClient client =
+        HTTPClient.builder(ImmutableMap.of())
+            .withHeader(REALM_PROPERTY_KEY, realm)
+            .uri(path)
+            .build()) {
+      String credentialString =
+          snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret();
+      var authConfig =
+          AuthConfig.builder().credential(credentialString).scope("PRINCIPAL_ROLE:ALL").build();
+      ImmutableAuthConfig configSpy = spy(authConfig);
+      when(configSpy.expiresAtMillis()).thenReturn(0L);
+      assertThat(configSpy.expiresAtMillis()).isEqualTo(0L);
+      when(configSpy.oauth2ServerUri()).thenReturn(path);
+
+      var parentSession = new OAuth2Util.AuthSession(Map.of(), configSpy);
+      var session =
+          OAuth2Util.AuthSession.fromAccessToken(client, null, userToken, 0L, parentSession);
+
+      OAuth2Util.AuthSession sessionSpy = spy(session);
+      when(sessionSpy.expiresAtMillis()).thenReturn(0L);
+      assertThat(sessionSpy.expiresAtMillis()).isEqualTo(0L);
+      assertThat(sessionSpy.token()).isEqualTo(userToken);
+
+      sessionSpy.refresh(client);
+      assertThat(sessionSpy.credential()).isNotNull();
+      assertThat(sessionSpy.credential()).isNotEqualTo(userToken);
     }
   }
 }

@@ -222,10 +222,11 @@ public abstract class PolarisStorageConfigurationInfo {
 
   /** Validate if the provided allowed locations are valid for the storage type */
   protected void validatePrefixForStorageType(String loc) {
-    if (!loc.toLowerCase(Locale.ROOT).startsWith(storageType.prefix)) {
+    if (storageType.prefixes.stream().noneMatch(p -> loc.toLowerCase(Locale.ROOT).startsWith(p))) {
       throw new IllegalArgumentException(
           String.format(
-              "Location prefix not allowed: '%s', expected prefix: '%s'", loc, storageType.prefix));
+              "Location prefix not allowed: '%s', expected prefixes: '%s'",
+              loc, String.join(",", storageType.prefixes)));
     }
   }
 
@@ -240,19 +241,23 @@ public abstract class PolarisStorageConfigurationInfo {
   /** Polaris' storage type, each has a fixed prefix for its location */
   public enum StorageType {
     S3("s3://"),
-    AZURE("abfs"), // abfs or abfss
+    AZURE(List.of("abfs://", "wasb://", "abfss://", "wasbs://")),
     GCS("gs://"),
     FILE("file://"),
     ;
 
-    final String prefix;
+    private final List<String> prefixes;
 
     StorageType(String prefix) {
-      this.prefix = prefix;
+      this.prefixes = List.of(prefix);
     }
 
-    public String getPrefix() {
-      return prefix;
+    StorageType(List<String> prefixes) {
+      this.prefixes = prefixes;
+    }
+
+    public List<String> getPrefixes() {
+      return prefixes;
     }
   }
 

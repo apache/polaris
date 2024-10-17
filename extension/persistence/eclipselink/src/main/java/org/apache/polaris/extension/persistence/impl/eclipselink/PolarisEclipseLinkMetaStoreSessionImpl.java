@@ -27,6 +27,7 @@ import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.Persistence;
+import jakarta.persistence.PersistenceException;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,6 +35,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -58,6 +60,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
@@ -260,6 +263,12 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
         throw e;
       } finally {
         localSession.remove();
+      }
+    } catch (PersistenceException e) {
+      if (e.toString().toLowerCase(Locale.ROOT).contains("duplicate key")) {
+        throw new AlreadyExistsException("Duplicate key error when persisting entity", e);
+      } else {
+        throw e;
       }
     }
   }
