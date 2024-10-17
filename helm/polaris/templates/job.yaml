@@ -77,7 +77,7 @@ spec:
             - name: config-volume
               mountPath: /app/config/polaris-server.yml
               subPath: polaris-server.yml
-            {{- if .Values.persistenceConfigSecret }}
+            {{- if and .Values.persistenceConfigSecret (index .Values.polarisServerConfig.metaStoreManager "conf-file") }}
             - name: eclipselink-config-volume
               mountPath: /eclipselink-config
             {{- end }}

@@ -81,11 +81,21 @@ jobs:
         if: steps.list-changed.outputs.changed == 'true'
         run: |
           eval $(minikube docker-env)
-          docker build -f ./Dockerfile -t polaris:latest .
+          docker build -f ./Dockerfile \
+            --build-arg ECLIPSELINK=true \
+            --build-arg ECLIPSELINK_DEPS=com.h2database:h2:2.3.232 \
+            -t polaris:latest .
+
+      - name: Install fixtures
+        if: steps.list-changed.outputs.changed == 'true'
+        run: |
+          kubectl create namespace polaris-ns
+          kubectl apply --namespace polaris-ns $(find helm/polaris/ci/fixtures -name "*.yaml" -exec echo -n "-f {} " \;) 
 
       - name: Run chart-testing (install)
         if: steps.list-changed.outputs.changed == 'true'
         run: |
           ct install --target-branch ${{ github.event.repository.default_branch }} \
+            --namespace polaris-ns \
             --helm-extra-set-args "--set=image.repository=polaris --set=image.tag=latest" \
             --debug --charts ./helm/polaris
