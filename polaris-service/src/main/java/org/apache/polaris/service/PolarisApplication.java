@@ -165,7 +165,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                 stsClientBuilder.credentialsProvider(awsCredentialsProvider);
               }
               return stsClientBuilder.build();
-            }));
+            },
+            configuration.getGcpCredentialsProvider()));
 
     PolarisMetricRegistry polarisMetricRegistry =
         new PolarisMetricRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
