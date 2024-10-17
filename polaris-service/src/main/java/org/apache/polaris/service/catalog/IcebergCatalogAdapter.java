@@ -45,7 +45,6 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
-import org.apache.iceberg.rest.requests.UpdateTableRequest;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
