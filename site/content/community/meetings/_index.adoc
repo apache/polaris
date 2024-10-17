@@ -24,3 +24,49 @@ cascade:
   type: docs
   no_list: false
 ---
+
+== Upcoming Meetings
+
+We have bi-weekly community meeting using Google Meet.
+
+Join the https://groups.google.com/u/1/g/polaris-community-sync[polaris-community-sync Google Group].
+
+== Scheduled Meetings
+
+https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/[Agenda for upcoming Community Meetings]
+
+[cols="1,3"]
+|===
+| Date | Time
+
+| 2024-10-31 | 9:00 AM PST
+
+17:00 CEST
+| 2024-11-14 | 9:00 AM PST
+
+18:00 CET
+| 2024-11-28 | 9:00 AM PST
+
+18:00 CET
+| 2024-12-12 | 9:00 AM PST
+
+18:00 CET
+| 2024-12-26 | 9:00 AM PST
+
+18:00 CET
+| ... |
+|===
+
+== Past Meetings
+
+[cols="1,3,3"]
+|===
+| Date | Notes | Recording
+
+| 2024-10-17
+| https://docs.google.com/document/d/1TAAMjCtk4KuWSwfxpCBhhK9vM1k_3n7YE4L28slclXU/edit?tab=t.0#heading=h.kf4agp8flxjb[Meeting Notes]
+| (no recording)
+|===
+////
+| {{< youtube id=xyz loading=lazy title="Not a Polaris meeting" >}}
+////
