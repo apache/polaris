@@ -59,6 +59,7 @@ import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GrantCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.GrantResource;
@@ -107,7 +108,9 @@ public class PolarisServiceImplIntegrationTest {
 
           // disallow FILE urls for the sake of tests below
           ConfigOverride.config(
-              "featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES", "S3,GCS,AZURE"));
+              "featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES", "S3,GCS,AZURE"),
+          ConfigOverride.config("gcp_credentials.access_token", "abc"),
+          ConfigOverride.config("gcp_credentials.expires_in", "12345"));
   private static String userToken;
   private static String realm;
 
@@ -376,6 +379,73 @@ public class PolarisServiceImplIntegrationTest {
       } catch (JsonProcessingException e) {
         throw new RuntimeException(e);
       }
+    }
+  }
+
+  @Test
+  public void testCreateCatalogWithAzureStorageConfig() {
+    AzureStorageConfigInfo azureConfigInfo =
+        AzureStorageConfigInfo.builder()
+            .setConsentUrl("https://consent.url")
+            .setMultiTenantAppName("myappname")
+            .setTenantId("tenantId")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+            .build();
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("my-catalog")
+            .setProperties(
+                new CatalogProperties(
+                    "abfss://polaris@polarisdev.dfs.core.windows.net/path/to/my/data/"))
+            .setStorageConfigInfo(azureConfigInfo)
+            .build();
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs")
+            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs/my-catalog").get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog catResponse = response.readEntity(Catalog.class);
+      assertThat(catResponse.getStorageConfigInfo())
+          .isInstanceOf(AzureStorageConfigInfo.class)
+          .hasFieldOrPropertyWithValue("consentUrl", "https://consent.url")
+          .hasFieldOrPropertyWithValue("multiTenantAppName", "myappname")
+          .hasFieldOrPropertyWithValue(
+              "allowedLocations",
+              List.of("abfss://polaris@polarisdev.dfs.core.windows.net/path/to/my/data/"));
+    }
+  }
+
+  @Test
+  public void testCreateCatalogWithGcpStorageConfig() {
+    GcpStorageConfigInfo gcpConfigModel =
+        GcpStorageConfigInfo.builder()
+            .setGcsServiceAccount("my-sa")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+            .build();
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("my-catalog")
+            .setProperties(new CatalogProperties("gs://my-bucket/path/to/data"))
+            .setStorageConfigInfo(gcpConfigModel)
+            .build();
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs")
+            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs/my-catalog").get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog catResponse = response.readEntity(Catalog.class);
+      assertThat(catResponse.getStorageConfigInfo())
+          .isInstanceOf(GcpStorageConfigInfo.class)
+          .hasFieldOrPropertyWithValue("gcsServiceAccount", "my-sa")
+          .hasFieldOrPropertyWithValue("allowedLocations", List.of("gs://my-bucket/path/to/data"));
     }
   }
 
