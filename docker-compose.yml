@@ -33,7 +33,7 @@ services:
       # add aws keys as dropwizard config
       JAVA_OPTS: -Ddw.awsAccessKey=$AWS_ACCESS_KEY_ID -Ddw.awsSecretKey=$AWS_SECRET_ACCESS_KEY
     volumes:
-      - credentials:/tmp/credentials/
+      - ./regtests/credentials:/tmp/credentials/
 
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/healthcheck"]
@@ -66,19 +66,5 @@ services:
       AWS_CROSS_REGION_BUCKET: $AWS_CROSS_REGION_BUCKET
       AWS_ROLE_FOR_CROSS_REGION_BUCKET: $AWS_ROLE_FOR_CROSS_REGION_BUCKET
     volumes:
-      - local_output:/tmp/polaris-regtests/
-      - credentials:/tmp/credentials/
-
-volumes:
-  local_output:
-    driver: local
-    driver_opts:
-      o: bind
-      type: none
-      device: ./regtests/output
-  credentials:
-    driver: local
-    driver_opts:
-      o: bind
-      type: none
-      device: ./regtests/credentials
+      - ./regtests/output:/tmp/polaris-regtests/
+      - ./regtests/credentials:/tmp/credentials/
