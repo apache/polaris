@@ -7,7 +7,7 @@
 # "License"); you may not use this file except in compliance
 # with the License.  You may obtain a copy of the License at
 #
-#  http://www.apache.org/licenses/LICENSE-2.0
+#   http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing,
 # software distributed under the License is distributed on an
@@ -17,18 +17,7 @@
 # under the License.
 #
 
-apiVersion: v2
-name: polaris
-description: A Helm chart for Polaris
-type: application
-version: 0.1.0
-home: https://polaris.apache.org/
-icon: https://raw.githubusercontent.com/apache/polaris/main/docs/img/logos/polaris-brandmark.png
-sources:
-  - https://github.com/apache/polaris
-keywords:
-  - polaris
-  - iceberg
-maintainers:
-  - name: MonkeyCanCode
-  - name: adutra
+image:
+  repository: polaris
+  tag: latest
+  pullPolicy: Never

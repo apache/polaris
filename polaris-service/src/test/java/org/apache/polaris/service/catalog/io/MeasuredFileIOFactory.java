@@ -16,8 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.catalog.io;
 
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.OutputFile;
 
 /** A FileIOFactory that measures the number of bytes read, files written, and files deleted. */
+@JsonTypeName("measured")
 public class MeasuredFileIOFactory implements FileIOFactory {
   private final List<MeasuredFileIO> ios;
 

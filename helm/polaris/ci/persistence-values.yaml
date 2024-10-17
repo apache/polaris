@@ -1,4 +1,3 @@
----
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,28 +16,18 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: '2024'
-title: 'Apache Polaris Community Meetings in 2024'
----
 
-== Upcoming Meetings
+image:
+  repository: polaris
+  tag: latest
+  pullPolicy: Never
 
-We will have a community meeting shortly, stay tuned...
+bootstrapMetastoreManager: true
 
-////
-https://polaris.apache.org/[Agenda for upcoming Community Meetings]
-////
+persistenceConfigSecret: polaris-persistence
 
-////
-== Past Meetings
-
-[cols="1,3,3"]
-|===
-| Date | Notes | Recording
-
-| 2024-08-30
-| Meeting Notes
-| {{< youtube id=xyz loading=lazy title="Not a Polaris meeting" >}}
-
-|===
-////
+polarisServerConfig:
+  metaStoreManager:
+    type: eclipse-link
+    persistence-unit: polaris
+    conf-file: /eclipselink-config/conf.jar!/persistence.xml

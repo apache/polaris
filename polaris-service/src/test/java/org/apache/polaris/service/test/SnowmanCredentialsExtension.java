@@ -129,7 +129,7 @@ public class SnowmanCredentialsExtension
               .header(REALM_PROPERTY_KEY, realm)
               .post(Entity.json(snowmanWithCredentials))) {
 
-        assertThat(rotateResp).returns(200, Response::getStatus);
+        assertThat(rotateResp).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
 
         // Use the rotated credentials.
         snowmanWithCredentials = rotateResp.readEntity(PrincipalWithCredentials.class);
