@@ -117,15 +117,6 @@ public class AzureLocation extends StorageLocation {
     return false;
   }
 
-  /** If a path doesn't start with `/`, this will add one */
-  private @NotNull String ensureLeadingSlash(@NotNull String location) {
-    if (location.startsWith("/")) {
-      return location;
-    } else {
-      return "/" + location;
-    }
-  }
-
   /** Return true if the input location appears to be an Azure path */
   public static boolean isAzureLocation(String location) {
     if (location == null) {
