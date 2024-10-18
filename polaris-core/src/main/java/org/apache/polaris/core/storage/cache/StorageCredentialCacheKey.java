@@ -55,7 +55,7 @@ public class StorageCredentialCacheKey {
       boolean allowedListAction,
       Set<String> allowedReadLocations,
       Set<String> allowedWriteLocations,
-      PolarisCallContext callContext) {
+      @Nullable PolarisCallContext callContext) {
     this.catalogId = entity.getCatalogId();
     this.storageConfigSerializedStr =
         entity
@@ -95,7 +95,7 @@ public class StorageCredentialCacheKey {
     return allowedWriteLocations;
   }
 
-  public PolarisCallContext getCallContext() {
+  public @Nullable PolarisCallContext getCallContext() {
     return callContext;
   }
 

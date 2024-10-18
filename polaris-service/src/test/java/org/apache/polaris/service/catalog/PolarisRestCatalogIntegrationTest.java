@@ -493,7 +493,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             .header(REALM_PROPERTY_KEY, realm)
             .get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(GrantResources.class))
           .extracting(GrantResources::getGrants)
           .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
@@ -512,7 +512,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             .header(REALM_PROPERTY_KEY, realm)
             .get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(GrantResources.class))
           .extracting(GrantResources::getGrants)
           .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
@@ -563,7 +563,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             .header(REALM_PROPERTY_KEY, realm)
             .get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(GrantResources.class))
           .extracting(GrantResources::getGrants)
           .asInstanceOf(InstanceOfAssertFactories.list(GrantResource.class))
@@ -759,12 +759,28 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             "s3://my-bucket/path/to/metadata.json",
             null));
     restCatalog.createNamespace(Namespace.of("ns1"));
+    String notificationUrl =
+        String.format(
+            "http://localhost:%d/api/catalog/v1/%s/namespaces/ns1/tables/tbl1/notifications",
+            EXT.getLocalPort(), currentCatalogName);
     try (Response response =
         EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/catalog/v1/%s/namespaces/ns1/tables/tbl1/notifications",
-                    EXT.getLocalPort(), currentCatalogName))
+            .target(notificationUrl)
+            .request("application/json")
+            .header("Authorization", "Bearer " + userToken)
+            .header(REALM_PROPERTY_KEY, realm)
+            .post(Entity.json(notification))) {
+      assertThat(response)
+          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
+          .extracting(r -> r.readEntity(ErrorResponse.class))
+          .returns("Cannot update internal catalog via notifications", ErrorResponse::message);
+    }
+
+    // NotificationType.VALIDATE should also surface the same error.
+    notification.setNotificationType(NotificationType.VALIDATE);
+    try (Response response =
+        EXT.client()
+            .target(notificationUrl)
             .request("application/json")
             .header("Authorization", "Bearer " + userToken)
             .header(REALM_PROPERTY_KEY, realm)

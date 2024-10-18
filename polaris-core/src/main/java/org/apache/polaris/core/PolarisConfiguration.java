@@ -18,7 +18,9 @@
  */
 package org.apache.polaris.core;
 
+import java.util.List;
 import java.util.Optional;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 
 public class PolarisConfiguration<T> {
 
@@ -115,7 +117,7 @@ public class PolarisConfiguration<T> {
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_NAMESPACE_LOCATION_OVERLAP")
           .description(
-              "If set to true, allow one table's location to reside within another table's location. "
+              "If set to true, allow one namespace's location to reside within another namespace's location. "
                   + "This is only enforced within a parent catalog or namespace.")
           .defaultValue(false)
           .build();
@@ -150,6 +152,19 @@ public class PolarisConfiguration<T> {
           .description(
               "If set to true, allows tables to have external locations outside the default structure.")
           .defaultValue(false)
+          .build();
+
+  public static final PolarisConfiguration<List<String>> SUPPORTED_CATALOG_STORAGE_TYPES =
+      PolarisConfiguration.<List<String>>builder()
+          .key("SUPPORTED_CATALOG_STORAGE_TYPES")
+          .catalogConfig("supported.storage.types")
+          .description("The list of supported storage types for a catalog")
+          .defaultValue(
+              List.of(
+                  StorageConfigInfo.StorageTypeEnum.S3.name(),
+                  StorageConfigInfo.StorageTypeEnum.AZURE.name(),
+                  StorageConfigInfo.StorageTypeEnum.GCS.name(),
+                  StorageConfigInfo.StorageTypeEnum.FILE.name()))
           .build();
 
   public static final PolarisConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =

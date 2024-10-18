@@ -984,6 +984,15 @@ paths:
           The responsibility of ensuring the correct order of timestamps for a sequence of notifications 
           lies with the caller of the API. This includes managing potential clock skew or inconsistencies 
           when notifications are sent from multiple sources.
+
+          A VALIDATE request behaves like a dry-run of a CREATE or UPDATE request up to but not including
+          loading the contents of a metadata file; this includes validations of permissions, the specified
+          metadata path being within ALLOWED_LOCATIONS, having an EXTERNAL catalog, etc. The intended use
+          case for a VALIDATE notification is to allow a remote catalog to pre-validate the general
+          settings of a receiving catalog against an intended new table location before possibly creating
+          a table intended for sending notifications in the remote catalog at all. For a VALIDATE request,
+          the specified metadata-location can either be a prospective full metadata file path, or a
+          relevant parent directory of the intended table to validate against ALLOWED_LOCATIONS.
         content:
           application/json:
             schema:
@@ -3244,6 +3253,7 @@ components:
         - CREATE
         - UPDATE
         - DROP
+        - VALIDATE
 
     TableUpdateNotification:
       type: object
@@ -4051,7 +4061,7 @@ components:
       value: "accounting%1Ftax"
 
     NamespaceAsPathVariable:
-      summary: A single part namespace, as represented in a path paremeter
+      summary: A single part namespace, as represented in a path parameter
       value: "accounting"
 
     NamespaceAlreadyExistsError:

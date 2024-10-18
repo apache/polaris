@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.throttling;
 
+import static org.apache.polaris.service.throttling.RequestThrottlingErrorResponse.RequestThrottlingErrorType.REQUEST_TOO_LARGE;
+
 import com.fasterxml.jackson.core.exc.StreamConstraintsException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -34,9 +36,7 @@ public class StreamReadConstraintsExceptionMapper
   public Response toResponse(StreamConstraintsException exception) {
     return Response.status(Response.Status.BAD_REQUEST)
         .type(MediaType.APPLICATION_JSON_TYPE)
-        .entity(
-            new RequestThrottlingErrorResponse(
-                RequestThrottlingErrorResponse.RequestThrottlingErrorType.REQUEST_TOO_LARGE))
+        .entity(new RequestThrottlingErrorResponse(REQUEST_TOO_LARGE))
         .build();
   }
 }

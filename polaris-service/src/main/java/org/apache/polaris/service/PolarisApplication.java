@@ -84,11 +84,11 @@ import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApi;
 import org.apache.polaris.service.auth.DiscoverableAuthenticator;
-import org.apache.polaris.service.catalog.FileIOFactory;
 import org.apache.polaris.service.catalog.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2Api;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.ConfigurationStoreAware;
 import org.apache.polaris.service.config.HasEntityManagerFactory;
 import org.apache.polaris.service.config.OAuth2ApiService;
@@ -100,7 +100,12 @@ import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.CallContextResolver;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.context.RealmContextResolver;
+import org.apache.polaris.service.exception.IcebergExceptionMapper;
+import org.apache.polaris.service.exception.IcebergJerseyViolationExceptionMapper;
+import org.apache.polaris.service.exception.IcebergJsonProcessingExceptionMapper;
+import org.apache.polaris.service.exception.PolarisExceptionMapper;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.service.ratelimiter.RateLimiterFilter;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
@@ -160,7 +165,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                 stsClientBuilder.credentialsProvider(awsCredentialsProvider);
               }
               return stsClientBuilder.build();
-            }));
+            },
+            configuration.getGcpCredentialsProvider()));
 
     PolarisMetricRegistry polarisMetricRegistry =
         new PolarisMetricRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
@@ -252,6 +258,14 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         .servlets()
         .addFilter("tracing", new TracingFilter(openTelemetry))
         .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
+
+    if (configuration.getRateLimiter() != null) {
+      environment
+          .servlets()
+          .addFilter("ratelimiter", new RateLimiterFilter(configuration.getRateLimiter()))
+          .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
+    }
+
     DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> authenticator =
         configuration.getPolarisAuthenticator();
     authenticator.setEntityManagerFactory(entityManagerFactory);
@@ -268,6 +282,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     }
     environment.jersey().register(new IcebergRestOAuth2Api(oauth2Service));
     environment.jersey().register(new IcebergExceptionMapper());
+    environment.jersey().register(new PolarisExceptionMapper());
     PolarisServiceImpl polarisService = new PolarisServiceImpl(entityManagerFactory, authorizer);
     environment.jersey().register(new PolarisCatalogsApi(polarisService));
     environment.jersey().register(new PolarisPrincipalsApi(polarisService));
