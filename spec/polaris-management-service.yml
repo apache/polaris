@@ -903,7 +903,9 @@ components:
 
     AzureStorageConfigInfo:
       type: object
-      description: azure storage configuration info
+      description:
+        azure storage configuration info; base location supports abfs[s] schemes and only supports wasb[s] schemes
+        when featureConfiguration.SUPPORT_WASB_CATALOG is true
       allOf:
         - $ref: '#/components/schemas/StorageConfigInfo'
       properties:

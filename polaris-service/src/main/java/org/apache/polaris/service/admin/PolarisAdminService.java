@@ -80,6 +80,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
+import org.apache.polaris.core.storage.azure.AzureLocation;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -533,6 +534,24 @@ public class PolarisAdminService {
             });
   }
 
+  private boolean catalogLocationsContainWasb(CatalogEntity catalogEntity) {
+    boolean supportWasbCatalog =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(), PolarisConfiguration.SUPPORT_WASB_CATALOG);
+    if (supportWasbCatalog) {
+      return false;
+    }
+
+    return getCatalogLocations(catalogEntity).stream()
+        .anyMatch(
+            location ->
+                location.startsWith(AzureLocation.WASB_SCHEME)
+                    || location.startsWith(AzureLocation.WASBS_SCHEME));
+  }
+
   public PolarisEntity createCatalog(PolarisEntity entity) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG;
     authorizeBasicRootOperationOrThrow(op);
@@ -540,6 +559,12 @@ public class PolarisAdminService {
     if (catalogOverlapsWithExistingCatalog((CatalogEntity) entity)) {
       throw new ValidationException(
           "Cannot create Catalog %s. One or more of its locations overlaps with an existing catalog",
+          entity.getName());
+    }
+
+    if (catalogLocationsContainWasb((CatalogEntity) entity)) {
+      throw new ValidationException(
+          "Cannot create Catalog %s. Polaris does not support catalog locations containing WASB paths",
           entity.getName());
     }
 

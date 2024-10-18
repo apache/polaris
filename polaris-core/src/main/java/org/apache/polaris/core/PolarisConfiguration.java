@@ -191,4 +191,12 @@ public class PolarisConfiguration<T> {
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
           .defaultValue(true)
           .build();
+
+  public static final PolarisConfiguration<Boolean> SUPPORT_WASB_CATALOG =
+      PolarisConfiguration.<Boolean>builder()
+          .key("SUPPORT_WASB_CATALOG")
+          .description(
+              "If set to true, allows the creation of catalogs with storage locations using Azure WASB prefix.")
+          .defaultValue(false)
+          .build();
 }
