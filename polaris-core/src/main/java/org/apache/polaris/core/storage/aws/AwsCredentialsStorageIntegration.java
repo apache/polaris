@@ -27,7 +27,6 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.jetbrains.annotations.NotNull;
 import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
@@ -186,12 +185,5 @@ public class AwsCredentialsStorageIntegration
       path = path.substring(1);
     }
     return path;
-  }
-
-  // FIXME - we don't need this method in the interface
-  @Override
-  public EnumMap<PolarisStorageConfigurationInfo.DescribeProperty, String>
-      descPolarisStorageConfiguration(@NotNull PolarisStorageConfigurationInfo storageConfigInfo) {
-    return null;
   }
 }
