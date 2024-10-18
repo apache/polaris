@@ -49,13 +49,13 @@ public class DefaultContextResolver
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultContextResolver.class);
 
   public static final String REALM_PROPERTY_KEY = "realm";
-  public static final String REALM_PROPERTY_DEFAULT_VALUE = "default-realm";
 
   public static final String PRINCIPAL_PROPERTY_KEY = "principal";
   public static final String PRINCIPAL_PROPERTY_DEFAULT_VALUE = "default-principal";
 
   private RealmEntityManagerFactory entityManagerFactory;
   private PolarisConfigurationStore configurationStore;
+  private String defaultRealm = "default-realm";
 
   /**
    * During CallContext resolution that might depend on RealmContext, the {@code
@@ -92,12 +92,20 @@ public class DefaultContextResolver
 
     if (!parsedProperties.containsKey(REALM_PROPERTY_KEY)) {
       LOGGER.warn(
-          "Failed to parse {} from headers; using {}",
-          REALM_PROPERTY_KEY,
-          REALM_PROPERTY_DEFAULT_VALUE);
-      parsedProperties.put(REALM_PROPERTY_KEY, REALM_PROPERTY_DEFAULT_VALUE);
+          "Failed to parse {} from headers; using {}", REALM_PROPERTY_KEY, getDefaultRealm());
+      parsedProperties.put(REALM_PROPERTY_KEY, getDefaultRealm());
     }
     return () -> parsedProperties.get(REALM_PROPERTY_KEY);
+  }
+
+  @Override
+  public void setDefaultRealm(String defaultRealm) {
+    this.defaultRealm = defaultRealm;
+  }
+
+  @Override
+  public String getDefaultRealm() {
+    return this.defaultRealm;
   }
 
   @Override
