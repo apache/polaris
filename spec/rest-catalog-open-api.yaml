@@ -990,7 +990,7 @@ paths:
           metadata path being within ALLOWED_LOCATIONS, having an EXTERNAL catalog, etc. The intended use
           case for a VALIDATE notification is to allow a remote catalog to pre-validate the general
           settings of a receiving catalog against an intended new table location before possibly creating
-          a table intended for sending notifcations in the remote catalog at all. For a VALIDATE request,
+          a table intended for sending notifications in the remote catalog at all. For a VALIDATE request,
           the specified metadata-location can either be a prospective full metadata file path, or a
           relevant parent directory of the intended table to validate against ALLOWED_LOCATIONS.
         content:
@@ -4061,7 +4061,7 @@ components:
       value: "accounting%1Ftax"
 
     NamespaceAsPathVariable:
-      summary: A single part namespace, as represented in a path paremeter
+      summary: A single part namespace, as represented in a path parameter
       value: "accounting"
 
     NamespaceAlreadyExistsError:
