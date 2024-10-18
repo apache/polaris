@@ -108,13 +108,22 @@ public class AzureLocation extends StorageLocation {
       AzureLocation potentialAzureParent = (AzureLocation) potentialParent;
       if (this.container.equals(potentialAzureParent.container)) {
         if (this.storageAccount.equals(potentialAzureParent.storageAccount)) {
-          String slashTerminatedFilePath = ensureTrailingSlash(this.filePath);
-          String slashTerminatedParentFilePath = ensureTrailingSlash(potentialAzureParent.filePath);
-          return slashTerminatedFilePath.startsWith(slashTerminatedParentFilePath);
+          String formattedFilePath = ensureLeadingSlash(ensureTrailingSlash(this.filePath));
+          String formattedParentFilePath = ensureLeadingSlash(ensureTrailingSlash(potentialAzureParent.filePath));
+          return formattedFilePath.startsWith(formattedParentFilePath);
         }
       }
     }
     return false;
+  }
+
+  /** If a path doesn't start with `/`, this will add one */
+  private @NotNull String ensureLeadingSlash(@NotNull String location) {
+    if (location.startsWith("/")) {
+      return location;
+    } else {
+      return "/" + location;
+    }
   }
 
   /** Return true if the input location appears to be an Azure path */
