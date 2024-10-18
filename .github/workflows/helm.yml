@@ -87,6 +87,7 @@ jobs:
             -t polaris:latest .
 
       - name: Install fixtures
+        if: steps.list-changed.outputs.changed == 'true'
         run: |
           kubectl create namespace polaris-ns
           kubectl apply --namespace polaris-ns $(find helm/polaris/ci/fixtures -name "*.yaml" -exec echo -n "-f {} " \;) 
