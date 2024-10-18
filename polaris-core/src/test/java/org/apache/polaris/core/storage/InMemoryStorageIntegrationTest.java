@@ -197,12 +197,5 @@ class InMemoryStorageIntegrationTest {
         @NotNull Set<String> allowedWriteLocations) {
       return null;
     }
-
-    @Override
-    public EnumMap<PolarisStorageConfigurationInfo.DescribeProperty, String>
-        descPolarisStorageConfiguration(
-            @NotNull PolarisStorageConfigurationInfo storageConfigInfo) {
-      return null;
-    }
   }
 }
