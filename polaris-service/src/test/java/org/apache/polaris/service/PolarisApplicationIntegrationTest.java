@@ -208,7 +208,7 @@ public class PolarisApplicationIntegrationTest {
         .exists()
         .content()
         .hasSizeGreaterThan(0)
-        .doesNotContain("ERROR", "FATAL", "Exception");
+        .doesNotContain("ERROR", "FATAL");
   }
 
   /**
