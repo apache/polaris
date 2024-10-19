@@ -26,10 +26,15 @@ import org.apache.polaris.service.config.HasEntityManagerFactory;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 public interface RealmContextResolver extends Discoverable, HasEntityManagerFactory {
+
   RealmContext resolveRealmContext(
       String requestURL,
       String method,
       String path,
       Map<String, String> queryParams,
       Map<String, String> headers);
+
+  void setDefaultRealm(String defaultRealm);
+
+  String getDefaultRealm();
 }
