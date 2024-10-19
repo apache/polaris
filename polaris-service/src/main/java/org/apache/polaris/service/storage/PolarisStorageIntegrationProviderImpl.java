@@ -91,13 +91,6 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
               }
 
               @Override
-              public EnumMap<PolarisStorageConfigurationInfo.DescribeProperty, String>
-                  descPolarisStorageConfiguration(
-                      @NotNull PolarisStorageConfigurationInfo storageConfigInfo) {
-                return new EnumMap<>(PolarisStorageConfigurationInfo.DescribeProperty.class);
-              }
-
-              @Override
               public @NotNull Map<String, Map<PolarisStorageActions, ValidationResult>>
                   validateAccessToLocations(
                       @NotNull T storageConfig,

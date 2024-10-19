@@ -39,7 +39,6 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.jetbrains.annotations.NotNull;
@@ -206,11 +205,5 @@ public class GcpCredentialsStorageIntegration
 
   private static String bucketResource(String bucket) {
     return "//storage.googleapis.com/projects/_/buckets/" + bucket;
-  }
-
-  @Override
-  public EnumMap<PolarisStorageConfigurationInfo.DescribeProperty, String>
-      descPolarisStorageConfiguration(@NotNull PolarisStorageConfigurationInfo storageConfigInfo) {
-    return null;
   }
 }
