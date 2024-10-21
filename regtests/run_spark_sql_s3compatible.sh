@@ -47,7 +47,6 @@ if [ $# -ne 0 ] && [ $# -ne 1 ]; then
 fi
 
 # Init
-SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN:-principal:root;realm:default-realm}"
 REGTEST_HOME=$(dirname $(realpath $0))
 cd ${REGTEST_HOME}
 
@@ -65,6 +64,20 @@ fi
 S3_LOCATION_2="s3://warehouse2/polaris/"
 
 
+# SPARK_BEARER_TOKEN
+if ! output=$(curl -s -X POST -H "Polaris-Realm: POLARIS" "http://${POLARIS_HOST:-localhost}:8181/api/catalog/v1/oauth/tokens" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=root" \
+  -d "client_secret=secret" \
+  -d "scope=PRINCIPAL_ROLE:ALL"); then
+  echo "Error: Failed to retrieve bearer token"
+  exit 1
+fi
+SPARK_BEARER_TOKEN=$(echo "$output" | awk -F\" '{print $4}')
+if [ "SPARK_BEARER_TOKEN" == "unauthorized_client" ]; then
+  echo "Error: Failed to retrieve bearer token"
+  exit 1
+fi
 
 # check if Polaris is running
 polaris_http_code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs --output /dev/null)
@@ -72,6 +85,7 @@ if [ $polaris_http_code -eq 000 ] && [ $polaris_http_code -ne 200 ]; then
   echo "Polaris is not running on ${POLARIS_HOST:-localhost}:8181. End of script"
   exit 1
 fi
+
 
 # check if cacerts contain MinIO certificate
 cert_response=$(keytool -list -cacerts -alias minio -storepass changeit | grep trustedCertEntry)
@@ -108,14 +122,15 @@ fi
 
 # creation of catalog
 
+echo """
+These environnement variables have to be available to Polaris service :
+CATALOG_S3_KEY_ID     = minio-user-catalog
+CATALOG_S3_KEY_SECRET = 12345678-minio-catalog
+export CATALOG_S3_KEY_ID=minio-user-catalog
+export CATALOG_S3_KEY_SECRET=12345678-minio-catalog
+"""
 
-# if "credsCatalogAndClientStrategy"=="ENV_VAR_NAME" and not "VALUE", then the following environnement variables have to be available to Polaris
-# CATALOG_ID=minio-user-catalog
-# CATALOG_SECRET=12345678-minio-catalog
-# CLIENT_ID=minio-user-client
-# CLIENT_SECRET=12345678-minio-client
-
-echo -e "\n----\nCREATE Catalog\n"
+echo -e "\n----\nCREATE Catalog with few parameters \n"
 response_catalog=$(curl  --output /dev/null -w "%{http_code}" -s -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
@@ -130,25 +145,17 @@ response_catalog=$(curl  --output /dev/null -w "%{http_code}" -s -i -X POST -H "
             },
             \"storageConfigInfo\": {
               \"storageType\": \"S3_COMPATIBLE\",
-              \"credsVendingStrategy\": \"TOKEN_WITH_ASSUME_ROLE\",
-              \"credsCatalogAndClientStrategy\": \"VALUE\",
               \"allowedLocations\": [\"${S3_LOCATION}/\"],
-              \"s3.path-style-access\": true,
-              \"s3.endpoint\": \"https://localhost:9000\",
-              \"s3.credentials.catalog.access-key-id\": \"minio-user-catalog\",
-              \"s3.credentials.catalog.secret-access-key\": \"12345678-minio-catalog\",
-              \"s3.credentials.client.access-key-id\": \"minio-user-client\",
-              \"s3.credentials.client.secret-access-key\": \"12345678-minio-client\"
+              \"s3.endpoint\": \"https://localhost:9000\"
             }
           }"
 )
+
 echo -e "Catalog creation - response API http code : $response_catalog \n"
 if [ $response_catalog -ne 201 ] && [ $response_catalog -ne 409 ]; then
   echo "Problem during catalog creation"
   exit 1
 fi
-
-
 
 
 echo -e "Get the catalog created : \n"
@@ -157,8 +164,8 @@ curl -s -i -X GET -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
       -H 'Content-Type: application/json' \
       http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/manual_spark
 
-# Try to update the catalog, - adding a second bucket in the alllowed locations
-echo -e "\n----\nUPDATE the catalog, - adding a second bucket in the alllowed locations\n"
+# Update the catalog
+echo -e "\n----\nUPDATE the catalog v1, - adding a second bucket in the alllowed locations\n"
 curl -s -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
@@ -170,24 +177,15 @@ curl -s -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
             },
             \"storageConfigInfo\": {
               \"storageType\": \"S3_COMPATIBLE\",
-              \"credsVendingStrategy\": \"TOKEN_WITH_ASSUME_ROLE\",
-              \"credsCatalogAndClientStrategy\": \"VALUE\",
               \"allowedLocations\": [\"${S3_LOCATION}/\",\"${S3_LOCATION_2}/\"],
-              \"s3.path-style-access\": true,
               \"s3.endpoint\": \"https://localhost:9000\",
-              \"s3.credentials.catalog.access-key-id\": \"minio-user-catalog\",
-              \"s3.credentials.catalog.secret-access-key\": \"12345678-minio-catalog\",
-              \"s3.credentials.client.access-key-id\": \"minio-user-client\",
-              \"s3.credentials.client.secret-access-key\": \"12345678-minio-client\"
+              \"s3.region\": \"region-1\",
+              \"s3.pathStyleAccess\": true,
+              \"s3.credentials.catalog.accessKeyEnvVar\": \"CATALOG_S3_KEY_ID\",
+              \"s3.credentials.catalog.secretAccessKeyEnvVar\": \"CATALOG_S3_KEY_SECRET\",
+              \"s3.roleArn\": \"arn:xxx:xxx:xxx:xxxx\"
             }
           }"
-
-
-echo -e "Get the catalog updated with second allowed location : \n"
-curl -s -i -X GET -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
-      -H 'Accept: application/json' \
-      -H 'Content-Type: application/json' \
-      http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/manual_spark
 
 
 echo -e "\n----\nAdd TABLE_WRITE_DATA to the catalog's catalog_admin role since by default it can only manage access and metadata\n"
@@ -212,9 +210,9 @@ ${SPARK_HOME}/bin/spark-sql --verbose \
   -f "minio/queries-for-spark.sql"
 
 
+
 echo -e "\n\n\nEnd of tests, a table and a view data with displayed should be visible in log above"
 echo "Minio stopping, bucket browser will be shutdown, volume data of the bucket remains in 'regtests/minio/miniodata'"
 echo ":-)"
 echo ""
-docker-compose --progress quiet --project-name minio --project-directory minio/ -f minio/docker-compose.yml down
-
+docker-compose --progress quiet --project-name polaris-minio --project-directory minio/ -f minio/docker-compose.yml down
