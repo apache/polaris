@@ -39,6 +39,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.s3.S3CredentialsStorageIntegration;
 import software.amazon.awssdk.services.sts.StsClient;
 
 @ApplicationScoped
@@ -72,6 +73,9 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
         storageIntegration =
             (PolarisStorageIntegration<T>)
                 new AwsCredentialsStorageIntegration(stsClientSupplier.get());
+        break;
+      case S3_COMPATIBLE:
+        storageIntegration = (PolarisStorageIntegration<T>) new S3CredentialsStorageIntegration();
         break;
       case GCS:
         storageIntegration =
