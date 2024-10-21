@@ -16,25 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.context;
+package org.apache.polaris.service.catalog.io;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import io.dropwizard.jackson.Discoverable;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.Map;
-import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.config.HasEntityManagerFactory;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.io.FileIO;
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
-public interface RealmContextResolver extends Discoverable, HasEntityManagerFactory {
-
-  RealmContext resolveRealmContext(
-      String requestURL,
-      String method,
-      String path,
-      Map<String, String> queryParams,
-      Map<String, String> headers);
-
-  void setDefaultRealm(String defaultRealm);
-
-  String getDefaultRealm();
+/** A simple FileIOFactory implementation that defers all the work to the Iceberg SDK */
+@JsonTypeName("default")
+public class DefaultFileIOFactory implements FileIOFactory {
+  @Override
+  public FileIO loadFileIO(String impl, Map<String, String> properties) {
+    return CatalogUtil.loadFileIO(impl, properties, new Configuration());
+  }
 }

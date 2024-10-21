@@ -84,11 +84,11 @@ import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApi;
 import org.apache.polaris.service.auth.DiscoverableAuthenticator;
-import org.apache.polaris.service.catalog.FileIOFactory;
 import org.apache.polaris.service.catalog.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2Api;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.ConfigurationStoreAware;
 import org.apache.polaris.service.config.HasEntityManagerFactory;
 import org.apache.polaris.service.config.OAuth2ApiService;
@@ -165,7 +165,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                 stsClientBuilder.credentialsProvider(awsCredentialsProvider);
               }
               return stsClientBuilder.build();
-            }));
+            },
+            configuration.getGcpCredentialsProvider()));
 
     PolarisMetricRegistry polarisMetricRegistry =
         new PolarisMetricRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
