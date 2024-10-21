@@ -1,0 +1,69 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+services:
+  polaris-minio:
+    image: minio/minio:latest
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+      - MINIO_DOMAIN=minio
+    networks:
+      minio_net:
+        aliases:
+          - warehouse.minio
+    ports:
+      - 9001:9001
+      - 9000:9000
+    volumes:
+      - ./miniodata:/data
+      - ./certs:/root/.minio/certs/
+    command: ["server", "/data", "--console-address", ":9001"]
+  minio-configured:
+    depends_on:
+      - polaris-minio
+    image: minio/mc:latest
+    container_name: mc
+    networks:
+      minio_net:
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+    volumes:
+      - ./certs:/root/.mc/certs
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc config host add minio https://minio:9000 admin password) do echo '...waiting...' && sleep 1; done;
+      /usr/bin/mc rm -r --force --quiet minio/warehouse;
+      /usr/bin/mc mb --ignore-existing minio/warehouse;
+      /usr/bin/mc policy set readwrite minio/warehouse;
+      /usr/bin/mc rm -r --force --quiet minio/warehouse2;
+      /usr/bin/mc mb --ignore-existing minio/warehouse2;
+      /usr/bin/mc policy set readwrite minio/warehouse2;
+      /usr/bin/mc admin user add minio minio-user-catalog 12345678-minio-catalog;
+      /usr/bin/mc admin user add minio minio-user-client 12345678-minio-client;
+      /usr/bin/mc admin policy attach minio readwrite --user minio-user-catalog;
+      /usr/bin/mc admin policy attach minio readwrite --user minio-user-client;
+      tail -f /dev/null
+      "
+networks:
+  minio_net:
+

@@ -177,6 +177,7 @@ public class PolarisConfiguration<T> {
           .defaultValue(
               List.of(
                   StorageConfigInfo.StorageTypeEnum.S3.name(),
+                  StorageConfigInfo.StorageTypeEnum.S3_COMPATIBLE.name(),
                   StorageConfigInfo.StorageTypeEnum.AZURE.name(),
                   StorageConfigInfo.StorageTypeEnum.GCS.name(),
                   StorageConfigInfo.StorageTypeEnum.FILE.name()))
