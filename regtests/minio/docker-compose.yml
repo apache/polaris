@@ -54,14 +54,10 @@ services:
       until (/usr/bin/mc config host add minio https://minio:9000 admin password) do echo '...waiting...' && sleep 1; done;
       /usr/bin/mc rm -r --force --quiet minio/warehouse;
       /usr/bin/mc mb --ignore-existing minio/warehouse;
-      /usr/bin/mc policy set readwrite minio/warehouse;
       /usr/bin/mc rm -r --force --quiet minio/warehouse2;
       /usr/bin/mc mb --ignore-existing minio/warehouse2;
-      /usr/bin/mc policy set readwrite minio/warehouse2;
       /usr/bin/mc admin user add minio minio-user-catalog 12345678-minio-catalog;
-      /usr/bin/mc admin user add minio minio-user-client 12345678-minio-client;
       /usr/bin/mc admin policy attach minio readwrite --user minio-user-catalog;
-      /usr/bin/mc admin policy attach minio readwrite --user minio-user-client;
       tail -f /dev/null
       "
 networks:
