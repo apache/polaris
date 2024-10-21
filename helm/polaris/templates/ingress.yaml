@@ -17,7 +17,6 @@
   under the License.
 */}}
 
-# {{- $kubeVersion := .Capabilities.KubeVersion.Version -}}
 {{- if .Values.ingress.enabled -}}
 {{- $fullName := include "polaris.fullname" . -}}
 {{- $svcPort := index .Values.service.ports "polaris-service" -}}
