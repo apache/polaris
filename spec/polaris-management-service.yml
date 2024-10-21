@@ -862,6 +862,7 @@ components:
           type: string
           enum:
             - S3
+            - S3_COMPATIBLE
             - GCS
             - AZURE
             - FILE
@@ -877,6 +878,7 @@ components:
         propertyName: storageType
         mapping:
           S3: "#/components/schemas/AwsStorageConfigInfo"
+          S3_COMPATIBLE: "#/components/schemas/S3StorageConfigInfo"
           AZURE: "#/components/schemas/AzureStorageConfigInfo"
           GCS: "#/components/schemas/GcpStorageConfigInfo"
           FILE: "#/components/schemas/FileStorageConfigInfo"
@@ -904,6 +906,58 @@ components:
           example: "us-east-2"
       required:
         - roleArn
+
+    S3StorageConfigInfo:
+      type: object
+      description: S3 compatible storage configuration info (MinIO, Dell ECS, Netapp StorageGRID, ...)
+      allOf:
+        - $ref: '#/components/schemas/StorageConfigInfo'
+      properties:
+        credsCatalogAndClientStrategy:
+          type: string
+          enum:
+            - VALUE
+            - ENV_VAR_NAME
+          default: ENV_VAR_NAME
+          example: "ACCESS_KEY"
+          description: When you send key VALUE directly via this command, they should apear in logs. By ENV_VAR_NAME without dollar, only a reference will appear in logs, but the value have to be available as environnement variable in the context where Polaris is running
+        credsVendingStrategy:
+          type: string
+          enum:
+            - TOKEN_WITH_ASSUME_ROLE
+            - KEYS_SAME_AS_CATALOG
+            - KEYS_DEDICATED_TO_CLIENT
+          default: TOKEN_WITH_ASSUME_ROLE
+          description: The catalog strategy to vend credentials to client. Options possible are same keys than catalog, keys dedicated to clients, or Tokens with STS methods 'assumeRole' for Dell ECS or NetApp StorageGrid solution, 'truc' for MinIo solution)
+        s3.path-style-access:
+          type: boolean
+          description: if true use path style
+          default: false
+        s3.endpoint:
+          type: string
+          description: the S3 endpoint
+          example: "http[s]://host:port"
+        s3.credentials.catalog.access-key-id:
+          type: string
+          description: The ACCESS_KEY_ID used y the catalog to communicate with S3
+          example: "$AWS_ACCESS_KEY_ID"
+        s3.credentials.catalog.secret-access-key:
+          type: string
+          description: The SECRET_ACCESS_KEY used y the catalog to communicate with S3
+          example: "$AWS_SECRET_ACCESS_KEY"
+        s3.credentials.client.access-key-id:
+          type: string
+          description: Optional - ACCESS_KEY_ID vended by catalog to the client in case of this CredentialVendedStrategy is selected
+          example: "$AWS_ACCESS_KEY_ID"
+        s3.credentials.client.secret-access-key:
+          type: string
+          description: Optional - SECRET_ACCESS_KEY vended by catalog to the client in case of this CredentialVendedStrategy is selected
+          example: "$AWS_SECRET_ACCESS_KEY"
+      required:
+        - credsVendingStrategy
+        - s3.endpoint
+        - s3.credentials.catalog.access-key-id
+        - s3.credentials.catalog.secret-access-key
 
     AzureStorageConfigInfo:
       type: object

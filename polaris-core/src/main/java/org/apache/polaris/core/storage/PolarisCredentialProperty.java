@@ -23,6 +23,8 @@ public enum PolarisCredentialProperty {
   AWS_KEY_ID(String.class, "s3.access-key-id", "the aws access key id"),
   AWS_SECRET_KEY(String.class, "s3.secret-access-key", "the aws access key secret"),
   AWS_TOKEN(String.class, "s3.session-token", "the aws scoped access token"),
+  AWS_ENDPOINT(String.class, "s3.endpoint", "the aws s3 endpoint"),
+  AWS_PATH_STYLE_ACCESS(Boolean.class, "s3.path-style-access", "the aws s3 path style access"),
   CLIENT_REGION(
       String.class, "client.region", "region to configure client for making requests to AWS"),
 
