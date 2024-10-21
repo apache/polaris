@@ -18,22 +18,21 @@
 -->
 
 # MiniIO Secured
-## Minio and secured buckets with TLS self-signed / custom AC
+## Minio and secured buckets with TLS self-signed / custom Certificate Authority
 
-To be able to test Polaris with buckets in TLS under custom AC or self-signed certificate
+To be able to test Polaris with buckets in TLS under custom Certificate Authority or self-signed certificate
 
 ## MiniIO generate self-signed certificates designed for docker-compose setup
 
 - Download minio certificate generator : https://github.com/minio/certgen
-- ```./certgen -host "localhost,minio,*"```
-- put them in ./certs and ./certs/CAs
-- they will be mounted in default minio container placeholder
+- Generate certifications: ```./certgen -host "localhost,minio,*"```
+- put them in ./certs and ./certs/CAs. They will be mounted in the default MinIO container placeholder.
 
 ## Test minIO secured TLS buckets from self-signed certificate with AWS CLI 
 - ```aws s3 ls s3:// --recursive --endpoint-url=https://localhost:9000 --no-verify-ssl```
 - ```aws s3 ls s3:// --recursive --endpoint-url=https://localhost:9000 --ca-bundle=./certs/public.crt```
 
-## add to java cacerts only the public.crt as an AC
+## add to java cacerts only the public.crt as an Certificate Authority
 - ```sudo keytool -import -trustcacerts -cacerts -storepass changeit -noprompt -alias minio -file ./certs/public.crt```
 - ```keytool -list -cacerts -alias minio -storepass changeit```
 
