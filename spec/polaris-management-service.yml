@@ -1160,7 +1160,6 @@ components:
       type: string
       enum:
         - CATALOG_MANAGE_ACCESS
-        - VIEW_CREATE
         - VIEW_DROP
         - VIEW_LIST
         - VIEW_READ_PROPERTIES
@@ -1174,7 +1173,6 @@ components:
         - TABLE_DROP
         - TABLE_LIST
         - TABLE_READ_PROPERTIES
-        - VIEW_READ_PROPERTIES
         - TABLE_WRITE_PROPERTIES
         - TABLE_READ_DATA
         - TABLE_WRITE_DATA
