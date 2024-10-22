@@ -519,10 +519,10 @@ public class PolarisAuthorizer {
     } else if (!isAuthorized(
         authenticatedPrincipal, activatedEntities, authzOp, targets, secondaries)) {
       throw new ForbiddenException(
-          "Principal '%s' with activated PrincipalRoles '%s' and activated ids '%s' is not authorized for op %s",
+          "Principal '%s' with activated PrincipalRoles '%s' and activated grants via '%s' is not authorized for op %s",
           authenticatedPrincipal.getName(),
           authenticatedPrincipal.getActivatedPrincipalRoleNames(),
-          activatedEntities.stream().map(PolarisEntityCore::getName),
+          activatedEntities.stream().map(PolarisEntityCore::getName).collect(Collectors.toSet()),
           authzOp);
     }
   }
