@@ -23,7 +23,8 @@ import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum AsyncTaskType {
   ENTITY_CLEANUP_SCHEDULER(1),
-  FILE_CLEANUP(2);
+  FILE_CLEANUP(2),
+  TABLE_CONTENT_CLEANUP(3);
 
   private final int typeCode;
 
