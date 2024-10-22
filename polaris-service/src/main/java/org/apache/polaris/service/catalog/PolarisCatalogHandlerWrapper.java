@@ -212,7 +212,7 @@ public class PolarisCatalogHandlerWrapper {
     }
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
         null /* secondary */);
@@ -245,7 +245,7 @@ public class PolarisCatalogHandlerWrapper {
     }
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
         null /* secondary */);
@@ -282,7 +282,7 @@ public class PolarisCatalogHandlerWrapper {
     }
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
         null /* secondary */);
@@ -314,7 +314,7 @@ public class PolarisCatalogHandlerWrapper {
     }
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
         null /* secondary */);
@@ -367,7 +367,7 @@ public class PolarisCatalogHandlerWrapper {
             .toList();
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         targets,
         null /* secondaries */);
@@ -427,7 +427,7 @@ public class PolarisCatalogHandlerWrapper {
         resolutionManifest.getResolvedPath(dst.namespace(), true);
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
         secondary);
