@@ -94,7 +94,6 @@ import com.google.common.collect.SetMultimap;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
@@ -553,7 +552,8 @@ public class PolarisAuthorizer {
       @NotNull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
-    Set<Long> entityIdSet = activatedEntities.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
+    Set<Long> entityIdSet =
+        activatedEntities.stream().map(PolarisEntityCore::getId).collect(Collectors.toSet());
     for (PolarisPrivilege privilegeOnTarget : authzOp.getPrivilegesOnTarget()) {
       // If any privileges are required on target, the target must be non-null.
       Preconditions.checkState(
