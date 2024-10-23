@@ -65,6 +65,9 @@ podLabels: {}
 # -- Additional Labels to apply to polaris configmap.
 configMapLabels: {}
 
+# -- The number of old ReplicaSets to retain to allow rollback (if not set, the default Kubernetes value is set to 10).
+revisionHistoryLimit: ~
+
 # -- Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/.
 podSecurityContext:
   {}

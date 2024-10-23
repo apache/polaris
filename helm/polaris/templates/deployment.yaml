@@ -31,6 +31,9 @@ spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
+  {{- if not (has (quote .Values.revisionHistoryLimit) (list "" (quote ""))) }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "polaris.selectorLabels" . | nindent 6 }}
