@@ -34,11 +34,13 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 public class TaskFileIOSupplier implements Function<TaskEntity, FileIO> {
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final FileIOFactory fileIOFactory;
+  private final Boolean skipCredentialSubscopingIndirection;
 
   public TaskFileIOSupplier(
-      MetaStoreManagerFactory metaStoreManagerFactory, FileIOFactory fileIOFactory) {
+      MetaStoreManagerFactory metaStoreManagerFactory, FileIOFactory fileIOFactory, Boolean skipCredentialSubscopingIndirection) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOFactory = fileIOFactory;
+    this.skipCredentialSubscopingIndirection = skipCredentialSubscopingIndirection;
   }
 
   @Override
@@ -49,16 +51,18 @@ public class TaskFileIOSupplier implements Function<TaskEntity, FileIO> {
         metaStoreManagerFactory.getOrCreateMetaStoreManager(
             CallContext.getCurrentContext().getRealmContext());
     Map<String, String> properties = new HashMap<>(internalProperties);
-    properties.putAll(
-        metaStoreManagerFactory
-            .getOrCreateStorageCredentialCache(CallContext.getCurrentContext().getRealmContext())
-            .getOrGenerateSubScopeCreds(
-                metaStoreManager,
-                CallContext.getCurrentContext().getPolarisCallContext(),
-                task,
-                true,
-                Set.of(location),
-                Set.of(location)));
+    if (!skipCredentialSubscopingIndirection) {
+      properties.putAll(
+              metaStoreManagerFactory
+                      .getOrCreateStorageCredentialCache(CallContext.getCurrentContext().getRealmContext())
+                      .getOrGenerateSubScopeCreds(
+                              metaStoreManager,
+                              CallContext.getCurrentContext().getPolarisCallContext(),
+                              task,
+                              true,
+                              Set.of(location),
+                              Set.of(location)));
+    }
     String ioImpl =
         properties.getOrDefault(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.io.ResolvingFileIO");
