@@ -22,6 +22,8 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
+import java.util.Locale;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.CherrypickAncestorCommitException;
 import org.apache.iceberg.exceptions.CleanableFailure;
@@ -79,6 +81,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
           case RESTException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
           case IllegalArgumentException e -> Response.Status.BAD_REQUEST.getStatusCode();
           case UnsupportedOperationException e -> Response.Status.NOT_ACCEPTABLE.getStatusCode();
+          case Exception e when isAccessDenied(e) -> Response.Status.FORBIDDEN.getStatusCode();
           case WebApplicationException e -> e.getResponse().getStatus();
           default -> Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
         };
@@ -99,5 +102,28 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
             .build();
     LOGGER.debug("Mapped exception to errorResp: {}", errorResp);
     return errorResp;
+  }
+
+  public static boolean isAccessDenied(String errorMsg) {
+    // Corresponding error messages for storage providers Aws/Azure/Gcp
+    // We may want to consider a change to Iceberg Core to wrap cloud provider IO exceptions to
+    // Iceberg ForbiddenException
+    boolean isAccessDenied =
+        errorMsg != null
+            && (errorMsg.toLowerCase(Locale.ENGLISH).contains("access denied")
+                || errorMsg
+                    .toLowerCase(Locale.ENGLISH)
+                    .contains("this request is not authorized to perform this operation")
+                || errorMsg.toLowerCase(Locale.ENGLISH).contains("forbidden"));
+    if (isAccessDenied) {
+      LOGGER.debug("Access Denied or Forbidden error: {}", errorMsg);
+      return true;
+    }
+    return false;
+  }
+
+  public static boolean isAccessDenied(Exception e) {
+    Throwable rootCause = ExceptionUtils.getRootCause(e);
+    return rootCause != null && isAccessDenied(rootCause.getMessage());
   }
 }
