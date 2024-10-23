@@ -634,8 +634,4 @@ public class PolarisAuthorizer {
         resolvedPath);
     return false;
   }
-
-  private Set<String> granteeIdsToNames(Set<Long> granteeIds) {
-    return null;
-  }
 }
