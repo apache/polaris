@@ -39,10 +39,10 @@ spec:
       {{- include "polaris.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      {{- if .Values.podAnnotations }}
       annotations:
-        {{- if .Values.podAnnotations }}
           {{- tpl (toYaml .Values.podAnnotations) . | nindent 8 }}
-        {{- end }}
+      {{- end }}
       labels:
         {{- include "polaris.selectorLabels" . | nindent 8 }}
         {{- if .Values.podLabels }}
@@ -69,20 +69,24 @@ spec:
       {{- end }}
       {{- end }}
       serviceAccountName: {{ include "polaris.serviceAccountName" . }}
+      {{- if .Values.podSecurityContext }}
       securityContext:
         {{- tpl (toYaml .Values.podSecurityContext) . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
+          {{- if .Values.securityContext}}
           securityContext:
             {{- tpl (toYaml .Values.securityContext) . | nindent 12 }}
+          {{- end }}
           image: "{{ tpl .Values.image.repository . }}:{{ tpl .Values.image.tag . | default .Chart.Version }}"
           imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}
           command: ["/app/bin/polaris-service"]
           args: ["server", "/app/config/polaris-server.yml"]
+          {{- if .Values.extraEnv }}
           env:
-            {{- if .Values.extraEnv }}
             {{- tpl (toYaml .Values.extraEnv) . | nindent 12 }}
-            {{- end }}
+          {{- end }}
           volumeMounts:
             - name: config-volume
               mountPath: /app/config/polaris-server.yml
@@ -118,8 +122,10 @@ spec:
             successThreshold: {{ .Values.readinessProbe.successThreshold }}
             failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
             timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+          {{- if .Values.resources }}
           resources:
             {{- tpl (toYaml .Values.resources) . | nindent 12 }}
+          {{- end }}
       volumes:
         - name: config-volume
           configMap:
