@@ -62,15 +62,6 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
       @NotNull Set<String> allowedWriteLocations);
 
   /**
-   * Describe the configuration for the current storage integration.
-   *
-   * @param storageConfigInfo the configuration info provided by the user.
-   * @return an enum map
-   */
-  public abstract EnumMap<PolarisStorageConfigurationInfo.DescribeProperty, String>
-      descPolarisStorageConfiguration(@NotNull PolarisStorageConfigurationInfo storageConfigInfo);
-
-  /**
    * Validate access for the provided operation actions and locations.
    *
    * @param actions a set of operation actions to validate, like LIST/READ/DELETE/WRITE/ALL

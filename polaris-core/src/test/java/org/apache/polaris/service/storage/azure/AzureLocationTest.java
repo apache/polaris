@@ -56,6 +56,22 @@ public class AzureLocationTest {
   }
 
   @Test
+  public void testLocationComparisons() {
+    StorageLocation location =
+        AzureLocation.of("abfss://container-dash@acc.blob.core.windows.net/some_file/metadata");
+    StorageLocation parentLocation =
+        AzureLocation.of("abfss://container-dash@acc.blob.core.windows.net");
+    StorageLocation parentLocationTrailingSlash =
+        AzureLocation.of("abfss://container-dash@acc.blob.core.windows.net/");
+
+    Assertions.assertThat(location).isNotEqualTo(parentLocation);
+    Assertions.assertThat(location).isNotEqualTo(parentLocationTrailingSlash);
+
+    Assertions.assertThat(location.isChildOf(parentLocation)).isTrue();
+    Assertions.assertThat(location.isChildOf(parentLocationTrailingSlash)).isTrue();
+  }
+
+  @Test
   public void testLocation_negative_cases() {
     Assertions.assertThatThrownBy(
             () -> new AzureLocation("abfss://storageaccount.blob.core.windows.net/myfile"))

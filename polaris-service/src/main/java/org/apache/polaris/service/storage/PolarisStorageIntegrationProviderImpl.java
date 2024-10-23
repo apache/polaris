@@ -22,7 +22,6 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceOptions;
-import java.io.IOException;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
@@ -43,9 +42,12 @@ import software.amazon.awssdk.services.sts.StsClient;
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
   private final Supplier<StsClient> stsClientSupplier;
+  private final Supplier<GoogleCredentials> gcpCredsProvider;
 
-  public PolarisStorageIntegrationProviderImpl(Supplier<StsClient> stsClientSupplier) {
+  public PolarisStorageIntegrationProviderImpl(
+      Supplier<StsClient> stsClientSupplier, Supplier<GoogleCredentials> gcpCredsProvider) {
     this.stsClientSupplier = stsClientSupplier;
+    this.gcpCredsProvider = gcpCredsProvider;
   }
 
   @Override
@@ -64,17 +66,12 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                 new AwsCredentialsStorageIntegration(stsClientSupplier.get());
         break;
       case GCS:
-        try {
-          storageIntegration =
-              (PolarisStorageIntegration<T>)
-                  new GcpCredentialsStorageIntegration(
-                      GoogleCredentials.getApplicationDefault(),
-                      ServiceOptions.getFromServiceLoader(
-                          HttpTransportFactory.class, NetHttpTransport::new));
-        } catch (IOException e) {
-          throw new RuntimeException(
-              "Error initializing default google credentials. " + e.getMessage());
-        }
+        storageIntegration =
+            (PolarisStorageIntegration<T>)
+                new GcpCredentialsStorageIntegration(
+                    gcpCredsProvider.get(),
+                    ServiceOptions.getFromServiceLoader(
+                        HttpTransportFactory.class, NetHttpTransport::new));
         break;
       case AZURE:
         storageIntegration =
@@ -91,13 +88,6 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                   @NotNull Set<String> allowedReadLocations,
                   @NotNull Set<String> allowedWriteLocations) {
                 return new EnumMap<>(PolarisCredentialProperty.class);
-              }
-
-              @Override
-              public EnumMap<PolarisStorageConfigurationInfo.DescribeProperty, String>
-                  descPolarisStorageConfiguration(
-                      @NotNull PolarisStorageConfigurationInfo storageConfigInfo) {
-                return new EnumMap<>(PolarisStorageConfigurationInfo.DescribeProperty.class);
               }
 
               @Override

@@ -19,11 +19,17 @@
 package org.apache.polaris.service.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.auth.oauth2.AccessToken;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.base.Preconditions;
 import io.dropwizard.core.Configuration;
+import java.io.IOException;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.PolarisConfigurationStore;
@@ -58,6 +64,8 @@ public class PolarisApplicationConfig extends Configuration {
   private String awsSecretKey;
   private FileIOFactory fileIOFactory;
   private RateLimiter rateLimiter;
+
+  private AccessToken gcpAccessToken;
 
   public static final long REQUEST_BODY_BYTES_NO_LIMIT = -1;
   private long maxRequestBodyBytes = REQUEST_BODY_BYTES_NO_LIMIT;
@@ -94,6 +102,7 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   public RealmContextResolver getRealmContextResolver() {
+    realmContextResolver.setDefaultRealm(this.defaultRealm);
     return realmContextResolver;
   }
 
@@ -128,6 +137,7 @@ public class PolarisApplicationConfig extends Configuration {
   @JsonProperty("defaultRealm")
   public void setDefaultRealm(String defaultRealm) {
     this.defaultRealm = defaultRealm;
+    realmContextResolver.setDefaultRealm(defaultRealm);
   }
 
   @JsonProperty("cors")
@@ -207,5 +217,61 @@ public class PolarisApplicationConfig extends Configuration {
 
   public void setDefaultRealms(List<String> defaultRealms) {
     this.defaultRealms = defaultRealms;
+  }
+
+  public Supplier<GoogleCredentials> getGcpCredentialsProvider() {
+    return () ->
+        Optional.ofNullable(gcpAccessToken)
+            .map(GoogleCredentials::create)
+            .orElseGet(
+                () -> {
+                  try {
+                    return GoogleCredentials.getApplicationDefault();
+                  } catch (IOException e) {
+                    throw new RuntimeException("Failed to get GCP credentials", e);
+                  }
+                });
+  }
+
+  @JsonProperty("gcp_credentials")
+  void setGcpCredentials(GcpAccessToken token) {
+    this.gcpAccessToken =
+        new AccessToken(
+            token.getAccessToken(),
+            new Date(System.currentTimeMillis() + token.getExpiresIn() * 1000));
+  }
+
+  /**
+   * A static AccessToken representation used to store a static token and expiration date. This
+   * should strictly be used for testing.
+   */
+  static class GcpAccessToken {
+    private String accessToken;
+    private long expiresIn;
+
+    public GcpAccessToken() {}
+
+    public GcpAccessToken(String accessToken, long expiresIn) {
+      this.accessToken = accessToken;
+      this.expiresIn = expiresIn;
+    }
+
+    public String getAccessToken() {
+      return accessToken;
+    }
+
+    @JsonProperty("access_token")
+    public void setAccessToken(String accessToken) {
+      this.accessToken = accessToken;
+    }
+
+    public long getExpiresIn() {
+      return expiresIn;
+    }
+
+    @JsonProperty("expires_in")
+    public void setExpiresIn(long expiresIn) {
+      this.expiresIn = expiresIn;
+    }
   }
 }

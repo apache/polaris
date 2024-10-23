@@ -69,8 +69,7 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
     PolarisResolutionManifest manifest =
         entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
 
-    if (key instanceof Namespace) {
-      Namespace namespace = (Namespace) key;
+    if (key instanceof Namespace namespace) {
       manifest.addPath(
           new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
           namespace);
@@ -88,8 +87,7 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
     PolarisResolutionManifest manifest =
         entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
 
-    if (key instanceof TableIdentifier) {
-      TableIdentifier identifier = (TableIdentifier) key;
+    if (key instanceof TableIdentifier identifier) {
       manifest.addPath(
           new ResolverPath(
               PolarisCatalogHelpers.tableIdentifierToList(identifier),
@@ -110,8 +108,7 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
     PolarisResolutionManifest manifest =
         entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
 
-    if (key instanceof Namespace) {
-      Namespace namespace = (Namespace) key;
+    if (key instanceof Namespace namespace) {
       manifest.addPassthroughPath(
           new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
           namespace);
@@ -129,8 +126,7 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
     PolarisResolutionManifest manifest =
         entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
 
-    if (key instanceof TableIdentifier) {
-      TableIdentifier identifier = (TableIdentifier) key;
+    if (key instanceof TableIdentifier identifier) {
       manifest.addPassthroughPath(
           new ResolverPath(
               PolarisCatalogHelpers.tableIdentifierToList(identifier),
