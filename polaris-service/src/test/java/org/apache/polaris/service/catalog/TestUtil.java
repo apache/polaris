@@ -26,6 +26,7 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
+import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.rest.HTTPClient;
@@ -40,9 +41,6 @@ import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
-
-import java.util.Map;
-import java.util.Optional;
 
 /** Test utilities for catalog tests */
 public class TestUtil {
@@ -65,7 +63,7 @@ public class TestUtil {
         snowmanCredentials,
         realm,
         catalog,
-            extraProperties);
+        extraProperties);
   }
 
   /**
@@ -75,13 +73,13 @@ public class TestUtil {
    * @return A client to interact with the catalog.
    */
   public static RESTCatalog createSnowmanManagedCatalog(
-          Client client,
-          String baseUrl,
-          PolarisConnectionExtension.PolarisToken adminToken,
-          SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials,
-          String realm,
-          Catalog catalog,
-          Map<String, String> extraProperties) {
+      Client client,
+      String baseUrl,
+      PolarisConnectionExtension.PolarisToken adminToken,
+      SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials,
+      String realm,
+      Catalog catalog,
+      Map<String, String> extraProperties) {
     String currentCatalogName = catalog.getName();
     try (Response response =
         client
@@ -169,22 +167,17 @@ public class TestUtil {
             context,
             (config) -> HTTPClient.builder(config).uri(config.get(CatalogProperties.URI)).build());
 
-
     ImmutableMap.Builder<String, String> propertiesBuilder =
-            ImmutableMap.<String, String>builder()
-                    .put(
-                            CatalogProperties.URI,
-                            baseUrl + "/api/catalog")
-                    .put(
-                            OAuth2Properties.CREDENTIAL,
-                            snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret())
-                    .put(OAuth2Properties.SCOPE, BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL)
-                    .put(
-                            CatalogProperties.FILE_IO_IMPL,
-                            "org.apache.iceberg.inmemory.InMemoryFileIO")
-                    .put("warehouse", currentCatalogName)
-                    .put("header." + REALM_PROPERTY_KEY, realm)
-                    .putAll(extraProperties);
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.URI, baseUrl + "/api/catalog")
+            .put(
+                OAuth2Properties.CREDENTIAL,
+                snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret())
+            .put(OAuth2Properties.SCOPE, BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL)
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .put("warehouse", currentCatalogName)
+            .put("header." + REALM_PROPERTY_KEY, realm)
+            .putAll(extraProperties);
     restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());
     return restCatalog;
   }

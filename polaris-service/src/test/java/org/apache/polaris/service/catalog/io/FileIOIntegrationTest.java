@@ -101,7 +101,8 @@ public class FileIOIntegrationTest {
             .build();
 
     restCatalog =
-        TestUtil.createSnowmanManagedCatalog(EXT, adminToken, snowmanCredentials, realm, catalog, Map.of());
+        TestUtil.createSnowmanManagedCatalog(
+            EXT, adminToken, snowmanCredentials, realm, catalog, Map.of());
 
     Namespace namespace = Namespace.of("myns");
     restCatalog.createNamespace(namespace);

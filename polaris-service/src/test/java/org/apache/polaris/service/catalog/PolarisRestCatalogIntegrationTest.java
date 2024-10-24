@@ -218,20 +218,29 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                       .build();
 
               Optional<PolarisRestCatalogIntegrationTest.RestCatalogConfig> restCatalogConfig =
-                      testInfo
-                              .getTestMethod()
-                              .flatMap(m -> Optional.ofNullable(m.getAnnotation(PolarisRestCatalogIntegrationTest.RestCatalogConfig.class)));
+                  testInfo
+                      .getTestMethod()
+                      .flatMap(
+                          m ->
+                              Optional.ofNullable(
+                                  m.getAnnotation(
+                                      PolarisRestCatalogIntegrationTest.RestCatalogConfig.class)));
               ImmutableMap.Builder<String, String> extraPropertiesBuilder =
-                      ImmutableMap.<String, String>builder();
+                  ImmutableMap.<String, String>builder();
               restCatalogConfig.ifPresent(
-                      config -> {
-                        for (int i = 0; i < config.value().length; i += 2) {
-                          extraPropertiesBuilder.put(config.value()[i], config.value()[i + 1]);
-                        }
-                      });
+                  config -> {
+                    for (int i = 0; i < config.value().length; i += 2) {
+                      extraPropertiesBuilder.put(config.value()[i], config.value()[i + 1]);
+                    }
+                  });
               restCatalog =
                   TestUtil.createSnowmanManagedCatalog(
-                      EXT, adminToken, snowmanCredentials, realm, catalog, extraPropertiesBuilder.build());
+                      EXT,
+                      adminToken,
+                      snowmanCredentials,
+                      realm,
+                      catalog,
+                      extraPropertiesBuilder.build());
             });
   }
 
