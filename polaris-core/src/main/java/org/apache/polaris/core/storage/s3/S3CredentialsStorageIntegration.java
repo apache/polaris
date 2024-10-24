@@ -38,13 +38,10 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 /** Credential vendor that supports generating */
 public class S3CredentialsStorageIntegration
     extends InMemoryStorageIntegration<S3StorageConfigurationInfo> {
-
   private static final Logger LOGGER =
       LoggerFactory.getLogger(S3CredentialsStorageIntegration.class);
-
   private StsClient stsClient;
 
-  // Constructor
   public S3CredentialsStorageIntegration() {
     super(S3CredentialsStorageIntegration.class.getName());
   }
@@ -52,23 +49,17 @@ public class S3CredentialsStorageIntegration
   public void createStsClient(S3StorageConfigurationInfo s3storageConfig) {
 
     LOGGER.debug("S3Compatible - createStsClient()");
-
-    LOGGER.info(
-        "S3Compatible - AWS STS endpoint is unique and different from the S3 Endpoint. AWS SDK need to be overided with dedicated Endpoint from S3Compatible, otherwise the AWS STS url is targeted");
-
     StsClientBuilder stsBuilder = software.amazon.awssdk.services.sts.StsClient.builder();
-
     stsBuilder.region(
         Region
             .US_WEST_1); // default region to avoid bug, because most (all?) S3 compatible softwares
     // do not care about regions
-    stsBuilder.endpointOverride(URI.create(s3storageConfig.getS3Endpoint()));
+    stsBuilder.endpointOverride(URI.create(s3storageConfig.getS3Endpoint())); //S3Compatible - AWS STS endpoint is unique and different from the S3 Endpoint
     stsBuilder.credentialsProvider(
         StaticCredentialsProvider.create(
             AwsBasicCredentials.create(
                 s3storageConfig.getS3CredentialsCatalogAccessKeyId(),
                 s3storageConfig.getS3CredentialsCatalogSecretAccessKey())));
-
     this.stsClient = stsBuilder.build();
     LOGGER.debug("S3Compatible - stsClient successfully built");
   }
@@ -83,7 +74,6 @@ public class S3CredentialsStorageIntegration
       @NotNull Set<String> allowedWriteLocations) {
 
     LOGGER.debug("S3Compatible - getSubscopedCreds - applying credential strategy");
-
     EnumMap<PolarisCredentialProperty, String> propertiesMap =
         new EnumMap<>(PolarisCredentialProperty.class);
     propertiesMap.put(PolarisCredentialProperty.AWS_ENDPOINT, storageConfig.getS3Endpoint());
@@ -132,7 +122,6 @@ public class S3CredentialsStorageIntegration
         // case TOKEN_WITH_ASSUME_ROLE_WITH_WEB_IDENTITY:
         //   break;
     }
-
     return propertiesMap;
   }
 }

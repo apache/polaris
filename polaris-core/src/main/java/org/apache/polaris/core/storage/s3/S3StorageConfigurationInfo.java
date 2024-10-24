@@ -79,7 +79,7 @@ public class S3StorageConfigurationInfo extends PolarisStorageConfigurationInfo 
       @JsonProperty(value = "allowedLocations", required = true) @NotNull
           List<String> allowedLocations) {
 
-    // Classic super and constructor stuff storing data in private internal properties
+    // Classic super and constructor storing properties
     super(storageType, allowedLocations);
     validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
     this.credsVendingStrategy =
@@ -95,8 +95,8 @@ public class S3StorageConfigurationInfo extends PolarisStorageConfigurationInfo 
     // to do substitution only once, there is a basic if null test, otherwise affect the data from
     // the "Polaris cache storage"
     // this way the first time the value is retrived from the name of the variable
-    // next time the getenv will try to retrive a variable but is using the value as a nome, it will
-    // be null, we affect the value provided by "Polaris cache storage"
+    // next times the getenv will try to retrive a variable but is using the value as a name, it will
+    // be null, so the value provided by "Polaris cache storage" is affected
     if (CredsCatalogAndClientStrategyEnum.ENV_VAR_NAME.equals(credsCatalogAndClientStrategy)) {
       String cai = System.getenv(s3CredentialsCatalogAccessKeyId);
       String cas = System.getenv(s3CredentialsCatalogSecretAccessKey);

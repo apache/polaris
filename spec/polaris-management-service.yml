@@ -928,7 +928,7 @@ components:
             - KEYS_SAME_AS_CATALOG
             - KEYS_DEDICATED_TO_CLIENT
           default: TOKEN_WITH_ASSUME_ROLE
-          description: The catalog strategy to vend credentials to client. Options possible are same keys than catalog, keys dedicated to clients, or Tokens with STS methods 'assumeRole' for Dell ECS or NetApp StorageGrid solution, 'truc' for MinIo solution)
+          description: The catalog strategy to vend credentials to client. Options possible are same keys than catalog, keys dedicated to clients, or Tokens with STS methods 'assumeRole' for Dell ECS, NetApp StorageGrid, MinIO...)
         s3.path-style-access:
           type: boolean
           description: if true use path style
