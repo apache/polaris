@@ -26,6 +26,7 @@ import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.OutputFile;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * File IO wrapper used for tests. It measures the number of bytes read, files written, and files
@@ -33,8 +34,8 @@ import org.apache.iceberg.io.OutputFile;
  */
 public class TestFileIO implements FileIO {
   private final FileIO io;
-  private final Supplier<RuntimeException> newInputFileExceptionSupplier;
-  private final Supplier<RuntimeException> newOutputFileExceptionSupplier;
+  private @NotNull final Supplier<RuntimeException> newInputFileExceptionSupplier;
+  private @NotNull final Supplier<RuntimeException> newOutputFileExceptionSupplier;
 
   private long inputBytes;
   private int numOutputFiles;
@@ -42,8 +43,8 @@ public class TestFileIO implements FileIO {
 
   public TestFileIO(
       FileIO io,
-      Supplier<RuntimeException> newInputFileExceptionSupplier,
-      Supplier<RuntimeException> newOutputFileExceptionSupplier) {
+      @NotNull Supplier<RuntimeException> newInputFileExceptionSupplier,
+      @NotNull Supplier<RuntimeException> newOutputFileExceptionSupplier) {
     this.io = io;
     this.newInputFileExceptionSupplier = newInputFileExceptionSupplier;
     this.newOutputFileExceptionSupplier = newOutputFileExceptionSupplier;

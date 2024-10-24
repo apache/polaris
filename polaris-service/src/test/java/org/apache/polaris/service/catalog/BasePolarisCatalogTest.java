@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.iceberg.types.Types.NestedField.required;
+import static org.apache.polaris.service.exception.IcebergExceptionMapper.*;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
@@ -1452,11 +1453,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
   @Test
   public void testRetriableException() {
-    RuntimeException s3Exception = new RuntimeException("Access Denied");
-    RuntimeException azureBlobStorageException =
-        new RuntimeException(
-            "This request is not authorized to perform this operation using this permission");
-    RuntimeException gcsException = new RuntimeException("Forbidden");
+    RuntimeException s3Exception = new RuntimeException(AWS_ACCESS_DENIED_HINT);
+    RuntimeException azureBlobStorageException = new RuntimeException(AZURE_ACCESS_DENIED_HINT);
+    RuntimeException gcsException = new RuntimeException(GCP_ACCESS_DENIED_HINT);
     RuntimeException otherException = new RuntimeException(new IOException("Connection reset"));
     Assertions.assertThat(BasePolarisCatalog.SHOULD_RETRY_REFRESH_PREDICATE.test(s3Exception))
         .isFalse();

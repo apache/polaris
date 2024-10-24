@@ -22,6 +22,7 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
+import java.util.Arrays;
 import java.util.Locale;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -50,6 +51,13 @@ import org.slf4j.LoggerFactory;
 
 public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException> {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergExceptionMapper.class);
+
+  // Case-insensitive parts of exception messages that a request to a cloud provider was denied due
+  // to lack of permissions
+  public static final String AWS_ACCESS_DENIED_HINT = "access denied";
+  public static final String AZURE_ACCESS_DENIED_HINT =
+      "this request is not authorized to perform this operation";
+  public static final String GCP_ACCESS_DENIED_HINT = "forbidden";
 
   public IcebergExceptionMapper() {}
 
@@ -110,11 +118,9 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     // Iceberg ForbiddenException
     boolean isAccessDenied =
         errorMsg != null
-            && (errorMsg.toLowerCase(Locale.ENGLISH).contains("access denied")
-                || errorMsg
-                    .toLowerCase(Locale.ENGLISH)
-                    .contains("this request is not authorized to perform this operation")
-                || errorMsg.toLowerCase(Locale.ENGLISH).contains("forbidden"));
+            && (errorMsg.toLowerCase(Locale.ENGLISH).contains(AWS_ACCESS_DENIED_HINT)
+                || errorMsg.toLowerCase(Locale.ENGLISH).contains(AZURE_ACCESS_DENIED_HINT)
+                || errorMsg.toLowerCase(Locale.ENGLISH).contains(GCP_ACCESS_DENIED_HINT));
     if (isAccessDenied) {
       LOGGER.debug("Access Denied or Forbidden error: {}", errorMsg);
       return true;
@@ -123,7 +129,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   }
 
   public static boolean isAccessDenied(Exception e) {
-    Throwable rootCause = ExceptionUtils.getRootCause(e);
-    return rootCause != null && isAccessDenied(rootCause.getMessage());
+    return Arrays.stream(ExceptionUtils.getThrowables(e))
+        .anyMatch(t -> isAccessDenied(t.getMessage()));
   }
 }
