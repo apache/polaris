@@ -878,7 +878,7 @@ components:
         propertyName: storageType
         mapping:
           S3: "#/components/schemas/AwsStorageConfigInfo"
-          S3_COMPATIBLE: "#/components/schemas/S3StorageConfigInfo"
+          S3_COMPATIBLE: "#/components/schemas/S3CompatibleStorageConfigInfo"
           AZURE: "#/components/schemas/AzureStorageConfigInfo"
           GCS: "#/components/schemas/GcpStorageConfigInfo"
           FILE: "#/components/schemas/FileStorageConfigInfo"
@@ -907,7 +907,7 @@ components:
       required:
         - roleArn
 
-    S3StorageConfigInfo:
+    S3CompatibleStorageConfigInfo:
       type: object
       description: S3 compatible storage configuration info (MinIO, Dell ECS, Netapp StorageGRID, ...)
       allOf:

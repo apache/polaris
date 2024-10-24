@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.storage.s3;
+package org.apache.polaris.core.storage.s3compatible;
 
 import java.net.URI;
 import java.util.EnumMap;
@@ -36,17 +36,17 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 
 /** Credential vendor that supports generating */
-public class S3CredentialsStorageIntegration
-    extends InMemoryStorageIntegration<S3StorageConfigurationInfo> {
+public class S3CompatibleCredentialsStorageIntegration
+    extends InMemoryStorageIntegration<S3CompatibleStorageConfigurationInfo> {
   private static final Logger LOGGER =
-      LoggerFactory.getLogger(S3CredentialsStorageIntegration.class);
+      LoggerFactory.getLogger(S3CompatibleCredentialsStorageIntegration.class);
   private StsClient stsClient;
 
-  public S3CredentialsStorageIntegration() {
-    super(S3CredentialsStorageIntegration.class.getName());
+  public S3CompatibleCredentialsStorageIntegration() {
+    super(S3CompatibleCredentialsStorageIntegration.class.getName());
   }
 
-  public void createStsClient(S3StorageConfigurationInfo s3storageConfig) {
+  public void createStsClient(S3CompatibleStorageConfigurationInfo s3storageConfig) {
 
     LOGGER.debug("S3Compatible - createStsClient()");
     StsClientBuilder stsBuilder = software.amazon.awssdk.services.sts.StsClient.builder();
@@ -68,7 +68,7 @@ public class S3CredentialsStorageIntegration
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
       @NotNull PolarisDiagnostics diagnostics,
-      @NotNull S3StorageConfigurationInfo storageConfig,
+      @NotNull S3CompatibleStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
       @NotNull Set<String> allowedReadLocations,
       @NotNull Set<String> allowedWriteLocations) {

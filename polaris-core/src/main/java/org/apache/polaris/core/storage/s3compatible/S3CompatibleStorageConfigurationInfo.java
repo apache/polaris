@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.storage.s3;
+package org.apache.polaris.core.storage.s3compatible;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -28,7 +28,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /** Polaris Storage Configuration information for an S3 Compatible solution, MinIO, Dell ECS... */
-public class S3StorageConfigurationInfo extends PolarisStorageConfigurationInfo {
+public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
   // 5 is the approximate max allowed locations for the size of AccessPolicy when LIST is required
   // for allowed read and write locations for subscoping creds.
@@ -59,7 +59,7 @@ public class S3StorageConfigurationInfo extends PolarisStorageConfigurationInfo 
 
   // Constructor
   @JsonCreator
-  public S3StorageConfigurationInfo(
+  public S3CompatibleStorageConfigurationInfo(
       @JsonProperty(value = "storageType", required = true) @NotNull StorageType storageType,
       @JsonProperty(value = "credsVendingStrategy", required = true) @NotNull
           CredsVendingStrategyEnum credsVendingStrategy,

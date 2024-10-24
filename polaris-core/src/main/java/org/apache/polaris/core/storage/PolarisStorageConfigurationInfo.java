@@ -47,7 +47,7 @@ import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
-import org.apache.polaris.core.storage.s3.S3StorageConfigurationInfo;
+import org.apache.polaris.core.storage.s3compatible.S3CompatibleStorageConfigurationInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,7 +63,7 @@ import org.slf4j.LoggerFactory;
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME)
 @JsonSubTypes({
   @JsonSubTypes.Type(value = AwsStorageConfigurationInfo.class),
-  @JsonSubTypes.Type(value = S3StorageConfigurationInfo.class),
+  @JsonSubTypes.Type(value = S3CompatibleStorageConfigurationInfo.class),
   @JsonSubTypes.Type(value = AzureStorageConfigurationInfo.class),
   @JsonSubTypes.Type(value = GcpStorageConfigurationInfo.class),
   @JsonSubTypes.Type(value = FileStorageConfigurationInfo.class),
