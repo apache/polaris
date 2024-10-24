@@ -815,7 +815,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       try {
         Assertions.assertThatThrownBy(
                 () -> restCatalog.loadTable(TableIdentifier.of(ns1, "my_table")))
-            .isInstanceOf(ForbiddenException.class);
+            .isInstanceOf(ForbiddenException.class)
+            .hasMessageContaining("Access Delegation is not supported for this catalog");
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
       }
