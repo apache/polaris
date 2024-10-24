@@ -42,11 +42,11 @@ import org.slf4j.LoggerFactory;
 abstract class JWTBroker implements TokenBroker {
   private static final Logger LOGGER = LoggerFactory.getLogger(JWTBroker.class);
 
-  static final String ISSUER_KEY = "polaris";
-  static final String CLAIM_KEY_ACTIVE = "active";
-  static final String CLAIM_KEY_CLIENT_ID = "client_id";
-  static final String CLAIM_KEY_PRINCIPAL_ID = "principalId";
-  static final String CLAIM_KEY_SCOPE = "scope";
+  private static final String ISSUER_KEY = "polaris";
+  private static final String CLAIM_KEY_ACTIVE = "active";
+  private static final String CLAIM_KEY_CLIENT_ID = "client_id";
+  private static final String CLAIM_KEY_PRINCIPAL_ID = "principalId";
+  private static final String CLAIM_KEY_SCOPE = "scope";
 
   private final PolarisEntityManager entityManager;
   private final int maxTokenGenerationInSeconds;
