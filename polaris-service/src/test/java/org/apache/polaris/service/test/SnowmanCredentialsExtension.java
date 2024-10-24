@@ -21,7 +21,6 @@ package org.apache.polaris.service.test;
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -64,27 +63,21 @@ public class SnowmanCredentialsExtension
               "No admin secrets configured - you must also configure your test with PolarisConnectionExtension");
       return;
     }
-    DropwizardAppExtension dropwizard =
-        PolarisConnectionExtension.findDropwizardExtension(extensionContext);
-    if (dropwizard == null) {
-      return;
-    }
+
+    TestEnvironment testEnv = TestEnvironmentExtension.getEnv(extensionContext);
     String userToken =
         TokenUtils.getTokenFromSecrets(
-            dropwizard.client(),
-            dropwizard.getLocalPort(),
+            testEnv.getApiClient(),
+            testEnv.getBaseUrl(),
             adminSecrets.getPrincipalClientId(),
             adminSecrets.getMainSecret(),
             realm);
 
     PrincipalRole principalRole = new PrincipalRole("catalog-admin");
     try (Response createPrResponse =
-        dropwizard
-            .client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principal-roles",
-                    dropwizard.getLocalPort()))
+        testEnv
+            .getApiClient()
+            .target(String.format("%s/api/management/v1/principal-roles", testEnv.getBaseUrl()))
             .request("application/json")
             .header("Authorization", "Bearer " + userToken)
             .header(REALM_PROPERTY_KEY, realm)
@@ -96,11 +89,9 @@ public class SnowmanCredentialsExtension
     Principal principal = new Principal("snowman");
 
     try (Response createPResponse =
-        dropwizard
-            .client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principals", dropwizard.getLocalPort()))
+        testEnv
+            .getApiClient()
+            .target(String.format("%s/api/management/v1/principals", testEnv.getBaseUrl()))
             .request("application/json")
             .header("Authorization", "Bearer " + userToken) // how is token getting used?
             .header(REALM_PROPERTY_KEY, realm)
@@ -110,19 +101,18 @@ public class SnowmanCredentialsExtension
       PrincipalWithCredentials snowmanWithCredentials =
           createPResponse.readEntity(PrincipalWithCredentials.class);
       try (Response rotateResp =
-          dropwizard
-              .client()
+          testEnv
+              .getApiClient()
               .target(
                   String.format(
-                      "http://localhost:%d/api/management/v1/principals/%s/rotate",
-                      dropwizard.getLocalPort(), "snowman"))
+                      "%s/api/management/v1/principals/%s/rotate", testEnv.getBaseUrl(), "snowman"))
               .request(MediaType.APPLICATION_JSON)
               .header(
                   "Authorization",
                   "Bearer "
                       + TokenUtils.getTokenFromSecrets(
-                          dropwizard.client(),
-                          dropwizard.getLocalPort(),
+                          testEnv.getApiClient(),
+                          testEnv.getBaseUrl(),
                           snowmanWithCredentials.getCredentials().getClientId(),
                           snowmanWithCredentials.getCredentials().getClientSecret(),
                           realm))
@@ -140,12 +130,12 @@ public class SnowmanCredentialsExtension
               snowmanWithCredentials.getCredentials().getClientSecret());
     }
     try (Response assignPrResponse =
-        dropwizard
-            .client()
+        testEnv
+            .getApiClient()
             .target(
                 String.format(
-                    "http://localhost:%d/api/management/v1/principals/snowman/principal-roles",
-                    dropwizard.getLocalPort()))
+                    "%s/api/management/v1/principals/snowman/principal-roles",
+                    testEnv.getBaseUrl()))
             .request("application/json")
             .header("Authorization", "Bearer " + userToken) // how is token getting used?
             .header(REALM_PROPERTY_KEY, realm)
@@ -170,37 +160,31 @@ public class SnowmanCredentialsExtension
               "No admin secrets configured - you must also configure your test with PolarisConnectionExtension");
       return;
     }
-    DropwizardAppExtension dropwizard =
-        PolarisConnectionExtension.findDropwizardExtension(extensionContext);
-    if (dropwizard == null) {
-      return;
-    }
+
+    TestEnvironment testEnv = TestEnvironmentExtension.getEnv(extensionContext);
     String userToken =
         TokenUtils.getTokenFromSecrets(
-            dropwizard.client(),
-            dropwizard.getLocalPort(),
+            testEnv.getApiClient(),
+            testEnv.getBaseUrl(),
             adminSecrets.getPrincipalClientId(),
             adminSecrets.getMainSecret(),
             realm);
 
-    dropwizard
-        .client()
+    testEnv
+        .getApiClient()
         .target(
             String.format(
-                "http://localhost:%d/api/management/v1/principal-roles/%s",
-                dropwizard.getLocalPort(), "catalog-admin"))
+                "%s/api/management/v1/principal-roles/%s", testEnv.getBaseUrl(), "catalog-admin"))
         .request("application/json")
         .header("Authorization", "Bearer " + userToken)
         .header(REALM_PROPERTY_KEY, realm)
         .delete()
         .close();
 
-    dropwizard
-        .client()
+    testEnv
+        .getApiClient()
         .target(
-            String.format(
-                "http://localhost:%d/api/management/v1/principals/%s",
-                dropwizard.getLocalPort(), "snowman"))
+            String.format("%s/api/management/v1/principals/%s", testEnv.getBaseUrl(), "snowman"))
         .request("application/json")
         .header("Authorization", "Bearer " + userToken)
         .header(REALM_PROPERTY_KEY, realm)
