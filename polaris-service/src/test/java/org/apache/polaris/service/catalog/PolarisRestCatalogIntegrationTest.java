@@ -40,7 +40,6 @@ import java.util.UUID;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.BaseTransaction;
-import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
@@ -51,16 +50,13 @@ import org.apache.iceberg.UpdatePartitionSpec;
 import org.apache.iceberg.UpdateSchema;
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.TableCommit;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.io.ResolvingFileIO;
-import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
-import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisConfiguration;
@@ -84,7 +80,6 @@ import org.apache.polaris.core.admin.model.ViewPrivilege;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.PolarisApplication;
-import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
@@ -221,129 +216,31 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                                   StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://"))
                               : awsConfigModel)
                       .build();
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs", EXT.getLocalPort()))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .post(Entity.json(catalog))) {
-                assertThat(response)
-                    .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-              }
 
-              // Create a new CatalogRole that has CATALOG_MANAGE_CONTENT and CATALOG_MANAGE_ACCESS
-              CatalogRole newRole = new CatalogRole("custom-admin");
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles",
-                              EXT.getLocalPort(), currentCatalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .post(Entity.json(newRole))) {
-                assertThat(response)
-                    .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-              }
-              CatalogGrant grantResource =
-                  new CatalogGrant(
-                      CatalogPrivilege.CATALOG_MANAGE_CONTENT, GrantResource.TypeEnum.CATALOG);
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/custom-admin/grants",
-                              EXT.getLocalPort(), currentCatalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .put(Entity.json(grantResource))) {
-                assertThat(response)
-                    .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-              }
-              CatalogGrant grantAccessResource =
-                  new CatalogGrant(
-                      CatalogPrivilege.CATALOG_MANAGE_ACCESS, GrantResource.TypeEnum.CATALOG);
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/custom-admin/grants",
-                              EXT.getLocalPort(), currentCatalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .put(Entity.json(grantAccessResource))) {
-                assertThat(response)
-                    .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-              }
-
-              // Assign this new CatalogRole to the service_admin PrincipalRole
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/custom-admin",
-                              EXT.getLocalPort(), currentCatalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .get()) {
-                assertThat(response)
-                    .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-                CatalogRole catalogRole = response.readEntity(CatalogRole.class);
-                try (Response assignResponse =
-                    EXT.client()
-                        .target(
-                            String.format(
-                                "http://localhost:%d/api/management/v1/principal-roles/catalog-admin/catalog-roles/%s",
-                                EXT.getLocalPort(), currentCatalogName))
-                        .request("application/json")
-                        .header("Authorization", "Bearer " + adminToken.token())
-                        .header(REALM_PROPERTY_KEY, realm)
-                        .put(Entity.json(catalogRole))) {
-                  assertThat(assignResponse)
-                      .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-                }
-              }
-
-              SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
-              this.restCatalog =
-                  new RESTCatalog(
-                      context,
-                      (config) ->
-                          HTTPClient.builder(config)
-                              .uri(config.get(CatalogProperties.URI))
-                              .build());
-              Optional<RestCatalogConfig> restCatalogConfig =
+              Optional<PolarisRestCatalogIntegrationTest.RestCatalogConfig> restCatalogConfig =
                   testInfo
                       .getTestMethod()
-                      .flatMap(m -> Optional.ofNullable(m.getAnnotation(RestCatalogConfig.class)));
-              ImmutableMap.Builder<String, String> propertiesBuilder =
-                  ImmutableMap.<String, String>builder()
-                      .put(
-                          CatalogProperties.URI,
-                          "http://localhost:" + EXT.getLocalPort() + "/api/catalog")
-                      .put(
-                          OAuth2Properties.CREDENTIAL,
-                          snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret())
-                      .put(OAuth2Properties.SCOPE, BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL)
-                      .put(
-                          CatalogProperties.FILE_IO_IMPL,
-                          "org.apache.iceberg.inmemory.InMemoryFileIO")
-                      .put("warehouse", currentCatalogName)
-                      .put("header." + REALM_PROPERTY_KEY, realm);
+                      .flatMap(
+                          m ->
+                              Optional.ofNullable(
+                                  m.getAnnotation(
+                                      PolarisRestCatalogIntegrationTest.RestCatalogConfig.class)));
+              ImmutableMap.Builder<String, String> extraPropertiesBuilder =
+                  ImmutableMap.<String, String>builder();
               restCatalogConfig.ifPresent(
                   config -> {
                     for (int i = 0; i < config.value().length; i += 2) {
-                      propertiesBuilder.put(config.value()[i], config.value()[i + 1]);
+                      extraPropertiesBuilder.put(config.value()[i], config.value()[i + 1]);
                     }
                   });
-              this.restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());
+              restCatalog =
+                  TestUtil.createSnowmanManagedCatalog(
+                      EXT,
+                      adminToken,
+                      snowmanCredentials,
+                      realm,
+                      catalog,
+                      extraPropertiesBuilder.build());
             });
   }
 

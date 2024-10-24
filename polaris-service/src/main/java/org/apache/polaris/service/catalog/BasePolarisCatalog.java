@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog;
 
+import static org.apache.polaris.service.exception.IcebergExceptionMapper.isAccessDenied;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
@@ -2096,19 +2098,5 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // add more cases here if needed
     // AccessDenied is not retryable
     return !isAccessDenied(rootCause.getMessage());
-  }
-
-  private static boolean isAccessDenied(String errorMsg) {
-    // corresponding error messages for storage providers Aws/Azure/Gcp
-    boolean isAccessDenied =
-        errorMsg != null
-            && (errorMsg.contains("Access Denied")
-                || errorMsg.contains("This request is not authorized to perform this operation")
-                || errorMsg.contains("Forbidden"));
-    if (isAccessDenied) {
-      LOGGER.debug("Access Denied or Forbidden error: {}", errorMsg);
-      return true;
-    }
-    return false;
   }
 }

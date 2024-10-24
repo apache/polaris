@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.iceberg.types.Types.NestedField.required;
+import static org.apache.polaris.service.exception.IcebergExceptionMapper.*;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
@@ -86,7 +87,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
+import org.apache.polaris.service.catalog.io.TestFileIOFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -1452,11 +1453,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
   @Test
   public void testRetriableException() {
-    RuntimeException s3Exception = new RuntimeException("Access Denied");
-    RuntimeException azureBlobStorageException =
-        new RuntimeException(
-            "This request is not authorized to perform this operation using this permission");
-    RuntimeException gcsException = new RuntimeException("Forbidden");
+    RuntimeException s3Exception = new RuntimeException(AWS_ACCESS_DENIED_HINT);
+    RuntimeException azureBlobStorageException = new RuntimeException(AZURE_ACCESS_DENIED_HINT);
+    RuntimeException gcsException = new RuntimeException(GCP_ACCESS_DENIED_HINT);
     RuntimeException otherException = new RuntimeException(new IOException("Connection reset"));
     Assertions.assertThat(BasePolarisCatalog.SHOULD_RETRY_REFRESH_PREDICATE.test(s3Exception))
         .isFalse();
@@ -1478,7 +1477,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         new PolarisPassthroughResolutionView(
             callContext, entityManager, authenticatedRoot, CATALOG_NAME);
 
-    MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
+    TestFileIOFactory measured = new TestFileIOFactory();
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
             entityManager,

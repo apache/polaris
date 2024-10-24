@@ -22,6 +22,9 @@ import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
+import java.util.Arrays;
+import java.util.Locale;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.CherrypickAncestorCommitException;
 import org.apache.iceberg.exceptions.CleanableFailure;
@@ -48,6 +51,13 @@ import org.slf4j.LoggerFactory;
 
 public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException> {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergExceptionMapper.class);
+
+  // Case-insensitive parts of exception messages that a request to a cloud provider was denied due
+  // to lack of permissions
+  public static final String AWS_ACCESS_DENIED_HINT = "access denied";
+  public static final String AZURE_ACCESS_DENIED_HINT =
+      "this request is not authorized to perform this operation";
+  public static final String GCP_ACCESS_DENIED_HINT = "forbidden";
 
   public IcebergExceptionMapper() {}
 
@@ -79,6 +89,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
           case RESTException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
           case IllegalArgumentException e -> Response.Status.BAD_REQUEST.getStatusCode();
           case UnsupportedOperationException e -> Response.Status.NOT_ACCEPTABLE.getStatusCode();
+          case Exception e when isAccessDenied(e) -> Response.Status.FORBIDDEN.getStatusCode();
           case WebApplicationException e -> e.getResponse().getStatus();
           default -> Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
         };
@@ -99,5 +110,26 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
             .build();
     LOGGER.debug("Mapped exception to errorResp: {}", errorResp);
     return errorResp;
+  }
+
+  public static boolean isAccessDenied(String errorMsg) {
+    // Corresponding error messages for storage providers Aws/Azure/Gcp
+    // We may want to consider a change to Iceberg Core to wrap cloud provider IO exceptions to
+    // Iceberg ForbiddenException
+    boolean isAccessDenied =
+        errorMsg != null
+            && (errorMsg.toLowerCase(Locale.ENGLISH).contains(AWS_ACCESS_DENIED_HINT)
+                || errorMsg.toLowerCase(Locale.ENGLISH).contains(AZURE_ACCESS_DENIED_HINT)
+                || errorMsg.toLowerCase(Locale.ENGLISH).contains(GCP_ACCESS_DENIED_HINT));
+    if (isAccessDenied) {
+      LOGGER.debug("Access Denied or Forbidden error: {}", errorMsg);
+      return true;
+    }
+    return false;
+  }
+
+  public static boolean isAccessDenied(Exception e) {
+    return Arrays.stream(ExceptionUtils.getThrowables(e))
+        .anyMatch(t -> isAccessDenied(t.getMessage()));
   }
 }
