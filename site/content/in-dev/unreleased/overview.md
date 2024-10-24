@@ -182,9 +182,8 @@ Iceberg tables. This process is called credential vending.
 
 As of now, the following limitation is known regarding Apache Iceberg support:
 
-- **remove_orphan_files:** This operation does not currently support 
-  credential vending when utilizing Apache Spark as the compute engine.
-  - For more information, see [apache/iceberg#7914](https://github.com/apache/iceberg/pull/7914).
+- **remove_orphan_files:** Apache Spark can't use credential vending
+  for this due to a known issue. See [apache/iceberg#7914](https://github.com/apache/iceberg/pull/7914) for details.
 
 ### Identity and access management (IAM)
 
