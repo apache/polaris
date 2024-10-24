@@ -180,11 +180,11 @@ To secure interactions with service connections, Polaris vends temporary storage
 execution. These credentials allow the query engine to run the query without requiring access to your external cloud storage for
 Iceberg tables. This process is called credential vending.
 
-As of now, the following limitations are known regarding Apache Iceberg support:
+As of now, the following limitation is known regarding Apache Iceberg support:
 
 - **remove_orphan_files:** This operation does not currently support 
   credential vending when utilizing Apache Spark as the compute engine.
-  - For more details, please refer to [apache/iceberg#7914](https://github.com/apache/iceberg/pull/7914).
+  - For more information, see [apache/iceberg#7914](https://github.com/apache/iceberg/pull/7914).
 
 ### Identity and access management (IAM)
 
