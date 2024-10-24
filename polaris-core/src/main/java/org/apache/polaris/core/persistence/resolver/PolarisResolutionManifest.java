@@ -243,28 +243,25 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     return resolvedPath;
   }
 
-  public Set<Long> getAllActivatedCatalogRoleAndPrincipalRoleIds() {
-    Set<Long> activatedIds = new HashSet<>();
+  public Set<PolarisBaseEntity> getAllActivatedCatalogRoleAndPrincipalRoles() {
+    Set<PolarisBaseEntity> activatedRoles = new HashSet<>();
     primaryResolver.getResolvedCallerPrincipalRoles().stream()
         .map(EntityCacheEntry::getEntity)
-        .map(PolarisBaseEntity::getId)
-        .forEach(activatedIds::add);
+        .forEach(activatedRoles::add);
     if (primaryResolver.getResolvedCatalogRoles() != null) {
       primaryResolver.getResolvedCatalogRoles().values().stream()
           .map(EntityCacheEntry::getEntity)
-          .map(PolarisBaseEntity::getId)
-          .forEach(activatedIds::add);
+          .forEach(activatedRoles::add);
     }
-    return activatedIds;
+    return activatedRoles;
   }
 
-  public Set<Long> getAllActivatedPrincipalRoleIds() {
-    Set<Long> activatedIds = new HashSet<>();
+  public Set<PolarisBaseEntity> getAllActivatedPrincipalRoleEntities() {
+    Set<PolarisBaseEntity> activatedEntities = new HashSet<>();
     primaryResolver.getResolvedCallerPrincipalRoles().stream()
         .map(EntityCacheEntry::getEntity)
-        .map(PolarisBaseEntity::getId)
-        .forEach(activatedIds::add);
-    return activatedIds;
+        .forEach(activatedEntities::add);
+    return activatedEntities;
   }
 
   public void setSimulatedResolvedRootContainerEntity(
