@@ -71,6 +71,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.iceberg.rest.RESTSerializers;
+import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -207,11 +208,12 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
       csAware.setConfigurationStore(configurationStore);
     }
 
+    Boolean skipCredentialSubscopingIndirection = configurationStore.getConfiguration(null, PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key);
     TaskHandlerConfiguration taskConfig = configuration.getTaskHandler();
     TaskExecutorImpl taskExecutor =
         new TaskExecutorImpl(taskConfig.executorService(), metaStoreManagerFactory);
     TaskFileIOSupplier fileIOSupplier =
-        new TaskFileIOSupplier(metaStoreManagerFactory, fileIOFactory);
+        new TaskFileIOSupplier(metaStoreManagerFactory, fileIOFactory, skipCredentialSubscopingIndirection);
     taskExecutor.addTaskHandler(
         new TableCleanupTaskHandler(taskExecutor, metaStoreManagerFactory, fileIOSupplier));
     taskExecutor.addTaskHandler(
