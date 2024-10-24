@@ -813,13 +813,9 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
       restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
       try {
-        try {
-          restCatalog.loadTable(TableIdentifier.of(ns1, "my_table"));
-          Assertions.fail(
-              "Expected exception to be thrown when loading table from external catalog with access delegation disabled");
-        } catch (ForbiddenException e) {
-          // woot!
-        }
+        Assertions.assertThatThrownBy(
+                () -> restCatalog.loadTable(TableIdentifier.of(ns1, "my_table")))
+            .isInstanceOf(ForbiddenException.class);
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
       }
