@@ -27,7 +27,6 @@ import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
-import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.lang.annotation.Retention;
@@ -133,8 +132,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   private RESTCatalog restCatalog;
   private String currentCatalogName;
-  private String userToken;
   private String realm;
+  private PolarisTestClient userClient;
 
   private final String catalogBaseLocation =
       S3_BUCKET_BASE + "/" + System.getenv("USER") + "/path/to/data";
@@ -172,13 +171,16 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       SnowmanCredentials snowmanCredentials,
       @PolarisRealm String realm) {
     this.realm = realm;
-    userToken =
+    PolarisTestClient adminClient =
+        new PolarisTestClient(EXT.client(), EXT.getLocalPort(), adminToken.token(), realm);
+    String userToken =
         TokenUtils.getTokenFromSecrets(
             EXT.client(),
             EXT.getLocalPort(),
             snowmanCredentials.clientId(),
             snowmanCredentials.clientSecret(),
             realm);
+    userClient = new PolarisTestClient(EXT.client(), EXT.getLocalPort(), userToken, realm);
     testInfo
         .getTestMethod()
         .ifPresent(
@@ -221,31 +223,14 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                                   StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://"))
                               : awsConfigModel)
                       .build();
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs", EXT.getLocalPort()))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .post(Entity.json(catalog))) {
+              try (Response response = adminClient.createCatalog(catalog)) {
                 assertThat(response)
                     .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
               }
 
               // Create a new CatalogRole that has CATALOG_MANAGE_CONTENT and CATALOG_MANAGE_ACCESS
               CatalogRole newRole = new CatalogRole("custom-admin");
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles",
-                              EXT.getLocalPort(), currentCatalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .post(Entity.json(newRole))) {
+              try (Response response = adminClient.createCatalogRole(currentCatalogName, newRole)) {
                 assertThat(response)
                     .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
               }
@@ -253,15 +238,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                   new CatalogGrant(
                       CatalogPrivilege.CATALOG_MANAGE_CONTENT, GrantResource.TypeEnum.CATALOG);
               try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/custom-admin/grants",
-                              EXT.getLocalPort(), currentCatalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .put(Entity.json(grantResource))) {
+                  adminClient.grantCatalogRole(currentCatalogName, "custom-admin", grantResource)) {
                 assertThat(response)
                     .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
               }
@@ -269,43 +246,21 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                   new CatalogGrant(
                       CatalogPrivilege.CATALOG_MANAGE_ACCESS, GrantResource.TypeEnum.CATALOG);
               try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/custom-admin/grants",
-                              EXT.getLocalPort(), currentCatalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .put(Entity.json(grantAccessResource))) {
+                  adminClient.grantCatalogRole(
+                      currentCatalogName, "custom-admin", grantAccessResource)) {
                 assertThat(response)
                     .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
               }
 
               // Assign this new CatalogRole to the service_admin PrincipalRole
               try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/custom-admin",
-                              EXT.getLocalPort(), currentCatalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .get()) {
+                  adminClient.getCatalogRole(currentCatalogName, "custom-admin")) {
                 assertThat(response)
                     .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
                 CatalogRole catalogRole = response.readEntity(CatalogRole.class);
                 try (Response assignResponse =
-                    EXT.client()
-                        .target(
-                            String.format(
-                                "http://localhost:%d/api/management/v1/principal-roles/catalog-admin/catalog-roles/%s",
-                                EXT.getLocalPort(), currentCatalogName))
-                        .request("application/json")
-                        .header("Authorization", "Bearer " + adminToken.token())
-                        .header(REALM_PROPERTY_KEY, realm)
-                        .put(Entity.json(catalogRole))) {
+                    adminClient.grantCatalogRoleToPrincipalRole(
+                        "catalog-admin", currentCatalogName, catalogRole)) {
                   assertThat(assignResponse)
                       .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
                 }
@@ -374,31 +329,13 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   private void createCatalogRole(String catalogRoleName) {
     CatalogRole catalogRole = new CatalogRole(catalogRoleName);
-    try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles",
-                    EXT.getLocalPort(), currentCatalogName))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .post(Entity.json(catalogRole))) {
+    try (Response response = userClient.createCatalogRole(currentCatalogName, catalogRole)) {
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
   }
 
   private void addGrant(String catalogRoleName, GrantResource grant) {
-    try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/%s/grants",
-                    EXT.getLocalPort(), currentCatalogName, catalogRoleName))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .put(Entity.json(grant))) {
+    try (Response response = userClient.grantResource(currentCatalogName, catalogRoleName, grant)) {
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
   }
@@ -524,16 +461,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     role2Grants.forEach(grant -> addGrant("catalogrole2", grant));
 
     // List grants for catalogrole1
-    try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/%s/grants",
-                    EXT.getLocalPort(), currentCatalogName, "catalogrole1"))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .get()) {
+    try (Response response = userClient.listGrants(currentCatalogName, "catalogrole1")) {
       assertThat(response)
           .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(GrantResources.class))
@@ -543,16 +471,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     }
 
     // List grants for catalogrole2
-    try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/%s/grants",
-                    EXT.getLocalPort(), currentCatalogName, "catalogrole2"))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .get()) {
+    try (Response response = userClient.listGrants(currentCatalogName, "catalogrole2")) {
       assertThat(response)
           .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(GrantResources.class))
@@ -594,16 +513,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             TablePrivilege.TABLE_FULL_METADATA,
             GrantResource.TypeEnum.TABLE);
 
-    try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/%s/grants",
-                    EXT.getLocalPort(), currentCatalogName, "catalogrole1"))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .get()) {
+    try (Response response = userClient.listGrants(currentCatalogName, "catalogrole1")) {
       assertThat(response)
           .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(GrantResources.class))
@@ -615,36 +525,19 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   @Test
   public void testCreateTableWithOverriddenBaseLocation(PolarisToken adminToken) {
-    try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/catalogs/%s",
-                    EXT.getLocalPort(), currentCatalogName))
-            .request("application/json")
-            .header("Authorization", "Bearer " + adminToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
-            .get()) {
+    PolarisTestClient adminClient =
+        new PolarisTestClient(EXT.client(), EXT.getLocalPort(), adminToken.token(), realm);
+    try (Response response = adminClient.getCatalog(currentCatalogName)) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       Catalog catalog = response.readEntity(Catalog.class);
       Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
       catalogProps.put(
           PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
       try (Response updateResponse =
-          EXT.client()
-              .target(
-                  String.format(
-                      "http://localhost:%d/api/management/v1/catalogs/%s",
-                      EXT.getLocalPort(), catalog.getName()))
-              .request("application/json")
-              .header("Authorization", "Bearer " + adminToken.token())
-              .header(REALM_PROPERTY_KEY, realm)
-              .put(
-                  Entity.json(
-                      new UpdateCatalogRequest(
-                          catalog.getEntityVersion(),
-                          catalogProps,
-                          catalog.getStorageConfigInfo())))) {
+          adminClient.updateCatalog(
+              currentCatalogName,
+              new UpdateCatalogRequest(
+                  catalog.getEntityVersion(), catalogProps, catalog.getStorageConfigInfo()))) {
         assertThat(updateResponse).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       }
     }
@@ -672,36 +565,19 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @Test
   public void testCreateTableWithOverriddenBaseLocationCannotOverlapSibling(
       PolarisToken adminToken) {
-    try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/catalogs/%s",
-                    EXT.getLocalPort(), currentCatalogName))
-            .request("application/json")
-            .header("Authorization", "Bearer " + adminToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
-            .get()) {
+    PolarisTestClient adminClient =
+        new PolarisTestClient(EXT.client(), EXT.getLocalPort(), adminToken.token(), realm);
+    try (Response response = adminClient.getCatalog(currentCatalogName)) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       Catalog catalog = response.readEntity(Catalog.class);
       Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
       catalogProps.put(
           PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
       try (Response updateResponse =
-          EXT.client()
-              .target(
-                  String.format(
-                      "http://localhost:%d/api/management/v1/catalogs/%s",
-                      EXT.getLocalPort(), catalog.getName()))
-              .request("application/json")
-              .header("Authorization", "Bearer " + adminToken.token())
-              .header(REALM_PROPERTY_KEY, realm)
-              .put(
-                  Entity.json(
-                      new UpdateCatalogRequest(
-                          catalog.getEntityVersion(),
-                          catalogProps,
-                          catalog.getStorageConfigInfo())))) {
+          adminClient.updateCatalog(
+              catalog.getName(),
+              new UpdateCatalogRequest(
+                  catalog.getEntityVersion(), catalogProps, catalog.getStorageConfigInfo()))) {
         assertThat(updateResponse).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       }
     }
@@ -738,36 +614,19 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @Test
   public void testCreateTableWithOverriddenBaseLocationMustResideInNsDirectory(
       PolarisToken adminToken) {
-    try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/catalogs/%s",
-                    EXT.getLocalPort(), currentCatalogName))
-            .request("application/json")
-            .header("Authorization", "Bearer " + adminToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
-            .get()) {
+    PolarisTestClient adminClient =
+        new PolarisTestClient(EXT.client(), EXT.getLocalPort(), adminToken.token(), realm);
+    try (Response response = adminClient.getCatalog(currentCatalogName)) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       Catalog catalog = response.readEntity(Catalog.class);
       Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
       catalogProps.put(
           PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
       try (Response updateResponse =
-          EXT.client()
-              .target(
-                  String.format(
-                      "http://localhost:%d/api/management/v1/catalogs/%s",
-                      EXT.getLocalPort(), catalog.getName()))
-              .request("application/json")
-              .header("Authorization", "Bearer " + adminToken.token())
-              .header(REALM_PROPERTY_KEY, realm)
-              .put(
-                  Entity.json(
-                      new UpdateCatalogRequest(
-                          catalog.getEntityVersion(),
-                          catalogProps,
-                          catalog.getStorageConfigInfo())))) {
+          adminClient.updateCatalog(
+              catalog.getName(),
+              new UpdateCatalogRequest(
+                  catalog.getEntityVersion(), catalogProps, catalog.getStorageConfigInfo()))) {
         assertThat(updateResponse).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       }
     }
@@ -899,17 +758,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             "s3://my-bucket/path/to/metadata.json",
             null));
     restCatalog.createNamespace(Namespace.of("ns1"));
-    String notificationUrl =
-        String.format(
-            "http://localhost:%d/api/catalog/v1/%s/namespaces/ns1/tables/tbl1/notifications",
-            EXT.getLocalPort(), currentCatalogName);
     try (Response response =
-        EXT.client()
-            .target(notificationUrl)
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .post(Entity.json(notification))) {
+        userClient.sendNotification(currentCatalogName, "ns1", "tbl1", notification)) {
       assertThat(response)
           .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(ErrorResponse.class))
@@ -919,12 +769,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     // NotificationType.VALIDATE should also surface the same error.
     notification.setNotificationType(NotificationType.VALIDATE);
     try (Response response =
-        EXT.client()
-            .target(notificationUrl)
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .post(Entity.json(notification))) {
+        userClient.sendNotification(currentCatalogName, "ns1", "tbl1", notification)) {
       assertThat(response)
           .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(ErrorResponse.class))

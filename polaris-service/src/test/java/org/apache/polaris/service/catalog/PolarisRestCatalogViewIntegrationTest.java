@@ -26,7 +26,6 @@ import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
-import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
@@ -101,22 +100,14 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
       PolarisToken adminToken,
       SnowmanCredentials snowmanCredentials,
       @PolarisRealm String realm) {
-    String userToken = adminToken.token();
+    PolarisTestClient adminClient =
+        new PolarisTestClient(EXT.client(), EXT.getLocalPort(), adminToken.token(), realm);
     testInfo
         .getTestMethod()
         .ifPresent(
             method -> {
               String catalogName = method.getName();
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s",
-                              EXT.getLocalPort(), catalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + userToken)
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .get()) {
+              try (Response response = adminClient.getCatalog(catalogName)) {
                 if (response.getStatus() == Response.Status.OK.getStatusCode()) {
                   // Already exists! Must be in a parameterized test.
                   // Quick hack to get a unique catalogName.
@@ -157,29 +148,12 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
                                   StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://"))
                               : awsConfigModel)
                       .build();
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs", EXT.getLocalPort()))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + userToken)
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .post(Entity.json(catalog))) {
+              try (Response response = adminClient.createCatalog(catalog)) {
                 assertThat(response)
                     .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
               }
               CatalogRole newRole = new CatalogRole("admin");
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles",
-                              EXT.getLocalPort(), catalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + userToken)
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .post(Entity.json(newRole))) {
+              try (Response response = adminClient.createCatalogRole(catalogName, newRole)) {
                 assertThat(response)
                     .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
               }
@@ -187,42 +161,18 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
                   new CatalogGrant(
                       CatalogPrivilege.CATALOG_MANAGE_CONTENT, GrantResource.TypeEnum.CATALOG);
               try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/admin/grants",
-                              EXT.getLocalPort(), catalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + userToken)
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .put(Entity.json(grantResource))) {
+                  adminClient.grantCatalogRole(catalogName, "admin", grantResource)) {
                 assertThat(response)
                     .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
               }
 
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/admin",
-                              EXT.getLocalPort(), catalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + userToken)
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .get()) {
+              try (Response response = adminClient.getCatalogRole(catalogName, "admin")) {
                 assertThat(response)
                     .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
                 CatalogRole catalogRole = response.readEntity(CatalogRole.class);
                 try (Response ignore =
-                    EXT.client()
-                        .target(
-                            String.format(
-                                "http://localhost:%d/api/management/v1/principal-roles/catalog-admin/catalog-roles/%s",
-                                EXT.getLocalPort(), catalogName))
-                        .request("application/json")
-                        .header("Authorization", "Bearer " + userToken)
-                        .header(REALM_PROPERTY_KEY, realm)
-                        .put(Entity.json(catalogRole))) {
+                    adminClient.grantCatalogRoleToPrincipalRole(
+                        "catalog-admin", catalogName, catalogRole)) {
                   assertThat(response)
                       .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
                 }
