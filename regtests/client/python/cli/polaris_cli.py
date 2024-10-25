@@ -40,8 +40,6 @@ class PolarisCli:
     * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} principals create example_user
     * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} principal-roles create example_role
     * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} catalog-roles list
-    * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} catalog-roles list
-    * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} catalog-roles list
     * ./polaris --client-id ${id} --client-secret ${secret} --base-url https://custom-polaris-domain.example.com/service-prefix catalogs list
     """
 
@@ -113,6 +111,11 @@ class PolarisCli:
                             f' {CLIENT_SECRET_ENV}.')
         # Authenticate accordingly
         if options.base_url:
+            if options.host is not None or options.port is not None:
+                raise Exception(f'Please provide either {Argument.to_flag_name(Arguments.BASE_URL)} or'
+                                f' {Argument.to_flag_name(Arguments.HOST)} &'
+                                f' {Argument.to_flag_name(Arguments.PORT)}, but not both');
+
             polaris_management_url = f'{options.base_url}/api/management/v1'
             polaris_catalog_url = f'{options.base_url}/api/catalog/v1'
         else:

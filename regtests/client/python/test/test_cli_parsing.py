@@ -105,6 +105,7 @@ class TestCliParsing(unittest.TestCase):
         Parser.parse(['catalogs', 'get', 'catalog_name'])
         Parser.parse(['principals', 'list'])
         Parser.parse(['--host', 'some-host', 'catalogs', 'list'])
+        Parser.parse(['--base-url', 'https://customservice.com/subpath', 'catalogs', 'list'])
         Parser.parse(['privileges', 'catalog', 'grant', '--catalog', 'foo', '--catalog-role', 'bar', 'TABLE_READ_DATA'])
         Parser.parse(['privileges', 'table', 'grant', '--catalog', 'foo', '--catalog-role', 'bar',
                       '--namespace', 'n', '--table', 't', 'TABLE_READ_DATA'])
@@ -234,6 +235,8 @@ class TestCliParsing(unittest.TestCase):
                 (0, 'catalog.storage_config_info.gcs_service_account'): 'sa',
             })
         check_arguments(mock_execute(['catalogs', 'list']), 'list_catalogs')
+        check_arguments(mock_execute([
+              '--base-url', 'https://customservice.com/subpath', 'catalogs', 'list']), 'list_catalogs')
         check_arguments(mock_execute(['catalogs', 'delete', 'foo']), 'delete_catalog', {
             (0, None): 'foo',
         })
@@ -242,6 +245,16 @@ class TestCliParsing(unittest.TestCase):
         })
         check_arguments(
             mock_execute(['catalogs', 'update', 'foo', '--default-base-location', 'x']),
+            'get_catalog', {
+                (0, None): 'foo',
+            })
+        check_arguments(
+            mock_execute(['catalogs', 'update', 'foo', '--property', 'key=value']),
+            'get_catalog', {
+                (0, None): 'foo',
+            })
+        check_arguments(
+            mock_execute(['catalogs', 'update', 'foo', '--property', 'key=value', '--default-base-location', 'x']),
             'get_catalog', {
                 (0, None): 'foo',
             })
