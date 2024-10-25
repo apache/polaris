@@ -113,11 +113,11 @@ class PolarisCli:
                             f' {CLIENT_SECRET_ENV}.')
         # Authenticate accordingly
         if options.base_url:
-          polaris_management_url = f'{options.base_url}/api/management/v1'
-          polaris_catalog_url = f'{options.base_url}/api/catalog/v1'
+            polaris_management_url = f'{options.base_url}/api/management/v1'
+            polaris_catalog_url = f'{options.base_url}/api/catalog/v1'
         else:
-          polaris_management_url = f'http://{options.host}:{options.port}/api/management/v1'
-          polaris_catalog_url = f'http://{options.host}:{options.port}/api/catalog/v1'
+            polaris_management_url = f'http://{options.host}:{options.port}/api/management/v1'
+            polaris_catalog_url = f'http://{options.host}:{options.port}/api/catalog/v1'
 
         builder = None
         if has_access_token:
