@@ -2102,8 +2102,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   private static boolean isAccessDenied(String errorMsg) {
     // Corresponding error messages for storage providers Aws/Azure/Gcp
-    // We may want to consider a change to Iceberg Core to wrap cloud provider IO exceptions to
-    // Iceberg ForbiddenException
     boolean isAccessDenied =
         errorMsg != null
             && (errorMsg

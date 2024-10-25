@@ -57,6 +57,8 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
 
   // Case-insensitive parts of exception messages that a request to a cloud provider was denied due
   // to lack of permissions
+  // We may want to consider a change to Iceberg Core to wrap cloud provider IO exceptions to
+  // Iceberg ForbiddenException
   public static final String AWS_ACCESS_DENIED_HINT = "access denied";
   public static final String AZURE_ACCESS_DENIED_HINT =
       "this request is not authorized to perform this operation";
@@ -103,7 +105,6 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
           case WebApplicationException e -> e.getResponse().getStatus();
           default -> Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
         };
-
     if (responseCode == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()) {
       LOGGER.error("Unhandled exception returning INTERNAL_SERVER_ERROR", runtimeException);
     }
