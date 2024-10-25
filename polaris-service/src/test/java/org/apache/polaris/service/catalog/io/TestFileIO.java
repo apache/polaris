@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog.io;
 
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DeleteFile;
@@ -26,7 +27,6 @@ import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.OutputFile;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * File IO wrapper used for tests. It measures the number of bytes read, files written, and files
@@ -34,8 +34,10 @@ import org.jetbrains.annotations.NotNull;
  */
 public class TestFileIO implements FileIO {
   private final FileIO io;
-  private @NotNull final Supplier<RuntimeException> newInputFileExceptionSupplier;
-  private @NotNull final Supplier<RuntimeException> newOutputFileExceptionSupplier;
+
+  // When present, the following will be used to throw exceptions at various parts of the IO
+  private final Optional<Supplier<RuntimeException>> newInputFileExceptionSupplier;
+  private final Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier;
 
   private long inputBytes;
   private int numOutputFiles;
@@ -43,8 +45,8 @@ public class TestFileIO implements FileIO {
 
   public TestFileIO(
       FileIO io,
-      @NotNull Supplier<RuntimeException> newInputFileExceptionSupplier,
-      @NotNull Supplier<RuntimeException> newOutputFileExceptionSupplier) {
+      Optional<Supplier<RuntimeException>> newInputFileExceptionSupplier,
+      Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier) {
     this.io = io;
     this.newInputFileExceptionSupplier = newInputFileExceptionSupplier;
     this.newOutputFileExceptionSupplier = newOutputFileExceptionSupplier;
@@ -63,10 +65,10 @@ public class TestFileIO implements FileIO {
   }
 
   private InputFile wrapInputFile(InputFile inner) {
-    RuntimeException e = newInputFileExceptionSupplier.get();
-    if (e != null) {
-      throw e;
-    }
+    newInputFileExceptionSupplier.ifPresent(
+        s -> {
+          throw s.get();
+        });
 
     inputBytes += inner.getLength();
     return inner;
@@ -99,10 +101,10 @@ public class TestFileIO implements FileIO {
 
   @Override
   public OutputFile newOutputFile(String path) {
-    RuntimeException e = newOutputFileExceptionSupplier.get();
-    if (e != null) {
-      throw e;
-    }
+    newOutputFileExceptionSupplier.ifPresent(
+        s -> {
+          throw s.get();
+        });
 
     numOutputFiles++;
     return io.newOutputFile(path);

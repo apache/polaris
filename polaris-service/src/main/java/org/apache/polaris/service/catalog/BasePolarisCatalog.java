@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.catalog;
 
-import static org.apache.polaris.service.exception.IcebergExceptionMapper.isAccessDenied;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
@@ -32,6 +30,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -102,6 +101,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.PolarisS3FileIOClientFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -2098,5 +2098,27 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // add more cases here if needed
     // AccessDenied is not retryable
     return !isAccessDenied(rootCause.getMessage());
+  }
+
+  private static boolean isAccessDenied(String errorMsg) {
+    // Corresponding error messages for storage providers Aws/Azure/Gcp
+    // We may want to consider a change to Iceberg Core to wrap cloud provider IO exceptions to
+    // Iceberg ForbiddenException
+    boolean isAccessDenied =
+        errorMsg != null
+            && (errorMsg
+                    .toLowerCase(Locale.ENGLISH)
+                    .contains(IcebergExceptionMapper.AWS_ACCESS_DENIED_HINT)
+                || errorMsg
+                    .toLowerCase(Locale.ENGLISH)
+                    .contains(IcebergExceptionMapper.AZURE_ACCESS_DENIED_HINT)
+                || errorMsg
+                    .toLowerCase(Locale.ENGLISH)
+                    .contains(IcebergExceptionMapper.GCP_ACCESS_DENIED_HINT));
+    if (isAccessDenied) {
+      LOGGER.debug("Access Denied or Forbidden error: {}", errorMsg);
+      return true;
+    }
+    return false;
   }
 }

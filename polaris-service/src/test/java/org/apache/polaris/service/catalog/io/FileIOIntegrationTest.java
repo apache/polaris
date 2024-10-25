@@ -28,6 +28,7 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -46,6 +47,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.catalog.TestUtil;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
+import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
@@ -131,31 +133,27 @@ public class FileIOIntegrationTest {
         Stream.of(
                 IOExceptionTypeTestConfig.allVariants(
                     ForbiddenException.class,
-                    () -> new RuntimeException("Forbidden"),
+                    () -> new RuntimeException(IcebergExceptionMapper.AWS_ACCESS_DENIED_HINT),
                     FileIOIntegrationTest::workloadCreateTable),
                 IOExceptionTypeTestConfig.allVariants(
                     ForbiddenException.class,
-                    () ->
-                        new RuntimeException(
-                            "This request is not authorized to perform this operation using this permission"),
+                    () -> new RuntimeException(IcebergExceptionMapper.AZURE_ACCESS_DENIED_HINT),
                     FileIOIntegrationTest::workloadCreateTable),
                 IOExceptionTypeTestConfig.allVariants(
                     ForbiddenException.class,
-                    () -> new RuntimeException("Access denied"),
+                    () -> new RuntimeException(IcebergExceptionMapper.GCP_ACCESS_DENIED_HINT),
                     FileIOIntegrationTest::workloadCreateTable),
                 IOExceptionTypeTestConfig.allVariants(
                     ForbiddenException.class,
-                    () -> new RuntimeException("Forbidden"),
+                    () -> new RuntimeException(IcebergExceptionMapper.AWS_ACCESS_DENIED_HINT),
                     FileIOIntegrationTest::workloadUpdateTableProperties),
                 IOExceptionTypeTestConfig.allVariants(
                     ForbiddenException.class,
-                    () ->
-                        new RuntimeException(
-                            "This request is not authorized to perform this operation using this permission"),
+                    () -> new RuntimeException(IcebergExceptionMapper.AZURE_ACCESS_DENIED_HINT),
                     FileIOIntegrationTest::workloadUpdateTableProperties),
                 IOExceptionTypeTestConfig.allVariants(
                     ForbiddenException.class,
-                    () -> new RuntimeException("Access denied"),
+                    () -> new RuntimeException(IcebergExceptionMapper.GCP_ACCESS_DENIED_HINT),
                     FileIOIntegrationTest::workloadUpdateTableProperties))
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
@@ -183,9 +181,9 @@ public class FileIOIntegrationTest {
    */
   record IOExceptionTypeTestConfig<T extends Throwable>(
       Class<T> expectedException,
-      Supplier<RuntimeException> loadFileIOExceptionSupplier,
-      Supplier<RuntimeException> newInputFileExceptionSupplier,
-      Supplier<RuntimeException> newOutputFileExceptionSupplier,
+      Optional<Supplier<RuntimeException>> loadFileIOExceptionSupplier,
+      Optional<Supplier<RuntimeException>> newInputFileExceptionSupplier,
+      Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier,
       Workload workload) {
 
     interface Workload {
@@ -200,11 +198,23 @@ public class FileIOIntegrationTest {
         Class<T> exceptionType, Supplier<RuntimeException> exceptionSupplier, Workload workload) {
       return List.of(
           new IOExceptionTypeTestConfig<>(
-              exceptionType, exceptionSupplier, () -> null, () -> null, workload),
+              exceptionType,
+              Optional.of(exceptionSupplier),
+              Optional.empty(),
+              Optional.empty(),
+              workload),
           new IOExceptionTypeTestConfig<>(
-              exceptionType, () -> null, exceptionSupplier, () -> null, workload),
+              exceptionType,
+              Optional.empty(),
+              Optional.of(exceptionSupplier),
+              Optional.empty(),
+              workload),
           new IOExceptionTypeTestConfig<>(
-              exceptionType, () -> null, () -> null, exceptionSupplier, workload));
+              exceptionType,
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(exceptionSupplier),
+              workload));
     }
   }
 }

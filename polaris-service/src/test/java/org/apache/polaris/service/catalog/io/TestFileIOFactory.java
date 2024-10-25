@@ -22,11 +22,11 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.io.FileIO;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * A FileIOFactory that measures the number of bytes read, files written, and files deleted. It can
@@ -35,18 +35,20 @@ import org.jetbrains.annotations.NotNull;
 @JsonTypeName("test")
 public class TestFileIOFactory implements FileIOFactory {
   private final List<TestFileIO> ios = new ArrayList<>();
-  public @NotNull Supplier<RuntimeException> loadFileIOExceptionSupplier = () -> null;
-  public @NotNull Supplier<RuntimeException> newInputFileExceptionSupplier = () -> null;
-  public @NotNull Supplier<RuntimeException> newOutputFileExceptionSupplier = () -> null;
+
+  // When present, the following will be used to throw exceptions at various parts of the IO
+  public Optional<Supplier<RuntimeException>> loadFileIOExceptionSupplier = Optional.empty();
+  public Optional<Supplier<RuntimeException>> newInputFileExceptionSupplier = Optional.empty();
+  public Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier = Optional.empty();
 
   public TestFileIOFactory() {}
 
   @Override
   public FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
-    RuntimeException e = loadFileIOExceptionSupplier.get();
-    if (e != null) {
-      throw e;
-    }
+    loadFileIOExceptionSupplier.ifPresent(
+        s -> {
+          throw s.get();
+        });
 
     TestFileIO wrapped =
         new TestFileIO(
