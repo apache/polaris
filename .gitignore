@@ -20,6 +20,7 @@
 regtests/derby.log
 regtests/metastore_db
 regtests/output/
+regtests/minio/miniodata/*
 
 # Python stuff
 /poetry.lock
@@ -57,6 +58,9 @@ gradle/wrapper/gradle-wrapper-*.sha256
 *.iml
 *.ipr
 *.iws
+
+# VScode
+.vscode
 
 # Gradle
 /.gradle
