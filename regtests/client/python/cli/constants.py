@@ -126,6 +126,7 @@ class Arguments:
     ACCESS_TOKEN = 'access_token'
     HOST = 'host'
     PORT = 'port'
+    BASE_URL = 'base_url'
     PARENT = 'parent'
     LOCATION = 'location'
 

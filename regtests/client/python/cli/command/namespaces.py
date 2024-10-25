@@ -59,7 +59,7 @@ class NamespacesCommand(Command):
         """
         Convert a management API to a catalog API
         """
-        catalog_host = re.match(r'(http://[^/]+)', api.api_client.configuration.host).group(1)
+        catalog_host = re.match(r'(https?://.+)/api/management', api.api_client.configuration.host).group(1)
         configuration = Configuration(
             host=f'{catalog_host}/api/catalog',
             username=api.api_client.configuration.username,
