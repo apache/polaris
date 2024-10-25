@@ -28,8 +28,12 @@ public class AzureLocation extends StorageLocation {
   private static final Pattern URI_PATTERN = Pattern.compile("^(abfss?|wasbs?)://([^/?#]+)(.*)?$");
 
   public static final String ADLS_ENDPOINT = "dfs.core.windows.net";
-
   public static final String BLOB_ENDPOINT = "blob.core.windows.net";
+
+  public static final String ABFS_SCHEME = "abfs://";
+  public static final String ABFSS_SCHEME = "abfss://";
+  public static final String WASB_SCHEME = "wasb://";
+  public static final String WASBS_SCHEME = "wasbs://";
 
   private final String scheme;
   private final String storageAccount;
