@@ -71,6 +71,7 @@ import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisConfiguration;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -816,6 +817,24 @@ public class PolarisCatalogHandlerWrapper {
       actionsRequested.add(PolarisStorageActions.WRITE);
     } catch (ForbiddenException e) {
       authorizeBasicTableLikeOperationOrThrow(read, PolarisEntitySubType.TABLE, tableIdentifier);
+    }
+
+    PolarisResolvedPathWrapper catalogPath = resolutionManifest.getResolvedReferenceCatalogEntity();
+    callContext
+        .getPolarisCallContext()
+        .getDiagServices()
+        .checkNotNull(catalogPath, "No catalog available for loadTable request");
+    CatalogEntity catalogEntity = CatalogEntity.of(catalogPath.getRawLeafEntity());
+    PolarisConfigurationStore configurationStore =
+        callContext.getPolarisCallContext().getConfigurationStore();
+    if (catalogEntity
+            .getCatalogType()
+            .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
+        && !configurationStore.getConfiguration(
+            callContext.getPolarisCallContext(),
+            catalogEntity,
+            PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING)) {
+      throw new ForbiddenException("Access Delegation is not supported for this catalog");
     }
 
     // TODO: Find a way for the configuration or caller to better express whether to fail or omit

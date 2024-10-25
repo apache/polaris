@@ -57,7 +57,7 @@ github:
   features:
     wiki: false
     issues: true
-    projects: false
+    projects: true
   ghp_branch: gh-pages
   ghp_path: /
 
