@@ -21,6 +21,8 @@ package org.apache.polaris.service.catalog.io;
 import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.azure.core.exception.AzureException;
+import com.google.cloud.storage.StorageException;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
@@ -56,6 +58,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 /** Collection of File IO integration tests */
 @ExtendWith({
@@ -133,27 +136,35 @@ public class FileIOIntegrationTest {
         Stream.of(
                 IOExceptionTypeTestConfig.allVariants(
                     ForbiddenException.class,
-                    () -> new RuntimeException(IcebergExceptionMapper.AWS_ACCESS_DENIED_HINT),
+                    () ->
+                        S3Exception.builder()
+                            .statusCode(403)
+                            .message(IcebergExceptionMapper.AWS_ACCESS_DENIED_HINT)
+                            .build(),
                     FileIOIntegrationTest::workloadCreateTable),
                 IOExceptionTypeTestConfig.allVariants(
                     ForbiddenException.class,
-                    () -> new RuntimeException(IcebergExceptionMapper.AZURE_ACCESS_DENIED_HINT),
+                    () -> new AzureException(IcebergExceptionMapper.AZURE_ACCESS_DENIED_HINT),
                     FileIOIntegrationTest::workloadCreateTable),
                 IOExceptionTypeTestConfig.allVariants(
                     ForbiddenException.class,
-                    () -> new RuntimeException(IcebergExceptionMapper.GCP_ACCESS_DENIED_HINT),
+                    () -> new StorageException(403, IcebergExceptionMapper.GCP_ACCESS_DENIED_HINT),
                     FileIOIntegrationTest::workloadCreateTable),
                 IOExceptionTypeTestConfig.allVariants(
                     ForbiddenException.class,
-                    () -> new RuntimeException(IcebergExceptionMapper.AWS_ACCESS_DENIED_HINT),
+                    () ->
+                        S3Exception.builder()
+                            .statusCode(403)
+                            .message(IcebergExceptionMapper.AWS_ACCESS_DENIED_HINT)
+                            .build(),
                     FileIOIntegrationTest::workloadUpdateTableProperties),
                 IOExceptionTypeTestConfig.allVariants(
                     ForbiddenException.class,
-                    () -> new RuntimeException(IcebergExceptionMapper.AZURE_ACCESS_DENIED_HINT),
+                    () -> new AzureException(IcebergExceptionMapper.AZURE_ACCESS_DENIED_HINT),
                     FileIOIntegrationTest::workloadUpdateTableProperties),
                 IOExceptionTypeTestConfig.allVariants(
                     ForbiddenException.class,
-                    () -> new RuntimeException(IcebergExceptionMapper.GCP_ACCESS_DENIED_HINT),
+                    () -> new StorageException(403, IcebergExceptionMapper.GCP_ACCESS_DENIED_HINT),
                     FileIOIntegrationTest::workloadUpdateTableProperties))
             .flatMap(Collection::stream)
             .collect(Collectors.toList());
