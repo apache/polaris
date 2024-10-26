@@ -49,12 +49,4 @@ services:
       AWS_REGION: us-west-2
       POLARIS_HOST: polaris
     volumes:
-      - notebooks:/home/jovyan/notebooks
-
-volumes:
-  notebooks:
-    driver: local
-    driver_opts:
-      o: bind
-      type: none
-      device: ./notebooks/
+      - ./notebooks:/home/jovyan/notebooks

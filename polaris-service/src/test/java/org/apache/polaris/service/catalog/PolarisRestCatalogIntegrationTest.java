@@ -30,17 +30,22 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.BaseTransaction;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.Transaction;
 import org.apache.iceberg.UpdatePartitionSpec;
 import org.apache.iceberg.UpdateSchema;
@@ -52,6 +57,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.expressions.Expressions;
+import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
@@ -133,6 +139,26 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private final String catalogBaseLocation =
       S3_BUCKET_BASE + "/" + System.getenv("USER") + "/path/to/data";
 
+  private static final String[] DEFAULT_CATALOG_PROPERTIES = {
+    "allow.unstructured.table.location", "true",
+    "allow.external.table.location", "true"
+  };
+
+  @Retention(RetentionPolicy.RUNTIME)
+  private @interface CatalogConfig {
+    Catalog.TypeEnum value() default Catalog.TypeEnum.INTERNAL;
+
+    String[] properties() default {
+      "allow.unstructured.table.location", "true",
+      "allow.external.table.location", "true"
+    };
+  }
+
+  @Retention(RetentionPolicy.RUNTIME)
+  private @interface RestCatalogConfig {
+    String[] value() default {};
+  }
+
   @BeforeAll
   public static void setup(@PolarisRealm String realm) throws IOException {
     // Set up test location
@@ -166,21 +192,27 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                       .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
                       .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
                       .build();
+              Optional<CatalogConfig> catalogConfig =
+                  testInfo
+                      .getTestMethod()
+                      .flatMap(m -> Optional.ofNullable(m.getAnnotation(CatalogConfig.class)));
+
               org.apache.polaris.core.admin.model.CatalogProperties.Builder catalogPropsBuilder =
-                  org.apache.polaris.core.admin.model.CatalogProperties.builder(catalogBaseLocation)
-                      .addProperty(
-                          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
-                          "true")
-                      .addProperty(
-                          PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(),
-                          "true");
+                  org.apache.polaris.core.admin.model.CatalogProperties.builder(
+                      catalogBaseLocation);
+              String[] properties =
+                  catalogConfig.map(CatalogConfig::properties).orElse(DEFAULT_CATALOG_PROPERTIES);
+              for (int i = 0; i < properties.length; i += 2) {
+                catalogPropsBuilder.addProperty(properties[i], properties[i + 1]);
+              }
               if (!S3_BUCKET_BASE.startsWith("file:/")) {
                 catalogPropsBuilder.addProperty(
                     CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
               }
               Catalog catalog =
                   PolarisCatalog.builder()
-                      .setType(Catalog.TypeEnum.INTERNAL)
+                      .setType(
+                          catalogConfig.map(CatalogConfig::value).orElse(Catalog.TypeEnum.INTERNAL))
                       .setName(currentCatalogName)
                       .setProperties(catalogPropsBuilder.build())
                       .setStorageConfigInfo(
@@ -287,21 +319,31 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                           HTTPClient.builder(config)
                               .uri(config.get(CatalogProperties.URI))
                               .build());
-              this.restCatalog.initialize(
-                  "polaris",
-                  ImmutableMap.of(
-                      CatalogProperties.URI,
-                      "http://localhost:" + EXT.getLocalPort() + "/api/catalog",
-                      OAuth2Properties.CREDENTIAL,
-                      snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret(),
-                      OAuth2Properties.SCOPE,
-                      BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL,
-                      CatalogProperties.FILE_IO_IMPL,
-                      "org.apache.iceberg.inmemory.InMemoryFileIO",
-                      "warehouse",
-                      currentCatalogName,
-                      "header." + REALM_PROPERTY_KEY,
-                      realm));
+              Optional<RestCatalogConfig> restCatalogConfig =
+                  testInfo
+                      .getTestMethod()
+                      .flatMap(m -> Optional.ofNullable(m.getAnnotation(RestCatalogConfig.class)));
+              ImmutableMap.Builder<String, String> propertiesBuilder =
+                  ImmutableMap.<String, String>builder()
+                      .put(
+                          CatalogProperties.URI,
+                          "http://localhost:" + EXT.getLocalPort() + "/api/catalog")
+                      .put(
+                          OAuth2Properties.CREDENTIAL,
+                          snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret())
+                      .put(OAuth2Properties.SCOPE, BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL)
+                      .put(
+                          CatalogProperties.FILE_IO_IMPL,
+                          "org.apache.iceberg.inmemory.InMemoryFileIO")
+                      .put("warehouse", currentCatalogName)
+                      .put("header." + REALM_PROPERTY_KEY, realm);
+              restCatalogConfig.ifPresent(
+                  config -> {
+                    for (int i = 0; i < config.value().length; i += 2) {
+                      propertiesBuilder.put(config.value()[i], config.value()[i + 1]);
+                    }
+                  });
+              this.restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());
             });
   }
 
@@ -745,6 +787,104 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                     .withLocation(catalogBaseLocation + "/ns1/ns1a/tbl1-override")
                     .create())
         .isInstanceOf(ForbiddenException.class);
+  }
+
+  /**
+   * Create an EXTERNAL catalog. The test configuration, by default, disables access delegation for
+   * EXTERNAL catalogs, so register a table and try to load it with the REST client configured to
+   * try to fetch vended credentials. Expect a ForbiddenException.
+   */
+  @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
+  @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
+  @Test
+  public void testLoadTableWithAccessDelegationForExternalCatalogWithConfigDisabled() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      resolvingFileIO.initialize(Map.of());
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+      restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
+      try {
+        Assertions.assertThatThrownBy(
+                () -> restCatalog.loadTable(TableIdentifier.of(ns1, "my_table")))
+            .isInstanceOf(ForbiddenException.class)
+            .hasMessageContaining("Access Delegation is not supported for this catalog");
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Create an EXTERNAL catalog. The test configuration, by default, disables access delegation for
+   * EXTERNAL catalogs. Register a table and attempt to load it WITHOUT access delegation. This
+   * should succeed.
+   */
+  @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
+  @Test
+  public void testLoadTableWithoutAccessDelegationForExternalCatalogWithConfigDisabled() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      resolvingFileIO.initialize(Map.of());
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+      restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
+      try {
+        restCatalog.loadTable(TableIdentifier.of(ns1, "my_table"));
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Create an EXTERNAL catalog. The test configuration, by default, disables access delegation for
+   * EXTERNAL catalogs. However, we set <code>enable.credential.vending</code> to <code>true</code>
+   * for this catalog, enabling it. Register a table and attempt to load it WITH access delegation.
+   * This should succeed.
+   */
+  @CatalogConfig(
+      value = Catalog.TypeEnum.EXTERNAL,
+      properties = {"enable.credential.vending", "true"})
+  @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
+  @Test
+  public void testLoadTableWithAccessDelegationForExternalCatalogWithConfigEnabledForCatalog() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      resolvingFileIO.initialize(Map.of());
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+      restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
+      try {
+        restCatalog.loadTable(TableIdentifier.of(ns1, "my_table"));
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
   }
 
   @Test

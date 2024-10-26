@@ -44,6 +44,7 @@ tasks.withType(JavaCompile::class.java).configureEach {
     "MissingOverride",
     "ModifiedButNotUsed",
     "OrphanedFormatString",
+    "PatternMatchingInstanceof",
     "StringCaseLocaleUsage",
   )
 }
