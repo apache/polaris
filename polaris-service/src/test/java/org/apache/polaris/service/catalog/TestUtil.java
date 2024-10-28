@@ -44,11 +44,7 @@ import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 
 /** Test utilities for catalog tests */
 public class TestUtil {
-  /**
-   * Performs {@link TestUtil#createSnowmanManagedCatalog(Client, String,
-   * PolarisConnectionExtension.PolarisToken, SnowmanCredentialsExtension.SnowmanCredentials,
-   * String, Catalog)} on a Dropwizard instance of Polaris
-   */
+  /** Performs createSnowmanManagedCatalog() on a Dropwizard instance of Polaris */
   public static RESTCatalog createSnowmanManagedCatalog(
       DropwizardAppExtension<PolarisApplicationConfig> EXT,
       PolarisConnectionExtension.PolarisToken adminToken,
