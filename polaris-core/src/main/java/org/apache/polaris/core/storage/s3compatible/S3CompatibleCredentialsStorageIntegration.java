@@ -150,7 +150,7 @@ public class S3CompatibleCredentialsStorageIntegration
         propertiesMap.put(
             PolarisCredentialProperty.AWS_TOKEN, response.credentials().sessionToken());
         LOGGER.debug(
-            "S3Compatible - assumeRole - Token Expiration at : {}j",
+            "S3Compatible - assumeRole - Token Expiration at : {}",
             response.credentials().expiration().toString());
         break;
 
