@@ -69,7 +69,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                 new AwsCredentialsStorageIntegration(stsClientSupplier.get());
         break;
       case S3_COMPATIBLE:
-        storageIntegration = (PolarisStorageIntegration<T>) new S3CompatibleCredentialsStorageIntegration();
+        storageIntegration =
+            (PolarisStorageIntegration<T>) new S3CompatibleCredentialsStorageIntegration();
         break;
       case GCS:
         storageIntegration =

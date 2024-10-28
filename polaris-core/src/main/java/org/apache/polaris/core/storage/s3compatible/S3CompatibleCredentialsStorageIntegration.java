@@ -24,6 +24,7 @@ import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
+import org.apache.polaris.core.storage.s3compatible.S3CompatibleStorageConfigurationInfo.CredsCatalogAndClientStrategyEnum;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,7 +55,11 @@ public class S3CompatibleCredentialsStorageIntegration
         Region
             .US_WEST_1); // default region to avoid bug, because most (all?) S3 compatible softwares
     // do not care about regions
-    stsBuilder.endpointOverride(URI.create(s3storageConfig.getS3Endpoint())); //S3Compatible - AWS STS endpoint is unique and different from the S3 Endpoint
+    stsBuilder.endpointOverride(
+        URI.create(
+            s3storageConfig
+                .getS3Endpoint())); // S3Compatible - AWS STS endpoint is unique and different from
+    // the S3 Endpoint
     stsBuilder.credentialsProvider(
         StaticCredentialsProvider.create(
             AwsBasicCredentials.create(
@@ -83,21 +88,46 @@ public class S3CompatibleCredentialsStorageIntegration
 
     switch (storageConfig.getCredsVendingStrategy()) {
       case KEYS_SAME_AS_CATALOG:
-        propertiesMap.put(
-            PolarisCredentialProperty.AWS_KEY_ID,
-            storageConfig.getS3CredentialsCatalogAccessKeyId());
-        propertiesMap.put(
-            PolarisCredentialProperty.AWS_SECRET_KEY,
-            storageConfig.getS3CredentialsCatalogSecretAccessKey());
+        if (storageConfig.getCredsCatalogAndClientStrategy()
+            == CredsCatalogAndClientStrategyEnum.ENV_VAR_NAME) {
+          String cai = System.getenv(storageConfig.getS3CredentialsCatalogAccessKeyId());
+          String cas = System.getenv(storageConfig.getS3CredentialsCatalogSecretAccessKey());
+          if (cai == null || cas == null) {
+            throw new IllegalArgumentException(
+                "Expect valid environment variable for catalog keys");
+          } else {
+            propertiesMap.put(PolarisCredentialProperty.AWS_KEY_ID, cai);
+            propertiesMap.put(PolarisCredentialProperty.AWS_SECRET_KEY, cas);
+          }
+        } else {
+          propertiesMap.put(
+              PolarisCredentialProperty.AWS_KEY_ID,
+              storageConfig.getS3CredentialsCatalogAccessKeyId());
+          propertiesMap.put(
+              PolarisCredentialProperty.AWS_SECRET_KEY,
+              storageConfig.getS3CredentialsCatalogSecretAccessKey());
+        }
         break;
 
       case KEYS_DEDICATED_TO_CLIENT:
-        propertiesMap.put(
-            PolarisCredentialProperty.AWS_KEY_ID,
-            storageConfig.getS3CredentialsClientAccessKeyId());
-        propertiesMap.put(
-            PolarisCredentialProperty.AWS_SECRET_KEY,
-            storageConfig.getS3CredentialsClientSecretAccessKey());
+        if (storageConfig.getCredsCatalogAndClientStrategy()
+            == CredsCatalogAndClientStrategyEnum.ENV_VAR_NAME) {
+          String cli = System.getenv(storageConfig.getS3CredentialsClientAccessKeyId());
+          String cls = System.getenv(storageConfig.getS3CredentialsClientSecretAccessKey());
+          if (cli == null || cls == null) {
+            throw new IllegalArgumentException("Expect valid environment variable for client keys");
+          } else {
+            propertiesMap.put(PolarisCredentialProperty.AWS_KEY_ID, cli);
+            propertiesMap.put(PolarisCredentialProperty.AWS_SECRET_KEY, cls);
+          }
+        } else {
+          propertiesMap.put(
+              PolarisCredentialProperty.AWS_KEY_ID,
+              storageConfig.getS3CredentialsClientAccessKeyId());
+          propertiesMap.put(
+              PolarisCredentialProperty.AWS_SECRET_KEY,
+              storageConfig.getS3CredentialsClientSecretAccessKey());
+        }
         break;
 
       case TOKEN_WITH_ASSUME_ROLE:
@@ -107,7 +137,11 @@ public class S3CompatibleCredentialsStorageIntegration
         LOGGER.debug("S3Compatible - assumeRole !");
         AssumeRoleResponse response =
             stsClient.assumeRole(
-                AssumeRoleRequest.builder().roleSessionName("PolarisCredentialsSTS").build());
+                AssumeRoleRequest.builder()
+                    .roleSessionName("PolarisCredentialsSTS")
+                    // @TODO customize duration
+                    // .durationSeconds(1800)
+                    .build());
 
         propertiesMap.put(
             PolarisCredentialProperty.AWS_KEY_ID, response.credentials().accessKeyId());
@@ -115,6 +149,9 @@ public class S3CompatibleCredentialsStorageIntegration
             PolarisCredentialProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
         propertiesMap.put(
             PolarisCredentialProperty.AWS_TOKEN, response.credentials().sessionToken());
+        LOGGER.debug(
+            "S3Compatible - assumeRole - Token Expiration at : {}j",
+            response.credentials().expiration().toString());
         break;
 
         // @TODO implement the MinIO external OpenID Connect -

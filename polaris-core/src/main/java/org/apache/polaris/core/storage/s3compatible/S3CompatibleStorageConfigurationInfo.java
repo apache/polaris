@@ -79,7 +79,7 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
       @JsonProperty(value = "allowedLocations", required = true) @NotNull
           List<String> allowedLocations) {
 
-    // Classic super and constructor storing properties
+    // storing properties
     super(storageType, allowedLocations);
     validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
     this.credsVendingStrategy =
@@ -90,30 +90,10 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
             CredsCatalogAndClientStrategyEnum.class, credsCatalogAndClientStrategy.name());
     this.s3pathStyleAccess = s3PathStyleAccess;
     this.s3endpoint = s3Endpoint;
-
-    // The constructor is called multiple time during catalog life
-    // to do substitution only once, there is a basic if null test, otherwise affect the data from
-    // the "Polaris cache storage"
-    // this way the first time the value is retrived from the name of the variable
-    // next times the getenv will try to retrive a variable but is using the value as a name, it will
-    // be null, so the value provided by "Polaris cache storage" is affected
-    if (CredsCatalogAndClientStrategyEnum.ENV_VAR_NAME.equals(credsCatalogAndClientStrategy)) {
-      String cai = System.getenv(s3CredentialsCatalogAccessKeyId);
-      String cas = System.getenv(s3CredentialsCatalogSecretAccessKey);
-      String cli = System.getenv(s3CredentialsClientAccessKeyId);
-      String cls = System.getenv(s3CredentialsClientSecretAccessKey);
-      this.s3CredentialsCatalogAccessKeyId = (cai != null) ? cai : s3CredentialsCatalogAccessKeyId;
-      this.s3CredentialsCatalogSecretAccessKey =
-          (cas != null) ? cas : s3CredentialsCatalogSecretAccessKey;
-      this.s3CredentialsClientAccessKeyId = (cli != null) ? cli : s3CredentialsClientAccessKeyId;
-      this.s3CredentialsClientSecretAccessKey =
-          (cls != null) ? cls : s3CredentialsClientSecretAccessKey;
-    } else {
-      this.s3CredentialsCatalogAccessKeyId = s3CredentialsCatalogAccessKeyId;
-      this.s3CredentialsCatalogSecretAccessKey = s3CredentialsCatalogSecretAccessKey;
-      this.s3CredentialsClientAccessKeyId = s3CredentialsClientAccessKeyId;
-      this.s3CredentialsClientSecretAccessKey = s3CredentialsClientSecretAccessKey;
-    }
+    this.s3CredentialsCatalogAccessKeyId = s3CredentialsCatalogAccessKeyId;
+    this.s3CredentialsCatalogSecretAccessKey = s3CredentialsCatalogSecretAccessKey;
+    this.s3CredentialsClientAccessKeyId = s3CredentialsClientAccessKeyId;
+    this.s3CredentialsClientSecretAccessKey = s3CredentialsClientSecretAccessKey;
   }
 
   public @NotNull CredsVendingStrategyEnum getCredsVendingStrategy() {
@@ -151,7 +131,6 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
-        .add("storageType", getStorageType())
         .add("storageType", getStorageType().name())
         .add("allowedLocation", getAllowedLocations())
         .toString();

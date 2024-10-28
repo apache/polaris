@@ -109,7 +109,7 @@ fi
 # creation of catalog
 
 
-# if "credsCatalogAndClientStrategy"=="ENV_VAR_NAME" and not "VALUE", then the following environnement variables have to be available to Polaris
+# if "credsCatalogAndClientStrategy"=="ENV_VAR_NAME" and not "VALUE", then the corresponding environnement variables have to be available to Polaris
 # CATALOG_ID=minio-user-catalog
 # CATALOG_SECRET=12345678-minio-catalog
 # CLIENT_ID=minio-user-client

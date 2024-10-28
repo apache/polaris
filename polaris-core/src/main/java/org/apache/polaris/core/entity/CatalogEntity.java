@@ -144,17 +144,18 @@ public class CatalogEntity extends PolarisEntity {
             .build();
       }
       if (configInfo instanceof S3CompatibleStorageConfigurationInfo) {
-        S3CompatibleStorageConfigurationInfo s3Config = (S3CompatibleStorageConfigurationInfo) configInfo;
+        S3CompatibleStorageConfigurationInfo s3Config =
+            (S3CompatibleStorageConfigurationInfo) configInfo;
         return S3CompatibleStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3_COMPATIBLE)
             .setS3Endpoint(s3Config.getS3Endpoint())
             .setS3PathStyleAccess(s3Config.getS3PathStyleAccess())
             .setCredsVendingStrategy(
-                org.apache.polaris.core.admin.model.S3CompatibleStorageConfigInfo.CredsVendingStrategyEnum
-                    .valueOf(
-                        org.apache.polaris.core.admin.model.S3CompatibleStorageConfigInfo
-                            .CredsVendingStrategyEnum.class,
-                        s3Config.getCredsVendingStrategy().name()))
+                org.apache.polaris.core.admin.model.S3CompatibleStorageConfigInfo
+                    .CredsVendingStrategyEnum.valueOf(
+                    org.apache.polaris.core.admin.model.S3CompatibleStorageConfigInfo
+                        .CredsVendingStrategyEnum.class,
+                    s3Config.getCredsVendingStrategy().name()))
             .setCredsCatalogAndClientStrategy(
                 org.apache.polaris.core.admin.model.S3CompatibleStorageConfigInfo
                     .CredsCatalogAndClientStrategyEnum.valueOf(
@@ -280,15 +281,19 @@ public class CatalogEntity extends PolarisEntity {
             break;
 
           case S3_COMPATIBLE:
-            S3CompatibleStorageConfigInfo s3ConfigModel = (S3CompatibleStorageConfigInfo) storageConfigModel;
+            S3CompatibleStorageConfigInfo s3ConfigModel =
+                (S3CompatibleStorageConfigInfo) storageConfigModel;
             config =
                 new S3CompatibleStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3_COMPATIBLE,
                     S3CompatibleStorageConfigInfo.CredsVendingStrategyEnum.valueOf(
-                        org.apache.polaris.core.storage.s3compatible.S3CompatibleStorageConfigurationInfo.CredsVendingStrategyEnum.class,
+                        org.apache.polaris.core.storage.s3compatible
+                            .S3CompatibleStorageConfigurationInfo.CredsVendingStrategyEnum.class,
                         s3ConfigModel.getCredsVendingStrategy().name()),
                     S3CompatibleStorageConfigInfo.CredsCatalogAndClientStrategyEnum.valueOf(
-                        org.apache.polaris.core.storage.s3compatible.S3CompatibleStorageConfigurationInfo.CredsCatalogAndClientStrategyEnum.class,
+                        org.apache.polaris.core.storage.s3compatible
+                            .S3CompatibleStorageConfigurationInfo.CredsCatalogAndClientStrategyEnum
+                            .class,
                         s3ConfigModel.getCredsCatalogAndClientStrategy().name()),
                     s3ConfigModel.getS3Endpoint(),
                     s3ConfigModel.getS3CredentialsCatalogAccessKeyId(),
