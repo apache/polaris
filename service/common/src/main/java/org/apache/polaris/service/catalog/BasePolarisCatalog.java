@@ -862,7 +862,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       PolarisEntity entity) {
     Boolean skipCredentialSubscopingIndirection =
         getBooleanContextConfiguration(
-            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key, PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION_DEFAULT);
+            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
+            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
     if (Boolean.TRUE.equals(skipCredentialSubscopingIndirection)) {
       LOGGER
           .atInfo()

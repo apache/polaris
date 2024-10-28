@@ -37,7 +37,9 @@ public class TaskFileIOSupplier implements Function<TaskEntity, FileIO> {
   private final Boolean skipCredentialSubscopingIndirection;
 
   public TaskFileIOSupplier(
-      MetaStoreManagerFactory metaStoreManagerFactory, FileIOFactory fileIOFactory, Boolean skipCredentialSubscopingIndirection) {
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      FileIOFactory fileIOFactory,
+      Boolean skipCredentialSubscopingIndirection) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOFactory = fileIOFactory;
     this.skipCredentialSubscopingIndirection = skipCredentialSubscopingIndirection;
@@ -53,15 +55,15 @@ public class TaskFileIOSupplier implements Function<TaskEntity, FileIO> {
     Map<String, String> properties = new HashMap<>(internalProperties);
     if (!skipCredentialSubscopingIndirection) {
       properties.putAll(
-              metaStoreManagerFactory
-                      .getOrCreateStorageCredentialCache(CallContext.getCurrentContext().getRealmContext())
-                      .getOrGenerateSubScopeCreds(
-                              metaStoreManager,
-                              CallContext.getCurrentContext().getPolarisCallContext(),
-                              task,
-                              true,
-                              Set.of(location),
-                              Set.of(location)));
+          metaStoreManagerFactory
+              .getOrCreateStorageCredentialCache(CallContext.getCurrentContext().getRealmContext())
+              .getOrGenerateSubScopeCreds(
+                  metaStoreManager,
+                  CallContext.getCurrentContext().getPolarisCallContext(),
+                  task,
+                  true,
+                  Set.of(location),
+                  Set.of(location)));
     }
     String ioImpl =
         properties.getOrDefault(

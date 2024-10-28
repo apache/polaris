@@ -110,21 +110,20 @@ public class PolarisConfiguration<T> {
               .defaultValue(false)
               .build();
 
-  // Config key for whether to skip credential-subscoping indirection entirely whenever trying
-  // to obtain storage credentials for instantiating a FileIO. If 'true', no attempt is made
-  // to use StorageConfigs to generate table-specific storage credentials, but instead the default
-  // fallthrough of table-level credential properties or else provider-specific APPLICATION_DEFAULT
-  // credential-loading will be used for the FileIO.
-  // Typically this setting is used in single-tenant server deployments that don't rely on
-  // "credential-vending" and can use server-default environment variables or credential config
-  // files for all storage access, or in test/dev scenarios.
-  public static final Boolean SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION_DEFAULT = false;
   public static final PolarisConfiguration<Boolean> SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION =
-          PolarisConfiguration.<Boolean>builder()
-              .key("SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION")
-              .description("If set to true, skip credential-subscoping indirection and use the default credentials")
-              .defaultValue(SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION_DEFAULT)
-              .build();
+      PolarisConfiguration.<Boolean>builder()
+          .key("SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION")
+          .description(
+              "If set to true, skip credential-subscoping indirection entirely whenever trying\n"
+                  + "   to obtain storage credentials for instantiating a FileIO. If 'true', no attempt is made\n"
+                  + "   to use StorageConfigs to generate table-specific storage credentials, but instead the default\n"
+                  + "   fallthrough of table-level credential properties or else provider-specific APPLICATION_DEFAULT\n"
+                  + "   credential-loading will be used for the FileIO.\n"
+                  + "   Typically this setting is used in single-tenant server deployments that don't rely on\n"
+                  + "   \"credential-vending\" and can use server-default environment variables or credential config\n"
+                  + "   files for all storage access, or in test/dev scenarios.")
+          .defaultValue(false)
+          .build();
 
   public static final PolarisConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
