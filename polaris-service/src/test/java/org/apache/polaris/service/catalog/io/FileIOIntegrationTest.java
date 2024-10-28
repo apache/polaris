@@ -127,6 +127,7 @@ public class FileIOIntegrationTest {
     ioFactory.loadFileIOExceptionSupplier = config.loadFileIOExceptionSupplier;
     ioFactory.newInputFileExceptionSupplier = config.newInputFileExceptionSupplier;
     ioFactory.newOutputFileExceptionSupplier = config.newOutputFileExceptionSupplier;
+    ioFactory.getLengthExceptionSupplier = config.getLengthExceptionSupplier;
 
     assertThrows(config.expectedException, () -> config.workload.run(uniqueId));
   }
@@ -195,6 +196,7 @@ public class FileIOIntegrationTest {
       Optional<Supplier<RuntimeException>> loadFileIOExceptionSupplier,
       Optional<Supplier<RuntimeException>> newInputFileExceptionSupplier,
       Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier,
+      Optional<Supplier<RuntimeException>> getLengthExceptionSupplier,
       Workload workload) {
 
     interface Workload {
@@ -213,15 +215,25 @@ public class FileIOIntegrationTest {
               Optional.of(exceptionSupplier),
               Optional.empty(),
               Optional.empty(),
+              Optional.empty(),
               workload),
           new IOExceptionTypeTestConfig<>(
               exceptionType,
               Optional.empty(),
               Optional.of(exceptionSupplier),
               Optional.empty(),
+              Optional.empty(),
               workload),
           new IOExceptionTypeTestConfig<>(
               exceptionType,
+              Optional.empty(),
+              Optional.empty(),
+              Optional.of(exceptionSupplier),
+              Optional.empty(),
+              workload),
+          new IOExceptionTypeTestConfig<>(
+              exceptionType,
+              Optional.empty(),
               Optional.empty(),
               Optional.empty(),
               Optional.of(exceptionSupplier),

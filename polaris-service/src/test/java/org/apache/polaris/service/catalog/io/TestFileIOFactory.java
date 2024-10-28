@@ -40,6 +40,7 @@ public class TestFileIOFactory implements FileIOFactory {
   public Optional<Supplier<RuntimeException>> loadFileIOExceptionSupplier = Optional.empty();
   public Optional<Supplier<RuntimeException>> newInputFileExceptionSupplier = Optional.empty();
   public Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier = Optional.empty();
+  public Optional<Supplier<RuntimeException>> getLengthExceptionSupplier = Optional.empty();
 
   public TestFileIOFactory() {}
 
@@ -54,7 +55,8 @@ public class TestFileIOFactory implements FileIOFactory {
         new TestFileIO(
             CatalogUtil.loadFileIO(ioImpl, properties, new Configuration()),
             newInputFileExceptionSupplier,
-            newOutputFileExceptionSupplier);
+            newOutputFileExceptionSupplier,
+            getLengthExceptionSupplier);
     ios.add(wrapped);
     return wrapped;
   }

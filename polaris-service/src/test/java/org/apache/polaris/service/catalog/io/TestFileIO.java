@@ -38,6 +38,7 @@ public class TestFileIO implements FileIO {
   // When present, the following will be used to throw exceptions at various parts of the IO
   private final Optional<Supplier<RuntimeException>> newInputFileExceptionSupplier;
   private final Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier;
+  private final Optional<Supplier<RuntimeException>> getLengthExceptionSupplier;
 
   private long inputBytes;
   private int numOutputFiles;
@@ -46,10 +47,12 @@ public class TestFileIO implements FileIO {
   public TestFileIO(
       FileIO io,
       Optional<Supplier<RuntimeException>> newInputFileExceptionSupplier,
-      Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier) {
+      Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier,
+      Optional<Supplier<RuntimeException>> getLengthExceptionSupplier) {
     this.io = io;
     this.newInputFileExceptionSupplier = newInputFileExceptionSupplier;
     this.newOutputFileExceptionSupplier = newOutputFileExceptionSupplier;
+    this.getLengthExceptionSupplier = getLengthExceptionSupplier;
   }
 
   public long getInputBytes() {
@@ -70,8 +73,9 @@ public class TestFileIO implements FileIO {
           throw s.get();
         });
 
-    inputBytes += inner.getLength();
-    return inner;
+    InputFile wrapped = new TestInputFile(inner, getLengthExceptionSupplier);
+    inputBytes += wrapped.getLength();
+    return wrapped;
   }
 
   @Override
