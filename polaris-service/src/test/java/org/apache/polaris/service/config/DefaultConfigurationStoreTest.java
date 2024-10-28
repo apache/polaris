@@ -26,7 +26,7 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.junit.jupiter.api.Test;
 
-class DefaultConfigurationStoreTest {
+public class DefaultConfigurationStoreTest {
 
   @Test
   public void testGetConfiguration() {

@@ -56,7 +56,7 @@ public class PolarisApplicationConfig extends Configuration {
   private DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> polarisAuthenticator;
   private CorsConfiguration corsConfiguration = new CorsConfiguration();
   private TaskHandlerConfiguration taskHandler = new TaskHandlerConfiguration();
-  private Map<String, Object> featureConfiguration = Map.of();
+  private Map<String, Object> globalFeatureConfiguration = Map.of();
   private Map<String, Map<String, Object>> realmConfiguration = Map.of();
   private List<String> defaultRealms;
   private String awsAccessKey;
@@ -169,7 +169,7 @@ public class PolarisApplicationConfig extends Configuration {
 
   @JsonProperty("featureConfiguration")
   public void setFeatureConfiguration(Map<String, Object> featureConfiguration) {
-    this.featureConfiguration = featureConfiguration;
+    this.globalFeatureConfiguration = featureConfiguration;
   }
 
   @JsonProperty("realmFeatureConfiguration")
@@ -194,7 +194,7 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   public PolarisConfigurationStore getConfigurationStore() {
-    return new DefaultConfigurationStore(featureConfiguration, realmConfiguration);
+    return new DefaultConfigurationStore(globalFeatureConfiguration, realmConfiguration);
   }
 
   public List<String> getDefaultRealms() {
