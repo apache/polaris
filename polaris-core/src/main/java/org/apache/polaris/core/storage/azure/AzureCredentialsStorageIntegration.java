@@ -47,6 +47,7 @@ import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
+import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,9 +124,17 @@ public class AzureCredentialsStorageIntegration
     // Set the new generated user delegation key expiry to 7 days and minute 1 min
     // Azure strictly requires the end time to be <= 7 days from the current time, -1 min to avoid
     // clock skew between the client and server,
-    OffsetDateTime startTime = start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
-    OffsetDateTime sanitizedEndTime =
+    OffsetDateTime startTime =
+        start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
+    int intendedDurationSeconds =
+        PolarisStorageConfigurationInfo.getVendedCredentialDurationSeconds();
+    OffsetDateTime intendedEndTime =
+        start.plusSeconds(intendedDurationSeconds).atOffset(ZoneOffset.UTC);
+    OffsetDateTime maxAllowedEndTime =
         start.plus(Period.ofDays(7)).minusSeconds(60).atOffset(ZoneOffset.UTC);
+    OffsetDateTime sanitizedEndTime =
+        intendedEndTime.isBefore(maxAllowedEndTime) ? intendedEndTime : maxAllowedEndTime;
+
     LOGGER
         .atDebug()
         .addKeyValue("allowedListAction", allowListOperation)

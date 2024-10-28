@@ -217,6 +217,17 @@ public abstract class PolarisStorageConfigurationInfo {
     return Optional.empty();
   }
 
+  /** Returns the value of `STORAGE_CREDENTIAL_DURATION_SECONDS `*/
+  public static int getVendedCredentialDurationSeconds() {
+    var callContext = CallContext.getCurrentContext();
+    return callContext
+      .getPolarisCallContext()
+      .getConfigurationStore()
+      .getConfiguration(
+          callContext.getPolarisCallContext(),
+          PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+  }
+
   /** Subclasses must provide the Iceberg FileIO impl associated with their type in this method. */
   public abstract String getFileIoImplClassName();
 
