@@ -124,8 +124,7 @@ public class AzureCredentialsStorageIntegration
     // Set the new generated user delegation key expiry to 7 days and minute 1 min
     // Azure strictly requires the end time to be <= 7 days from the current time, -1 min to avoid
     // clock skew between the client and server,
-    OffsetDateTime startTime =
-        start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
+    OffsetDateTime startTime = start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
     int intendedDurationSeconds =
         PolarisStorageConfigurationInfo.getVendedCredentialDurationSeconds();
     OffsetDateTime intendedEndTime =

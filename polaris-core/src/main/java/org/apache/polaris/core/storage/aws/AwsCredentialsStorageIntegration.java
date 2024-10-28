@@ -70,7 +70,8 @@ public class AwsCredentialsStorageIntegration
                             allowedReadLocations,
                             allowedWriteLocations)
                         .toJson())
-                .durationSeconds(PolarisStorageConfigurationInfo.getVendedCredentialDurationSeconds())
+                .durationSeconds(
+                    PolarisStorageConfigurationInfo.getVendedCredentialDurationSeconds())
                 .build());
     EnumMap<PolarisCredentialProperty, String> credentialMap =
         new EnumMap<>(PolarisCredentialProperty.class);

@@ -137,7 +137,8 @@ public class GcpCredentialsStorageIntegration
     HashSet<String> readBuckets = new HashSet<>();
     HashSet<String> writeBuckets = new HashSet<>();
 
-    int intendedDurationSeconds = PolarisStorageConfigurationInfo.getVendedCredentialDurationSeconds();
+    int intendedDurationSeconds =
+        PolarisStorageConfigurationInfo.getVendedCredentialDurationSeconds();
     Instant start = Instant.now();
     Instant expiration = start.plusSeconds(intendedDurationSeconds);
     String expirationExpression = String.format("request.time < timestamp('%s')", expiration);
@@ -167,9 +168,9 @@ public class GcpCredentialsStorageIntegration
                 List<String> writeExpressions =
                     writeConditionsMap.computeIfAbsent(bucket, key -> new ArrayList<>());
                 writeExpressions.add(
-                  String.format(
-                      "(resource.name.startsWith('projects/_/buckets/%s/objects/%s') && %s)",
-                      bucket, path, expirationExpression));
+                    String.format(
+                        "(resource.name.startsWith('projects/_/buckets/%s/objects/%s') && %s)",
+                        bucket, path, expirationExpression));
               }
             });
     CredentialAccessBoundary.Builder accessBoundaryBuilder = CredentialAccessBoundary.newBuilder();
@@ -208,7 +209,7 @@ public class GcpCredentialsStorageIntegration
           builder.setAvailablePermissions(List.of("inRole:roles/storage.legacyBucketWriter"));
           accessBoundaryBuilder.addRule(builder.build());
         });
-      return accessBoundaryBuilder.build();
+    return accessBoundaryBuilder.build();
   }
 
   private static String bucketResource(String bucket) {

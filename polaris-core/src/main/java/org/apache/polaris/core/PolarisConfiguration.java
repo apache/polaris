@@ -204,8 +204,8 @@ public class PolarisConfiguration<T> {
       PolarisConfiguration.<Integer>builder()
           .key("STORAGE_CREDENTIAL_DURATION_SECONDS")
           .description(
-              "The duration of time that vended storage credentials are valid for. Support for" +
-                  " longer (or shorter) durations is dependent on the storage provider.")
+              "The duration of time that vended storage credentials are valid for. Support for"
+                  + " longer (or shorter) durations is dependent on the storage provider.")
           .defaultValue(60 * 60) // 1 hour
           .build();
 }
