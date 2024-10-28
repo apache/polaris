@@ -27,7 +27,6 @@ import com.google.auth.oauth2.DownscopedCredentials;
 import com.google.auth.oauth2.GoogleCredentials;
 import java.io.IOException;
 import java.net.URI;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -40,7 +39,6 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.jetbrains.annotations.NotNull;
@@ -136,13 +134,6 @@ public class GcpCredentialsStorageIntegration
 
     HashSet<String> readBuckets = new HashSet<>();
     HashSet<String> writeBuckets = new HashSet<>();
-
-    int intendedDurationSeconds =
-        PolarisStorageConfigurationInfo.getVendedCredentialDurationSeconds();
-    Instant start = Instant.now();
-    Instant expiration = start.plusSeconds(intendedDurationSeconds);
-    String expirationExpression = String.format("request.time < timestamp('%s')", expiration);
-
     Stream.concat(allowedReadLocations.stream(), allowedWriteLocations.stream())
         .distinct()
         .forEach(
@@ -155,13 +146,13 @@ public class GcpCredentialsStorageIntegration
                   readConditionsMap.computeIfAbsent(bucket, key -> new ArrayList<>());
               resourceExpressions.add(
                   String.format(
-                      "resource.name.startsWith('projects/_/buckets/%s/objects/%s && %s')",
-                      bucket, path, expirationExpression));
+                      "resource.name.startsWith('projects/_/buckets/%s/objects/%s')",
+                      bucket, path));
               if (allowListOperation) {
                 resourceExpressions.add(
                     String.format(
-                        "(api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('%s') && %s)",
-                        path, expirationExpression));
+                        "api.getAttribute('storage.googleapis.com/objectListPrefix', '').startsWith('%s')",
+                        path));
               }
               if (allowedWriteLocations.contains(location)) {
                 writeBuckets.add(bucket);
@@ -169,8 +160,8 @@ public class GcpCredentialsStorageIntegration
                     writeConditionsMap.computeIfAbsent(bucket, key -> new ArrayList<>());
                 writeExpressions.add(
                     String.format(
-                        "(resource.name.startsWith('projects/_/buckets/%s/objects/%s') && %s)",
-                        bucket, path, expirationExpression));
+                        "resource.name.startsWith('projects/_/buckets/%s/objects/%s')",
+                        bucket, path));
               }
             });
     CredentialAccessBoundary.Builder accessBoundaryBuilder = CredentialAccessBoundary.newBuilder();
