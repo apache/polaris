@@ -258,6 +258,11 @@ class TestCliParsing(unittest.TestCase):
                 (0, None): 'foo',
             })
         check_arguments(
+            mock_execute(['catalogs', 'update', 'foo', '--remove-property', 'key']),
+            'get_catalog', {
+                (0, None): 'foo',
+            })
+        check_arguments(
             mock_execute(['catalogs', 'update', 'foo', '--set-property', 'key=value', '--default-base-location', 'x']),
             'get_catalog', {
                 (0, None): 'foo',
@@ -287,6 +292,11 @@ class TestCliParsing(unittest.TestCase):
             })
         check_arguments(
             mock_execute(['principals', 'update', 'foo', '--set-property', 'key=value']),
+            'get_principal', {
+                (0, None): 'foo',
+            })
+        check_arguments(
+            mock_execute(['principals', 'update', 'foo', '--remove-property', 'key']),
             'get_principal', {
                 (0, None): 'foo',
             })
@@ -327,7 +337,7 @@ class TestCliParsing(unittest.TestCase):
                 (0, None): 'foo'
             })
         check_arguments(
-            mock_execute(['principal-roles', 'update', 'foo', '--set-property', 'key=value']),
+            mock_execute(['principal-roles', 'update', 'foo', '--remove-property', 'key']),
             'get_principal_role', {
                 (0, None): 'foo',
             })
@@ -378,6 +388,12 @@ class TestCliParsing(unittest.TestCase):
             })
         check_arguments(mock_execute(
             ['catalog-roles', 'update', 'foo', '--catalog', 'bar', '--set-property', 'key=value']),
+            'get_catalog_role', {
+                (0, None): 'bar',
+                (1, None): 'foo',
+            })
+        check_arguments(mock_execute(
+            ['catalog-roles', 'update', 'foo', '--catalog', 'bar', '--remove-property', 'key']),
             'get_catalog_role', {
                 (0, None): 'bar',
                 (1, None): 'foo',
