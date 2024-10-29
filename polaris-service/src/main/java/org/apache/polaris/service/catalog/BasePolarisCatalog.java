@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -100,6 +101,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.PolarisS3FileIOClientFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -2099,12 +2101,18 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   private static boolean isAccessDenied(String errorMsg) {
-    // corresponding error messages for storage providers Aws/Azure/Gcp
+    // Corresponding error messages for storage providers Aws/Azure/Gcp
     boolean isAccessDenied =
         errorMsg != null
-            && (errorMsg.contains("Access Denied")
-                || errorMsg.contains("This request is not authorized to perform this operation")
-                || errorMsg.contains("Forbidden"));
+            && (errorMsg
+                    .toLowerCase(Locale.ENGLISH)
+                    .contains(IcebergExceptionMapper.AWS_ACCESS_DENIED_HINT)
+                || errorMsg
+                    .toLowerCase(Locale.ENGLISH)
+                    .contains(IcebergExceptionMapper.AZURE_ACCESS_DENIED_HINT)
+                || errorMsg
+                    .toLowerCase(Locale.ENGLISH)
+                    .contains(IcebergExceptionMapper.GCP_ACCESS_DENIED_HINT));
     if (isAccessDenied) {
       LOGGER.debug("Access Denied or Forbidden error: {}", errorMsg);
       return true;
