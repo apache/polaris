@@ -26,40 +26,63 @@ release:
   namespace: polaris-ns
 
 templates:
-  - deployment.yaml
+  - job.yaml
 
 tests:
 
-  # metadata.name
-  - it: should set deployment name
+  # kind
+  - it: should not create job by default
+    asserts:
+      - containsDocument:
+          kind: Job
+          apiVersion: batch/v1
+        not: true
+  - it: should create job when enabled
+    set:
+      bootstrapMetastoreManager: true
+    asserts:
+      - containsDocument:
+          kind: Job
+          apiVersion: batch/v1
+
+  # metadata.name (with bootstrapMetastoreManager enabled)
+  - it: should set job name
+    set:
+      bootstrapMetastoreManager: true
     asserts:
       - equal:
           path: metadata.name
           value: polaris-release
-  - it: should set deployment name with override
+  - it: should set job name with override
     set:
+      bootstrapMetastoreManager: true
       nameOverride: polaris-override
     asserts:
       - equal:
           path: metadata.name
           value: polaris-release-polaris-override
-  - it: should set deployment name with full override
+  - it: should set job name with full override
     set:
+      bootstrapMetastoreManager: true
       fullnameOverride: polaris-override
     asserts:
       - equal:
           path: metadata.name
           value: polaris-override
 
-  # metadata.namespace
-  - it: should set deployment namespace
+  # metadata.namespace (with bootstrapMetastoreManager enabled)
+  - it: should set job namespace
+    set:
+      bootstrapMetastoreManager: true
     asserts:
       - equal:
           path: metadata.namespace
           value: polaris-ns
 
-  # metadata.labels
-  - it: should set deployment default labels
+  # metadata.labels (with bootstrapMetastoreManager enabled)
+  - it: should set job default labels
+    set:
+      bootstrapMetastoreManager: true  
     asserts:
       - isSubset:
           path: metadata.labels
@@ -69,8 +92,9 @@ tests:
             app.kubernetes.io/version: 4.5.6
             app.kubernetes.io/managed-by: Helm
             helm.sh/chart: polaris-1.2.3
-  - it: should set podLabels in deployment labels
+  - it: should set podLabels in job labels
     set:
+      bootstrapMetastoreManager: true
       podLabels:
         app.kubernetes.io/component: polaris
     asserts:
@@ -79,62 +103,26 @@ tests:
           content:
             app.kubernetes.io/component: polaris
 
-  # spec.replicas
-  - it: should set default replicas
+  # metadata.annotations (with bootstrapMetastoreManager enabled)
+  - it: should set job annotations
+    set:
+      bootstrapMetastoreManager: true
     asserts:
       - equal:
-          path: spec.replicas
-          value: 1
-  - it: should set replicas
-    set:
-      replicaCount: 3
-    asserts:
-      - equal:
-          path: spec.replicas
-          value: 3
-  - it: should not set replicas if autoscaling is enabled
-    set:
-      replicaCount: 3
-      autoscaling:
-        enabled: true
-    asserts:
-      - notExists:
-          path: spec.replicas
+          path: metadata.annotations
+          value:
+            "helm.sh/hook": post-install
 
-  # spec.selector.matchLabels + spec.template.metadata.labels
-  - it: should set deployment selector labels
-    asserts:
-      - isSubset:
-          path: spec.selector.matchLabels
-          content:
-            app.kubernetes.io/name: polaris
-            app.kubernetes.io/instance: polaris-release
-      - isSubset:
-          path: spec.template.metadata.labels
-          content:
-            app.kubernetes.io/name: polaris
-            app.kubernetes.io/instance: polaris-release
-  - it: should include podLabels in spec.template.metadata.labels only
-    set:
-      podLabels:
-        app.kubernetes.io/component: polaris
-    asserts:
-      - isNotSubset:
-          path: spec.selector.matchLabels
-          content:
-              app.kubernetes.io/component: polaris
-      - isSubset:
-          path: spec.template.metadata.labels
-          content:
-            app.kubernetes.io/component: polaris
-
-  # spec.template.metadata.annotations
+  # spec.template.metadata.annotations (with bootstrapMetastoreManager enabled)
   - it: should not set pod annotations by default
+    set:
+      bootstrapMetastoreManager: true
     asserts:
       - notExists:
           path: spec.template.metadata.annotations
   - it: should set pod annotations
     set:
+      bootstrapMetastoreManager: true
       podAnnotations:
         foo: bar
     asserts:
@@ -143,13 +131,37 @@ tests:
           content:
             foo: bar
 
-  # spec.template.spec.initContainers
+  # spec.template.metadata.labels (with bootstrapMetastoreManager enabled)
+  - it: should set pod labels
+    set:
+      bootstrapMetastoreManager: true
+    asserts:
+      - isSubset:
+          path: spec.template.metadata.labels
+          content:
+            app.kubernetes.io/name: polaris
+            app.kubernetes.io/instance: polaris-release
+  - it: should set podLabels in pod labels
+    set:
+      bootstrapMetastoreManager: true
+      podLabels:
+        app.kubernetes.io/component: polaris
+    asserts:
+      - isSubset:
+          path: spec.template.metadata.labels
+          content:
+            app.kubernetes.io/component: polaris
+
+  # spec.template.spec.initContainers (with bootstrapMetastoreManager enabled)
   - it: should not set initContainers by default
+    set:
+      bootstrapMetastoreManager: true
     asserts:
       - notExists:
           path: spec.template.spec.initContainers
   - it: should set initContainers if persistence is enabled
     set:
+      bootstrapMetastoreManager: true
       persistenceConfigSecret: polaris-persistence-secret
       polarisServerConfig:
         metaStoreManager:
@@ -174,13 +186,16 @@ tests:
               - name: secret-volume
                 mountPath: /secret
 
-  # spec.template.spec.imagePullSecrets
+  # spec.template.spec.imagePullSecrets (with bootstrapMetastoreManager enabled)
   - it: should not set imagePullSecrets by default
+    set:
+      bootstrapMetastoreManager: true
     asserts:
       - notExists:
           path: spec.template.spec.imagePullSecrets
   - it: should set imagePullSecrets
     set:
+      bootstrapMetastoreManager: true
       imagePullSecrets:
         - test-secret
     asserts:
@@ -189,14 +204,17 @@ tests:
           content:
             name: test-secret
 
-  # spec.template.spec.serviceAccountName
+  # spec.template.spec.serviceAccountName (with bootstrapMetastoreManager enabled)
   - it: should set default service account name
+    set:
+      bootstrapMetastoreManager: true
     asserts:
       - equal:
           path: spec.template.spec.serviceAccountName
           value: polaris-release
   - it: should set service account name when serviceAccount.create is true
     set:
+      bootstrapMetastoreManager: true
       serviceAccount:
         create: true
     asserts:
@@ -205,6 +223,7 @@ tests:
           value: polaris-release
   - it: should set custom service account name when serviceAccount.create is true
     set:
+      bootstrapMetastoreManager: true
       serviceAccount:
         create: true
         name: polaris-sa
@@ -214,6 +233,7 @@ tests:
           value: polaris-sa
   - it: should set service account name to default when serviceAccount.create is false
     set:
+      bootstrapMetastoreManager: true
       serviceAccount:
         create: false
     asserts:
@@ -222,6 +242,7 @@ tests:
           value: default
   - it: should set custom service account name when serviceAccount.create is false
     set:
+      bootstrapMetastoreManager: true
       serviceAccount:
         create: false
         name: polaris-sa
@@ -230,13 +251,16 @@ tests:
           path: spec.template.spec.serviceAccountName
           value: polaris-sa
 
-  # spec.template.spec.securityContext
+  # spec.template.spec.securityContext (with bootstrapMetastoreManager enabled)
   - it: should not set securityContext by default
+    set:
+      bootstrapMetastoreManager: true
     asserts:
       - notExists:
           path: spec.template.spec.securityContext
   - it: should set securityContext
     set:
+      bootstrapMetastoreManager: true
       podSecurityContext:
         runAsUser: 1000
     asserts:
@@ -245,20 +269,25 @@ tests:
           content:
             runAsUser: 1000
 
-  # spec.template.spec.containers
+  # spec.template.spec.containers (with bootstrapMetastoreManager enabled)
   - it: should set container name
+    set:
+      bootstrapMetastoreManager: true
     asserts:
       - equal:
           path: spec.template.spec.containers[0].name
           value: polaris
 
-  # spec.template.spec.containers[0].securityContext
+  # spec.template.spec.containers[0].securityContext (with bootstrapMetastoreManager enabled)
   - it: should not set container securityContext by default
+    set:
+      bootstrapMetastoreManager: true
     asserts:
       - notExists:
           path: spec.template.spec.containers[0].securityContext
   - it: should set container securityContext
     set:
+      bootstrapMetastoreManager: true    
       securityContext:
         runAsUser: 1000
     asserts:
@@ -267,9 +296,10 @@ tests:
           content:
             runAsUser: 1000
 
-  # spec.template.spec.containers[0].image
+  # spec.template.spec.containers[0].image (with bootstrapMetastoreManager enabled)
   - it: should set container image
     set:
+      bootstrapMetastoreManager: true
       image:
         repository: test-repo
         tag: test-tag
@@ -279,6 +309,7 @@ tests:
           value: test-repo:test-tag
   - it: should set container image with template
     set:
+      bootstrapMetastoreManager: true
       image:
         repository: test-repo-{{ .Chart.Version }}
         tag: test-tag-{{ .Release.Name }}
@@ -288,6 +319,7 @@ tests:
           value: test-repo-1.2.3:test-tag-polaris-release
   - it: should set container image with chart version if no tag provided
     set:
+      bootstrapMetastoreManager: true    
       image:
         repository: test-repo
         tag: ""
@@ -296,9 +328,10 @@ tests:
           path: spec.template.spec.containers[0].image
           value: test-repo:1.2.3
 
-  # spec.template.spec.containers[0].imagePullPolicy
+  # spec.template.spec.containers[0].imagePullPolicy (with bootstrapMetastoreManager enabled)
   - it: should set container pull policy
     set:
+      bootstrapMetastoreManager: true    
       image:
         pullPolicy: Always
     asserts:
@@ -306,25 +339,10 @@ tests:
           path: spec.template.spec.containers[0].imagePullPolicy
           value: Always
 
-  # spec.template.spec.containers[0].env
-  - it: should not set container env by default
-    asserts:
-      - notExists:
-          path: spec.template.spec.containers[0].env
-  - it: should set container env
-    set:
-      extraEnv:
-        - name: foo
-          value: bar
-    asserts:
-      - contains:
-          path: spec.template.spec.containers[0].env
-          content:
-            name: foo
-            value: bar
-
-  # spec.template.spec.containers[0].volumeMounts + spec.template.spec.volumes
+  # spec.template.spec.containers[0].volumeMounts + spec.template.spec.volumes (with bootstrapMetastoreManager enabled)
   - it: should not set persistence volumes by default
+    set:
+      bootstrapMetastoreManager: true
     asserts:
       - lengthEqual:
           path: spec.template.spec.volumes
@@ -340,6 +358,7 @@ tests:
             subPath: polaris-server.yml
   - it: should set persistence volumes if persistence is enabled
     set:
+      bootstrapMetastoreManager: true
       persistenceConfigSecret: polaris-persistence-secret
       polarisServerConfig:
         metaStoreManager:
@@ -368,70 +387,16 @@ tests:
             name: eclipselink-config-volume
             mountPath: /eclipselink-config
 
-  # spec.template.spec.containers[0].ports
-  - it: should set container ports by default
-    asserts:
-      - lengthEqual:
-          path: spec.template.spec.containers[0].ports
-          count: 2
-      - contains:
-          path: spec.template.spec.containers[0].ports
-          content:
-            name: polaris-service
-            containerPort: 8181
-            protocol: TCP
-      - contains:
-          path: spec.template.spec.containers[0].ports
-          content:
-            name: polaris-metrics
-            containerPort: 8182
-            protocol: TCP
-
-  # spec.template.spec.containers[0].livenessProbe
-  - it: should set container livenessProbe by default
-    set:
-      livenessProbe:
-        initialDelaySeconds: 11
-        periodSeconds: 22
-        successThreshold: 33
-        failureThreshold: 44
-        timeoutSeconds: 55
-    asserts:
-      - isSubset:
-          path: spec.template.spec.containers[0].livenessProbe
-          content:
-            initialDelaySeconds: 11
-            periodSeconds: 22
-            successThreshold: 33
-            failureThreshold: 44
-            timeoutSeconds: 55
-
-  # spec.template.spec.containers[0].readinessProbe
-  - it: should set container readinessProbe by default
-    set:
-      readinessProbe:
-        initialDelaySeconds: 11
-        periodSeconds: 22
-        successThreshold: 33
-        failureThreshold: 44
-        timeoutSeconds: 55
-    asserts:
-      - isSubset:
-          path: spec.template.spec.containers[0].readinessProbe
-          content:
-            initialDelaySeconds: 11
-            periodSeconds: 22
-            successThreshold: 33
-            failureThreshold: 44
-            timeoutSeconds: 55
-
-  # spec.template.spec.containers[0].resources
+  # spec.template.spec.containers[0].resources (with bootstrapMetastoreManager enabled)
   - it: should not set container resources by default
+    set:
+      bootstrapMetastoreManager: true
     asserts:
       - notExists:
           path: spec.template.spec.containers[0].resources
   - it: should set container resources
     set:
+      bootstrapMetastoreManager: true
       resources:
         requests:
           cpu: 100m
@@ -450,13 +415,16 @@ tests:
               cpu: 200m
               memory: 256Mi
 
-  # spec.template.spec.nodeSelector
+  # spec.template.spec.nodeSelector (with bootstrapMetastoreManager enabled)
   - it: should not set nodeSelector by default
+    set:
+      bootstrapMetastoreManager: true  
     asserts:
       - notExists:
           path: spec.template.spec.nodeSelector
   - it: should set nodeSelector
     set:
+      bootstrapMetastoreManager: true
       nodeSelector:
         disktype: ssd
     asserts:
@@ -465,13 +433,16 @@ tests:
           value:
             disktype: ssd
 
-  # spec.template.spec.affinity
+  # spec.template.spec.affinity (with bootstrapMetastoreManager enabled)
   - it: should not set affinity by default
+    set:
+      bootstrapMetastoreManager: true
     asserts:
       - notExists:
           path: spec.template.spec.affinity
   - it: should set affinity
     set:
+      bootstrapMetastoreManager: true
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -496,13 +467,16 @@ tests:
                           - zone1
                           - zone2
 
-  # spec.template.spec.tolerations
+  # spec.template.spec.tolerations (with bootstrapMetastoreManager enabled)
   - it: should not set tolerations by default
+    set:
+      bootstrapMetastoreManager: true
     asserts:
       - notExists:
           path: spec.template.spec.tolerations
   - it: should set tolerations
     set:
+      bootstrapMetastoreManager: true
       tolerations:
         - key: "key"
           operator: "Equal"
