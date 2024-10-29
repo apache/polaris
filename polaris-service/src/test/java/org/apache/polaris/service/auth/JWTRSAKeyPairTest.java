@@ -83,7 +83,7 @@ public class JWTRSAKeyPairTest {
         new CallContext() {
           @Override
           public RealmContext getRealmContext() {
-            return null;
+            return () -> "realm";
           }
 
           @Override
