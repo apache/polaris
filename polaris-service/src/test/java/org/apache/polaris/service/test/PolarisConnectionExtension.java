@@ -19,34 +19,30 @@
 package org.apache.polaris.service.test;
 
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
+import static org.apache.polaris.service.test.DropwizardTestEnvironmentResolver.findDropwizardExtension;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.Modifier;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -54,8 +50,6 @@ import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
-import org.junit.platform.commons.util.ReflectionUtils;
-import org.slf4j.LoggerFactory;
 
 public class PolarisConnectionExtension
     implements BeforeAllCallback, AfterAllCallback, ParameterResolver {
@@ -90,15 +84,25 @@ public class PolarisConnectionExtension
         metaStoreManagerFactory.bootstrapRealms(List.of(realm));
       }
 
+      URI testEnvUri = TestEnvironmentExtension.getEnv(extensionContext).baseUri();
+      String path = testEnvUri.getPath();
+      if (path.isEmpty()) {
+        path = "/";
+      }
+
       RealmContext realmContext =
           config
               .getRealmContextResolver()
               .resolveRealmContext(
-                  "http://localhost", "GET", "/", Map.of(), Map.of(REALM_PROPERTY_KEY, realm));
+                  String.format("%s://%s", testEnvUri.getScheme(), testEnvUri.getAuthority()),
+                  "GET",
+                  path,
+                  Map.of(),
+                  Map.of(REALM_PROPERTY_KEY, realm));
       CallContext ctx =
           config
               .getCallContextResolver()
-              .resolveCallContext(realmContext, "GET", "/", Map.of(), Map.of());
+              .resolveCallContext(realmContext, "GET", path, Map.of(), Map.of());
       CallContext.setCurrentContext(ctx);
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
@@ -154,22 +158,6 @@ public class PolarisConnectionExtension
     return adminSecrets;
   }
 
-  public static @Nullable DropwizardAppExtension findDropwizardExtension(
-      ExtensionContext extensionContext) throws IllegalAccessException {
-    Field dropwizardExtensionField =
-        findAnnotatedFields(extensionContext.getRequiredTestClass(), true);
-    if (dropwizardExtensionField == null) {
-      LoggerFactory.getLogger(PolarisGrantRecord.class)
-          .warn(
-              "Unable to find dropwizard extension field in test class {}",
-              extensionContext.getRequiredTestClass());
-      return null;
-    }
-    DropwizardAppExtension appExtension =
-        (DropwizardAppExtension) ReflectionUtils.makeAccessible(dropwizardExtensionField).get(null);
-    return appExtension;
-  }
-
   @Override
   public boolean supportsParameter(
       ParameterContext parameterContext, ExtensionContext extensionContext)
@@ -189,14 +177,19 @@ public class PolarisConnectionExtension
       ParameterContext parameterContext, ExtensionContext extensionContext)
       throws ParameterResolutionException {
     if (parameterContext.getParameter().getType().equals(PolarisToken.class)) {
-      String token =
-          TokenUtils.getTokenFromSecrets(
-              dropwizardAppExtension.client(),
-              dropwizardAppExtension.getLocalPort(),
-              adminSecrets.getPrincipalClientId(),
-              adminSecrets.getMainSecret(),
-              realm);
-      return new PolarisToken(token);
+      try {
+        TestEnvironment testEnv = TestEnvironmentExtension.getEnv(extensionContext);
+        String token =
+            TokenUtils.getTokenFromSecrets(
+                testEnv.apiClient(),
+                testEnv.baseUri().toString(),
+                adminSecrets.getPrincipalClientId(),
+                adminSecrets.getMainSecret(),
+                realm);
+        return new PolarisToken(token);
+      } catch (IllegalAccessException e) {
+        throw new ParameterResolutionException(e.getMessage());
+      }
     } else if (parameterContext.getParameter().getType().equals(String.class)
         && parameterContext.getParameter().isAnnotationPresent(PolarisRealm.class)) {
       return realm;
@@ -214,20 +207,5 @@ public class PolarisConnectionExtension
     } catch (JsonProcessingException e) {
       throw new RuntimeException(e);
     }
-  }
-
-  private static Field findAnnotatedFields(Class<?> testClass, boolean isStaticMember) {
-    final Optional<Field> set =
-        Arrays.stream(testClass.getDeclaredFields())
-            .filter(m -> isStaticMember == Modifier.isStatic(m.getModifiers()))
-            .filter(m -> DropwizardAppExtension.class.isAssignableFrom(m.getType()))
-            .findFirst();
-    if (set.isPresent()) {
-      return set.get();
-    }
-    if (!testClass.getSuperclass().equals(Object.class)) {
-      return findAnnotatedFields(testClass.getSuperclass(), isStaticMember);
-    }
-    return null;
   }
 }
