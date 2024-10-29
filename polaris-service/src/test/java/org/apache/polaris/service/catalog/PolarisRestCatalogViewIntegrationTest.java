@@ -27,7 +27,6 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.Map;
-import java.util.Optional;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.core.PolarisConfiguration;
@@ -42,6 +41,7 @@ import org.apache.polaris.service.test.PolarisConnectionExtension.PolarisToken;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension.SnowmanCredentials;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -56,17 +56,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
   PolarisConnectionExtension.class,
   SnowmanCredentialsExtension.class
 })
-public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<RESTCatalog> {
-  public static final String IDENTITY =
-      Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN")) // Backward compatability
-          .orElse(
-              Optional.ofNullable(System.getenv("INTEGRATION_TEST_IDENTITY"))
-                  .orElse("arn:aws:iam::123456789012:role/my-role"));
-  public static final String BASE_LOCATION =
-      Optional.ofNullable(System.getenv("INTEGRATION_TEST_S3_PATH")) // Backward compatability
-          .orElse(
-              Optional.ofNullable(System.getenv("INTEGRATION_TEST_BASE_LOCATION"))
-                  .orElse("file:///tmp/buckets/my-bucket"));
+public abstract class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<RESTCatalog> {
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
       new DropwizardAppExtension<>(
           PolarisApplication.class,
@@ -91,6 +81,9 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
       PolarisToken adminToken,
       SnowmanCredentials snowmanCredentials,
       @PolarisRealm String realm) {
+
+    Assumptions.assumeFalse(shouldSkip());
+
     String userToken = adminToken.token();
     testInfo
         .getTestMethod()
@@ -115,10 +108,12 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
                 }
               }
 
+              StorageConfigInfo storageConfig = getStorageConfigInfo();
               String defaultBaseLocation =
-                  BASE_LOCATION + "/" + System.getenv("USER") + "/path/to/data";
-              StorageConfigInfo storageConfig =
-                  TestUtil.buildStorageInfo(defaultBaseLocation, IDENTITY);
+                  storageConfig.getAllowedLocations().getFirst()
+                      + "/"
+                      + System.getenv("USER")
+                      + "/path/to/data";
               org.apache.polaris.core.admin.model.CatalogProperties props =
                   org.apache.polaris.core.admin.model.CatalogProperties.builder(defaultBaseLocation)
                       .addProperty(
@@ -143,6 +138,17 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
                       EXT, adminToken, snowmanCredentials, realm, catalog, Map.of());
             });
   }
+
+  /**
+   * @return The catalog's storage config.
+   */
+  protected abstract StorageConfigInfo getStorageConfigInfo();
+
+  /**
+   * @return Whether the tests should be skipped, for example due to environment variables not being
+   *     specified.
+   */
+  protected abstract boolean shouldSkip();
 
   @Override
   protected RESTCatalog catalog() {
