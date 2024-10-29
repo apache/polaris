@@ -26,7 +26,6 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -189,34 +188,41 @@ public class TestUtil {
 
   /**
    * Builds a cloud-specific or local StorageConfigInfo based on the provided location and identity.
-   * The storage provider is inferred by the location prefix, such as s3://, file://, and so on.
-   * The identity maps to an S3 role arn, GCS service account, or Azure tenant ID. It's unused for the local file provider.
+   * The storage provider is inferred by the location prefix, such as s3://, file://, and so on. The
+   * identity maps to an S3 role arn, GCS service account, or Azure tenant ID. It's unused for the
+   * local file provider.
    */
   public static StorageConfigInfo buildStorageInfo(String location, String identity) {
-    PolarisStorageConfigurationInfo.StorageType storageType = Arrays.stream(PolarisStorageConfigurationInfo.StorageType.values()).filter(type ->
-            type.getPrefixes().stream().anyMatch(location::startsWith)
-    ).findAny().orElseThrow();
+    PolarisStorageConfigurationInfo.StorageType storageType =
+        Arrays.stream(PolarisStorageConfigurationInfo.StorageType.values())
+            .filter(type -> type.getPrefixes().stream().anyMatch(location::startsWith))
+            .findAny()
+            .orElseThrow();
 
-    return switch(storageType) {
-      case S3 -> AwsStorageConfigInfo.builder()
+    return switch (storageType) {
+      case S3 ->
+          AwsStorageConfigInfo.builder()
               .setRoleArn(identity)
               .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
               .setAllowedLocations(List.of(location))
               .build();
-        case GCS -> GcpStorageConfigInfo.builder()
-                .setGcsServiceAccount(identity)
-                .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
-                .setAllowedLocations(List.of(location))
-                .build();
-        case AZURE -> AzureStorageConfigInfo.builder()
-                .setTenantId(identity)
-                .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
-                .setAllowedLocations(List.of(location))
-                .build();
-        case FILE -> FileStorageConfigInfo.builder()
-                .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-                .setAllowedLocations(List.of(location))
-                .build();
+      case GCS ->
+          GcpStorageConfigInfo.builder()
+              .setGcsServiceAccount(identity)
+              .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+              .setAllowedLocations(List.of(location))
+              .build();
+      case AZURE ->
+          AzureStorageConfigInfo.builder()
+              .setTenantId(identity)
+              .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+              .setAllowedLocations(List.of(location))
+              .build();
+      case FILE ->
+          FileStorageConfigInfo.builder()
+              .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+              .setAllowedLocations(List.of(location))
+              .build();
     };
   }
 }

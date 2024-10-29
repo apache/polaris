@@ -59,12 +59,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<RESTCatalog> {
   public static final String IDENTITY =
       Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN")) // Backward compatability
-              .orElse(Optional.ofNullable(System.getenv("INTEGRATION_TEST_IDENTITY"))
-                      .orElse("arn:aws:iam::123456789012:role/my-role"));
+          .orElse(
+              Optional.ofNullable(System.getenv("INTEGRATION_TEST_IDENTITY"))
+                  .orElse("arn:aws:iam::123456789012:role/my-role"));
   public static final String BASE_LOCATION =
       Optional.ofNullable(System.getenv("INTEGRATION_TEST_S3_PATH")) // Backward compatability
-              .orElse(Optional.ofNullable(System.getenv("INTEGRATION_TEST_BASE_LOCATION"))
-          .orElse("file:///tmp/buckets/my-bucket"));
+          .orElse(
+              Optional.ofNullable(System.getenv("INTEGRATION_TEST_BASE_LOCATION"))
+                  .orElse("file:///tmp/buckets/my-bucket"));
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
       new DropwizardAppExtension<>(
           PolarisApplication.class,
@@ -113,11 +115,12 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
                 }
               }
 
-              String defaultBaseLocation = BASE_LOCATION + "/" + System.getenv("USER") + "/path/to/data";
-              StorageConfigInfo storageConfig = TestUtil.buildStorageInfo(defaultBaseLocation, IDENTITY);
+              String defaultBaseLocation =
+                  BASE_LOCATION + "/" + System.getenv("USER") + "/path/to/data";
+              StorageConfigInfo storageConfig =
+                  TestUtil.buildStorageInfo(defaultBaseLocation, IDENTITY);
               org.apache.polaris.core.admin.model.CatalogProperties props =
-                  org.apache.polaris.core.admin.model.CatalogProperties.builder(
-                          defaultBaseLocation)
+                  org.apache.polaris.core.admin.model.CatalogProperties.builder(defaultBaseLocation)
                       .addProperty(
                           CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY,
                           "file:")
@@ -133,8 +136,7 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
                       .setType(Catalog.TypeEnum.INTERNAL)
                       .setName(catalogName)
                       .setProperties(props)
-                      .setStorageConfigInfo(
-                          storageConfig)
+                      .setStorageConfigInfo(storageConfig)
                       .build();
               restCatalog =
                   TestUtil.createSnowmanManagedCatalog(
