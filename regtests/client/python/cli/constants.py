@@ -117,6 +117,8 @@ class Arguments:
     CLIENT_ID = 'client_id'
     PRINCIPAL_ROLE = 'principal_role'
     PROPERTY = 'property'
+    SET_PROPERTY = 'set_property'
+    REMOVE_PROPERTY = 'remove_property'
     PRIVILEGE = 'privilege'
     NAMESPACE = 'namespace'
     TABLE = 'table'
@@ -140,6 +142,13 @@ class Hints:
 
     PROPERTY = ('A key/value pair such as: tag=value. Multiple can be provided by specifying this option'
                 ' more than once')
+    SET_PROPERTY = ('A key/value pair such as: tag=value. Merges the specified key/value into an existing'
+                    ' properties map by updating the value if the key already exists or creating a new'
+                    ' entry if not. Multiple can be provided by specifying this option more than once')
+    REMOVE_PROPERTY = ('A key to remove from a properties map. If the key already does not exist then'
+                       ' no action is takn for the specified key. If properties are also being set in'
+                       ' the same update command then the list of removals is applied last. Multiple'
+                       ' can be provided by specifying this option more than once')
 
     class Catalogs:
         GRANT = 'Grant a catalog role to a catalog'
@@ -218,3 +227,5 @@ class Hints:
 UNIT_SEPARATOR = chr(0x1F)
 CLIENT_ID_ENV = 'CLIENT_ID'
 CLIENT_SECRET_ENV = 'CLIENT_SECRET'
+DEFAULT_HOSTNAME = 'localhost'
+DEFAULT_PORT = 8181

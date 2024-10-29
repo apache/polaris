@@ -20,15 +20,13 @@
 import json
 import os
 import sys
-import traceback
 from json import JSONDecodeError
 
-from cli.constants import Arguments, CLIENT_ID_ENV, CLIENT_SECRET_ENV
+from cli.constants import Arguments, CLIENT_ID_ENV, CLIENT_SECRET_ENV, DEFAULT_HOSTNAME, DEFAULT_PORT
 from cli.options.option_tree import Argument
 from cli.options.parser import Parser
 from polaris.management import ApiClient, Configuration
 from polaris.management import PolarisDefaultApi
-
 
 class PolarisCli:
     """
@@ -119,8 +117,10 @@ class PolarisCli:
             polaris_management_url = f'{options.base_url}/api/management/v1'
             polaris_catalog_url = f'{options.base_url}/api/catalog/v1'
         else:
-            polaris_management_url = f'http://{options.host}:{options.port}/api/management/v1'
-            polaris_catalog_url = f'http://{options.host}:{options.port}/api/catalog/v1'
+            host = options.host or DEFAULT_HOSTNAME
+            port = options.port or DEFAULT_PORT
+            polaris_management_url = f'http://{host}:{port}/api/management/v1'
+            polaris_catalog_url = f'http://{host}:{port}/api/catalog/v1'
 
         builder = None
         if has_access_token:

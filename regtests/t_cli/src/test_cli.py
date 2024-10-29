@@ -168,10 +168,21 @@ def test_quickstart_flow():
             'create',
             '--catalog',
             f'test_cli_catalog_{SALT}',
-            f'test_cli_namespace_{SALT}'
+            f'test_cli_namespace_{SALT}',
+            '--property',
+            'foo=bar',
+            '--location',
+            's3://custom-namespace-location'
         ), checker=lambda s: s == '')
         check_output(cli(user_token)('namespaces', 'list', '--catalog', f'test_cli_catalog_{SALT}'),
                      checker=lambda s: f'test_cli_namespace_{SALT}' in s)
+        check_output(cli(user_token)(
+            'namespaces',
+            'get',
+            '--catalog',
+            f'test_cli_catalog_{SALT}',
+            f'test_cli_namespace_{SALT}'
+        ), checker=lambda s: 's3://custom-namespace-location' in s and '"foo": "bar"' in s)
         check_output(cli(user_token)(
             'namespaces',
             'delete',
@@ -213,7 +224,7 @@ def test_update_catalog():
             'catalogs',
             'update',
             f'test_cli_catalog_{SALT}',
-            '--property',
+            '--set-property',
             'foo=bar'
         ), checker=lambda s: s == '')
 
@@ -239,7 +250,7 @@ def test_update_catalog():
             'catalogs',
             'update',
             f'test_cli_catalog_{SALT}',
-            '--property',
+            '--set-property',
             'prop2=222'
         ), checker=lambda s: s == '')
 
@@ -252,15 +263,299 @@ def test_update_catalog():
             'catalogs',
             'update',
             f'test_cli_catalog_{SALT}',
-            '--property',
+            '--set-property',
             'prop2=two',
-            '--property',
+            '--set-property',
             'prop3=333'
         ), checker=lambda s: s == '')
 
         # Check all three custom properties
         check_output(root_cli('catalogs', 'get', f'test_cli_catalog_{SALT}'),
                      checker=lambda s: '"prop2": "two"' in s and '"foo": "bar"' in s and '"prop3": "333"' in s)
+
+        # Update one property that will be removed in the same command, one that will not be removed,
+        # add one new property, remove one of the properties that is not updated, and remove a
+        # nonexistent property
+        check_output(root_cli(
+            'catalogs',
+            'update',
+            f'test_cli_catalog_{SALT}',
+            '--set-property',
+            'prop2=2222',
+            '--set-property',
+            'prop3=3333',
+            '--set-property',
+            'prop4=4444',
+            '--remove-property',
+            'foo',
+            '--remove-property',
+            'prop2',
+            '--remove-property',
+            'nonexistent'
+        ), checker=lambda s: s == '')
+
+        # One updated property and one new property remain after removals
+        check_output(root_cli('catalogs', 'get', f'test_cli_catalog_{SALT}'),
+                     checker=lambda s: 'foo' not in s and 'prop2' not in s and
+                                       '"prop3": "3333"' in s and '"prop4": "4444"' in s)
+
+    finally:
+        sys.path.pop(0)
+    pass
+
+def test_update_principal():
+    """
+    Test updating properties on a principal 
+    """
+    SALT = get_salt()
+    sys.path.insert(0, CLI_PYTHONPATH)
+    try:
+
+        # Create a principal:
+        credentials = root_cli('principals', 'create', f'test_cli_user_{SALT}', '--property', 'foo=bar')()
+        check_output(root_cli('principals', 'get', f'test_cli_user_{SALT}'),
+                     checker=lambda s: '"foo": "bar"' in s)
+
+        # Update by adding a second property
+        check_output(root_cli(
+            'principals',
+            'update',
+            f'test_cli_user_{SALT}',
+            '--set-property',
+            'prop2=222'
+        ), checker=lambda s: s == '')
+
+        # Make sure both custom properties are present even though we only added the second one
+        check_output(root_cli('principals', 'get', f'test_cli_user_{SALT}'),
+                     checker=lambda s: '"prop2": "222"' in s and '"foo": "bar"' in s)
+
+        # Update by modifying a property and adding a property at the same time
+        check_output(root_cli(
+            'principals',
+            'update',
+            f'test_cli_user_{SALT}',
+            '--set-property',
+            'prop2=two',
+            '--set-property',
+            'prop3=333'
+        ), checker=lambda s: s == '')
+
+        # Check all three custom properties
+        check_output(root_cli('principals', 'get', f'test_cli_user_{SALT}'),
+                     checker=lambda s: '"prop2": "two"' in s and '"foo": "bar"' in s and '"prop3": "333"' in s)
+
+        # Update one property that will be removed in the same command, one that will not be removed,
+        # add one new property, remove one of the properties that is not updated, and remove a
+        # nonexistent property
+        check_output(root_cli(
+            'principals',
+            'update',
+            f'test_cli_user_{SALT}',
+            '--set-property',
+            'prop2=2222',
+            '--set-property',
+            'prop3=3333',
+            '--set-property',
+            'prop4=4444',
+            '--remove-property',
+            'foo',
+            '--remove-property',
+            'prop2',
+            '--remove-property',
+            'nonexistent'
+        ), checker=lambda s: s == '')
+
+        # One updated property and one new property remain after removals
+        check_output(root_cli('principals', 'get', f'test_cli_user_{SALT}'),
+                     checker=lambda s: 'foo' not in s and 'prop2' not in s and
+                                       '"prop3": "3333"' in s and '"prop4": "4444"' in s)
+
+    finally:
+        sys.path.pop(0)
+    pass
+
+def test_update_principal_role():
+    """
+    Test updating properties on a principal_role 
+    """
+    SALT = get_salt()
+    sys.path.insert(0, CLI_PYTHONPATH)
+    try:
+
+        # Create a principal_role:
+        credentials = root_cli('principal-roles', 'create', f'test_cli_p_role_{SALT}', '--property', 'foo=bar')()
+        check_output(root_cli('principal-roles', 'get', f'test_cli_p_role_{SALT}'),
+                     checker=lambda s: '"foo": "bar"' in s)
+
+        # Update by adding a second property
+        check_output(root_cli(
+            'principal-roles',
+            'update',
+            f'test_cli_p_role_{SALT}',
+            '--set-property',
+            'prop2=222'
+        ), checker=lambda s: s == '')
+
+        # Make sure both custom properties are present even though we only added the second one
+        check_output(root_cli('principal-roles', 'get', f'test_cli_p_role_{SALT}'),
+                     checker=lambda s: '"prop2": "222"' in s and '"foo": "bar"' in s)
+
+        # Update by modifying a property and adding a property at the same time
+        check_output(root_cli(
+            'principal-roles',
+            'update',
+            f'test_cli_p_role_{SALT}',
+            '--set-property',
+            'prop2=two',
+            '--set-property',
+            'prop3=333'
+        ), checker=lambda s: s == '')
+
+        # Check all three custom properties
+        check_output(root_cli('principal-roles', 'get', f'test_cli_p_role_{SALT}'),
+                     checker=lambda s: '"prop2": "two"' in s and '"foo": "bar"' in s and '"prop3": "333"' in s)
+
+        # Update one property that will be removed in the same command, one that will not be removed,
+        # add one new property, remove one of the properties that is not updated, and remove a
+        # nonexistent property
+        check_output(root_cli(
+            'principal-roles',
+            'update',
+            f'test_cli_p_role_{SALT}',
+            '--set-property',
+            'prop2=2222',
+            '--set-property',
+            'prop3=3333',
+            '--set-property',
+            'prop4=4444',
+            '--remove-property',
+            'foo',
+            '--remove-property',
+            'prop2',
+            '--remove-property',
+            'nonexistent'
+        ), checker=lambda s: s == '')
+
+        # One updated property and one new property remain after removals
+        check_output(root_cli('principal-roles', 'get', f'test_cli_p_role_{SALT}'),
+                     checker=lambda s: 'foo' not in s and 'prop2' not in s and
+                                       '"prop3": "3333"' in s and '"prop4": "4444"' in s)
+
+    finally:
+        sys.path.pop(0)
+    pass
+
+def test_update_catalog_role():
+    """
+    Test updating properties on a catalog_role 
+    """
+    SALT = get_salt()
+    sys.path.insert(0, CLI_PYTHONPATH)
+    try:
+
+        # Create a catalog:
+        check_output(root_cli(
+            'catalogs',
+            'create',
+            '--storage-type',
+            's3',
+            '--role-arn',
+            ROLE_ARN,
+            '--default-base-location',
+            f's3://fake-location-{SALT}',
+            f'test_cli_catalog_{SALT}'), checker=lambda s: s == '')
+
+        # Create a catalog_role:
+        credentials = root_cli(
+            'catalog-roles',
+            'create',
+            f'test_cli_c_role_{SALT}',
+            '--catalog',
+            f'test_cli_catalog_{SALT}',
+            '--property',
+            'foo=bar')()
+        check_output(root_cli(
+            'catalog-roles',
+            'get',
+            f'test_cli_c_role_{SALT}',
+            '--catalog',
+            f'test_cli_catalog_{SALT}',
+        ), checker=lambda s: '"foo": "bar"' in s)
+
+        # Update by adding a second property
+        check_output(root_cli(
+            'catalog-roles',
+            'update',
+            f'test_cli_c_role_{SALT}',
+            '--catalog',
+            f'test_cli_catalog_{SALT}',
+            '--set-property',
+            'prop2=222'
+        ), checker=lambda s: s == '')
+
+        # Make sure both custom properties are present even though we only added the second one
+        check_output(root_cli(
+            'catalog-roles',
+            'get',
+            f'test_cli_c_role_{SALT}',
+            '--catalog',
+            f'test_cli_catalog_{SALT}',
+        ), checker=lambda s: '"prop2": "222"' in s and '"foo": "bar"' in s)
+
+        # Update by modifying a property and adding a property at the same time
+        check_output(root_cli(
+            'catalog-roles',
+            'update',
+            f'test_cli_c_role_{SALT}',
+            '--catalog',
+            f'test_cli_catalog_{SALT}',
+            '--set-property',
+            'prop2=two',
+            '--set-property',
+            'prop3=333'
+        ), checker=lambda s: s == '')
+
+        # Check all three custom properties
+        check_output(root_cli(
+            'catalog-roles',
+            'get',
+            f'test_cli_c_role_{SALT}',
+            '--catalog',
+            f'test_cli_catalog_{SALT}',
+        ), checker=lambda s: '"prop2": "two"' in s and '"foo": "bar"' in s and '"prop3": "333"' in s)
+
+        # Update one property that will be removed in the same command, one that will not be removed,
+        # add one new property, remove one of the properties that is not updated, and remove a
+        # nonexistent property
+        check_output(root_cli(
+            'catalog-roles',
+            'update',
+            f'test_cli_c_role_{SALT}',
+            '--catalog',
+            f'test_cli_catalog_{SALT}',
+            '--set-property',
+            'prop2=2222',
+            '--set-property',
+            'prop3=3333',
+            '--set-property',
+            'prop4=4444',
+            '--remove-property',
+            'foo',
+            '--remove-property',
+            'prop2',
+            '--remove-property',
+            'nonexistent'
+        ), checker=lambda s: s == '')
+
+        # One updated property and one new property remain after removals
+        check_output(root_cli(
+            'catalog-roles',
+            'get',
+            f'test_cli_c_role_{SALT}',
+            '--catalog',
+            f'test_cli_catalog_{SALT}',
+        ), checker=lambda s: 'foo' not in s and 'prop2' not in s and
+                             '"prop3": "3333"' in s and '"prop4": "4444"' in s)
 
     finally:
         sys.path.pop(0)
@@ -333,7 +628,7 @@ def test_nested_namespace():
             '--catalog',
             f'test_cli_catalog_{SALT}',
             f'a_{SALT}.b_{SALT}.c_{SALT}'
-        ), checker=lambda s: f'a_{SALT}.b_{SALT}.c_{SALT}' in s)
+        ), checker=lambda s: f'"a_{SALT}", "b_{SALT}", "c_{SALT}"' in s)
         check_exception(root_cli(
             'namespaces',
             'delete',
