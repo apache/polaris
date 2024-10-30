@@ -51,7 +51,15 @@ class TestCliParsing(unittest.TestCase):
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
         with self.assertRaises(SystemExit) as cm:
+            Parser.parse(['catalogs', 'create', 'catalog_name', '--set-property', 'foo=bar'])  # can't use --set-property on create
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
             Parser.parse(['catalogs', 'get', 'catalog_name', '--fake-flag'])
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
+            Parser.parse(['catalogs', 'update', 'catalog_name', '--property', 'foo=bar'])
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
         with self.assertRaises(SystemExit) as cm:
@@ -105,6 +113,7 @@ class TestCliParsing(unittest.TestCase):
         Parser.parse(['catalogs', 'get', 'catalog_name'])
         Parser.parse(['principals', 'list'])
         Parser.parse(['--host', 'some-host', 'catalogs', 'list'])
+        Parser.parse(['--base-url', 'https://customservice.com/subpath', 'catalogs', 'list'])
         Parser.parse(['privileges', 'catalog', 'grant', '--catalog', 'foo', '--catalog-role', 'bar', 'TABLE_READ_DATA'])
         Parser.parse(['privileges', 'table', 'grant', '--catalog', 'foo', '--catalog-role', 'bar',
                       '--namespace', 'n', '--table', 't', 'TABLE_READ_DATA'])
@@ -184,7 +193,7 @@ class TestCliParsing(unittest.TestCase):
                         '--default-base-location')
         check_exception(lambda: mock_execute(['catalog-roles', 'get', 'foo']),
                         '--catalog')
-        check_exception(lambda: mock_execute(['catalogs', 'update', 'foo', '--property', 'bad-format']),
+        check_exception(lambda: mock_execute(['catalogs', 'update', 'foo', '--set-property', 'bad-format']),
                         'bad-format')
         check_exception(lambda: mock_execute(['privileges', 'catalog', 'grant',
                                               '--catalog', 'foo', '--catalog-role', 'bar', 'TABLE_READ_MORE_BOOKS']),
@@ -234,6 +243,8 @@ class TestCliParsing(unittest.TestCase):
                 (0, 'catalog.storage_config_info.gcs_service_account'): 'sa',
             })
         check_arguments(mock_execute(['catalogs', 'list']), 'list_catalogs')
+        check_arguments(mock_execute([
+              '--base-url', 'https://customservice.com/subpath', 'catalogs', 'list']), 'list_catalogs')
         check_arguments(mock_execute(['catalogs', 'delete', 'foo']), 'delete_catalog', {
             (0, None): 'foo',
         })
@@ -242,6 +253,21 @@ class TestCliParsing(unittest.TestCase):
         })
         check_arguments(
             mock_execute(['catalogs', 'update', 'foo', '--default-base-location', 'x']),
+            'get_catalog', {
+                (0, None): 'foo',
+            })
+        check_arguments(
+            mock_execute(['catalogs', 'update', 'foo', '--set-property', 'key=value']),
+            'get_catalog', {
+                (0, None): 'foo',
+            })
+        check_arguments(
+            mock_execute(['catalogs', 'update', 'foo', '--remove-property', 'key']),
+            'get_catalog', {
+                (0, None): 'foo',
+            })
+        check_arguments(
+            mock_execute(['catalogs', 'update', 'foo', '--set-property', 'key=value', '--default-base-location', 'x']),
             'get_catalog', {
                 (0, None): 'foo',
             })
@@ -269,7 +295,12 @@ class TestCliParsing(unittest.TestCase):
                 (0, None): 'foo',
             })
         check_arguments(
-            mock_execute(['principals', 'update', 'foo', '--property', 'key=value']),
+            mock_execute(['principals', 'update', 'foo', '--set-property', 'key=value']),
+            'get_principal', {
+                (0, None): 'foo',
+            })
+        check_arguments(
+            mock_execute(['principals', 'update', 'foo', '--remove-property', 'key']),
             'get_principal', {
                 (0, None): 'foo',
             })
@@ -305,12 +336,12 @@ class TestCliParsing(unittest.TestCase):
                 (0, None): 'foo',
             })
         check_arguments(
-            mock_execute(['principal-roles', 'update', 'foo', '--property', 'key=value']),
+            mock_execute(['principal-roles', 'update', 'foo', '--set-property', 'key=value']),
             'get_principal_role', {
                 (0, None): 'foo'
             })
         check_arguments(
-            mock_execute(['principal-roles', 'update', 'foo', '--property', 'key=value']),
+            mock_execute(['principal-roles', 'update', 'foo', '--remove-property', 'key']),
             'get_principal_role', {
                 (0, None): 'foo',
             })
@@ -360,7 +391,13 @@ class TestCliParsing(unittest.TestCase):
                 (1, None): 'foo',
             })
         check_arguments(mock_execute(
-            ['catalog-roles', 'update', 'foo', '--catalog', 'bar', '--property', 'key=value']),
+            ['catalog-roles', 'update', 'foo', '--catalog', 'bar', '--set-property', 'key=value']),
+            'get_catalog_role', {
+                (0, None): 'bar',
+                (1, None): 'foo',
+            })
+        check_arguments(mock_execute(
+            ['catalog-roles', 'update', 'foo', '--catalog', 'bar', '--remove-property', 'key']),
             'get_catalog_role', {
                 (0, None): 'bar',
                 (1, None): 'foo',
