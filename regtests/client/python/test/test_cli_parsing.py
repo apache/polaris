@@ -51,6 +51,10 @@ class TestCliParsing(unittest.TestCase):
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
         with self.assertRaises(SystemExit) as cm:
+            Parser.parse(['catalogs', 'create', 'catalog_name', '--set-property', 'foo=bar'])  # can't use --set-property on create
+        self.assertEqual(cm.exception.code, INVALID_ARGS)
+
+        with self.assertRaises(SystemExit) as cm:
             Parser.parse(['catalogs', 'get', 'catalog_name', '--fake-flag'])
         self.assertEqual(cm.exception.code, INVALID_ARGS)
 
