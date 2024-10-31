@@ -714,7 +714,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                 () -> restCatalog.loadTable(TableIdentifier.of(ns1, "my_table")))
             .isInstanceOf(ForbiddenException.class)
             .hasMessageContaining("Access Delegation is not enabled for this catalog")
-            .hasMessageContaining("'enable.credential.vending'");
+            .hasMessageContaining(
+                PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
       }
