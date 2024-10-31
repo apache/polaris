@@ -17,7 +17,7 @@
 # under the License.
 #
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from pydantic import StrictStr
 
@@ -45,6 +45,8 @@ class PrincipalsCommand(Command):
     client_id: str
     principal_role: str
     properties: Optional[Dict[str, StrictStr]]
+    set_properties: Dict[str, StrictStr]
+    remove_properties: List[str]
 
     def validate(self):
         pass
@@ -75,9 +77,20 @@ class PrincipalsCommand(Command):
             print(api.rotate_credentials(self.principal_name).to_json())
         elif self.principals_subcommand == Subcommands.UPDATE:
             principal = api.get_principal(self.principal_name)
+            new_properties = principal.properties or {}
+
+            # Add or update all entries specified in set_properties
+            if self.set_properties:
+                new_properties = {**new_properties, **self.set_properties}
+
+            # Remove all keys specified in remove_properties
+            if self.remove_properties:
+                for to_remove in self.remove_properties:
+                    new_properties.pop(to_remove, None)
+
             request = UpdatePrincipalRequest(
-                current_entity_version=principal.current_entity_version,
-                properties=self.properties
+                current_entity_version=principal.entity_version,
+                properties=new_properties
             )
             api.update_principal(self.principal_name, request)
         else:
