@@ -22,8 +22,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Optional;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.service.config.HasEntityManagerFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.service.config.HasMetaStoreManagerFactory;
 
 public class DefaultPolarisAuthenticator extends BasePolarisAuthenticator {
   private TokenBrokerFactory tokenBrokerFactory;
@@ -37,10 +37,11 @@ public class DefaultPolarisAuthenticator extends BasePolarisAuthenticator {
   }
 
   @Override
-  public void setEntityManagerFactory(RealmEntityManagerFactory entityManagerFactory) {
-    super.setEntityManagerFactory(entityManagerFactory);
-    if (tokenBrokerFactory instanceof HasEntityManagerFactory) {
-      ((HasEntityManagerFactory) tokenBrokerFactory).setEntityManagerFactory(entityManagerFactory);
+  public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
+    super.setMetaStoreManagerFactory(metaStoreManagerFactory);
+    if (tokenBrokerFactory instanceof HasMetaStoreManagerFactory) {
+      ((HasMetaStoreManagerFactory) tokenBrokerFactory)
+          .setMetaStoreManagerFactory(metaStoreManagerFactory);
     }
   }
 

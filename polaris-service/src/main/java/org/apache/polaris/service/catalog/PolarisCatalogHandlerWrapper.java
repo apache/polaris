@@ -113,6 +113,7 @@ public class PolarisCatalogHandlerWrapper {
 
   private final CallContext callContext;
   private final PolarisEntityManager entityManager;
+  private final PolarisMetaStoreManager metaStoreManager;
   private final String catalogName;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final PolarisAuthorizer authorizer;
@@ -130,12 +131,14 @@ public class PolarisCatalogHandlerWrapper {
   public PolarisCatalogHandlerWrapper(
       CallContext callContext,
       PolarisEntityManager entityManager,
+      PolarisMetaStoreManager metaStoreManager,
       AuthenticatedPolarisPrincipal authenticatedPrincipal,
       CallContextCatalogFactory catalogFactory,
       String catalogName,
       PolarisAuthorizer authorizer) {
     this.callContext = callContext;
     this.entityManager = entityManager;
+    this.metaStoreManager = metaStoreManager;
     this.catalogName = catalogName;
     this.authenticatedPrincipal = authenticatedPrincipal;
     this.authorizer = authorizer;
@@ -1009,7 +1012,7 @@ public class PolarisCatalogHandlerWrapper {
     // only go into an in-memory collection that we can commit as a single atomic unit after all
     // validations.
     TransactionWorkspaceMetaStoreManager transactionMetaStoreManager =
-        new TransactionWorkspaceMetaStoreManager(entityManager.getMetaStoreManager());
+        new TransactionWorkspaceMetaStoreManager(metaStoreManager);
     ((BasePolarisCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
 
     commitTransactionRequest.tableChanges().stream()
@@ -1074,10 +1077,8 @@ public class PolarisCatalogHandlerWrapper {
     List<PolarisMetaStoreManager.EntityWithPath> pendingUpdates =
         transactionMetaStoreManager.getPendingUpdates();
     PolarisMetaStoreManager.EntitiesResult result =
-        entityManager
-            .getMetaStoreManager()
-            .updateEntitiesPropertiesIfNotChanged(
-                callContext.getPolarisCallContext(), pendingUpdates);
+        metaStoreManager.updateEntitiesPropertiesIfNotChanged(
+            callContext.getPolarisCallContext(), pendingUpdates);
     if (!result.isSuccess()) {
       // TODO: Retries and server-side cleanup on failure
       throw new CommitFailedException(
