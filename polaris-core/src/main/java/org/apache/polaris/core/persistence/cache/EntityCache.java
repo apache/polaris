@@ -29,6 +29,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -280,7 +281,7 @@ public class EntityCache {
         || existingCacheEntry.getEntity().getGrantRecordsVersion() < entityGrantRecordsMinVersion) {
 
       // the refreshed entity
-      final PolarisRemoteCache.CachedEntryResult refreshedCacheEntry;
+      final CachedEntryResult refreshedCacheEntry;
 
       // was not found in the cache?
       final PolarisBaseEntity entity;
@@ -377,7 +378,7 @@ public class EntityCache {
       cacheHit = false;
 
       // load it
-      PolarisRemoteCache.CachedEntryResult result =
+      CachedEntryResult result =
           polarisRemoteCache.loadCachedEntryById(callContext, entityCatalogId, entityId);
 
       // not found, exit
@@ -429,7 +430,7 @@ public class EntityCache {
       cacheHit = false;
 
       // load it
-      PolarisRemoteCache.CachedEntryResult result =
+      CachedEntryResult result =
           polarisRemoteCache.loadCachedEntryByName(
               callContext,
               entityNameKey.getCatalogId(),
