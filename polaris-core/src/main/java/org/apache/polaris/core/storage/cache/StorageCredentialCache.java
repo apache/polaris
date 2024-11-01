@@ -91,21 +91,22 @@ public class StorageCredentialCache {
                 });
   }
 
-    /**
-     * How long credentials should remain in the cache.
-     */
+  /** How long credentials should remain in the cache. */
   private static long maxCacheDurationMs() {
-      var cacheDurationSeconds =
-          PolarisConfiguration.loadConfig(PolarisConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
-      var credentialDurationSeconds =
-          PolarisConfiguration.loadConfig(PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
-      if (cacheDurationSeconds <= credentialDurationSeconds) {
-          throw new IllegalArgumentException(String.format("%s should be less than %s",
+    var cacheDurationSeconds =
+        PolarisConfiguration.loadConfig(
+            PolarisConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
+    var credentialDurationSeconds =
+        PolarisConfiguration.loadConfig(PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+    if (cacheDurationSeconds <= credentialDurationSeconds) {
+      throw new IllegalArgumentException(
+          String.format(
+              "%s should be less than %s",
               PolarisConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS.key,
               PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.key));
-      } else {
-          return cacheDurationSeconds * 1000L;
-      }
+    } else {
+      return cacheDurationSeconds * 1000L;
+    }
   }
 
   /**
