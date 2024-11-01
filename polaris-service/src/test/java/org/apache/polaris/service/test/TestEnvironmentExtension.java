@@ -37,14 +37,9 @@ public class TestEnvironmentExtension implements ParameterResolver {
   public static final String ENV_TEST_ENVIRONMENT_RESOLVER_IMPL =
       "INTEGRATION_TEST_ENVIRONMENT_RESOLVER_IMPL";
 
-  private static TestEnvironment env;
-
-  public static synchronized TestEnvironment getEnv(ExtensionContext extensionContext)
+  public static TestEnvironment getEnv(ExtensionContext extensionContext)
       throws IllegalAccessException {
-    if (env == null) {
-      env = getTestEnvironmentResolver().resolveTestEnvironment(extensionContext);
-    }
-    return env;
+    return getTestEnvironmentResolver().resolveTestEnvironment(extensionContext);
   }
 
   @Override

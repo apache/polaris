@@ -94,7 +94,7 @@ public class PolarisConnectionExtension
           config
               .getRealmContextResolver()
               .resolveRealmContext(
-                  String.format("%s://%s", testEnvUri.getScheme(), testEnvUri.getAuthority()),
+                  String.format("%s://%s", testEnvUri.getScheme(), testEnvUri.getHost()),
                   "GET",
                   path,
                   Map.of(),
