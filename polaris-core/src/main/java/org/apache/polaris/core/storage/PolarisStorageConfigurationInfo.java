@@ -217,25 +217,6 @@ public abstract class PolarisStorageConfigurationInfo {
     return Optional.empty();
   }
 
-  /** Returns the value of `STORAGE_CREDENTIAL_DURATION_SECONDS ` */
-  public static int getVendedCredentialDurationSeconds() {
-    var callContext = CallContext.getCurrentContext();
-    if (callContext == null) {
-      LOGGER.warn(
-          String.format(
-              "Unable to load current call context; using %s = %s",
-              PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.key,
-              PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.defaultValue));
-      return PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.defaultValue;
-    }
-    return callContext
-        .getPolarisCallContext()
-        .getConfigurationStore()
-        .getConfiguration(
-            callContext.getPolarisCallContext(),
-            PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
-  }
-
   /** Subclasses must provide the Iceberg FileIO impl associated with their type in this method. */
   public abstract String getFileIoImplClassName();
 

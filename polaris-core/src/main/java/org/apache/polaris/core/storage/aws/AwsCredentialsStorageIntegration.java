@@ -24,6 +24,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
+
+import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
@@ -71,7 +73,7 @@ public class AwsCredentialsStorageIntegration
                             allowedWriteLocations)
                         .toJson())
                 .durationSeconds(
-                    PolarisStorageConfigurationInfo.getVendedCredentialDurationSeconds())
+                    PolarisConfiguration.loadConfig(PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS))
                 .build());
     EnumMap<PolarisCredentialProperty, String> credentialMap =
         new EnumMap<>(PolarisCredentialProperty.class);
