@@ -73,9 +73,9 @@ public class TestFileIO implements FileIO {
           throw s.get();
         });
 
-    InputFile wrapped = new TestInputFile(inner, getLengthExceptionSupplier);
-    inputBytes += wrapped.getLength();
-    return wrapped;
+    // Use the inner's length in case the TestInputFile throws a getLength exception
+    inputBytes += inner.getLength();
+    return new TestInputFile(inner, getLengthExceptionSupplier);
   }
 
   @Override

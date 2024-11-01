@@ -17,7 +17,7 @@
 # under the License.
 #
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from pydantic import StrictStr
 
@@ -46,6 +46,8 @@ class PrincipalRolesCommand(Command):
     catalog_name: str
     catalog_role_name: str
     properties: Optional[Dict[str, StrictStr]]
+    set_properties: Dict[str, StrictStr]
+    remove_properties: List[str]
 
     def validate(self):
         if self.principal_roles_subcommand == Subcommands.LIST:
@@ -82,9 +84,20 @@ class PrincipalRolesCommand(Command):
                     print(principal_role.to_json())
         elif self.principal_roles_subcommand == Subcommands.UPDATE:
             principal_role = api.get_principal_role(self.principal_role_name)
+            new_properties = principal_role.properties or {}
+
+            # Add or update all entries specified in set_properties
+            if self.set_properties:
+                new_properties = {**new_properties, **self.set_properties}
+
+            # Remove all keys specified in remove_properties
+            if self.remove_properties:
+                for to_remove in self.remove_properties:
+                    new_properties.pop(to_remove, None)
+
             request = UpdatePrincipalRoleRequest(
                 current_entity_version=principal_role.entity_version,
-                properties=self.properties
+                properties=new_properties
             )
             api.update_principal_role(self.principal_role_name, request)
         elif self.principal_roles_subcommand == Subcommands.GRANT:
