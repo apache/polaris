@@ -172,6 +172,9 @@ public class AzureCredentialsStorageIntegration
     }
     credentialMap.put(PolarisCredentialProperty.AZURE_SAS_TOKEN, sasToken);
     credentialMap.put(PolarisCredentialProperty.AZURE_ACCOUNT_HOST, storageDnsName);
+    credentialMap.put(
+        PolarisCredentialProperty.EXPIRATION_TIME,
+        String.valueOf(sanitizedEndTime.toInstant().toEpochMilli()));
     return credentialMap;
   }
 
