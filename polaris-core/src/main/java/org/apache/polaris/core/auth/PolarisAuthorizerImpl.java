@@ -119,7 +119,7 @@ import org.slf4j.LoggerFactory;
  * the expanded roles of the calling Principal hold SERVICE_MANAGE_ACCESS on the "root" catalog,
  * which translates into a cross-catalog permission.
  */
-public class PolarisAuthorizerImpl {
+public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisAuthorizerImpl.class);
 
   private static final SetMultimap<PolarisPrivilege, PolarisPrivilege> SUPER_PRIVILEGES =
@@ -483,6 +483,7 @@ public class PolarisAuthorizerImpl {
     return false;
   }
 
+  @Override
   public void authorizeOrThrow(
       @NotNull AuthenticatedPolarisPrincipal authenticatedPrincipal,
       @NotNull Set<PolarisBaseEntity> activatedEntities,
@@ -497,6 +498,7 @@ public class PolarisAuthorizerImpl {
         secondary == null ? null : List.of(secondary));
   }
 
+  @Override
   public void authorizeOrThrow(
       @NotNull AuthenticatedPolarisPrincipal authenticatedPrincipal,
       @NotNull Set<PolarisBaseEntity> activatedEntities,
