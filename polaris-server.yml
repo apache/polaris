@@ -84,10 +84,10 @@ defaultRealms:
   - polaris
 
 metaStoreManager:
-  type: in-memory
-#  type: eclipse-link # uncomment to use eclipse-link as metastore
-#  persistence-unit: polaris
-#  conf-file: /tmp/conf.jar!/persistence.xml
+#  type: in-memory
+  type: eclipse-link # uncomment to use eclipse-link as metastore
+  persistence-unit: polaris
+  conf-file: /tmp/conf.jar!/persistence.xml
 
 io:
   factoryType: wasb

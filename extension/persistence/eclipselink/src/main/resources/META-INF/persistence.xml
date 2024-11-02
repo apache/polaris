@@ -48,7 +48,7 @@
       <property name="jakarta.persistence.jdbc.url"
         value="jdbc:postgresql://localhost:5432/metastore_db"/>
 <!--        value="jdbc:postgresql://polaris-postgres-rw:5432/catalog_db"/>-->
-      <property name="jakarta.persistence.jdbc.user" value="root"/>
+      <property name="jakarta.persistence.jdbc.user" value="admin"/>
       <property name="jakarta.persistence.jdbc.password" value="admin"/>
       <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
       <property name="eclipselink.logging.level.sql" value="FINE"/>
