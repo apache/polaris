@@ -35,7 +35,7 @@
     <shared-cache-mode>NONE</shared-cache-mode>
 <!--    <properties>-->
 <!--      <property name="jakarta.persistence.jdbc.url"-->
-<!--        value="jdbc:h2:file:/tmp/eclipseLink/{realm}"/>-->
+<!--        value="jdbc:h2:file:./build/test_data/polaris/{realm}/db"/>-->
 <!--      <property name="jakarta.persistence.jdbc.user" value="sa"/>-->
 <!--      <property name="jakarta.persistence.jdbc.password" value=""/>-->
 <!--      <property name="jakarta.persistence.schema-generation.database.action" value="create"/>-->
@@ -46,12 +46,8 @@
     <properties>
       <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
       <property name="jakarta.persistence.jdbc.url"
-        value="jdbc:h2:file:./build/test_data/polaris/{realm}/db"/>
-      <property name="jakarta.persistence.jdbc.user" value="sa"/>
-      <property name="jakarta.persistence.jdbc.password" value=""/>
-        value="jdbc:postgresql://polaris-postgres-rw:5432/catalog_db"/>
-<!--      <property name="jakarta.persistence.jdbc.url"-->
-<!--        value="jdbc:postgresql://localhost:5432/metastore_db"/>-->
+        value="jdbc:postgresql://localhost:5432/metastore_db"/>
+<!--        value="jdbc:postgresql://polaris-postgres-rw:5432/catalog_db"/>-->
       <property name="jakarta.persistence.jdbc.user" value="root"/>
       <property name="jakarta.persistence.jdbc.password" value="admin"/>
       <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
