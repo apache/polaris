@@ -45,6 +45,8 @@ dependencies {
     }
   }
 
+  implementation(libs.h2) // Different dependencies will be needed for different backend databases
+  implementation(libs.postgresql)
   compileOnly(libs.jetbrains.annotations)
 
   testImplementation(libs.h2)

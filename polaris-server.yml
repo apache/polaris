@@ -67,6 +67,7 @@ server:
 
 featureConfiguration:
   ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: false
+  SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION: true
   SUPPORTED_CATALOG_STORAGE_TYPES:
     - S3
     - GCS
@@ -74,16 +75,19 @@ featureConfiguration:
     - FILE
 
 callContextResolver:
-  type: default
+  type: polaris
 
 realmContextResolver:
-  type: default
+  type: polaris
 
 defaultRealms:
-  - default-realm
+  - polaris
 
 metaStoreManager:
   type: in-memory
+#  type: eclipse-link # uncomment to use eclipse-link as metastore
+#  persistence-unit: polaris
+#  conf-file: /tmp/conf.jar!/persistence.xml
   # type: eclipse-link # uncomment to use eclipse-link as metastore
   # persistence-unit: polaris
 
@@ -92,18 +96,18 @@ io:
 
 # TODO - avoid duplicating token broker config
 oauth2:
-  type: test
-#  type: default # - uncomment to support Auth0 JWT tokens
-#  tokenBroker:
-#    type: symmetric-key
-#    secret: polaris
+#  type: test
+  type: default # - uncomment to support Auth0 JWT tokens
+  tokenBroker:
+    type: symmetric-key
+    secret: polaris
 
 authenticator:
-  class: org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator
-#  class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator # - uncomment to support Auth0 JWT tokens
-#  tokenBroker:
-#    type: symmetric-key
-#    secret: polaris
+#  class: org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator
+  class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator # - uncomment to support Auth0 JWT tokens
+  tokenBroker:
+    type: symmetric-key
+    secret: polaris
 
 cors:
   allowed-origins:

@@ -18,3 +18,4 @@
 #
 
 org.apache.polaris.service.context.DefaultContextResolver
+org.apache.polaris.service.context.PolarisContextResolver
