@@ -154,6 +154,14 @@ public class PolarisConfiguration<T> {
           .defaultValue(false)
           .build();
 
+  public static final PolarisConfiguration<Boolean> ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING =
+      PolarisConfiguration.<Boolean>builder()
+          .key("ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING")
+          .catalogConfig("enable.credential.vending")
+          .description("If set to true, allow credential vending for external catalogs.")
+          .defaultValue(true)
+          .build();
+
   public static final PolarisConfiguration<List<String>> SUPPORTED_CATALOG_STORAGE_TYPES =
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_STORAGE_TYPES")

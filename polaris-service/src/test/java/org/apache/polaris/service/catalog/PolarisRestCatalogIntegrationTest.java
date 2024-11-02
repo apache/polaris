@@ -30,31 +30,33 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.BaseTransaction;
-import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
+import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.Transaction;
 import org.apache.iceberg.UpdatePartitionSpec;
 import org.apache.iceberg.UpdateSchema;
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.catalog.SessionCatalog;
 import org.apache.iceberg.catalog.TableCommit;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.expressions.Expressions;
-import org.apache.iceberg.rest.HTTPClient;
+import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTCatalog;
-import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisConfiguration;
@@ -78,7 +80,6 @@ import org.apache.polaris.core.admin.model.ViewPrivilege;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.PolarisApplication;
-import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
@@ -133,6 +134,26 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private final String catalogBaseLocation =
       S3_BUCKET_BASE + "/" + System.getenv("USER") + "/path/to/data";
 
+  private static final String[] DEFAULT_CATALOG_PROPERTIES = {
+    "allow.unstructured.table.location", "true",
+    "allow.external.table.location", "true"
+  };
+
+  @Retention(RetentionPolicy.RUNTIME)
+  private @interface CatalogConfig {
+    Catalog.TypeEnum value() default Catalog.TypeEnum.INTERNAL;
+
+    String[] properties() default {
+      "allow.unstructured.table.location", "true",
+      "allow.external.table.location", "true"
+    };
+  }
+
+  @Retention(RetentionPolicy.RUNTIME)
+  private @interface RestCatalogConfig {
+    String[] value() default {};
+  }
+
   @BeforeAll
   public static void setup(@PolarisRealm String realm) throws IOException {
     // Set up test location
@@ -166,21 +187,27 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                       .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
                       .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
                       .build();
+              Optional<CatalogConfig> catalogConfig =
+                  testInfo
+                      .getTestMethod()
+                      .flatMap(m -> Optional.ofNullable(m.getAnnotation(CatalogConfig.class)));
+
               org.apache.polaris.core.admin.model.CatalogProperties.Builder catalogPropsBuilder =
-                  org.apache.polaris.core.admin.model.CatalogProperties.builder(catalogBaseLocation)
-                      .addProperty(
-                          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
-                          "true")
-                      .addProperty(
-                          PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(),
-                          "true");
+                  org.apache.polaris.core.admin.model.CatalogProperties.builder(
+                      catalogBaseLocation);
+              String[] properties =
+                  catalogConfig.map(CatalogConfig::properties).orElse(DEFAULT_CATALOG_PROPERTIES);
+              for (int i = 0; i < properties.length; i += 2) {
+                catalogPropsBuilder.addProperty(properties[i], properties[i + 1]);
+              }
               if (!S3_BUCKET_BASE.startsWith("file:/")) {
                 catalogPropsBuilder.addProperty(
                     CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY, "file:");
               }
               Catalog catalog =
                   PolarisCatalog.builder()
-                      .setType(Catalog.TypeEnum.INTERNAL)
+                      .setType(
+                          catalogConfig.map(CatalogConfig::value).orElse(Catalog.TypeEnum.INTERNAL))
                       .setName(currentCatalogName)
                       .setProperties(catalogPropsBuilder.build())
                       .setStorageConfigInfo(
@@ -189,119 +216,31 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                                   StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://"))
                               : awsConfigModel)
                       .build();
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs", EXT.getLocalPort()))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .post(Entity.json(catalog))) {
-                assertThat(response)
-                    .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-              }
 
-              // Create a new CatalogRole that has CATALOG_MANAGE_CONTENT and CATALOG_MANAGE_ACCESS
-              CatalogRole newRole = new CatalogRole("custom-admin");
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles",
-                              EXT.getLocalPort(), currentCatalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .post(Entity.json(newRole))) {
-                assertThat(response)
-                    .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-              }
-              CatalogGrant grantResource =
-                  new CatalogGrant(
-                      CatalogPrivilege.CATALOG_MANAGE_CONTENT, GrantResource.TypeEnum.CATALOG);
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/custom-admin/grants",
-                              EXT.getLocalPort(), currentCatalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .put(Entity.json(grantResource))) {
-                assertThat(response)
-                    .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-              }
-              CatalogGrant grantAccessResource =
-                  new CatalogGrant(
-                      CatalogPrivilege.CATALOG_MANAGE_ACCESS, GrantResource.TypeEnum.CATALOG);
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/custom-admin/grants",
-                              EXT.getLocalPort(), currentCatalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .put(Entity.json(grantAccessResource))) {
-                assertThat(response)
-                    .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-              }
-
-              // Assign this new CatalogRole to the service_admin PrincipalRole
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/custom-admin",
-                              EXT.getLocalPort(), currentCatalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + adminToken.token())
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .get()) {
-                assertThat(response)
-                    .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-                CatalogRole catalogRole = response.readEntity(CatalogRole.class);
-                try (Response assignResponse =
-                    EXT.client()
-                        .target(
-                            String.format(
-                                "http://localhost:%d/api/management/v1/principal-roles/catalog-admin/catalog-roles/%s",
-                                EXT.getLocalPort(), currentCatalogName))
-                        .request("application/json")
-                        .header("Authorization", "Bearer " + adminToken.token())
-                        .header(REALM_PROPERTY_KEY, realm)
-                        .put(Entity.json(catalogRole))) {
-                  assertThat(assignResponse)
-                      .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-                }
-              }
-
-              SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
-              this.restCatalog =
-                  new RESTCatalog(
-                      context,
-                      (config) ->
-                          HTTPClient.builder(config)
-                              .uri(config.get(CatalogProperties.URI))
-                              .build());
-              this.restCatalog.initialize(
-                  "polaris",
-                  ImmutableMap.of(
-                      CatalogProperties.URI,
-                      "http://localhost:" + EXT.getLocalPort() + "/api/catalog",
-                      OAuth2Properties.CREDENTIAL,
-                      snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret(),
-                      OAuth2Properties.SCOPE,
-                      BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL,
-                      CatalogProperties.FILE_IO_IMPL,
-                      "org.apache.iceberg.inmemory.InMemoryFileIO",
-                      "warehouse",
-                      currentCatalogName,
-                      "header." + REALM_PROPERTY_KEY,
-                      realm));
+              Optional<PolarisRestCatalogIntegrationTest.RestCatalogConfig> restCatalogConfig =
+                  testInfo
+                      .getTestMethod()
+                      .flatMap(
+                          m ->
+                              Optional.ofNullable(
+                                  m.getAnnotation(
+                                      PolarisRestCatalogIntegrationTest.RestCatalogConfig.class)));
+              ImmutableMap.Builder<String, String> extraPropertiesBuilder =
+                  ImmutableMap.<String, String>builder();
+              restCatalogConfig.ifPresent(
+                  config -> {
+                    for (int i = 0; i < config.value().length; i += 2) {
+                      extraPropertiesBuilder.put(config.value()[i], config.value()[i + 1]);
+                    }
+                  });
+              restCatalog =
+                  TestUtil.createSnowmanManagedCatalog(
+                      EXT,
+                      adminToken,
+                      snowmanCredentials,
+                      realm,
+                      catalog,
+                      extraPropertiesBuilder.build());
             });
   }
 
@@ -745,6 +684,106 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                     .withLocation(catalogBaseLocation + "/ns1/ns1a/tbl1-override")
                     .create())
         .isInstanceOf(ForbiddenException.class);
+  }
+
+  /**
+   * Create an EXTERNAL catalog. The test configuration, by default, disables access delegation for
+   * EXTERNAL catalogs, so register a table and try to load it with the REST client configured to
+   * try to fetch vended credentials. Expect a ForbiddenException.
+   */
+  @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
+  @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
+  @Test
+  public void testLoadTableWithAccessDelegationForExternalCatalogWithConfigDisabled() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      resolvingFileIO.initialize(Map.of());
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+      restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
+      try {
+        Assertions.assertThatThrownBy(
+                () -> restCatalog.loadTable(TableIdentifier.of(ns1, "my_table")))
+            .isInstanceOf(ForbiddenException.class)
+            .hasMessageContaining("Access Delegation is not enabled for this catalog")
+            .hasMessageContaining(
+                PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Create an EXTERNAL catalog. The test configuration, by default, disables access delegation for
+   * EXTERNAL catalogs. Register a table and attempt to load it WITHOUT access delegation. This
+   * should succeed.
+   */
+  @CatalogConfig(Catalog.TypeEnum.EXTERNAL)
+  @Test
+  public void testLoadTableWithoutAccessDelegationForExternalCatalogWithConfigDisabled() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      resolvingFileIO.initialize(Map.of());
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+      restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
+      try {
+        restCatalog.loadTable(TableIdentifier.of(ns1, "my_table"));
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
+  }
+
+  /**
+   * Create an EXTERNAL catalog. The test configuration, by default, disables access delegation for
+   * EXTERNAL catalogs. However, we set <code>enable.credential.vending</code> to <code>true</code>
+   * for this catalog, enabling it. Register a table and attempt to load it WITH access delegation.
+   * This should succeed.
+   */
+  @CatalogConfig(
+      value = Catalog.TypeEnum.EXTERNAL,
+      properties = {"enable.credential.vending", "true"})
+  @RestCatalogConfig({"header.X-Iceberg-Access-Delegation", "vended-credentials"})
+  @Test
+  public void testLoadTableWithAccessDelegationForExternalCatalogWithConfigEnabledForCatalog() {
+    Namespace ns1 = Namespace.of("ns1");
+    restCatalog.createNamespace(ns1);
+    TableMetadata tableMetadata =
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
+    try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
+      resolvingFileIO.initialize(Map.of());
+      resolvingFileIO.setConf(new Configuration());
+      String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
+      TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
+      restCatalog.registerTable(TableIdentifier.of(ns1, "my_table"), fileLocation);
+      try {
+        restCatalog.loadTable(TableIdentifier.of(ns1, "my_table"));
+      } finally {
+        resolvingFileIO.deleteFile(fileLocation);
+      }
+    }
   }
 
   @Test

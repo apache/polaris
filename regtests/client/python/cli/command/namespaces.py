@@ -59,7 +59,7 @@ class NamespacesCommand(Command):
         """
         Convert a management API to a catalog API
         """
-        catalog_host = re.match(r'(http://[^/]+)', api.api_client.configuration.host).group(1)
+        catalog_host = re.match(r'(https?://.+)/api/management', api.api_client.configuration.host).group(1)
         configuration = Configuration(
             host=f'{catalog_host}/api/catalog',
             username=api.api_client.configuration.username,
@@ -71,12 +71,12 @@ class NamespacesCommand(Command):
     def execute(self, api: PolarisDefaultApi) -> None:
         catalog_api = self._get_catalog_api(api)
         if self.namespaces_subcommand == Subcommands.CREATE:
-            properties = self.properties or {}
+            req_properties = self.properties or {}
             if self.location:
-                properties = {**properties, Arguments.LOCATION: self.location}
+                req_properties = {**req_properties, Arguments.LOCATION: self.location}
             request = CreateNamespaceRequest(
                 namespace=self.namespace,
-                properties=self.properties
+                properties=req_properties
             )
             catalog_api.create_namespace(
                 prefix=self.catalog,
@@ -91,7 +91,8 @@ class NamespacesCommand(Command):
         elif self.namespaces_subcommand == Subcommands.DELETE:
             catalog_api.drop_namespace(prefix=self.catalog, namespace=UNIT_SEPARATOR.join(self.namespace))
         elif self.namespaces_subcommand == Subcommands.GET:
-            catalog_api.namespace_exists(prefix=self.catalog, namespace=UNIT_SEPARATOR.join(self.namespace))
-            print(json.dumps({"namespace": '.'.join(self.namespace)}))
+            print(catalog_api.load_namespace_metadata(
+                      prefix=self.catalog,
+                      namespace=UNIT_SEPARATOR.join(self.namespace)).to_json())
         else:
             raise Exception(f"{self.namespaces_subcommand} is not supported in the CLI")
