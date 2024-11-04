@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.task;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
@@ -105,7 +106,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
       // read the manifest list for each snapshot. dedupe the manifest files and schedule a
       // cleanupTask
       // for each manifest file and its data files to be deleted
-      List<TaskEntity> taskEntities =
+      Stream<TaskEntity> manifestCleanupTasks =
           tableMetadata.snapshots().stream()
               .flatMap(sn -> sn.allManifests(fileIO).stream())
               // distinct by manifest path, since multiple snapshots will contain the same
@@ -145,8 +146,40 @@ public class TableCleanupTaskHandler implements TaskHandler {
                         // copy the internal properties, which will have storage info
                         .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
                         .build();
-                  })
-              .toList();
+                  });
+
+      Stream<TaskEntity> contentFileCleanupTasks =
+          getContentFileBatch(tableMetadata, fileIO).stream()
+              .map(
+                  fileBatch -> {
+                    String taskName =
+                        cleanupTask.getName()
+                            + "_"
+                            + fileBatch.toString()
+                            + "_"
+                            + UUID.randomUUID();
+                    LOGGER
+                        .atDebug()
+                        .addKeyValue("taskName", taskName)
+                        .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
+                        .addKeyValue("fileBatch", fileBatch)
+                        .log(
+                            "Queueing task to delete content file (prev metadata and statistics files)");
+                    return new TaskEntity.Builder()
+                        .setName(taskName)
+                        .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
+                        .setCreateTimestamp(polarisCallContext.getClock().millis())
+                        .withTaskType(AsyncTaskType.FILE_CLEANUP)
+                        .withData(
+                            new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                                tableEntity.getTableIdentifier(), fileBatch))
+                        .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
+                        .build();
+                  });
+
+      List<TaskEntity> taskEntities =
+          Stream.concat(manifestCleanupTasks, contentFileCleanupTasks).toList();
+
       List<PolarisBaseEntity> createdTasks =
           metaStoreManager
               .createEntitiesIfNotExist(polarisCallContext, null, taskEntities)
@@ -157,26 +190,11 @@ public class TableCleanupTaskHandler implements TaskHandler {
             .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
             .addKeyValue("metadataLocation", tableEntity.getMetadataLocation())
             .addKeyValue("taskCount", taskEntities.size())
-            .log("Successfully queued tasks to delete manifests - deleting table metadata file");
+            .log(
+                "Successfully queued tasks to delete manifests, previous metadata, and statistics files - deleting table metadata file");
         for (PolarisBaseEntity createdTask : createdTasks) {
           taskExecutor.addTaskHandlerContext(createdTask.getId(), CallContext.getCurrentContext());
         }
-
-        // Schedule and dispatch prev metadata and stat files in seperated tasks
-        scheduleTableContentCleanupTask(
-            tableMetadata.previousFiles().stream().map(TableMetadata.MetadataLogEntry::file),
-            CleanupTableContentFileType.PREV_METADATA,
-            fileIO,
-            cleanupTask,
-            metaStoreManager,
-            polarisCallContext);
-        scheduleTableContentCleanupTask(
-            tableMetadata.statisticsFiles().stream().map(StatisticsFile::path),
-            CleanupTableContentFileType.STATISTICS,
-            fileIO,
-            cleanupTask,
-            metaStoreManager,
-            polarisCallContext);
 
         fileIO.deleteFile(tableEntity.getMetadataLocation());
 
@@ -186,73 +204,18 @@ public class TableCleanupTaskHandler implements TaskHandler {
     return false;
   }
 
-  private void scheduleTableContentCleanupTask(
-      Stream<String> fileStream,
-      CleanupTableContentFileType fileType,
-      FileIO fileIO,
-      TaskEntity cleanupTask,
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisCallContext polarisCallContext) {
-    PolarisBaseEntity entity = cleanupTask.readData(PolarisBaseEntity.class);
-    TableLikeEntity tableEntity = TableLikeEntity.of(entity);
+  private List<List<String>> getContentFileBatch(TableMetadata tableMetadata, FileIO fileIO) {
+    List<List<String>> result = new ArrayList<>();
+    List<String> contentFiles =
+        Stream.concat(
+                tableMetadata.previousFiles().stream().map(TableMetadata.MetadataLogEntry::file),
+                tableMetadata.statisticsFiles().stream().map(StatisticsFile::path))
+            .filter(file -> TaskUtils.exists(file, fileIO))
+            .toList();
 
-    List<String> validFiles = fileStream.filter(file -> TaskUtils.exists(file, fileIO)).toList();
-
-    for (int i = 0; i < validFiles.size(); i += BATCH_SIZE) {
-      List<String> fileBatch = validFiles.subList(i, Math.min(i + BATCH_SIZE, validFiles.size()));
-      String taskName = cleanupTask.getName() + "_batch" + i + "_" + UUID.randomUUID();
-      LOGGER
-          .atDebug()
-          .addKeyValue("taskName", taskName)
-          .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
-          .addKeyValue("fileBatch", fileBatch.toString())
-          .log("Queueing task to delete a batch of " + fileType.getTypeName());
-
-      TaskEntity batchTask =
-          new TaskEntity.Builder()
-              .setName(taskName)
-              .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
-              .setCreateTimestamp(polarisCallContext.getClock().millis())
-              .withTaskType(AsyncTaskType.TABLE_CONTENT_CLEANUP)
-              .withData(
-                  new TableContentCleanupTaskHandler.TableContentCleanupTask(
-                      tableEntity.getTableIdentifier(), fileBatch))
-              .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
-              .build();
-
-      List<PolarisBaseEntity> createdTasks =
-          metaStoreManager
-              .createEntitiesIfNotExist(polarisCallContext, null, List.of(batchTask))
-              .getEntities();
-
-      if (createdTasks != null) {
-        LOGGER
-            .atInfo()
-            .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
-            .addKeyValue("taskCount", createdTasks.size())
-            .addKeyValue("fileBatch", fileBatch.toString())
-            .log("Successfully queued task to delete a batch of " + fileType.getTypeName() + "s");
-
-        for (PolarisBaseEntity createdTask : createdTasks) {
-          taskExecutor.addTaskHandlerContext(createdTask.getId(), CallContext.getCurrentContext());
-        }
-      }
+    for (int i = 0; i < contentFiles.size(); i += BATCH_SIZE) {
+      result.add(contentFiles.subList(i, Math.min(i + BATCH_SIZE, contentFiles.size())));
     }
-  }
-
-  private enum CleanupTableContentFileType {
-    PREV_METADATA("previous metadata file"),
-    STATISTICS("statistics file"),
-    ;
-
-    private final String typeName;
-
-    CleanupTableContentFileType(String typeName) {
-      this.typeName = typeName;
-    }
-
-    public String getTypeName() {
-      return typeName;
-    }
+    return result;
   }
 }
