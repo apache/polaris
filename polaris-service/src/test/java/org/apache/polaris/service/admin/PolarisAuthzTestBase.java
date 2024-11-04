@@ -20,9 +20,12 @@ package org.apache.polaris.service.admin;
 
 import static org.apache.iceberg.types.Types.NestedField.required;
 
+import com.google.auth.oauth2.AccessToken;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.time.Clock;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -61,8 +64,8 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
-import org.apache.polaris.service.catalog.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
+import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
@@ -148,7 +151,8 @@ public abstract class PolarisAuthzTestBase {
     InMemoryPolarisMetaStoreManagerFactory managerFactory =
         new InMemoryPolarisMetaStoreManagerFactory();
     managerFactory.setStorageIntegrationProvider(
-        new PolarisStorageIntegrationProviderImpl(Mockito::mock));
+        new PolarisStorageIntegrationProviderImpl(
+            Mockito::mock, () -> GoogleCredentials.create(new AccessToken("abc", new Date()))));
     RealmContext realmContext = () -> "realm";
     PolarisMetaStoreManager metaStoreManager =
         managerFactory.getOrCreateMetaStoreManager(realmContext);
@@ -210,6 +214,7 @@ public abstract class PolarisAuthzTestBase {
         adminService.createCatalog(
             new CatalogEntity.Builder()
                 .setName(CATALOG_NAME)
+                .setCatalogType("INTERNAL")
                 .setDefaultBaseLocation(storageLocation)
                 .setStorageConfigurationInfo(storageConfigModel, storageLocation)
                 .build());

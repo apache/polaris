@@ -25,6 +25,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
@@ -118,13 +119,7 @@ public class PolarisServiceImpl
         polarisCallContext
             .getConfigurationStore()
             .getConfiguration(
-                polarisCallContext,
-                "SUPPORTED_CATALOG_STORAGE_TYPES",
-                List.of(
-                    StorageConfigInfo.StorageTypeEnum.S3.name(),
-                    StorageConfigInfo.StorageTypeEnum.AZURE.name(),
-                    StorageConfigInfo.StorageTypeEnum.GCS.name(),
-                    StorageConfigInfo.StorageTypeEnum.FILE.name()));
+                polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
     if (!allowedStorageTypes.contains(storageConfigInfo.getStorageType().name())) {
       LOGGER
           .atWarn()

@@ -19,43 +19,29 @@
 package org.apache.polaris.service.catalog;
 
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
-import static org.assertj.core.api.Assertions.assertThat;
 
-import com.google.common.collect.ImmutableMap;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
-import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.catalog.SessionCatalog;
-import org.apache.iceberg.rest.HTTPClient;
+import java.util.Map;
 import org.apache.iceberg.rest.RESTCatalog;
-import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.core.PolarisConfiguration;
-import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
-import org.apache.polaris.core.admin.model.CatalogGrant;
-import org.apache.polaris.core.admin.model.CatalogPrivilege;
-import org.apache.polaris.core.admin.model.CatalogRole;
-import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
-import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.service.PolarisApplication;
-import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisConnectionExtension.PolarisToken;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension.SnowmanCredentials;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -70,13 +56,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
   PolarisConnectionExtension.class,
   SnowmanCredentialsExtension.class
 })
-public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<RESTCatalog> {
-  public static final String TEST_ROLE_ARN =
-      Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN"))
-          .orElse("arn:aws:iam::123456789012:role/my-role");
-  public static final String S3_BUCKET_BASE =
-      Optional.ofNullable(System.getenv("INTEGRATION_TEST_S3_PATH"))
-          .orElse("file:///tmp/buckets/my-bucket");
+public abstract class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<RESTCatalog> {
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
       new DropwizardAppExtension<>(
           PolarisApplication.class,
@@ -101,6 +81,9 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
       PolarisToken adminToken,
       SnowmanCredentials snowmanCredentials,
       @PolarisRealm String realm) {
+
+    Assumptions.assumeFalse(shouldSkip());
+
     String userToken = adminToken.token();
     testInfo
         .getTestMethod()
@@ -125,17 +108,14 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
                 }
               }
 
-              AwsStorageConfigInfo awsConfigModel =
-                  AwsStorageConfigInfo.builder()
-                      .setRoleArn(TEST_ROLE_ARN)
-                      .setExternalId("externalId")
-                      .setUserArn("userArn")
-                      .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-                      .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
-                      .build();
+              StorageConfigInfo storageConfig = getStorageConfigInfo();
+              String defaultBaseLocation =
+                  storageConfig.getAllowedLocations().getFirst()
+                      + "/"
+                      + System.getenv("USER")
+                      + "/path/to/data";
               org.apache.polaris.core.admin.model.CatalogProperties props =
-                  org.apache.polaris.core.admin.model.CatalogProperties.builder(
-                          S3_BUCKET_BASE + "/" + System.getenv("USER") + "/path/to/data")
+                  org.apache.polaris.core.admin.model.CatalogProperties.builder(defaultBaseLocation)
                       .addProperty(
                           CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY,
                           "file:")
@@ -151,108 +131,24 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
                       .setType(Catalog.TypeEnum.INTERNAL)
                       .setName(catalogName)
                       .setProperties(props)
-                      .setStorageConfigInfo(
-                          S3_BUCKET_BASE.startsWith("file:")
-                              ? new FileStorageConfigInfo(
-                                  StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://"))
-                              : awsConfigModel)
+                      .setStorageConfigInfo(storageConfig)
                       .build();
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs", EXT.getLocalPort()))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + userToken)
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .post(Entity.json(catalog))) {
-                assertThat(response)
-                    .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-              }
-              CatalogRole newRole = new CatalogRole("admin");
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles",
-                              EXT.getLocalPort(), catalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + userToken)
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .post(Entity.json(newRole))) {
-                assertThat(response)
-                    .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-              }
-              CatalogGrant grantResource =
-                  new CatalogGrant(
-                      CatalogPrivilege.CATALOG_MANAGE_CONTENT, GrantResource.TypeEnum.CATALOG);
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/admin/grants",
-                              EXT.getLocalPort(), catalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + userToken)
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .put(Entity.json(grantResource))) {
-                assertThat(response)
-                    .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-              }
-
-              try (Response response =
-                  EXT.client()
-                      .target(
-                          String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/admin",
-                              EXT.getLocalPort(), catalogName))
-                      .request("application/json")
-                      .header("Authorization", "Bearer " + userToken)
-                      .header(REALM_PROPERTY_KEY, realm)
-                      .get()) {
-                assertThat(response)
-                    .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-                CatalogRole catalogRole = response.readEntity(CatalogRole.class);
-                try (Response ignore =
-                    EXT.client()
-                        .target(
-                            String.format(
-                                "http://localhost:%d/api/management/v1/principal-roles/catalog-admin/catalog-roles/%s",
-                                EXT.getLocalPort(), catalogName))
-                        .request("application/json")
-                        .header("Authorization", "Bearer " + userToken)
-                        .header(REALM_PROPERTY_KEY, realm)
-                        .put(Entity.json(catalogRole))) {
-                  assertThat(response)
-                      .returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-                }
-              }
-
-              SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
-              this.restCatalog =
-                  new RESTCatalog(
-                      context,
-                      (config) ->
-                          HTTPClient.builder(config)
-                              .uri(config.get(CatalogProperties.URI))
-                              .build());
-              this.restCatalog.initialize(
-                  "polaris",
-                  ImmutableMap.of(
-                      CatalogProperties.URI,
-                      "http://localhost:" + EXT.getLocalPort() + "/api/catalog",
-                      OAuth2Properties.CREDENTIAL,
-                      snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret(),
-                      OAuth2Properties.SCOPE,
-                      BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL,
-                      CatalogProperties.FILE_IO_IMPL,
-                      "org.apache.iceberg.inmemory.InMemoryFileIO",
-                      "warehouse",
-                      catalogName,
-                      "header." + REALM_PROPERTY_KEY,
-                      realm));
+              restCatalog =
+                  TestUtil.createSnowmanManagedCatalog(
+                      EXT, adminToken, snowmanCredentials, realm, catalog, Map.of());
             });
   }
+
+  /**
+   * @return The catalog's storage config.
+   */
+  protected abstract StorageConfigInfo getStorageConfigInfo();
+
+  /**
+   * @return Whether the tests should be skipped, for example due to environment variables not being
+   *     specified.
+   */
+  protected abstract boolean shouldSkip();
 
   @Override
   protected RESTCatalog catalog() {

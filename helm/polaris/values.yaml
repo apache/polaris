@@ -1,0 +1,396 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#  http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+# -- The number of replicas to deploy (horizontal scaling).
+# Beware that replicas are stateless; don't set this number > 1 when using in-memory meta store manager.
+replicaCount: 1
+
+image:
+  # -- The image repository to pull from.
+  repository: localhost:5001/polaris
+  # -- The image pull policy.
+  pullPolicy: IfNotPresent
+  # -- The image tag.
+  tag: "latest"
+
+toolsImage:
+  # -- The image repository to pull from (must have jar binary included).
+  repository: registry.access.redhat.com/ubi9/openjdk-21
+  # -- The image pull policy.
+  pullPolicy: IfNotPresent
+  # -- The image tag.
+  tag: "latest"
+
+# -- References to secrets in the same namespace to use for pulling any of the images used by this
+# chart. Each entry is a LocalObjectReference to an existing secret in the namespace. The secret
+# must contain a .dockerconfigjson key with a base64-encoded Docker configuration file. See
+# https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/ for more
+# information.
+imagePullSecrets: []
+#  - registry-creds
+
+
+serviceAccount:
+  # -- Specifies whether a service account should be created.
+  create: true
+  # -- Annotations to add to the service account.
+  annotations: {}
+  # -- The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template.
+  name: ""
+
+
+# -- Annotations to apply to polaris pods.
+podAnnotations: {}
+
+# -- Additional Labels to apply to polaris pods.
+podLabels: {}
+
+# -- Additional Labels to apply to polaris configmap.
+configMapLabels: {}
+
+# -- Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/.
+podSecurityContext:
+  {}
+  # fsGroup: 2000
+
+# -- Security context for the polaris container. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/.
+securityContext:
+  {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# Polaris service settings.
+service:
+  # -- The type of service to create.
+  type: ClusterIP
+  # -- The ports the service will listen on. Two ports are required: one for the Polaris service and
+  # one for the metrics API.
+  # Note: port names must be unique and no more than 15 characters long.
+  ports:
+    # polaris-server: The port the Polaris server listens on for API requests.
+    polaris-service: 8181
+    # polaris-metrics: The port the Polaris server listens on for metrics API requests (health checks, metrics, etc.).
+    polaris-metrics: 8182
+  # -- The session affinity for the service. Valid values are: None, ClientIP.
+  # ClientIP enables sticky sessions based on the client's IP address.
+  # This is generally beneficial to Polaris deployments, but some testing may be
+  # required in order to make sure that the load is distributed evenly among the pods.
+  # Also, this setting affects only internal clients, not external ones.
+  # If Ingress is enabled, it is recommended to set sessionAffinity to None.
+  sessionAffinity: None
+  # -- Annotations to add to the service.
+  annotations: {}
+
+# Polaris Ingress settings.
+# These settings generate an Ingress resource that routes external traffic to the Polaris service
+# using the "polaris-service" port described above.
+# Consider enabling sticky sessions based on the remote client's IP address;
+# this is generally beneficial to Polaris deployments, but some testing may be
+# required in order to make sure that the load is distributed evenly among the pods.
+# Check your ingress controller's documentation.
+ingress:
+  # -- Specifies the ingressClassName; leave empty if you don't want to customize it
+  className: ""
+  # -- Specifies whether an ingress should be created.
+  enabled: false
+  # -- Annotations to add to the ingress.
+  annotations: {
+    # nginx.ingress.kubernetes.io/upstream-hash-by: "$binary_remote_addr"
+  }
+  # -- A list of host paths used to configure the ingress.
+  hosts:
+    - host: chart-example.local
+      paths: []
+  # -- A list of TLS certificates; each entry has a list of hosts in the certificate,
+  # along with the secret name used to terminate TLS traffic on port 443.
+  tls: []
+#    - hosts:
+#        - chart-example1.local
+#        - chart-example2.local
+#      secretName: secret1
+
+# -- Configures the resources requests and limits for polaris pods.
+# We usually recommend not to specify default resources and to leave this as a conscious
+# choice for the user. This also increases chances charts run on environments with little
+# resources, such as Minikube. If you do want to specify resources, uncomment the following
+# lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+resources:
+  {}
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  # -- Specifies whether automatic horizontal scaling should be enabled.
+  # Do not enable this when using in-memory version store type.
+  enabled: false
+  # -- The minimum number of replicas to maintain.
+  minReplicas: 1
+  # -- The maximum number of replicas to maintain.
+  maxReplicas: 3
+  # -- Optional; set to zero or empty to disable.
+  targetCPUUtilizationPercentage: 80
+  # -- Optional; set to zero or empty to disable.
+  targetMemoryUtilizationPercentage:
+
+# -- Node labels which must match for the polaris pod to be scheduled on that node. See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#nodeselector.
+nodeSelector:
+  {}
+  # kubernetes.io/os: linux
+
+# -- A list of tolerations to apply to polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/.
+tolerations: []
+#  - key: "node-role.kubernetes.io/control-plane"
+#    operator: "Exists"
+#    effect: "NoSchedule"
+
+# -- Affinity and anti-affinity for polaris pods. See https://kubernetes.io/docs/concepts/scheduling-eviction/assign-pod-node/#affinity-and-anti-affinity.
+affinity: {}
+#  podAffinity:
+#    preferredDuringSchedulingIgnoredDuringExecution:
+#      - weight: 100
+#        podAffinityTerm:
+#          topologyKey: kubernetes.io/hostname
+#          labelSelector:
+#            matchExpressions:
+#              - key: app.kubernetes.io/name
+#                operator: In
+#                values:
+#                  - polaris
+
+# -- Configures the liveness probe for polaris pods.
+livenessProbe:
+  # -- Number of seconds after the container has started before liveness probes are initiated. Minimum value is 0.
+  initialDelaySeconds: 5
+  # -- How often (in seconds) to perform the probe. Minimum value is 1.
+  periodSeconds: 10
+  # -- Minimum consecutive successes for the probe to be considered successful after having failed. Minimum value is 1.
+  successThreshold: 1
+  # -- Minimum consecutive failures for the probe to be considered failed after having succeeded. Minimum value is 1.
+  failureThreshold: 3
+  # -- Number of seconds after which the probe times out. Minimum value is 1.
+  timeoutSeconds: 10
+  # -- Optional duration in seconds the pod needs to terminate gracefully upon probe failure. Minimum value is 1.
+  terminationGracePeriodSeconds: 30
+
+# -- Configures the readiness probe for polaris pods.
+readinessProbe:
+  # -- Number of seconds after the container has started before readiness probes are initiated. Minimum value is 0.
+  initialDelaySeconds: 5
+  # -- How often (in seconds) to perform the probe. Minimum value is 1.
+  periodSeconds: 10
+  # -- Minimum consecutive successes for the probe to be considered successful after having failed. Minimum value is 1.
+  successThreshold: 1
+  # -- Minimum consecutive failures for the probe to be considered failed after having succeeded. Minimum value is 1.
+  failureThreshold: 3
+  # -- Number of seconds after which the probe times out. Minimum value is 1.
+  timeoutSeconds: 10
+
+# -- Advanced configuration via Environment Variables.
+# Extra environment variables to add to the Polaris server container.
+# You can pass here any valid EnvVar object:
+# https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core
+# This can be useful to get configuration values from Kubernetes secrets or config maps.
+extraEnv:
+  []
+#  - name: AWS_STORAGE_BUCKET
+#    value: s3://xxxxx/
+#  - name: AWS_ACCESS_KEY_ID
+#    valueFrom:
+#      secretKeyRef:
+#        name: aws-secret
+#        key: access_key_id
+#  - name: AWS_SECRET_ACCESS_KEY
+#    valueFrom:
+#      secretKeyRef:
+#        name: aws-secret
+#        key: secret_access_key
+
+# -- Configures whether to enable the bootstrap metastore manager job
+bootstrapMetastoreManager: false
+
+# -- The secret name to pull persistence.xml from (ensure the key name is 'persistence.xml')
+persistenceConfigSecret: ~
+
+# -- Configures for polaris-server.yml
+polarisServerConfig:
+  server:
+    # Maximum number of threads.
+    maxThreads: 200
+
+    # Minimum number of thread to keep alive.
+    minThreads: 10
+    applicationConnectors:
+      # HTTP-specific options.
+      - type: http
+
+        # The port on which the HTTP server listens for service requests.
+        port: 8181
+
+    adminConnectors:
+      - type: http
+        port: 8182
+
+    # The hostname of the interface to which the HTTP server socket wil be found. If omitted, the
+    # socket will listen on all interfaces.
+    # bindHost: localhost
+
+    #  ssl:
+    #    keyStore: ./example.keystore
+    #    keyStorePassword: example
+    #
+    #    keyStoreType: JKS # (optional, JKS is default)
+
+    # HTTP request log settings
+    requestLog:
+      appenders:
+        # Settings for logging to stdout.
+        - type: console
+
+        # # Settings for logging to a file.
+        # - type: file
+
+        #   # The file to which statements will be logged.
+        #   currentLogFilename: ./logs/request.log
+
+        #   #  When the log file rolls over, the file will be archived to requests-2012-03-15.log.gz,
+        #   # requests.log will be truncated, and new statements written to it.
+        #   archivedLogFilenamePattern: ./logs/requests-%d.log.gz
+
+        #   # The maximum number of log files to archive.
+        #   archivedFileCount: 14
+
+        #   # Enable archiving if the request log entries go to the their own file
+        #   archive: true
+
+  featureConfiguration:
+    ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: false
+    SUPPORTED_CATALOG_STORAGE_TYPES:
+      - S3
+      - GCS
+      - AZURE
+      - FILE
+
+  callContextResolver:
+    type: default
+
+  realmContextResolver:
+    type: default
+
+  defaultRealms:
+    - default-realm
+
+  metaStoreManager:
+    type: in-memory
+    # uncomment below to use eclipse-link as metastore
+    # type: eclipse-link
+    # persistence-unit: polaris
+    # conf-file: /eclipselink-config/conf.jar!/persistence.xml
+
+  io:
+    factoryType: default
+
+  # TODO - avoid duplicating token broker config
+  oauth2:
+    type: test
+  #  type: default # - uncomment to support Auth0 JWT tokens
+  #  tokenBroker:
+  #    type: symmetric-key
+  #    secret: polaris
+
+  authenticator:
+    class: org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator
+  #  class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator # - uncomment to support Auth0 JWT tokens
+  #  tokenBroker:
+  #    type: symmetric-key
+  #    secret: polaris
+
+  cors:
+    allowed-origins:
+      - http://localhost:8080
+    allowed-timing-origins:
+      - http://localhost:8080
+    allowed-methods:
+      - PATCH
+      - POST
+      - DELETE
+      - GET
+      - PUT
+    allowed-headers:
+      - "*"
+    exposed-headers:
+      - "*"
+    preflight-max-age: 600
+    allowed-credentials: true
+
+  # Logging settings.
+
+  logging:
+
+    # The default level of all loggers. Can be OFF, ERROR, WARN, INFO, DEBUG, TRACE, or ALL.
+    level: INFO
+
+    # Logger-specific levels.
+    loggers:
+      org.apache.iceberg.rest: DEBUG
+      org.apache.polaris: DEBUG
+
+    appenders:
+
+      - type: console
+        # If true, write log statements to stdout.
+        #      enabled: true
+        # Do not display log statements below this threshold to stdout.
+        threshold: ALL
+        # Custom Logback PatternLayout with threadname.
+        logFormat: "%-5p [%d{ISO8601} - %-6r] [%t] [%X{aid}%X{sid}%X{tid}%X{wid}%X{oid}%X{srv}%X{job}%X{rid}] %c{30}: %m %kvp%n%ex"
+
+      # # Settings for logging to a file.
+      # - type: file
+      #   # If true, write log statements to a file.
+      #   #      enabled: true
+      #   # Do not write log statements below this threshold to the file.
+      #   threshold: ALL
+      #   layout:
+      #     type: polaris
+      #     flattenKeyValues: false
+      #     includeKeyValues: true
+
+      #   # The file to which statements will be logged.
+      #   currentLogFilename: ./logs/polaris.log
+      #   #  When the log file rolls over, the file will be archived to polaris-2012-03-15.log.gz,
+      #   # polaris.log will be truncated, and new statements written to it.
+      #   archivedLogFilenamePattern: ./logs/polaris-%d.log.gz
+      #   # The maximum number of log files to archive.
+      #   archivedFileCount: 14
+
+  # Limits the size of request bodies sent to Polaris. -1 means no limit.
+  maxRequestBodyBytes: -1
+
+  # Optional, not specifying a "rateLimiter" section also means no rate limiter
+  rateLimiter:
+    type: no-op

@@ -786,7 +786,7 @@ components:
 
     Catalog:
       type: object
-      description: A catalog object. A catalog may be internal or external. Internal catalogs are managed entirely by
+      description: A catalog object. A catalog may be internal or external. External catalogs are managed entirely by
         an external catalog interface. Third party catalogs may be other Iceberg REST implementations or other services
         with their own proprietary APIs
       properties:
@@ -1160,7 +1160,6 @@ components:
       type: string
       enum:
         - CATALOG_MANAGE_ACCESS
-        - VIEW_CREATE
         - VIEW_DROP
         - VIEW_LIST
         - VIEW_READ_PROPERTIES
@@ -1174,7 +1173,6 @@ components:
         - TABLE_DROP
         - TABLE_LIST
         - TABLE_READ_PROPERTIES
-        - VIEW_READ_PROPERTIES
         - TABLE_WRITE_PROPERTIES
         - TABLE_READ_DATA
         - TABLE_WRITE_DATA

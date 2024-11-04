@@ -18,8 +18,11 @@
  */
 package org.apache.polaris.service.catalog;
 
+import com.google.auth.oauth2.AccessToken;
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.collect.ImmutableMap;
 import java.time.Clock;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +50,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.jetbrains.annotations.Nullable;
@@ -65,7 +69,8 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     InMemoryPolarisMetaStoreManagerFactory managerFactory =
         new InMemoryPolarisMetaStoreManagerFactory();
     managerFactory.setStorageIntegrationProvider(
-        new PolarisStorageIntegrationProviderImpl(Mockito::mock));
+        new PolarisStorageIntegrationProviderImpl(
+            Mockito::mock, () -> GoogleCredentials.create(new AccessToken("abc", new Date()))));
     PolarisMetaStoreManager metaStoreManager =
         managerFactory.getOrCreateMetaStoreManager(realmContext);
     Map<String, Object> configMap = new HashMap<>();

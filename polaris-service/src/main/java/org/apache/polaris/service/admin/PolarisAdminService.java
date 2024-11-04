@@ -78,6 +78,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.jetbrains.annotations.NotNull;
@@ -152,7 +153,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedRootContainerEntityAsPath();
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedPrincipalRoleEntities(),
         op,
         rootContainerWrapper,
         null /* secondary */);
@@ -197,7 +198,7 @@ public class PolarisAdminService {
     }
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         topLevelEntityWrapper,
         null /* secondary */);
@@ -217,7 +218,7 @@ public class PolarisAdminService {
     }
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
         null /* secondary */);
@@ -247,7 +248,7 @@ public class PolarisAdminService {
 
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         rootContainerWrapper,
         principalRoleWrapper);
@@ -283,7 +284,7 @@ public class PolarisAdminService {
 
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         topLevelEntityWrapper,
         principalRoleWrapper);
@@ -313,7 +314,7 @@ public class PolarisAdminService {
 
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         principalRoleWrapper,
         principalWrapper);
@@ -351,7 +352,7 @@ public class PolarisAdminService {
 
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         catalogRoleWrapper,
         principalRoleWrapper);
@@ -380,7 +381,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(catalogRoleName, true);
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         catalogWrapper,
         catalogRoleWrapper);
@@ -419,7 +420,7 @@ public class PolarisAdminService {
 
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         namespaceWrapper,
         catalogRoleWrapper);
@@ -463,7 +464,7 @@ public class PolarisAdminService {
 
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         tableLikeWrapper,
         catalogRoleWrapper);
@@ -517,17 +518,18 @@ public class PolarisAdminService {
                 return false;
               }
               return getCatalogLocations(existingCatalog).stream()
+                  .map(StorageLocation::of)
                   .anyMatch(
-                      existingLocation ->
-                          newCatalogLocations.stream()
-                              .anyMatch(
-                                  newLocation -> {
-                                    if (newLocation == null || existingLocation == null) {
-                                      return false;
-                                    }
-                                    return newLocation.startsWith(existingLocation)
-                                        || existingLocation.startsWith(newLocation);
-                                  }));
+                      existingLocation -> {
+                        return newCatalogLocations.stream()
+                            .anyMatch(
+                                newLocationString -> {
+                                  StorageLocation newLocation =
+                                      StorageLocation.of(newLocationString);
+                                  return newLocation.isChildOf(existingLocation)
+                                      || existingLocation.isChildOf(newLocation);
+                                });
+                      });
             });
   }
 
@@ -617,7 +619,7 @@ public class PolarisAdminService {
         currentEntity.getStorageConfigurationInfo();
     PolarisStorageConfigurationInfo newStorageConfig = newEntity.getStorageConfigurationInfo();
 
-    if (currentStorageConfig == null && newStorageConfig == null) {
+    if (currentStorageConfig == null || newStorageConfig == null) {
       return;
     }
 

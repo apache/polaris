@@ -1,0 +1,527 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+chart:
+  version: 1.2.3
+  appVersion: 4.5.6
+
+release:
+  name: polaris-release
+  namespace: polaris-ns
+
+templates:
+  - deployment.yaml
+
+tests:
+
+  # metadata.name
+  - it: should set deployment name
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-release
+  - it: should set deployment name with override
+    set:
+      nameOverride: polaris-override
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-release-polaris-override
+  - it: should set deployment name with full override
+    set:
+      fullnameOverride: polaris-override
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-override
+
+  # metadata.namespace
+  - it: should set deployment namespace
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: polaris-ns
+
+  # metadata.labels
+  - it: should set deployment default labels
+    asserts:
+      - isSubset:
+          path: metadata.labels
+          content:
+            app.kubernetes.io/name: polaris
+            app.kubernetes.io/instance: polaris-release
+            app.kubernetes.io/version: 4.5.6
+            app.kubernetes.io/managed-by: Helm
+            helm.sh/chart: polaris-1.2.3
+  - it: should set include podLabels in deployment labels
+    set:
+      podLabels:
+        app.kubernetes.io/component: polaris
+    asserts:
+      - isSubset:
+          path: metadata.labels
+          content:
+            app.kubernetes.io/component: polaris
+  - it: should include podLabels in deployment labels
+    set:
+      podLabels:
+        app.kubernetes.io/component: polaris
+    asserts:
+      - isSubset:
+          path: metadata.labels
+          content:
+            app.kubernetes.io/component: polaris
+
+  # spec.replicas
+  - it: should set default replicas
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 1
+  - it: should set replicas
+    set:
+      replicaCount: 3
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 3
+  - it: should not set replicas if autoscaling is enabled
+    set:
+      replicaCount: 3
+      autoscaling:
+        enabled: true
+    asserts:
+      - notExists:
+          path: spec.replicas
+
+  # spec.selector.matchLabels + spec.template.metadata.labels
+  - it: should set deployment selector labels
+    asserts:
+      - isSubset:
+          path: spec.selector.matchLabels
+          content:
+            app.kubernetes.io/name: polaris
+            app.kubernetes.io/instance: polaris-release
+      - isSubset:
+          path: spec.template.metadata.labels
+          content:
+            app.kubernetes.io/name: polaris
+            app.kubernetes.io/instance: polaris-release
+  - it: should include podLabels in spec.template.metadata.labels only
+    set:
+      podLabels:
+        app.kubernetes.io/component: polaris
+    asserts:
+      - isNotSubset:
+          path: spec.selector.matchLabels
+          content:
+              app.kubernetes.io/component: polaris
+      - isSubset:
+          path: spec.template.metadata.labels
+          content:
+            app.kubernetes.io/component: polaris
+
+  # spec.template.metadata.annotations
+  - it: should not set pod annotations by default
+    asserts:
+      - notExists:
+          path: spec.template.metadata.annotations
+  - it: should set pod annotations
+    set:
+      podAnnotations:
+        foo: bar
+    asserts:
+      - isSubset:
+          path: spec.template.metadata.annotations
+          content:
+            foo: bar
+
+  # spec.template.spec.initContainers
+  - it: should not set initContainers by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.initContainers
+  - it: should set initContainers if persistence is enabled
+    set:
+      persistenceConfigSecret: polaris-persistence-secret
+      polarisServerConfig:
+        metaStoreManager:
+          conf-file: /eclipselink-config/conf.jar!/persistence.xml
+      toolsImage:
+        repository: test-repo
+        pullPolicy: Always
+    asserts:
+      - exists:
+          path: spec.template.spec.initContainers
+      - contains:
+          path: spec.template.spec.initContainers
+          content:
+            name: init-config
+            image: test-repo:latest
+            imagePullPolicy: Always
+            command: [ "jar" ]
+            args: [ "-cf", "/eclipselink-config/conf.jar", "-C", "/secret", "persistence.xml" ]
+            volumeMounts:
+              - name: eclipselink-config-volume
+                mountPath: /eclipselink-config
+              - name: secret-volume
+                mountPath: /secret
+
+  # spec.template.spec.imagePullSecrets
+  - it: should not set imagePullSecrets by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.imagePullSecrets
+  - it: should set imagePullSecrets
+    set:
+      imagePullSecrets:
+        - test-secret
+    asserts:
+      - contains:
+          path: spec.template.spec.imagePullSecrets
+          content:
+            name: test-secret
+
+  # spec.template.spec.serviceAccountName
+  - it: should set default service account name
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: polaris-release
+  - it: should set service account name when serviceAccount.create is true
+    set:
+      serviceAccount:
+        create: true
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: polaris-release
+  - it: should set custom service account name when serviceAccount.create is true
+    set:
+      serviceAccount:
+        create: true
+        name: polaris-sa
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: polaris-sa
+  - it: should set service account name to default when serviceAccount.create is false
+    set:
+      serviceAccount:
+        create: false
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: default
+  - it: should set custom service account name when serviceAccount.create is false
+    set:
+      serviceAccount:
+        create: false
+        name: polaris-sa
+    asserts:
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: polaris-sa
+
+  # spec.template.spec.securityContext
+  - it: should not set securityContext by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.securityContext
+  - it: should set securityContext
+    set:
+      podSecurityContext:
+        runAsUser: 1000
+    asserts:
+      - isSubset:
+          path: spec.template.spec.securityContext
+          content:
+            runAsUser: 1000
+
+  # spec.template.spec.containers
+  - it: should set container name
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].name
+          value: polaris
+
+  # spec.template.spec.containers[0].securityContext
+  - it: should not set container securityContext by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].securityContext
+  - it: should set container securityContext
+    set:
+      securityContext:
+        runAsUser: 1000
+    asserts:
+      - isSubset:
+          path: spec.template.spec.containers[0].securityContext
+          content:
+            runAsUser: 1000
+
+  # spec.template.spec.containers[0].image
+  - it: should set container image
+    set:
+      image:
+        repository: test-repo
+        tag: test-tag
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: test-repo:test-tag
+  - it: should set container image with template
+    set:
+      image:
+        repository: test-repo-{{ .Chart.Version }}
+        tag: test-tag-{{ .Release.Name }}
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: test-repo-1.2.3:test-tag-polaris-release
+  - it: should set container image with chart version if no tag provided
+    set:
+      image:
+        repository: test-repo
+        tag: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: test-repo:1.2.3
+
+  # spec.template.spec.containers[0].imagePullPolicy
+  - it: should set container pull policy
+    set:
+      image:
+        pullPolicy: Always
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: Always
+
+  # spec.template.spec.containers[0].env
+  - it: should not set container env by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].env
+  - it: should set container env
+    set:
+      extraEnv:
+        - name: foo
+          value: bar
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: foo
+            value: bar
+
+  # spec.template.spec.containers[0].volumeMounts + spec.template.spec.volumes
+  - it: should not set persistence volumes by default
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.volumes
+          count: 1
+      - lengthEqual:
+          path: spec.template.spec.containers[0].volumeMounts
+          count: 1
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: config-volume
+            mountPath: /app/config/polaris-server.yml
+            subPath: polaris-server.yml
+  - it: should set persistence volumes if persistence is enabled
+    set:
+      persistenceConfigSecret: polaris-persistence-secret
+      polarisServerConfig:
+        metaStoreManager:
+          conf-file: /eclipselink-config/conf.jar!/persistence.xml
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.volumes
+          count: 3
+      - lengthEqual:
+          path: spec.template.spec.containers[0].volumeMounts
+          count: 2
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: eclipselink-config-volume
+            emptyDir: { }
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: secret-volume
+            secret:
+              secretName: polaris-persistence-secret
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: eclipselink-config-volume
+            mountPath: /eclipselink-config
+
+  # spec.template.spec.containers[0].ports
+  - it: should set container ports by default
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers[0].ports
+          count: 2
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: polaris-service
+            containerPort: 8181
+            protocol: TCP
+      - contains:
+          path: spec.template.spec.containers[0].ports
+          content:
+            name: polaris-metrics
+            containerPort: 8182
+            protocol: TCP
+
+  # spec.template.spec.containers[0].livenessProbe
+  - it: should set container livenessProbe by default
+    set:
+      livenessProbe:
+        initialDelaySeconds: 11
+        periodSeconds: 22
+        successThreshold: 33
+        failureThreshold: 44
+        timeoutSeconds: 55
+    asserts:
+      - isSubset:
+          path: spec.template.spec.containers[0].livenessProbe
+          content:
+            initialDelaySeconds: 11
+            periodSeconds: 22
+            successThreshold: 33
+            failureThreshold: 44
+            timeoutSeconds: 55
+
+  # spec.template.spec.containers[0].readinessProbe
+  - it: should set container readinessProbe by default
+    set:
+      readinessProbe:
+        initialDelaySeconds: 11
+        periodSeconds: 22
+        successThreshold: 33
+        failureThreshold: 44
+        timeoutSeconds: 55
+    asserts:
+      - isSubset:
+          path: spec.template.spec.containers[0].readinessProbe
+          content:
+            initialDelaySeconds: 11
+            periodSeconds: 22
+            successThreshold: 33
+            failureThreshold: 44
+            timeoutSeconds: 55
+
+  # spec.template.spec.containers[0].resources
+  - it: should not set container resources by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].resources
+  - it: should set container resources
+    set:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].resources
+          value:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+  # spec.template.spec.nodeSelector
+  - it: should not set nodeSelector by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.nodeSelector
+  - it: should set nodeSelector
+    set:
+      nodeSelector:
+        disktype: ssd
+    asserts:
+      - equal:
+          path: spec.template.spec.nodeSelector
+          value:
+            disktype: ssd
+
+  # spec.template.spec.affinity
+  - it: should not set affinity by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.affinity
+  - it: should set affinity
+    set:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: zone
+                    operator: In
+                    values:
+                      - zone1
+                      - zone2
+    asserts:
+      - equal:
+          path: spec.template.spec.affinity
+          value:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                  - matchExpressions:
+                      - key: zone
+                        operator: In
+                        values:
+                          - zone1
+                          - zone2
+
+  # spec.template.spec.tolerations
+  - it: should not set tolerations by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.tolerations
+  - it: should set tolerations
+    set:
+      tolerations:
+        - key: "key"
+          operator: "Equal"
+          value: "value"
+          effect: "NoSchedule"
+    asserts:
+      - equal:
+          path: spec.template.spec.tolerations
+          value:
+            - key: "key"
+              operator: "Equal"
+              value: "value"
+              effect: "NoSchedule"

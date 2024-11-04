@@ -88,7 +88,7 @@ metaStoreManager:
   # persistence-unit: polaris
 
 io:
-  factoryType: default
+  factoryType: wasb
 
 # TODO - avoid duplicating token broker config
 oauth2:
@@ -166,3 +166,7 @@ logging:
 
 # Limits the size of request bodies sent to Polaris. -1 means no limit.
 maxRequestBodyBytes: -1
+
+# Optional, not specifying a "rateLimiter" section also means no rate limiter
+rateLimiter:
+  type: no-op

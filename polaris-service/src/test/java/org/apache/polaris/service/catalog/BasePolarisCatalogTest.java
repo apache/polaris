@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.iceberg.types.Types.NestedField.required;
+import static org.apache.polaris.service.exception.IcebergExceptionMapper.*;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
@@ -84,6 +85,9 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.TestFileIOFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -358,6 +362,142 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     Assertions.assertThatThrownBy(() -> catalog.createNamespace(child1))
         .isInstanceOf(NoSuchNamespaceException.class)
         .hasMessageContaining("Parent");
+  }
+
+  @Test
+  public void testValidateNotificationWhenTableAndNamespacesDontExist() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    final String tableLocation = "s3://externally-owned-bucket/validate_table/";
+    final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
+    BasePolarisCatalog catalog = catalog();
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+
+    // For a VALIDATE request we can pass in a full metadata JSON filename or just the table's
+    // metadata directory; either way the path will be validated to be under the allowed locations,
+    // but any actual metadata JSON file will not be accessed.
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.VALIDATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(tableMetadataLocation);
+    update.setTableName(table.name());
+    update.setTableUuid(UUID.randomUUID().toString());
+    update.setTimestamp(230950845L);
+    request.setPayload(update);
+
+    // We should be able to send the notification without creating the metadata file since it's
+    // only validating the ability to send the CREATE/UPDATE notification possibly before actually
+    // creating the table at all on the remote catalog.
+    Assertions.assertThat(catalog.sendNotification(table, request))
+        .as("Notification should be sent successfully")
+        .isTrue();
+    Assertions.assertThat(catalog.namespaceExists(namespace))
+        .as("Intermediate namespaces should not be created")
+        .isFalse();
+    Assertions.assertThat(catalog.tableExists(table))
+        .as("Table should not be created for a VALIDATE notification")
+        .isFalse();
+
+    // Now also check that despite creating the metadata file, the validation call still doesn't
+    // create any namespaces or tables.
+    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    fileIO.addFile(
+        tableMetadataLocation,
+        TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
+
+    Assertions.assertThat(catalog.sendNotification(table, request))
+        .as("Notification should be sent successfully")
+        .isTrue();
+    Assertions.assertThat(catalog.namespaceExists(namespace))
+        .as("Intermediate namespaces should not be created")
+        .isFalse();
+    Assertions.assertThat(catalog.tableExists(table))
+        .as("Table should not be created for a VALIDATE notification")
+        .isFalse();
+  }
+
+  @Test
+  public void testValidateNotificationInDisallowedLocation() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    // The location of the metadata JSON file specified in the create will be forbidden.
+    // For a VALIDATE call we can pass in the metadata/ prefix itself instead of a metadata JSON
+    // filename.
+    final String tableLocation = "s3://forbidden-table-location/table/";
+    final String tableMetadataLocation = tableLocation + "metadata/";
+    BasePolarisCatalog catalog = catalog();
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.VALIDATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(tableMetadataLocation);
+    update.setTableName(table.name());
+    update.setTableUuid(UUID.randomUUID().toString());
+    update.setTimestamp(230950845L);
+    request.setPayload(update);
+
+    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Invalid location");
+  }
+
+  @Test
+  public void testValidateNotificationFailToCreateFileIO() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+    Assumptions.assumeTrue(
+        supportsNotifications(), "Only applicable if notifications are supported");
+
+    // The location of the metadata JSON file specified in the create will be allowed, but
+    // we'll inject a separate ForbiddenException during FileIO instantiation.
+    // For a VALIDATE call we can pass in the metadata/ prefix itself instead of a metadata JSON
+    // filename.
+    final String tableLocation = "s3://externally-owned-bucket/validate_table/";
+    final String tableMetadataLocation = tableLocation + "metadata/";
+    BasePolarisCatalog catalog = catalog();
+
+    Namespace namespace = Namespace.of("parent", "child1");
+    TableIdentifier table = TableIdentifier.of(namespace, "table");
+
+    NotificationRequest request = new NotificationRequest();
+    request.setNotificationType(NotificationType.VALIDATE);
+    TableUpdateNotification update = new TableUpdateNotification();
+    update.setMetadataLocation(tableMetadataLocation);
+    update.setTableName(table.name());
+    update.setTableUuid(UUID.randomUUID().toString());
+    update.setTimestamp(230950845L);
+    request.setPayload(update);
+
+    catalog.setFileIOFactory(
+        new FileIOFactory() {
+          @Override
+          public FileIO loadFileIO(String impl, Map<String, String> properties) {
+            throw new ForbiddenException("Fake failure applying downscoped credentials");
+          }
+        });
+    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
+        .isInstanceOf(ForbiddenException.class)
+        .hasMessageContaining("Fake failure applying downscoped credentials");
   }
 
   @Test
@@ -688,9 +828,15 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         metadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
-    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
-        .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("Invalid location");
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
+    if (!polarisCallContext
+        .getConfigurationStore()
+        .getConfiguration(polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+        .contains("FILE")) {
+      Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
+          .isInstanceOf(ForbiddenException.class)
+          .hasMessageContaining("Invalid location");
+    }
   }
 
   @Test
@@ -748,9 +894,15 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         metadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
-    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
-        .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("Invalid location");
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
+    if (!polarisCallContext
+        .getConfigurationStore()
+        .getConfiguration(polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+        .contains("FILE")) {
+      Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
+          .isInstanceOf(ForbiddenException.class)
+          .hasMessageContaining("Invalid location");
+    }
 
     // It also fails if we try to use https
     final String httpsMetadataLocation = "https://maliciousdomain.com/metadata.json";
@@ -764,9 +916,14 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         httpsMetadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
-    Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, newRequest))
-        .isInstanceOf(ForbiddenException.class)
-        .hasMessageContaining("Invalid location");
+    if (!polarisCallContext
+        .getConfigurationStore()
+        .getConfiguration(polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+        .contains("FILE")) {
+      Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, newRequest))
+          .isInstanceOf(ForbiddenException.class)
+          .hasMessageContaining("Invalid location");
+    }
   }
 
   @Test
@@ -1296,11 +1453,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
   @Test
   public void testRetriableException() {
-    RuntimeException s3Exception = new RuntimeException("Access Denied");
-    RuntimeException azureBlobStorageException =
-        new RuntimeException(
-            "This request is not authorized to perform this operation using this permission");
-    RuntimeException gcsException = new RuntimeException("Forbidden");
+    RuntimeException s3Exception = new RuntimeException(AWS_ACCESS_DENIED_HINT);
+    RuntimeException azureBlobStorageException = new RuntimeException(AZURE_ACCESS_DENIED_HINT);
+    RuntimeException gcsException = new RuntimeException(GCP_ACCESS_DENIED_HINT);
     RuntimeException otherException = new RuntimeException(new IOException("Connection reset"));
     Assertions.assertThat(BasePolarisCatalog.SHOULD_RETRY_REFRESH_PREDICATE.test(s3Exception))
         .isFalse();
@@ -1322,7 +1477,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         new PolarisPassthroughResolutionView(
             callContext, entityManager, authenticatedRoot, CATALOG_NAME);
 
-    MeasuredFileIOFactory measured = new MeasuredFileIOFactory();
+    TestFileIOFactory measured = new TestFileIOFactory();
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
             entityManager,

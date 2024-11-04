@@ -23,8 +23,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import java.net.URLDecoder;
-import java.nio.charset.Charset;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.hdfs.web.oauth2.OAuth2Constants;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
@@ -80,8 +78,8 @@ public class DefaultOAuth2ApiService implements OAuth2ApiService, HasEntityManag
       }
       LOGGER.debug("Found credentials in auth header - treating as client_credentials");
       String[] parts = credentials.split(":", 2);
-      clientId = URLDecoder.decode(parts[0], Charset.defaultCharset());
-      clientSecret = URLDecoder.decode(parts[1], Charset.defaultCharset());
+      clientId = parts[0];
+      clientSecret = parts[1];
     }
     TokenResponse tokenResponse =
         switch (subjectTokenType) {

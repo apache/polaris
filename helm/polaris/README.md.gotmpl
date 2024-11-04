@@ -1,0 +1,71 @@
+<!---
+  Licensed to the Apache Software Foundation (ASF) under one
+  or more contributor license agreements.  See the NOTICE file
+  distributed with this work for additional information
+  regarding copyright ownership.  The ASF licenses this file
+  to you under the Apache License, Version 2.0 (the
+  "License"); you may not use this file except in compliance
+  with the License.  You may obtain a copy of the License at
+ 
+   http://www.apache.org/licenses/LICENSE-2.0
+ 
+  Unless required by applicable law or agreed to in writing,
+  software distributed under the License is distributed on an
+  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  KIND, either express or implied.  See the License for the
+  specific language governing permissions and limitations
+  under the License.
+-->
+
+<!---
+  This README.md file was generated with:
+  https://github.com/norwoodj/helm-docs
+  Do not modify the README.md file directly, please modify README.md.gotmpl instead.
+  To re-generate the README.md file, install helm-docs then run from the repo root:
+  helm-docs --chart-search-root=helm
+-->
+
+# Polaris Helm chart
+
+{{ template "chart.deprecationWarning" . }}
+
+{{ template "chart.badgesSection" . }}
+
+{{ template "chart.description" . }}.
+
+{{ template "chart.homepageLine" . }}
+
+{{ template "chart.maintainersHeader" . }}
+
+{{- range .Maintainers }}
+* [{{ .Name }}]({{ if .Url }}{{ .Url }}{{ else }}https://github.com/{{ .Name }}{{ end }})
+{{- end }}
+
+{{ template "chart.sourcesSection" . }}
+
+{{ template "chart.requirementsSection" . }}
+
+## Installation
+
+### Optional
+
+When using a custom `persistence.xml`, a Kubernetes Secret must be created for `.persistenceConfigSecret`. Below is a sample command:
+```bash
+kubectl create secret generic polaris-secret -n polaris --from-file=persistence.xml
+```
+
+### From local directory (for development purposes)
+
+From Polaris repo root:
+
+```bash
+$ helm install polaris helm/polaris --namespace polaris --create-namespace
+```
+
+### Uninstalling the chart
+
+```bash
+$ helm uninstall --namespace polaris polaris
+```
+
+{{ template "chart.valuesSection" . }}
