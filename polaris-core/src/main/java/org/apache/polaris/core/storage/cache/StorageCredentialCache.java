@@ -98,7 +98,7 @@ public class StorageCredentialCache {
             PolarisConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
     var credentialDurationSeconds =
         PolarisConfiguration.loadConfig(PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
-    if (cacheDurationSeconds <= credentialDurationSeconds) {
+    if (cacheDurationSeconds >= credentialDurationSeconds) {
       throw new IllegalArgumentException(
           String.format(
               "%s should be less than %s",
