@@ -74,20 +74,20 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
     try (FileIO authorizedFileIO = fileIOSupplier.apply(task)) {
       if (cleanupTask.getManifestFileData() != null) {
         ManifestFile manifestFile = decodeManifestData(cleanupTask.getManifestFileData());
-        return manifestFileCleanUp(manifestFile, authorizedFileIO, tableId);
+        return cleanUpManifestFile(manifestFile, authorizedFileIO, tableId);
       } else if (cleanupTask.getContentFileBatch() != null) {
-        return contentFileCleanup(cleanupTask.getContentFileBatch(), authorizedFileIO, tableId);
+        return cleanUpContentFiles(cleanupTask.getContentFileBatch(), authorizedFileIO, tableId);
       } else {
         LOGGER
             .atWarn()
             .addKeyValue("tableId", tableId)
-            .log("Cleanup task scheduled, but no file inputs were found");
+            .log("Cleanup task scheduled, but input file doesn't exist");
         return true;
       }
     }
   }
 
-  private boolean manifestFileCleanUp(
+  private boolean cleanUpManifestFile(
       ManifestFile manifestFile, FileIO fileIO, TableIdentifier tableId) {
     // if the file doesn't exist, we assume that another task execution was successful, but
     // failed to drop the task entity. Log a warning and return success
@@ -134,7 +134,7 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
     }
   }
 
-  private boolean contentFileCleanup(
+  private boolean cleanUpContentFiles(
       List<String> contentFileBatch, FileIO fileIO, TableIdentifier tableId) {
     List<String> validFiles =
         contentFileBatch.stream().filter(file -> TaskUtils.exists(file, fileIO)).toList();

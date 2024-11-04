@@ -153,11 +153,11 @@ public class TableCleanupTaskHandler implements TaskHandler {
               .map(
                   fileBatch -> {
                     String taskName =
-                        cleanupTask.getName()
-                            + "_"
-                            + fileBatch.toString()
-                            + "_"
-                            + UUID.randomUUID();
+                        String.join(
+                            "_",
+                            cleanupTask.getName(),
+                            fileBatch.toString(),
+                            UUID.randomUUID().toString());
                     LOGGER
                         .atDebug()
                         .addKeyValue("taskName", taskName)
