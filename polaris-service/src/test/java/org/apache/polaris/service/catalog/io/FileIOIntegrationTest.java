@@ -56,6 +56,7 @@ import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
+import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,6 +68,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 /** Collection of File IO integration tests */
 @ExtendWith({
   DropwizardExtensionsSupport.class,
+  TestEnvironmentExtension.class,
   PolarisConnectionExtension.class,
   SnowmanCredentialsExtension.class
 })
