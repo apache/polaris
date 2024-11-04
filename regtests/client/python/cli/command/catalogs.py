@@ -57,6 +57,8 @@ class CatalogsCommand(Command):
     service_account: str
     catalog_name: str
     properties: Dict[str, StrictStr]
+    set_properties: Dict[str, StrictStr]
+    remove_properties: List[str]
 
     def validate(self):
         if self.catalogs_subcommand == Subcommands.CREATE:
@@ -176,21 +178,35 @@ class CatalogsCommand(Command):
                 print(catalog.to_json())
         elif self.catalogs_subcommand == Subcommands.UPDATE:
             catalog = api.get_catalog(self.catalog_name)
-            if self.default_base_location or self.properties:
+
+            if self.default_base_location or self.set_properties or self.remove_properties:
+                new_default_base_location = self.default_base_location or catalog.properties.default_base_location
+                new_additional_properties = catalog.properties.additional_properties or {}
+
+                # Add or update all entries specified in set_properties
+                if self.set_properties:
+                    new_additional_properties = {**new_additional_properties, **self.set_properties}
+
+                # Remove all keys specified in remove_properties
+                if self.remove_properties:
+                    for to_remove in self.remove_properties:
+                        new_additional_properties.pop(to_remove, None)
+
                 catalog.properties = CatalogProperties(
-                    default_base_location=self.default_base_location,
-                    additional_properties=self.properties
+                    default_base_location=new_default_base_location,
+                    additional_properties=new_additional_properties
                 )
-            request = UpdateCatalogRequest(
-                current_entity_version=catalog.entity_version,
-                catalog=catalog
-            )
             if (self._has_aws_storage_info() or self._has_azure_storage_info() or self._has_gcs_storage_info() or
                     self.allowed_locations or self.default_base_location):
                 request = UpdateCatalogRequest(
                     current_entity_version=catalog.entity_version,
-                    catalog=catalog,
+                    properties=catalog.properties.to_dict(),
                     storage_config_info=self._build_storage_config_info()
+                )
+            else:
+                request = UpdateCatalogRequest(
+                    current_entity_version=catalog.entity_version,
+                    properties=catalog.properties.to_dict()
                 )
 
             api.update_catalog(self.catalog_name, request)

@@ -22,12 +22,11 @@ import os
 import sys
 from json import JSONDecodeError
 
-from cli.constants import Arguments, CLIENT_ID_ENV, CLIENT_SECRET_ENV
+from cli.constants import Arguments, CLIENT_ID_ENV, CLIENT_SECRET_ENV, DEFAULT_HOSTNAME, DEFAULT_PORT
 from cli.options.option_tree import Argument
 from cli.options.parser import Parser
 from polaris.management import ApiClient, Configuration
 from polaris.management import PolarisDefaultApi
-
 
 class PolarisCli:
     """
@@ -36,9 +35,10 @@ class PolarisCli:
     available in the Python client API.
 
     Example usage:
-    * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} principals create example_user
-    * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} principal-roles create example_role
-    * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} catalog-roles list
+    * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} principals create example_user
+    * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} principal-roles create example_role
+    * ./polaris --client-id ${id} --client-secret ${secret} --host ${hostname} --port ${port} catalog-roles list
+    * ./polaris --client-id ${id} --client-secret ${secret} --base-url https://custom-polaris-domain.example.com/service-prefix catalogs list
     """
 
     # Can be enabled if the client is able to authenticate directly without first fetching a token
@@ -108,8 +108,20 @@ class PolarisCli:
                             f' Alternatively, you may set the environment variables {CLIENT_ID_ENV} &'
                             f' {CLIENT_SECRET_ENV}.')
         # Authenticate accordingly
-        polaris_management_url = f'http://{options.host}:{options.port}/api/management/v1'
-        polaris_catalog_url = f'http://{options.host}:{options.port}/api/catalog/v1'
+        if options.base_url:
+            if options.host is not None or options.port is not None:
+                raise Exception(f'Please provide either {Argument.to_flag_name(Arguments.BASE_URL)} or'
+                                f' {Argument.to_flag_name(Arguments.HOST)} &'
+                                f' {Argument.to_flag_name(Arguments.PORT)}, but not both');
+
+            polaris_management_url = f'{options.base_url}/api/management/v1'
+            polaris_catalog_url = f'{options.base_url}/api/catalog/v1'
+        else:
+            host = options.host or DEFAULT_HOSTNAME
+            port = options.port or DEFAULT_PORT
+            polaris_management_url = f'http://{host}:{port}/api/management/v1'
+            polaris_catalog_url = f'http://{host}:{port}/api/catalog/v1'
+
         builder = None
         if has_access_token:
             builder = lambda: ApiClient(

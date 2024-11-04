@@ -25,7 +25,6 @@ import com.google.common.base.Preconditions;
 import io.dropwizard.core.Configuration;
 import java.io.IOException;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -57,8 +56,8 @@ public class PolarisApplicationConfig extends Configuration {
   private DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> polarisAuthenticator;
   private CorsConfiguration corsConfiguration = new CorsConfiguration();
   private TaskHandlerConfiguration taskHandler = new TaskHandlerConfiguration();
-  private PolarisConfigurationStore configurationStore =
-      new DefaultConfigurationStore(new HashMap<>());
+  private Map<String, Object> globalFeatureConfiguration = Map.of();
+  private Map<String, Map<String, Object>> realmConfiguration = Map.of();
   private List<String> defaultRealms;
   private String awsAccessKey;
   private String awsSecretKey;
@@ -170,7 +169,12 @@ public class PolarisApplicationConfig extends Configuration {
 
   @JsonProperty("featureConfiguration")
   public void setFeatureConfiguration(Map<String, Object> featureConfiguration) {
-    this.configurationStore = new DefaultConfigurationStore(featureConfiguration);
+    this.globalFeatureConfiguration = featureConfiguration;
+  }
+
+  @JsonProperty("realmFeatureConfiguration")
+  public void setRealmFeatureConfiguration(Map<String, Map<String, Object>> realmConfiguration) {
+    this.realmConfiguration = realmConfiguration;
   }
 
   @JsonProperty("maxRequestBodyBytes")
@@ -190,7 +194,7 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   public PolarisConfigurationStore getConfigurationStore() {
-    return configurationStore;
+    return new DefaultConfigurationStore(globalFeatureConfiguration, realmConfiguration);
   }
 
   public List<String> getDefaultRealms() {
