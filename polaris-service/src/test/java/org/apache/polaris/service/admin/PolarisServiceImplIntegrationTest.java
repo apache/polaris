@@ -96,6 +96,7 @@ import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
+import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -104,7 +105,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
-@ExtendWith({DropwizardExtensionsSupport.class, PolarisConnectionExtension.class})
+@ExtendWith({
+  DropwizardExtensionsSupport.class,
+  TestEnvironmentExtension.class,
+  PolarisConnectionExtension.class
+})
 public class PolarisServiceImplIntegrationTest {
   private static final int MAX_IDENTIFIER_LENGTH = 256;
   private static final String ISSUER_KEY = "polaris";
