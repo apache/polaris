@@ -81,10 +81,11 @@ public class AwsCredentialsStorageIntegration
     credentialMap.put(
         PolarisCredentialProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
     credentialMap.put(PolarisCredentialProperty.AWS_TOKEN, response.credentials().sessionToken());
-    Optional.ofNullable(response.credentials().expiration()).ifPresent(i ->
-        credentialMap.put(
-            PolarisCredentialProperty.EXPIRATION_TIME,
-            String.valueOf(i.toEpochMilli())));
+    Optional.ofNullable(response.credentials().expiration())
+        .ifPresent(
+            i ->
+                credentialMap.put(
+                    PolarisCredentialProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli())));
     return credentialMap;
   }
 
