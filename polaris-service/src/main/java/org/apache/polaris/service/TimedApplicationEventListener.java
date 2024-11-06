@@ -19,6 +19,7 @@
 package org.apache.polaris.service;
 
 import com.google.common.base.Stopwatch;
+import io.micrometer.core.instrument.Tag;
 import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.ext.Provider;
@@ -37,6 +38,9 @@ import org.glassfish.jersey.server.monitoring.RequestEventListener;
  */
 @Provider
 public class TimedApplicationEventListener implements ApplicationEventListener {
+
+  private static final String METRIC_NAME = "polaris.TimedApi";
+  private static final String TAG_API_NAME = "API_NAME";
 
   // The PolarisMetricRegistry instance used for recording metrics and error counters.
   private final PolarisMetricRegistry polarisMetricRegistry;
@@ -73,6 +77,8 @@ public class TimedApplicationEventListener implements ApplicationEventListener {
           TimedApi timedApi = method.getAnnotation(TimedApi.class);
           metric = timedApi.value();
           polarisMetricRegistry.incrementCounter(metric, realmId);
+          polarisMetricRegistry.incrementCounter(
+              METRIC_NAME, realmId, Tag.of(TAG_API_NAME, metric));
         }
       } else if (event.getType() == RequestEvent.Type.RESOURCE_METHOD_START && metric != null) {
         sw = Stopwatch.createStarted();
@@ -83,6 +89,8 @@ public class TimedApplicationEventListener implements ApplicationEventListener {
         } else {
           int statusCode = event.getContainerResponse().getStatus();
           polarisMetricRegistry.incrementErrorCounter(metric, statusCode, realmId);
+          polarisMetricRegistry.incrementErrorCounter(
+              METRIC_NAME, realmId, Tag.of(TAG_API_NAME, metric));
         }
       }
     }

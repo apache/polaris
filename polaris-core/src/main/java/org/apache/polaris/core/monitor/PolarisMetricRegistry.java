@@ -20,6 +20,7 @@ package org.apache.polaris.core.monitor;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
@@ -27,6 +28,7 @@ import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
@@ -97,6 +99,10 @@ public class PolarisMetricRegistry {
     timerRealm.record(elapsedTimeMs, TimeUnit.MILLISECONDS);
   }
 
+  /**
+   * Increments metric.count and metric.count.realm. The realmId is tagged on the latter metric.
+   * Counters are cached.
+   */
   public void incrementCounter(String metric, String realmId) {
     String counterMetric = metric + SUFFIX_COUNTER;
     Counter counter =
@@ -114,6 +120,10 @@ public class PolarisMetricRegistry {
     counterRealm.increment();
   }
 
+  /**
+   * Increments metric.error and metric.error.realm. The realmId is tagged on the latter metric.
+   * Both metrics are tagged with the statusCode and counters are not cached.
+   */
   public void incrementErrorCounter(String metric, int statusCode, String realmId) {
     String errorMetric = metric + SUFFIX_ERROR;
     Counter.builder(errorMetric)
@@ -126,5 +136,49 @@ public class PolarisMetricRegistry {
         .tag(TAG_REALM, realmId)
         .register(meterRegistry)
         .increment();
+  }
+
+  /**
+   * Increments metric.count and metric.count.realm. The realmId is tagged on the latter metric.
+   * Arbitrary tags can be specified and counters are not cached.
+   */
+  public void incrementCounter(String metric, String realmId, Iterable<Tag> tags) {
+    Counter.builder(metric + SUFFIX_COUNTER).tags(tags).register(meterRegistry).increment();
+
+    Counter.builder(metric + SUFFIX_COUNTER + SUFFIX_REALM)
+        .tags(tags)
+        .tag(TAG_REALM, realmId)
+        .register(meterRegistry)
+        .increment();
+  }
+
+  /**
+   * Increments metric.count and metric.count.realm. The realmId is tagged on the latter metric.
+   * Arbitrary tags can be specified and counters are not cached.
+   */
+  public void incrementCounter(String metric, String realmId, Tag tag) {
+    incrementCounter(metric, realmId, Collections.singleton(tag));
+  }
+
+  /**
+   * Increments metric.error and metric.error.realm. The realmId is tagged on the latter metric.
+   * Arbitrary tags can be specified and counters are not cached.
+   */
+  public void incrementErrorCounter(String metric, String realmId, Iterable<Tag> tags) {
+    Counter.builder(metric + SUFFIX_ERROR).tags(tags).register(meterRegistry).increment();
+
+    Counter.builder(metric + SUFFIX_ERROR + SUFFIX_REALM)
+        .tags(tags)
+        .tag(TAG_REALM, realmId)
+        .register(meterRegistry)
+        .increment();
+  }
+
+  /**
+   * Increments metric.error and metric.error.realm. The realmId is tagged on the latter metric.
+   * Arbitrary tags can be specified and counters are not cached.
+   */
+  public void incrementErrorCounter(String metric, String realmId, Tag tag) {
+    incrementErrorCounter(metric, realmId, Collections.singleton(tag));
   }
 }
