@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.service.auth;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import java.util.Optional;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.config.HasMetaStoreManagerFactory;
 
+@Named("default")
 public class DefaultPolarisAuthenticator extends BasePolarisAuthenticator {
   private TokenBrokerFactory tokenBrokerFactory;
 
@@ -36,16 +36,7 @@ public class DefaultPolarisAuthenticator extends BasePolarisAuthenticator {
     return getPrincipal(decodedToken);
   }
 
-  @Override
-  public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
-    super.setMetaStoreManagerFactory(metaStoreManagerFactory);
-    if (tokenBrokerFactory instanceof HasMetaStoreManagerFactory) {
-      ((HasMetaStoreManagerFactory) tokenBrokerFactory)
-          .setMetaStoreManagerFactory(metaStoreManagerFactory);
-    }
-  }
-
-  @JsonProperty("tokenBroker")
+  @Inject
   public void setTokenBroker(TokenBrokerFactory tokenBrokerFactory) {
     this.tokenBrokerFactory = tokenBrokerFactory;
   }

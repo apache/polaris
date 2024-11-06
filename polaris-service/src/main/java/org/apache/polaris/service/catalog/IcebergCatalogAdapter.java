@@ -22,6 +22,7 @@ import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CRE
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.net.URLEncoder;
@@ -76,6 +77,7 @@ public class IcebergCatalogAdapter
   private final RealmEntityManagerFactory entityManagerFactory;
   private final PolarisAuthorizer polarisAuthorizer;
 
+  @Inject
   public IcebergCatalogAdapter(
       CallContextCatalogFactory catalogFactory,
       RealmEntityManagerFactory entityManagerFactory,

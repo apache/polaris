@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.auth;
 
+import jakarta.inject.Inject;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Optional;
@@ -53,7 +54,7 @@ public abstract class BasePolarisAuthenticator
 
   protected MetaStoreManagerFactory metaStoreManagerFactory;
 
-  @Override
+  @Inject
   public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
   }

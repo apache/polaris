@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.config;
 
+import jakarta.inject.Inject;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.context.RealmContext;
@@ -39,6 +40,7 @@ public class RealmEntityManagerFactory {
     this.metaStoreManagerFactory = null;
   }
 
+  @Inject
   public RealmEntityManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
   }

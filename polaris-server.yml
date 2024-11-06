@@ -93,17 +93,19 @@ io:
 # TODO - avoid duplicating token broker config
 oauth2:
   type: test
-#  type: default # - uncomment to support Auth0 JWT tokens
-#  tokenBroker:
-#    type: symmetric-key
-#    secret: polaris
 
 authenticator:
   class: org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator
+
+# - uncomment to support Auth0 JWT tokens
+#oauth2:
+#  type: default
+#authenticator:
 #  class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator # - uncomment to support Auth0 JWT tokens
-#  tokenBroker:
-#    type: symmetric-key
-#    secret: polaris
+#
+#tokenBroker:
+#  type: symmetric-key
+#  secret: polaris
 
 cors:
   allowed-origins:

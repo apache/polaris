@@ -22,11 +22,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.base.Preconditions;
+import io.dropwizard.auth.Authenticator;
 import io.dropwizard.core.Configuration;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
@@ -34,11 +36,15 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.auth.DiscoverableAuthenticator;
+import org.apache.polaris.service.auth.DecodedToken;
+import org.apache.polaris.service.auth.TokenBroker;
+import org.apache.polaris.service.auth.TokenBrokerFactory;
+import org.apache.polaris.service.auth.TokenResponse;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.context.CallContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
+import org.apache.polaris.service.types.TokenType;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -53,7 +59,7 @@ public class PolarisApplicationConfig extends Configuration {
   private String defaultRealm = "default-realm";
   private RealmContextResolver realmContextResolver;
   private CallContextResolver callContextResolver;
-  private DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> polarisAuthenticator;
+  private Authenticator<String, AuthenticatedPolarisPrincipal> polarisAuthenticator;
   private CorsConfiguration corsConfiguration = new CorsConfiguration();
   private TaskHandlerConfiguration taskHandler = new TaskHandlerConfiguration();
   private Map<String, Object> globalFeatureConfiguration = Map.of();
@@ -63,6 +69,7 @@ public class PolarisApplicationConfig extends Configuration {
   private String awsSecretKey;
   private FileIOFactory fileIOFactory;
   private RateLimiter rateLimiter;
+  private TokenBrokerFactory tokenBrokerFactory;
 
   private AccessToken gcpAccessToken;
 
@@ -91,13 +98,53 @@ public class PolarisApplicationConfig extends Configuration {
 
   @JsonProperty("authenticator")
   public void setPolarisAuthenticator(
-      DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> polarisAuthenticator) {
+      Authenticator<String, AuthenticatedPolarisPrincipal> polarisAuthenticator) {
     this.polarisAuthenticator = polarisAuthenticator;
   }
 
-  public DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal>
-      getPolarisAuthenticator() {
+  public Authenticator<String, AuthenticatedPolarisPrincipal> getPolarisAuthenticator() {
     return polarisAuthenticator;
+  }
+
+  @JsonProperty("tokenBroker")
+  public void setTokenBrokerFactory(TokenBrokerFactory tokenBrokerFactory) {
+    this.tokenBrokerFactory = tokenBrokerFactory;
+  }
+
+  public TokenBrokerFactory getTokenBrokerFactory() {
+    // return a no-op implementation if none is specified
+    return Objects.requireNonNullElseGet(
+        tokenBrokerFactory,
+        () ->
+            (rc) ->
+                new TokenBroker() {
+                  @Override
+                  public boolean supportsGrantType(String grantType) {
+                    return false;
+                  }
+
+                  @Override
+                  public boolean supportsRequestedTokenType(TokenType tokenType) {
+                    return false;
+                  }
+
+                  @Override
+                  public TokenResponse generateFromClientSecrets(
+                      String clientId, String clientSecret, String grantType, String scope) {
+                    return null;
+                  }
+
+                  @Override
+                  public TokenResponse generateFromToken(
+                      TokenType tokenType, String subjectToken, String grantType, String scope) {
+                    return null;
+                  }
+
+                  @Override
+                  public DecodedToken verify(String token) {
+                    return null;
+                  }
+                });
   }
 
   public RealmContextResolver getRealmContextResolver() {

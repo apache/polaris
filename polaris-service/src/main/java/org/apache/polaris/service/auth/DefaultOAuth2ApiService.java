@@ -20,7 +20,8 @@ package org.apache.polaris.service.auth;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import com.fasterxml.jackson.annotation.JsonTypeName;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.commons.codec.binary.Base64;
@@ -39,8 +40,8 @@ import org.slf4j.LoggerFactory;
  * Default implementation of the {@link OAuth2ApiService} that generates a JWT token for the client
  * if the client secret matches.
  */
-@JsonTypeName("default")
-public class DefaultOAuth2ApiService implements OAuth2ApiService, HasMetaStoreManagerFactory {
+@Named("default")
+public class DefaultOAuth2ApiService implements OAuth2ApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultOAuth2ApiService.class);
   private TokenBrokerFactory tokenBrokerFactory;
 
@@ -121,14 +122,14 @@ public class DefaultOAuth2ApiService implements OAuth2ApiService, HasMetaStoreMa
         .build();
   }
 
-  @Override
+  @Inject
   public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
     if (tokenBrokerFactory instanceof HasMetaStoreManagerFactory hemf) {
       hemf.setMetaStoreManagerFactory(metaStoreManagerFactory);
     }
   }
 
-  @Override
+  @Inject
   public void setTokenBroker(TokenBrokerFactory tokenBrokerFactory) {
     this.tokenBrokerFactory = tokenBrokerFactory;
   }

@@ -24,8 +24,6 @@ import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.monitor.PolarisMetricRegistry;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /**
@@ -40,10 +38,6 @@ public interface MetaStoreManagerFactory {
   Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(RealmContext realmContext);
 
   StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext);
-
-  void setStorageIntegrationProvider(PolarisStorageIntegrationProvider storageIntegrationProvider);
-
-  void setMetricRegistry(PolarisMetricRegistry metricRegistry);
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(List<String> realms);
 

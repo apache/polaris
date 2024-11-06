@@ -19,16 +19,16 @@
 package org.apache.polaris.service.auth;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.config.HasMetaStoreManagerFactory;
 
 @JsonTypeName("symmetric-key")
-public class JWTSymmetricKeyFactory implements TokenBrokerFactory, HasMetaStoreManagerFactory {
+public class JWTSymmetricKeyFactory implements TokenBrokerFactory {
   private MetaStoreManagerFactory metaStoreManagerFactory;
   private int maxTokenGenerationInSeconds = 3600;
   private String file;
@@ -68,7 +68,7 @@ public class JWTSymmetricKeyFactory implements TokenBrokerFactory, HasMetaStoreM
     this.secret = secret;
   }
 
-  @Override
+  @Inject
   public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
   }

@@ -68,6 +68,7 @@ dependencies {
   implementation(libs.swagger.annotations)
   implementation(libs.swagger.jaxrs)
   implementation(libs.jakarta.validation.api)
+  implementation("org.glassfish.hk2:hk2-api:3.0.6")
 
   implementation("org.apache.iceberg:iceberg-aws")
   implementation(platform(libs.awssdk.bom))

@@ -19,15 +19,13 @@
 package org.apache.polaris.service.context;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import io.dropwizard.jackson.Discoverable;
 import java.util.Map;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.config.HasMetaStoreManagerFactory;
 
 /** Uses the resolved RealmContext to further resolve elements of the CallContext. */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
-public interface CallContextResolver extends HasMetaStoreManagerFactory, Discoverable {
+public interface CallContextResolver {
   CallContext resolveCallContext(
       RealmContext realmContext,
       String method,
