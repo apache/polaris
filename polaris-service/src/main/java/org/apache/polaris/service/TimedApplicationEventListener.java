@@ -30,6 +30,7 @@ import org.glassfish.jersey.server.monitoring.ApplicationEvent;
 import org.glassfish.jersey.server.monitoring.ApplicationEventListener;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.glassfish.jersey.server.monitoring.RequestEventListener;
+import org.jetbrains.annotations.VisibleForTesting;
 
 /**
  * An ApplicationEventListener that supports timing and error counting of Jersey resource methods
@@ -39,14 +40,19 @@ import org.glassfish.jersey.server.monitoring.RequestEventListener;
 @Provider
 public class TimedApplicationEventListener implements ApplicationEventListener {
 
-  private static final String METRIC_NAME = "polaris.TimedApi";
-  private static final String TAG_API_NAME = "API_NAME";
+  public static final String METRIC_NAME = "polaris.TimedApi";
+  public static final String TAG_API_NAME = "API_NAME";
 
   // The PolarisMetricRegistry instance used for recording metrics and error counters.
   private final PolarisMetricRegistry polarisMetricRegistry;
 
   public TimedApplicationEventListener(PolarisMetricRegistry polarisMetricRegistry) {
     this.polarisMetricRegistry = polarisMetricRegistry;
+  }
+
+  @VisibleForTesting
+  public PolarisMetricRegistry getMetricRegistry() {
+    return polarisMetricRegistry;
   }
 
   @Override

@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.resource.TimedApi;
+import org.jetbrains.annotations.VisibleForTesting;
 
 /**
  * Wrapper around the Micrometer {@link MeterRegistry} providing additional metric management
@@ -46,8 +47,8 @@ public class PolarisMetricRegistry {
   private final ConcurrentMap<String, Counter> counters = new ConcurrentHashMap<>();
   private static final String TAG_REALM = "REALM_ID";
   private static final String TAG_RESP_CODE = "HTTP_RESPONSE_CODE";
-  private static final String SUFFIX_COUNTER = ".count";
-  private static final String SUFFIX_ERROR = ".error";
+  public static final String SUFFIX_COUNTER = ".count";
+  public static final String SUFFIX_ERROR = ".error";
   private static final String SUFFIX_REALM = ".realm";
 
   public PolarisMetricRegistry(MeterRegistry meterRegistry) {
@@ -61,6 +62,12 @@ public class PolarisMetricRegistry {
 
   public MeterRegistry getMeterRegistry() {
     return meterRegistry;
+  }
+
+  @VisibleForTesting
+  public void clear() {
+    meterRegistry.clear();
+    counters.clear();
   }
 
   public void init(Class<?>... classes) {
