@@ -811,6 +811,17 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         storageInfo.get());
   }
 
+  @Override
+  public Table loadTable(TableIdentifier identifier) {
+    // ####
+    boolean allowMetadata = callContext
+        .getPolarisCallContext()
+        .getConfigurationStore()
+        .getConfiguration(
+            callContext.getPolarisCallContext(),
+            PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+  }
+
   /**
    * Based on configuration settings, for callsites that need to handle potentially setting a new
    * base location for a TableLike entity, produces the transformed location if applicable, or else
