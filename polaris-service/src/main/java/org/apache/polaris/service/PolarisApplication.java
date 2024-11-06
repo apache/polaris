@@ -74,6 +74,7 @@ import org.apache.iceberg.rest.RESTSerializers;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.monitor.MetricRegistryAware;
@@ -224,7 +225,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     CallContextCatalogFactory catalogFactory =
         new PolarisCallContextCatalogFactory(entityManagerFactory, taskExecutor, fileIOFactory);
 
-    PolarisAuthorizer authorizer = new PolarisAuthorizer(configurationStore);
+    PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(configurationStore);
     IcebergCatalogAdapter catalogAdapter =
         new IcebergCatalogAdapter(catalogFactory, entityManagerFactory, authorizer);
     environment.jersey().register(new IcebergRestCatalogApi(catalogAdapter));

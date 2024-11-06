@@ -87,6 +87,7 @@ import org.apache.polaris.service.test.PolarisConnectionExtension.PolarisToken;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension.SnowmanCredentials;
+import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
@@ -104,6 +105,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 @ExtendWith({
   DropwizardExtensionsSupport.class,
+  TestEnvironmentExtension.class,
   PolarisConnectionExtension.class,
   SnowmanCredentialsExtension.class
 })
@@ -713,7 +715,9 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         Assertions.assertThatThrownBy(
                 () -> restCatalog.loadTable(TableIdentifier.of(ns1, "my_table")))
             .isInstanceOf(ForbiddenException.class)
-            .hasMessageContaining("Access Delegation is not supported for this catalog");
+            .hasMessageContaining("Access Delegation is not enabled for this catalog")
+            .hasMessageContaining(
+                PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
       }

@@ -45,13 +45,18 @@ import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
+import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-@ExtendWith({DropwizardExtensionsSupport.class, PolarisConnectionExtension.class})
+@ExtendWith({
+  DropwizardExtensionsSupport.class,
+  TestEnvironmentExtension.class,
+  PolarisConnectionExtension.class
+})
 public class PolarisOverlappingTableTest {
   private static final DropwizardAppExtension<PolarisApplicationConfig> BASE_EXT =
       new DropwizardAppExtension<>(
