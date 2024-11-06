@@ -29,11 +29,11 @@ import org.apache.polaris.service.config.PolarisApplicationConfig;
 
 /** Utils for working with metrics in tests */
 public class TestMetricsUtil {
-  public static final String SUFFIX_TOTAL = ".total";
+  private static final String SUFFIX_TOTAL = ".total";
 
-  /** Gets a counter by calling the Prometheus metrics endpoint */
+  /** Gets a total counter by calling the Prometheus metrics endpoint */
   public static double getTotalCounter(
-      DropwizardAppExtension<PolarisApplicationConfig> EXT,
+      DropwizardAppExtension<PolarisApplicationConfig> dropwizardAppExtension,
       String metricName,
       Collection<Tag> tags) {
 
@@ -47,8 +47,10 @@ public class TestMetricsUtil {
         tags.stream().map(tag -> String.format("%s=\"%s\"", tag.getKey(), tag.getValue())).toList();
 
     Response response =
-        EXT.client()
-            .target(String.format("http://localhost:%d/metrics", EXT.getAdminPort()))
+        dropwizardAppExtension
+            .client()
+            .target(
+                String.format("http://localhost:%d/metrics", dropwizardAppExtension.getAdminPort()))
             .request()
             .get();
     assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
