@@ -22,6 +22,7 @@ import java.net.URI;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisConfiguration;
@@ -80,9 +81,10 @@ public class AwsCredentialsStorageIntegration
     credentialMap.put(
         PolarisCredentialProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
     credentialMap.put(PolarisCredentialProperty.AWS_TOKEN, response.credentials().sessionToken());
-    credentialMap.put(
-        PolarisCredentialProperty.EXPIRATION_TIME,
-        String.valueOf(response.credentials().expiration().toEpochMilli()));
+    Optional.ofNullable(response.credentials().expiration()).ifPresent(i ->
+        credentialMap.put(
+            PolarisCredentialProperty.EXPIRATION_TIME,
+            String.valueOf(i.toEpochMilli())));
     return credentialMap;
   }
 
