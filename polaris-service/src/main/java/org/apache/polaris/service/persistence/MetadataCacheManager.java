@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.persistence;
 
+import java.util.Collection;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.iceberg.Table;
@@ -25,6 +26,7 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -112,21 +114,42 @@ public class MetadataCacheManager {
     } else {
       TableLikeEntity entity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
       String metadataLocation = entity.getMetadataLocation();
-      PolarisMetaStoreManager.EntityResult metadataEntityResult =
-          entityManager
-              .getMetaStoreManager()
-              .readEntityByName(
+      PolarisMetaStoreManager.ListEntitiesResult metadataResult = entityManager
+          .getMetaStoreManager()
+          .listEntities(
+              callContext,
+              PolarisEntity.toCoreList(resolvedEntities.getRawFullPath()),
+              PolarisEntityType.TABLE_METADATA,
+              PolarisEntitySubType.ANY_SUBTYPE
+          );
+      return Optional.ofNullable(metadataResult.getEntities())
+          .stream()
+          .flatMap(Collection::stream)
+          .flatMap(result -> {
+            PolarisMetaStoreManager.EntityResult metadataEntityResult =
+                entityManager.getMetaStoreManager()
+                    .loadEntity(callContext, result.getCatalogId(), result.getId());
+            return Optional.ofNullable(metadataEntityResult.getEntity())
+                .map(e -> (TableMetadataEntity) e)
+                .stream();
+          })
+          .filter(metadata -> {
+            if (metadata.getMetadataLocation().equals(metadataLocation)) {
+              return true;  // Keep this metadata as it's the one we're interested in
+            } else {
+              LOGGER.debug(String.format("Deleting old entry for %s", metadata.getMetadataLocation()));
+              entityManager.getMetaStoreManager().dropEntityIfExists(
                   callContext,
                   PolarisEntity.toCoreList(resolvedEntities.getRawFullPath()),
-                  PolarisEntityType.TABLE_METADATA,
-                  PolarisEntitySubType.ANY_SUBTYPE,
-                  metadataLocation);
-      return Optional.ofNullable(metadataEntityResult.getEntity())
-          .map(
-              metadataEntity -> {
-                TableMetadataEntity tableMetadataEntity = (TableMetadataEntity) metadataEntity;
-                return TableMetadataParser.fromJson(tableMetadataEntity.getContent());
-              });
+                  metadata,
+                  null,
+                  /*purge=*/ false
+              );
+              return false;
+            }
+          })
+          .findFirst()
+          .map(metadataEntity -> TableMetadataParser.fromJson(metadataEntity.getContent()));
     }
   }
 }
