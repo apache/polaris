@@ -98,9 +98,12 @@ class GcpStorageConfigInfo(StorageConfigInfo):
         if not isinstance(obj, dict):
             return cls.model_validate(obj)
 
+        # IMPORTANT: The following may require manual repair to add subtype-specific properties
+        # after using the OpenAPI Generator.
         _obj = cls.model_validate({
             "storageType": obj.get("storageType"),
-            "allowedLocations": obj.get("allowedLocations")
+            "allowedLocations": obj.get("allowedLocations"),
+            "gcsServiceAccount": obj.get("gcsServiceAccount")
         })
         return _obj
 
