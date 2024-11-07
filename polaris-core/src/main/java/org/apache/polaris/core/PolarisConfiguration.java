@@ -197,7 +197,7 @@ public class PolarisConfiguration<T> {
           .catalogConfig("drop-with-purge.enabled")
           .description(
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
-          .defaultValue(false)
+          .defaultValue(true)
           .build();
 
   public static final PolarisConfiguration<Boolean> METADATA_CACHE_ENABLED =
@@ -205,6 +205,6 @@ public class PolarisConfiguration<T> {
           .key("METADATA_CACHE_ENABLED")
           .description(
               "If set to true, support serving table metadata without reading the metadata.json file.")
-          .defaultValue(true)
+          .defaultValue(false)
           .build();
 }
