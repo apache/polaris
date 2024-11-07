@@ -155,8 +155,7 @@ public class ModelPrincipalSecrets {
         model.getSecondarySecret(),
         model.getSecretSalt(),
         model.getMainSecretHash(),
-        model.getSecondarySecretHash()
-    );
+        model.getSecondarySecretHash());
   }
 
   public void update(PolarisPrincipalSecrets principalSecrets) {

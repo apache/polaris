@@ -35,12 +35,10 @@
     <shared-cache-mode>NONE</shared-cache-mode>
     <properties>
       <property name="jakarta.persistence.jdbc.url"
-        value="jdbc:h2:file:./build/test_data/polaris/{realm}/db"/>
-      <property name="jakarta.persistence.jdbc.user" value="sa"/>
-      <property name="jakarta.persistence.jdbc.password" value=""/>
+        value="jdbc:postgresql://localhost:5432/db"/>
+      <property name="jakarta.persistence.jdbc.user" value="polaris"/>
+      <property name="jakarta.persistence.jdbc.password" value="test"/>
       <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
-      <property name="eclipselink.logging.level.sql" value="FINE"/>
-      <property name="eclipselink.logging.parameters" value="true"/>
       <property name="eclipselink.persistence-context.flush-mode" value="auto"/>
     </properties>
   </persistence-unit>

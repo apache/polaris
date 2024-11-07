@@ -20,9 +20,8 @@ package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.apache.commons.codec.digest.DigestUtils;
-
 import java.security.SecureRandom;
+import org.apache.commons.codec.digest.DigestUtils;
 
 /**
  * Simple class to represent the secrets used to authenticate a catalog principal, These secrets are
@@ -107,10 +106,7 @@ public class PolarisPrincipalSecrets {
   }
 
   public PolarisPrincipalSecrets(
-      long principalId,
-      String principalClientId,
-      String mainSecret,
-      String secondarySecret) {
+      long principalId, String principalClientId, String mainSecret, String secondarySecret) {
     this.principalId = principalId;
     this.principalClientId = principalClientId;
     this.mainSecret = mainSecret;
@@ -142,10 +138,7 @@ public class PolarisPrincipalSecrets {
     this.secondarySecretHash = hashSecret(secondarySecret);
   }
 
-  /**
-   * Rotate the main secrets
-   *
-   */
+  /** Rotate the main secrets */
   public void rotateSecrets() {
     this.secondarySecret = this.mainSecret;
     this.secondarySecretHash = this.mainSecretHash;
@@ -164,7 +157,8 @@ public class PolarisPrincipalSecrets {
 
   public boolean matchesSecret(String potentialSecret) {
     String potentialSecretHash = hashSecret(potentialSecret);
-    return potentialSecretHash.equals(this.mainSecretHash) || potentialSecretHash.equals(this.secondarySecretHash);
+    return potentialSecretHash.equals(this.mainSecretHash)
+        || potentialSecretHash.equals(this.secondarySecretHash);
   }
 
   public String getMainSecret() {
