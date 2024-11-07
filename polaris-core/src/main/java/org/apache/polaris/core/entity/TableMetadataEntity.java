@@ -47,7 +47,11 @@ public class TableMetadataEntity extends PolarisEntity {
 
     public static class Builder extends PolarisEntity.BaseBuilder<TableMetadataEntity, TableMetadataEntity.Builder> {
         public Builder(String metadataLocation, String content) {
-            this.internalProperties.put(CONTENT_KEY, content);
+            super();
+            setName(metadataLocation);
+            setType(PolarisEntityType.TABLE_METADATA);
+            setMetadataLocation(metadataLocation);
+            setContent(content);
         }
 
         @Override

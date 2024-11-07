@@ -100,7 +100,9 @@ public class MetadataCacheManager {
             TableLikeEntity tableEntity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
             TableMetadataEntity tableMetadataEntity =
                 new TableMetadataEntity.Builder(metadata.location(), TableMetadataParser.toJson(metadata))
+                    .setCatalogId(tableEntity.getCatalogId())
                     .setParentId(tableEntity.getId())
+                    .setId(entityManager.getMetaStoreManager().generateNewEntityId(callContext).getId())
                     .build();
             return entityManager
                 .getMetaStoreManager()
