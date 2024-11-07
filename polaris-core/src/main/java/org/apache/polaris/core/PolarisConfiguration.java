@@ -197,7 +197,7 @@ public class PolarisConfiguration<T> {
           .catalogConfig("drop-with-purge.enabled")
           .description(
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
-          .defaultValue(true)
+          .defaultValue(false)
           .build();
 
   public static final PolarisConfiguration<Boolean> METADATA_CACHE_ENABLED =
