@@ -819,7 +819,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             .getPolarisCallContext()
             .getConfigurationStore()
             .getConfiguration(
-                callContext.getPolarisCallContext(), PolarisConfiguration.USE_METADATA_CACHE);
+                callContext.getPolarisCallContext(), PolarisConfiguration.METADATA_CACHE_ENABLED);
     if (!useMetadataCache) {
       return loadTableMetadata(loadTable(identifier));
     } else {

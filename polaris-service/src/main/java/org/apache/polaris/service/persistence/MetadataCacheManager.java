@@ -90,6 +90,7 @@ public class MetadataCacheManager {
               .setCatalogId(tableEntity.getCatalogId())
               .setParentId(tableEntity.getId())
               .setId(entityManager.getMetaStoreManager().generateNewEntityId(callContext).getId())
+              .setCreateTimestamp(System.currentTimeMillis())
               .build();
       return entityManager
           .getMetaStoreManager()

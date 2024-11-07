@@ -192,9 +192,9 @@ public class PolarisConfiguration<T> {
           .defaultValue(true)
           .build();
 
-  public static final PolarisConfiguration<Boolean> USE_METADATA_CACHE =
+  public static final PolarisConfiguration<Boolean> METADATA_CACHE_ENABLED =
       PolarisConfiguration.<Boolean>builder()
-          .key("USE_METADATA_CACHE")
+          .key("METADATA_CACHE_ENABLED")
           .description(
               "If set to true, support serving table metadata without reading the metadata.json file.")
           .defaultValue(false)
