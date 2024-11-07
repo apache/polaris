@@ -602,6 +602,66 @@ public class PolarisServiceImplIntegrationTest {
   }
 
   @Test
+  public void testUpdateCatalogWithoutDefaultBaseLocationInUpdate() throws JsonProcessingException {
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .build();
+    String catalogName = "mycatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs", userToken)
+            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    // 200 successful GET after creation
+    Catalog fetchedCatalog = null;
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs/" + catalogName, userToken)
+            .get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      fetchedCatalog = response.readEntity(Catalog.class);
+
+      assertThat(fetchedCatalog.getName()).isEqualTo(catalogName);
+      assertThat(fetchedCatalog.getProperties().toMap())
+          .isEqualTo(Map.of("default-base-location", "s3://bucket/path/to/data"));
+      assertThat(fetchedCatalog.getEntityVersion()).isGreaterThan(0);
+    }
+
+    // Create an UpdateCatalogRequest that only sets a new property foo=bar but omits
+    // default-base-location.
+    UpdateCatalogRequest updateRequest =
+        new UpdateCatalogRequest(
+            fetchedCatalog.getEntityVersion(), Map.of("foo", "bar"), null /* storageConfigIno */);
+
+    // Successfully update
+    Catalog updatedCatalog = null;
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs/" + catalogName, userToken)
+            .put(Entity.json(updateRequest))) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      updatedCatalog = response.readEntity(Catalog.class);
+
+      assertThat(updatedCatalog.getName()).isEqualTo(catalogName);
+      // Check that default-base-location is preserved in addition to adding the new property
+      assertThat(updatedCatalog.getProperties().toMap())
+          .isEqualTo(Map.of("default-base-location", "s3://bucket/path/to/data", "foo", "bar"));
+      assertThat(updatedCatalog.getEntityVersion()).isGreaterThan(0);
+    }
+  }
+
+  @Test
   public void testUpdateCatalogWithDisallowedStorageConfig() throws JsonProcessingException {
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
