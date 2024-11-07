@@ -25,11 +25,13 @@ import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterators;
 import java.io.IOException;
 import java.time.Clock;
 import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -88,6 +90,7 @@ import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.TestFileIOFactory;
+import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -1449,9 +1452,11 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
   @Test
   public void testRetriableException() {
-    RuntimeException s3Exception = new RuntimeException(AWS_ACCESS_DENIED_HINT);
-    RuntimeException azureBlobStorageException = new RuntimeException(AZURE_ACCESS_DENIED_HINT);
-    RuntimeException gcsException = new RuntimeException(GCP_ACCESS_DENIED_HINT);
+    Iterator<String> accessDeniedHint =
+        Iterators.cycle(IcebergExceptionMapper.getAccessDeniedHints());
+    RuntimeException s3Exception = new RuntimeException(accessDeniedHint.next());
+    RuntimeException azureBlobStorageException = new RuntimeException(accessDeniedHint.next());
+    RuntimeException gcsException = new RuntimeException(accessDeniedHint.next());
     RuntimeException otherException = new RuntimeException(new IOException("Connection reset"));
     Assertions.assertThat(BasePolarisCatalog.SHOULD_RETRY_REFRESH_PREDICATE.test(s3Exception))
         .isFalse();
