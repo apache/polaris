@@ -19,16 +19,17 @@
 
 package publishing
 
+import java.io.ByteArrayOutputStream
+import java.nio.charset.StandardCharsets
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.java.archives.Attributes
 import org.gradle.kotlin.dsl.extra
-import java.io.ByteArrayOutputStream
-import java.nio.charset.StandardCharsets
 
 /**
- * Container to memoize Git information retrieved via `git` command executions across all Gradle projects.
- * Jar release artifacts get some attributes added to the jar manifest, which can be quite useful for released jars.
+ * Container to memoize Git information retrieved via `git` command executions across all Gradle
+ * projects. Jar release artifacts get some attributes added to the jar manifest, which can be quite
+ * useful for released jars.
  */
 internal class MemoizedGitInfo {
   companion object {
@@ -54,15 +55,16 @@ internal class MemoizedGitInfo {
       } else {
         val isRelease = rootProject.hasProperty("release")
         val gitHead = execProc(rootProject, "git", "rev-parse", "HEAD")
-        val gitDescribe = if (isRelease) {
+        val gitDescribe =
+          if (isRelease) {
             try {
               execProc(rootProject, "git", "describe", "--tags")
             } catch (e: Exception) {
               throw GradleException("'git describe --tags' failed - no Git tag?", e)
             }
-        } else {
+          } else {
             execProc(rootProject, "git", "describe", "--always", "--dirty")
-        }
+          }
         val timestamp = execProc(rootProject, "date", "+%Y-%m-%d-%H:%M:%S%:z")
         val system = execProc(rootProject, "uname", "-a")
         val javaVersion = System.getProperty("java.version")
