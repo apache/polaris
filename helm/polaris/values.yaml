@@ -257,7 +257,7 @@ polarisServerConfig:
 
     # The hostname of the interface to which the HTTP server socket wil be found. If omitted, the
     # socket will listen on all interfaces.
-    #bindHost: localhost
+    # bindHost: localhost
 
     #  ssl:
     #    keyStore: ./example.keystore
@@ -306,8 +306,10 @@ polarisServerConfig:
 
   metaStoreManager:
     type: in-memory
-    # type: eclipse-link # uncomment to use eclipse-link as metastore
+    # uncomment below to use eclipse-link as metastore
+    # type: eclipse-link
     # persistence-unit: polaris
+    # conf-file: /eclipselink-config/conf.jar!/persistence.xml
 
   io:
     factoryType: default

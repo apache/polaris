@@ -52,11 +52,11 @@ public class GcpStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     return "org.apache.iceberg.gcp.gcs.GCSFileIO";
   }
 
-  public void setGcpServiceAccount(String gcpServiceAccount) {
+  public void setGcpServiceAccount(@Nullable String gcpServiceAccount) {
     this.gcpServiceAccount = gcpServiceAccount;
   }
 
-  public String getGcpServiceAccount() {
+  public @Nullable String getGcpServiceAccount() {
     return gcpServiceAccount;
   }
 

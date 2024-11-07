@@ -20,17 +20,18 @@ package org.apache.polaris.core.storage.azure;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.polaris.core.storage.StorageLocation;
 import org.jetbrains.annotations.NotNull;
 
 /** This class represents all information for a azure location */
-public class AzureLocation {
-  /** The pattern only allows abfs[s] now because the ResovlingFileIO only accept ADLSFileIO */
-  private static final Pattern URI_PATTERN = Pattern.compile("^abfss?://([^/?#]+)(.*)?$");
+public class AzureLocation extends StorageLocation {
+  private static final Pattern URI_PATTERN = Pattern.compile("^(abfss?|wasbs?)://([^/?#]+)(.*)?$");
 
   public static final String ADLS_ENDPOINT = "dfs.core.windows.net";
 
   public static final String BLOB_ENDPOINT = "blob.core.windows.net";
 
+  private final String scheme;
   private final String storageAccount;
   private final String container;
 
@@ -40,16 +41,19 @@ public class AzureLocation {
   /**
    * Construct an Azure location object from a location uri, it should follow this pattern:
    *
-   * <p>{@code abfs[s]://[<container>@]<storage account host>/<file path>}
+   * <p>{@code (abfs|wasb)[s]://[<container>@]<storage account host>/<file path>}
    *
    * @param location a uri
    */
   public AzureLocation(@NotNull String location) {
+    super(location);
+
     Matcher matcher = URI_PATTERN.matcher(location);
     if (!matcher.matches()) {
-      throw new IllegalArgumentException("Invalid azure adls location uri " + location);
+      throw new IllegalArgumentException("Invalid azure location uri " + location);
     }
-    String authority = matcher.group(1);
+    this.scheme = matcher.group(1);
+    String authority = matcher.group(2);
     // look for <container>@<storage account host>
     String[] parts = authority.split("@", -1);
 
@@ -65,7 +69,7 @@ public class AzureLocation {
     }
     this.storageAccount = hostParts[0];
     this.endpoint = hostParts[1];
-    String path = matcher.group(2);
+    String path = matcher.group(3);
     filePath = path == null ? "" : path.startsWith("/") ? path.substring(1) : path;
   }
 
@@ -87,5 +91,39 @@ public class AzureLocation {
   /** Get the file path */
   public String getFilePath() {
     return filePath;
+  }
+
+  /** Get the scheme */
+  public String getScheme() {
+    return scheme;
+  }
+
+  /**
+   * Returns true if the object this StorageLocation refers to is a child of the object referred to
+   * by the other StorageLocation.
+   */
+  @Override
+  public boolean isChildOf(@NotNull StorageLocation potentialParent) {
+    if (potentialParent instanceof AzureLocation) {
+      AzureLocation potentialAzureParent = (AzureLocation) potentialParent;
+      if (this.container.equals(potentialAzureParent.container)) {
+        if (this.storageAccount.equals(potentialAzureParent.storageAccount)) {
+          String formattedFilePath = ensureLeadingSlash(ensureTrailingSlash(this.filePath));
+          String formattedParentFilePath =
+              ensureLeadingSlash(ensureTrailingSlash(potentialAzureParent.filePath));
+          return formattedFilePath.startsWith(formattedParentFilePath);
+        }
+      }
+    }
+    return false;
+  }
+
+  /** Return true if the input location appears to be an Azure path */
+  public static boolean isAzureLocation(String location) {
+    if (location == null) {
+      return false;
+    }
+    Matcher matcher = URI_PATTERN.matcher(location);
+    return matcher.matches();
   }
 }

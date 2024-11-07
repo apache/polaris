@@ -71,6 +71,7 @@ import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisConfiguration;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -212,7 +213,7 @@ public class PolarisCatalogHandlerWrapper {
     }
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
         null /* secondary */);
@@ -245,7 +246,7 @@ public class PolarisCatalogHandlerWrapper {
     }
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
         null /* secondary */);
@@ -282,7 +283,7 @@ public class PolarisCatalogHandlerWrapper {
     }
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
         null /* secondary */);
@@ -314,7 +315,7 @@ public class PolarisCatalogHandlerWrapper {
     }
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
         null /* secondary */);
@@ -367,7 +368,7 @@ public class PolarisCatalogHandlerWrapper {
             .toList();
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         targets,
         null /* secondaries */);
@@ -427,7 +428,7 @@ public class PolarisCatalogHandlerWrapper {
         resolutionManifest.getResolvedPath(dst.namespace(), true);
     authorizer.authorizeOrThrow(
         authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoleIds(),
+        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
         target,
         secondary);
@@ -825,6 +826,27 @@ public class PolarisCatalogHandlerWrapper {
       actionsRequested.add(PolarisStorageActions.WRITE);
     } catch (ForbiddenException e) {
       authorizeBasicTableLikeOperationOrThrow(read, PolarisEntitySubType.TABLE, tableIdentifier);
+    }
+
+    PolarisResolvedPathWrapper catalogPath = resolutionManifest.getResolvedReferenceCatalogEntity();
+    callContext
+        .getPolarisCallContext()
+        .getDiagServices()
+        .checkNotNull(catalogPath, "No catalog available for loadTable request");
+    CatalogEntity catalogEntity = CatalogEntity.of(catalogPath.getRawLeafEntity());
+    PolarisConfigurationStore configurationStore =
+        callContext.getPolarisCallContext().getConfigurationStore();
+    if (catalogEntity
+            .getCatalogType()
+            .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
+        && !configurationStore.getConfiguration(
+            callContext.getPolarisCallContext(),
+            catalogEntity,
+            PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING)) {
+      throw new ForbiddenException(
+          "Access Delegation is not enabled for this catalog. Please consult applicable "
+              + "documentation for the catalog config property '%s' to enable this feature",
+          PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
 
     // TODO: Find a way for the configuration or caller to better express whether to fail or omit

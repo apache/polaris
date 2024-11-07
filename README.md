@@ -28,16 +28,13 @@ Documentation is available at https://polaris.apache.org, including
 [Polaris management API doc](https://polaris.apache.org/index.html#tag/polaris-management-service_other)
 and [Apache Iceberg REST API doc](https://polaris.apache.org/index.html#tag/Configuration-API).
 
+[Subscribe to the dev mailing list][dev-list-subscribe] to join discussions via email or browse [the archives](https://lists.apache.org/list.html?dev@polaris.apache.org). Check out the [CONTRIBUTING guide](CONTRIBUTING.md)
+for contribution guidelines.
+
 [![Zulip](https://img.shields.io/badge/Zulip-Chat-blue?color=3d4db3&logo=zulip&style=for-the-badge&logoColor=white)](https://polaris-catalog.zulipchat.com/)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/apache/polaris/gradle.yml?branch=main&label=Main%20CI&logo=Github&style=for-the-badge)](https://github.com/apache/polaris/actions/workflows/gradle.yml?query=branch%3Amain)
 
-## Community
-
-Join us on the [Apache Polaris public chat](https://polaris-catalog.zulipchat.com/) (no invite needed).
-
-## Development
-
-See [CONTRIBUTING](CONTRIBUTING.md) for contribution requirements.
+[dev-list-subscribe]: mailto:dev-subscribe@polaris.apache.org
 
 ## Building and Running 
 
@@ -90,11 +87,12 @@ Running regression tests
 - `docker compose up --build --exit-code-from regtest` - To run regression tests in a Docker environment.
 
 Building docs
-- Docs are generated using [Redocly](https://redocly.com/docs/cli/installation). To regenerate them, run the following
-commands from the project root directory.
-```bash
-docs/build
-```
+- Docs are generated using [Hugo](https://gohugo.io/) using the [Docsy](https://www.docsy.dev/docs/) theme.
+- To view the site locally, run
+  ```bash
+  site/bin/run-hugo-in-docker.sh
+  ```
+- See [README in `site/`](site/README.md) for more information.
 
 ## License
 

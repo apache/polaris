@@ -19,13 +19,20 @@
 package org.apache.polaris.service.admin;
 
 import static io.dropwizard.jackson.Jackson.newObjectMapper;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTCreator;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
@@ -34,14 +41,26 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.rest.RESTUtil;
+import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.iceberg.rest.responses.ListNamespacesResponse;
+import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.admin.model.CatalogGrant;
+import org.apache.polaris.core.admin.model.CatalogPrivilege;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CatalogRole;
 import org.apache.polaris.core.admin.model.CatalogRoles;
@@ -52,7 +71,12 @@ import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GrantCatalogRoleRequest;
+import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
+import org.apache.polaris.core.admin.model.GrantResource;
+import org.apache.polaris.core.admin.model.NamespaceGrant;
+import org.apache.polaris.core.admin.model.NamespacePrivilege;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
@@ -67,19 +91,32 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.PolarisApplication;
+import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
+import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 
-@ExtendWith({DropwizardExtensionsSupport.class, PolarisConnectionExtension.class})
+@ExtendWith({
+  DropwizardExtensionsSupport.class,
+  TestEnvironmentExtension.class,
+  PolarisConnectionExtension.class
+})
 public class PolarisServiceImplIntegrationTest {
   private static final int MAX_IDENTIFIER_LENGTH = 256;
+  private static final String ISSUER_KEY = "polaris";
+  private static final String CLAIM_KEY_ACTIVE = "active";
+  private static final String CLAIM_KEY_CLIENT_ID = "client_id";
+  private static final String CLAIM_KEY_PRINCIPAL_ID = "principalId";
+  private static final String CLAIM_KEY_SCOPE = "scope";
 
   // TODO: Add a test-only hook that fully clobbers all persistence state so we can have a fresh
   // slate on every test case; otherwise, leftover state from one test from failures will interfere
@@ -95,9 +132,12 @@ public class PolarisServiceImplIntegrationTest {
 
           // disallow FILE urls for the sake of tests below
           ConfigOverride.config(
-              "featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES", "S3,GCS,AZURE"));
+              "featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES", "S3,GCS,AZURE"),
+          ConfigOverride.config("gcp_credentials.access_token", "abc"),
+          ConfigOverride.config("gcp_credentials.expires_in", "12345"));
   private static String userToken;
   private static String realm;
+  private static String clientId;
 
   @BeforeAll
   public static void setup(
@@ -105,6 +145,12 @@ public class PolarisServiceImplIntegrationTest {
       throws IOException {
     userToken = adminToken.token();
     realm = polarisRealm;
+
+    Base64.Decoder decoder = Base64.getUrlDecoder();
+    String[] chunks = adminToken.token().split("\\.");
+    String payload = new String(decoder.decode(chunks[1]), UTF_8);
+    JsonElement jsonElement = JsonParser.parseString(payload);
+    clientId = String.valueOf(((JsonObject) jsonElement).get("client_id"));
 
     // Set up test location
     PolarisConnectionExtension.createTestDir(realm);
@@ -117,10 +163,79 @@ public class PolarisServiceImplIntegrationTest {
           .readEntity(Catalogs.class)
           .getCatalogs()
           .forEach(
-              catalog ->
-                  newRequest("http://localhost:%d/api/management/v1/catalogs/" + catalog.getName())
-                      .delete()
-                      .close());
+              catalog -> {
+                // clean up the catalog before we try to drop it
+
+                // delete all the namespaces
+                try (Response res =
+                    newRequest(
+                            "http://localhost:%d/api/catalog/v1/"
+                                + catalog.getName()
+                                + "/namespaces")
+                        .get()) {
+                  if (res.getStatus() != Response.Status.OK.getStatusCode()) {
+                    LoggerFactory.getLogger(getClass())
+                        .warn(
+                            "Unable to list namespaces in catalog {}: {}",
+                            catalog.getName(),
+                            res.readEntity(String.class));
+                  } else {
+                    res.readEntity(ListNamespacesResponse.class)
+                        .namespaces()
+                        .forEach(
+                            namespace -> {
+                              newRequest(
+                                      "http://localhost:%d/api/catalog/v1/"
+                                          + catalog.getName()
+                                          + "/namespaces/"
+                                          + RESTUtil.encodeNamespace(namespace))
+                                  .delete()
+                                  .close();
+                            });
+                  }
+                }
+
+                // delete all the catalog roles except catalog_admin
+                try (Response res =
+                    newRequest(
+                            "http://localhost:%d/api/management/v1/catalogs/"
+                                + catalog.getName()
+                                + "/catalog-roles")
+                        .get()) {
+                  if (res.getStatus() != Response.Status.OK.getStatusCode()) {
+                    LoggerFactory.getLogger(getClass())
+                        .warn(
+                            "Unable to list catalog roles for catalog {}: {}",
+                            catalog.getName(),
+                            res.readEntity(String.class));
+                    return;
+                  }
+                  res.readEntity(CatalogRoles.class).getRoles().stream()
+                      .filter(cr -> !cr.getName().equals("catalog_admin"))
+                      .forEach(
+                          cr ->
+                              newRequest(
+                                      "http://localhost:%d/api/management/v1/catalogs/"
+                                          + catalog.getName()
+                                          + "/catalog-roles/"
+                                          + cr.getName())
+                                  .delete()
+                                  .close());
+                }
+
+                Response deleteResponse =
+                    newRequest(
+                            "http://localhost:%d/api/management/v1/catalogs/" + catalog.getName())
+                        .delete();
+                if (deleteResponse.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
+                  LoggerFactory.getLogger(getClass())
+                      .warn(
+                          "Unable to delete catalog {}: {}",
+                          catalog.getName(),
+                          deleteResponse.readEntity(String.class));
+                }
+                deleteResponse.close();
+              });
     }
     try (Response response = newRequest("http://localhost:%d/api/management/v1/principals").get()) {
       response.readEntity(Principals.class).getPrincipals().stream()
@@ -184,7 +299,7 @@ public class PolarisServiceImplIntegrationTest {
   public void testListCatalogs() {
     try (Response response = newRequest("http://localhost:%d/api/management/v1/catalogs").get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(Catalogs.class))
           .returns(
               List.of(),
@@ -202,7 +317,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals")
             .post(Entity.json(principal))) {
-      assertThat(response).returns(201, Response::getStatus);
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
       PrincipalWithCredentials creds = response.readEntity(PrincipalWithCredentials.class);
       newToken =
           TokenUtils.getTokenFromSecrets(
@@ -213,8 +328,8 @@ public class PolarisServiceImplIntegrationTest {
               realm);
     }
     try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs", "BEARER " + newToken).get()) {
-      assertThat(response).returns(403, Response::getStatus);
+        newRequest("http://localhost:%d/api/management/v1/catalogs", newToken).get()) {
+      assertThat(response).returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -231,7 +346,7 @@ public class PolarisServiceImplIntegrationTest {
     // 204 Successful delete
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/my-catalog").delete()) {
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -299,6 +414,73 @@ public class PolarisServiceImplIntegrationTest {
   }
 
   @Test
+  public void testCreateCatalogWithAzureStorageConfig() {
+    AzureStorageConfigInfo azureConfigInfo =
+        AzureStorageConfigInfo.builder()
+            .setConsentUrl("https://consent.url")
+            .setMultiTenantAppName("myappname")
+            .setTenantId("tenantId")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+            .build();
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("my-catalog")
+            .setProperties(
+                new CatalogProperties(
+                    "abfss://polaris@polarisdev.dfs.core.windows.net/path/to/my/data/"))
+            .setStorageConfigInfo(azureConfigInfo)
+            .build();
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs")
+            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs/my-catalog").get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog catResponse = response.readEntity(Catalog.class);
+      assertThat(catResponse.getStorageConfigInfo())
+          .isInstanceOf(AzureStorageConfigInfo.class)
+          .hasFieldOrPropertyWithValue("consentUrl", "https://consent.url")
+          .hasFieldOrPropertyWithValue("multiTenantAppName", "myappname")
+          .hasFieldOrPropertyWithValue(
+              "allowedLocations",
+              List.of("abfss://polaris@polarisdev.dfs.core.windows.net/path/to/my/data/"));
+    }
+  }
+
+  @Test
+  public void testCreateCatalogWithGcpStorageConfig() {
+    GcpStorageConfigInfo gcpConfigModel =
+        GcpStorageConfigInfo.builder()
+            .setGcsServiceAccount("my-sa")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+            .build();
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName("my-catalog")
+            .setProperties(new CatalogProperties("gs://my-bucket/path/to/data"))
+            .setStorageConfigInfo(gcpConfigModel)
+            .build();
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs")
+            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs/my-catalog").get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog catResponse = response.readEntity(Catalog.class);
+      assertThat(catResponse.getStorageConfigInfo())
+          .isInstanceOf(GcpStorageConfigInfo.class)
+          .hasFieldOrPropertyWithValue("gcsServiceAccount", "my-sa")
+          .hasFieldOrPropertyWithValue("allowedLocations", List.of("gs://my-bucket/path/to/data"));
+    }
+  }
+
+  @Test
   public void testCreateCatalogWithNullBaseLocation() {
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
@@ -345,7 +527,7 @@ public class PolarisServiceImplIntegrationTest {
     requestNode.set("catalog", catalogNode);
 
     try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs", "Bearer " + userToken)
+        newRequest("http://localhost:%d/api/management/v1/catalogs", userToken)
             .post(Entity.json(requestNode))) {
       assertThat(response)
           .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
@@ -363,7 +545,7 @@ public class PolarisServiceImplIntegrationTest {
     String catalogString =
         "{\"catalog\": {\"type\":\"INTERNAL\",\"name\":\"my-catalog\",\"properties\":{\"default-base-location\":\"s3://my-bucket/path/to/data\"}}}";
     try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs", "Bearer " + userToken)
+        newRequest("http://localhost:%d/api/management/v1/catalogs", userToken)
             .post(Entity.json(catalogString))) {
       assertThat(response)
           .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
@@ -380,7 +562,7 @@ public class PolarisServiceImplIntegrationTest {
   public void testCreateCatalogWithUnparsableJson() throws JsonProcessingException {
     String catalogString = "{\"catalog\": {{\"bad data}";
     try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs", "Bearer " + userToken)
+        newRequest("http://localhost:%d/api/management/v1/catalogs", userToken)
             .post(Entity.json(catalogString))) {
       assertThat(response)
           .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
@@ -408,7 +590,7 @@ public class PolarisServiceImplIntegrationTest {
             .setStorageConfigInfo(fileStorage)
             .build();
     try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs", "Bearer " + userToken)
+        newRequest("http://localhost:%d/api/management/v1/catalogs", userToken)
             .post(Entity.json(new CreateCatalogRequest(catalog)))) {
       assertThat(response)
           .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
@@ -438,7 +620,7 @@ public class PolarisServiceImplIntegrationTest {
             .setStorageConfigInfo(awsConfigModel)
             .build();
     try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs", "Bearer " + userToken)
+        newRequest("http://localhost:%d/api/management/v1/catalogs", userToken)
             .post(Entity.json(new CreateCatalogRequest(catalog)))) {
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
@@ -446,11 +628,9 @@ public class PolarisServiceImplIntegrationTest {
     // 200 successful GET after creation
     Catalog fetchedCatalog = null;
     try (Response response =
-        newRequest(
-                "http://localhost:%d/api/management/v1/catalogs/" + catalogName,
-                "Bearer " + userToken)
+        newRequest("http://localhost:%d/api/management/v1/catalogs/" + catalogName, userToken)
             .get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = response.readEntity(Catalog.class);
 
       assertThat(fetchedCatalog.getName()).isEqualTo(catalogName);
@@ -471,9 +651,7 @@ public class PolarisServiceImplIntegrationTest {
 
     // failure to update
     try (Response response =
-        newRequest(
-                "http://localhost:%d/api/management/v1/catalogs/" + catalogName,
-                "Bearer " + userToken)
+        newRequest("http://localhost:%d/api/management/v1/catalogs/" + catalogName, userToken)
             .put(Entity.json(updateRequest))) {
       assertThat(response)
           .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
@@ -503,11 +681,7 @@ public class PolarisServiceImplIntegrationTest {
             .setProperties(new CatalogProperties("s3://my-bucket/path/to/data"))
             .setStorageConfigInfo(awsConfigModel)
             .build();
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs")
-            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    createCatalog(catalog);
 
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/" + catalogName).get()) {
@@ -528,7 +702,7 @@ public class PolarisServiceImplIntegrationTest {
     // 204 Successful delete
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/" + catalogName).delete()) {
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -584,17 +758,13 @@ public class PolarisServiceImplIntegrationTest {
             .build();
 
     // 200 Successful create
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs")
-            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    createCatalog(catalog);
 
     // 200 successful GET after creation
     Catalog fetchedCatalog = null;
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/myazurecatalog").get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = response.readEntity(Catalog.class);
 
       assertThat(fetchedCatalog.getName()).isEqualTo("myazurecatalog");
@@ -634,7 +804,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/myazurecatalog")
             .put(Entity.json(updateRequest))) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = response.readEntity(Catalog.class);
 
       assertThat(fetchedCatalog.getProperties().toMap())
@@ -645,7 +815,7 @@ public class PolarisServiceImplIntegrationTest {
     // 204 Successful delete
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/myazurecatalog").delete()) {
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -662,11 +832,7 @@ public class PolarisServiceImplIntegrationTest {
             .setProperties(new CatalogProperties("s3://bucket1/"))
             .build();
 
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs")
-            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    createCatalog(catalog);
 
     // Second attempt to create the same entity should fail with CONFLICT.
     try (Response response =
@@ -679,7 +845,7 @@ public class PolarisServiceImplIntegrationTest {
     Catalog fetchedCatalog = null;
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog").get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = response.readEntity(Catalog.class);
 
       assertThat(fetchedCatalog.getName()).isEqualTo("mycatalog");
@@ -691,7 +857,7 @@ public class PolarisServiceImplIntegrationTest {
     // Should list the catalog.
     try (Response response = newRequest("http://localhost:%d/api/management/v1/catalogs").get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(Catalogs.class))
           .extracting(Catalogs::getCatalogs)
           .asInstanceOf(InstanceOfAssertFactories.list(Catalog.class))
@@ -731,7 +897,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog")
             .put(Entity.json(updateRequest))) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = response.readEntity(Catalog.class);
 
       assertThat(fetchedCatalog.getProperties().toMap())
@@ -741,7 +907,7 @@ public class PolarisServiceImplIntegrationTest {
     // 200 GET after update should show new properties
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog").get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = response.readEntity(Catalog.class);
 
       assertThat(fetchedCatalog.getProperties().toMap())
@@ -751,19 +917,19 @@ public class PolarisServiceImplIntegrationTest {
     // 204 Successful delete
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog").delete()) {
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // NOT_FOUND after deletion
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog").get()) {
-      assertThat(response).returns(404, Response::getStatus);
+      assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
     }
 
     // Empty list
     try (Response response = newRequest("http://localhost:%d/api/management/v1/catalogs").get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(Catalogs.class))
           .returns(
               List.of(),
@@ -778,12 +944,12 @@ public class PolarisServiceImplIntegrationTest {
     return EXT.client()
         .target(String.format(url, EXT.getLocalPort()))
         .request("application/json")
-        .header("Authorization", token)
+        .header("Authorization", "Bearer " + token)
         .header(REALM_PROPERTY_KEY, realm);
   }
 
   private static Invocation.Builder newRequest(String url) {
-    return newRequest(url, "Bearer " + userToken);
+    return newRequest(url, userToken);
   }
 
   @Test
@@ -791,7 +957,7 @@ public class PolarisServiceImplIntegrationTest {
     // there's no catalog yet. Expect 404
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog").get()) {
-      assertThat(response).returns(404, Response::getStatus);
+      assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -831,12 +997,7 @@ public class PolarisServiceImplIntegrationTest {
                 new AwsStorageConfigInfo(
                     "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
             .build();
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs")
-            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
-
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    createCatalog(catalog);
 
     String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
     List<String> invalidCatalogRoleNames =
@@ -870,7 +1031,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals")
             .post(Entity.json(principal))) {
-      assertThat(response).returns(201, Response::getStatus);
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
       PrincipalWithCredentials creds = response.readEntity(PrincipalWithCredentials.class);
       newToken =
           TokenUtils.getTokenFromSecrets(
@@ -881,9 +1042,8 @@ public class PolarisServiceImplIntegrationTest {
               realm);
     }
     try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/principals", "Bearer " + newToken)
-            .get()) {
-      assertThat(response).returns(403, Response::getStatus);
+        newRequest("http://localhost:%d/api/management/v1/principals", newToken).get()) {
+      assertThat(response).returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -927,8 +1087,7 @@ public class PolarisServiceImplIntegrationTest {
     // Any call should initially fail with error indicating that rotation is needed.
     try (Response response =
         newRequest(
-                "http://localhost:%d/api/management/v1/principals/myprincipal",
-                "Bearer " + newPrincipalToken)
+                "http://localhost:%d/api/management/v1/principals/myprincipal", newPrincipalToken)
             .get()) {
       assertThat(response).returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
       ErrorResponse error = response.readEntity(ErrorResponse.class);
@@ -943,7 +1102,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest(
                 "http://localhost:%d/api/management/v1/principals/myprincipal/rotate",
-                "Bearer " + newPrincipalToken)
+                newPrincipalToken)
             .post(Entity.json(""))) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       PrincipalWithCredentials parsed = response.readEntity(PrincipalWithCredentials.class);
@@ -984,7 +1143,7 @@ public class PolarisServiceImplIntegrationTest {
     Principal fetchedPrincipal = null;
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals/myprincipal").get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipal = response.readEntity(Principal.class);
 
       assertThat(fetchedPrincipal.getName()).isEqualTo("myprincipal");
@@ -995,7 +1154,7 @@ public class PolarisServiceImplIntegrationTest {
     // Should list the principal.
     try (Response response = newRequest("http://localhost:%d/api/management/v1/principals").get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(Principals.class))
           .extracting(Principals::getPrincipals)
           .asInstanceOf(InstanceOfAssertFactories.list(Principal.class))
@@ -1010,7 +1169,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals/myprincipal")
             .put(Entity.json(updateRequest))) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipal = response.readEntity(Principal.class);
 
       assertThat(fetchedPrincipal.getProperties()).isEqualTo(Map.of("custom-tag", "updated"));
@@ -1019,7 +1178,7 @@ public class PolarisServiceImplIntegrationTest {
     // 200 GET after update should show new properties
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals/myprincipal").get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipal = response.readEntity(Principal.class);
 
       assertThat(fetchedPrincipal.getProperties()).isEqualTo(Map.of("custom-tag", "updated"));
@@ -1028,19 +1187,19 @@ public class PolarisServiceImplIntegrationTest {
     // 204 Successful delete
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals/myprincipal").delete()) {
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // NOT_FOUND after deletion
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals/myprincipal").get()) {
-      assertThat(response).returns(404, Response::getStatus);
+      assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
     }
 
     // Empty list
     try (Response response = newRequest("http://localhost:%d/api/management/v1/principals").get()) {
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(Principals.class))
           .extracting(Principals::getPrincipals)
           .asInstanceOf(InstanceOfAssertFactories.list(Principal.class))
@@ -1119,11 +1278,7 @@ public class PolarisServiceImplIntegrationTest {
   public void testCreateListUpdateAndDeletePrincipalRole() {
     PrincipalRole principalRole =
         new PrincipalRole("myprincipalrole", Map.of("custom-tag", "foo"), 0L, 0L, 1);
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/principal-roles")
-            .post(Entity.json(new CreatePrincipalRoleRequest(principalRole)))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    createPrincipalRole(principalRole);
 
     // Second attempt to create the same entity should fail with CONFLICT.
     try (Response response =
@@ -1138,7 +1293,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principal-roles/myprincipalrole").get()) {
 
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipalRole = response.readEntity(PrincipalRole.class);
 
       assertThat(fetchedPrincipalRole.getName()).isEqualTo("myprincipalrole");
@@ -1151,7 +1306,7 @@ public class PolarisServiceImplIntegrationTest {
         newRequest("http://localhost:%d/api/management/v1/principal-roles").get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .extracting(PrincipalRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(PrincipalRole.class))
@@ -1166,7 +1321,7 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principal-roles/myprincipalrole")
             .put(Entity.json(updateRequest))) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipalRole = response.readEntity(PrincipalRole.class);
 
       assertThat(fetchedPrincipalRole.getProperties()).isEqualTo(Map.of("custom-tag", "updated"));
@@ -1175,7 +1330,7 @@ public class PolarisServiceImplIntegrationTest {
     // 200 GET after update should show new properties
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principal-roles/myprincipalrole").get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipalRole = response.readEntity(PrincipalRole.class);
 
       assertThat(fetchedPrincipalRole.getProperties()).isEqualTo(Map.of("custom-tag", "updated"));
@@ -1186,14 +1341,14 @@ public class PolarisServiceImplIntegrationTest {
         newRequest("http://localhost:%d/api/management/v1/principal-roles/myprincipalrole")
             .delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // NOT_FOUND after deletion
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principal-roles/myprincipalrole").get()) {
 
-      assertThat(response).returns(404, Response::getStatus);
+      assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
     }
 
     // Empty list
@@ -1201,7 +1356,7 @@ public class PolarisServiceImplIntegrationTest {
         newRequest("http://localhost:%d/api/management/v1/principal-roles").get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .extracting(PrincipalRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(PrincipalRole.class))
@@ -1214,11 +1369,7 @@ public class PolarisServiceImplIntegrationTest {
     String goodName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH, true, true);
     PrincipalRole principalRole =
         new PrincipalRole(goodName, Map.of("custom-tag", "good_principal_role"), 0L, 0L, 1);
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/principal-roles")
-            .post(Entity.json(new CreatePrincipalRoleRequest(principalRole)))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    createPrincipalRole(principalRole);
 
     String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
     List<String> invalidPrincipalRoleNames =
@@ -1284,12 +1435,7 @@ public class PolarisServiceImplIntegrationTest {
                 new AwsStorageConfigInfo(
                     "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
             .build();
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs")
-            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
-
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    createCatalog(catalog);
 
     Catalog catalog2 =
         PolarisCatalog.builder()
@@ -1300,12 +1446,7 @@ public class PolarisServiceImplIntegrationTest {
                     "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
             .setProperties(new CatalogProperties("s3://required/base/other_location"))
             .build();
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs")
-            .post(Entity.json(new CreateCatalogRequest(catalog2)))) {
-
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    createCatalog(catalog2);
 
     CatalogRole catalogRole =
         new CatalogRole("mycatalogrole", Map.of("custom-tag", "foo"), 0L, 0L, 1);
@@ -1331,7 +1472,7 @@ public class PolarisServiceImplIntegrationTest {
                 "http://localhost:%d/api/management/v1/catalogs/mycatalog1/catalog-roles/mycatalogrole")
             .get()) {
 
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalogRole = response.readEntity(CatalogRole.class);
 
       assertThat(fetchedCatalogRole.getName()).isEqualTo("mycatalogrole");
@@ -1345,7 +1486,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .extracting(CatalogRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(CatalogRole.class))
@@ -1358,7 +1499,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .extracting(CatalogRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(CatalogRole.class))
@@ -1379,7 +1520,7 @@ public class PolarisServiceImplIntegrationTest {
         newRequest(
                 "http://localhost:%d/api/management/v1/catalogs/mycatalog1/catalog-roles/mycatalogrole")
             .put(Entity.json(updateRequest))) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalogRole = response.readEntity(CatalogRole.class);
 
       assertThat(fetchedCatalogRole.getProperties()).isEqualTo(Map.of("custom-tag", "updated"));
@@ -1390,7 +1531,7 @@ public class PolarisServiceImplIntegrationTest {
         newRequest(
                 "http://localhost:%d/api/management/v1/catalogs/mycatalog1/catalog-roles/mycatalogrole")
             .get()) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalogRole = response.readEntity(CatalogRole.class);
 
       assertThat(fetchedCatalogRole.getProperties()).isEqualTo(Map.of("custom-tag", "updated"));
@@ -1402,7 +1543,7 @@ public class PolarisServiceImplIntegrationTest {
                 "http://localhost:%d/api/management/v1/catalogs/mycatalog1/catalog-roles/mycatalogrole")
             .delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // NOT_FOUND after deletion
@@ -1411,7 +1552,7 @@ public class PolarisServiceImplIntegrationTest {
                 "http://localhost:%d/api/management/v1/catalogs/mycatalog1/catalog-roles/mycatalogrole")
             .get()) {
 
-      assertThat(response).returns(404, Response::getStatus);
+      assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
     }
 
     // Empty list
@@ -1420,7 +1561,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .extracting(CatalogRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(CatalogRole.class))
@@ -1431,14 +1572,14 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog1").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete mycatalog2
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog2").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -1463,12 +1604,7 @@ public class PolarisServiceImplIntegrationTest {
 
     // One PrincipalRole
     PrincipalRole principalRole = new PrincipalRole("myprincipalrole");
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/principal-roles")
-            .post(Entity.json(new CreatePrincipalRoleRequest(principalRole)))) {
-
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    createPrincipalRole(principalRole);
 
     // Assign the role to myprincipal1
     try (Response response =
@@ -1484,7 +1620,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .extracting(PrincipalRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(PrincipalRole.class))
@@ -1500,7 +1636,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(Principals.class))
           .extracting(Principals::getPrincipals)
           .asInstanceOf(InstanceOfAssertFactories.list(Principal.class))
@@ -1514,7 +1650,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .returns(List.of(), PrincipalRoles::getRoles);
     }
@@ -1525,7 +1661,7 @@ public class PolarisServiceImplIntegrationTest {
                 "http://localhost:%d/api/management/v1/principals/myprincipal1/principal-roles/myprincipalrole")
             .delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // Empty list
@@ -1534,7 +1670,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .returns(List.of(), PrincipalRoles::getRoles);
     }
@@ -1544,7 +1680,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(Principals.class))
           .returns(List.of(), Principals::getPrincipals);
     }
@@ -1553,14 +1689,14 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals/myprincipal1").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete myprincipal2
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals/myprincipal2").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete myprincipalrole
@@ -1568,7 +1704,7 @@ public class PolarisServiceImplIntegrationTest {
         newRequest("http://localhost:%d/api/management/v1/principal-roles/myprincipalrole")
             .delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
 
@@ -1576,20 +1712,10 @@ public class PolarisServiceImplIntegrationTest {
   public void testAssignListAndRevokeCatalogRoles() {
     // Create two PrincipalRoles
     PrincipalRole principalRole1 = new PrincipalRole("mypr1");
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/principal-roles")
-            .post(Entity.json(new CreatePrincipalRoleRequest(principalRole1)))) {
-
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    createPrincipalRole(principalRole1);
 
     PrincipalRole principalRole2 = new PrincipalRole("mypr2");
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/principal-roles")
-            .post(Entity.json(new CreatePrincipalRoleRequest(principalRole2)))) {
-
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    createPrincipalRole(principalRole2);
 
     // One CatalogRole
     Catalog catalog =
@@ -1601,12 +1727,7 @@ public class PolarisServiceImplIntegrationTest {
                     "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
             .setProperties(new CatalogProperties("s3://bucket1/"))
             .build();
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs")
-            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
-
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    createCatalog(catalog);
 
     CatalogRole catalogRole = new CatalogRole("mycr");
     try (Response response =
@@ -1626,12 +1747,7 @@ public class PolarisServiceImplIntegrationTest {
                 new AwsStorageConfigInfo(
                     "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
             .build();
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs")
-            .post(Entity.json(new CreateCatalogRequest(otherCatalog)))) {
-
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    createCatalog(otherCatalog);
 
     CatalogRole otherCatalogRole = new CatalogRole("myothercr");
     try (Response response =
@@ -1664,7 +1780,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .extracting(CatalogRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(CatalogRole.class))
@@ -1679,7 +1795,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .extracting(PrincipalRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(PrincipalRole.class))
@@ -1694,7 +1810,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .returns(List.of(), CatalogRoles::getRoles);
     }
@@ -1705,7 +1821,7 @@ public class PolarisServiceImplIntegrationTest {
                 "http://localhost:%d/api/management/v1/principal-roles/mypr1/catalog-roles/mycatalog/mycr")
             .delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // Empty list
@@ -1715,7 +1831,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(CatalogRoles.class))
           .returns(List.of(), CatalogRoles::getRoles);
     }
@@ -1725,7 +1841,7 @@ public class PolarisServiceImplIntegrationTest {
             .get()) {
 
       assertThat(response)
-          .returns(200, Response::getStatus)
+          .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .returns(List.of(), PrincipalRoles::getRoles);
     }
@@ -1734,14 +1850,14 @@ public class PolarisServiceImplIntegrationTest {
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principal-roles/mypr1").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete mypr2
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principal-roles/mypr2").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete mycr
@@ -1749,14 +1865,14 @@ public class PolarisServiceImplIntegrationTest {
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog/catalog-roles/mycr")
             .delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete mycatalog
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete myothercr
@@ -1765,14 +1881,563 @@ public class PolarisServiceImplIntegrationTest {
                 "http://localhost:%d/api/management/v1/catalogs/othercatalog/catalog-roles/myothercr")
             .delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // 204 Successful delete othercatalog
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/othercatalog").delete()) {
 
-      assertThat(response).returns(204, Response::getStatus);
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testCatalogAdminGrantAndRevokeCatalogRoles() {
+    // Create a PrincipalRole and a new catalog. Grant the catalog_admin role to the new principal
+    // role
+    String principalRoleName = "mypr33";
+    PrincipalRole principalRole1 = new PrincipalRole(principalRoleName);
+    createPrincipalRole(principalRole1);
+
+    String catalogName = "myuniquetestcatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setStorageConfigInfo(
+                new AwsStorageConfigInfo(
+                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+    createCatalog(catalog);
+
+    CatalogRole catalogAdminRole = readCatalogRole(catalogName, "catalog_admin");
+    grantCatalogRoleToPrincipalRole(principalRoleName, catalogName, catalogAdminRole, userToken);
+
+    PrincipalWithCredentials catalogAdminPrincipal = createPrincipal("principal1");
+
+    grantPrincipalRoleToPrincipal(catalogAdminPrincipal.getPrincipal().getName(), principalRole1);
+
+    String catalogAdminToken =
+        TokenUtils.getTokenFromSecrets(
+            EXT.client(),
+            EXT.getLocalPort(),
+            catalogAdminPrincipal.getCredentials().getClientId(),
+            catalogAdminPrincipal.getCredentials().getClientSecret(),
+            realm);
+
+    // Create a second principal role. Use the catalog admin principal to list principal roles and
+    // grant a catalog role to the new principal role
+    String principalRoleName2 = "mypr2";
+    PrincipalRole principalRole2 = new PrincipalRole(principalRoleName2);
+    createPrincipalRole(principalRole2);
+
+    // create a catalog role and grant it manage_content privilege
+    String catalogRoleName = "mycr1";
+    createCatalogRole(catalogName, catalogRoleName, catalogAdminToken);
+
+    CatalogPrivilege privilege = CatalogPrivilege.CATALOG_MANAGE_CONTENT;
+    grantPrivilegeToCatalogRole(
+        catalogName,
+        catalogRoleName,
+        new CatalogGrant(privilege, GrantResource.TypeEnum.CATALOG),
+        catalogAdminToken,
+        Response.Status.CREATED);
+
+    // The catalog admin can grant the new catalog role to the mypr2 principal role
+    grantCatalogRoleToPrincipalRole(
+        principalRoleName2, catalogName, new CatalogRole(catalogRoleName), catalogAdminToken);
+
+    // But the catalog admin cannot revoke the role because it requires
+    // PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE
+    try (Response response =
+        newRequest(
+                "http://localhost:%d/api/management/v1/principal-roles/"
+                    + principalRoleName
+                    + "/catalog-roles/"
+                    + catalogName
+                    + "/"
+                    + catalogRoleName,
+                catalogAdminToken)
+            .delete()) {
+      assertThat(response).returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
+    }
+
+    // The service admin can revoke the role because it has the
+    // PRINCIPAL_ROLE_MANAGE_GRANTS_FOR_GRANTEE privilege
+    try (Response response =
+        newRequest(
+                "http://localhost:%d/api/management/v1/principal-roles/"
+                    + principalRoleName
+                    + "/catalog-roles/"
+                    + catalogName
+                    + "/"
+                    + catalogRoleName,
+                userToken)
+            .delete()) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testServiceAdminCanTransferCatalogAdmin() {
+    // Create a PrincipalRole and a new catalog. Grant the catalog_admin role to the new principal
+    // role
+    String principalRoleName = "mypr33";
+    PrincipalRole principalRole1 = new PrincipalRole(principalRoleName);
+    createPrincipalRole(principalRole1);
+
+    String catalogName = "myothertestcatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setStorageConfigInfo(
+                new AwsStorageConfigInfo(
+                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+    createCatalog(catalog);
+
+    CatalogRole catalogAdminRole = readCatalogRole(catalogName, "catalog_admin");
+    grantCatalogRoleToPrincipalRole(principalRoleName, catalogName, catalogAdminRole, userToken);
+
+    PrincipalWithCredentials catalogAdminPrincipal = createPrincipal("principal1");
+
+    grantPrincipalRoleToPrincipal(catalogAdminPrincipal.getPrincipal().getName(), principalRole1);
+
+    String catalogAdminToken =
+        TokenUtils.getTokenFromSecrets(
+            EXT.client(),
+            EXT.getLocalPort(),
+            catalogAdminPrincipal.getCredentials().getClientId(),
+            catalogAdminPrincipal.getCredentials().getClientSecret(),
+            realm);
+
+    // service_admin revokes the catalog_admin privilege from its principal role
+    try {
+      try (Response response =
+          newRequest(
+                  "http://localhost:%d/api/management/v1/principal-roles/service_admin/catalog-roles/"
+                      + catalogName
+                      + "/catalog_admin",
+                  userToken)
+              .delete()) {
+        assertThat(response)
+            .returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+      }
+
+      // the service_admin can not revoke the catalog_admin privilege from the new principal role
+      try (Response response =
+          newRequest(
+                  "http://localhost:%d/api/management/v1/principal-roles/"
+                      + principalRoleName
+                      + "/catalog-roles/"
+                      + catalogName
+                      + "/catalog_admin",
+                  catalogAdminToken)
+              .delete()) {
+        assertThat(response)
+            .returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
+      }
+    } finally {
+      // grant the admin role back to service_admin so that cleanup can happen
+      grantCatalogRoleToPrincipalRole(
+          "service_admin", catalogName, catalogAdminRole, catalogAdminToken);
+    }
+  }
+
+  @Test
+  public void testCatalogAdminGrantAndRevokeCatalogRolesFromWrongCatalog() {
+    // Create a PrincipalRole and a new catalog. Grant the catalog_admin role to the new principal
+    // role
+    String principalRoleName = "mypr33";
+    PrincipalRole principalRole1 = new PrincipalRole(principalRoleName);
+    createPrincipalRole(principalRole1);
+
+    // create a catalog
+    String catalogName = "mytestcatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setStorageConfigInfo(
+                new AwsStorageConfigInfo(
+                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+    createCatalog(catalog);
+
+    // create a second catalog
+    String catalogName2 = "anothercatalog";
+    Catalog catalog2 =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName2)
+            .setStorageConfigInfo(
+                new AwsStorageConfigInfo(
+                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+    createCatalog(catalog2);
+
+    // create a catalog role *in the second catalog* and grant it manage_content privilege
+    String catalogRoleName = "mycr1";
+    createCatalogRole(catalogName2, catalogRoleName, userToken);
+
+    // Get the catalog admin role from the *first* catalog and grant that role to the principal role
+    CatalogRole catalogAdminRole = readCatalogRole(catalogName, "catalog_admin");
+    grantCatalogRoleToPrincipalRole(principalRoleName, catalogName, catalogAdminRole, userToken);
+
+    // Create a principal and grant the principal role to it
+    PrincipalWithCredentials catalogAdminPrincipal = createPrincipal("principal1");
+    grantPrincipalRoleToPrincipal(catalogAdminPrincipal.getPrincipal().getName(), principalRole1);
+
+    String catalogAdminToken =
+        TokenUtils.getTokenFromSecrets(
+            EXT.client(),
+            EXT.getLocalPort(),
+            catalogAdminPrincipal.getCredentials().getClientId(),
+            catalogAdminPrincipal.getCredentials().getClientSecret(),
+            realm);
+
+    // Create a second principal role.
+    String principalRoleName2 = "mypr2";
+    PrincipalRole principalRole2 = new PrincipalRole(principalRoleName2);
+    createPrincipalRole(principalRole2);
+
+    // The catalog admin cannot grant the new catalog role to the mypr2 principal role because the
+    // catalog role is in the wrong catalog
+    try (Response response =
+        newRequest(
+                "http://localhost:%d/api/management/v1/principal-roles/"
+                    + principalRoleName
+                    + "/catalog-roles/"
+                    + catalogName2,
+                catalogAdminToken)
+            .put(Entity.json(new GrantCatalogRoleRequest(new CatalogRole(catalogRoleName))))) {
+      assertThat(response).returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testTableManageAccessCanGrantAndRevokeFromCatalogRoles() {
+    // Create a PrincipalRole and a new catalog.
+    String principalRoleName = "mypr33";
+    PrincipalRole principalRole1 = new PrincipalRole(principalRoleName);
+    createPrincipalRole(principalRole1);
+
+    // create a catalog
+    String catalogName = "mytablemanagecatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setStorageConfigInfo(
+                new AwsStorageConfigInfo(
+                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+    createCatalog(catalog);
+
+    // create a valid target CatalogRole in this catalog
+    createCatalogRole(catalogName, "target_catalog_role", userToken);
+
+    // create a second catalog
+    String catalogName2 = "anothertablemanagecatalog";
+    Catalog catalog2 =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName2)
+            .setStorageConfigInfo(
+                new AwsStorageConfigInfo(
+                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+    createCatalog(catalog2);
+
+    // create an *invalid* target CatalogRole in second catalog
+    createCatalogRole(catalogName2, "invalid_target_catalog_role", userToken);
+
+    // create the namespace "c" in *both* namespaces
+    String namespaceName = "c";
+    createNamespace(catalogName, namespaceName);
+    createNamespace(catalogName2, namespaceName);
+
+    // create a catalog role *in the first catalog* and grant it manage_content privilege at the
+    // namespace level
+    // grant that role to the PrincipalRole
+    String catalogRoleName = "ns_manage_access_role";
+    createCatalogRole(catalogName, catalogRoleName, userToken);
+    grantPrivilegeToCatalogRole(
+        catalogName,
+        catalogRoleName,
+        new NamespaceGrant(
+            List.of(namespaceName),
+            NamespacePrivilege.CATALOG_MANAGE_ACCESS,
+            GrantResource.TypeEnum.NAMESPACE),
+        userToken,
+        Response.Status.CREATED);
+
+    grantCatalogRoleToPrincipalRole(
+        principalRoleName, catalogName, new CatalogRole(catalogRoleName), userToken);
+
+    // Create a principal and grant the principal role to it
+    PrincipalWithCredentials catalogAdminPrincipal = createPrincipal("ns_manage_access_user");
+    grantPrincipalRoleToPrincipal(catalogAdminPrincipal.getPrincipal().getName(), principalRole1);
+
+    String manageAccessUserToken =
+        TokenUtils.getTokenFromSecrets(
+            EXT.client(),
+            EXT.getLocalPort(),
+            catalogAdminPrincipal.getCredentials().getClientId(),
+            catalogAdminPrincipal.getCredentials().getClientSecret(),
+            realm);
+
+    // Use the ns_manage_access_user to grant TABLE_CREATE access to the target catalog role
+    // This works because the user has CATALOG_MANAGE_ACCESS within the namespace and the target
+    // catalog role is in
+    // the same catalog
+    grantPrivilegeToCatalogRole(
+        catalogName,
+        "target_catalog_role",
+        new NamespaceGrant(
+            List.of(namespaceName),
+            NamespacePrivilege.TABLE_CREATE,
+            GrantResource.TypeEnum.NAMESPACE),
+        manageAccessUserToken,
+        Response.Status.CREATED);
+
+    // Even though the ns_manage_access_role can grant privileges to the catalog role, it cannot
+    // grant the target
+    // catalog role to the mypr2 principal role because it doesn't have privilege to manage grants
+    // on the catalog role
+    // as a securable
+    try (Response response =
+        newRequest(
+                "http://localhost:%d/api/management/v1/principal-roles/"
+                    + principalRoleName
+                    + "/catalog-roles/"
+                    + catalogName,
+                manageAccessUserToken)
+            .put(
+                Entity.json(new GrantCatalogRoleRequest(new CatalogRole("target_catalog_role"))))) {
+      assertThat(response).returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
+    }
+
+    // The user cannot grant catalog-level privileges to the catalog role
+    grantPrivilegeToCatalogRole(
+        catalogName,
+        "target_catalog_role",
+        new CatalogGrant(CatalogPrivilege.TABLE_CREATE, GrantResource.TypeEnum.CATALOG),
+        manageAccessUserToken,
+        Response.Status.FORBIDDEN);
+
+    // even though the namespace "c" exists in both catalogs, the ns_manage_access_role can only
+    // grant privileges for
+    // the namespace in its own catalog
+    grantPrivilegeToCatalogRole(
+        catalogName2,
+        "invalid_target_catalog_role",
+        new NamespaceGrant(
+            List.of(namespaceName),
+            NamespacePrivilege.TABLE_CREATE,
+            GrantResource.TypeEnum.NAMESPACE),
+        manageAccessUserToken,
+        Response.Status.FORBIDDEN);
+
+    // nor can it grant privileges to the catalog role in the second catalog
+    grantPrivilegeToCatalogRole(
+        catalogName2,
+        "invalid_target_catalog_role",
+        new CatalogGrant(CatalogPrivilege.TABLE_CREATE, GrantResource.TypeEnum.CATALOG),
+        manageAccessUserToken,
+        Response.Status.FORBIDDEN);
+  }
+
+  @Test
+  public void testTokenExpiry() {
+    // TokenExpiredException - if the token has expired.
+    String newToken =
+        defaultJwt()
+            .withExpiresAt(Instant.now().plus(1, ChronoUnit.SECONDS))
+            .sign(Algorithm.HMAC256("polaris"));
+    Awaitility.await("expected list of records should be produced")
+        .atMost(Duration.ofSeconds(2))
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              try (Response response =
+                  newRequest(
+                          "http://localhost:%d/api/management/v1/principals", "Bearer " + newToken)
+                      .get()) {
+                assertThat(response)
+                    .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
+              }
+            });
+  }
+
+  @Test
+  public void testTokenInactive() {
+    // InvalidClaimException - if a claim contained a different value than the expected one.
+    String newToken =
+        defaultJwt().withClaim(CLAIM_KEY_ACTIVE, false).sign(Algorithm.HMAC256("polaris"));
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/principals", "Bearer " + newToken)
+            .get()) {
+      assertThat(response)
+          .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testTokenInvalidSignature() {
+    // SignatureVerificationException - if the signature is invalid.
+    String newToken = defaultJwt().sign(Algorithm.HMAC256("invalid_secret"));
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/principals", "Bearer " + newToken)
+            .get()) {
+      assertThat(response)
+          .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testTokenInvalidPrincipalId() {
+    String newToken =
+        defaultJwt().withClaim(CLAIM_KEY_PRINCIPAL_ID, 0).sign(Algorithm.HMAC256("polaris"));
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/principals", "Bearer " + newToken)
+            .get()) {
+      assertThat(response)
+          .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  public static JWTCreator.Builder defaultJwt() {
+    Instant now = Instant.now();
+    return JWT.create()
+        .withIssuer(ISSUER_KEY)
+        .withSubject(String.valueOf(1))
+        .withIssuedAt(now)
+        .withExpiresAt(now.plus(10, ChronoUnit.SECONDS))
+        .withJWTId(UUID.randomUUID().toString())
+        .withClaim(CLAIM_KEY_ACTIVE, true)
+        .withClaim(CLAIM_KEY_CLIENT_ID, clientId)
+        .withClaim(CLAIM_KEY_PRINCIPAL_ID, 1)
+        .withClaim(CLAIM_KEY_SCOPE, BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL);
+  }
+
+  private static void createNamespace(String catalogName, String namespaceName) {
+    try (Response response =
+        newRequest("http://localhost:%d/api/catalog/v1/" + catalogName + "/namespaces", userToken)
+            .post(
+                Entity.json(
+                    CreateNamespaceRequest.builder()
+                        .withNamespace(Namespace.of(namespaceName))
+                        .build()))) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  private static void createCatalog(Catalog catalog) {
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs")
+            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
+
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  private static void grantPrivilegeToCatalogRole(
+      String catalogName,
+      String catalogRoleName,
+      GrantResource grant,
+      String catalogAdminToken,
+      Response.Status expectedStatus) {
+    try (Response response =
+        newRequest(
+                "http://localhost:%d/api/management/v1/catalogs/"
+                    + catalogName
+                    + "/catalog-roles/"
+                    + catalogRoleName
+                    + "/grants",
+                catalogAdminToken)
+            .put(Entity.json(new AddGrantRequest(grant)))) {
+      assertThat(response).returns(expectedStatus.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  private static void createCatalogRole(
+      String catalogName, String catalogRoleName, String catalogAdminToken) {
+    try (Response response =
+        newRequest(
+                "http://localhost:%d/api/management/v1/catalogs/" + catalogName + "/catalog-roles",
+                catalogAdminToken)
+            .post(Entity.json(new CreateCatalogRoleRequest(new CatalogRole(catalogRoleName))))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  private static void grantPrincipalRoleToPrincipal(
+      String principalName, PrincipalRole principalRole) {
+    try (Response response =
+        newRequest(
+                "http://localhost:%d/api/management/v1/principals/"
+                    + principalName
+                    + "/principal-roles")
+            .put(Entity.json(new GrantPrincipalRoleRequest(principalRole)))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  private static PrincipalWithCredentials createPrincipal(String principalName) {
+    PrincipalWithCredentials catalogAdminPrincipal;
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/principals")
+            .post(Entity.json(new CreatePrincipalRequest(new Principal(principalName), false)))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+      catalogAdminPrincipal = response.readEntity(PrincipalWithCredentials.class);
+    }
+    return catalogAdminPrincipal;
+  }
+
+  private static void grantCatalogRoleToPrincipalRole(
+      String principalRoleName, String catalogName, CatalogRole catalogRole, String token) {
+    try (Response response =
+        newRequest(
+                "http://localhost:%d/api/management/v1/principal-roles/"
+                    + principalRoleName
+                    + "/catalog-roles/"
+                    + catalogName,
+                token)
+            .put(Entity.json(new GrantCatalogRoleRequest(catalogRole)))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  private static CatalogRole readCatalogRole(String catalogName, String roleName) {
+    try (Response response =
+        newRequest(
+                "http://localhost:%d/api/management/v1/catalogs/"
+                    + catalogName
+                    + "/catalog-roles/"
+                    + roleName)
+            .get()) {
+
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      return response.readEntity(CatalogRole.class);
+    }
+  }
+
+  private static void createPrincipalRole(PrincipalRole principalRole1) {
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/principal-roles")
+            .post(Entity.json(new CreatePrincipalRoleRequest(principalRole1)))) {
+
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
   }
 }

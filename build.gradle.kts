@@ -87,6 +87,13 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("polaris-service/src/**/banner.txt")
   excludes.add("polaris-service/logs")
 
+  excludes.add("site/node_modules/**")
+  excludes.add("site/layouts/robots.txt")
+  // Ignore generated stuff, when the Hugo is run w/o Docker
+  excludes.add("site/public/**")
+  excludes.add("site/resources/_gen/**")
+  excludes.add("node_modules/**")
+
   excludes.add("**/polaris-venv/**")
 
   excludes.add("**/.pytest_cache/**")
@@ -110,6 +117,8 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("**/*.lock")
 
   excludes.add("**/*.env*")
+
+  excludes.add("**/go.sum")
 }
 
 // Pass environment variables:

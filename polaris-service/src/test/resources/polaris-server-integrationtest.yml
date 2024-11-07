@@ -72,6 +72,7 @@ featureConfiguration:
   ALLOW_SPECIFYING_FILE_IO_IMPL: true
   SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION: true
   ALLOW_OVERLAPPING_CATALOG_URLS: true
+  ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING: false
   SUPPORTED_CATALOG_STORAGE_TYPES:
     - FILE
     - S3
@@ -156,5 +157,5 @@ maxRequestBodyBytes: 1000000
 # Limits the request rate per realm
 rateLimiter:
   type: realm-token-bucket
-  requestsPerSecond: 10
+  requestsPerSecond: 9999
   windowSeconds: 10

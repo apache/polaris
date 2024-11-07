@@ -34,11 +34,17 @@ public class TokenUtils {
   /** Get token against specified realm */
   public static String getTokenFromSecrets(
       Client client, int port, String clientId, String clientSecret, String realm) {
+    return getTokenFromSecrets(
+        client, String.format("http://localhost:%d", port), clientId, clientSecret, realm);
+  }
+
+  public static String getTokenFromSecrets(
+      Client client, String baseUrl, String clientId, String clientSecret, String realm) {
     String token;
 
     Invocation.Builder builder =
         client
-            .target(String.format("http://localhost:%d/api/catalog/v1/oauth/tokens", port))
+            .target(String.format("%s/api/catalog/v1/oauth/tokens", baseUrl))
             .request("application/json");
     if (realm != null) {
       builder = builder.header(REALM_PROPERTY_KEY, realm);
@@ -57,7 +63,7 @@ public class TokenUtils {
                         clientId,
                         "client_secret",
                         clientSecret))))) {
-      assertThat(response).returns(200, Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       token = response.readEntity(OAuthTokenResponse.class).token();
     }
     return token;

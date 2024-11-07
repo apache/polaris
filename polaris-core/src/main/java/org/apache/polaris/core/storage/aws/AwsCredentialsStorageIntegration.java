@@ -22,13 +22,11 @@ import java.net.URI;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageUtil;
 import org.jetbrains.annotations.NotNull;
 import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
@@ -97,8 +95,8 @@ public class AwsCredentialsStorageIntegration
             .effect(IamEffect.ALLOW)
             .addAction("s3:GetObject")
             .addAction("s3:GetObjectVersion");
-    Map<String, IamStatement.Builder> bucketListStatmentBuilder = new HashMap<>();
-    Map<String, IamStatement.Builder> bucketGetLocationStatmentBuilder = new HashMap<>();
+    Map<String, IamStatement.Builder> bucketListStatementBuilder = new HashMap<>();
+    Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
 
     String arnPrefix = getArnPrefixFor(roleArn);
     Stream.concat(readLocations.stream(), writeLocations.stream())
@@ -112,7 +110,7 @@ public class AwsCredentialsStorageIntegration
                       arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
               final var bucket = arnPrefix + StorageUtil.getBucket(uri);
               if (allowList) {
-                bucketListStatmentBuilder
+                bucketListStatementBuilder
                     .computeIfAbsent(
                         bucket,
                         (String key) ->
@@ -125,7 +123,7 @@ public class AwsCredentialsStorageIntegration
                         "s3:prefix",
                         StorageUtil.concatFilePrefixes(trimLeadingSlash(uri.getPath()), "*", "/"));
               }
-              bucketGetLocationStatmentBuilder.computeIfAbsent(
+              bucketGetLocationStatementBuilder.computeIfAbsent(
                   bucket,
                   key ->
                       IamStatement.builder()
@@ -150,8 +148,8 @@ public class AwsCredentialsStorageIntegration
           });
       policyBuilder.addStatement(allowPutObjectStatementBuilder.build());
     }
-    if (!bucketListStatmentBuilder.isEmpty()) {
-      bucketListStatmentBuilder
+    if (!bucketListStatementBuilder.isEmpty()) {
+      bucketListStatementBuilder
           .values()
           .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
     } else if (allowList) {
@@ -160,7 +158,7 @@ public class AwsCredentialsStorageIntegration
           IamStatement.builder().effect(IamEffect.ALLOW).addAction("s3:ListBucket").build());
     }
 
-    bucketGetLocationStatmentBuilder
+    bucketGetLocationStatementBuilder
         .values()
         .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
     return policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
@@ -179,8 +177,7 @@ public class AwsCredentialsStorageIntegration
   private static @NotNull String parseS3Path(URI uri) {
     String bucket = StorageUtil.getBucket(uri);
     String path = trimLeadingSlash(uri.getPath());
-    return String.join(
-        "/", Stream.of(bucket, path).filter(Objects::nonNull).toArray(String[]::new));
+    return String.join("/", bucket, path);
   }
 
   private static @NotNull String trimLeadingSlash(String path) {
@@ -188,12 +185,5 @@ public class AwsCredentialsStorageIntegration
       path = path.substring(1);
     }
     return path;
-  }
-
-  // FIXME - we don't need this method in the interface
-  @Override
-  public EnumMap<PolarisStorageConfigurationInfo.DescribeProperty, String>
-      descPolarisStorageConfiguration(@NotNull PolarisStorageConfigurationInfo storageConfigInfo) {
-    return null;
   }
 }

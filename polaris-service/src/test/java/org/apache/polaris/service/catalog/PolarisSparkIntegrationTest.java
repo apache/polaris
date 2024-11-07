@@ -45,6 +45,7 @@ import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
+import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
@@ -60,7 +61,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
 
-@ExtendWith({DropwizardExtensionsSupport.class, PolarisConnectionExtension.class})
+@ExtendWith({
+  DropwizardExtensionsSupport.class,
+  TestEnvironmentExtension.class,
+  PolarisConnectionExtension.class
+})
 public class PolarisSparkIntegrationTest {
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
       new DropwizardAppExtension<>(
@@ -75,7 +80,7 @@ public class PolarisSparkIntegrationTest {
   public static final String CATALOG_NAME = "mycatalog";
   public static final String EXTERNAL_CATALOG_NAME = "external_catalog";
   private static final S3MockContainer s3Container =
-      new S3MockContainer("3.9.1").withInitialBuckets("my-bucket,my-old-bucket");
+      new S3MockContainer("3.11.0").withInitialBuckets("my-bucket,my-old-bucket");
   private static PolarisConnectionExtension.PolarisToken polarisToken;
   private static SparkSession spark;
   private String realm;

@@ -22,10 +22,13 @@ name: polaris
 description: A Helm chart for Polaris
 type: application
 version: 0.1.0
-home: https://polaris.io/
+home: https://polaris.apache.org/
 icon: https://raw.githubusercontent.com/apache/polaris/main/docs/img/logos/polaris-brandmark.png
 sources:
   - https://github.com/apache/polaris
 keywords:
   - polaris
   - iceberg
+maintainers:
+  - name: MonkeyCanCode
+  - name: adutra
