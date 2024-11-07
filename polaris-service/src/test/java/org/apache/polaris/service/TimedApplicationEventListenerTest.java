@@ -20,7 +20,7 @@ package org.apache.polaris.service;
 
 import static org.apache.polaris.core.monitor.PolarisMetricRegistry.SUFFIX_COUNTER;
 import static org.apache.polaris.core.monitor.PolarisMetricRegistry.SUFFIX_ERROR;
-import static org.apache.polaris.service.TimedApplicationEventListener.METRIC_NAME;
+import static org.apache.polaris.service.TimedApplicationEventListener.SINGLETON_METRIC_NAME;
 import static org.apache.polaris.service.TimedApplicationEventListener.TAG_API_NAME;
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 
@@ -135,14 +135,14 @@ public class TimedApplicationEventListenerTest {
   private double getCommonMetricCount() {
     return TestMetricsUtil.getTotalCounter(
         EXT,
-        METRIC_NAME + SUFFIX_COUNTER,
+        SINGLETON_METRIC_NAME + SUFFIX_COUNTER,
         Collections.singleton(Tag.of(TAG_API_NAME, API_ANNOTATION)));
   }
 
   private double getCommonMetricErrorCount() {
     return TestMetricsUtil.getTotalCounter(
         EXT,
-        METRIC_NAME + SUFFIX_ERROR,
+        SINGLETON_METRIC_NAME + SUFFIX_ERROR,
         Collections.singleton(Tag.of(TAG_API_NAME, API_ANNOTATION)));
   }
 

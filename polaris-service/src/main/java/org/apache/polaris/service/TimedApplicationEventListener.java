@@ -40,7 +40,12 @@ import org.jetbrains.annotations.VisibleForTesting;
 @Provider
 public class TimedApplicationEventListener implements ApplicationEventListener {
 
-  public static final String METRIC_NAME = "polaris.TimedApi";
+  /**
+   * Each API will increment a common counter (SINGLETON_METRIC_NAME) but have its API name tagged
+   * (TAG_API_NAME).
+   */
+  public static final String SINGLETON_METRIC_NAME = "polaris.TimedApi";
+
   public static final String TAG_API_NAME = "API_NAME";
 
   // The PolarisMetricRegistry instance used for recording metrics and error counters.
@@ -82,9 +87,11 @@ public class TimedApplicationEventListener implements ApplicationEventListener {
         if (method.isAnnotationPresent(TimedApi.class)) {
           TimedApi timedApi = method.getAnnotation(TimedApi.class);
           metric = timedApi.value();
+
+          // Increment both the counter with the API name in the metric name and a common metric
           polarisMetricRegistry.incrementCounter(metric, realmId);
           polarisMetricRegistry.incrementCounter(
-              METRIC_NAME, realmId, Tag.of(TAG_API_NAME, metric));
+              SINGLETON_METRIC_NAME, realmId, Tag.of(TAG_API_NAME, metric));
         }
       } else if (event.getType() == RequestEvent.Type.RESOURCE_METHOD_START && metric != null) {
         sw = Stopwatch.createStarted();
@@ -94,9 +101,11 @@ public class TimedApplicationEventListener implements ApplicationEventListener {
           polarisMetricRegistry.recordTimer(metric, sw.elapsed(TimeUnit.MILLISECONDS), realmId);
         } else {
           int statusCode = event.getContainerResponse().getStatus();
+
+          // Increment both the counter with the API name in the metric name and a common metric
           polarisMetricRegistry.incrementErrorCounter(metric, statusCode, realmId);
           polarisMetricRegistry.incrementErrorCounter(
-              METRIC_NAME, realmId, Tag.of(TAG_API_NAME, metric));
+              SINGLETON_METRIC_NAME, realmId, Tag.of(TAG_API_NAME, metric));
         }
       }
     }
