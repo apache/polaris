@@ -822,10 +822,21 @@ public class PolarisCatalogHandlerWrapper {
     // when data-access is specified but access delegation grants are not found.
     return doCatalogOperation(
         () -> {
-          Table table = baseCatalog.loadTable(tableIdentifier);
+          final TableMetadata tableMetadata;
+          if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
+            tableMetadata = basePolarisCatalog.loadTableMetadata(tableIdentifier);
+          } else {
+            // TODO fix
+            Table table = baseCatalog.loadTable(tableIdentifier);
+            if (table instanceof BaseTable baseTable) {
+              tableMetadata = baseTable.operations().current();
+            } else {
+              tableMetadata = null;
+            }
+          }
+
 
           if (table instanceof BaseTable baseTable) {
-            TableMetadata tableMetadata = baseTable.operations().current();
             LoadTableResponse.Builder responseBuilder =
                 LoadTableResponse.builder().withTableMetadata(tableMetadata);
             if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
