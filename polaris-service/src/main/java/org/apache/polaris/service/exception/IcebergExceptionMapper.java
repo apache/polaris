@@ -50,6 +50,7 @@ import org.apache.iceberg.exceptions.ServiceUnavailableException;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.jetbrains.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.model.S3Exception;
@@ -137,6 +138,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     return Arrays.stream(ACCESS_DENIED_HINTS).anyMatch(messageLower::contains);
   }
 
+  @VisibleForTesting
   public static Collection<String> getAccessDeniedHints() {
     return ImmutableList.copyOf(ACCESS_DENIED_HINTS);
   }
