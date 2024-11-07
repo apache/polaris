@@ -27,6 +27,7 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.hadoop.HadoopTableOperations;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -36,7 +37,10 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.service.auth.TestOAuth2ApiService;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Optional;
@@ -44,6 +48,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class MetadataCacheManager {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MetadataCacheManager.class);
 
     /**
      * Load the cached {@link Table} or fall back to `fallback` if one doesn't exist
@@ -54,10 +59,56 @@ public class MetadataCacheManager {
             PolarisEntityManager entityManager,
             PolarisResolutionManifestCatalogView resolvedEntityView,
             Supplier<TableMetadata> fallback) {
-        // TODO add write to cache
-        return loadCachedTableMetadata(
-                tableIdentifier, callContext, entityManager, resolvedEntityView)
-            .orElseGet(fallback);
+        LOGGER.debug(String.format("Loading cached metadata for %s", tableIdentifier));
+        Optional<TableMetadata> cachedMetadata = loadCachedTableMetadata(
+            tableIdentifier, callContext, entityManager, resolvedEntityView);
+        if (cachedMetadata.isPresent()) {
+            LOGGER.debug(String.format("Using cached metadata for %s", tableIdentifier));
+            return cachedMetadata.get();
+        } else {
+            TableMetadata metadata = fallback.get();
+            PolarisMetaStoreManager.EntityResult cacheResult = cacheTableMetadata(
+                tableIdentifier,
+                metadata,
+                callContext,
+                entityManager,
+                resolvedEntityView);
+            if (!cacheResult.isSuccess()) {
+                LOGGER.debug(String.format("Failed to cache metadata for %s", tableIdentifier));
+            }
+            return metadata;
+        }
+    }
+
+    /**
+     * Attempt to add table metadata to the cache
+     * @return The result of trying to cache the metadata
+     */
+    private static PolarisMetaStoreManager.EntityResult cacheTableMetadata(
+            TableIdentifier tableIdentifier,
+            TableMetadata metadata,
+            PolarisCallContext callContext,
+            PolarisEntityManager entityManager,
+            PolarisResolutionManifestCatalogView resolvedEntityView) {
+        PolarisResolvedPathWrapper resolvedEntities =
+            resolvedEntityView.getPassthroughResolvedPath(
+                tableIdentifier, PolarisEntitySubType.TABLE);
+        if (resolvedEntities == null) {
+            return new PolarisMetaStoreManager.EntityResult(
+                PolarisMetaStoreManager.ReturnStatus.ENTITY_NOT_FOUND, null);
+        } else {
+            TableLikeEntity tableEntity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
+            TableMetadataEntity tableMetadataEntity =
+                new TableMetadataEntity.Builder(metadata.location(), TableMetadataParser.toJson(metadata))
+                    .setParentId(tableEntity.getId())
+                    .build();
+            return entityManager
+                .getMetaStoreManager()
+                .createEntityIfNotExists(
+                    callContext,
+                    PolarisEntity.toCoreList(resolvedEntities.getRawFullPath()),
+                    tableMetadataEntity);
+        }
     }
 
     /**
@@ -80,7 +131,7 @@ public class MetadataCacheManager {
                 .getMetaStoreManager()
                 .readEntityByName(
                     callContext,
-                    resolvedEntities.getRawFullPath().stream().map(PolarisEntityCore::new).toList(),
+                    PolarisEntity.toCoreList(resolvedEntities.getRawFullPath()),
                     PolarisEntityType.TABLE_METADATA,
                     PolarisEntitySubType.ANY_SUBTYPE,
                     metadataLocation);
