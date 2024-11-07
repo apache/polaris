@@ -37,6 +37,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -99,6 +100,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.aws.PolarisS3FileIOClientFactory;
+import org.apache.polaris.service.persistence.MetadataCacheManager;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -811,15 +813,31 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         storageInfo.get());
   }
 
-  @Override
-  public Table loadTable(TableIdentifier identifier) {
-    // ####
-    boolean allowMetadata = callContext
+  public TableMetadata loadTableMetadata(TableIdentifier identifier) {
+    boolean useMetadataCache = callContext
         .getPolarisCallContext()
         .getConfigurationStore()
         .getConfiguration(
             callContext.getPolarisCallContext(),
-            PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+            PolarisConfiguration.USE_METADATA_CACHE);
+    if (!useMetadataCache) {
+      return loadTableMetadata(loadTable(identifier));
+    } else {
+      Supplier<TableMetadata> fallback = () -> loadTableMetadata(loadTable(identifier));
+      return MetadataCacheManager.loadTableMetadata(
+          identifier,
+          callContext.getPolarisCallContext(),
+          entityManager,
+          resolvedEntityView,
+          fallback);
+    }
+  }
+
+  private static TableMetadata loadTableMetadata(Table table) {
+    if (table instanceof BaseTable baseTable) {
+      return baseTable.operations().current();
+    }
+    throw new IllegalArgumentException("Cannot load metadata for " + table.name());
   }
 
   /**

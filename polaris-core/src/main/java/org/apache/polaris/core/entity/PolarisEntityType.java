@@ -34,7 +34,8 @@ public enum PolarisEntityType {
   // generic table is either a view or a real table
   TABLE_LIKE(7, NAMESPACE, false, false),
   TASK(8, ROOT, false, false),
-  FILE(9, TABLE_LIKE, false, false);
+  FILE(9, TABLE_LIKE, false, false),
+  TABLE_METADATA(10, TABLE_LIKE, false, false);
 
   // to efficiently map a code to its corresponding entity type, use a reverse array which
   // is initialized below
