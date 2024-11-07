@@ -106,9 +106,7 @@ public class MetadataCacheManager {
         // but we can make a best-effort attempt to swallow it and just forego caching
         if (e.toString().contains("PersistenceException")) {
           return new PolarisMetaStoreManager.EntityResult(
-              PolarisMetaStoreManager.ReturnStatus.UNEXPECTED_ERROR_SIGNALED,
-              e.getMessage()
-          );
+              PolarisMetaStoreManager.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, e.getMessage());
         } else {
           throw e;
         }
