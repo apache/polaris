@@ -16,19 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.persistence;
 
+import java.util.Optional;
+import java.util.function.Supplier;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
-import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.hadoop.HadoopTableOperations;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TableLikeEntity;
@@ -37,112 +34,99 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
-import org.apache.polaris.service.auth.TestOAuth2ApiService;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.function.Function;
-import java.util.function.Supplier;
-
 public class MetadataCacheManager {
-    private static final Logger LOGGER = LoggerFactory.getLogger(MetadataCacheManager.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(MetadataCacheManager.class);
 
-    /**
-     * Load the cached {@link Table} or fall back to `fallback` if one doesn't exist
-     */
-    public static TableMetadata loadTableMetadata(
-            TableIdentifier tableIdentifier,
-            PolarisCallContext callContext,
-            PolarisEntityManager entityManager,
-            PolarisResolutionManifestCatalogView resolvedEntityView,
-            Supplier<TableMetadata> fallback) {
-        LOGGER.debug(String.format("Loading cached metadata for %s", tableIdentifier));
-        Optional<TableMetadata> cachedMetadata = loadCachedTableMetadata(
-            tableIdentifier, callContext, entityManager, resolvedEntityView);
-        if (cachedMetadata.isPresent()) {
-            LOGGER.debug(String.format("Using cached metadata for %s", tableIdentifier));
-            return cachedMetadata.get();
-        } else {
-            TableMetadata metadata = fallback.get();
-            PolarisMetaStoreManager.EntityResult cacheResult = cacheTableMetadata(
-                tableIdentifier,
-                metadata,
-                callContext,
-                entityManager,
-                resolvedEntityView);
-            if (!cacheResult.isSuccess()) {
-                LOGGER.debug(String.format("Failed to cache metadata for %s", tableIdentifier));
-            }
-            return metadata;
-        }
+  /** Load the cached {@link Table} or fall back to `fallback` if one doesn't exist */
+  public static TableMetadata loadTableMetadata(
+      TableIdentifier tableIdentifier,
+      PolarisCallContext callContext,
+      PolarisEntityManager entityManager,
+      PolarisResolutionManifestCatalogView resolvedEntityView,
+      Supplier<TableMetadata> fallback) {
+    LOGGER.debug(String.format("Loading cached metadata for %s", tableIdentifier));
+    Optional<TableMetadata> cachedMetadata =
+        loadCachedTableMetadata(tableIdentifier, callContext, entityManager, resolvedEntityView);
+    if (cachedMetadata.isPresent()) {
+      LOGGER.debug(String.format("Using cached metadata for %s", tableIdentifier));
+      return cachedMetadata.get();
+    } else {
+      TableMetadata metadata = fallback.get();
+      PolarisMetaStoreManager.EntityResult cacheResult =
+          cacheTableMetadata(
+              tableIdentifier, metadata, callContext, entityManager, resolvedEntityView);
+      if (!cacheResult.isSuccess()) {
+        LOGGER.debug(String.format("Failed to cache metadata for %s", tableIdentifier));
+      }
+      return metadata;
     }
+  }
 
-    /**
-     * Attempt to add table metadata to the cache
-     * @return The result of trying to cache the metadata
-     */
-    private static PolarisMetaStoreManager.EntityResult cacheTableMetadata(
-            TableIdentifier tableIdentifier,
-            TableMetadata metadata,
-            PolarisCallContext callContext,
-            PolarisEntityManager entityManager,
-            PolarisResolutionManifestCatalogView resolvedEntityView) {
-        PolarisResolvedPathWrapper resolvedEntities =
-            resolvedEntityView.getPassthroughResolvedPath(
-                tableIdentifier, PolarisEntitySubType.TABLE);
-        if (resolvedEntities == null) {
-            return new PolarisMetaStoreManager.EntityResult(
-                PolarisMetaStoreManager.ReturnStatus.ENTITY_NOT_FOUND, null);
-        } else {
-            TableLikeEntity tableEntity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
-            TableMetadataEntity tableMetadataEntity =
-                new TableMetadataEntity.Builder(metadata.location(), TableMetadataParser.toJson(metadata))
-                    .setCatalogId(tableEntity.getCatalogId())
-                    .setParentId(tableEntity.getId())
-                    .setId(entityManager.getMetaStoreManager().generateNewEntityId(callContext).getId())
-                    .build();
-            return entityManager
-                .getMetaStoreManager()
-                .createEntityIfNotExists(
-                    callContext,
-                    PolarisEntity.toCoreList(resolvedEntities.getRawFullPath()),
-                    tableMetadataEntity);
-        }
+  /**
+   * Attempt to add table metadata to the cache
+   *
+   * @return The result of trying to cache the metadata
+   */
+  private static PolarisMetaStoreManager.EntityResult cacheTableMetadata(
+      TableIdentifier tableIdentifier,
+      TableMetadata metadata,
+      PolarisCallContext callContext,
+      PolarisEntityManager entityManager,
+      PolarisResolutionManifestCatalogView resolvedEntityView) {
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
+    if (resolvedEntities == null) {
+      return new PolarisMetaStoreManager.EntityResult(
+          PolarisMetaStoreManager.ReturnStatus.ENTITY_NOT_FOUND, null);
+    } else {
+      TableLikeEntity tableEntity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
+      TableMetadataEntity tableMetadataEntity =
+          new TableMetadataEntity.Builder(metadata.location(), TableMetadataParser.toJson(metadata))
+              .setCatalogId(tableEntity.getCatalogId())
+              .setParentId(tableEntity.getId())
+              .setId(entityManager.getMetaStoreManager().generateNewEntityId(callContext).getId())
+              .build();
+      return entityManager
+          .getMetaStoreManager()
+          .createEntityIfNotExists(
+              callContext,
+              PolarisEntity.toCoreList(resolvedEntities.getRawFullPath()),
+              tableMetadataEntity);
     }
+  }
 
-    /**
-     * Return the cached {@link Table} entity, if one exists
-     */
-    private static @NotNull Optional<TableMetadata> loadCachedTableMetadata(
-            TableIdentifier tableIdentifier,
-            PolarisCallContext callContext,
-            PolarisEntityManager entityManager,
-            PolarisResolutionManifestCatalogView resolvedEntityView) {
-        PolarisResolvedPathWrapper resolvedEntities =
-            resolvedEntityView.getPassthroughResolvedPath(
-                tableIdentifier, PolarisEntitySubType.TABLE);
-        if (resolvedEntities == null) {
-            return Optional.empty();
-        } else {
-            TableLikeEntity entity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
-            String metadataLocation = entity.getMetadataLocation();
-            PolarisMetaStoreManager.EntityResult metadataEntityResult = entityManager
-                .getMetaStoreManager()
-                .readEntityByName(
-                    callContext,
-                    PolarisEntity.toCoreList(resolvedEntities.getRawFullPath()),
-                    PolarisEntityType.TABLE_METADATA,
-                    PolarisEntitySubType.ANY_SUBTYPE,
-                    metadataLocation);
-            return Optional
-                .ofNullable(metadataEntityResult.getEntity())
-                .map(metadataEntity -> {
-                    TableMetadataEntity tableMetadataEntity = (TableMetadataEntity) metadataEntity;
-                    return TableMetadataParser.fromJson(tableMetadataEntity.getContent());
-                });
-        }
+  /** Return the cached {@link Table} entity, if one exists */
+  private static @NotNull Optional<TableMetadata> loadCachedTableMetadata(
+      TableIdentifier tableIdentifier,
+      PolarisCallContext callContext,
+      PolarisEntityManager entityManager,
+      PolarisResolutionManifestCatalogView resolvedEntityView) {
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
+    if (resolvedEntities == null) {
+      return Optional.empty();
+    } else {
+      TableLikeEntity entity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
+      String metadataLocation = entity.getMetadataLocation();
+      PolarisMetaStoreManager.EntityResult metadataEntityResult =
+          entityManager
+              .getMetaStoreManager()
+              .readEntityByName(
+                  callContext,
+                  PolarisEntity.toCoreList(resolvedEntities.getRawFullPath()),
+                  PolarisEntityType.TABLE_METADATA,
+                  PolarisEntitySubType.ANY_SUBTYPE,
+                  metadataLocation);
+      return Optional.ofNullable(metadataEntityResult.getEntity())
+          .map(
+              metadataEntity -> {
+                TableMetadataEntity tableMetadataEntity = (TableMetadataEntity) metadataEntity;
+                return TableMetadataParser.fromJson(tableMetadataEntity.getContent());
+              });
     }
+  }
 }

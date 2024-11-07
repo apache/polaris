@@ -814,12 +814,12 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   public TableMetadata loadTableMetadata(TableIdentifier identifier) {
-    boolean useMetadataCache = callContext
-        .getPolarisCallContext()
-        .getConfigurationStore()
-        .getConfiguration(
-            callContext.getPolarisCallContext(),
-            PolarisConfiguration.USE_METADATA_CACHE);
+    boolean useMetadataCache =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(), PolarisConfiguration.USE_METADATA_CACHE);
     if (!useMetadataCache) {
       return loadTableMetadata(loadTable(identifier));
     } else {

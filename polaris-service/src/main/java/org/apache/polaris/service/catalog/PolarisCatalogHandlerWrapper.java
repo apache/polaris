@@ -792,15 +792,16 @@ public class PolarisCatalogHandlerWrapper {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.TABLE, tableIdentifier);
 
-    return doCatalogOperation(() -> {
-      if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
-        return LoadTableResponse.builder()
-            .withTableMetadata(basePolarisCatalog.loadTableMetadata(tableIdentifier))
-            .build();
-      }
+    return doCatalogOperation(
+        () -> {
+          if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
+            return LoadTableResponse.builder()
+                .withTableMetadata(basePolarisCatalog.loadTableMetadata(tableIdentifier))
+                .build();
+          }
 
-      return CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
-    });
+          return CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
+        });
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(

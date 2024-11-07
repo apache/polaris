@@ -21,52 +21,53 @@ package org.apache.polaris.core.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 public class TableMetadataEntity extends PolarisEntity {
-    private static String CONTENT_KEY = "content";
-    private static String METADATA_LOCATION_KEY = "metadata_location";
+  private static String CONTENT_KEY = "content";
+  private static String METADATA_LOCATION_KEY = "metadata_location";
 
-    public TableMetadataEntity(PolarisBaseEntity sourceEntity) {
-        super(sourceEntity);
+  public TableMetadataEntity(PolarisBaseEntity sourceEntity) {
+    super(sourceEntity);
+  }
+
+  public static TableMetadataEntity of(PolarisBaseEntity sourceEntity) {
+    if (sourceEntity != null) {
+      return new TableMetadataEntity(sourceEntity);
+    }
+    return null;
+  }
+
+  @JsonIgnore
+  public String getContent() {
+    return getInternalPropertiesAsMap().get(CONTENT_KEY);
+  }
+
+  @JsonIgnore
+  public String getMetadataLocation() {
+    return getInternalPropertiesAsMap().get(METADATA_LOCATION_KEY);
+  }
+
+  public static class Builder
+      extends PolarisEntity.BaseBuilder<TableMetadataEntity, TableMetadataEntity.Builder> {
+    public Builder(String metadataLocation, String content) {
+      super();
+      setName(metadataLocation);
+      setType(PolarisEntityType.TABLE_METADATA);
+      setMetadataLocation(metadataLocation);
+      setContent(content);
     }
 
-    public static TableMetadataEntity of(PolarisBaseEntity sourceEntity) {
-        if (sourceEntity != null) {
-            return new TableMetadataEntity(sourceEntity);
-        }
-        return null;
+    @Override
+    public TableMetadataEntity build() {
+      return new TableMetadataEntity(buildBase());
     }
 
-    @JsonIgnore
-    public String getContent() {
-        return getInternalPropertiesAsMap().get(CONTENT_KEY);
+    public TableMetadataEntity.Builder setContent(String content) {
+      this.internalProperties.put(CONTENT_KEY, content);
+      return this;
     }
 
-    @JsonIgnore
-    public String getMetadataLocation() {
-        return getInternalPropertiesAsMap().get(METADATA_LOCATION_KEY);
+    public TableMetadataEntity.Builder setMetadataLocation(String metadataLocation) {
+      this.internalProperties.put(METADATA_LOCATION_KEY, metadataLocation);
+      return this;
     }
-
-    public static class Builder extends PolarisEntity.BaseBuilder<TableMetadataEntity, TableMetadataEntity.Builder> {
-        public Builder(String metadataLocation, String content) {
-            super();
-            setName(metadataLocation);
-            setType(PolarisEntityType.TABLE_METADATA);
-            setMetadataLocation(metadataLocation);
-            setContent(content);
-        }
-
-        @Override
-        public TableMetadataEntity build() {
-            return new TableMetadataEntity(buildBase());
-        }
-
-        public TableMetadataEntity.Builder setContent(String content) {
-            this.internalProperties.put(CONTENT_KEY, content);
-            return this;
-        }
-
-        public TableMetadataEntity.Builder setMetadataLocation(String metadataLocation) {
-            this.internalProperties.put(METADATA_LOCATION_KEY, metadataLocation);
-            return this;
-        }
-    }
+  }
 }
