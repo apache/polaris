@@ -25,7 +25,6 @@ import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Arrays;
 import java.util.Collections;
@@ -103,7 +102,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -1401,13 +1399,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   }
 
   private TableMetadata createTableMetadata(String location, Schema schema) {
-    return TableMetadata
-        .newTableMetadata(
-            schema,
-            PartitionSpec.unpartitioned(),
-            location,
-            Collections.emptyMap()
-        );
+    return TableMetadata.newTableMetadata(
+        schema, PartitionSpec.unpartitioned(), location, Collections.emptyMap());
   }
 
   @Test
@@ -1419,10 +1412,10 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     catalog.createNamespace(namespace);
     Table createdTable = catalog.createTable(tableIdentifier, schema);
-    TableMetadata originalMetadata = ((BaseTable)createdTable).operations().current();
+    TableMetadata originalMetadata = ((BaseTable) createdTable).operations().current();
 
-    TableMetadata loadedMetadata = MetadataCacheManager
-        .loadTableMetadata(
+    TableMetadata loadedMetadata =
+        MetadataCacheManager.loadTableMetadata(
             tableIdentifier,
             polarisContext,
             entityManager,
@@ -1432,8 +1425,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     // The first time, the fallback is called
     Assertions.assertThat(loadedMetadata).isSameAs(originalMetadata);
 
-    TableMetadata cachedMetadata = MetadataCacheManager
-        .loadTableMetadata(
+    TableMetadata cachedMetadata =
+        MetadataCacheManager.loadTableMetadata(
             tableIdentifier,
             polarisContext,
             entityManager,
@@ -1453,15 +1446,13 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     TableOperations tableOps = catalog.newTableOps(tableIdentifier);
     TableMetadata updatedMetadata =
         tableOps.current().updateLocation(originalMetadata.location() + "-updated");
-    tableOps.commit(
-        tableOps.current(),
-        updatedMetadata);
+    tableOps.commit(tableOps.current(), updatedMetadata);
     TableMetadata spyUpdatedMetadata = Mockito.spy(updatedMetadata);
     Mockito.doReturn("spy-location").when(spyUpdatedMetadata).metadataFileLocation();
 
     // Read from the cache; it should detect a chance due to the update and load the new fallback
-    TableMetadata reloadedMetadata = MetadataCacheManager
-        .loadTableMetadata(
+    TableMetadata reloadedMetadata =
+        MetadataCacheManager.loadTableMetadata(
             tableIdentifier,
             polarisContext,
             entityManager,
