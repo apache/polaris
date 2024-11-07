@@ -100,9 +100,14 @@ class AzureStorageConfigInfo(StorageConfigInfo):
         if not isinstance(obj, dict):
             return cls.model_validate(obj)
 
+        # IMPORTANT: The following may require manual repair to add subtype-specific properties
+        # after using the OpenAPI Generator.
         _obj = cls.model_validate({
             "storageType": obj.get("storageType"),
-            "allowedLocations": obj.get("allowedLocations")
+            "allowedLocations": obj.get("allowedLocations"),
+            "tenantId": obj.get("tenantId"),
+            "multiTenantAppName": obj.get("multiTenantAppName"),
+            "consentUrl": obj.get("consentUrl")
         })
         return _obj
 
