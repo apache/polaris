@@ -131,7 +131,7 @@ public class MetadataCacheManager {
                         .getMetaStoreManager()
                         .loadEntity(callContext, result.getCatalogId(), result.getId());
                 return Optional.ofNullable(metadataEntityResult.getEntity())
-                    .map(e -> (TableMetadataEntity) e)
+                    .map(TableMetadataEntity::of)
                     .stream();
               })
           .filter(
