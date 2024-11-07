@@ -792,7 +792,15 @@ public class PolarisCatalogHandlerWrapper {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
     authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.TABLE, tableIdentifier);
 
-    return doCatalogOperation(() -> CatalogHandlers.loadTable(baseCatalog, tableIdentifier));
+    return doCatalogOperation(() -> {
+      if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
+        return LoadTableResponse.builder()
+            .withTableMetadata(basePolarisCatalog.loadTableMetadata(tableIdentifier))
+            .build();
+      }
+
+      return CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
+    });
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
@@ -822,40 +830,31 @@ public class PolarisCatalogHandlerWrapper {
     // when data-access is specified but access delegation grants are not found.
     return doCatalogOperation(
         () -> {
-          final TableMetadata tableMetadata;
+          TableMetadata tableMetadata = null;
           if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
             tableMetadata = basePolarisCatalog.loadTableMetadata(tableIdentifier);
-          } else {
-            // TODO fix
-            Table table = baseCatalog.loadTable(tableIdentifier);
-            if (table instanceof BaseTable baseTable) {
-              tableMetadata = baseTable.operations().current();
-            } else {
-              tableMetadata = null;
-            }
           }
 
-
-          if (table instanceof BaseTable baseTable) {
-            LoadTableResponse.Builder responseBuilder =
-                LoadTableResponse.builder().withTableMetadata(tableMetadata);
-            if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-              LOGGER
-                  .atDebug()
-                  .addKeyValue("tableIdentifier", tableIdentifier)
-                  .addKeyValue("tableLocation", tableMetadata.location())
-                  .log("Fetching client credentials for table");
-              responseBuilder.addAllConfig(
-                  credentialDelegation.getCredentialConfig(
-                      tableIdentifier, tableMetadata, actionsRequested));
-            }
-            return responseBuilder.build();
-          } else if (table instanceof BaseMetadataTable) {
-            // metadata tables are loaded on the client side, return NoSuchTableException for now
+          // The metadata failed to load
+          if (tableMetadata == null) {
             throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
           }
 
-          throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+          if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
+            LoadTableResponse.Builder responseBuilder =
+                LoadTableResponse.builder().withTableMetadata(tableMetadata);
+            LOGGER
+                .atDebug()
+                .addKeyValue("tableIdentifier", tableIdentifier)
+                .addKeyValue("tableLocation", tableMetadata.location())
+                .log("Fetching client credentials for table");
+            responseBuilder.addAllConfig(
+                credentialDelegation.getCredentialConfig(
+                    tableIdentifier, tableMetadata, actionsRequested));
+            return responseBuilder.build();
+          } else {
+            throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+          }
         });
   }
 
