@@ -86,11 +86,13 @@ public class MetadataCacheManager {
     } else {
       TableLikeEntity tableEntity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
       TableMetadataEntity tableMetadataEntity =
-          new TableMetadataEntity.Builder(metadata.location(), TableMetadataParser.toJson(metadata))
+          new TableMetadataEntity.Builder()
               .setCatalogId(tableEntity.getCatalogId())
               .setParentId(tableEntity.getId())
               .setId(entityManager.getMetaStoreManager().generateNewEntityId(callContext).getId())
               .setCreateTimestamp(System.currentTimeMillis())
+              .setMetadataLocation(metadata.metadataFileLocation())
+              .setContent(TableMetadataParser.toJson(metadata))
               .build();
       return entityManager
           .getMetaStoreManager()
@@ -137,7 +139,7 @@ public class MetadataCacheManager {
           .filter(
               metadata -> {
                 if (metadata.getMetadataLocation().equals(metadataLocation)) {
-                  return true; // Keep this metadata as it's the one we're interested in
+                  return true;
                 } else {
                   LOGGER.debug(
                       String.format("Deleting old entry for %s", metadata.getMetadataLocation()));

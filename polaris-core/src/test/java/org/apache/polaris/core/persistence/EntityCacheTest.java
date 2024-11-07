@@ -86,7 +86,7 @@ public class EntityCacheTest {
     callCtx = new PolarisCallContext(metaStore, diagServices);
     metaStoreManager = new PolarisMetaStoreManagerImpl();
 
-    // bootstrap the mata store with our test schema
+    // bootstrap the metastore with our test schema
     tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
     tm.testCreateTestCatalog();
   }

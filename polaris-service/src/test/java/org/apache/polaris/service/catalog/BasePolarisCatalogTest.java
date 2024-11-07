@@ -25,8 +25,10 @@ import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -43,6 +45,7 @@ import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
+import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
@@ -77,6 +80,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -85,6 +89,7 @@ import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.service.persistence.MetadataCacheManager;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
@@ -98,6 +103,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -125,6 +131,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   private PolarisEntityManager entityManager;
   private AuthenticatedPolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
+  private PolarisResolutionManifestCatalogView passthroughView;
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -200,7 +207,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 .setStorageConfigurationInfo(storageConfigModel, storageLocation)
                 .build());
 
-    PolarisPassthroughResolutionView passthroughView =
+    passthroughView =
         new PolarisPassthroughResolutionView(
             callContext, entityManager, authenticatedRoot, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
@@ -1383,5 +1390,84 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 .getEntities()
                 .getFirst()));
     Assertions.assertThat(measured.getNumDeletedFiles()).as("A table was deleted").isGreaterThan(0);
+  }
+
+  private Schema buildSchema(int fields) {
+    Types.NestedField[] fieldsArray = new Types.NestedField[fields];
+    for (int i = 0; i < fields; i++) {
+      fieldsArray[i] = Types.NestedField.optional(i, "field_" + i, Types.IntegerType.get());
+    }
+    return new Schema(fieldsArray);
+  }
+
+  private TableMetadata createTableMetadata(String location, Schema schema) {
+    return TableMetadata
+        .newTableMetadata(
+            schema,
+            PartitionSpec.unpartitioned(),
+            location,
+            Collections.emptyMap()
+        );
+  }
+
+  @Test
+  public void testMetadataCachingWithManualFallback() {
+    Namespace namespace = Namespace.of("manual-namespace");
+    TableIdentifier tableIdentifier = TableIdentifier.of(namespace, "t1");
+
+    Schema schema = buildSchema(10);
+
+    catalog.createNamespace(namespace);
+    Table createdTable = catalog.createTable(tableIdentifier, schema);
+    TableMetadata originalMetadata = ((BaseTable)createdTable).operations().current();
+
+    TableMetadata loadedMetadata = MetadataCacheManager
+        .loadTableMetadata(
+            tableIdentifier,
+            polarisContext,
+            entityManager,
+            passthroughView,
+            () -> originalMetadata);
+
+    // The first time, the fallback is called
+    Assertions.assertThat(loadedMetadata).isSameAs(originalMetadata);
+
+    TableMetadata cachedMetadata = MetadataCacheManager
+        .loadTableMetadata(
+            tableIdentifier,
+            polarisContext,
+            entityManager,
+            passthroughView,
+            () -> {
+              throw new IllegalStateException("Fell back even though a cache entry should exist!");
+            });
+
+    // The second time, it's loaded from the cache
+    Assertions.assertThat(cachedMetadata).isNotSameAs(originalMetadata);
+
+    // The content should match what was cached
+    Assertions.assertThat(TableMetadataParser.toJson(cachedMetadata))
+        .isEqualTo(TableMetadataParser.toJson(loadedMetadata));
+
+    // Update the table
+    TableOperations tableOps = catalog.newTableOps(tableIdentifier);
+    TableMetadata updatedMetadata =
+        tableOps.current().updateLocation(originalMetadata.location() + "-updated");
+    tableOps.commit(
+        tableOps.current(),
+        updatedMetadata);
+    TableMetadata spyUpdatedMetadata = Mockito.spy(updatedMetadata);
+    Mockito.doReturn("spy-location").when(spyUpdatedMetadata).metadataFileLocation();
+
+    // Read from the cache; it should detect a chance due to the update and load the new fallback
+    TableMetadata reloadedMetadata = MetadataCacheManager
+        .loadTableMetadata(
+            tableIdentifier,
+            polarisContext,
+            entityManager,
+            passthroughView,
+            () -> spyUpdatedMetadata);
+
+    Assertions.assertThat(reloadedMetadata).isSameAs(spyUpdatedMetadata);
   }
 }
