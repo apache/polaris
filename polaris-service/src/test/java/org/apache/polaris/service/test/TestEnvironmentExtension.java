@@ -37,9 +37,16 @@ public class TestEnvironmentExtension implements ParameterResolver {
   public static final String ENV_TEST_ENVIRONMENT_RESOLVER_IMPL =
       "INTEGRATION_TEST_ENVIRONMENT_RESOLVER_IMPL";
 
+  private static final String ENV_PROPERTY_KEY = "testenvironment";
+
   public static TestEnvironment getEnv(ExtensionContext extensionContext)
       throws IllegalAccessException {
-    return getTestEnvironmentResolver().resolveTestEnvironment(extensionContext);
+    return extensionContext
+        .getStore(ExtensionContext.Namespace.create(extensionContext.getRequiredTestClass()))
+        .getOrComputeIfAbsent(
+            ENV_PROPERTY_KEY,
+            (k) -> getTestEnvironmentResolver().resolveTestEnvironment(extensionContext),
+            TestEnvironment.class);
   }
 
   @Override
