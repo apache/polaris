@@ -94,12 +94,25 @@ public class MetadataCacheManager {
               .setMetadataLocation(metadata.metadataFileLocation())
               .setContent(TableMetadataParser.toJson(metadata))
               .build();
-      return entityManager
-          .getMetaStoreManager()
-          .createEntityIfNotExists(
-              callContext,
-              PolarisEntity.toCoreList(resolvedEntities.getRawFullPath()),
-              tableMetadataEntity);
+      try {
+        return entityManager
+            .getMetaStoreManager()
+            .createEntityIfNotExists(
+                callContext,
+                PolarisEntity.toCoreList(resolvedEntities.getRawFullPath()),
+                tableMetadataEntity);
+      } catch (RuntimeException e) {
+        // PersistenceException (& other extension-specific exceptions) may not be in scope,
+        // but we can make a best-effort attempt to swallow it and just forego caching
+        if (e.toString().contains("PersistenceException")) {
+          return new PolarisMetaStoreManager.EntityResult(
+              PolarisMetaStoreManager.ReturnStatus.UNEXPECTED_ERROR_SIGNALED,
+              e.getMessage()
+          );
+        } else {
+          throw e;
+        }
+      }
     }
   }
 
