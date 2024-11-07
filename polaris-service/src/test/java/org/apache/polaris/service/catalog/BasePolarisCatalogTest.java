@@ -80,6 +80,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -156,7 +157,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
               }
             },
             Clock.systemDefaultZone());
-    entityManager = new PolarisEntityManager(metaStoreManager, new StorageCredentialCache());
+    entityManager =
+        new PolarisEntityManager(
+            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
 
     CallContext callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);

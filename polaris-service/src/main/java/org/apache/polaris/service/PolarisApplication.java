@@ -86,8 +86,12 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmScopeContext;
 import org.apache.polaris.core.monitor.PolarisMetricRegistry;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.EntityCacheFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
@@ -210,7 +214,10 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
             new AbstractBinder() {
               @Override
               protected void configure() {
+                bind(RealmScopeContext.class).in(Singleton.class);
                 bind(configuration.getMetaStoreManagerFactory()).to(MetaStoreManagerFactory.class);
+                bindFactory(configuration.getMetaStoreManagerFactory())
+                    .to(PolarisMetaStoreManager.class);
                 bind(configuration.getConfigurationStore()).to(PolarisConfigurationStore.class);
                 bind(configuration.getFileIOFactory()).to(FileIOFactory.class);
                 bind(configuration.getPolarisAuthenticator()).to(Authenticator.class);
@@ -219,6 +226,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                 bind(configuration.getCallContextResolver()).to(CallContextResolver.class);
                 bind(configuration.getRealmContextResolver()).to(RealmContextResolver.class);
                 bind(configuration.getRateLimiter()).to(RateLimiter.class);
+                bindFactory(EntityCacheFactory.class).to(EntityCache.class);
                 bind(new PolarisStorageIntegrationProviderImpl(
                         () -> {
                           StsClientBuilder stsClientBuilder = StsClient.builder();
