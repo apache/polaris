@@ -1,1 +1,1 @@
-# Folder for MiniIo data container volume
+# Folder for MinIO data container volume

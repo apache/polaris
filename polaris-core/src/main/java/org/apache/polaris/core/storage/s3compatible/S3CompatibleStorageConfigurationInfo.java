@@ -49,7 +49,7 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
     TOKEN_WITH_ASSUME_ROLE;
   };
 
-  // Define how the access and secret keys will be receive during the catalo creation, if
+  // Define how the access and secret keys will be receive during the catalog creation, if
   // ENV_VAR_NAME, the variable must exist in the Polaris running environement - it is more secured,
   // but less dynamic
   public static enum CredsCatalogAndClientStrategyEnum {

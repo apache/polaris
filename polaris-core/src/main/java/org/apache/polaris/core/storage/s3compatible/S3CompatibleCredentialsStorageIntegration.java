@@ -53,13 +53,11 @@ public class S3CompatibleCredentialsStorageIntegration
     StsClientBuilder stsBuilder = software.amazon.awssdk.services.sts.StsClient.builder();
     stsBuilder.region(
         Region
-            .US_WEST_1); // default region to avoid bug, because most (all?) S3 compatible softwares
-    // do not care about regions
+            .US_WEST_1);
     stsBuilder.endpointOverride(
         URI.create(
             s3storageConfig
-                .getS3Endpoint())); // S3Compatible - AWS STS endpoint is unique and different from
-    // the S3 Endpoint
+                .getS3Endpoint()));
     stsBuilder.credentialsProvider(
         StaticCredentialsProvider.create(
             AwsBasicCredentials.create(
