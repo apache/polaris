@@ -41,6 +41,7 @@ public class TestEnvironmentExtension implements ParameterResolver {
 
   public static TestEnvironment getEnv(ExtensionContext extensionContext)
       throws IllegalAccessException {
+    // This must be cached because the TestEnvironment has a randomly generated ID
     return extensionContext
         .getStore(ExtensionContext.Namespace.create(extensionContext.getRequiredTestClass()))
         .getOrComputeIfAbsent(
