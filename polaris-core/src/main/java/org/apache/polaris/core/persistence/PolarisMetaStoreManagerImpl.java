@@ -954,7 +954,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
       return new CreatePrincipalResult(ReturnStatus.ENTITY_ALREADY_EXISTS, null);
     }
 
-    // generate new secretes for this principal
+    // generate new secrets for this principal
     PolarisPrincipalSecrets principalSecrets =
         ms.generateNewPrincipalSecrets(callCtx, principal.getName(), principal.getId());
 

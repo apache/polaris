@@ -501,9 +501,9 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
             principalSecrets.getPrincipalId());
 
     // rotate the secrets
-    principalSecrets.rotateSecrets(mainSecretToRotate);
+    principalSecrets.rotateSecrets();
     if (reset) {
-      principalSecrets.rotateSecrets(principalSecrets.getMainSecret());
+      principalSecrets.rotateSecrets();
     }
 
     // write back new secrets
