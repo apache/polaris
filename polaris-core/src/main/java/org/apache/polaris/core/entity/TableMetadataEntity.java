@@ -21,8 +21,8 @@ package org.apache.polaris.core.entity;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 
 /**
- * A {@link PolarisEntity} for storing table metadata. This can contain the raw content
- * of the `metadata.json` or more granular information
+ * A {@link PolarisEntity} for storing table metadata. This can contain the raw content of the
+ * `metadata.json` or more granular information
  */
 public class TableMetadataEntity extends PolarisEntity {
   private static final String CONTENT_KEY = "content";
