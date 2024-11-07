@@ -28,9 +28,9 @@ import org.apache.hadoop.hdfs.web.oauth2.OAuth2Constants;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.service.config.HasEntityManagerFactory;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.service.config.HasMetaStoreManagerFactory;
 import org.apache.polaris.service.config.OAuth2ApiService;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +40,7 @@ import org.slf4j.LoggerFactory;
  * if the client secret matches.
  */
 @JsonTypeName("default")
-public class DefaultOAuth2ApiService implements OAuth2ApiService, HasEntityManagerFactory {
+public class DefaultOAuth2ApiService implements OAuth2ApiService, HasMetaStoreManagerFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultOAuth2ApiService.class);
   private TokenBrokerFactory tokenBrokerFactory;
 
@@ -122,9 +122,9 @@ public class DefaultOAuth2ApiService implements OAuth2ApiService, HasEntityManag
   }
 
   @Override
-  public void setEntityManagerFactory(RealmEntityManagerFactory entityManagerFactory) {
-    if (tokenBrokerFactory instanceof HasEntityManagerFactory hemf) {
-      hemf.setEntityManagerFactory(entityManagerFactory);
+  public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
+    if (tokenBrokerFactory instanceof HasMetaStoreManagerFactory hemf) {
+      hemf.setMetaStoreManagerFactory(metaStoreManagerFactory);
     }
   }
 
