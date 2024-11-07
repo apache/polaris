@@ -90,7 +90,7 @@ public class SnowmanCredentialsExtension
           .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
 
-    Principal principal = new Principal(snowmanIdentifier.principalName);
+    Principal principal = new Principal(snowmanIdentifier.principalName());
 
     try (Response createPResponse =
         testEnv
