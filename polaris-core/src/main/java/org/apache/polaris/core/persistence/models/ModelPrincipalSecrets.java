@@ -164,7 +164,17 @@ public class ModelPrincipalSecrets {
     this.principalId = principalSecrets.getPrincipalId();
     this.principalClientId = principalSecrets.getPrincipalClientId();
     this.secretSalt = principalSecrets.getSecretSalt();
+    this.mainSecret = principalSecrets.getMainSecret();
+    this.secondarySecret = principalSecrets.getSecondarySecret();
     this.mainSecretHash = principalSecrets.getMainSecretHash();
     this.secondarySecretHash = principalSecrets.getSecondarySecretHash();
+
+    // Once a hash is stored, do not keep the original secret
+    if (this.mainSecretHash != null) {
+      this.mainSecret = null;
+    }
+    if (this.secondarySecretHash != null) {
+      this.secondarySecret = null;
+    }
   }
 }
