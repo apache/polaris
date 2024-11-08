@@ -122,7 +122,7 @@ public class PolarisPrincipalSecrets {
     this.principalClientId = principalSecrets.getPrincipalClientId();
     this.mainSecret = principalSecrets.getMainSecret();
     this.secondarySecret = principalSecrets.getSecondarySecret();
-    this.secretSalt = principalSecrets.getSecondarySecret();
+    this.secretSalt = principalSecrets.getSecretSalt();
     this.mainSecretHash = principalSecrets.getMainSecretHash();
     this.secondarySecretHash = principalSecrets.getSecondarySecretHash();
   }
