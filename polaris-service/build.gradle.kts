@@ -35,6 +35,14 @@ dependencies {
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
   implementation("org.apache.iceberg:iceberg-aws")
+  implementation(libs.hadoop.common) {
+    exclude("org.slf4j", "slf4j-reload4j")
+    exclude("org.slf4j", "slf4j-log4j12")
+    exclude("ch.qos.reload4j", "reload4j")
+    exclude("log4j", "log4j")
+    exclude("org.apache.zookeeper", "zookeeper")
+  }
+  implementation(libs.hadoop.hdfs.client)
 
   implementation(platform(libs.dropwizard.bom))
   implementation("io.dropwizard:dropwizard-core")
