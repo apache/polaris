@@ -120,6 +120,34 @@ public class MetadataCacheManager {
       PolarisCallContext callContext,
       PolarisEntityManager entityManager,
       PolarisResolutionManifestCatalogView resolvedEntityView) {
+    return loadCachedTableMetadataImpl(
+        tableIdentifier,
+        callContext,
+        entityManager,
+        resolvedEntityView,
+        false);
+  }
+
+  public static void dropTableMetadata(
+      TableIdentifier tableIdentifier,
+      PolarisCallContext callContext,
+      PolarisEntityManager entityManager,
+      PolarisResolutionManifestCatalogView resolvedEntityView) {
+    loadCachedTableMetadataImpl(
+        tableIdentifier,
+        callContext,
+        entityManager,
+        resolvedEntityView,
+        true);
+  }
+
+  /** Return the cached {@link Table} entity, if one exists */
+  private static @NotNull Optional<TableMetadata> loadCachedTableMetadataImpl(
+      TableIdentifier tableIdentifier,
+      PolarisCallContext callContext,
+      PolarisEntityManager entityManager,
+      PolarisResolutionManifestCatalogView resolvedEntityView,
+      boolean dropEverything) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
     if (resolvedEntities == null) {
@@ -149,7 +177,7 @@ public class MetadataCacheManager {
               })
           .filter(
               metadata -> {
-                if (metadata.getMetadataLocation().equals(metadataLocation)) {
+                if (metadata.getMetadataLocation().equals(metadataLocation) && !dropEverything) {
                   return true;
                 } else {
                   LOGGER.debug(
