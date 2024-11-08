@@ -24,10 +24,10 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "polaris.labels" . | nindent 4 }}
+  {{- if .Values.service.annotations }}
   annotations:
-    {{- if .Values.service.annotations }}
-      {{- tpl (toYaml .Values.service.annotations) . | nindent 4 }}
-    {{- end }}
+    {{- tpl (toYaml .Values.service.annotations) . | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ .Values.service.type }}
   selector:
