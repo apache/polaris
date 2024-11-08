@@ -20,7 +20,7 @@ package org.apache.polaris.service.exception;
 
 import com.azure.core.exception.AzureException;
 import com.google.cloud.storage.StorageException;
-import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -28,6 +28,7 @@ import jakarta.ws.rs.ext.ExceptionMapper;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Locale;
+import java.util.Set;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.CherrypickAncestorCommitException;
@@ -62,9 +63,8 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   // to lack of permissions
   // We may want to consider a change to Iceberg Core to wrap cloud provider IO exceptions to
   // Iceberg ForbiddenException
-  private static final String[] ACCESS_DENIED_HINTS = {
-    "access denied", "not authorized", "forbidden"
-  };
+  private static final Set<String> ACCESS_DENIED_HINTS =
+      Set.of("access denied", "not authorized", "forbidden");
 
   public IcebergExceptionMapper() {}
 
@@ -135,11 +135,11 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
 
   public static boolean containsAnyAccessDeniedHint(String message) {
     String messageLower = message.toLowerCase(Locale.ENGLISH);
-    return Arrays.stream(ACCESS_DENIED_HINTS).anyMatch(messageLower::contains);
+    return ACCESS_DENIED_HINTS.stream().anyMatch(messageLower::contains);
   }
 
   @VisibleForTesting
   public static Collection<String> getAccessDeniedHints() {
-    return ImmutableList.copyOf(ACCESS_DENIED_HINTS);
+    return ImmutableSet.copyOf(ACCESS_DENIED_HINTS);
   }
 }
