@@ -30,10 +30,9 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.service.config.ConfigurationStoreAware;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +52,7 @@ public class DefaultContextResolver
   public static final String PRINCIPAL_PROPERTY_KEY = "principal";
   public static final String PRINCIPAL_PROPERTY_DEFAULT_VALUE = "default-principal";
 
-  private RealmEntityManagerFactory entityManagerFactory;
+  private MetaStoreManagerFactory metaStoreManagerFactory;
   private PolarisConfigurationStore configurationStore;
   private String defaultRealm = "default-realm";
 
@@ -63,8 +62,8 @@ public class DefaultContextResolver
    * additional information from an underlying entity store.
    */
   @Override
-  public void setEntityManagerFactory(RealmEntityManagerFactory entityManagerFactory) {
-    this.entityManagerFactory = entityManagerFactory;
+  public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
+    this.metaStoreManagerFactory = metaStoreManagerFactory;
   }
 
   @Override
@@ -134,10 +133,9 @@ public class DefaultContextResolver
       parsedProperties.put(PRINCIPAL_PROPERTY_KEY, PRINCIPAL_PROPERTY_DEFAULT_VALUE);
     }
 
-    PolarisEntityManager entityManager =
-        entityManagerFactory.getOrCreateEntityManager(realmContext);
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-    PolarisMetaStoreSession metaStoreSession = entityManager.newMetaStoreSession();
+    PolarisMetaStoreSession metaStoreSession =
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     PolarisCallContext polarisContext =
         new PolarisCallContext(
             metaStoreSession,

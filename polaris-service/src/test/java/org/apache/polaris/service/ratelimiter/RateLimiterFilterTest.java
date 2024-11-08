@@ -31,6 +31,7 @@ import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
+import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +40,7 @@ import org.threeten.extra.MutableClock;
 /** Main integration tests for rate limiting */
 @ExtendWith({
   DropwizardExtensionsSupport.class,
+  TestEnvironmentExtension.class,
   PolarisConnectionExtension.class,
   SnowmanCredentialsExtension.class
 })

@@ -16,28 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.catalog;
 
-import com.auth0.jwt.algorithms.Algorithm;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import java.util.List;
+import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 
-/** Generates a JWT using a Public/Private RSA Key */
-public class JWTRSAKeyPair extends JWTBroker {
+/** Runs PolarisRestCatalogViewIntegrationTest on the local filesystem. */
+public class PolarisRestCatalogViewFileIntegrationTest
+    extends PolarisRestCatalogViewIntegrationTest {
+  public static final String BASE_LOCATION = "file:///tmp/buckets/my-bucket";
 
-  JWTRSAKeyPair(PolarisMetaStoreManager metaStoreManager, int maxTokenGenerationInSeconds) {
-    super(metaStoreManager, maxTokenGenerationInSeconds);
-  }
-
-  KeyProvider getKeyProvider() {
-    return new LocalRSAKeyProvider();
+  @Override
+  protected StorageConfigInfo getStorageConfigInfo() {
+    return FileStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+        .setAllowedLocations(List.of(BASE_LOCATION))
+        .build();
   }
 
   @Override
-  Algorithm getAlgorithm() {
-    KeyProvider keyProvider = getKeyProvider();
-    return Algorithm.RSA256(
-        (RSAPublicKey) keyProvider.getPublicKey(), (RSAPrivateKey) keyProvider.getPrivateKey());
+  protected boolean shouldSkip() {
+    return false;
   }
 }

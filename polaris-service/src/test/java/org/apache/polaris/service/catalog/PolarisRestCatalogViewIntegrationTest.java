@@ -26,15 +26,11 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.core.PolarisConfiguration;
-import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
-import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -45,6 +41,9 @@ import org.apache.polaris.service.test.PolarisConnectionExtension.PolarisToken;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension.SnowmanCredentials;
+import org.apache.polaris.service.test.TestEnvironment;
+import org.apache.polaris.service.test.TestEnvironmentExtension;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -56,16 +55,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 @ExtendWith({
   DropwizardExtensionsSupport.class,
+  TestEnvironmentExtension.class,
   PolarisConnectionExtension.class,
   SnowmanCredentialsExtension.class
 })
-public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<RESTCatalog> {
-  public static final String TEST_ROLE_ARN =
-      Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN"))
-          .orElse("arn:aws:iam::123456789012:role/my-role");
-  public static final String S3_BUCKET_BASE =
-      Optional.ofNullable(System.getenv("INTEGRATION_TEST_S3_PATH"))
-          .orElse("file:///tmp/buckets/my-bucket");
+public abstract class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<RESTCatalog> {
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
       new DropwizardAppExtension<>(
           PolarisApplication.class,
@@ -89,7 +83,11 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
       TestInfo testInfo,
       PolarisToken adminToken,
       SnowmanCredentials snowmanCredentials,
-      @PolarisRealm String realm) {
+      @PolarisRealm String realm,
+      TestEnvironment testEnv) {
+
+    Assumptions.assumeFalse(shouldSkip());
+
     String userToken = adminToken.token();
     testInfo
         .getTestMethod()
@@ -97,11 +95,11 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
             method -> {
               String catalogName = method.getName();
               try (Response response =
-                  EXT.client()
+                  testEnv
+                      .apiClient()
                       .target(
                           String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s",
-                              EXT.getLocalPort(), catalogName))
+                              "%s/api/management/v1/catalogs/%s", testEnv.baseUri(), catalogName))
                       .request("application/json")
                       .header("Authorization", "Bearer " + userToken)
                       .header(REALM_PROPERTY_KEY, realm)
@@ -114,17 +112,15 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
                 }
               }
 
-              AwsStorageConfigInfo awsConfigModel =
-                  AwsStorageConfigInfo.builder()
-                      .setRoleArn(TEST_ROLE_ARN)
-                      .setExternalId("externalId")
-                      .setUserArn("userArn")
-                      .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-                      .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
-                      .build();
+              StorageConfigInfo storageConfig = getStorageConfigInfo();
+              String defaultBaseLocation =
+                  storageConfig.getAllowedLocations().getFirst()
+                      + "/"
+                      + System.getenv("USER")
+                      + "/path/to/data";
+
               org.apache.polaris.core.admin.model.CatalogProperties props =
-                  org.apache.polaris.core.admin.model.CatalogProperties.builder(
-                          S3_BUCKET_BASE + "/" + System.getenv("USER") + "/path/to/data")
+                  org.apache.polaris.core.admin.model.CatalogProperties.builder(defaultBaseLocation)
                       .addProperty(
                           CatalogEntity.REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY,
                           "file:")
@@ -140,17 +136,30 @@ public class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<REST
                       .setType(Catalog.TypeEnum.INTERNAL)
                       .setName(catalogName)
                       .setProperties(props)
-                      .setStorageConfigInfo(
-                          S3_BUCKET_BASE.startsWith("file:")
-                              ? new FileStorageConfigInfo(
-                                  StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://"))
-                              : awsConfigModel)
+                      .setStorageConfigInfo(storageConfig)
                       .build();
               restCatalog =
                   TestUtil.createSnowmanManagedCatalog(
-                      EXT, adminToken, snowmanCredentials, realm, catalog, Map.of());
+                      testEnv.apiClient(),
+                      testEnv.baseUri().toString(),
+                      adminToken,
+                      snowmanCredentials,
+                      realm,
+                      catalog,
+                      Map.of());
             });
   }
+
+  /**
+   * @return The catalog's storage config.
+   */
+  protected abstract StorageConfigInfo getStorageConfigInfo();
+
+  /**
+   * @return Whether the tests should be skipped, for example due to environment variables not being
+   *     specified.
+   */
+  protected abstract boolean shouldSkip();
 
   @Override
   protected RESTCatalog catalog() {

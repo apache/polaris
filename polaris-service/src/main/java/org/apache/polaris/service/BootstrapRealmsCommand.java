@@ -27,7 +27,6 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.config.ConfigurationStoreAware;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.CallContextResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,10 +54,8 @@ public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplication
     if (metaStoreManagerFactory instanceof ConfigurationStoreAware) {
       ((ConfigurationStoreAware) metaStoreManagerFactory).setConfigurationStore(configurationStore);
     }
-    RealmEntityManagerFactory entityManagerFactory =
-        new RealmEntityManagerFactory(metaStoreManagerFactory);
     CallContextResolver callContextResolver = configuration.getCallContextResolver();
-    callContextResolver.setEntityManagerFactory(entityManagerFactory);
+    callContextResolver.setMetaStoreManagerFactory(metaStoreManagerFactory);
     if (callContextResolver instanceof ConfigurationStoreAware csa) {
       csa.setConfigurationStore(configurationStore);
     }

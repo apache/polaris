@@ -103,9 +103,13 @@ class AwsStorageConfigInfo(StorageConfigInfo):
         if not isinstance(obj, dict):
             return cls.model_validate(obj)
 
+        # IMPORTANT: The following may require manual repair to add subtype-specific properties
+        # after using the OpenAPI Generator.
         _obj = cls.model_validate({
             "storageType": obj.get("storageType"),
             "allowedLocations": obj.get("allowedLocations"),
-            "roleArn": obj.get("roleArn")
+            "roleArn": obj.get("roleArn"),
+            "externalId": obj.get("externalId"),
+            "userArn": obj.get("userArn")
         })
         return _obj
