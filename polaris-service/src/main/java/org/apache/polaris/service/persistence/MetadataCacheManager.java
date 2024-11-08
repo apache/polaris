@@ -121,11 +121,7 @@ public class MetadataCacheManager {
       PolarisEntityManager entityManager,
       PolarisResolutionManifestCatalogView resolvedEntityView) {
     return loadCachedTableMetadataImpl(
-        tableIdentifier,
-        callContext,
-        entityManager,
-        resolvedEntityView,
-        false);
+        tableIdentifier, callContext, entityManager, resolvedEntityView, false);
   }
 
   public static void dropTableMetadata(
@@ -134,11 +130,7 @@ public class MetadataCacheManager {
       PolarisEntityManager entityManager,
       PolarisResolutionManifestCatalogView resolvedEntityView) {
     loadCachedTableMetadataImpl(
-        tableIdentifier,
-        callContext,
-        entityManager,
-        resolvedEntityView,
-        true);
+        tableIdentifier, callContext, entityManager, resolvedEntityView, true);
   }
 
   /** Return the cached {@link Table} entity, if one exists */

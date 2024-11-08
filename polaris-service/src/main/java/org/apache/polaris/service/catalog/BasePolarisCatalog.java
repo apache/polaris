@@ -1892,10 +1892,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     // Purge table metadata, if it exists:
     MetadataCacheManager.dropTableMetadata(
-        identifier,
-        callContext.getPolarisCallContext(),
-        entityManager,
-        resolvedEntityView);
+        identifier, callContext.getPolarisCallContext(), entityManager, resolvedEntityView);
 
     // Drop the table:
     return getMetaStoreManager()
