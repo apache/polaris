@@ -38,7 +38,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -89,8 +89,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             Clock.systemDefaultZone());
 
     PolarisEntityManager entityManager =
-        new PolarisEntityManager(
-            metaStoreManager, polarisContext::getMetaStore, new StorageCredentialCache());
+        new PolarisEntityManager(metaStoreManager, new StorageCredentialCache());
 
     CallContext callContext = CallContext.of(null, polarisContext);
     CallContext.setCurrentContext(callContext);
@@ -98,8 +97,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     PrincipalEntity rootEntity =
         new PrincipalEntity(
             PolarisEntity.of(
-                entityManager
-                    .getMetaStoreManager()
+                metaStoreManager
                     .readEntityByName(
                         polarisContext,
                         null,
@@ -114,8 +112,9 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
         new PolarisAdminService(
             callContext,
             entityManager,
+            metaStoreManager,
             authenticatedRoot,
-            new PolarisAuthorizer(new PolarisConfigurationStore() {}));
+            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
     adminService.createCatalog(
         new CatalogEntity.Builder()
             .setName(CATALOG_NAME)
@@ -135,6 +134,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     this.catalog =
         new BasePolarisCatalog(
             entityManager,
+            metaStoreManager,
             callContext,
             passthroughView,
             authenticatedRoot,

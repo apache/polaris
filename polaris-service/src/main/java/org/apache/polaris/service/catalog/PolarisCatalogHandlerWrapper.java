@@ -113,6 +113,7 @@ public class PolarisCatalogHandlerWrapper {
 
   private final CallContext callContext;
   private final PolarisEntityManager entityManager;
+  private final PolarisMetaStoreManager metaStoreManager;
   private final String catalogName;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final PolarisAuthorizer authorizer;
@@ -130,12 +131,14 @@ public class PolarisCatalogHandlerWrapper {
   public PolarisCatalogHandlerWrapper(
       CallContext callContext,
       PolarisEntityManager entityManager,
+      PolarisMetaStoreManager metaStoreManager,
       AuthenticatedPolarisPrincipal authenticatedPrincipal,
       CallContextCatalogFactory catalogFactory,
       String catalogName,
       PolarisAuthorizer authorizer) {
     this.callContext = callContext;
     this.entityManager = entityManager;
+    this.metaStoreManager = metaStoreManager;
     this.catalogName = catalogName;
     this.authenticatedPrincipal = authenticatedPrincipal;
     this.authorizer = authorizer;
@@ -834,7 +837,10 @@ public class PolarisCatalogHandlerWrapper {
             callContext.getPolarisCallContext(),
             catalogEntity,
             PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING)) {
-      throw new ForbiddenException("Access Delegation is not supported for this catalog");
+      throw new ForbiddenException(
+          "Access Delegation is not enabled for this catalog. Please consult applicable "
+              + "documentation for the catalog config property '%s' to enable this feature",
+          PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
 
     // TODO: Find a way for the configuration or caller to better express whether to fail or omit
@@ -1009,7 +1015,7 @@ public class PolarisCatalogHandlerWrapper {
     // only go into an in-memory collection that we can commit as a single atomic unit after all
     // validations.
     TransactionWorkspaceMetaStoreManager transactionMetaStoreManager =
-        new TransactionWorkspaceMetaStoreManager(entityManager.getMetaStoreManager());
+        new TransactionWorkspaceMetaStoreManager(metaStoreManager);
     ((BasePolarisCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
 
     commitTransactionRequest.tableChanges().stream()
@@ -1074,10 +1080,8 @@ public class PolarisCatalogHandlerWrapper {
     List<PolarisMetaStoreManager.EntityWithPath> pendingUpdates =
         transactionMetaStoreManager.getPendingUpdates();
     PolarisMetaStoreManager.EntitiesResult result =
-        entityManager
-            .getMetaStoreManager()
-            .updateEntitiesPropertiesIfNotChanged(
-                callContext.getPolarisCallContext(), pendingUpdates);
+        metaStoreManager.updateEntitiesPropertiesIfNotChanged(
+            callContext.getPolarisCallContext(), pendingUpdates);
     if (!result.isSuccess()) {
       // TODO: Retries and server-side cleanup on failure
       throw new CommitFailedException(

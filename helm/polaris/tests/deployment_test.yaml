@@ -69,16 +69,7 @@ tests:
             app.kubernetes.io/version: 4.5.6
             app.kubernetes.io/managed-by: Helm
             helm.sh/chart: polaris-1.2.3
-  - it: should set include podLabels in deployment labels
-    set:
-      podLabels:
-        app.kubernetes.io/component: polaris
-    asserts:
-      - isSubset:
-          path: metadata.labels
-          content:
-            app.kubernetes.io/component: polaris
-  - it: should include podLabels in deployment labels
+  - it: should set podLabels in deployment labels
     set:
       podLabels:
         app.kubernetes.io/component: polaris

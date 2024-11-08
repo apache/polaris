@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.io;
 
 import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.azure.core.exception.AzureException;
 import com.google.cloud.storage.StorageException;
@@ -40,6 +41,8 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.iceberg.inmemory.InMemoryFileIO;
+import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -53,7 +56,9 @@ import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
+import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -63,6 +68,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 /** Collection of File IO integration tests */
 @ExtendWith({
   DropwizardExtensionsSupport.class,
+  TestEnvironmentExtension.class,
   PolarisConnectionExtension.class,
   SnowmanCredentialsExtension.class
 })
@@ -121,13 +127,34 @@ public class FileIOIntegrationTest {
             .create();
   }
 
+  @Test
+  void testGetLengthExceptionSupplier() {
+    InMemoryFileIO inMemoryFileIO = new InMemoryFileIO();
+
+    String path = "x/y/z";
+    inMemoryFileIO.addFile(path, new byte[0]);
+
+    String errorMsg = "getLength not available";
+    FileIO io =
+        new TestFileIO(
+            inMemoryFileIO,
+            Optional.empty(),
+            Optional.empty(),
+            Optional.of(() -> new RuntimeException(errorMsg)));
+
+    RuntimeException exception =
+        assertThrows(RuntimeException.class, () -> io.newInputFile(path).getLength());
+    assertTrue(
+        exception.getMessage().contains(errorMsg),
+        String.format("expected '%s' to contain '%s'", exception.getMessage(), errorMsg));
+  }
+
   @ParameterizedTest
   @MethodSource("getIOExceptionTypeTestConfigs")
   void testIOExceptionExceptionTypes(int uniqueId, IOExceptionTypeTestConfig<?> config) {
     ioFactory.loadFileIOExceptionSupplier = config.loadFileIOExceptionSupplier;
     ioFactory.newInputFileExceptionSupplier = config.newInputFileExceptionSupplier;
     ioFactory.newOutputFileExceptionSupplier = config.newOutputFileExceptionSupplier;
-    ioFactory.getLengthExceptionSupplier = config.getLengthExceptionSupplier;
 
     assertThrows(config.expectedException, () -> config.workload.run(uniqueId));
   }
@@ -196,7 +223,6 @@ public class FileIOIntegrationTest {
       Optional<Supplier<RuntimeException>> loadFileIOExceptionSupplier,
       Optional<Supplier<RuntimeException>> newInputFileExceptionSupplier,
       Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier,
-      Optional<Supplier<RuntimeException>> getLengthExceptionSupplier,
       Workload workload) {
 
     interface Workload {
@@ -215,25 +241,15 @@ public class FileIOIntegrationTest {
               Optional.of(exceptionSupplier),
               Optional.empty(),
               Optional.empty(),
-              Optional.empty(),
               workload),
           new IOExceptionTypeTestConfig<>(
               exceptionType,
               Optional.empty(),
               Optional.of(exceptionSupplier),
               Optional.empty(),
-              Optional.empty(),
               workload),
           new IOExceptionTypeTestConfig<>(
               exceptionType,
-              Optional.empty(),
-              Optional.empty(),
-              Optional.of(exceptionSupplier),
-              Optional.empty(),
-              workload),
-          new IOExceptionTypeTestConfig<>(
-              exceptionType,
-              Optional.empty(),
               Optional.empty(),
               Optional.empty(),
               Optional.of(exceptionSupplier),

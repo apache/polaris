@@ -63,7 +63,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -154,9 +154,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
               }
             },
             Clock.systemDefaultZone());
-    entityManager =
-        new PolarisEntityManager(
-            metaStoreManager, polarisContext::getMetaStore, new StorageCredentialCache());
+    entityManager = new PolarisEntityManager(metaStoreManager, new StorageCredentialCache());
 
     CallContext callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
@@ -164,8 +162,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     PrincipalEntity rootEntity =
         new PrincipalEntity(
             PolarisEntity.of(
-                entityManager
-                    .getMetaStoreManager()
+                metaStoreManager
                     .readEntityByName(
                         polarisContext,
                         null,
@@ -180,8 +177,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         new PolarisAdminService(
             callContext,
             entityManager,
+            metaStoreManager,
             authenticatedRoot,
-            new PolarisAuthorizer(new PolarisConfigurationStore() {}));
+            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
     String storageLocation = "s3://my-bucket/path/to/data";
     storageConfigModel =
         AwsStorageConfigInfo.builder()
@@ -211,6 +209,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     this.catalog =
         new BasePolarisCatalog(
             entityManager,
+            metaStoreManager,
             callContext,
             passthroughView,
             authenticatedRoot,
@@ -598,17 +597,15 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
     final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table/";
 
-    entityManager
-        .getMetaStoreManager()
-        .updateEntityPropertiesIfNotChanged(
-            polarisContext,
-            List.of(PolarisEntity.toCore(catalogEntity)),
-            new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
-                .addProperty(
-                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
-                .addProperty(
-                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .build());
+    metaStoreManager.updateEntityPropertiesIfNotChanged(
+        polarisContext,
+        List.of(PolarisEntity.toCore(catalogEntity)),
+        new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
+            .addProperty(
+                PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
+            .addProperty(
+                PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+            .build());
     BasePolarisCatalog catalog = catalog();
     TableMetadata tableMetadata =
         TableMetadata.buildFromEmpty()
@@ -657,17 +654,15 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     // the location is in another table's subdirectory
     final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table";
 
-    entityManager
-        .getMetaStoreManager()
-        .updateEntityPropertiesIfNotChanged(
-            polarisContext,
-            List.of(PolarisEntity.toCore(catalogEntity)),
-            new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
-                .addProperty(
-                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
-                .addProperty(
-                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .build());
+    metaStoreManager.updateEntityPropertiesIfNotChanged(
+        polarisContext,
+        List.of(PolarisEntity.toCore(catalogEntity)),
+        new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
+            .addProperty(
+                PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
+            .addProperty(
+                PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+            .build());
     BasePolarisCatalog catalog = catalog();
     TableMetadata tableMetadata =
         TableMetadata.buildFromEmpty()
@@ -713,17 +708,15 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
     final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table/";
 
-    entityManager
-        .getMetaStoreManager()
-        .updateEntityPropertiesIfNotChanged(
-            polarisContext,
-            List.of(PolarisEntity.toCore(catalogEntity)),
-            new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
-                .addProperty(
-                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
-                .addProperty(
-                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .build());
+    metaStoreManager.updateEntityPropertiesIfNotChanged(
+        polarisContext,
+        List.of(PolarisEntity.toCore(catalogEntity)),
+        new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
+            .addProperty(
+                PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "false")
+            .addProperty(
+                PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+            .build());
     BasePolarisCatalog catalog = catalog();
     InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
 
@@ -800,6 +793,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
             entityManager,
+            metaStoreManager,
             callContext,
             passthroughView,
             authenticatedRoot,
@@ -864,6 +858,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
             entityManager,
+            metaStoreManager,
             callContext,
             passthroughView,
             authenticatedRoot,
@@ -1400,6 +1395,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     BasePolarisCatalog noPurgeCatalog =
         new BasePolarisCatalog(
             entityManager,
+            metaStoreManager,
             callContext,
             passthroughView,
             authenticatedRoot,
@@ -1481,6 +1477,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
             entityManager,
+            metaStoreManager,
             callContext,
             passthroughView,
             authenticatedRoot,

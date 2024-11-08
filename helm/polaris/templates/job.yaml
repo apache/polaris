@@ -33,10 +33,10 @@ metadata:
 spec:
   template:
     metadata:
+      {{- if .Values.podAnnotations }}
       annotations:
-        {{- if .Values.podAnnotations }}
-          {{- tpl (toYaml .Values.podAnnotations) . | nindent 8 }}
-        {{- end }}
+        {{- tpl (toYaml .Values.podAnnotations) . | nindent 8 }}
+      {{- end }}
       labels:
         {{- include "polaris.selectorLabels" . | nindent 8 }}
         {{- if .Values.podLabels }}
@@ -63,12 +63,16 @@ spec:
       {{- end }}
       {{- end }}
       serviceAccountName: {{ include "polaris.serviceAccountName" . }}
+      {{- if .Values.podSecurityContext}}
       securityContext:
         {{- tpl (toYaml .Values.podSecurityContext) . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
+          {{- if .Values.securityContext}}
           securityContext:
             {{- tpl (toYaml .Values.securityContext) . | nindent 12 }}
+          {{- end }}
           image: "{{ tpl .Values.image.repository . }}:{{ tpl .Values.image.tag . | default .Chart.Version }}"
           imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}
           command: ["/app/bin/polaris-service"]
@@ -81,8 +85,10 @@ spec:
             - name: eclipselink-config-volume
               mountPath: /eclipselink-config
             {{- end }}
+          {{- if .Values.resources }}
           resources:
             {{- tpl (toYaml .Values.resources) . | nindent 12 }}
+          {{- end }}
       restartPolicy: Never
       volumes:
         - name: config-volume

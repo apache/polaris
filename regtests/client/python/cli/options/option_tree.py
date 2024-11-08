@@ -104,7 +104,8 @@ class OptionTree:
                     Argument(Arguments.DEFAULT_BASE_LOCATION, str, Hints.Catalogs.Update.DEFAULT_BASE_LOCATION),
                     Argument(Arguments.ALLOWED_LOCATION, str, Hints.Catalogs.Create.ALLOWED_LOCATION,
                              allow_repeats=True),
-                    Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True),
+                    Argument(Arguments.SET_PROPERTY, str, Hints.SET_PROPERTY, allow_repeats=True),
+                    Argument(Arguments.REMOVE_PROPERTY, str, Hints.REMOVE_PROPERTY, allow_repeats=True),
                 ], input_name=Arguments.CATALOG)
             ]),
             Option(Commands.PRINCIPALS, 'manage principals', children=[
@@ -118,7 +119,8 @@ class OptionTree:
                 Option(Subcommands.LIST),
                 Option(Subcommands.ROTATE_CREDENTIALS, input_name=Arguments.PRINCIPAL),
                 Option(Subcommands.UPDATE, args=[
-                    Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True)
+                    Argument(Arguments.SET_PROPERTY, str, Hints.SET_PROPERTY, allow_repeats=True),
+                    Argument(Arguments.REMOVE_PROPERTY, str, Hints.REMOVE_PROPERTY, allow_repeats=True),
                 ], input_name=Arguments.PRINCIPAL)
             ]),
             Option(Commands.PRINCIPAL_ROLES, 'manage principal roles', children=[
@@ -132,7 +134,8 @@ class OptionTree:
                     Argument(Arguments.PRINCIPAL, str, Hints.PrincipalRoles.List.PRINCIPAL_NAME)
                 ]),
                 Option(Subcommands.UPDATE, args=[
-                    Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True)
+                    Argument(Arguments.SET_PROPERTY, str, Hints.SET_PROPERTY, allow_repeats=True),
+                    Argument(Arguments.REMOVE_PROPERTY, str, Hints.REMOVE_PROPERTY, allow_repeats=True),
                 ], input_name=Arguments.PRINCIPAL_ROLE),
                 Option(Subcommands.GRANT, hint=Hints.PrincipalRoles.GRANT, args=[
                     Argument(Arguments.PRINCIPAL, str, Hints.PrincipalRoles.Grant.PRINCIPAL)
@@ -157,7 +160,8 @@ class OptionTree:
                 ], input_name=Arguments.CATALOG),
                 Option(Subcommands.UPDATE, args=[
                     Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),
-                    Argument(Arguments.PROPERTY, str, Hints.PROPERTY, allow_repeats=True)
+                    Argument(Arguments.SET_PROPERTY, str, Hints.SET_PROPERTY, allow_repeats=True),
+                    Argument(Arguments.REMOVE_PROPERTY, str, Hints.REMOVE_PROPERTY, allow_repeats=True),
                 ], input_name=Arguments.CATALOG_ROLE),
                 Option(Subcommands.GRANT, hint=Hints.CatalogRoles.GRANT_CATALOG_ROLE, args=[
                     Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME),

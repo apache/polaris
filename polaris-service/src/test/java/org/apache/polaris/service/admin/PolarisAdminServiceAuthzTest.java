@@ -44,7 +44,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
         new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
     return new PolarisAdminService(
-        callContext, entityManager, authenticatedPrincipal, polarisAuthorizer);
+        callContext, entityManager, metaStoreManager, authenticatedPrincipal, polarisAuthorizer);
   }
 
   private void doTestSufficientPrivileges(

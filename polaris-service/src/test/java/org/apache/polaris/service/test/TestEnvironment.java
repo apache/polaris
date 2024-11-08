@@ -16,8 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.config;
+package org.apache.polaris.service.test;
 
-public interface HasEntityManagerFactory {
-  void setEntityManagerFactory(RealmEntityManagerFactory entityManagerFactory);
+import jakarta.ws.rs.client.Client;
+import java.net.URI;
+
+/** Defines the test environment that a test should run in. */
+public record TestEnvironment(Client apiClient, URI baseUri) {
+  public TestEnvironment(Client apiClient, String baseUri) {
+    this(apiClient, URI.create(baseUri));
+  }
 }

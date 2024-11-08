@@ -31,6 +31,7 @@ if [ -z "${SPARK_HOME}" ]; then
 fi
 SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
 DERBY_HOME="/tmp/derby"
+ICEBERG_VERSION="1.6.1"
 export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
 
 # Ensure binaries are downloaded locally
@@ -64,27 +65,27 @@ fi
 
 # Download the iceberg cloud provider bundles needed
 echo 'Verified bundle jars installed.'
-if ! [ -f ${SPARK_HOME}/jars/iceberg-azure-bundle-1.5.2.jar  ]; then
+if ! [ -f ${SPARK_HOME}/jars/iceberg-azure-bundle-${ICEBERG_VERSION}.jar  ]; then
     echo 'Download azure bundle jar...'
-    wget -O ${SPARK_HOME}/jars/iceberg-azure-bundle-1.5.2.jar https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-azure-bundle/1.5.2/iceberg-azure-bundle-1.5.2.jar
-    if ! [ -f ${SPARK_HOME}/jars/iceberg-azure-bundle-1.5.2.jar  ]; then
+    wget -O ${SPARK_HOME}/jars/iceberg-azure-bundle-${ICEBERG_VERSION}.jar https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-azure-bundle/${ICEBERG_VERSION}/iceberg-azure-bundle-${ICEBERG_VERSION}.jar
+    if ! [ -f ${SPARK_HOME}/jars/iceberg-azure-bundle-${ICEBERG_VERSION}.jar  ]; then
       if [[ "${OSTYPE}" == "darwin"* ]]; then
         echo "Detected OS: mac. Running 'brew install wget' to try again."
         brew install wget
-        wget -O ${SPARK_HOME}/jars/iceberg-azure-bundle-1.5.2.jar https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-azure-bundle/1.5.2/iceberg-azure-bundle-1.5.2.jar
+        wget -O ${SPARK_HOME}/jars/iceberg-azure-bundle-${ICEBERG_VERSION}.jar https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-azure-bundle/${ICEBERG_VERSION}/iceberg-azure-bundle-${ICEBERG_VERSION}.jar
       fi
     fi
 else
   echo 'Verified azure bundle jar already installed'
 fi
-if ! [ -f ${SPARK_HOME}/jars/iceberg-gcp-bundle-1.5.2.jar  ]; then
+if ! [ -f ${SPARK_HOME}/jars/iceberg-gcp-bundle-${ICEBERG_VERSION}.jar  ]; then
     echo 'Download gcp bundle jar...'
-    wget -O ${SPARK_HOME}/jars/iceberg-gcp-bundle-1.5.2.jar https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-gcp-bundle/1.5.2/iceberg-gcp-bundle-1.5.2.jar
-    if ! [ -f ${SPARK_HOME}/jars/iceberg-gcp-bundle-1.5.2.jar  ]; then
+    wget -O ${SPARK_HOME}/jars/iceberg-gcp-bundle-${ICEBERG_VERSION}.jar https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-gcp-bundle/${ICEBERG_VERSION}/iceberg-gcp-bundle-${ICEBERG_VERSION}.jar
+    if ! [ -f ${SPARK_HOME}/jars/iceberg-gcp-bundle-${ICEBERG_VERSION}.jar  ]; then
       if [[ "${OSTYPE}" == "darwin"* ]]; then
         echo "Detected OS: mac. Running 'brew install wget' to try again."
         brew install wget
-        wget -O ${SPARK_HOME}/jars/iceberg-gcp-bundle-1.5.2.jar https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-gcp-bundle/1.5.2/iceberg-gcp-bundle-1.5.2.jar
+        wget -O ${SPARK_HOME}/jars/iceberg-gcp-bundle-${ICEBERG_VERSION}.jar https://search.maven.org/remotecontent?filepath=org/apache/iceberg/iceberg-gcp-bundle/${ICEBERG_VERSION}/iceberg-gcp-bundle-${ICEBERG_VERSION}.jar
       fi
     fi
 else
@@ -102,7 +103,7 @@ else
 cat << EOF >> ${SPARK_CONF}
 
 # POLARIS_TESTCONF_V5
-spark.jars.packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2,org.apache.hadoop:hadoop-aws:3.4.0,software.amazon.awssdk:bundle:2.23.19,software.amazon.awssdk:url-connection-client:2.23.19
+spark.jars.packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:${ICEBERG_VERSION},org.apache.hadoop:hadoop-aws:3.4.0,software.amazon.awssdk:bundle:2.23.19,software.amazon.awssdk:url-connection-client:2.23.19
 spark.hadoop.fs.s3.impl org.apache.hadoop.fs.s3a.S3AFileSystem
 spark.hadoop.fs.AbstractFileSystem.s3.impl org.apache.hadoop.fs.s3a.S3A
 spark.sql.variable.substitute true

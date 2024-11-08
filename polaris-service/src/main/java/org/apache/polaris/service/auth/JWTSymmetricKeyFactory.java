@@ -24,12 +24,12 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.config.HasEntityManagerFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.service.config.HasMetaStoreManagerFactory;
 
 @JsonTypeName("symmetric-key")
-public class JWTSymmetricKeyFactory implements TokenBrokerFactory, HasEntityManagerFactory {
-  private RealmEntityManagerFactory realmEntityManagerFactory;
+public class JWTSymmetricKeyFactory implements TokenBrokerFactory, HasMetaStoreManagerFactory {
+  private MetaStoreManagerFactory metaStoreManagerFactory;
   private int maxTokenGenerationInSeconds = 3600;
   private String file;
   private String secret;
@@ -41,7 +41,7 @@ public class JWTSymmetricKeyFactory implements TokenBrokerFactory, HasEntityMana
     }
     Supplier<String> secretSupplier = secret != null ? () -> secret : readSecretFromDisk();
     return new JWTSymmetricKeyBroker(
-        realmEntityManagerFactory.getOrCreateEntityManager(realmContext),
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
         maxTokenGenerationInSeconds,
         secretSupplier);
   }
@@ -69,7 +69,7 @@ public class JWTSymmetricKeyFactory implements TokenBrokerFactory, HasEntityMana
   }
 
   @Override
-  public void setEntityManagerFactory(RealmEntityManagerFactory entityManagerFactory) {
-    this.realmEntityManagerFactory = entityManagerFactory;
+  public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
+    this.metaStoreManagerFactory = metaStoreManagerFactory;
   }
 }

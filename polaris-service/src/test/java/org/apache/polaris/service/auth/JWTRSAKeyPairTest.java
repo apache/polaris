@@ -42,9 +42,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -83,7 +81,7 @@ public class JWTRSAKeyPairTest {
         new CallContext() {
           @Override
           public RealmContext getRealmContext() {
-            return null;
+            return () -> "realm";
           }
 
           @Override
@@ -119,8 +117,6 @@ public class JWTRSAKeyPairTest {
     String mainSecret = "client-secret";
     PolarisPrincipalSecrets principalSecrets =
         new PolarisPrincipalSecrets(1L, clientId, mainSecret, "otherSecret");
-    PolarisEntityManager entityManager =
-        new PolarisEntityManager(metastoreManager, Mockito::mock, new StorageCredentialCache());
     Mockito.when(metastoreManager.loadPrincipalSecrets(polarisCallContext, clientId))
         .thenReturn(new PolarisMetaStoreManager.PrincipalSecretsResult(principalSecrets));
     PolarisBaseEntity principal =
@@ -133,7 +129,7 @@ public class JWTRSAKeyPairTest {
             "principal");
     Mockito.when(metastoreManager.loadEntity(polarisCallContext, 0L, 1L))
         .thenReturn(new PolarisMetaStoreManager.EntityResult(principal));
-    TokenBroker tokenBroker = new JWTRSAKeyPair(entityManager, 420);
+    TokenBroker tokenBroker = new JWTRSAKeyPair(metastoreManager, 420);
     TokenResponse token =
         tokenBroker.generateFromClientSecrets(
             clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, scope);

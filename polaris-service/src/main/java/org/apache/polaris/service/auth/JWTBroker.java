@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
 import java.time.Instant;
@@ -31,12 +32,14 @@ import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.types.TokenType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Generates a JWT Token. */
 abstract class JWTBroker implements TokenBroker {
+  private static final Logger LOGGER = LoggerFactory.getLogger(JWTBroker.class);
 
   private static final String ISSUER_KEY = "polaris";
   private static final String CLAIM_KEY_ACTIVE = "active";
@@ -44,11 +47,11 @@ abstract class JWTBroker implements TokenBroker {
   private static final String CLAIM_KEY_PRINCIPAL_ID = "principalId";
   private static final String CLAIM_KEY_SCOPE = "scope";
 
-  private final PolarisEntityManager entityManager;
+  private final PolarisMetaStoreManager metaStoreManager;
   private final int maxTokenGenerationInSeconds;
 
-  JWTBroker(PolarisEntityManager entityManager, int maxTokenGenerationInSeconds) {
-    this.entityManager = entityManager;
+  JWTBroker(PolarisMetaStoreManager metaStoreManager, int maxTokenGenerationInSeconds) {
+    this.metaStoreManager = metaStoreManager;
     this.maxTokenGenerationInSeconds = maxTokenGenerationInSeconds;
   }
 
@@ -56,36 +59,36 @@ abstract class JWTBroker implements TokenBroker {
 
   @Override
   public DecodedToken verify(String token) {
-    JWTVerifier verifier = JWT.require(getAlgorithm()).build();
-    DecodedJWT decodedJWT = verifier.verify(token);
-    Boolean isActive = decodedJWT.getClaim(CLAIM_KEY_ACTIVE).asBoolean();
-    if (isActive == null || !isActive) {
-      throw new NotAuthorizedException("Token is not active");
+    JWTVerifier verifier = JWT.require(getAlgorithm()).withClaim(CLAIM_KEY_ACTIVE, true).build();
+
+    try {
+      DecodedJWT decodedJWT = verifier.verify(token);
+      return new DecodedToken() {
+        @Override
+        public Long getPrincipalId() {
+          return decodedJWT.getClaim("principalId").asLong();
+        }
+
+        @Override
+        public String getClientId() {
+          return decodedJWT.getClaim("client_id").asString();
+        }
+
+        @Override
+        public String getSub() {
+          return decodedJWT.getSubject();
+        }
+
+        @Override
+        public String getScope() {
+          return decodedJWT.getClaim("scope").asString();
+        }
+      };
+
+    } catch (JWTVerificationException e) {
+      LOGGER.error("Failed to verify the token with error", e);
+      throw new NotAuthorizedException("Failed to verify the token");
     }
-    if (decodedJWT.getExpiresAtAsInstant().isBefore(Instant.now())) {
-      throw new NotAuthorizedException("Token has expired");
-    }
-    return new DecodedToken() {
-      @Override
-      public Long getPrincipalId() {
-        return decodedJWT.getClaim("principalId").asLong();
-      }
-
-      @Override
-      public String getClientId() {
-        return decodedJWT.getClaim("client_id").asString();
-      }
-
-      @Override
-      public String getSub() {
-        return decodedJWT.getSubject();
-      }
-
-      @Override
-      public String getScope() {
-        return decodedJWT.getClaim("scope").asString();
-      }
-    };
   }
 
   @Override
@@ -99,12 +102,10 @@ abstract class JWTBroker implements TokenBroker {
     }
     DecodedToken decodedToken = verify(subjectToken);
     PolarisMetaStoreManager.EntityResult principalLookup =
-        entityManager
-            .getMetaStoreManager()
-            .loadEntity(
-                CallContext.getCurrentContext().getPolarisCallContext(),
-                0L,
-                decodedToken.getPrincipalId());
+        metaStoreManager.loadEntity(
+            CallContext.getCurrentContext().getPolarisCallContext(),
+            0L,
+            decodedToken.getPrincipalId());
     if (!principalLookup.isSuccess()
         || principalLookup.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.unauthorized_client);
@@ -128,7 +129,7 @@ abstract class JWTBroker implements TokenBroker {
     }
 
     Optional<PrincipalEntity> principal =
-        TokenBroker.findPrincipalEntity(entityManager, clientId, clientSecret);
+        TokenBroker.findPrincipalEntity(metaStoreManager, clientId, clientSecret);
     if (principal.isEmpty()) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.unauthorized_client);
     }

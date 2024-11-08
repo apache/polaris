@@ -50,6 +50,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -71,15 +72,18 @@ public class IcebergCatalogAdapter
     implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService {
 
   private final CallContextCatalogFactory catalogFactory;
+  private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final RealmEntityManagerFactory entityManagerFactory;
   private final PolarisAuthorizer polarisAuthorizer;
 
   public IcebergCatalogAdapter(
       CallContextCatalogFactory catalogFactory,
       RealmEntityManagerFactory entityManagerFactory,
+      MetaStoreManagerFactory metaStoreManagerFactory,
       PolarisAuthorizer polarisAuthorizer) {
     this.catalogFactory = catalogFactory;
     this.entityManagerFactory = entityManagerFactory;
+    this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.polarisAuthorizer = polarisAuthorizer;
   }
 
@@ -98,6 +102,7 @@ public class IcebergCatalogAdapter
     return new PolarisCatalogHandlerWrapper(
         callContext,
         entityManager,
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext()),
         authenticatedPrincipal,
         catalogFactory,
         catalogName,

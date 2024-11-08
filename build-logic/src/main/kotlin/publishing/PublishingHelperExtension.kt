@@ -19,35 +19,45 @@
 
 package publishing
 
+import java.io.File
+import javax.inject.Inject
 import org.gradle.api.Project
 import org.gradle.api.model.ObjectFactory
 import org.gradle.kotlin.dsl.listProperty
 import org.gradle.kotlin.dsl.property
-import java.io.File
-import javax.inject.Inject
 
 /**
- * Gradle plugin extension object for the `PublishingHelperPlugin. Most attributes are likely never changed from the
- * default values.
+ * Gradle plugin extension object for the `PublishingHelperPlugin. Most attributes are likely never
+ * changed from the default values.
  *
- * Apache podlings need to specify the PPMC members and committers manually, Apache TLPs don't populate these
- * properties.
+ * Apache podlings need to specify the PPMC members and committers manually, Apache TLPs don't
+ * populate these properties.
  */
 abstract class PublishingHelperExtension
 @Inject
-constructor(objectFactory: ObjectFactory, project: Project)
-{
+constructor(objectFactory: ObjectFactory, project: Project) {
   // optional customization of the pom.xml <name> element
   val mavenName = objectFactory.property<String>().convention(project.provider { project.name })
 
-  val licenseUrl = objectFactory.property<String>().convention("https://www.apache.org/licenses/LICENSE-2.0.txt")
+  val licenseUrl =
+    objectFactory.property<String>().convention("https://www.apache.org/licenses/LICENSE-2.0.txt")
 
   // the following are only relevant on the root project
   val asfProjectName = objectFactory.property<String>()
-  val baseName = objectFactory.property<String>().convention(project.provider { "apache-${asfProjectName.get()}-${project.version}" })
-  val distributionDir = objectFactory.directoryProperty().convention(project.layout.buildDirectory.dir("distributions"))
-  val sourceTarball = objectFactory.fileProperty().convention(project.provider { distributionDir.get().file("${baseName.get()}.tar.gz") })
-  val sourceTarballDigest = objectFactory.fileProperty().convention(project.provider { distributionDir.get().file("${baseName.get()}.sha512") })
+  val baseName =
+    objectFactory
+      .property<String>()
+      .convention(project.provider { "apache-${asfProjectName.get()}-${project.version}" })
+  val distributionDir =
+    objectFactory.directoryProperty().convention(project.layout.buildDirectory.dir("distributions"))
+  val sourceTarball =
+    objectFactory
+      .fileProperty()
+      .convention(project.provider { distributionDir.get().file("${baseName.get()}.tar.gz") })
+  val sourceTarballDigest =
+    objectFactory
+      .fileProperty()
+      .convention(project.provider { distributionDir.get().file("${baseName.get()}.sha512") })
 
   val mailingLists = objectFactory.listProperty(String::class.java).convention(emptyList())
 
