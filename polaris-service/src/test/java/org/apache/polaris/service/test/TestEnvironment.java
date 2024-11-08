@@ -27,10 +27,10 @@ import java.util.UUID;
  *
  * @param apiClient The HTTP client to use when making requests
  * @param baseUri The base URL that requests should target, for example http://localhost:1234
- * @param uniqueId An ID unique to this test. This can be used to prefix resource names, such as
+ * @param testId An ID unique to this test. This can be used to prefix resource names, such as
  *     catalog names, to prevent collision.
  */
-public record TestEnvironment(Client apiClient, URI baseUri, String uniqueId) {
+public record TestEnvironment(Client apiClient, URI baseUri, String testId) {
   public TestEnvironment(Client apiClient, String baseUri) {
     this(apiClient, URI.create(baseUri), UUID.randomUUID().toString().replace("-", ""));
   }

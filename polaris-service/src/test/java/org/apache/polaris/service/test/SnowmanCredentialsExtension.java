@@ -222,7 +222,6 @@ public class SnowmanCredentialsExtension
   }
 
   private static SnowmanIdentifier getSnowmanIdentifier(TestEnvironment testEnv) {
-    return new SnowmanIdentifier(
-        "snowman" + testEnv.uniqueId(), "catalog-admin" + testEnv.uniqueId());
+    return new SnowmanIdentifier("snowman" + testEnv.testId(), "catalog-admin" + testEnv.testId());
   }
 }
