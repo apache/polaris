@@ -91,7 +91,7 @@ import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApi;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2Api;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.ConfigurationStoreAware;
-import org.apache.polaris.service.config.HasEntityManagerFactory;
+import org.apache.polaris.service.config.HasMetaStoreManagerFactory;
 import org.apache.polaris.service.config.OAuth2ApiService;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
@@ -184,13 +184,13 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     RealmEntityManagerFactory entityManagerFactory =
         new RealmEntityManagerFactory(metaStoreManagerFactory);
     CallContextResolver callContextResolver = configuration.getCallContextResolver();
-    callContextResolver.setEntityManagerFactory(entityManagerFactory);
+    callContextResolver.setMetaStoreManagerFactory(metaStoreManagerFactory);
     if (callContextResolver instanceof ConfigurationStoreAware csa) {
       csa.setConfigurationStore(configurationStore);
     }
 
     RealmContextResolver realmContextResolver = configuration.getRealmContextResolver();
-    realmContextResolver.setEntityManagerFactory(entityManagerFactory);
+    realmContextResolver.setMetaStoreManagerFactory(metaStoreManagerFactory);
     environment
         .servlets()
         .addFilter(
@@ -223,11 +223,13 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         "Initializing PolarisCallContextCatalogFactory for metaStoreManagerType {}",
         metaStoreManagerFactory);
     CallContextCatalogFactory catalogFactory =
-        new PolarisCallContextCatalogFactory(entityManagerFactory, taskExecutor, fileIOFactory);
+        new PolarisCallContextCatalogFactory(
+            entityManagerFactory, metaStoreManagerFactory, taskExecutor, fileIOFactory);
 
     PolarisAuthorizer authorizer = new PolarisAuthorizerImpl(configurationStore);
     IcebergCatalogAdapter catalogAdapter =
-        new IcebergCatalogAdapter(catalogFactory, entityManagerFactory, authorizer);
+        new IcebergCatalogAdapter(
+            catalogFactory, entityManagerFactory, metaStoreManagerFactory, authorizer);
     environment.jersey().register(new IcebergRestCatalogApi(catalogAdapter));
     environment.jersey().register(new IcebergRestConfigurationApi(catalogAdapter));
 
@@ -266,7 +268,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
 
     DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> authenticator =
         configuration.getPolarisAuthenticator();
-    authenticator.setEntityManagerFactory(entityManagerFactory);
+    authenticator.setMetaStoreManagerFactory(metaStoreManagerFactory);
     AuthFilter<String, AuthenticatedPolarisPrincipal> oauthCredentialAuthFilter =
         new OAuthCredentialAuthFilter.Builder<AuthenticatedPolarisPrincipal>()
             .setAuthenticator(authenticator)
@@ -275,13 +277,14 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     environment.jersey().register(new AuthDynamicFeature(oauthCredentialAuthFilter));
     environment.healthChecks().register("polaris", new PolarisHealthCheck());
     OAuth2ApiService oauth2Service = configuration.getOauth2Service();
-    if (oauth2Service instanceof HasEntityManagerFactory emfAware) {
-      emfAware.setEntityManagerFactory(entityManagerFactory);
+    if (oauth2Service instanceof HasMetaStoreManagerFactory emfAware) {
+      emfAware.setMetaStoreManagerFactory(metaStoreManagerFactory);
     }
     environment.jersey().register(new IcebergRestOAuth2Api(oauth2Service));
     environment.jersey().register(new IcebergExceptionMapper());
     environment.jersey().register(new PolarisExceptionMapper());
-    PolarisServiceImpl polarisService = new PolarisServiceImpl(entityManagerFactory, authorizer);
+    PolarisServiceImpl polarisService =
+        new PolarisServiceImpl(entityManagerFactory, metaStoreManagerFactory, authorizer);
     environment.jersey().register(new PolarisCatalogsApi(polarisService));
     environment.jersey().register(new PolarisPrincipalsApi(polarisService));
     environment.jersey().register(new PolarisPrincipalRolesApi(polarisService));

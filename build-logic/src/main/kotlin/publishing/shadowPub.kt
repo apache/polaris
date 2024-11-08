@@ -32,7 +32,6 @@ import org.gradle.api.component.SoftwareComponentFactory
 import org.gradle.api.plugins.JavaBasePlugin
 import org.gradle.api.publish.maven.MavenPublication
 
-
 /**
  * "Proper" publication of shadow-jar instead of the "main" jar, with "the right" Gradle's module
  * metadata that refers to the shadow-jar instead of the "main" jar, which is not published by
@@ -40,57 +39,62 @@ import org.gradle.api.publish.maven.MavenPublication
  *
  * Pieces of this function are taken from the `Java(Base)Plugin` and `ShadowExtension`.
  */
-internal fun configureShadowPublishing(project: Project, mavenPublication: MavenPublication, softwareComponentFactory: SoftwareComponentFactory) = project.run {
+internal fun configureShadowPublishing(
+  project: Project,
+  mavenPublication: MavenPublication,
+  softwareComponentFactory: SoftwareComponentFactory
+) =
+  project.run {
     fun isPublishable(element: ConfigurationVariant): Boolean {
-        for (artifact in element.artifacts) {
-            if (JavaBasePlugin.UNPUBLISHABLE_VARIANT_ARTIFACTS.contains(artifact.type)) {
-                return false
-            }
+      for (artifact in element.artifacts) {
+        if (JavaBasePlugin.UNPUBLISHABLE_VARIANT_ARTIFACTS.contains(artifact.type)) {
+          return false
         }
-        return true
+      }
+      return true
     }
 
     val shadowJar = project.tasks.named("shadowJar")
 
     val shadowApiElements =
-        project.configurations.create("shadowApiElements") {
-            isCanBeConsumed = true
-            isCanBeResolved = false
-            attributes {
-                attribute(Usage.USAGE_ATTRIBUTE, project.objects.named(Usage::class.java, Usage.JAVA_API))
-                attribute(
-                    Category.CATEGORY_ATTRIBUTE,
-                    project.objects.named(Category::class.java, Category.LIBRARY)
-                )
-                attribute(
-                    LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
-                    project.objects.named(LibraryElements::class.java, LibraryElements.JAR)
-                )
-                attribute(
-                    Bundling.BUNDLING_ATTRIBUTE,
-                    project.objects.named(Bundling::class.java, Bundling.SHADOWED)
-                )
-            }
-            outgoing.artifact(shadowJar)
+      project.configurations.create("shadowApiElements") {
+        isCanBeConsumed = true
+        isCanBeResolved = false
+        attributes {
+          attribute(Usage.USAGE_ATTRIBUTE, project.objects.named(Usage::class.java, Usage.JAVA_API))
+          attribute(
+            Category.CATEGORY_ATTRIBUTE,
+            project.objects.named(Category::class.java, Category.LIBRARY)
+          )
+          attribute(
+            LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
+            project.objects.named(LibraryElements::class.java, LibraryElements.JAR)
+          )
+          attribute(
+            Bundling.BUNDLING_ATTRIBUTE,
+            project.objects.named(Bundling::class.java, Bundling.SHADOWED)
+          )
         }
+        outgoing.artifact(shadowJar)
+      }
 
     val component = softwareComponentFactory.adhoc("shadow")
     component.addVariantsFromConfiguration(shadowApiElements) {
-        if (isPublishable(configurationVariant)) {
-            mapToMavenScope("compile")
-        } else {
-            skip()
-        }
+      if (isPublishable(configurationVariant)) {
+        mapToMavenScope("compile")
+      } else {
+        skip()
+      }
     }
     // component.addVariantsFromConfiguration(configurations.getByName("runtimeElements")) {
     component.addVariantsFromConfiguration(
-        project.configurations.getByName("shadowRuntimeElements")
+      project.configurations.getByName("shadowRuntimeElements")
     ) {
-        if (isPublishable(configurationVariant)) {
-            mapToMavenScope("runtime")
-        } else {
-            skip()
-        }
+      if (isPublishable(configurationVariant)) {
+        mapToMavenScope("runtime")
+      } else {
+        skip()
+      }
     }
     // Sonatype requires the javadoc and sources jar to be present, but the
     // Shadow extension does not publish those.
@@ -102,24 +106,24 @@ internal fun configureShadowPublishing(project: Project, mavenPublication: Maven
     // 'shadowExtension.component(mavenPublication)', which we cannot use.
 
     mavenPublication.pom {
-        withXml {
-            val node = asNode()
-            val depNode = node.get("dependencies")
-            val dependenciesNode =
-                if ((depNode as NodeList).isNotEmpty()) depNode[0] as Node
-                else node.appendNode("dependencies")
-            project.configurations.getByName("shadow").allDependencies.forEach {
-                @Suppress("DEPRECATION")
-                if (
-                    (it is ProjectDependency) || it !is org.gradle.api.artifacts.SelfResolvingDependency
-                ) {
-                    val dependencyNode = dependenciesNode.appendNode("dependency")
-                    dependencyNode.appendNode("groupId", it.group)
-                    dependencyNode.appendNode("artifactId", it.name)
-                    dependencyNode.appendNode("version", it.version)
-                    dependencyNode.appendNode("scope", "runtime")
-                }
-            }
+      withXml {
+        val node = asNode()
+        val depNode = node.get("dependencies")
+        val dependenciesNode =
+          if ((depNode as NodeList).isNotEmpty()) depNode[0] as Node
+          else node.appendNode("dependencies")
+        project.configurations.getByName("shadow").allDependencies.forEach {
+          @Suppress("DEPRECATION")
+          if (
+            (it is ProjectDependency) || it !is org.gradle.api.artifacts.SelfResolvingDependency
+          ) {
+            val dependencyNode = dependenciesNode.appendNode("dependency")
+            dependencyNode.appendNode("groupId", it.group)
+            dependencyNode.appendNode("artifactId", it.name)
+            dependencyNode.appendNode("version", it.version)
+            dependencyNode.appendNode("scope", "runtime")
+          }
         }
+      }
     }
-}
+  }
