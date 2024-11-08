@@ -101,6 +101,38 @@ tests:
       - notExists:
           path: spec.replicas
 
+  # spec.revisionHistoryLimit
+  - it: should not set revisionHistoryLimit by default with null
+    asserts:
+      - notExists:
+          path: spec.revisionHistoryLimit
+  - it: should not set revisionHistoryLimit with quote empty string
+    set:
+      revisionHistoryLimit: ""
+    asserts:
+      - notExists:
+          path: spec.revisionHistoryLimit
+  - it: should not set revisionHistoryLimit with empty string
+    set:
+      revisionHistoryLimit:
+    asserts:
+      - notExists:
+          path: spec.revisionHistoryLimit
+  - it: should set revisionHistoryLimit
+    set:
+      revisionHistoryLimit: 1
+    asserts:
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 1
+  - it: should set revisionHistoryLimit (disabled revision history)
+    set:
+      revisionHistoryLimit: 0
+    asserts:
+      - equal:
+          path: spec.revisionHistoryLimit
+          value: 0
+
   # spec.selector.matchLabels + spec.template.metadata.labels
   - it: should set deployment selector labels
     asserts:
