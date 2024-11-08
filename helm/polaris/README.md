@@ -34,6 +34,8 @@ A Helm chart for Polaris.
 **Homepage:** <https://polaris.apache.org/>
 
 ## Maintainers
+* [MonkeyCanCode](https://github.com/MonkeyCanCode)
+* [adutra](https://github.com/adutra)
 
 ## Source Code
 
@@ -105,6 +107,7 @@ $ helm uninstall --namespace polaris polaris
 | readinessProbe.timeoutSeconds | int | `10` | Number of seconds after which the probe times out. Minimum value is 1. |
 | replicaCount | int | `1` | The number of replicas to deploy (horizontal scaling). Beware that replicas are stateless; don't set this number > 1 when using in-memory meta store manager. |
 | resources | object | `{}` | Configures the resources requests and limits for polaris pods. We usually recommend not to specify default resources and to leave this as a conscious choice for the user. This also increases chances charts run on environments with little resources, such as Minikube. If you do want to specify resources, uncomment the following lines, adjust them as necessary, and remove the curly braces after 'resources:'. |
+| revisionHistoryLimit | string | `nil` | The number of old ReplicaSets to retain to allow rollback (if not set, the default Kubernetes value is set to 10). |
 | securityContext | object | `{}` | Security context for the polaris container. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
 | service.annotations | object | `{}` | Annotations to add to the service. |
 | service.ports | object | `{"polaris-metrics":8182,"polaris-service":8181}` | The ports the service will listen on. Two ports are required: one for the Polaris service and one for the metrics API. Note: port names must be unique and no more than 15 characters long. |
