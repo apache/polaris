@@ -26,20 +26,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.time.ZoneId;
 import java.util.UUID;
 import java.util.stream.Stream;
-
-import jakarta.persistence.EntityManager;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
-import org.apache.polaris.core.persistence.models.ModelEntity;
 import org.apache.polaris.core.persistence.models.ModelPrincipalSecrets;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -99,11 +93,12 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
 
     var key = "client-id-" + UUID.randomUUID();
-    ModelPrincipalSecrets model = ModelPrincipalSecrets.builder()
-        .principalId(Math.abs(key.hashCode()))
-        .principalClientId(key)
-        .mainSecret("secret!")
-        .build();
+    ModelPrincipalSecrets model =
+        ModelPrincipalSecrets.builder()
+            .principalId(Math.abs(key.hashCode()))
+            .principalClientId(key)
+            .mainSecret("secret!")
+            .build();
     Assertions.assertNotNull(model.getMainSecret());
     Assertions.assertNull(model.getMainSecretHash());
 
@@ -127,8 +122,9 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
       // Now read using PolarisEclipseLinkStore
       PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
       store.initialize(entityManager);
-      PolarisPrincipalSecrets principalSecrets = ModelPrincipalSecrets
-          .toPrincipalSecrets(store.lookupPrincipalSecrets(entityManager, key));
+      PolarisPrincipalSecrets principalSecrets =
+          ModelPrincipalSecrets.toPrincipalSecrets(
+              store.lookupPrincipalSecrets(entityManager, key));
 
       // The principalSecrets should have both a main secret and a hashed secret
       Assertions.assertNotNull(principalSecrets);
