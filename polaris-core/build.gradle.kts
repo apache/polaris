@@ -50,13 +50,6 @@ dependencies {
   compileOnly(libs.jetbrains.annotations)
   compileOnly(libs.spotbugs.annotations)
 
-  implementation(libs.hadoop.common) {
-    exclude("org.slf4j", "slf4j-reload4j")
-    exclude("org.slf4j", "slf4j-log4j12")
-    exclude("ch.qos.reload4j", "reload4j")
-    exclude("log4j", "log4j")
-    exclude("org.apache.zookeeper", "zookeeper")
-  }
   constraints {
     implementation("org.xerial.snappy:snappy-java:1.1.10.4") {
       because("Vulnerability detected in 1.1.8.2")
@@ -74,7 +67,6 @@ dependencies {
       because("Vulnerability detected in 9.8.1")
     }
   }
-  implementation(libs.hadoop.hdfs.client)
 
   implementation(libs.javax.inject)
   implementation(libs.swagger.annotations)
