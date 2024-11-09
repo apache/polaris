@@ -19,7 +19,7 @@
 
 [versions]
 hadoop = "3.4.0"
-iceberg = "1.6.1"
+iceberg = "1.7.0"
 dropwizard = "4.0.8"
 slf4j = "2.0.13"
 swagger = "1.6.14"

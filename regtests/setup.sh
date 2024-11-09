@@ -31,7 +31,7 @@ if [ -z "${SPARK_HOME}" ]; then
 fi
 SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
 DERBY_HOME="/tmp/derby"
-ICEBERG_VERSION="1.6.1"
+ICEBERG_VERSION="1.7.0"
 export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
 
 # Ensure binaries are downloaded locally
