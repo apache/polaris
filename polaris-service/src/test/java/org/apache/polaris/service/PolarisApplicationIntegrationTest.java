@@ -341,7 +341,7 @@ public class PolarisApplicationIntegrationTest {
                   sessionCatalog.listNamespaces(
                       sessionContext, Namespace.of("top_level", "whoops")))
           .isInstanceOf(NoSuchNamespaceException.class)
-          .hasMessage("Namespace does not exist: top_level.whoops");
+          .hasMessage("Namespace does not exist: top_level%1Fwhoops");
     }
   }
 
