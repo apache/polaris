@@ -54,7 +54,6 @@ public class RealmEntityManagerFactory {
       entityManagerInstance =
           new PolarisEntityManager(
               metaStoreManagerFactory.getOrCreateMetaStoreManager(context),
-              metaStoreManagerFactory.getOrCreateSessionSupplier(context),
               metaStoreManagerFactory.getOrCreateStorageCredentialCache(context));
 
       cachedEntityManagers.put(realm, entityManagerInstance);

@@ -1,0 +1,209 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+chart:
+  version: 1.2.3
+  appVersion: 4.5.6
+
+release:
+  name: polaris-release
+  namespace: polaris-ns
+
+templates:
+  - hpa.yaml
+
+tests:
+
+  # kind
+  - it: should not create HPA by default
+    asserts:
+      - containsDocument:
+          kind: HorizontalPodAutoscaler
+          apiVersion: autoscaling/v2
+        not: true
+  - it: should create HPA when enabled
+    set:
+      autoscaling.enabled: true
+    asserts:
+      - containsDocument:
+          kind: HorizontalPodAutoscaler
+          apiVersion: autoscaling/v2
+
+  # metadata.name (with with autoscaling enabled)
+  - it: should set HPA name
+    set:
+      autoscaling.enabled: true
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-release
+  - it: should set HPA name with override
+    set:
+      autoscaling.enabled: true
+      nameOverride: polaris-override
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-release-polaris-override
+  - it: should set HPA name with full override
+    set:
+      autoscaling.enabled: true
+      fullnameOverride: polaris-override
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-override
+
+  # metadata.namespace (with autoscaling enabled)
+  - it: should set HPA namespace
+    set:
+      autoscaling.enabled: true
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: polaris-ns
+
+  # metadata.labels (with autoscaling enabled)
+  - it: should set HPA default labels
+    set:
+      autoscaling.enabled: true
+    asserts:
+      - isSubset:
+          path: metadata.labels
+          content:
+            app.kubernetes.io/name: polaris
+            app.kubernetes.io/instance: polaris-release
+            app.kubernetes.io/version: 4.5.6
+            app.kubernetes.io/managed-by: Helm
+            helm.sh/chart: polaris-1.2.3
+
+  # spec.scaleTargetRef.name (with autoscaling enabled)
+  - it: should set target deployment name
+    set:
+      autoscaling.enabled: true
+    asserts:
+      - equal:
+          path: spec.scaleTargetRef.name
+          value: polaris-release
+  - it: should set target deployment name with override
+    set:
+      autoscaling.enabled: true
+      nameOverride: polaris-override
+    asserts:
+      - equal:
+          path: spec.scaleTargetRef.name
+          value: polaris-release-polaris-override
+  - it: should set target deployment name with full override
+    set:
+      autoscaling.enabled: true
+      fullnameOverride: polaris-override
+    asserts:
+      - equal:
+          path: spec.scaleTargetRef.name
+          value: polaris-override
+
+  # spec.maxReplicas (with autoscaling enabled)
+  - it: should set default min replicas
+    set:
+      autoscaling.enabled: true
+    asserts:
+      - equal:
+          path: spec.minReplicas
+          value: 1
+  - it: should set min replicas
+    set:
+      autoscaling.enabled: true
+      autoscaling.minReplicas: 2
+    asserts:
+      - equal:
+          path: spec.minReplicas
+          value: 2
+
+  # spec.maxReplicas (with autoscaling enabled)
+  - it: should set default max replicas
+    set:
+      autoscaling.enabled: true
+    asserts:
+      - equal:
+          path: spec.maxReplicas
+          value: 3
+  - it: should set max replicas
+    set:
+      autoscaling.enabled: true
+      autoscaling.maxReplicas: 4
+    asserts:
+      - equal:
+          path: spec.maxReplicas
+          value: 4
+
+  # spec.metrics (with autoscaling enabled)
+  - it: should set default CPU utilization percentage
+    set:
+      autoscaling.enabled: true
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 80
+  - it: should set CPU utilization percentage
+    set:
+      autoscaling.enabled: true
+      autoscaling.targetCPUUtilizationPercentage: 90
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: cpu
+              target:
+                type: Utilization
+                averageUtilization: 90   
+  - it: should not set default memory utilization percentage
+    set:
+      autoscaling.enabled: true
+    asserts:
+      - notContains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization:
+  - it: should set memory utilization percentage
+    set:
+      autoscaling.enabled: true
+      autoscaling.targetMemoryUtilizationPercentage: 80
+    asserts:
+      - contains:
+          path: spec.metrics
+          content:
+            type: Resource
+            resource:
+              name: memory
+              target:
+                type: Utilization
+                averageUtilization: 80

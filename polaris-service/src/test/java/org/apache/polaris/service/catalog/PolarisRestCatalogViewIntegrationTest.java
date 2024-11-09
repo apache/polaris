@@ -41,6 +41,8 @@ import org.apache.polaris.service.test.PolarisConnectionExtension.PolarisToken;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension.SnowmanCredentials;
+import org.apache.polaris.service.test.TestEnvironment;
+import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -53,6 +55,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 @ExtendWith({
   DropwizardExtensionsSupport.class,
+  TestEnvironmentExtension.class,
   PolarisConnectionExtension.class,
   SnowmanCredentialsExtension.class
 })
@@ -80,7 +83,8 @@ public abstract class PolarisRestCatalogViewIntegrationTest extends ViewCatalogT
       TestInfo testInfo,
       PolarisToken adminToken,
       SnowmanCredentials snowmanCredentials,
-      @PolarisRealm String realm) {
+      @PolarisRealm String realm,
+      TestEnvironment testEnv) {
 
     Assumptions.assumeFalse(shouldSkip());
 
@@ -91,11 +95,11 @@ public abstract class PolarisRestCatalogViewIntegrationTest extends ViewCatalogT
             method -> {
               String catalogName = method.getName();
               try (Response response =
-                  EXT.client()
+                  testEnv
+                      .apiClient()
                       .target(
                           String.format(
-                              "http://localhost:%d/api/management/v1/catalogs/%s",
-                              EXT.getLocalPort(), catalogName))
+                              "%s/api/management/v1/catalogs/%s", testEnv.baseUri(), catalogName))
                       .request("application/json")
                       .header("Authorization", "Bearer " + userToken)
                       .header(REALM_PROPERTY_KEY, realm)
@@ -114,6 +118,7 @@ public abstract class PolarisRestCatalogViewIntegrationTest extends ViewCatalogT
                       + "/"
                       + System.getenv("USER")
                       + "/path/to/data";
+
               org.apache.polaris.core.admin.model.CatalogProperties props =
                   org.apache.polaris.core.admin.model.CatalogProperties.builder(defaultBaseLocation)
                       .addProperty(
@@ -135,7 +140,13 @@ public abstract class PolarisRestCatalogViewIntegrationTest extends ViewCatalogT
                       .build();
               restCatalog =
                   TestUtil.createSnowmanManagedCatalog(
-                      EXT, adminToken, snowmanCredentials, realm, catalog, Map.of());
+                      testEnv.apiClient(),
+                      testEnv.baseUri().toString(),
+                      adminToken,
+                      snowmanCredentials,
+                      realm,
+                      catalog,
+                      Map.of());
             });
   }
 

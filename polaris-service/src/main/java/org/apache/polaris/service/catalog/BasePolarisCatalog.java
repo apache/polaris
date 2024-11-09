@@ -187,6 +187,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    */
   public BasePolarisCatalog(
       PolarisEntityManager entityManager,
+      PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView,
       AuthenticatedPolarisPrincipal authenticatedPrincipal,
@@ -202,7 +203,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     this.catalogId = catalogEntity.getId();
     this.catalogName = catalogEntity.getName();
     this.fileIOFactory = fileIOFactory;
-    this.metaStoreManager = entityManager.getMetaStoreManager();
+    this.metaStoreManager = metaStoreManager;
   }
 
   @Override

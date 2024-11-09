@@ -16,28 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.test;
 
-import com.auth0.jwt.algorithms.Algorithm;
-import java.security.interfaces.RSAPrivateKey;
-import java.security.interfaces.RSAPublicKey;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.junit.jupiter.api.extension.ExtensionContext;
 
-/** Generates a JWT using a Public/Private RSA Key */
-public class JWTRSAKeyPair extends JWTBroker {
-
-  JWTRSAKeyPair(PolarisMetaStoreManager metaStoreManager, int maxTokenGenerationInSeconds) {
-    super(metaStoreManager, maxTokenGenerationInSeconds);
-  }
-
-  KeyProvider getKeyProvider() {
-    return new LocalRSAKeyProvider();
-  }
-
-  @Override
-  Algorithm getAlgorithm() {
-    KeyProvider keyProvider = getKeyProvider();
-    return Algorithm.RSA256(
-        (RSAPublicKey) keyProvider.getPublicKey(), (RSAPrivateKey) keyProvider.getPrivateKey());
-  }
+/** Interface for determining the test environment that tests should run in */
+public interface TestEnvironmentResolver {
+  TestEnvironment resolveTestEnvironment(ExtensionContext extensionContext);
 }

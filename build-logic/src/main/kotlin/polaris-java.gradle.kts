@@ -49,7 +49,17 @@ tasks.withType(JavaCompile::class.java).configureEach {
   )
 }
 
-tasks.register("format").configure { dependsOn("spotlessApply") }
+tasks.register("compileAll").configure {
+  group = "build"
+  description = "Runs all compilation and jar tasks"
+  dependsOn(tasks.withType<AbstractCompile>(), tasks.withType<ProcessResources>())
+}
+
+tasks.register("format").configure {
+  group = "verification"
+  description = "Runs all code formatting tasks"
+  dependsOn("spotlessApply")
+}
 
 tasks.named<Test>("test").configure {
   useJUnitPlatform()

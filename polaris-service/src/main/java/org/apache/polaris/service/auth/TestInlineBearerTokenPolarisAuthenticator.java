@@ -54,9 +54,8 @@ public class TestInlineBearerTokenPolarisAuthenticator extends BasePolarisAuthen
       throws AuthenticationException {
     Map<String, String> properties = extractPrincipal(credentials);
     PolarisMetaStoreManager metaStoreManager =
-        entityManagerFactory
-            .getOrCreateEntityManager(CallContext.getCurrentContext().getRealmContext())
-            .getMetaStoreManager();
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(
+            CallContext.getCurrentContext().getRealmContext());
     PolarisCallContext callContext = CallContext.getCurrentContext().getPolarisCallContext();
     String principal = properties.get("principal");
 
