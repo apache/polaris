@@ -110,8 +110,6 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 public class PolarisApplicationIntegrationTest {
   @TempDir private static Path tempDir;
   private static Supplier<String> CURRENT_LOG = () -> tempDir.resolve("application.log").toString();
-  private static Supplier<String> ARCHIVED_LOG =
-      () -> tempDir.resolve("application-%d-%i.log.gz").toString();
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisApplicationIntegrationTest.class);
@@ -127,9 +125,7 @@ public class PolarisApplicationIntegrationTest {
           ConfigOverride.config(
               "server.adminConnectors[0].port", "0"), // Bind to random port to support parallelism
           ConfigOverride.config("logging.appenders[1].type", "file"),
-          ConfigOverride.config("logging.appenders[1].currentLogFilename", CURRENT_LOG),
-          ConfigOverride.config("logging.appenders[1].archivedLogFilenamePattern", ARCHIVED_LOG),
-          ConfigOverride.config("logging.appenders[1].maxFileSize", "2000000"));
+          ConfigOverride.config("logging.appenders[1].currentLogFilename", CURRENT_LOG));
 
   private static String userToken;
   private static SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials;
