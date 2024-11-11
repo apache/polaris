@@ -19,7 +19,6 @@
 package org.apache.polaris.core;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
@@ -169,12 +168,11 @@ public class PolarisConfiguration<T> {
           .key("SUPPORTED_CATALOG_STORAGE_TYPES")
           .catalogConfig("supported.storage.types")
           .description("The list of supported storage types for a catalog")
-          .defaultValue(Collections.unmodifiableList(
-                  new ArrayList<>(List.of(
-                          StorageConfigInfo.StorageTypeEnum.S3.name(),
-                          StorageConfigInfo.StorageTypeEnum.AZURE.name(),
-                          StorageConfigInfo.StorageTypeEnum.GCS.name(),
-                          StorageConfigInfo.StorageTypeEnum.FILE.name()))))
+          .defaultValue(new ArrayList<>(List.of(
+                  StorageConfigInfo.StorageTypeEnum.S3.name(),
+                  StorageConfigInfo.StorageTypeEnum.AZURE.name(),
+                  StorageConfigInfo.StorageTypeEnum.GCS.name(),
+                  StorageConfigInfo.StorageTypeEnum.FILE.name())))
           .build();
 
   public static final PolarisConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
