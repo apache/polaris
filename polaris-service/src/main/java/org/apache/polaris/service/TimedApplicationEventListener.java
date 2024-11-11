@@ -18,9 +18,12 @@
  */
 package org.apache.polaris.service;
 
+import static org.apache.polaris.core.monitor.PolarisMetricRegistry.TAG_RESP_CODE;
+
 import com.google.common.base.Stopwatch;
 import io.micrometer.core.instrument.Tag;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import javax.ws.rs.ext.Provider;
 import org.apache.polaris.core.context.CallContext;
@@ -44,9 +47,9 @@ public class TimedApplicationEventListener implements ApplicationEventListener {
    * Each API will increment a common counter (SINGLETON_METRIC_NAME) but have its API name tagged
    * (TAG_API_NAME).
    */
-  public static final String SINGLETON_METRIC_NAME = "polaris.TimedApi";
+  public static final String SINGLETON_METRIC_NAME = "polaris.api";
 
-  public static final String TAG_API_NAME = "API_NAME";
+  public static final String TAG_API_NAME = "api_name";
 
   // The PolarisMetricRegistry instance used for recording metrics and error counters.
   private final PolarisMetricRegistry polarisMetricRegistry;
@@ -105,7 +108,10 @@ public class TimedApplicationEventListener implements ApplicationEventListener {
           // Increment both the counter with the API name in the metric name and a common metric
           polarisMetricRegistry.incrementErrorCounter(metric, statusCode, realmId);
           polarisMetricRegistry.incrementErrorCounter(
-              SINGLETON_METRIC_NAME, realmId, Tag.of(TAG_API_NAME, metric));
+              SINGLETON_METRIC_NAME,
+              realmId,
+              List.of(
+                  Tag.of(TAG_API_NAME, metric), Tag.of(TAG_RESP_CODE, String.valueOf(statusCode))));
         }
       }
     }

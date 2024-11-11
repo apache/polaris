@@ -25,6 +25,7 @@ import io.micrometer.core.instrument.Tag;
 import jakarta.ws.rs.core.Response;
 import java.util.Collection;
 import java.util.List;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 
 /** Utils for working with metrics in tests */
@@ -56,7 +57,12 @@ public class TestMetricsUtil {
     assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
     String[] responseLines = response.readEntity(String.class).split("\n");
     for (String line : responseLines) {
-      if (line.startsWith(metricName) && tagFilters.stream().allMatch(line::contains)) {
+      System.out.println("ANDREW line: " + line);
+      int numTags =
+          StringUtils.countMatches(line, '='); // Assumes the tag values don't contain an '='
+      if (line.startsWith(metricName)
+          && tagFilters.stream().allMatch(line::contains)
+          && numTags == tagFilters.size()) {
         return Double.parseDouble(line.split(" ")[1]);
       }
     }

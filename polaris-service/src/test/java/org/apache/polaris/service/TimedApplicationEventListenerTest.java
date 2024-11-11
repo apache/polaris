@@ -18,8 +18,7 @@
  */
 package org.apache.polaris.service;
 
-import static org.apache.polaris.core.monitor.PolarisMetricRegistry.SUFFIX_COUNTER;
-import static org.apache.polaris.core.monitor.PolarisMetricRegistry.SUFFIX_ERROR;
+import static org.apache.polaris.core.monitor.PolarisMetricRegistry.*;
 import static org.apache.polaris.service.TimedApplicationEventListener.SINGLETON_METRIC_NAME;
 import static org.apache.polaris.service.TimedApplicationEventListener.TAG_API_NAME;
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
@@ -33,6 +32,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import org.apache.polaris.core.monitor.PolarisMetricRegistry;
 import org.apache.polaris.core.resource.TimedApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApi;
@@ -65,6 +65,7 @@ public class TimedApplicationEventListenerTest {
           ConfigOverride.config(
               "server.adminConnectors[0].port", "0")); // Bind to random port to support parallelism
 
+  private static final int ERROR_CODE = Response.Status.NOT_FOUND.getStatusCode();
   private static final String ENDPOINT = "api/management/v1/principals";
   private static final String API_ANNOTATION =
       Arrays.stream(PolarisPrincipalsApi.class.getMethods())
@@ -94,18 +95,26 @@ public class TimedApplicationEventListenerTest {
   public void testMetricsEmittedOnSuccessfulRequest() {
     sendSuccessfulRequest();
     Assertions.assertTrue(getPerApiMetricCount() > 0);
+    Assertions.assertTrue(getPerApiRealmMetricCount() > 0);
     Assertions.assertTrue(getCommonMetricCount() > 0);
+    Assertions.assertTrue(getCommonRealmMetricCount() > 0);
     Assertions.assertEquals(0, getPerApiMetricErrorCount());
+    Assertions.assertEquals(0, getPerApiRealmMetricErrorCount());
     Assertions.assertEquals(0, getCommonMetricErrorCount());
+    Assertions.assertEquals(0, getCommonRealmMetricErrorCount());
   }
 
   @Test
   public void testMetricsEmittedOnFailedRequest() {
     sendFailingRequest();
     Assertions.assertTrue(getPerApiMetricCount() > 0);
+    Assertions.assertTrue(getPerApiRealmMetricCount() > 0);
     Assertions.assertTrue(getCommonMetricCount() > 0);
+    Assertions.assertTrue(getCommonRealmMetricCount() > 0);
     Assertions.assertTrue(getPerApiMetricErrorCount() > 0);
+    Assertions.assertTrue(getPerApiRealmMetricErrorCount() > 0);
     Assertions.assertTrue(getCommonMetricErrorCount() > 0);
+    Assertions.assertTrue(getCommonRealmMetricErrorCount() > 0);
   }
 
   private PolarisMetricRegistry getPolarisMetricRegistry() {
@@ -127,9 +136,31 @@ public class TimedApplicationEventListenerTest {
         EXT, API_ANNOTATION + SUFFIX_COUNTER, Collections.emptyList());
   }
 
+  private double getPerApiRealmMetricCount() {
+    return TestMetricsUtil.getTotalCounter(
+        EXT,
+        API_ANNOTATION + SUFFIX_COUNTER + SUFFIX_REALM,
+        List.of(Tag.of(TAG_REALM, realm), Tag.of(TAG_REALM_DEPRECATED, realm)));
+  }
+
   private double getPerApiMetricErrorCount() {
     return TestMetricsUtil.getTotalCounter(
-        EXT, API_ANNOTATION + SUFFIX_ERROR, Collections.emptyList());
+        EXT,
+        API_ANNOTATION + SUFFIX_ERROR,
+        List.of(
+            Tag.of(TAG_RESP_CODE, String.valueOf(ERROR_CODE)),
+            Tag.of(TAG_RESP_CODE_DEPRECATED, String.valueOf(ERROR_CODE))));
+  }
+
+  private double getPerApiRealmMetricErrorCount() {
+    return TestMetricsUtil.getTotalCounter(
+        EXT,
+        API_ANNOTATION + SUFFIX_ERROR + SUFFIX_REALM,
+        List.of(
+            Tag.of(TAG_REALM, realm),
+            Tag.of(TAG_REALM_DEPRECATED, realm),
+            Tag.of(TAG_RESP_CODE, String.valueOf(ERROR_CODE)),
+            Tag.of(TAG_RESP_CODE_DEPRECATED, String.valueOf(ERROR_CODE))));
   }
 
   private double getCommonMetricCount() {
@@ -139,11 +170,30 @@ public class TimedApplicationEventListenerTest {
         Collections.singleton(Tag.of(TAG_API_NAME, API_ANNOTATION)));
   }
 
+  private double getCommonRealmMetricCount() {
+    return TestMetricsUtil.getTotalCounter(
+        EXT,
+        SINGLETON_METRIC_NAME + SUFFIX_COUNTER + SUFFIX_REALM,
+        List.of(Tag.of(TAG_API_NAME, API_ANNOTATION), Tag.of(TAG_REALM, realm)));
+  }
+
   private double getCommonMetricErrorCount() {
     return TestMetricsUtil.getTotalCounter(
         EXT,
         SINGLETON_METRIC_NAME + SUFFIX_ERROR,
-        Collections.singleton(Tag.of(TAG_API_NAME, API_ANNOTATION)));
+        List.of(
+            Tag.of(TAG_API_NAME, API_ANNOTATION),
+            Tag.of(TAG_RESP_CODE, String.valueOf(ERROR_CODE))));
+  }
+
+  private double getCommonRealmMetricErrorCount() {
+    return TestMetricsUtil.getTotalCounter(
+        EXT,
+        SINGLETON_METRIC_NAME + SUFFIX_ERROR + SUFFIX_REALM,
+        List.of(
+            Tag.of(TAG_API_NAME, API_ANNOTATION),
+            Tag.of(TAG_REALM, realm),
+            Tag.of(TAG_RESP_CODE, String.valueOf(ERROR_CODE))));
   }
 
   private int sendRequest(String principalName) {
@@ -165,7 +215,6 @@ public class TimedApplicationEventListenerTest {
   }
 
   private void sendFailingRequest() {
-    Assertions.assertNotEquals(
-        Response.Status.NOT_FOUND.getStatusCode(), sendRequest("notarealprincipal"));
+    Assertions.assertEquals(ERROR_CODE, sendRequest("notarealprincipal"));
   }
 }
