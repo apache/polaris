@@ -63,6 +63,7 @@ public class PolarisApplicationConfig extends Configuration {
   private String awsSecretKey;
   private FileIOFactory fileIOFactory;
   private RateLimiter rateLimiter;
+  private DynamicFeatureConfigResolver dynamicFeatureConfigResolver;
 
   private AccessToken gcpAccessToken;
 
@@ -87,6 +88,17 @@ public class PolarisApplicationConfig extends Configuration {
   @JsonProperty("io")
   public FileIOFactory getFileIOFactory() {
     return fileIOFactory;
+  }
+
+  @JsonProperty("dynamicFeatureConfigResolver")
+  public void setDynamicFeatureConfigResolver(
+      DynamicFeatureConfigResolver dynamicFeatureConfigResolver) {
+    this.dynamicFeatureConfigResolver = dynamicFeatureConfigResolver;
+  }
+
+  @JsonProperty("dynamicFeatureConfigResolver")
+  public DynamicFeatureConfigResolver getDynamicFeatureConfigResolver() {
+    return dynamicFeatureConfigResolver;
   }
 
   @JsonProperty("authenticator")
@@ -194,7 +206,8 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   public PolarisConfigurationStore getConfigurationStore() {
-    return new DefaultConfigurationStore(globalFeatureConfiguration, realmConfiguration);
+    return new DefaultConfigurationStore(
+        globalFeatureConfiguration, realmConfiguration, dynamicFeatureConfigResolver);
   }
 
   public List<String> getDefaultRealms() {

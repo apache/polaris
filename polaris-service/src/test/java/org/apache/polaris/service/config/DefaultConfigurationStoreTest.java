@@ -65,7 +65,8 @@ public class DefaultConfigurationStoreTest {
                 "realm1",
                 Map.of("key1", realm1KeyOneValue),
                 "realm2",
-                Map.of("key1", realm2KeyOneValue, "key2", realm2KeyTwoValue)));
+                Map.of("key1", realm2KeyOneValue, "key2", realm2KeyTwoValue)),
+            new NoOpDynamicFeatureConfigResolver());
     InMemoryPolarisMetaStoreManagerFactory metastoreFactory =
         new InMemoryPolarisMetaStoreManagerFactory();
 

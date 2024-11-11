@@ -28,16 +28,21 @@ import org.jetbrains.annotations.Nullable;
 public class DefaultConfigurationStore implements PolarisConfigurationStore {
   private final Map<String, Object> config;
   private final Map<String, Map<String, Object>> realmConfig;
+  private final DynamicFeatureConfigResolver dynamicFeatureConfigResolver;
 
   public DefaultConfigurationStore(Map<String, Object> config) {
     this.config = config;
     this.realmConfig = Map.of();
+    this.dynamicFeatureConfigResolver = new NoOpDynamicFeatureConfigResolver();
   }
 
   public DefaultConfigurationStore(
-      Map<String, Object> config, Map<String, Map<String, Object>> realmConfig) {
+      Map<String, Object> config,
+      Map<String, Map<String, Object>> realmConfig,
+      DynamicFeatureConfigResolver dynamicFeatureConfigResolver) {
     this.config = config;
     this.realmConfig = realmConfig;
+    this.dynamicFeatureConfigResolver = dynamicFeatureConfigResolver;
   }
 
   @SuppressWarnings("unchecked")
@@ -45,6 +50,11 @@ public class DefaultConfigurationStore implements PolarisConfigurationStore {
   public <T> @Nullable T getConfiguration(@NotNull PolarisCallContext ctx, String configName) {
     String realm = CallContext.getCurrentContext().getRealmContext().getRealmIdentifier();
     return (T)
-        realmConfig.getOrDefault(realm, Map.of()).getOrDefault(configName, config.get(configName));
+        dynamicFeatureConfigResolver
+            .resolve(configName)
+            .orElse(
+                realmConfig
+                    .getOrDefault(realm, Map.of())
+                    .getOrDefault(configName, config.get(configName)));
   }
 }
