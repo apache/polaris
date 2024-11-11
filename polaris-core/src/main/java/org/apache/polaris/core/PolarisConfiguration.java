@@ -72,8 +72,14 @@ public class PolarisConfiguration<T> {
       return this;
     }
 
+    @SuppressWarnings("unchecked")
     public Builder<T> defaultValue(T defaultValue) {
-      this.defaultValue = defaultValue;
+      if (defaultValue instanceof List<?>) {
+        // Type-safe handling of List
+        this.defaultValue = (T) new ArrayList<>((List<?>) defaultValue);
+      } else {
+        this.defaultValue = defaultValue;
+      }
       return this;
     }
 
@@ -168,11 +174,11 @@ public class PolarisConfiguration<T> {
           .key("SUPPORTED_CATALOG_STORAGE_TYPES")
           .catalogConfig("supported.storage.types")
           .description("The list of supported storage types for a catalog")
-          .defaultValue(new ArrayList<>(List.of(
+          .defaultValue(List.of(
                   StorageConfigInfo.StorageTypeEnum.S3.name(),
                   StorageConfigInfo.StorageTypeEnum.AZURE.name(),
                   StorageConfigInfo.StorageTypeEnum.GCS.name(),
-                  StorageConfigInfo.StorageTypeEnum.FILE.name())))
+                  StorageConfigInfo.StorageTypeEnum.FILE.name()))
           .build();
 
   public static final PolarisConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
