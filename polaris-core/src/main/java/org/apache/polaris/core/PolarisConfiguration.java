@@ -174,7 +174,8 @@ public class PolarisConfiguration<T> {
           .key("SUPPORTED_CATALOG_STORAGE_TYPES")
           .catalogConfig("supported.storage.types")
           .description("The list of supported storage types for a catalog")
-          .defaultValue(List.of(
+          .defaultValue(
+              List.of(
                   StorageConfigInfo.StorageTypeEnum.S3.name(),
                   StorageConfigInfo.StorageTypeEnum.AZURE.name(),
                   StorageConfigInfo.StorageTypeEnum.GCS.name(),
