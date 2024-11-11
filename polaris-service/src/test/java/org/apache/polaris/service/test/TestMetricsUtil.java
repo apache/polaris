@@ -57,7 +57,6 @@ public class TestMetricsUtil {
     assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
     String[] responseLines = response.readEntity(String.class).split("\n");
     for (String line : responseLines) {
-      System.out.println("ANDREW line: " + line);
       int numTags =
           StringUtils.countMatches(line, '='); // Assumes the tag values don't contain an '='
       if (line.startsWith(metricName)
