@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -674,8 +675,23 @@ public class PolarisAdminService {
     String defaultBaseLocation = currentCatalogEntity.getDefaultBaseLocation();
     if (updateRequest.getProperties() != null) {
       updateBuilder.setProperties(updateRequest.getProperties());
-      defaultBaseLocation =
+      String newDefaultBaseLocation =
           updateRequest.getProperties().get(CatalogEntity.DEFAULT_BASE_LOCATION_KEY);
+      // Since defaultBaseLocation is a required field during construction of a catalog, and the
+      // syntax of the Catalog API model splits default-base-location out from other keys in
+      // additionalProperties, it's easy for client libraries to focus on adding/merging
+      // additionalProperties while neglecting to "echo" the default-base-location from the
+      // fetched catalog, it's most user-friendly to treat a null or empty default-base-location
+      // as meaning no intended change to the default-base-location.
+      if (StringUtils.isNotEmpty(newDefaultBaseLocation)) {
+        // New base location is already in the updated properties; we'll also potentially
+        // plumb it into the logic for setting an updated StorageConfigurationInfo.
+        defaultBaseLocation = newDefaultBaseLocation;
+      } else {
+        // No default-base-location present at all in the properties of the update request,
+        // so we must restore it explicitly in the updateBuilder.
+        updateBuilder.setDefaultBaseLocation(defaultBaseLocation);
+      }
     }
     if (updateRequest.getStorageConfigInfo() != null) {
       updateBuilder.setStorageConfigurationInfo(
