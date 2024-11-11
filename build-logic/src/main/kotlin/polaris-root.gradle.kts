@@ -78,5 +78,5 @@ extensions.getByType<PublishingHelperExtension>().apply {
     "vvcephei"
   )
   podlingMentorsAsfIds.addAll("bdelacretaz", "blue", "holden", "jbonofre", "yao")
-  podlingCommitterAsfIds.addAll()
+  podlingCommitterAsfIds.addAll("adutra", "annafil", "emaynard", "collado", "yufei", "ebyhr")
 }
