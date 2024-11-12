@@ -457,9 +457,17 @@ public class PolarisTestMetaStoreManager {
 
     // rotate the secrets, twice!
     polarisMetaStoreManager.rotatePrincipalSecrets(
-        this.polarisCallContext, clientId, principalEntity.getId(), false, secrets.getMainSecretHash());
+        this.polarisCallContext,
+        clientId,
+        principalEntity.getId(),
+        false,
+        secrets.getMainSecretHash());
     polarisMetaStoreManager.rotatePrincipalSecrets(
-        this.polarisCallContext, clientId, principalEntity.getId(), false, secrets.getMainSecretHash());
+        this.polarisCallContext,
+        clientId,
+        principalEntity.getId(),
+        false,
+        secrets.getMainSecretHash());
 
     // reload and check that now the main should be secondary
     reloadSecrets =
@@ -470,7 +478,8 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(reloadSecrets.getPrincipalId()).isEqualTo(secrets.getPrincipalId());
     Assertions.assertThat(reloadSecrets.getPrincipalClientId())
         .isEqualTo(secrets.getPrincipalClientId());
-    Assertions.assertThat(reloadSecrets.getSecondarySecretHash()).isEqualTo(secrets.getMainSecretHash());
+    Assertions.assertThat(reloadSecrets.getSecondarySecretHash())
+        .isEqualTo(secrets.getMainSecretHash());
     String newMainSecretHash = reloadSecrets.getMainSecretHash();
 
     // reset - the previous main secret is no longer one of the secrets

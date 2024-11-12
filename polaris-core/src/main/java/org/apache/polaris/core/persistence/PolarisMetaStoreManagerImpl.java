@@ -1071,7 +1071,8 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
         ms.runInTransaction(
             callCtx,
             () ->
-                this.rotatePrincipalSecrets(callCtx, ms, clientId, principalId, reset, oldSecretHash));
+                this.rotatePrincipalSecrets(
+                    callCtx, ms, clientId, principalId, reset, oldSecretHash));
 
     return (secrets == null)
         ? new PrincipalSecretsResult(ReturnStatus.ENTITY_NOT_FOUND, null)
