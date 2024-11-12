@@ -201,7 +201,7 @@ fun addDevelopersToPom(
           (e.podlingCommitterAsfIds.get() + podlingPpmc + podlingMentors).map { id ->
             val info = people[id]
             if (info == null) {
-              throw GradleException("Person with ASF id '%id' not found in people.json".format(id))
+              throw GradleException("Person with ASF id '%s' not found in people.json".format(id))
             }
             Pair(id, info)
           }
