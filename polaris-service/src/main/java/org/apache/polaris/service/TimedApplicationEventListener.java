@@ -66,16 +66,16 @@ public class TimedApplicationEventListener implements ApplicationEventListener {
     @Override
     public void onEvent(RequestEvent event) {
       String realmId = CallContext.getCurrentContext().getRealmContext().getRealmIdentifier();
-      if (event.getType() == RequestEvent.Type.RESOURCE_METHOD_START) {
+      if (event.getType() == RequestEvent.Type.REQUEST_MATCHED) {
         Method method =
             event.getUriInfo().getMatchedResourceMethod().getInvocable().getHandlingMethod();
         if (method.isAnnotationPresent(TimedApi.class)) {
           TimedApi timedApi = method.getAnnotation(TimedApi.class);
           metric = timedApi.value();
-          sw = Stopwatch.createStarted();
           polarisMetricRegistry.incrementCounter(metric, realmId);
         }
-
+      } else if (event.getType() == RequestEvent.Type.RESOURCE_METHOD_START && metric != null) {
+        sw = Stopwatch.createStarted();
       } else if (event.getType() == RequestEvent.Type.FINISHED && metric != null) {
         if (event.isSuccess()) {
           sw.stop();

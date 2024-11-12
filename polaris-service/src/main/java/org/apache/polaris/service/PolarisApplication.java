@@ -263,10 +263,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
 
     if (configuration.getRateLimiter() != null) {
-      environment
-          .servlets()
-          .addFilter("ratelimiter", new RateLimiterFilter(configuration.getRateLimiter()))
-          .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
+      environment.jersey().register(new RateLimiterFilter(configuration.getRateLimiter()));
     }
 
     DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> authenticator =

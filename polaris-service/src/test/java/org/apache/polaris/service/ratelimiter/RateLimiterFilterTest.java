@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
@@ -25,14 +28,15 @@ import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.function.Consumer;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.test.TestEnvironmentExtension;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.threeten.extra.MutableClock;
@@ -62,6 +66,7 @@ public class RateLimiterFilterTest {
 
   private static String userToken;
   private static String realm;
+  private static MutableClock clock = MockRealmTokenBucketRateLimiter.CLOCK;
 
   @BeforeAll
   public static void setup(
@@ -70,20 +75,58 @@ public class RateLimiterFilterTest {
     RateLimiterFilterTest.userToken = userToken.token();
   }
 
+  @BeforeEach
+  @AfterEach
+  public void resetRateLimiter() {
+    clock.add(
+        Duration.ofSeconds(2 * WINDOW_SECONDS)); // Clear any counters from before/after this test
+  }
+
   @Test
   public void testRateLimiter() {
     Consumer<Response.Status> requestAsserter =
         TestUtil.constructRequestAsserter(EXT, userToken, realm);
-    CallContext.setCurrentContext(CallContext.of(() -> "myrealm", null));
-
-    MutableClock clock = MockRealmTokenBucketRateLimiter.CLOCK;
-    clock.add(Duration.ofSeconds(2 * WINDOW_SECONDS)); // Clear any counters from before this test
 
     for (int i = 0; i < REQUESTS_PER_SECOND * WINDOW_SECONDS; i++) {
       requestAsserter.accept(Response.Status.OK);
     }
     requestAsserter.accept(Response.Status.TOO_MANY_REQUESTS);
 
-    clock.add(Duration.ofSeconds(4 * WINDOW_SECONDS)); // Clear any counters from during this test
+    // Ensure that a different realm identifier gets a separate limit
+    Consumer<Response.Status> requestAsserter2 =
+        TestUtil.constructRequestAsserter(EXT, userToken, realm + "2");
+    requestAsserter2.accept(Response.Status.OK);
+  }
+
+  @Test
+  public void testMetricsAreEmittedWhenRateLimiting() {
+    Consumer<Response.Status> requestAsserter =
+        TestUtil.constructRequestAsserter(EXT, userToken, realm);
+
+    for (int i = 0; i < REQUESTS_PER_SECOND * WINDOW_SECONDS; i++) {
+      requestAsserter.accept(Response.Status.OK);
+    }
+    requestAsserter.accept(Response.Status.TOO_MANY_REQUESTS);
+
+    assertTrue(
+        getCounter(
+                "polaris_principal_roles_listPrincipalRoles_error_total{HTTP_RESPONSE_CODE=\"429\"}")
+            > 0);
+  }
+
+  private double getCounter(String metricName) {
+    Response response =
+        EXT.client()
+            .target(String.format("http://localhost:%d/metrics", EXT.getAdminPort()))
+            .request()
+            .get();
+    assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    String[] responseLines = response.readEntity(String.class).split("\n");
+    for (String line : responseLines) {
+      if (line.startsWith(metricName)) {
+        return Double.parseDouble(line.split(" ")[1]);
+      }
+    }
+    return 0;
   }
 }
