@@ -135,10 +135,10 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
       // Rotate:
       String originalSecret = principalSecrets.getMainSecret();
       String originalHash = principalSecrets.getMainSecretHash();
-      principalSecrets.rotateSecrets();
+      principalSecrets.rotateSecrets(principalSecrets.getMainSecretHash());
       Assertions.assertNotEquals(originalHash, principalSecrets.getMainSecretHash());
       Assertions.assertEquals(originalHash, principalSecrets.getSecondarySecretHash());
-      Assertions.assertEquals(originalSecret, principalSecrets.getSecondarySecret());
+      Assertions.assertEquals(null, principalSecrets.getSecondarySecret());
 
       // Persist the rotated credential:
       store.deletePrincipalSecrets(entityManager, key);
