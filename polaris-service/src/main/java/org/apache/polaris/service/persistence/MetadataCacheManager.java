@@ -55,13 +55,12 @@ public class MetadataCacheManager {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
     TableLikeEntity tableLikeEntity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
-    Optional<TableMetadata> cachedMetadata =
-        Optional.ofNullable(tableLikeEntity)
-            .map(TableLikeEntity::getMetadataContent)
-            .map(TableMetadataParser::fromJson);
-    if (cachedMetadata.isPresent()) {
+    boolean isCacheValid = tableLikeEntity
+        .getMetadataLocation()
+        .equals(tableLikeEntity.getMetadataCacheLocationKey());
+    if (isCacheValid) {
       LOGGER.debug(String.format("Using cached metadata for %s", tableIdentifier));
-      return cachedMetadata.get();
+      return TableMetadataParser.fromJson(tableLikeEntity.getMetadataCacheContent());
     } else {
       TableMetadata metadata = fallback.get();
       PolarisMetaStoreManager.EntityResult cacheResult =
@@ -105,8 +104,9 @@ public class MetadataCacheManager {
       } else {
         LOGGER.debug(
             String.format("Caching metadata for %s", tableLikeEntity.getTableIdentifier()));
-        TableLikeEntity newTableLikeEntity =
-            new TableLikeEntity.Builder(tableLikeEntity).setMetadataContent(json).build();
+        TableLikeEntity newTableLikeEntity = new TableLikeEntity.Builder(tableLikeEntity)
+            .setMetadataContent(tableLikeEntity.getMetadataLocation(), json)
+            .build();
         PolarisResolvedPathWrapper resolvedPath =
             resolvedEntityView.getResolvedPath(
                 tableLikeEntity.getTableIdentifier(), PolarisEntitySubType.TABLE);

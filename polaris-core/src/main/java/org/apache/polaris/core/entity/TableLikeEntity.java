@@ -30,8 +30,12 @@ public class TableLikeEntity extends PolarisEntity {
   public static final String METADATA_LOCATION_KEY = "metadata-location";
 
   // For applicable types, this key on the "internalProperties" map will return the content of the
-  // metadata.json file located at `METADATA_LOCATION_KEY`
-  private static final String METADATA_CONTENT_KEY = "metadata-content";
+  // metadata.json file located at `METADATA_CACHE_LOCATION_KEY`
+  private static final String METADATA_CACHE_CONTENT_KEY = "metadata-cache-content";
+
+  // For applicable types, this key on the "internalProperties" map will return the location of the
+  // `metadata.json` that is cached in METADATA_CACHE_CONTENT_KEY
+  private static final String METADATA_CACHE_LOCATION_KEY = "metadata-cache-location";
 
   public static final String USER_SPECIFIED_WRITE_DATA_LOCATION_KEY = "write.data.path";
   public static final String USER_SPECIFIED_WRITE_METADATA_LOCATION_KEY = "write.metadata.path";
@@ -72,8 +76,13 @@ public class TableLikeEntity extends PolarisEntity {
   }
 
   @JsonIgnore
-  public String getMetadataContent() {
-    return getInternalPropertiesAsMap().get(METADATA_CONTENT_KEY);
+  public String getMetadataCacheContent() {
+    return getInternalPropertiesAsMap().get(METADATA_CACHE_CONTENT_KEY);
+  }
+
+  @JsonIgnore
+  public String getMetadataCacheLocationKey() {
+    return getInternalPropertiesAsMap().get(METADATA_CACHE_LOCATION_KEY);
   }
 
   @JsonIgnore
@@ -130,8 +139,9 @@ public class TableLikeEntity extends PolarisEntity {
       return this;
     }
 
-    public Builder setMetadataContent(String content) {
-      internalProperties.put(METADATA_CONTENT_KEY, content);
+    public Builder setMetadataContent(String location, String content) {
+      internalProperties.put(METADATA_CACHE_LOCATION_KEY, location);
+      internalProperties.put(METADATA_CACHE_CONTENT_KEY, content);
       return this;
     }
 
