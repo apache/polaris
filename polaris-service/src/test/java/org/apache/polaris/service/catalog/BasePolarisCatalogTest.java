@@ -100,6 +100,7 @@ import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
+import org.apache.spark.Partition;
 import org.assertj.core.api.AbstractBooleanAssert;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.Nullable;
@@ -1537,11 +1538,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     return new Schema(fieldsArray);
   }
 
-  private TableMetadata createTableMetadata(String location, Schema schema) {
-    return TableMetadata.newTableMetadata(
-        schema, PartitionSpec.unpartitioned(), location, Collections.emptyMap());
-  }
-
   @Test
   public void testMetadataCachingWithManualFallback() {
     Namespace namespace = Namespace.of("manual-namespace");
@@ -1586,7 +1582,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     // Update the table
     TableOperations tableOps = catalog.newTableOps(tableIdentifier);
     TableMetadata updatedMetadata =
-        tableOps.current().updateLocation(originalMetadata.location() + "-updated");
+        tableOps.current().updateSchema(buildSchema(100), 100);
     tableOps.commit(tableOps.current(), updatedMetadata);
     AtomicBoolean wasFallbackCalledAgain = new AtomicBoolean(false);
 
@@ -1604,6 +1600,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             });
 
     Assertions.assertThat(reloadedMetadata).isNotSameAs(cachedMetadata);
+    Assertions.assertThat(reloadedMetadata.schema().columns().size()).isEqualTo(100);
     Assertions.assertThat(wasFallbackCalledAgain.get()).isTrue();
   }
 }

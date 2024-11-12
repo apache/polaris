@@ -53,18 +53,13 @@ public class MetadataCacheManager {
       Supplier<TableMetadata> fallback) {
     LOGGER.debug(String.format("Loading cached metadata for %s", tableIdentifier));
     PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
+        resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
     TableLikeEntity tableLikeEntity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
     Optional<TableMetadata> cachedMetadata =
         Optional.ofNullable(tableLikeEntity)
             .map(TableLikeEntity::getMetadataContent)
             .map(TableMetadataParser::fromJson);
-    boolean isCacheValid =
-        cachedMetadata
-            .map(TableMetadata::metadataFileLocation)
-            .map(s -> s.equals(tableLikeEntity.getMetadataLocation()))
-            .orElse(false);
-    if (isCacheValid) {
+    if (cachedMetadata.isPresent()) {
       LOGGER.debug(String.format("Using cached metadata for %s", tableIdentifier));
       return cachedMetadata.get();
     } else {
@@ -120,7 +115,7 @@ public class MetadataCacheManager {
               .getMetaStoreManager()
               .updateEntityPropertiesIfNotChanged(
                   callContext,
-                  PolarisEntity.toCoreList(resolvedPath.getRawFullPath()),
+                  PolarisEntity.toCoreList(resolvedPath.getRawParentPath()),
                   newTableLikeEntity);
         } catch (RuntimeException e) {
           // PersistenceException (& other extension-specific exceptions) may not be in scope,
