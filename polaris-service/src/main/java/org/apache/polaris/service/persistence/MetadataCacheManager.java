@@ -40,7 +40,7 @@ public class MetadataCacheManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetadataCacheManager.class);
 
   /**
-   * Load the cached {@link Table} or fall back to `fallback` if one doesn't exist If the metadata
+   * Load the cached {@link Table} or fall back to `fallback` if one doesn't exist. If the metadata
    * is not currently cached, it may be added to the cache.
    */
   public static TableMetadata loadTableMetadata(
@@ -52,7 +52,7 @@ public class MetadataCacheManager {
       Supplier<TableMetadata> fallback) {
     LOGGER.debug(String.format("Loading cached metadata for %s", tableIdentifier));
     PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
+        resolvedEntityView.getResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
     TableLikeEntity tableLikeEntity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
     boolean isCacheValid =
         tableLikeEntity.getMetadataLocation().equals(tableLikeEntity.getMetadataCacheLocationKey());
