@@ -140,9 +140,11 @@ public class TimedApplicationEventListenerTest {
     return TestMetricsUtil.getTotalCounter(
         EXT,
         API_ANNOTATION + SUFFIX_COUNTER + SUFFIX_REALM,
-        // spotless:off
-        List.of(Tag.of(TAG_REALM, realm), Tag.of(TAG_REALM_DEPRECATED, realm)));
-        // spotless:on
+        List.of(
+            Tag.of(TAG_REALM, realm),
+            // spotless:off
+            Tag.of(TAG_REALM_DEPRECATED, realm)));
+            // spotless:on
   }
 
   private double getPerApiMetricErrorCount() {
