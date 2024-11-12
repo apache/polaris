@@ -1552,7 +1552,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             tableIdentifier,
             Long.MAX_VALUE,
             polarisContext,
-            entityManager,
+            metaStoreManager,
             passthroughView,
             () -> originalMetadata);
 
@@ -1564,7 +1564,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             tableIdentifier,
             Long.MAX_VALUE,
             polarisContext,
-            entityManager,
+            metaStoreManager,
             passthroughView,
             () -> {
               throw new IllegalStateException("Fell back even though a cache entry should exist!");
@@ -1589,7 +1589,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             tableIdentifier,
             Long.MAX_VALUE,
             polarisContext,
-            entityManager,
+            metaStoreManager,
             passthroughView,
             () -> {
               wasFallbackCalledAgain.set(true);

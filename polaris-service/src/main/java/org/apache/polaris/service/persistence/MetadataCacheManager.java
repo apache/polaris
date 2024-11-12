@@ -47,7 +47,7 @@ public class MetadataCacheManager {
       TableIdentifier tableIdentifier,
       long maxBytesToCache,
       PolarisCallContext callContext,
-      PolarisEntityManager entityManager,
+      PolarisMetaStoreManager metastoreManager,
       PolarisResolutionManifestCatalogView resolvedEntityView,
       Supplier<TableMetadata> fallback) {
     LOGGER.debug(String.format("Loading cached metadata for %s", tableIdentifier));
@@ -67,7 +67,7 @@ public class MetadataCacheManager {
               metadata,
               maxBytesToCache,
               callContext,
-              entityManager,
+              metastoreManager,
               resolvedEntityView);
       if (!cacheResult.isSuccess()) {
         LOGGER.debug(String.format("Failed to cache metadata for %s", tableIdentifier));
@@ -86,7 +86,7 @@ public class MetadataCacheManager {
       TableMetadata metadata,
       long maxBytesToCache,
       PolarisCallContext callContext,
-      PolarisEntityManager entityManager,
+      PolarisMetaStoreManager metaStoreManager,
       PolarisResolutionManifestCatalogView resolvedEntityView) {
     String json = TableMetadataParser.toJson(metadata);
     // We should not reach this method in this case, but check just in case...
@@ -110,8 +110,7 @@ public class MetadataCacheManager {
             resolvedEntityView.getResolvedPath(
                 tableLikeEntity.getTableIdentifier(), PolarisEntitySubType.TABLE);
         try {
-          return entityManager
-              .getMetaStoreManager()
+          return metaStoreManager
               .updateEntityPropertiesIfNotChanged(
                   callContext,
                   PolarisEntity.toCoreList(resolvedPath.getRawParentPath()),

@@ -837,7 +837,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           identifier,
           maxMetadataCacheBytes,
           callContext.getPolarisCallContext(),
-          entityManager,
+          entityManager.getMetaStoreManager(),
           resolvedEntityView,
           fallback);
     }
