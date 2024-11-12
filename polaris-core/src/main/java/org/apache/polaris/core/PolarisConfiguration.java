@@ -21,7 +21,6 @@ package org.apache.polaris.core;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
-
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 
 public class PolarisConfiguration<T> {
@@ -68,12 +67,13 @@ public class PolarisConfiguration<T> {
   }
 
   private void validate(T value) {
-    this.validation.ifPresent(v -> {
-      if (!v.apply(value)) {
-        throw new IllegalArgumentException(
-            String.format("Configuration %s has invalid value %s", key, defaultValue));
-      }
-    });
+    this.validation.ifPresent(
+        v -> {
+          if (!v.apply(value)) {
+            throw new IllegalArgumentException(
+                String.format("Configuration %s has invalid value %s", key, defaultValue));
+          }
+        });
   }
 
   public static class Builder<T> {
@@ -232,8 +232,8 @@ public class PolarisConfiguration<T> {
       PolarisConfiguration.<Long>builder()
           .key("METADATA_CACHE_MAX_BYTES")
           .description(
-              "If nonzero, the max size a table's metadata can be in order to be cached in the persistence layer." +
-              " If zero, no metadata will be cached or served from the cache. If -1, all metadata will be cached.")
+              "If nonzero, the max size a table's metadata can be in order to be cached in the persistence layer."
+                  + " If zero, no metadata will be cached or served from the cache. If -1, all metadata will be cached.")
           .defaultValue(METADATA_CACHE_MAX_BYTES_NO_CACHING)
           .validation(value -> value >= -1)
           .build();

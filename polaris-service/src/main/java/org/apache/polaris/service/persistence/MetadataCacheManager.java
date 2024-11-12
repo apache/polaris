@@ -41,8 +41,8 @@ public class MetadataCacheManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetadataCacheManager.class);
 
   /**
-   * Load the cached {@link Table} or fall back to `fallback` if one doesn't exist
-   * If the metadata is not currently cached, it may be added to the cache.
+   * Load the cached {@link Table} or fall back to `fallback` if one doesn't exist If the metadata
+   * is not currently cached, it may be added to the cache.
    */
   public static TableMetadata loadTableMetadata(
       TableIdentifier tableIdentifier,
@@ -55,14 +55,15 @@ public class MetadataCacheManager {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
     TableLikeEntity tableLikeEntity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
-    Optional<TableMetadata> cachedMetadata = Optional
-        .ofNullable(tableLikeEntity)
-        .map(TableLikeEntity::getMetadataContent)
-        .map(TableMetadataParser::fromJson);
-    boolean isCacheValid = cachedMetadata
-        .map(TableMetadata::metadataFileLocation)
-        .map(s -> s.equals(tableLikeEntity.getMetadataLocation()))
-        .orElse(false);
+    Optional<TableMetadata> cachedMetadata =
+        Optional.ofNullable(tableLikeEntity)
+            .map(TableLikeEntity::getMetadataContent)
+            .map(TableMetadataParser::fromJson);
+    boolean isCacheValid =
+        cachedMetadata
+            .map(TableMetadata::metadataFileLocation)
+            .map(s -> s.equals(tableLikeEntity.getMetadataLocation()))
+            .orElse(false);
     if (isCacheValid) {
       LOGGER.debug(String.format("Using cached metadata for %s", tableIdentifier));
       return cachedMetadata.get();
@@ -70,7 +71,12 @@ public class MetadataCacheManager {
       TableMetadata metadata = fallback.get();
       PolarisMetaStoreManager.EntityResult cacheResult =
           cacheTableMetadata(
-              tableLikeEntity, metadata, maxBytesToCache, callContext, entityManager, resolvedEntityView);
+              tableLikeEntity,
+              metadata,
+              maxBytesToCache,
+              callContext,
+              entityManager,
+              resolvedEntityView);
       if (!cacheResult.isSuccess()) {
         LOGGER.debug(String.format("Failed to cache metadata for %s", tableIdentifier));
       }
@@ -95,31 +101,35 @@ public class MetadataCacheManager {
     if (maxBytesToCache != PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING) {
       long sizeInBytes = json.getBytes(StandardCharsets.UTF_8).length;
       if (sizeInBytes > maxBytesToCache) {
-        LOGGER.debug(String.format(
-            "Will not cache metadata for %s; metadata is %d bytes and the limit is %d",
-            tableLikeEntity.getTableIdentifier(),
-            sizeInBytes,
-            maxBytesToCache
-            ));
-        return new PolarisMetaStoreManager.EntityResult(PolarisMetaStoreManager.ReturnStatus.SUCCESS, null);
+        LOGGER.debug(
+            String.format(
+                "Will not cache metadata for %s; metadata is %d bytes and the limit is %d",
+                tableLikeEntity.getTableIdentifier(), sizeInBytes, maxBytesToCache));
+        return new PolarisMetaStoreManager.EntityResult(
+            PolarisMetaStoreManager.ReturnStatus.SUCCESS, null);
       } else {
-        LOGGER.debug(String.format("Caching metadata for %s", tableLikeEntity.getTableIdentifier()));
-        TableLikeEntity newTableLikeEntity = new TableLikeEntity.Builder(tableLikeEntity)
-            .setMetadataContent(json)
-            .build();
+        LOGGER.debug(
+            String.format("Caching metadata for %s", tableLikeEntity.getTableIdentifier()));
+        TableLikeEntity newTableLikeEntity =
+            new TableLikeEntity.Builder(tableLikeEntity).setMetadataContent(json).build();
         PolarisResolvedPathWrapper resolvedPath =
-            resolvedEntityView.getResolvedPath(tableLikeEntity.getTableIdentifier(), PolarisEntitySubType.TABLE);
+            resolvedEntityView.getResolvedPath(
+                tableLikeEntity.getTableIdentifier(), PolarisEntitySubType.TABLE);
         try {
-          return entityManager.getMetaStoreManager().updateEntityPropertiesIfNotChanged(
-              callContext,
-              PolarisEntity.toCoreList(resolvedPath.getRawFullPath()),
-              newTableLikeEntity);
+          return entityManager
+              .getMetaStoreManager()
+              .updateEntityPropertiesIfNotChanged(
+                  callContext,
+                  PolarisEntity.toCoreList(resolvedPath.getRawFullPath()),
+                  newTableLikeEntity);
         } catch (RuntimeException e) {
           // PersistenceException (& other extension-specific exceptions) may not be in scope,
           // but we can make a best-effort attempt to swallow it and just forego caching
           if (e.toString().contains("PersistenceException")) {
-            LOGGER.debug(String.format(
-                "Encountered an error while caching %s: %s", tableLikeEntity.getTableIdentifier(), e));
+            LOGGER.debug(
+                String.format(
+                    "Encountered an error while caching %s: %s",
+                    tableLikeEntity.getTableIdentifier(), e));
             return new PolarisMetaStoreManager.EntityResult(
                 PolarisMetaStoreManager.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, e.getMessage());
           } else {
@@ -128,11 +138,12 @@ public class MetadataCacheManager {
         }
       }
     } else {
-      LOGGER.debug(String.format(
-          "Will not cache metadata for %s; metadata caching is disabled",
-          tableLikeEntity.getTableIdentifier()
-      ));
-      return new PolarisMetaStoreManager.EntityResult(PolarisMetaStoreManager.ReturnStatus.SUCCESS, null);
+      LOGGER.debug(
+          String.format(
+              "Will not cache metadata for %s; metadata caching is disabled",
+              tableLikeEntity.getTableIdentifier()));
+      return new PolarisMetaStoreManager.EntityResult(
+          PolarisMetaStoreManager.ReturnStatus.SUCCESS, null);
     }
   }
 }
