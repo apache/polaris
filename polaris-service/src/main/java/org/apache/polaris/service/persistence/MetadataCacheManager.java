@@ -19,7 +19,6 @@
 package org.apache.polaris.service.persistence;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
@@ -55,9 +54,8 @@ public class MetadataCacheManager {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
     TableLikeEntity tableLikeEntity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
-    boolean isCacheValid = tableLikeEntity
-        .getMetadataLocation()
-        .equals(tableLikeEntity.getMetadataCacheLocationKey());
+    boolean isCacheValid =
+        tableLikeEntity.getMetadataLocation().equals(tableLikeEntity.getMetadataCacheLocationKey());
     if (isCacheValid) {
       LOGGER.debug(String.format("Using cached metadata for %s", tableIdentifier));
       return TableMetadataParser.fromJson(tableLikeEntity.getMetadataCacheContent());
@@ -104,9 +102,10 @@ public class MetadataCacheManager {
       } else {
         LOGGER.debug(
             String.format("Caching metadata for %s", tableLikeEntity.getTableIdentifier()));
-        TableLikeEntity newTableLikeEntity = new TableLikeEntity.Builder(tableLikeEntity)
-            .setMetadataContent(tableLikeEntity.getMetadataLocation(), json)
-            .build();
+        TableLikeEntity newTableLikeEntity =
+            new TableLikeEntity.Builder(tableLikeEntity)
+                .setMetadataContent(tableLikeEntity.getMetadataLocation(), json)
+                .build();
         PolarisResolvedPathWrapper resolvedPath =
             resolvedEntityView.getResolvedPath(
                 tableLikeEntity.getTableIdentifier(), PolarisEntitySubType.TABLE);
