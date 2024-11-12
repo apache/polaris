@@ -46,7 +46,10 @@ public class SnowmanCredentialsExtension
   private static final Logger LOGGER = LoggerFactory.getLogger(SnowmanCredentialsExtension.class);
   private SnowmanCredentials snowmanCredentials;
 
-  public record SnowmanCredentials(String clientId, String clientSecret) {}
+  public record SnowmanIdentifier(String principalName, String principalRoleName) {}
+
+  public record SnowmanCredentials(
+      String clientId, String clientSecret, SnowmanIdentifier identifier) {}
 
   @Override
   public void beforeAll(ExtensionContext extensionContext) throws Exception {
@@ -73,7 +76,8 @@ public class SnowmanCredentialsExtension
             adminSecrets.getMainSecret(),
             realm);
 
-    PrincipalRole principalRole = new PrincipalRole("catalog-admin");
+    SnowmanIdentifier snowmanIdentifier = getSnowmanIdentifier(testEnv);
+    PrincipalRole principalRole = new PrincipalRole(snowmanIdentifier.principalRoleName());
     try (Response createPrResponse =
         testEnv
             .apiClient()
@@ -86,7 +90,7 @@ public class SnowmanCredentialsExtension
           .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
 
-    Principal principal = new Principal("snowman");
+    Principal principal = new Principal(snowmanIdentifier.principalName());
 
     try (Response createPResponse =
         testEnv
@@ -105,7 +109,8 @@ public class SnowmanCredentialsExtension
               .apiClient()
               .target(
                   String.format(
-                      "%s/api/management/v1/principals/%s/rotate", testEnv.baseUri(), "snowman"))
+                      "%s/api/management/v1/principals/%s/rotate",
+                      testEnv.baseUri(), principal.getName()))
               .request(MediaType.APPLICATION_JSON)
               .header(
                   "Authorization",
@@ -127,14 +132,16 @@ public class SnowmanCredentialsExtension
       snowmanCredentials =
           new SnowmanCredentials(
               snowmanWithCredentials.getCredentials().getClientId(),
-              snowmanWithCredentials.getCredentials().getClientSecret());
+              snowmanWithCredentials.getCredentials().getClientSecret(),
+              snowmanIdentifier);
     }
     try (Response assignPrResponse =
         testEnv
             .apiClient()
             .target(
                 String.format(
-                    "%s/api/management/v1/principals/snowman/principal-roles", testEnv.baseUri()))
+                    "%s/api/management/v1/principals/%s/principal-roles",
+                    testEnv.baseUri(), principal.getName()))
             .request("application/json")
             .header("Authorization", "Bearer " + userToken) // how is token getting used?
             .header(REALM_PROPERTY_KEY, realm)
@@ -169,11 +176,13 @@ public class SnowmanCredentialsExtension
             adminSecrets.getMainSecret(),
             realm);
 
+    SnowmanIdentifier snowmanIdentifier = getSnowmanIdentifier(testEnv);
     testEnv
         .apiClient()
         .target(
             String.format(
-                "%s/api/management/v1/principal-roles/%s", testEnv.baseUri(), "catalog-admin"))
+                "%s/api/management/v1/principal-roles/%s",
+                testEnv.baseUri(), snowmanIdentifier.principalRoleName()))
         .request("application/json")
         .header("Authorization", "Bearer " + userToken)
         .header(REALM_PROPERTY_KEY, realm)
@@ -182,7 +191,10 @@ public class SnowmanCredentialsExtension
 
     testEnv
         .apiClient()
-        .target(String.format("%s/api/management/v1/principals/%s", testEnv.baseUri(), "snowman"))
+        .target(
+            String.format(
+                "%s/api/management/v1/principals/%s",
+                testEnv.baseUri(), snowmanIdentifier.principalName()))
         .request("application/json")
         .header("Authorization", "Bearer " + userToken)
         .header(REALM_PROPERTY_KEY, realm)
@@ -207,5 +219,9 @@ public class SnowmanCredentialsExtension
       ParameterContext parameterContext, ExtensionContext extensionContext)
       throws ParameterResolutionException {
     return snowmanCredentials;
+  }
+
+  private static SnowmanIdentifier getSnowmanIdentifier(TestEnvironment testEnv) {
+    return new SnowmanIdentifier("snowman" + testEnv.testId(), "catalog-admin" + testEnv.testId());
   }
 }
