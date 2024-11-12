@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.persistence;
 
-import java.util.Collection;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.apache.iceberg.Table;
@@ -26,40 +26,51 @@ import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TableLikeEntity;
-import org.apache.polaris.core.entity.TableMetadataEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class MetadataCacheManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(MetadataCacheManager.class);
 
-  /** Load the cached {@link Table} or fall back to `fallback` if one doesn't exist */
+  /**
+   * Load the cached {@link Table} or fall back to `fallback` if one doesn't exist
+   * If the metadata is not currently cached, it may be added to the cache.
+   */
   public static TableMetadata loadTableMetadata(
       TableIdentifier tableIdentifier,
+      long maxBytesToCache,
       PolarisCallContext callContext,
       PolarisEntityManager entityManager,
       PolarisResolutionManifestCatalogView resolvedEntityView,
       Supplier<TableMetadata> fallback) {
     LOGGER.debug(String.format("Loading cached metadata for %s", tableIdentifier));
-    Optional<TableMetadata> cachedMetadata =
-        loadCachedTableMetadata(tableIdentifier, callContext, entityManager, resolvedEntityView);
-    if (cachedMetadata.isPresent()) {
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
+    TableLikeEntity tableLikeEntity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
+    Optional<TableMetadata> cachedMetadata = Optional
+        .ofNullable(tableLikeEntity)
+        .map(TableLikeEntity::getMetadataContent)
+        .map(TableMetadataParser::fromJson);
+    boolean isCacheValid = cachedMetadata
+        .map(TableMetadata::metadataFileLocation)
+        .map(s -> s.equals(tableLikeEntity.getMetadataLocation()))
+        .orElse(false);
+    if (isCacheValid) {
       LOGGER.debug(String.format("Using cached metadata for %s", tableIdentifier));
       return cachedMetadata.get();
     } else {
       TableMetadata metadata = fallback.get();
       PolarisMetaStoreManager.EntityResult cacheResult =
           cacheTableMetadata(
-              tableIdentifier, metadata, callContext, entityManager, resolvedEntityView);
+              tableLikeEntity, metadata, maxBytesToCache, callContext, entityManager, resolvedEntityView);
       if (!cacheResult.isSuccess()) {
         LOGGER.debug(String.format("Failed to cache metadata for %s", tableIdentifier));
       }
@@ -73,120 +84,55 @@ public class MetadataCacheManager {
    * @return The result of trying to cache the metadata
    */
   private static PolarisMetaStoreManager.EntityResult cacheTableMetadata(
-      TableIdentifier tableIdentifier,
+      TableLikeEntity tableLikeEntity,
       TableMetadata metadata,
+      long maxBytesToCache,
       PolarisCallContext callContext,
       PolarisEntityManager entityManager,
       PolarisResolutionManifestCatalogView resolvedEntityView) {
-    PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
-    if (resolvedEntities == null) {
-      return new PolarisMetaStoreManager.EntityResult(
-          PolarisMetaStoreManager.ReturnStatus.ENTITY_NOT_FOUND, null);
-    } else {
-      TableLikeEntity tableEntity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
-      TableMetadataEntity tableMetadataEntity =
-          new TableMetadataEntity.Builder()
-              .setCatalogId(tableEntity.getCatalogId())
-              .setParentId(tableEntity.getId())
-              .setId(entityManager.getMetaStoreManager().generateNewEntityId(callContext).getId())
-              .setCreateTimestamp(System.currentTimeMillis())
-              .setMetadataLocation(metadata.metadataFileLocation())
-              .setContent(TableMetadataParser.toJson(metadata))
-              .build();
-      try {
-        return entityManager
-            .getMetaStoreManager()
-            .createEntityIfNotExists(
-                callContext,
-                PolarisEntity.toCoreList(resolvedEntities.getRawFullPath()),
-                tableMetadataEntity);
-      } catch (RuntimeException e) {
-        // PersistenceException (& other extension-specific exceptions) may not be in scope,
-        // but we can make a best-effort attempt to swallow it and just forego caching
-        if (e.toString().contains("PersistenceException")) {
-          return new PolarisMetaStoreManager.EntityResult(
-              PolarisMetaStoreManager.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, e.getMessage());
-        } else {
-          throw e;
+    String json = TableMetadataParser.toJson(metadata);
+    // We should not reach this method in this case, but check just in case...
+    if (maxBytesToCache != PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING) {
+      long sizeInBytes = json.getBytes(StandardCharsets.UTF_8).length;
+      if (sizeInBytes > maxBytesToCache) {
+        LOGGER.debug(String.format(
+            "Will not cache metadata for %s; metadata is %d bytes and the limit is %d",
+            tableLikeEntity.getTableIdentifier(),
+            sizeInBytes,
+            maxBytesToCache
+            ));
+        return new PolarisMetaStoreManager.EntityResult(PolarisMetaStoreManager.ReturnStatus.SUCCESS, null);
+      } else {
+        LOGGER.debug(String.format("Caching metadata for %s", tableLikeEntity.getTableIdentifier()));
+        TableLikeEntity newTableLikeEntity = new TableLikeEntity.Builder(tableLikeEntity)
+            .setMetadataContent(json)
+            .build();
+        PolarisResolvedPathWrapper resolvedPath =
+            resolvedEntityView.getResolvedPath(tableLikeEntity.getTableIdentifier(), PolarisEntitySubType.TABLE);
+        try {
+          return entityManager.getMetaStoreManager().updateEntityPropertiesIfNotChanged(
+              callContext,
+              PolarisEntity.toCoreList(resolvedPath.getRawFullPath()),
+              newTableLikeEntity);
+        } catch (RuntimeException e) {
+          // PersistenceException (& other extension-specific exceptions) may not be in scope,
+          // but we can make a best-effort attempt to swallow it and just forego caching
+          if (e.toString().contains("PersistenceException")) {
+            LOGGER.debug(String.format(
+                "Encountered an error while caching %s: %s", tableLikeEntity.getTableIdentifier(), e));
+            return new PolarisMetaStoreManager.EntityResult(
+                PolarisMetaStoreManager.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, e.getMessage());
+          } else {
+            throw e;
+          }
         }
       }
-    }
-  }
-
-  /** Return the cached {@link Table} entity, if one exists */
-  private static @NotNull Optional<TableMetadata> loadCachedTableMetadata(
-      TableIdentifier tableIdentifier,
-      PolarisCallContext callContext,
-      PolarisEntityManager entityManager,
-      PolarisResolutionManifestCatalogView resolvedEntityView) {
-    return loadCachedTableMetadataImpl(
-        tableIdentifier, callContext, entityManager, resolvedEntityView, false);
-  }
-
-  public static void dropTableMetadata(
-      TableIdentifier tableIdentifier,
-      PolarisCallContext callContext,
-      PolarisEntityManager entityManager,
-      PolarisResolutionManifestCatalogView resolvedEntityView) {
-    loadCachedTableMetadataImpl(
-        tableIdentifier, callContext, entityManager, resolvedEntityView, true);
-  }
-
-  /** Return the cached {@link Table} entity, if one exists */
-  private static @NotNull Optional<TableMetadata> loadCachedTableMetadataImpl(
-      TableIdentifier tableIdentifier,
-      PolarisCallContext callContext,
-      PolarisEntityManager entityManager,
-      PolarisResolutionManifestCatalogView resolvedEntityView,
-      boolean dropEverything) {
-    PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
-    if (resolvedEntities == null) {
-      return Optional.empty();
     } else {
-      TableLikeEntity entity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
-      String metadataLocation = entity.getMetadataLocation();
-      PolarisMetaStoreManager.ListEntitiesResult metadataResult =
-          entityManager
-              .getMetaStoreManager()
-              .listEntities(
-                  callContext,
-                  PolarisEntity.toCoreList(resolvedEntities.getRawFullPath()),
-                  PolarisEntityType.TABLE_METADATA,
-                  PolarisEntitySubType.ANY_SUBTYPE);
-      return Optional.ofNullable(metadataResult.getEntities()).stream()
-          .flatMap(Collection::stream)
-          .flatMap(
-              result -> {
-                PolarisMetaStoreManager.EntityResult metadataEntityResult =
-                    entityManager
-                        .getMetaStoreManager()
-                        .loadEntity(callContext, result.getCatalogId(), result.getId());
-                return Optional.ofNullable(metadataEntityResult.getEntity())
-                    .map(TableMetadataEntity::of)
-                    .stream();
-              })
-          .filter(
-              metadata -> {
-                if (metadata.getMetadataLocation().equals(metadataLocation) && !dropEverything) {
-                  return true;
-                } else {
-                  LOGGER.debug(
-                      String.format("Deleting old entry for %s", metadata.getMetadataLocation()));
-                  entityManager
-                      .getMetaStoreManager()
-                      .dropEntityIfExists(
-                          callContext,
-                          PolarisEntity.toCoreList(resolvedEntities.getRawFullPath()),
-                          metadata,
-                          null,
-                          /* purge= */ false);
-                  return false;
-                }
-              })
-          .findFirst()
-          .map(metadataEntity -> TableMetadataParser.fromJson(metadataEntity.getContent()));
+      LOGGER.debug(String.format(
+          "Will not cache metadata for %s; metadata caching is disabled",
+          tableLikeEntity.getTableIdentifier()
+      ));
+      return new PolarisMetaStoreManager.EntityResult(PolarisMetaStoreManager.ReturnStatus.SUCCESS, null);
     }
   }
 }

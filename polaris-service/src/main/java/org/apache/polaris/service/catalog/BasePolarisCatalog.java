@@ -823,18 +823,19 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   public TableMetadata loadTableMetadata(TableIdentifier identifier) {
-    boolean useMetadataCache =
+    long maxMetadataCacheBytes =
         callContext
             .getPolarisCallContext()
             .getConfigurationStore()
             .getConfiguration(
-                callContext.getPolarisCallContext(), PolarisConfiguration.METADATA_CACHE_ENABLED);
-    if (!useMetadataCache) {
+                callContext.getPolarisCallContext(), PolarisConfiguration.METADATA_CACHE_MAX_BYTES);
+    if (maxMetadataCacheBytes == PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING) {
       return loadTableMetadata(loadTable(identifier));
     } else {
       Supplier<TableMetadata> fallback = () -> loadTableMetadata(loadTable(identifier));
       return MetadataCacheManager.loadTableMetadata(
           identifier,
+          maxMetadataCacheBytes,
           callContext.getPolarisCallContext(),
           entityManager,
           resolvedEntityView,
@@ -1889,10 +1890,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig()));
       }
     }
-
-    // Purge table metadata, if it exists:
-    MetadataCacheManager.dropTableMetadata(
-        identifier, callContext.getPolarisCallContext(), entityManager, resolvedEntityView);
 
     // Drop the table:
     return getMetaStoreManager()

@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.iceberg.BaseTable;
@@ -1555,6 +1556,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     TableMetadata loadedMetadata =
         MetadataCacheManager.loadTableMetadata(
             tableIdentifier,
+            Long.MAX_VALUE,
             polarisContext,
             entityManager,
             passthroughView,
@@ -1566,6 +1568,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     TableMetadata cachedMetadata =
         MetadataCacheManager.loadTableMetadata(
             tableIdentifier,
+            Long.MAX_VALUE,
             polarisContext,
             entityManager,
             passthroughView,
@@ -1585,18 +1588,22 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     TableMetadata updatedMetadata =
         tableOps.current().updateLocation(originalMetadata.location() + "-updated");
     tableOps.commit(tableOps.current(), updatedMetadata);
-    TableMetadata spyUpdatedMetadata = Mockito.spy(updatedMetadata);
-    Mockito.doReturn("spy-location").when(spyUpdatedMetadata).metadataFileLocation();
+    AtomicBoolean wasFallbackCalledAgain = new AtomicBoolean(false);
 
     // Read from the cache; it should detect a chance due to the update and load the new fallback
     TableMetadata reloadedMetadata =
         MetadataCacheManager.loadTableMetadata(
             tableIdentifier,
+            Long.MAX_VALUE,
             polarisContext,
             entityManager,
             passthroughView,
-            () -> spyUpdatedMetadata);
+            () -> {
+              wasFallbackCalledAgain.set(true);
+              return updatedMetadata;
+            });
 
-    Assertions.assertThat(reloadedMetadata).isSameAs(spyUpdatedMetadata);
+    Assertions.assertThat(reloadedMetadata).isNotSameAs(cachedMetadata);
+    Assertions.assertThat(wasFallbackCalledAgain.get()).isTrue();
   }
 }
