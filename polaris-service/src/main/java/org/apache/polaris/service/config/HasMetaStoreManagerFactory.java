@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.config;
 
-public interface HasEntityManagerFactory {
-  void setEntityManagerFactory(RealmEntityManagerFactory entityManagerFactory);
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+
+public interface HasMetaStoreManagerFactory {
+  void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory);
 }
