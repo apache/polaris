@@ -76,13 +76,17 @@ public class TimedApplicationEventListenerTest {
           .value();
 
   private static PolarisConnectionExtension.PolarisToken userToken;
+  private static SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials;
   private static String realm;
 
   @BeforeAll
   public static void setup(
-      PolarisConnectionExtension.PolarisToken userToken, @PolarisRealm String realm)
+      PolarisConnectionExtension.PolarisToken userToken,
+      SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials,
+      @PolarisRealm String realm)
       throws IOException {
     TimedApplicationEventListenerTest.userToken = userToken;
+    TimedApplicationEventListenerTest.snowmanCredentials = snowmanCredentials;
     TimedApplicationEventListenerTest.realm = realm;
   }
 
@@ -219,7 +223,9 @@ public class TimedApplicationEventListenerTest {
   }
 
   private void sendSuccessfulRequest() {
-    Assertions.assertEquals(Response.Status.OK.getStatusCode(), sendRequest("snowman"));
+    Assertions.assertEquals(
+        Response.Status.OK.getStatusCode(),
+        sendRequest(snowmanCredentials.identifier().principalName()));
   }
 
   private void sendFailingRequest() {
