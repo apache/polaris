@@ -29,7 +29,6 @@ import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.TableLikeEntity;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
@@ -110,11 +109,10 @@ public class MetadataCacheManager {
             resolvedEntityView.getResolvedPath(
                 tableLikeEntity.getTableIdentifier(), PolarisEntitySubType.TABLE);
         try {
-          return metaStoreManager
-              .updateEntityPropertiesIfNotChanged(
-                  callContext,
-                  PolarisEntity.toCoreList(resolvedPath.getRawParentPath()),
-                  newTableLikeEntity);
+          return metaStoreManager.updateEntityPropertiesIfNotChanged(
+              callContext,
+              PolarisEntity.toCoreList(resolvedPath.getRawParentPath()),
+              newTableLikeEntity);
         } catch (RuntimeException e) {
           // PersistenceException (& other extension-specific exceptions) may not be in scope,
           // but we can make a best-effort attempt to swallow it and just forego caching
