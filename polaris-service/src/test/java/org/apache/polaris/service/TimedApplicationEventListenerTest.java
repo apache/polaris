@@ -140,7 +140,9 @@ public class TimedApplicationEventListenerTest {
     return TestMetricsUtil.getTotalCounter(
         EXT,
         API_ANNOTATION + SUFFIX_COUNTER + SUFFIX_REALM,
+        // spotless:off
         List.of(Tag.of(TAG_REALM, realm), Tag.of(TAG_REALM_DEPRECATED, realm)));
+        // spotless:on
   }
 
   private double getPerApiMetricErrorCount() {
@@ -149,7 +151,9 @@ public class TimedApplicationEventListenerTest {
         API_ANNOTATION + SUFFIX_ERROR,
         List.of(
             Tag.of(TAG_RESP_CODE, String.valueOf(ERROR_CODE)),
+            // spotless:off
             Tag.of(TAG_RESP_CODE_DEPRECATED, String.valueOf(ERROR_CODE))));
+            // spotless:on
   }
 
   private double getPerApiRealmMetricErrorCount() {
@@ -158,9 +162,11 @@ public class TimedApplicationEventListenerTest {
         API_ANNOTATION + SUFFIX_ERROR + SUFFIX_REALM,
         List.of(
             Tag.of(TAG_REALM, realm),
-            Tag.of(TAG_REALM_DEPRECATED, realm),
             Tag.of(TAG_RESP_CODE, String.valueOf(ERROR_CODE)),
+            // spotless:off
+            Tag.of(TAG_REALM_DEPRECATED, realm),
             Tag.of(TAG_RESP_CODE_DEPRECATED, String.valueOf(ERROR_CODE))));
+            // spotless:on
   }
 
   private double getCommonMetricCount() {
