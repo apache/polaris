@@ -28,7 +28,6 @@ import com.google.common.collect.ImmutableMap;
 import java.io.IOException;
 import java.time.Clock;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -100,7 +99,6 @@ import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
-import org.apache.spark.Partition;
 import org.assertj.core.api.AbstractBooleanAssert;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.Nullable;
@@ -1581,8 +1579,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     // Update the table
     TableOperations tableOps = catalog.newTableOps(tableIdentifier);
-    TableMetadata updatedMetadata =
-        tableOps.current().updateSchema(buildSchema(100), 100);
+    TableMetadata updatedMetadata = tableOps.current().updateSchema(buildSchema(100), 100);
     tableOps.commit(tableOps.current(), updatedMetadata);
     AtomicBoolean wasFallbackCalledAgain = new AtomicBoolean(false);
 
