@@ -139,9 +139,9 @@ public class PolarisPrincipalSecrets {
   }
 
   /** Rotate the main secrets */
-  public void rotateSecrets() {
-    this.secondarySecret = this.mainSecret;
-    this.secondarySecretHash = this.mainSecretHash;
+  public void rotateSecrets(String newSecondaryHash) {
+    this.secondarySecret = null;
+    this.secondarySecretHash = newSecondaryHash;
 
     this.mainSecret = this.generateRandomHexString(32);
     this.mainSecretHash = hashSecret(mainSecret);

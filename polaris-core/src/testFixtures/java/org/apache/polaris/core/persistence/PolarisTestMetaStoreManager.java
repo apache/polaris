@@ -402,9 +402,9 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(reloadSecrets.getPrincipalId()).isEqualTo(secrets.getPrincipalId());
     Assertions.assertThat(reloadSecrets.getPrincipalClientId())
         .isEqualTo(secrets.getPrincipalClientId());
-    Assertions.assertThat(reloadSecrets.getMainSecretHash()).isEqualTo(secrets.getMainSecretHash());
-    Assertions.assertThat(reloadSecrets.getSecondarySecretHash())
-        .isEqualTo(secrets.getSecondarySecretHash());
+    Assertions.assertThat(reloadSecrets.getMainSecret()).isEqualTo(secrets.getMainSecret());
+    Assertions.assertThat(reloadSecrets.getSecondarySecret())
+        .isEqualTo(secrets.getSecondarySecret());
 
     Map<String, String> internalProperties =
         PolarisObjectMapperUtil.deserializeProperties(
@@ -428,7 +428,8 @@ public class PolarisTestMetaStoreManager {
       Assertions.assertThat(newSecrets.getPrincipalId()).isEqualTo(secrets.getPrincipalId());
       Assertions.assertThat(newSecrets.getPrincipalClientId())
           .isEqualTo(secrets.getPrincipalClientId());
-      Assertions.assertThat(newSecrets.getMainSecretHash()).isEqualTo(secrets.getMainSecretHash());
+      Assertions.assertThat(newSecrets.getMainSecret()).isEqualTo(secrets.getMainSecret());
+      Assertions.assertThat(newSecrets.getMainSecret()).isEqualTo(secrets.getMainSecret());
     }
 
     secrets =
@@ -454,10 +455,13 @@ public class PolarisTestMetaStoreManager {
                 PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE))
         .isNull();
 
-    // rotate the secret
+    // rotate the secrets, twice!
+    polarisMetaStoreManager.rotatePrincipalSecrets(
+        this.polarisCallContext, clientId, principalEntity.getId(), secrets.getMainSecret(), false);
     polarisMetaStoreManager.rotatePrincipalSecrets(
         this.polarisCallContext, clientId, principalEntity.getId(), secrets.getMainSecret(), false);
 
+    // reload and check that now the main should be secondary
     reloadSecrets =
         polarisMetaStoreManager
             .loadPrincipalSecrets(this.polarisCallContext, clientId)
@@ -466,9 +470,8 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(reloadSecrets.getPrincipalId()).isEqualTo(secrets.getPrincipalId());
     Assertions.assertThat(reloadSecrets.getPrincipalClientId())
         .isEqualTo(secrets.getPrincipalClientId());
-    Assertions.assertThat(reloadSecrets.getSecondarySecretHash())
-        .isEqualTo(secrets.getMainSecretHash());
-    String newMainSecretHash = reloadSecrets.getMainSecretHash();
+    Assertions.assertThat(reloadSecrets.getSecondarySecret()).isEqualTo(secrets.getMainSecret());
+    String newMainSecret = reloadSecrets.getMainSecret();
 
     // reset - the previous main secret is no longer one of the secrets
     polarisMetaStoreManager.rotatePrincipalSecrets(
@@ -485,8 +488,8 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(reloadSecrets.getPrincipalId()).isEqualTo(secrets.getPrincipalId());
     Assertions.assertThat(reloadSecrets.getPrincipalClientId())
         .isEqualTo(secrets.getPrincipalClientId());
-    Assertions.assertThat(reloadSecrets.getMainSecretHash()).isNotEqualTo(newMainSecretHash);
-    Assertions.assertThat(reloadSecrets.getSecondarySecretHash()).isNotEqualTo(newMainSecretHash);
+    Assertions.assertThat(reloadSecrets.getMainSecret()).isNotEqualTo(newMainSecret);
+    Assertions.assertThat(reloadSecrets.getSecondarySecret()).isNotEqualTo(newMainSecret);
 
     PolarisBaseEntity newPrincipal =
         polarisMetaStoreManager
@@ -517,10 +520,10 @@ public class PolarisTestMetaStoreManager {
         .isEqualTo(reloadSecrets.getPrincipalId());
     Assertions.assertThat(postResetCredentials.getPrincipalClientId())
         .isEqualTo(reloadSecrets.getPrincipalClientId());
-    Assertions.assertThat(postResetCredentials.getMainSecretHash())
-        .isNotEqualTo(reloadSecrets.getMainSecretHash());
-    Assertions.assertThat(postResetCredentials.getSecondarySecretHash())
-        .isNotEqualTo(reloadSecrets.getSecondarySecretHash());
+    Assertions.assertThat(postResetCredentials.getMainSecret())
+        .isNotEqualTo(reloadSecrets.getMainSecret());
+    Assertions.assertThat(postResetCredentials.getSecondarySecret())
+        .isNotEqualTo(reloadSecrets.getSecondarySecret());
 
     PolarisBaseEntity finalPrincipal =
         polarisMetaStoreManager
