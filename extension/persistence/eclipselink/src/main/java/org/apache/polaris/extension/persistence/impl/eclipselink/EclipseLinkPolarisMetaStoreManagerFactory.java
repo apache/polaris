@@ -34,7 +34,8 @@ import org.jetbrains.annotations.NotNull;
  */
 @JsonTypeName("eclipse-link")
 public class EclipseLinkPolarisMetaStoreManagerFactory
-    extends LocalPolarisMetaStoreManagerFactory<PolarisEclipseLinkStore> {
+    extends LocalPolarisMetaStoreManagerFactory<PolarisEclipseLinkStore>
+    implements DiscoverableMetaStoreManagerFactory {
   @JsonProperty("conf-file")
   private String confFile;
 
