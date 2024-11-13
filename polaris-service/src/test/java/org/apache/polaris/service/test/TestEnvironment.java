@@ -20,10 +20,18 @@ package org.apache.polaris.service.test;
 
 import jakarta.ws.rs.client.Client;
 import java.net.URI;
+import java.util.UUID;
 
-/** Defines the test environment that a test should run in. */
-public record TestEnvironment(Client apiClient, URI baseUri) {
+/**
+ * Defines the test environment that a test should run in.
+ *
+ * @param apiClient The HTTP client to use when making requests
+ * @param baseUri The base URL that requests should target, for example http://localhost:1234
+ * @param testId An ID unique to this test. This can be used to prefix resource names, such as
+ *     catalog names, to prevent collision.
+ */
+public record TestEnvironment(Client apiClient, URI baseUri, String testId) {
   public TestEnvironment(Client apiClient, String baseUri) {
-    this(apiClient, URI.create(baseUri));
+    this(apiClient, URI.create(baseUri), UUID.randomUUID().toString().replace("-", ""));
   }
 }

@@ -30,7 +30,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -2104,16 +2103,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private static boolean isAccessDenied(String errorMsg) {
     // Corresponding error messages for storage providers Aws/Azure/Gcp
     boolean isAccessDenied =
-        errorMsg != null
-            && (errorMsg
-                    .toLowerCase(Locale.ENGLISH)
-                    .contains(IcebergExceptionMapper.AWS_ACCESS_DENIED_HINT)
-                || errorMsg
-                    .toLowerCase(Locale.ENGLISH)
-                    .contains(IcebergExceptionMapper.AZURE_ACCESS_DENIED_HINT)
-                || errorMsg
-                    .toLowerCase(Locale.ENGLISH)
-                    .contains(IcebergExceptionMapper.GCP_ACCESS_DENIED_HINT));
+        errorMsg != null && IcebergExceptionMapper.containsAnyAccessDeniedHint(errorMsg);
     if (isAccessDenied) {
       LOGGER.debug("Access Denied or Forbidden error: {}", errorMsg);
       return true;

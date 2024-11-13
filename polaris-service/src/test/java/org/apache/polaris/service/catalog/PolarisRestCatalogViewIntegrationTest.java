@@ -93,7 +93,7 @@ public abstract class PolarisRestCatalogViewIntegrationTest extends ViewCatalogT
         .getTestMethod()
         .ifPresent(
             method -> {
-              String catalogName = method.getName();
+              String catalogName = method.getName() + testEnv.testId();
               try (Response response =
                   testEnv
                       .apiClient()
