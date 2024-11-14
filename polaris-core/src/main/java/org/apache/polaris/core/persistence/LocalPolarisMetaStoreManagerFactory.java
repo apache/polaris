@@ -204,8 +204,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
             polarisContext,
             secrets.getPrincipalClientId(),
             secrets.getPrincipalId(),
-            secrets.getMainSecret(),
-            false);
+            false,
+            secrets.getMainSecretHash());
     return rotatedSecrets;
   }
 

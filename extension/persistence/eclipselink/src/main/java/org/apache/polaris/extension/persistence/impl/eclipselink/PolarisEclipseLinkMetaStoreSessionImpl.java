@@ -672,8 +672,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       @NotNull PolarisCallContext callCtx,
       @NotNull String clientId,
       long principalId,
-      @NotNull String mainSecretToRotate,
-      boolean reset) {
+      boolean reset,
+      @NotNull String oldSecretHash) {
 
     // load the existing secrets
     PolarisPrincipalSecrets principalSecrets =
@@ -701,9 +701,9 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
             principalSecrets.getPrincipalId());
 
     // rotate the secrets
-    principalSecrets.rotateSecrets(mainSecretToRotate);
+    principalSecrets.rotateSecrets(oldSecretHash);
     if (reset) {
-      principalSecrets.rotateSecrets(principalSecrets.getMainSecret());
+      principalSecrets.rotateSecrets(principalSecrets.getMainSecretHash());
     }
 
     // write back new secrets
