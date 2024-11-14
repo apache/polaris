@@ -1384,30 +1384,27 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       boolean shouldPersistMetadata =
           maxMetadataCacheBytes != PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING
               && metadataJson.getBytes(StandardCharsets.UTF_8).length <= maxMetadataCacheBytes;
+      final TableLikeEntity.Builder builder;
       if (null == entity) {
         existingLocation = null;
-        var builder =
+        builder =
             new TableLikeEntity.Builder(tableIdentifier, newLocation)
                 .setCatalogId(getCatalogId())
                 .setSubType(PolarisEntitySubType.TABLE)
                 .setBaseLocation(metadata.location())
                 .setId(
                     getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId());
-        if (shouldPersistMetadata) {
-          builder.setMetadataContent(newLocation, metadataJson);
-        }
-        entity = builder.build();
       } else {
         existingLocation = entity.getMetadataLocation();
-        var builder =
+        builder =
             new TableLikeEntity.Builder(entity)
                 .setBaseLocation(metadata.location())
                 .setMetadataLocation(newLocation);
-        if (shouldPersistMetadata) {
-          builder.setMetadataContent(newLocation, metadataJson);
-        }
-        entity = builder.build();
       }
+      if (shouldPersistMetadata) {
+        builder.setMetadataContent(newLocation, metadataJson);
+      }
+      entity = builder.build();
       if (!Objects.equal(existingLocation, oldLocation)) {
         if (null == base) {
           throw new AlreadyExistsException("Table already exists: %s", tableName());

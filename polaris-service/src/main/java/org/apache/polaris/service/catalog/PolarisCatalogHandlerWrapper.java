@@ -615,7 +615,9 @@ public class PolarisCatalogHandlerWrapper {
 
             final TableMetadata tableMetadata;
             if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
-              tableMetadata = basePolarisCatalog.loadTableMetadata(tableIdentifier);
+              // tableMetadata = basePolarisCatalog.loadTableMetadata(tableIdentifier);
+              // TODO debug failures for diffAgainstSingleTable
+              tableMetadata = baseTable.operations().current();
             } else {
               tableMetadata = baseTable.operations().current();
             }
