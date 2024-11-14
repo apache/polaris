@@ -23,6 +23,8 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
 import java.io.Closeable;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -41,9 +43,6 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import com.google.common.collect.Iterables;
-import com.google.common.collect.Sets;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.BaseMetastoreTableOperations;
 import org.apache.iceberg.BaseTable;
@@ -1436,7 +1435,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
 
     /**
-     * COPIED FROM {@link BaseMetastoreTableOperations} but without the requirement that base == current()
+     * COPIED FROM {@link BaseMetastoreTableOperations} but without the requirement that base ==
+     * current()
      *
      * @param base table metadata on which changes were based
      * @param metadata new table metadata with updates
@@ -1452,12 +1452,13 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           // to create the table
           throw new AlreadyExistsException("Table already exists: %s", tableName());
         }
-      } else if (base.metadataFileLocation() != null &&
-          !base.metadataFileLocation().equals(currentMetadata.metadataFileLocation())) {
+      } else if (base.metadataFileLocation() != null
+          && !base.metadataFileLocation().equals(currentMetadata.metadataFileLocation())) {
         throw new CommitFailedException("Cannot commit: stale table metadata");
       } else if (base != currentMetadata) {
         // This branch is different from BaseMetastoreTableOperations
-        LOGGER.debug("Base object differs from current metadata; proceeding because locations match");
+        LOGGER.debug(
+            "Base object differs from current metadata; proceeding because locations match");
       }
 
       // if the metadata is not changed, return early
@@ -1478,10 +1479,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
 
     /**
-     *
      * COPIED FROM {@link BaseMetastoreTableOperations}
      *
-     * Deletes the oldest metadata files if {@link
+     * <p>Deletes the oldest metadata files if {@link
      * TableProperties#METADATA_DELETE_AFTER_COMMIT_ENABLED} is true.
      *
      * @param base table metadata on which previous versions were based
@@ -1502,7 +1502,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             Sets.newHashSet(base.previousFiles());
         // TableMetadata#addPreviousFile builds up the metadata log and uses
         // TableProperties.METADATA_PREVIOUS_VERSIONS_MAX to determine how many files should stay in
-        // the log, thus we don't include metadata.previousFiles() for deletion - everything else can
+        // the log, thus we don't include metadata.previousFiles() for deletion - everything else
+        // can
         // be removed
         removedPreviousMetadataFiles.removeAll(metadata.previousFiles());
         if (io() instanceof SupportsBulkOperations) {
@@ -1517,7 +1518,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               .onFailure(
                   (previousMetadataFile, exc) ->
                       LOGGER.warn(
-                          "Delete failed for previous metadata file: {}", previousMetadataFile, exc))
+                          "Delete failed for previous metadata file: {}",
+                          previousMetadataFile,
+                          exc))
               .run(previousMetadataFile -> io().deleteFile(previousMetadataFile.file()));
         }
       }
