@@ -615,9 +615,7 @@ public class PolarisCatalogHandlerWrapper {
 
             final TableMetadata tableMetadata;
             if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
-              // tableMetadata = basePolarisCatalog.loadTableMetadata(tableIdentifier);
-              // TODO debug failures for diffAgainstSingleTable
-              tableMetadata = baseTable.operations().current();
+              tableMetadata = basePolarisCatalog.loadTableMetadata(tableIdentifier);
             } else {
               tableMetadata = baseTable.operations().current();
             }
@@ -1048,7 +1046,9 @@ public class PolarisCatalogHandlerWrapper {
               TableOperations tableOps = ((BaseTable) table).operations();
               final TableMetadata currentMetadata;
               if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
-                currentMetadata = basePolarisCatalog.loadTableMetadata(change.identifier());
+                // TODO use cached metadata once the check in BaseMetastoreTableOperations is fixed
+                // currentMetadata = basePolarisCatalog.loadTableMetadata(change.identifier());
+                currentMetadata = tableOps.current();
               } else {
                 currentMetadata = tableOps.current();
               }
