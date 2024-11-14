@@ -87,6 +87,7 @@ import org.apache.polaris.service.test.PolarisConnectionExtension.PolarisToken;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension.SnowmanCredentials;
+import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
@@ -104,6 +105,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  */
 @ExtendWith({
   DropwizardExtensionsSupport.class,
+  TestEnvironmentExtension.class,
   PolarisConnectionExtension.class,
   SnowmanCredentialsExtension.class
 })
