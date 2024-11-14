@@ -1036,7 +1036,6 @@ public class PolarisCatalogHandlerWrapper {
     commitTransactionRequest.tableChanges().stream()
         .forEach(
             change -> {
-
               final Table table = baseCatalog.loadTable(change.identifier());
 
               if (!(table instanceof BaseTable)) {
