@@ -1427,6 +1427,35 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
 
     @Override
+    public void commit(TableMetadata base, TableMetadata metadata) {
+      // if the metadata is already out of date, reject it
+      if (base.metadataFileLocation() != current().metadataFileLocation()) {
+        if (base != null) {
+          throw new CommitFailedException("Cannot commit: stale table metadata");
+        } else {
+          // when current is non-null, the table exists. but when base is null, the commit is trying
+          // to create the table
+          throw new AlreadyExistsException("Table already exists: %s", tableName());
+        }
+      }
+      // if the metadata is not changed, return early
+      if (base == metadata) {
+        LOGGER.info("Nothing to commit.");
+        return;
+      }
+
+      long start = System.currentTimeMillis();
+      doCommit(base, metadata);
+      deleteRemovedMetadataFiles(base, metadata);
+      requestRefresh();
+
+      LOGGER.info(
+          "Successfully committed to table {} in {} ms",
+          tableName(),
+          System.currentTimeMillis() - start);
+    }
+
+    @Override
     public FileIO io() {
       return tableFileIO;
     }
