@@ -25,6 +25,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1372,23 +1373,37 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       TableLikeEntity entity =
           TableLikeEntity.of(resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
       String existingLocation;
+      long maxMetadataCacheBytes =
+          callContext
+              .getPolarisCallContext()
+              .getConfigurationStore()
+              .getConfiguration(
+                  callContext.getPolarisCallContext(), PolarisConfiguration.METADATA_CACHE_MAX_BYTES);
+      String metadataJson = TableMetadataParser.toJson(metadata);
+      boolean shouldPersistMetadata =
+          maxMetadataCacheBytes != PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING &&
+          metadataJson.getBytes(StandardCharsets.UTF_8).length <= maxMetadataCacheBytes;
       if (null == entity) {
         existingLocation = null;
-        entity =
-            new TableLikeEntity.Builder(tableIdentifier, newLocation)
-                .setCatalogId(getCatalogId())
-                .setSubType(PolarisEntitySubType.TABLE)
-                .setBaseLocation(metadata.location())
-                .setId(
-                    getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
-                .build();
+        var builder = new TableLikeEntity.Builder(tableIdentifier, newLocation)
+            .setCatalogId(getCatalogId())
+            .setSubType(PolarisEntitySubType.TABLE)
+            .setBaseLocation(metadata.location())
+            .setId(
+                getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId());
+        if (shouldPersistMetadata) {
+          builder.setMetadataContent(newLocation, metadataJson);
+        }
+        entity = builder.build();
       } else {
         existingLocation = entity.getMetadataLocation();
-        entity =
-            new TableLikeEntity.Builder(entity)
+        var builder = new TableLikeEntity.Builder(entity)
                 .setBaseLocation(metadata.location())
-                .setMetadataLocation(newLocation)
-                .build();
+                .setMetadataLocation(newLocation);
+        if (shouldPersistMetadata) {
+          builder.setMetadataContent(newLocation, metadataJson);
+        }
+        entity = builder.build();
       }
       if (!Objects.equal(existingLocation, oldLocation)) {
         if (null == base) {
