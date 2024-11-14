@@ -207,20 +207,20 @@ public class TableCleanupTaskHandler implements TaskHandler {
       TableLikeEntity tableEntity,
       PolarisMetaStoreManager metaStoreManager,
       PolarisCallContext polarisCallContext) {
-    return getMetadataFiles(tableMetadata, fileIO).stream()
+    return getMetadataFileBatches(tableMetadata).stream()
         .map(
-            fileBatch -> {
+            metadataBatch -> {
               String taskName =
                   String.join(
                       "_",
                       cleanupTask.getName(),
-                      fileBatch.toString(),
+                      metadataBatch.toString(),
                       UUID.randomUUID().toString());
               LOGGER
                   .atDebug()
                   .addKeyValue("taskName", taskName)
                   .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
-                  .addKeyValue("fileBatch", fileBatch)
+                  .addKeyValue("metadataFiles", metadataBatch.toString())
                   .log(
                       "Queueing task to delete metadata files (prev metadata and statistics files)");
               return new TaskEntity.Builder()
@@ -230,13 +230,13 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .withTaskType(AsyncTaskType.FILE_CLEANUP)
                   .withData(
                       new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                          tableEntity.getTableIdentifier(), fileBatch))
+                          tableEntity.getTableIdentifier(), metadataBatch))
                   .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
                   .build();
             });
   }
 
-  private List<List<String>> getMetadataFiles(TableMetadata tableMetadata, FileIO fileIO) {
+  private List<List<String>> getMetadataFileBatches(TableMetadata tableMetadata) {
     List<List<String>> result = new ArrayList<>();
     List<String> metadataFiles =
         Stream.concat(

@@ -235,7 +235,7 @@ class ManifestFileCleanupTaskHandlerTest {
   }
 
   @Test
-  public void testContentFileCleanup() throws IOException {
+  public void testMetadataFileCleanup() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -338,7 +338,7 @@ class ManifestFileCleanupTaskHandlerTest {
   }
 
   @Test
-  public void testContentFileCleanupIfFileNotExist() throws IOException {
+  public void testMetadataFileCleanupIfFileNotExist() throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
