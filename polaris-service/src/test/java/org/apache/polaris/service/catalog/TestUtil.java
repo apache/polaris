@@ -146,8 +146,10 @@ public class TestUtil {
           client
               .target(
                   String.format(
-                      "%s/api/management/v1/principal-roles/catalog-admin/catalog-roles/%s",
-                      baseUrl, currentCatalogName))
+                      "%s/api/management/v1/principal-roles/%s/catalog-roles/%s",
+                      baseUrl,
+                      snowmanCredentials.identifier().principalRoleName(),
+                      currentCatalogName))
               .request("application/json")
               .header("Authorization", "Bearer " + adminToken.token())
               .header(REALM_PROPERTY_KEY, realm)

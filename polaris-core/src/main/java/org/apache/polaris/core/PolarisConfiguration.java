@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
@@ -71,8 +72,14 @@ public class PolarisConfiguration<T> {
       return this;
     }
 
+    @SuppressWarnings("unchecked")
     public Builder<T> defaultValue(T defaultValue) {
-      this.defaultValue = defaultValue;
+      if (defaultValue instanceof List<?>) {
+        // Type-safe handling of List
+        this.defaultValue = (T) new ArrayList<>((List<?>) defaultValue);
+      } else {
+        this.defaultValue = defaultValue;
+      }
       return this;
     }
 
