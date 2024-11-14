@@ -262,7 +262,7 @@ _Note: the credentials provided here are those for our principal, not the root c
 
 ```shell
 bin/spark-shell \
---packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2,org.apache.hadoop:hadoop-aws:3.4.0 \
+--packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.7.0,org.apache.hadoop:hadoop-aws:3.4.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
 --conf spark.sql.catalog.quickstart_catalog.warehouse=quickstart_catalog \
 --conf spark.sql.catalog.quickstart_catalog.header.X-Iceberg-Access-Delegation=vended-credentials \
