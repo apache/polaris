@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
  * it was already deleted by another task. 2. Table metadata files: It contains previous metadata
  * and statistics files, which are grouped and deleted in batch
  */
+// TODO: Rename this class since we introducing metadata cleanup here
 public class ManifestFileCleanupTaskHandler implements TaskHandler {
   public static final int MAX_ATTEMPTS = 3;
   public static final int FILE_DELETION_RETRY_MILLIS = 100;
