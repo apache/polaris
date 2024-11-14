@@ -45,8 +45,8 @@ import org.slf4j.LoggerFactory;
  * {@link TaskHandler} responsible for deleting table files: 1. Manifest files: It contains all the
  * files in a manifest and the manifest itself. Since data files may be present in multiple
  * manifests across different snapshots, we assume a data file that doesn't exist is missing because
- * it was already deleted by another task. 2. Table content files: It contains previous metadata and
- * statistics files, which are grouped and deleted in batch
+ * it was already deleted by another task. 2. Table metadata files: It contains previous metadata
+ * and statistics files, which are grouped and deleted in batch
  */
 public class ManifestFileCleanupTaskHandler implements TaskHandler {
   public static final int MAX_ATTEMPTS = 3;
@@ -75,8 +75,8 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
       if (cleanupTask.getManifestFileData() != null) {
         ManifestFile manifestFile = decodeManifestData(cleanupTask.getManifestFileData());
         return cleanUpManifestFile(manifestFile, authorizedFileIO, tableId);
-      } else if (cleanupTask.getContentFileBatch() != null) {
-        return cleanUpContentFiles(cleanupTask.getContentFileBatch(), authorizedFileIO, tableId);
+      } else if (cleanupTask.getMetadataFiles() != null) {
+        return cleanUpMetadataFiles(cleanupTask.getMetadataFiles(), authorizedFileIO, tableId);
       } else {
         LOGGER
             .atWarn()
@@ -134,41 +134,44 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
     }
   }
 
-  private boolean cleanUpContentFiles(
-      List<String> contentFileBatch, FileIO fileIO, TableIdentifier tableId) {
+  private boolean cleanUpMetadataFiles(
+      List<String> metadataFiles, FileIO fileIO, TableIdentifier tableId) {
     List<String> validFiles =
-        contentFileBatch.stream().filter(file -> TaskUtils.exists(file, fileIO)).toList();
+        metadataFiles.stream().filter(file -> TaskUtils.exists(file, fileIO)).toList();
     if (validFiles.isEmpty()) {
       LOGGER
           .atWarn()
-          .addKeyValue("contentFileBatch", contentFileBatch.toString())
+          .addKeyValue("metadataFiles", metadataFiles.toString())
           .addKeyValue("tableId", tableId)
-          .log("Table content cleanup task scheduled, but the none of the file in batch exists");
+          .log("Table metadata cleanup task scheduled, but the none of the file in batch exists");
       return true;
+    }
+    if (validFiles.size() < metadataFiles.size()) {
+      List<String> missingFiles =
+          metadataFiles.stream().filter(file -> !TaskUtils.exists(file, fileIO)).toList();
+      LOGGER
+          .atWarn()
+          .addKeyValue("metadataFiles", metadataFiles.toString())
+          .addKeyValue("missingFiles", missingFiles)
+          .addKeyValue("tableId", tableId)
+          .log(
+              "Table metadata cleanup task scheduled, but {} files in the batch are missing",
+              missingFiles.size());
     }
 
     // Schedule the deletion for each file asynchronously
     List<CompletableFuture<Void>> deleteFutures =
         validFiles.stream().map(file -> tryDelete(tableId, fileIO, null, file, null, 1)).toList();
 
-    // Wait for all delete operations to finish
     try {
+      // Wait for all delete operations to finish
       CompletableFuture<Void> allDeletes =
           CompletableFuture.allOf(deleteFutures.toArray(new CompletableFuture[0]));
       allDeletes.join();
     } catch (Exception e) {
-      LOGGER
-          .atWarn()
-          .addKeyValue("contentFileBatch", contentFileBatch.toString())
-          .addKeyValue("tableId", tableId)
-          .log("Exception detected during content file batch deletion", e);
+      LOGGER.error("Exception detected during metadata file deletion", e);
+      return false;
     }
-
-    LOGGER
-        .atInfo()
-        .addKeyValue("contentFileBatch", contentFileBatch.toString())
-        .addKeyValue("tableId", tableId)
-        .log("Content file batch deletion has completed");
 
     return true;
   }
@@ -236,16 +239,16 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
   public static final class ManifestCleanupTask {
     private TableIdentifier tableId;
     private String manifestFileData;
-    private List<String> contentFileBatch;
+    private List<String> metadataFiles;
 
     public ManifestCleanupTask(TableIdentifier tableId, String manifestFileData) {
       this.tableId = tableId;
       this.manifestFileData = manifestFileData;
     }
 
-    public ManifestCleanupTask(TableIdentifier tableId, List<String> contentFileBatch) {
+    public ManifestCleanupTask(TableIdentifier tableId, List<String> metadataFiles) {
       this.tableId = tableId;
-      this.contentFileBatch = contentFileBatch;
+      this.metadataFiles = metadataFiles;
     }
 
     public ManifestCleanupTask() {}
@@ -266,12 +269,12 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
       this.manifestFileData = manifestFileData;
     }
 
-    public List<String> getContentFileBatch() {
-      return contentFileBatch;
+    public List<String> getMetadataFiles() {
+      return metadataFiles;
     }
 
-    public void setContentFileBatch(List<String> contentFileBatch) {
-      this.contentFileBatch = contentFileBatch;
+    public void setMetadataFiles(List<String> metadataFiles) {
+      this.metadataFiles = metadataFiles;
     }
 
     @Override
@@ -280,12 +283,12 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
       if (!(object instanceof ManifestCleanupTask that)) return false;
       return Objects.equals(tableId, that.tableId)
           && Objects.equals(manifestFileData, that.manifestFileData)
-          && Objects.equals(contentFileBatch, that.contentFileBatch);
+          && Objects.equals(metadataFiles, that.metadataFiles);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hash(tableId, manifestFileData, contentFileBatch);
+      return Objects.hash(tableId, manifestFileData, metadataFiles);
     }
   }
 }
