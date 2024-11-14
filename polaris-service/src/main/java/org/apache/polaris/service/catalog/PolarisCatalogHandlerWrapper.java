@@ -612,7 +612,14 @@ public class PolarisCatalogHandlerWrapper {
                   .create();
 
           if (table instanceof BaseTable baseTable) {
-            TableMetadata tableMetadata = baseTable.operations().current();
+
+            final TableMetadata tableMetadata;
+            if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
+              tableMetadata = basePolarisCatalog.loadTableMetadata(tableIdentifier);
+            } else {
+              tableMetadata = baseTable.operations().current();
+            }
+
             LoadTableResponse.Builder responseBuilder =
                 LoadTableResponse.builder().withTableMetadata(tableMetadata);
             if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
@@ -1029,19 +1036,27 @@ public class PolarisCatalogHandlerWrapper {
     commitTransactionRequest.tableChanges().stream()
         .forEach(
             change -> {
-              Table table = baseCatalog.loadTable(change.identifier());
+
+              final Table table = baseCatalog.loadTable(change.identifier());
+
               if (!(table instanceof BaseTable)) {
                 throw new IllegalStateException(
                     "Cannot wrap catalog that does not produce BaseTable");
               }
+
+              TableOperations tableOps = ((BaseTable) table).operations();
+              final TableMetadata currentMetadata;
+              if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
+                currentMetadata = basePolarisCatalog.loadTableMetadata(change.identifier());
+              } else {
+                currentMetadata = tableOps.current();
+              }
+
               if (isCreate(change)) {
                 throw new BadRequestException(
                     "Unsupported operation: commitTranaction with updateForStagedCreate: %s",
                     change);
               }
-
-              TableOperations tableOps = ((BaseTable) table).operations();
-              TableMetadata currentMetadata = tableOps.current();
 
               // Validate requirements; any CommitFailedExceptions will fail the overall request
               change.requirements().forEach(requirement -> requirement.validate(currentMetadata));
