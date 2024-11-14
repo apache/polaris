@@ -1046,9 +1046,7 @@ public class PolarisCatalogHandlerWrapper {
               TableOperations tableOps = ((BaseTable) table).operations();
               final TableMetadata currentMetadata;
               if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
-                // TODO use cached metadata once the check in BaseMetastoreTableOperations is fixed
-                // currentMetadata = basePolarisCatalog.loadTableMetadata(change.identifier());
-                currentMetadata = tableOps.current();
+                currentMetadata = basePolarisCatalog.loadTableMetadata(change.identifier());
               } else {
                 currentMetadata = tableOps.current();
               }
