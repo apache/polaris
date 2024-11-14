@@ -1378,26 +1378,29 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               .getPolarisCallContext()
               .getConfigurationStore()
               .getConfiguration(
-                  callContext.getPolarisCallContext(), PolarisConfiguration.METADATA_CACHE_MAX_BYTES);
+                  callContext.getPolarisCallContext(),
+                  PolarisConfiguration.METADATA_CACHE_MAX_BYTES);
       String metadataJson = TableMetadataParser.toJson(metadata);
       boolean shouldPersistMetadata =
-          maxMetadataCacheBytes != PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING &&
-          metadataJson.getBytes(StandardCharsets.UTF_8).length <= maxMetadataCacheBytes;
+          maxMetadataCacheBytes != PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING
+              && metadataJson.getBytes(StandardCharsets.UTF_8).length <= maxMetadataCacheBytes;
       if (null == entity) {
         existingLocation = null;
-        var builder = new TableLikeEntity.Builder(tableIdentifier, newLocation)
-            .setCatalogId(getCatalogId())
-            .setSubType(PolarisEntitySubType.TABLE)
-            .setBaseLocation(metadata.location())
-            .setId(
-                getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId());
+        var builder =
+            new TableLikeEntity.Builder(tableIdentifier, newLocation)
+                .setCatalogId(getCatalogId())
+                .setSubType(PolarisEntitySubType.TABLE)
+                .setBaseLocation(metadata.location())
+                .setId(
+                    getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId());
         if (shouldPersistMetadata) {
           builder.setMetadataContent(newLocation, metadataJson);
         }
         entity = builder.build();
       } else {
         existingLocation = entity.getMetadataLocation();
-        var builder = new TableLikeEntity.Builder(entity)
+        var builder =
+            new TableLikeEntity.Builder(entity)
                 .setBaseLocation(metadata.location())
                 .setMetadataLocation(newLocation);
         if (shouldPersistMetadata) {
