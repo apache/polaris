@@ -103,82 +103,27 @@ public class TableCleanupTaskHandler implements TaskHandler {
       TableMetadata tableMetadata =
           TableMetadataParser.read(fileIO, tableEntity.getMetadataLocation());
 
-      // read the manifest list for each snapshot. dedupe the manifest files and schedule a
-      // cleanupTask
-      // for each manifest file and its data files to be deleted
       Stream<TaskEntity> manifestCleanupTasks =
-          tableMetadata.snapshots().stream()
-              .flatMap(sn -> sn.allManifests(fileIO).stream())
-              // distinct by manifest path, since multiple snapshots will contain the same
-              // manifest
-              .collect(Collectors.toMap(ManifestFile::path, Function.identity(), (mf1, mf2) -> mf1))
-              .values()
-              .stream()
-              .filter(mf -> TaskUtils.exists(mf.path(), fileIO))
-              .map(
-                  mf -> {
-                    // append a random uuid to the task name to avoid any potential conflict
-                    // when
-                    // storing the task entity. It's better to have duplicate tasks than to risk
-                    // not storing the rest of the task entities. If a duplicate deletion task
-                    // is
-                    // queued, it will check for the manifest file's existence and simply exit
-                    // if
-                    // the task has already been handled.
-                    String taskName =
-                        cleanupTask.getName() + "_" + mf.path() + "_" + UUID.randomUUID();
-                    LOGGER
-                        .atDebug()
-                        .addKeyValue("taskName", taskName)
-                        .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
-                        .addKeyValue("metadataLocation", tableEntity.getMetadataLocation())
-                        .addKeyValue("manifestFile", mf.path())
-                        .log("Queueing task to delete manifest file");
-                    return new TaskEntity.Builder()
-                        .setName(taskName)
-                        .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
-                        .setCreateTimestamp(polarisCallContext.getClock().millis())
-                        .withTaskType(AsyncTaskType.FILE_CLEANUP)
-                        .withData(
-                            new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                                tableEntity.getTableIdentifier(), TaskUtils.encodeManifestFile(mf)))
-                        .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
-                        // copy the internal properties, which will have storage info
-                        .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
-                        .build();
-                  });
+          getManifestTaskStream(
+              cleanupTask,
+              tableMetadata,
+              fileIO,
+              tableEntity,
+              metaStoreManager,
+              polarisCallContext);
 
-      Stream<TaskEntity> contentFileCleanupTasks =
-          getContentFileBatch(tableMetadata, fileIO).stream()
-              .map(
-                  fileBatch -> {
-                    String taskName =
-                        String.join(
-                            "_",
-                            cleanupTask.getName(),
-                            fileBatch.toString(),
-                            UUID.randomUUID().toString());
-                    LOGGER
-                        .atDebug()
-                        .addKeyValue("taskName", taskName)
-                        .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
-                        .addKeyValue("fileBatch", fileBatch)
-                        .log(
-                            "Queueing task to delete content file (prev metadata and statistics files)");
-                    return new TaskEntity.Builder()
-                        .setName(taskName)
-                        .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
-                        .setCreateTimestamp(polarisCallContext.getClock().millis())
-                        .withTaskType(AsyncTaskType.FILE_CLEANUP)
-                        .withData(
-                            new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                                tableEntity.getTableIdentifier(), fileBatch))
-                        .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
-                        .build();
-                  });
+      // TODO: handle partition statistics files
+      Stream<TaskEntity> metadataFileCleanupTasks =
+          getMetadataTaskStream(
+              cleanupTask,
+              tableMetadata,
+              fileIO,
+              tableEntity,
+              metaStoreManager,
+              polarisCallContext);
 
       List<TaskEntity> taskEntities =
-          Stream.concat(manifestCleanupTasks, contentFileCleanupTasks).toList();
+          Stream.concat(manifestCleanupTasks, metadataFileCleanupTasks).toList();
 
       List<PolarisBaseEntity> createdTasks =
           metaStoreManager
@@ -204,17 +149,103 @@ public class TableCleanupTaskHandler implements TaskHandler {
     return false;
   }
 
-  private List<List<String>> getContentFileBatch(TableMetadata tableMetadata, FileIO fileIO) {
+  private Stream<TaskEntity> getManifestTaskStream(
+      TaskEntity cleanupTask,
+      TableMetadata tableMetadata,
+      FileIO fileIO,
+      TableLikeEntity tableEntity,
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisCallContext polarisCallContext) {
+    // read the manifest list for each snapshot. dedupe the manifest files and schedule a
+    // cleanupTask
+    // for each manifest file and its data files to be deleted
+    return tableMetadata.snapshots().stream()
+        .flatMap(sn -> sn.allManifests(fileIO).stream())
+        // distinct by manifest path, since multiple snapshots will contain the same
+        // manifest
+        .collect(Collectors.toMap(ManifestFile::path, Function.identity(), (mf1, mf2) -> mf1))
+        .values()
+        .stream()
+        .filter(mf -> TaskUtils.exists(mf.path(), fileIO))
+        .map(
+            mf -> {
+              // append a random uuid to the task name to avoid any potential conflict
+              // when
+              // storing the task entity. It's better to have duplicate tasks than to risk
+              // not storing the rest of the task entities. If a duplicate deletion task
+              // is
+              // queued, it will check for the manifest file's existence and simply exit
+              // if
+              // the task has already been handled.
+              String taskName = cleanupTask.getName() + "_" + mf.path() + "_" + UUID.randomUUID();
+              LOGGER
+                  .atDebug()
+                  .addKeyValue("taskName", taskName)
+                  .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
+                  .addKeyValue("metadataLocation", tableEntity.getMetadataLocation())
+                  .addKeyValue("manifestFile", mf.path())
+                  .log("Queueing task to delete manifest file");
+              return new TaskEntity.Builder()
+                  .setName(taskName)
+                  .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
+                  .setCreateTimestamp(polarisCallContext.getClock().millis())
+                  .withTaskType(AsyncTaskType.FILE_CLEANUP)
+                  .withData(
+                      new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                          tableEntity.getTableIdentifier(), TaskUtils.encodeManifestFile(mf)))
+                  .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
+                  // copy the internal properties, which will have storage info
+                  .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
+                  .build();
+            });
+  }
+
+  private Stream<TaskEntity> getMetadataTaskStream(
+      TaskEntity cleanupTask,
+      TableMetadata tableMetadata,
+      FileIO fileIO,
+      TableLikeEntity tableEntity,
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisCallContext polarisCallContext) {
+    return getMetadataFiles(tableMetadata, fileIO).stream()
+        .map(
+            fileBatch -> {
+              String taskName =
+                  String.join(
+                      "_",
+                      cleanupTask.getName(),
+                      fileBatch.toString(),
+                      UUID.randomUUID().toString());
+              LOGGER
+                  .atDebug()
+                  .addKeyValue("taskName", taskName)
+                  .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
+                  .addKeyValue("fileBatch", fileBatch)
+                  .log(
+                      "Queueing task to delete metadata files (prev metadata and statistics files)");
+              return new TaskEntity.Builder()
+                  .setName(taskName)
+                  .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
+                  .setCreateTimestamp(polarisCallContext.getClock().millis())
+                  .withTaskType(AsyncTaskType.FILE_CLEANUP)
+                  .withData(
+                      new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                          tableEntity.getTableIdentifier(), fileBatch))
+                  .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
+                  .build();
+            });
+  }
+
+  private List<List<String>> getMetadataFiles(TableMetadata tableMetadata, FileIO fileIO) {
     List<List<String>> result = new ArrayList<>();
-    List<String> contentFiles =
+    List<String> metadataFiles =
         Stream.concat(
                 tableMetadata.previousFiles().stream().map(TableMetadata.MetadataLogEntry::file),
                 tableMetadata.statisticsFiles().stream().map(StatisticsFile::path))
-            .filter(file -> TaskUtils.exists(file, fileIO))
             .toList();
 
-    for (int i = 0; i < contentFiles.size(); i += BATCH_SIZE) {
-      result.add(contentFiles.subList(i, Math.min(i + BATCH_SIZE, contentFiles.size())));
+    for (int i = 0; i < metadataFiles.size(); i += BATCH_SIZE) {
+      result.add(metadataFiles.subList(i, Math.min(i + BATCH_SIZE, metadataFiles.size())));
     }
     return result;
   }
