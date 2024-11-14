@@ -36,10 +36,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import com.google.common.collect.Iterables;
+import com.google.common.collect.Sets;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.BaseMetastoreTableOperations;
 import org.apache.iceberg.BaseTable;
@@ -49,6 +53,7 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.TableOperations;
+import org.apache.iceberg.TableProperties;
 import org.apache.iceberg.aws.s3.S3FileIOProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
@@ -67,7 +72,9 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.io.CloseableGroup;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.InputFile;
+import org.apache.iceberg.io.SupportsBulkOperations;
 import org.apache.iceberg.util.PropertyUtil;
+import org.apache.iceberg.util.Tasks;
 import org.apache.iceberg.view.BaseMetastoreViewCatalog;
 import org.apache.iceberg.view.BaseViewOperations;
 import org.apache.iceberg.view.ViewBuilder;
@@ -1226,6 +1233,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     private final String fullTableName;
     private FileIO tableFileIO;
 
+    private ReentrantLock currentMetadataLock = new ReentrantLock();
+
     BasePolarisTableOperations(FileIO defaultFileIO, TableIdentifier tableIdentifier) {
       LOGGER.debug("new BasePolarisTableOperations for {}", tableIdentifier);
       this.tableIdentifier = tableIdentifier;
@@ -1426,18 +1435,31 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       }
     }
 
+    /**
+     * COPIED FROM {@link BaseMetastoreTableOperations} but without the requirement that base == current()
+     *
+     * @param base table metadata on which changes were based
+     * @param metadata new table metadata with updates
+     */
     @Override
     public void commit(TableMetadata base, TableMetadata metadata) {
+      TableMetadata currentMetadata = current();
+
       // if the metadata is already out of date, reject it
-      if (base.metadataFileLocation() != current().metadataFileLocation()) {
-        if (base != null) {
-          throw new CommitFailedException("Cannot commit: stale table metadata");
-        } else {
+      if (base == null) {
+        if (currentMetadata != null) {
           // when current is non-null, the table exists. but when base is null, the commit is trying
           // to create the table
           throw new AlreadyExistsException("Table already exists: %s", tableName());
         }
+      } else if (base.metadataFileLocation() != null &&
+          !base.metadataFileLocation().equals(currentMetadata.metadataFileLocation())) {
+        throw new CommitFailedException("Cannot commit: stale table metadata");
+      } else if (base != currentMetadata) {
+        // This branch is different from BaseMetastoreTableOperations
+        LOGGER.debug("Base object differs from current metadata; proceeding because locations match");
       }
+
       // if the metadata is not changed, return early
       if (base == metadata) {
         LOGGER.info("Nothing to commit.");
@@ -1453,6 +1475,52 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           "Successfully committed to table {} in {} ms",
           tableName(),
           System.currentTimeMillis() - start);
+    }
+
+    /**
+     *
+     * COPIED FROM {@link BaseMetastoreTableOperations}
+     *
+     * Deletes the oldest metadata files if {@link
+     * TableProperties#METADATA_DELETE_AFTER_COMMIT_ENABLED} is true.
+     *
+     * @param base table metadata on which previous versions were based
+     * @param metadata new table metadata with updated previous versions
+     */
+    protected void deleteRemovedMetadataFiles(TableMetadata base, TableMetadata metadata) {
+      if (base == null) {
+        return;
+      }
+
+      boolean deleteAfterCommit =
+          metadata.propertyAsBoolean(
+              TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED,
+              TableProperties.METADATA_DELETE_AFTER_COMMIT_ENABLED_DEFAULT);
+
+      if (deleteAfterCommit) {
+        Set<TableMetadata.MetadataLogEntry> removedPreviousMetadataFiles =
+            Sets.newHashSet(base.previousFiles());
+        // TableMetadata#addPreviousFile builds up the metadata log and uses
+        // TableProperties.METADATA_PREVIOUS_VERSIONS_MAX to determine how many files should stay in
+        // the log, thus we don't include metadata.previousFiles() for deletion - everything else can
+        // be removed
+        removedPreviousMetadataFiles.removeAll(metadata.previousFiles());
+        if (io() instanceof SupportsBulkOperations) {
+          ((SupportsBulkOperations) io())
+              .deleteFiles(
+                  Iterables.transform(
+                      removedPreviousMetadataFiles, TableMetadata.MetadataLogEntry::file));
+        } else {
+          Tasks.foreach(removedPreviousMetadataFiles)
+              .noRetry()
+              .suppressFailureWhenFinished()
+              .onFailure(
+                  (previousMetadataFile, exc) ->
+                      LOGGER.warn(
+                          "Delete failed for previous metadata file: {}", previousMetadataFile, exc))
+              .run(previousMetadataFile -> io().deleteFile(previousMetadataFile.file()));
+        }
+      }
     }
 
     @Override
