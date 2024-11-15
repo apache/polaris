@@ -51,8 +51,7 @@ public interface TokenBroker {
     if (!principalSecrets.isSuccess()) {
       return Optional.empty();
     }
-    if (!principalSecrets.getPrincipalSecrets().getMainSecret().equals(clientSecret)
-        && !principalSecrets.getPrincipalSecrets().getSecondarySecret().equals(clientSecret)) {
+    if (!principalSecrets.getPrincipalSecrets().matchesSecret(clientSecret)) {
       return Optional.empty();
     }
     PolarisMetaStoreManager.EntityResult result =

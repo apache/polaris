@@ -954,7 +954,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
       return new CreatePrincipalResult(ReturnStatus.ENTITY_ALREADY_EXISTS, null);
     }
 
-    // generate new secretes for this principal
+    // generate new secrets for this principal
     PolarisPrincipalSecrets principalSecrets =
         ms.generateNewPrincipalSecrets(callCtx, principal.getName(), principal.getId());
 
@@ -1012,8 +1012,8 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
       @NotNull PolarisMetaStoreSession ms,
       @NotNull String clientId,
       long principalId,
-      @NotNull String masterSecret,
-      boolean reset) {
+      boolean reset,
+      @NotNull String oldSecretHash) {
     // if not found, the principal must have been dropped
     EntityResult loadEntityResult =
         loadEntity(callCtx, ms, PolarisEntityConstants.getNullId(), principalId);
@@ -1033,7 +1033,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
                     PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
                 != null;
     PolarisPrincipalSecrets secrets =
-        ms.rotatePrincipalSecrets(callCtx, clientId, principalId, masterSecret, doReset);
+        ms.rotatePrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash);
 
     if (reset
         && !internalProps.containsKey(
@@ -1061,8 +1061,8 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
       @NotNull PolarisCallContext callCtx,
       @NotNull String clientId,
       long principalId,
-      @NotNull String mainSecret,
-      boolean reset) {
+      boolean reset,
+      @NotNull String oldSecretHash) {
     // get metastore we should be using
     PolarisMetaStoreSession ms = callCtx.getMetaStore();
 
@@ -1071,7 +1071,8 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
         ms.runInTransaction(
             callCtx,
             () ->
-                this.rotatePrincipalSecrets(callCtx, ms, clientId, principalId, mainSecret, reset));
+                this.rotatePrincipalSecrets(
+                    callCtx, ms, clientId, principalId, reset, oldSecretHash));
 
     return (secrets == null)
         ? new PrincipalSecretsResult(ReturnStatus.ENTITY_NOT_FOUND, null)

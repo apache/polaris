@@ -547,10 +547,10 @@ public interface PolarisMetaStoreManager {
    * @param callCtx call context
    * @param clientId principal client id
    * @param principalId id of the principal
-   * @param mainSecret main secret for the principal
    * @param reset true if the principal's secrets should be disabled and replaced with a one-time
    *     password. if the principal's secret is already a one-time password, this flag is
    *     automatically true
+   * @param oldSecretHash main secret hash for the principal
    * @return the secrets associated to that principal amd the id of the principal
    */
   @NotNull
@@ -558,8 +558,8 @@ public interface PolarisMetaStoreManager {
       @NotNull PolarisCallContext callCtx,
       @NotNull String clientId,
       long principalId,
-      @NotNull String mainSecret,
-      boolean reset);
+      boolean reset,
+      @NotNull String oldSecretHash);
 
   /** the return the result of a create-catalog method */
   class CreateCatalogResult extends BaseResult {
