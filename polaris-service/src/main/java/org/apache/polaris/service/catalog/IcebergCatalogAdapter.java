@@ -180,7 +180,7 @@ public class IcebergCatalogAdapter
   }
 
   private static Namespace decodeNamespace(String namespace) {
-    return RESTUtil.decodeNamespace(URLEncoder.encode(namespace, Charset.defaultCharset()));
+    return RESTUtil.decodeNamespace(namespace);
   }
 
   @Override
