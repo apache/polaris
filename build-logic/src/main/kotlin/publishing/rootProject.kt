@@ -176,7 +176,7 @@ internal fun configureOnRootProject(project: Project) =
               encouraged to cast non-binding votes. This vote will pass if there are
               3 binding +1 votes and more binding +1 votes than -1 votes.
 
-              NB: if this vote pass, a new vote has to be started on the Incubator general mailimg
+              NB: if this vote pass, a new vote has to be started on the Incubator general mailing
               list.
 
               Thanks
