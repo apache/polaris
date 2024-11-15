@@ -24,6 +24,7 @@ import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import org.apache.polaris.extension.persistence.impl.eclipselink.EclipseLinkPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.junit.jupiter.api.Nested;
@@ -62,14 +63,16 @@ public class PolarisApplicationConfigurationTest {
             CONFIG_PATH,
             RANDOM_APP_PORT,
             RANDOM_ADMIN_PORT,
-            ConfigOverride.config("metaStoreManager.type", "eclipse-link"));
+            ConfigOverride.config("metaStoreManager.type", "eclipse-link"),
+            ConfigOverride.config("metaStoreManager.persistence-unit", "test-unit"),
+            ConfigOverride.config("metaStoreManager.conf-file", "/test-conf-file"));
 
     @Test
     void testMetastoreType() {
       assertThat(app.getConfiguration().getMetaStoreManagerFactory())
-          .extracting(Object::getClass)
-          .extracting(Class::getSimpleName)
-          .isEqualTo("EclipseLinkPolarisMetaStoreManagerFactory");
+          .isInstanceOf(EclipseLinkPolarisMetaStoreManagerFactory.class)
+          .extracting("persistenceUnitName", "confFile")
+          .containsExactly("test-unit", "/test-conf-file");
     }
   }
 }
