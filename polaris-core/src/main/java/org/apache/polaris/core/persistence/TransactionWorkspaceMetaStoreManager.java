@@ -134,8 +134,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @NotNull PolarisCallContext callCtx,
       @NotNull String clientId,
       long principalId,
-      @NotNull String mainSecret,
-      boolean reset) {
+      boolean reset,
+      @NotNull String oldSecretHash) {
     callCtx
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "rotatePrincipalSecrets");
