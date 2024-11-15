@@ -1459,10 +1459,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         // This branch is different from BaseMetastoreTableOperations
         LOGGER.debug(
             "Base object differs from current metadata; proceeding because locations match");
-      }
-
-      // if the metadata is not changed, return early
-      if (base == metadata) {
+      } else if (base.metadataFileLocation().equals(metadata.metadataFileLocation())) {
+        // if the metadata is not changed, return early
         LOGGER.info("Nothing to commit.");
         return;
       }
