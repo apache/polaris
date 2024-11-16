@@ -148,7 +148,7 @@ nexusPublishing {
 
   repositories {
     register("apache") {
-      nexusUrl = URI.create("https://repository.apache.org/service/local/")
+      nexusUrl = URI.create("https://repository.apache.org/service/local/staging/deploy/maven2/")
       snapshotRepositoryUrl =
         URI.create("https://repository.apache.org/content/repositories/snapshots/")
     }
