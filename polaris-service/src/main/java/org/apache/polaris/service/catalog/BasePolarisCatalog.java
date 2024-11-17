@@ -1474,9 +1474,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
 
     /**
-     * COPIED FROM {@link BaseMetastoreTableOperations} as the method is private there
-     * This is moved to `CatalogUtils` in Iceberg 1.7.0 and can be called from there once
-     * we depend on Iceberg 1.7.0
+     * COPIED FROM {@link BaseMetastoreTableOperations} as the method is private there This is moved
+     * to `CatalogUtils` in Iceberg 1.7.0 and can be called from there once we depend on Iceberg
+     * 1.7.0
      *
      * <p>Deletes the oldest metadata files if {@link
      * TableProperties#METADATA_DELETE_AFTER_COMMIT_ENABLED} is true.
