@@ -38,7 +38,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -1232,8 +1231,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     private final String fullTableName;
     private FileIO tableFileIO;
 
-    private ReentrantLock currentMetadataLock = new ReentrantLock();
-
     BasePolarisTableOperations(FileIO defaultFileIO, TableIdentifier tableIdentifier) {
       LOGGER.debug("new BasePolarisTableOperations for {}", tableIdentifier);
       this.tableIdentifier = tableIdentifier;
@@ -1477,7 +1474,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
 
     /**
-     * COPIED FROM {@link BaseMetastoreTableOperations}
+     * COPIED FROM {@link BaseMetastoreTableOperations} as the method is private there
+     * This is moved to `CatalogUtils` in Iceberg 1.7.0 and can be called from there once
+     * we depend on Iceberg 1.7.0
      *
      * <p>Deletes the oldest metadata files if {@link
      * TableProperties#METADATA_DELETE_AFTER_COMMIT_ENABLED} is true.
