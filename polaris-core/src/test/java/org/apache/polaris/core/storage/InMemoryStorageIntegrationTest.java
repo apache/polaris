@@ -48,7 +48,8 @@ class InMemoryStorageIntegrationTest {
                     "s3://bucket/path/to/warehouse",
                     "s3://bucket/anotherpath/to/warehouse",
                     "s3://bucket2/warehouse/"),
-                "arn:aws:iam::012345678901:role/jdoe"),
+                "arn:aws:iam::012345678901:role/jdoe",
+                "us-east-2"),
             Set.of(PolarisStorageActions.READ),
             Set.of(
                 "s3://bucket/path/to/warehouse/namespace/table",
@@ -136,7 +137,8 @@ class InMemoryStorageIntegrationTest {
             new AwsStorageConfigurationInfo(
                 PolarisStorageConfigurationInfo.StorageType.S3,
                 List.of(),
-                "arn:aws:iam::012345678901:role/jdoe"),
+                "arn:aws:iam::012345678901:role/jdoe",
+                "us-east-2"),
             Set.of(PolarisStorageActions.READ),
             Set.of(
                 "s3://bucket/path/to/warehouse/namespace/table",
@@ -169,7 +171,8 @@ class InMemoryStorageIntegrationTest {
             new AwsStorageConfigurationInfo(
                 PolarisStorageConfigurationInfo.StorageType.S3,
                 List.of("s3://bucket/path/to/warehouse"),
-                "arn:aws:iam::012345678901:role/jdoe"),
+                "arn:aws:iam::012345678901:role/jdoe",
+                "us-east-2"),
             Set.of(PolarisStorageActions.READ),
             // trying to read a prefix under the allowed location
             Set.of("s3://bucket/path/to"));

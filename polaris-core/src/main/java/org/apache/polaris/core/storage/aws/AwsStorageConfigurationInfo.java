@@ -49,23 +49,30 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   @JsonProperty(value = "userARN")
   private @Nullable String userARN = null;
 
+  /** User ARN for the service principal */
+  @JsonProperty(value = "region")
+  private @Nullable String region = null;
+
   @JsonCreator
   public AwsStorageConfigurationInfo(
       @JsonProperty(value = "storageType", required = true) @NotNull StorageType storageType,
       @JsonProperty(value = "allowedLocations", required = true) @NotNull
           List<String> allowedLocations,
-      @JsonProperty(value = "roleARN", required = true) @NotNull String roleARN) {
-    this(storageType, allowedLocations, roleARN, null);
+      @JsonProperty(value = "roleARN", required = true) @NotNull String roleARN,
+      @JsonProperty(value = "region", required = true) @NotNull String region) {
+    this(storageType, allowedLocations, roleARN, null, region);
   }
 
   public AwsStorageConfigurationInfo(
       @NotNull StorageType storageType,
       @NotNull List<String> allowedLocations,
       @NotNull String roleARN,
-      @Nullable String externalId) {
+      @Nullable String externalId,
+      @Nullable String region) {
     super(storageType, allowedLocations);
     this.roleARN = roleARN;
     this.externalId = externalId;
+    this.region = region;
     validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
   }
 
@@ -107,6 +114,14 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     this.userARN = userARN;
   }
 
+  public @Nullable String getRegion() {
+    return region;
+  }
+
+  public void setRegion(@Nullable String region) {
+    this.region = region;
+  }
+
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
@@ -116,6 +131,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
         .add("userARN", userARN)
         .add("externalId", externalId)
         .add("allowedLocation", getAllowedLocations())
+        .add("region", region)
         .toString();
   }
 }
