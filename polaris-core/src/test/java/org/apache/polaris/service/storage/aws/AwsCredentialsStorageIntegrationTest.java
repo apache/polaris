@@ -83,7 +83,8 @@ class AwsCredentialsStorageIntegrationTest {
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     List.of(warehouseDir),
                     roleARN,
-                    externalId),
+                    externalId,
+                    null),
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"));
@@ -217,7 +218,7 @@ class AwsCredentialsStorageIntegrationTest {
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
-                    storageType, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId),
+                    storageType, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId, "us-east-2"),
                 true,
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)));
@@ -310,7 +311,8 @@ class AwsCredentialsStorageIntegrationTest {
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
                     roleARN,
-                    externalId),
+                    externalId,
+                    "us-east-2"),
                 false, /* allowList = false*/
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)));
@@ -398,7 +400,7 @@ class AwsCredentialsStorageIntegrationTest {
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
-                    storageType, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId),
+                    storageType, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId, "us-east-2"),
                 true, /* allowList = true */
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of());
@@ -459,7 +461,8 @@ class AwsCredentialsStorageIntegrationTest {
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
                     roleARN,
-                    externalId),
+                    externalId,
+                    "us-east-2"),
                 true, /* allowList = true */
                 Set.of(),
                 Set.of());
