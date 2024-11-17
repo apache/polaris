@@ -218,7 +218,11 @@ class AwsCredentialsStorageIntegrationTest {
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
-                    storageType, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId, "us-east-2"),
+                    storageType,
+                    List.of(s3Path(bucket, warehouseKeyPrefix)),
+                    roleARN,
+                    externalId,
+                    "us-east-2"),
                 true,
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)));
@@ -400,7 +404,11 @@ class AwsCredentialsStorageIntegrationTest {
             .getSubscopedCreds(
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
-                    storageType, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId, "us-east-2"),
+                    storageType,
+                    List.of(s3Path(bucket, warehouseKeyPrefix)),
+                    roleARN,
+                    externalId,
+                    "us-east-2"),
                 true, /* allowList = true */
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of());
