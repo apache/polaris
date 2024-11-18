@@ -62,6 +62,8 @@ import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * {@link IcebergRestCatalogApiService} implementation that delegates operations to {@link
@@ -70,6 +72,7 @@ import org.apache.polaris.service.types.NotificationRequest;
  */
 public class IcebergCatalogAdapter
     implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogAdapter.class);
 
   private final CallContextCatalogFactory catalogFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
@@ -409,6 +412,7 @@ public class IcebergCatalogAdapter
       String table,
       ReportMetricsRequest reportMetricsRequest,
       SecurityContext securityContext) {
+    LOGGER.debug("{}", reportMetricsRequest.report());
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 
