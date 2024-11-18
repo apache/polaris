@@ -663,7 +663,8 @@ public class PolarisAdminService {
   }
 
   @VisibleForTesting
-  static boolean maintenancePropertyChanged(Map<String, String> map1, Map<String, String> map2) {
+  static boolean maintenancePropertyChanged(
+      @NotNull Map<String, String> map1, @NotNull Map<String, String> map2) {
     Set<String> addedKeys = new HashSet<>(map2.keySet());
     addedKeys.removeAll(map1.keySet());
     if (addedKeys.stream().anyMatch(key -> key.startsWith((MAINTENANCE_PREFIX)))) {
