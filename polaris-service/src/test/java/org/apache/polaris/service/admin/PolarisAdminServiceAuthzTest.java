@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.admin;
 
+import static org.apache.polaris.core.entity.PolarisMaintenanceProperties.COMPACTION;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -211,6 +213,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
         List.of(
             PolarisPrivilege.SERVICE_MANAGE_ACCESS,
             PolarisPrivilege.CATALOG_WRITE_PROPERTIES,
+            PolarisPrivilege.CATALOG_WRITE_MAINTENANCE_PROPERTIES,
             PolarisPrivilege.CATALOG_FULL_METADATA,
             PolarisPrivilege.CATALOG_MANAGE_METADATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
@@ -256,6 +259,67 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                   .setCurrentEntityVersion(
                       newTestAdminService().getCatalog(CATALOG_NAME).getEntityVersion())
                   .setProperties(Map.of("foo", Long.toString(System.currentTimeMillis())))
+                  .build();
+          newTestAdminService().updateCatalog(CATALOG_NAME, updateRequest);
+        },
+        (privilege) ->
+            adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
+                PRINCIPAL_ROLE1, privilege));
+  }
+
+  @Test
+  public void testUpdateCatalogSufficientPrivilegesForMaintenanceProperties() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.CATALOG_WRITE_MAINTENANCE_PROPERTIES,
+            PolarisPrivilege.SERVICE_MANAGE_ACCESS,
+            PolarisPrivilege.CATALOG_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> {
+          var updateRequest =
+              UpdateCatalogRequest.builder()
+                  .setCurrentEntityVersion(
+                      newTestAdminService().getCatalog(CATALOG_NAME).getEntityVersion())
+                  .setProperties(
+                      Map.of(COMPACTION.getValue(), Long.toString(System.currentTimeMillis())))
+                  .build();
+          newTestAdminService().updateCatalog(CATALOG_NAME, updateRequest);
+        },
+        null,
+        (privilege) ->
+            adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
+        (privilege) ->
+            adminService.revokePrivilegeOnRootContainerFromPrincipalRole(
+                PRINCIPAL_ROLE1, privilege));
+  }
+
+  @Test
+  public void testUpdateCatalogInsufficientPrivilegesForMaintenanceProperties() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_FULL_METADATA,
+            PolarisPrivilege.PRINCIPAL_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_READ_PROPERTIES,
+            PolarisPrivilege.CATALOG_LIST,
+            PolarisPrivilege.CATALOG_CREATE,
+            PolarisPrivilege.CATALOG_DROP,
+            PolarisPrivilege.CATALOG_ROLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_WRITE_PROPERTIES,
+            PolarisPrivilege.CATALOG_MANAGE_ACCESS),
+        () -> {
+          var updateRequest =
+              UpdateCatalogRequest.builder()
+                  .setCurrentEntityVersion(
+                      newTestAdminService().getCatalog(CATALOG_NAME).getEntityVersion())
+                  .setProperties(
+                      Map.of(COMPACTION.getValue(), Long.toString(System.currentTimeMillis())))
                   .build();
           newTestAdminService().updateCatalog(CATALOG_NAME, updateRequest);
         },

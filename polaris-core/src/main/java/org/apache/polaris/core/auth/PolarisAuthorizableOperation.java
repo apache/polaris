@@ -32,6 +32,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_MANAG
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_MANAGE_GRANTS_ON_SECURABLE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_WRITE_MAINTENANCE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DROP;
@@ -121,6 +122,7 @@ public enum PolarisAuthorizableOperation {
   CREATE_CATALOG(CATALOG_CREATE),
   GET_CATALOG(CATALOG_READ_PROPERTIES),
   UPDATE_CATALOG(CATALOG_WRITE_PROPERTIES),
+  UPDATE_CATALOG_MAINTENANCE_PROPERTIES(CATALOG_WRITE_MAINTENANCE_PROPERTIES),
   DELETE_CATALOG(CATALOG_DROP),
   LIST_PRINCIPALS(PRINCIPAL_LIST),
   CREATE_PRINCIPAL(PRINCIPAL_CREATE),

@@ -57,6 +57,8 @@ public class PolarisEntityConstants {
   public static final String PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE =
       "CREDENTIAL_ROTATION_REQUIRED";
 
+  public static final String MAINTENANCE_PREFIX = "polaris.maintenance.";
+
   /**
    * Name format of storage integration for polaris entity: {@code
    * POLARIS_<catalog_id>_<entity_id>}. This name format gives us flexibility to switch to use

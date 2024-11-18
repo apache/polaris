@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.service.admin;
 
+import static org.apache.polaris.core.auth.PolarisAuthorizableOperation.UPDATE_CATALOG_MAINTENANCE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisEntityConstants.MAINTENANCE_PREFIX;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -674,6 +677,8 @@ public class PolarisAdminService {
     CatalogEntity.Builder updateBuilder = new CatalogEntity.Builder(currentCatalogEntity);
     String defaultBaseLocation = currentCatalogEntity.getDefaultBaseLocation();
     if (updateRequest.getProperties() != null) {
+      validateMaintenancePrivilege(name, updateRequest.getProperties().keySet());
+
       updateBuilder.setProperties(updateRequest.getProperties());
       String newDefaultBaseLocation =
           updateRequest.getProperties().get(CatalogEntity.DEFAULT_BASE_LOCATION_KEY);
@@ -718,6 +723,15 @@ public class PolarisAdminService {
                     new CommitFailedException(
                         "Concurrent modification on Catalog '%s'; retry later", name));
     return returnedEntity;
+  }
+
+  private void validateMaintenancePrivilege(String name, Set<String> keys) {
+    var hasMaintenanceKeys = keys.stream().anyMatch(key -> key.startsWith((MAINTENANCE_PREFIX)));
+
+    if (hasMaintenanceKeys) {
+      authorizeBasicTopLevelEntityOperationOrThrow(
+          UPDATE_CATALOG_MAINTENANCE_PROPERTIES, name, PolarisEntityType.CATALOG);
+    }
   }
 
   public List<PolarisEntity> listCatalogs() {

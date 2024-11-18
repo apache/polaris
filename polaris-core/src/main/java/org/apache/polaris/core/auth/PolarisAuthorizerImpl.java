@@ -38,6 +38,7 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_MANAG
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_READ_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_USAGE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_ROLE_WRITE_PROPERTIES;
+import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_WRITE_MAINTENANCE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.CATALOG_WRITE_PROPERTIES;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_CREATE;
 import static org.apache.polaris.core.entity.PolarisPrivilege.NAMESPACE_DROP;
@@ -270,6 +271,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             CATALOG_MANAGE_METADATA,
             CATALOG_READ_PROPERTIES,
             CATALOG_WRITE_PROPERTIES,
+            CATALOG_WRITE_MAINTENANCE_PROPERTIES,
             SERVICE_MANAGE_ACCESS));
     SUPER_PRIVILEGES.putAll(
         CATALOG_READ_PROPERTIES,
@@ -279,7 +281,10 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             CATALOG_MANAGE_METADATA,
             CATALOG_READ_PROPERTIES,
             CATALOG_WRITE_PROPERTIES,
+            CATALOG_WRITE_MAINTENANCE_PROPERTIES,
             SERVICE_MANAGE_ACCESS));
+
+    // CATALOG_WRITE_MAINTENANCE_PROPERTIES is better than CATALOG_WRITE_PROPERTIES
     SUPER_PRIVILEGES.putAll(
         CATALOG_WRITE_PROPERTIES,
         List.of(
@@ -287,7 +292,18 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
             CATALOG_MANAGE_CONTENT,
             CATALOG_MANAGE_METADATA,
             CATALOG_WRITE_PROPERTIES,
+            CATALOG_WRITE_MAINTENANCE_PROPERTIES,
             SERVICE_MANAGE_ACCESS));
+
+    SUPER_PRIVILEGES.putAll(
+        CATALOG_WRITE_MAINTENANCE_PROPERTIES,
+        List.of(
+            CATALOG_FULL_METADATA,
+            CATALOG_MANAGE_CONTENT,
+            CATALOG_MANAGE_METADATA,
+            CATALOG_WRITE_MAINTENANCE_PROPERTIES,
+            SERVICE_MANAGE_ACCESS));
+
     SUPER_PRIVILEGES.putAll(
         CATALOG_FULL_METADATA, List.of(CATALOG_FULL_METADATA, SERVICE_MANAGE_ACCESS));
 
