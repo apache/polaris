@@ -66,7 +66,7 @@ Polaris creates and connects to a separate database for each realm. Specifically
         value="jdbc:h2:file:tmp/polaris_test/filedb_{realm}"/>
       <property name="jakarta.persistence.jdbc.user" value="sa"/>
       <property name="jakarta.persistence.jdbc.password" value=""/>
-      <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
+      <property name="eclipselink.ddl-generation" value="create-or-extend-tables"/>
     </properties>
 </persistence-unit>
 ```
@@ -99,8 +99,8 @@ The following shows a sample configuration for integrating Polaris with Postgres
               value="jdbc:postgresql://localhost:5432/{realm}"/>
     <property name="jakarta.persistence.jdbc.user" value="postgres"/>
     <property name="jakarta.persistence.jdbc.password" value="postgres"/>
-    <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
     <property name="eclipselink.persistence-context.flush-mode" value="auto"/>
+    <property name="eclipselink.ddl-generation" value="create-or-extend-tables"/>
   </properties>
 </persistence-unit>
 ```
