@@ -82,7 +82,7 @@ public class TableLikeEntity extends PolarisEntity {
   }
 
   @JsonIgnore
-  public String getMetadataCacheLocationKey() {
+  public String getMetadataCacheLocation() {
     return getInternalPropertiesAsMap().get(METADATA_CACHE_LOCATION_KEY);
   }
 

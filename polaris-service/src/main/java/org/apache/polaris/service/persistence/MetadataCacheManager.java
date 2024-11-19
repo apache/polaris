@@ -54,10 +54,9 @@ public class MetadataCacheManager {
         resolvedEntityView.getResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
     TableLikeEntity tableLikeEntity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
     boolean isCacheValid =
-        tableLikeEntity.getMetadataLocation() != null
-            && tableLikeEntity
+        tableLikeEntity.getMetadataCacheLocation() != null&& tableLikeEntity
                 .getMetadataLocation()
-                .equals(tableLikeEntity.getMetadataCacheLocationKey());
+                .equals(tableLikeEntity.getMetadataCacheLocation());
     if (isCacheValid) {
       LOGGER.debug(String.format("Using cached metadata for %s", tableIdentifier));
       return TableMetadataParser.fromJson(tableLikeEntity.getMetadataCacheContent());
