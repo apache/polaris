@@ -34,7 +34,8 @@ public class TableLikeEntity extends PolarisEntity {
   private static final String METADATA_CACHE_CONTENT_KEY = "metadata-cache-content";
 
   // For applicable types, this key on the "internalProperties" map will return the location of the
-  // `metadata.json` that is cached in METADATA_CACHE_CONTENT_KEY
+  // `metadata.json` that is cached in `METADATA_CACHE_CONTENT_KEY`. This will often match the
+  // current metadata location in `METADATA_LOCATION_KEY`; if it does not the cache is invalid
   private static final String METADATA_CACHE_LOCATION_KEY = "metadata-cache-location";
 
   public static final String USER_SPECIFIED_WRITE_DATA_LOCATION_KEY = "write.data.path";
