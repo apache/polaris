@@ -1255,7 +1255,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     public void doCommit(TableMetadata base, TableMetadata metadata) {
       LOGGER.debug(
           "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
-      LOGGER.debug(
+      LOGGER.info(
           "doCommit full new metadata: {}",
           PolarisObjectMapperUtil.serialize(getCurrentPolarisContext(), metadata));
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict

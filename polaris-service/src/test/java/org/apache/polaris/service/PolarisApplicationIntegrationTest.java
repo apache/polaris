@@ -25,6 +25,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
@@ -57,8 +59,12 @@ import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.RESTException;
+import org.apache.iceberg.expressions.Expressions;
 import org.apache.iceberg.hadoop.HadoopFileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
+import org.apache.iceberg.metrics.ImmutableScanReport;
+import org.apache.iceberg.metrics.ScanMetrics;
+import org.apache.iceberg.metrics.ScanMetricsResult;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.RESTSessionCatalog;
@@ -66,6 +72,7 @@ import org.apache.iceberg.rest.auth.AuthConfig;
 import org.apache.iceberg.rest.auth.ImmutableAuthConfig;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.auth.OAuth2Util;
+import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -80,6 +87,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.auth.BasePolarisAuthenticator;
+import org.apache.polaris.service.catalog.IcebergCatalogAdapter;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
@@ -740,6 +748,87 @@ public class PolarisApplicationIntegrationTest {
       sessionSpy.refresh(client);
       assertThat(sessionSpy.credential()).isNotNull();
       assertThat(sessionSpy.credential()).isNotEqualTo(userToken);
+    }
+  }
+
+  @Test
+  public void testReportMetricsLogsRequest(TestInfo testInfo) throws IOException {
+    ch.qos.logback.classic.Logger logger =
+        (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(IcebergCatalogAdapter.class);
+    ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
+    listAppender.start();
+    logger.addAppender(listAppender);
+
+    String catalogName = testInfo.getTestMethod().get().getName() + "External";
+    createCatalog(
+        catalogName,
+        Catalog.TypeEnum.EXTERNAL,
+        PRINCIPAL_ROLE_NAME,
+        FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
+            .setAllowedLocations(List.of("file://" + testDir.toFile().getAbsolutePath()))
+            .build(),
+        "file://" + testDir.toFile().getAbsolutePath());
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName);
+        HadoopFileIO fileIo = new HadoopFileIO(new Configuration()); ) {
+      SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
+      Namespace ns = Namespace.of("db1");
+      sessionCatalog.createNamespace(sessionContext, ns);
+      TableIdentifier tableIdentifier = TableIdentifier.of(ns, "the_table");
+      String location =
+          "file://"
+              + testDir.toFile().getAbsolutePath()
+              + "/"
+              + testInfo.getTestMethod().get().getName();
+      String metadataLocation = location + "/metadata/000001-494949494949494949.metadata.json";
+
+      TableMetadata tableMetadata =
+          TableMetadata.buildFromEmpty()
+              .setLocation(location)
+              .assignUUID()
+              .addPartitionSpec(PartitionSpec.unpartitioned())
+              .addSortOrder(SortOrder.unsorted())
+              .addSchema(
+                  new Schema(Types.NestedField.of(1, false, "col1", Types.StringType.get())), 1)
+              .build();
+      TableMetadataParser.write(tableMetadata, fileIo.newOutputFile(metadataLocation));
+
+      sessionCatalog.registerTable(sessionContext, tableIdentifier, metadataLocation);
+      Table table = sessionCatalog.loadTable(sessionContext, tableIdentifier);
+
+      int schemaId =
+          82193782; // Keep this unique enough that the number wouldn't show up in the logs by
+      // coincedence
+      ReportMetricsRequest request =
+          ReportMetricsRequest.of(
+              ImmutableScanReport.builder()
+                  .tableName(table.name())
+                  .snapshotId(1234)
+                  .filter(Expressions.alwaysTrue())
+                  .schemaId(schemaId)
+                  .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
+                  .build());
+
+      try (Response resp =
+          EXT.client()
+              .target(
+                  String.format(
+                      "http://localhost:%d/api/catalog/v1/%s/namespaces/%s/tables/%s/metrics",
+                      EXT.getLocalPort(),
+                      testInfo.getTestMethod().orElseThrow().getName(),
+                      ns,
+                      table.name()))
+              .request("application/json")
+              .header("Authorization", "Bearer " + userToken)
+              .header(REALM_PROPERTY_KEY, realm)
+              .post(Entity.json(request))) {
+        assertThat(resp).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+      }
+
+      Assertions.assertThat(
+              listAppender.list.stream()
+                  .anyMatch(log -> log.getFormattedMessage().contains(String.valueOf(schemaId))))
+          .as("The metrics should be logged")
+          .isTrue();
     }
   }
 }

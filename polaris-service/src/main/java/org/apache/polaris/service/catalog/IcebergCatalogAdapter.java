@@ -412,7 +412,7 @@ public class IcebergCatalogAdapter
       String table,
       ReportMetricsRequest reportMetricsRequest,
       SecurityContext securityContext) {
-    LOGGER.debug("{}", reportMetricsRequest.report());
+    LOGGER.info("ReportMetricsRequest: {}", reportMetricsRequest.report());
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 
