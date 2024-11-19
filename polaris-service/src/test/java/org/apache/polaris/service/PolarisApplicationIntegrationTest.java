@@ -759,7 +759,7 @@ public class PolarisApplicationIntegrationTest {
     listAppender.start();
     logger.addAppender(listAppender);
 
-    String catalogName = testInfo.getTestMethod().get().getName() + "External";
+    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "External";
     createCatalog(
         catalogName,
         Catalog.TypeEnum.EXTERNAL,
@@ -773,7 +773,10 @@ public class PolarisApplicationIntegrationTest {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
       sessionCatalog.createNamespace(sessionContext, ns);
-      TableIdentifier tableIdentifier = TableIdentifier.of(ns, "the_table");
+
+      // Keep the table name unique enough that the number wouldn't show up in the logs by
+      // coincidence
+      TableIdentifier tableIdentifier = TableIdentifier.of(ns, "my_super_duper_unique_table_name");
       String location =
           "file://"
               + testDir.toFile().getAbsolutePath()
@@ -795,16 +798,13 @@ public class PolarisApplicationIntegrationTest {
       sessionCatalog.registerTable(sessionContext, tableIdentifier, metadataLocation);
       Table table = sessionCatalog.loadTable(sessionContext, tableIdentifier);
 
-      int schemaId =
-          82193782; // Keep this unique enough that the number wouldn't show up in the logs by
-      // coincedence
       ReportMetricsRequest request =
           ReportMetricsRequest.of(
               ImmutableScanReport.builder()
                   .tableName(table.name())
                   .snapshotId(1234)
                   .filter(Expressions.alwaysTrue())
-                  .schemaId(schemaId)
+                  .schemaId(5678)
                   .scanMetrics(ScanMetricsResult.fromScanMetrics(ScanMetrics.noop()))
                   .build());
 
@@ -826,7 +826,7 @@ public class PolarisApplicationIntegrationTest {
 
       Assertions.assertThat(
               listAppender.list.stream()
-                  .anyMatch(log -> log.getFormattedMessage().contains(String.valueOf(schemaId))))
+                  .anyMatch(log -> log.getFormattedMessage().contains(table.name())))
           .as("The metrics should be logged")
           .isTrue();
     }
