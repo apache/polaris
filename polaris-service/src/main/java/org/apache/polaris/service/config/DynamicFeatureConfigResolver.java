@@ -21,6 +21,17 @@ package org.apache.polaris.service.config;
 import io.dropwizard.jackson.Discoverable;
 import java.util.Optional;
 
+/**
+ * DynamicFeatureConfigResolvers dynamically resolve featureConfigurations. This is useful for
+ * integration with feature flag systems which are intended for fetching configs at runtime.
+ */
 public interface DynamicFeatureConfigResolver extends Discoverable {
+  /**
+   * Resolves a dynamic config by its key name.
+   *
+   * @param key
+   * @return The config value or Optional.empty() if the config should not be dynamically resolved.
+   *     If it's not dynamically resolved, it will be deferred to the application config.
+   */
   Optional<Object> resolve(String key);
 }

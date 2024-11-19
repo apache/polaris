@@ -19,11 +19,11 @@
 package org.apache.polaris.service.config;
 
 import java.util.Optional;
-import org.apache.polaris.core.PolarisConfiguration;
 
+/** An empty dynamic config resolver. */
 public class NoOpDynamicFeatureConfigResolver implements DynamicFeatureConfigResolver {
   @Override
-  public <T> Optional<T> resolve(PolarisConfiguration<T> key) {
+  public Optional<Object> resolve(String key) {
     return Optional.empty();
   }
 }
