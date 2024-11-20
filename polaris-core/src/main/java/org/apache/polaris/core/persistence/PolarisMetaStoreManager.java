@@ -21,25 +21,20 @@ package org.apache.polaris.core.persistence;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.PolarisGrantManager;
+import org.apache.polaris.core.auth.PolarisSecretsManager;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityCore;
-import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.core.storage.PolarisCredentialProperty;
-import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.core.persistence.cache.PolarisRemoteCache;
+import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -47,136 +42,11 @@ import org.jetbrains.annotations.Nullable;
  * Polaris Metastore Manager manages all Polaris entities and associated grant records metadata for
  * authorization. It uses the underlying persistent metastore to store and retrieve Polaris metadata
  */
-public interface PolarisMetaStoreManager {
-
-  /** Possible return code for the various API calls. */
-  enum ReturnStatus {
-    // all good
-    SUCCESS(1),
-
-    // an unexpected error was thrown, should result in a 500 error to the client
-    UNEXPECTED_ERROR_SIGNALED(2),
-
-    // the specified catalog path cannot be resolved. There is a possibility that by the time a call
-    // is made by the client to the persistent storage, something has changed due to concurrent
-    // modification(s). The client should retry in that case.
-    CATALOG_PATH_CANNOT_BE_RESOLVED(3),
-
-    // the specified entity (and its path) cannot be resolved. There is a possibility that by the
-    // time a call is made by the client to the persistent storage, something has changed due to
-    // concurrent modification(s). The client should retry in that case.
-    ENTITY_CANNOT_BE_RESOLVED(4),
-
-    // entity not found
-    ENTITY_NOT_FOUND(5),
-
-    // grant not found
-    GRANT_NOT_FOUND(6),
-
-    // entity already exists
-    ENTITY_ALREADY_EXISTS(7),
-
-    // entity cannot be dropped, it is one of the bootstrap object like a catalog admin role or the
-    // service admin principal role
-    ENTITY_UNDROPPABLE(8),
-
-    // Namespace is not empty and cannot be dropped
-    NAMESPACE_NOT_EMPTY(9),
-
-    // Catalog is not empty and cannot be dropped. All catalog roles (except the admin catalog
-    // role) and all namespaces in the catalog must be dropped before the namespace can be dropped
-    CATALOG_NOT_EMPTY(10),
-
-    // The target entity was concurrently modified
-    TARGET_ENTITY_CONCURRENTLY_MODIFIED(11),
-
-    // entity cannot be renamed
-    ENTITY_CANNOT_BE_RENAMED(12),
-
-    // error caught while sub-scoping credentials. Error message will be returned
-    SUBSCOPE_CREDS_ERROR(13),
-    ;
-
-    // code for the enum
-    private final int code;
-
-    /** constructor */
-    ReturnStatus(int code) {
-      this.code = code;
-    }
-
-    int getCode() {
-      return this.code;
-    }
-
-    // to efficiently map a code to its corresponding return status
-    private static final ReturnStatus[] REVERSE_MAPPING_ARRAY;
-
-    static {
-      // find max array size
-      int maxCode = 0;
-      for (ReturnStatus returnStatus : ReturnStatus.values()) {
-        if (maxCode < returnStatus.code) {
-          maxCode = returnStatus.code;
-        }
-      }
-
-      // allocate mapping array
-      REVERSE_MAPPING_ARRAY = new ReturnStatus[maxCode + 1];
-
-      // populate mapping array
-      for (ReturnStatus returnStatus : ReturnStatus.values()) {
-        REVERSE_MAPPING_ARRAY[returnStatus.code] = returnStatus;
-      }
-    }
-
-    static ReturnStatus getStatus(int code) {
-      return code >= REVERSE_MAPPING_ARRAY.length ? null : REVERSE_MAPPING_ARRAY[code];
-    }
-  }
-
-  /** Base result class for any call to the persistence layer */
-  class BaseResult {
-    // return code, indicates success or failure
-    private final int returnStatusCode;
-
-    // additional information for some error return code
-    private final String extraInformation;
-
-    public BaseResult() {
-      this.returnStatusCode = ReturnStatus.SUCCESS.getCode();
-      this.extraInformation = null;
-    }
-
-    public BaseResult(@NotNull PolarisMetaStoreManager.ReturnStatus returnStatus) {
-      this.returnStatusCode = returnStatus.getCode();
-      this.extraInformation = null;
-    }
-
-    @JsonCreator
-    public BaseResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") @Nullable String extraInformation) {
-      this.returnStatusCode = returnStatus.getCode();
-      this.extraInformation = extraInformation;
-    }
-
-    public ReturnStatus getReturnStatus() {
-      return ReturnStatus.getStatus(this.returnStatusCode);
-    }
-
-    public String getExtraInformation() {
-      return extraInformation;
-    }
-
-    public boolean isSuccess() {
-      return this.returnStatusCode == ReturnStatus.SUCCESS.getCode();
-    }
-
-    public boolean alreadyExists() {
-      return this.returnStatusCode == ReturnStatus.ENTITY_ALREADY_EXISTS.getCode();
-    }
-  }
+public interface PolarisMetaStoreManager
+    extends PolarisSecretsManager,
+        PolarisGrantManager,
+        PolarisRemoteCache,
+        PolarisCredentialVendor {
 
   /**
    * Bootstrap the Polaris service, creating the root catalog, root principal, and associated
@@ -215,8 +85,7 @@ public interface PolarisMetaStoreManager {
      * @param extraInformation extra information if error. Implementation specific
      */
     public EntityResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorCode,
-        @Nullable String extraInformation) {
+        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.entity = null;
     }
@@ -238,8 +107,7 @@ public interface PolarisMetaStoreManager {
      * @param errorStatus error status, cannot be SUCCESS
      * @param subTypeCode existing entity subtype code
      */
-    public EntityResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorStatus, int subTypeCode) {
+    public EntityResult(@NotNull BaseResult.ReturnStatus errorStatus, int subTypeCode) {
       super(errorStatus, Integer.toString(subTypeCode));
       this.entity = null;
     }
@@ -317,8 +185,7 @@ public interface PolarisMetaStoreManager {
      * @param extraInformation extra information
      */
     public ListEntitiesResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorCode,
-        @Nullable String extraInformation) {
+        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.entities = null;
     }
@@ -379,8 +246,7 @@ public interface PolarisMetaStoreManager {
      * @param extraInformation extra information
      */
     public GenerateEntityIdResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorCode,
-        @Nullable String extraInformation) {
+        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.id = null;
     }
@@ -434,8 +300,7 @@ public interface PolarisMetaStoreManager {
      * @param extraInformation extra information
      */
     public CreatePrincipalResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorCode,
-        @Nullable String extraInformation) {
+        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.principal = null;
       this.principalSecrets = null;
@@ -487,80 +352,6 @@ public interface PolarisMetaStoreManager {
   CreatePrincipalResult createPrincipal(
       @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity principal);
 
-  /** the result of load/rotate principal secrets */
-  class PrincipalSecretsResult extends BaseResult {
-
-    // principal client identifier and associated secrets. Null if error
-    private final PolarisPrincipalSecrets principalSecrets;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public PrincipalSecretsResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorCode,
-        @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.principalSecrets = null;
-    }
-
-    /**
-     * Constructor for success
-     *
-     * @param principalSecrets and associated secret information
-     */
-    public PrincipalSecretsResult(@NotNull PolarisPrincipalSecrets principalSecrets) {
-      super(ReturnStatus.SUCCESS);
-      this.principalSecrets = principalSecrets;
-    }
-
-    @JsonCreator
-    private PrincipalSecretsResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") @Nullable String extraInformation,
-        @JsonProperty("principalSecrets") @NotNull PolarisPrincipalSecrets principalSecrets) {
-      super(returnStatus, extraInformation);
-      this.principalSecrets = principalSecrets;
-    }
-
-    public PolarisPrincipalSecrets getPrincipalSecrets() {
-      return principalSecrets;
-    }
-  }
-
-  /**
-   * Load the principal secrets given the client_id.
-   *
-   * @param callCtx call context
-   * @param clientId principal client id
-   * @return the secrets associated to that principal, including the entity id of the principal
-   */
-  @NotNull
-  PrincipalSecretsResult loadPrincipalSecrets(
-      @NotNull PolarisCallContext callCtx, @NotNull String clientId);
-
-  /**
-   * Rotate secrets
-   *
-   * @param callCtx call context
-   * @param clientId principal client id
-   * @param principalId id of the principal
-   * @param reset true if the principal's secrets should be disabled and replaced with a one-time
-   *     password. if the principal's secret is already a one-time password, this flag is
-   *     automatically true
-   * @param oldSecretHash main secret hash for the principal
-   * @return the secrets associated to that principal amd the id of the principal
-   */
-  @NotNull
-  PrincipalSecretsResult rotatePrincipalSecrets(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull String clientId,
-      long principalId,
-      boolean reset,
-      @NotNull String oldSecretHash);
-
   /** the return the result of a create-catalog method */
   class CreateCatalogResult extends BaseResult {
 
@@ -577,8 +368,7 @@ public interface PolarisMetaStoreManager {
      * @param extraInformation extra information
      */
     public CreateCatalogResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorCode,
-        @Nullable String extraInformation) {
+        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.catalog = null;
       this.catalogAdminRole = null;
@@ -671,8 +461,7 @@ public interface PolarisMetaStoreManager {
      * @param extraInformation extra information
      */
     public EntitiesResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorStatus,
-        @Nullable String extraInformation) {
+        @NotNull BaseResult.ReturnStatus errorStatus, @Nullable String extraInformation) {
       super(errorStatus, extraInformation);
       this.entities = null;
     }
@@ -813,8 +602,7 @@ public interface PolarisMetaStoreManager {
      * @param extraInformation extra information
      */
     public DropEntityResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorStatus,
-        @Nullable String extraInformation) {
+        @NotNull BaseResult.ReturnStatus errorStatus, @Nullable String extraInformation) {
       super(errorStatus, extraInformation);
       this.cleanupTaskId = null;
     }
@@ -879,306 +667,6 @@ public interface PolarisMetaStoreManager {
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup);
 
-  /** Result of a grant/revoke privilege call */
-  class PrivilegeResult extends BaseResult {
-
-    // null if not success.
-    private final PolarisGrantRecord grantRecord;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public PrivilegeResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorCode,
-        @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.grantRecord = null;
-    }
-
-    /**
-     * Constructor for success
-     *
-     * @param grantRecord grant record being granted or revoked
-     */
-    public PrivilegeResult(@NotNull PolarisGrantRecord grantRecord) {
-      super(ReturnStatus.SUCCESS);
-      this.grantRecord = grantRecord;
-    }
-
-    @JsonCreator
-    private PrivilegeResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") String extraInformation,
-        @JsonProperty("grantRecord") PolarisGrantRecord grantRecord) {
-      super(returnStatus, extraInformation);
-      this.grantRecord = grantRecord;
-    }
-
-    public PolarisGrantRecord getGrantRecord() {
-      return grantRecord;
-    }
-  }
-
-  /**
-   * Grant usage on a role to a grantee, for example granting usage on a catalog role to a principal
-   * role or granting a principal role to a principal.
-   *
-   * @param callCtx call context
-   * @param catalog if the role is a catalog role, the caller needs to pass-in the catalog entity
-   *     which was used to resolve that granted. Else null.
-   * @param role resolved catalog or principal role
-   * @param grantee principal role or principal as resolved by the caller
-   * @return the grant record we created for this grant. Will return ENTITY_NOT_FOUND if the
-   *     specified role couldn't be found. Should be retried in that case
-   */
-  @NotNull
-  PrivilegeResult grantUsageOnRoleToGrantee(
-      @NotNull PolarisCallContext callCtx,
-      @Nullable PolarisEntityCore catalog,
-      @NotNull PolarisEntityCore role,
-      @NotNull PolarisEntityCore grantee);
-
-  /**
-   * Revoke usage on a role (a catalog or a principal role) from a grantee (e.g. a principal role or
-   * a principal).
-   *
-   * @param callCtx call context
-   * @param catalog if the granted is a catalog role, the caller needs to pass-in the catalog entity
-   *     which was used to resolve that role. Else null should be passed-in.
-   * @param role a catalog/principal role as resolved by the caller
-   * @param grantee resolved principal role or principal
-   * @return the result. Will return ENTITY_NOT_FOUND if the * specified role couldn't be found.
-   *     Should be retried in that case. Will return GRANT_NOT_FOUND if the grant to revoke cannot
-   *     be found
-   */
-  @NotNull
-  PrivilegeResult revokeUsageOnRoleFromGrantee(
-      @NotNull PolarisCallContext callCtx,
-      @Nullable PolarisEntityCore catalog,
-      @NotNull PolarisEntityCore role,
-      @NotNull PolarisEntityCore grantee);
-
-  /**
-   * Grant a privilege on a catalog securable to a grantee.
-   *
-   * @param callCtx call context
-   * @param grantee resolved role, the grantee
-   * @param catalogPath path to that entity, cannot be null or empty unless securable is top-level
-   * @param securable securable entity, must have been resolved by the client. Can be the catalog
-   *     itself
-   * @param privilege privilege to grant
-   * @return the grant record we created for this grant. Will return ENTITY_NOT_FOUND if the
-   *     specified role couldn't be found. Should be retried in that case
-   */
-  @NotNull
-  PrivilegeResult grantPrivilegeOnSecurableToRole(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisEntityCore grantee,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityCore securable,
-      @NotNull PolarisPrivilege privilege);
-
-  /**
-   * Revoke a privilege on a catalog securable from a grantee.
-   *
-   * @param callCtx call context
-   * @param grantee resolved role, the grantee
-   * @param catalogPath path to that entity, cannot be null or empty unless securable is top-level
-   * @param securable securable entity, must have been resolved by the client. Can be the catalog
-   *     itself.
-   * @param privilege privilege to revoke
-   * @return the result. Will return ENTITY_NOT_FOUND if the * specified role couldn't be found.
-   *     Should be retried in that case. Will return GRANT_NOT_FOUND if the grant to revoke cannot
-   *     be found
-   */
-  @NotNull
-  PrivilegeResult revokePrivilegeOnSecurableFromRole(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisEntityCore grantee,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityCore securable,
-      @NotNull PolarisPrivilege privilege);
-
-  /** Result of a load grants call */
-  class LoadGrantsResult extends BaseResult {
-    // true if success. If false, the caller should retry because of some concurrent change
-    private final int grantsVersion;
-
-    // null if not success. Else set of grants records on a securable or to a grantee
-    private final List<PolarisGrantRecord> grantRecords;
-
-    // null if not success. Else, for each grant record, list of securable or grantee entities
-    private final List<PolarisBaseEntity> entities;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public LoadGrantsResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorCode,
-        @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.grantsVersion = 0;
-      this.grantRecords = null;
-      this.entities = null;
-    }
-
-    /**
-     * Constructor for success
-     *
-     * @param grantsVersion version of the grants
-     * @param grantRecords set of grant records
-     */
-    public LoadGrantsResult(
-        int grantsVersion,
-        @NotNull List<PolarisGrantRecord> grantRecords,
-        List<PolarisBaseEntity> entities) {
-      super(ReturnStatus.SUCCESS);
-      this.grantsVersion = grantsVersion;
-      this.grantRecords = grantRecords;
-      this.entities = entities;
-    }
-
-    @JsonCreator
-    private LoadGrantsResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") String extraInformation,
-        @JsonProperty("grantsVersion") int grantsVersion,
-        @JsonProperty("grantRecords") List<PolarisGrantRecord> grantRecords,
-        @JsonProperty("entities") List<PolarisBaseEntity> entities) {
-      super(returnStatus, extraInformation);
-      this.grantsVersion = grantsVersion;
-      this.grantRecords = grantRecords;
-      // old GS code might not serialize this argument
-      this.entities = entities;
-    }
-
-    public int getGrantsVersion() {
-      return grantsVersion;
-    }
-
-    public List<PolarisGrantRecord> getGrantRecords() {
-      return grantRecords;
-    }
-
-    public List<PolarisBaseEntity> getEntities() {
-      return entities;
-    }
-
-    @JsonIgnore
-    public Map<Long, PolarisBaseEntity> getEntitiesAsMap() {
-      return (this.getEntities() == null)
-          ? null
-          : this.getEntities().stream()
-              .collect(Collectors.toMap(PolarisBaseEntity::getId, entity -> entity));
-    }
-
-    @Override
-    public String toString() {
-      return "LoadGrantsResult{"
-          + "grantsVersion="
-          + grantsVersion
-          + ", grantRecords="
-          + grantRecords
-          + ", entities="
-          + entities
-          + ", returnStatus="
-          + getReturnStatus()
-          + '}';
-    }
-  }
-
-  /**
-   * This method should be used by the Polaris app to cache all grant records on a securable.
-   *
-   * @param callCtx call context
-   * @param securableCatalogId id of the catalog this securable belongs to
-   * @param securableId id of the securable
-   * @return the list of grants and the version of the grant records. We will return
-   *     ENTITY_NOT_FOUND if the securable cannot be found
-   */
-  @NotNull
-  LoadGrantsResult loadGrantsOnSecurable(
-      @NotNull PolarisCallContext callCtx, long securableCatalogId, long securableId);
-
-  /**
-   * This method should be used by the Polaris app to load all grants made to a grantee, either a
-   * role or a principal.
-   *
-   * @param callCtx call context
-   * @param granteeCatalogId id of the catalog this grantee belongs to
-   * @param granteeId id of the grantee
-   * @return the list of grants and the version of the grant records. We will return NULL if the
-   *     grantee does not exist
-   */
-  @NotNull
-  LoadGrantsResult loadGrantsToGrantee(
-      PolarisCallContext callCtx, long granteeCatalogId, long granteeId);
-
-  /** Result of a loadEntitiesChangeTracking call */
-  class ChangeTrackingResult extends BaseResult {
-
-    // null if not success. Else, will be null if the grant to revoke was not found
-    private final List<PolarisChangeTrackingVersions> changeTrackingVersions;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public ChangeTrackingResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorCode,
-        @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.changeTrackingVersions = null;
-    }
-
-    /**
-     * Constructor for success
-     *
-     * @param changeTrackingVersions change tracking versions
-     */
-    public ChangeTrackingResult(
-        @NotNull List<PolarisChangeTrackingVersions> changeTrackingVersions) {
-      super(ReturnStatus.SUCCESS);
-      this.changeTrackingVersions = changeTrackingVersions;
-    }
-
-    @JsonCreator
-    private ChangeTrackingResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") String extraInformation,
-        @JsonProperty("changeTrackingVersions")
-            List<PolarisChangeTrackingVersions> changeTrackingVersions) {
-      super(returnStatus, extraInformation);
-      this.changeTrackingVersions = changeTrackingVersions;
-    }
-
-    public List<PolarisChangeTrackingVersions> getChangeTrackingVersions() {
-      return changeTrackingVersions;
-    }
-  }
-
-  /**
-   * Load change tracking information for a set of entities in one single shot and return for each
-   * the version for the entity itself and the version associated to its grant records.
-   *
-   * @param callCtx call context
-   * @param entityIds list of catalog/entity pair ids for which we need to efficiently load the
-   *     version information, both entity version and grant records version.
-   * @return a list of version tracking information. Order in that returned list is the same as the
-   *     input list. Some elements might be NULL if the entity has been purged. Not expected to fail
-   */
-  @NotNull
-  ChangeTrackingResult loadEntitiesChangeTracking(
-      @NotNull PolarisCallContext callCtx, @NotNull List<PolarisEntityId> entityIds);
-
   /**
    * Load the entity from backend store. Will return NULL if the entity does not exist, i.e. has
    * been purged. The entity being loaded might have been dropped
@@ -1200,296 +688,4 @@ public interface PolarisMetaStoreManager {
    */
   @NotNull
   EntitiesResult loadTasks(@NotNull PolarisCallContext callCtx, String executorId, int limit);
-
-  /** Result of a getSubscopedCredsForEntity() call */
-  class ScopedCredentialsResult extends BaseResult {
-
-    // null if not success. Else, set of name/value pairs for the credentials
-    private final EnumMap<PolarisCredentialProperty, String> credentials;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public ScopedCredentialsResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorCode,
-        @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.credentials = null;
-    }
-
-    /**
-     * Constructor for success
-     *
-     * @param credentials credentials
-     */
-    public ScopedCredentialsResult(
-        @NotNull EnumMap<PolarisCredentialProperty, String> credentials) {
-      super(ReturnStatus.SUCCESS);
-      this.credentials = credentials;
-    }
-
-    @JsonCreator
-    private ScopedCredentialsResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") String extraInformation,
-        @JsonProperty("credentials") Map<String, String> credentials) {
-      super(returnStatus, extraInformation);
-      this.credentials = new EnumMap<>(PolarisCredentialProperty.class);
-      if (credentials != null) {
-        credentials.forEach(
-            (k, v) -> this.credentials.put(PolarisCredentialProperty.valueOf(k), v));
-      }
-    }
-
-    public EnumMap<PolarisCredentialProperty, String> getCredentials() {
-      return credentials;
-    }
-  }
-
-  /**
-   * Get a sub-scoped credentials for an entity against the provided allowed read and write
-   * locations.
-   *
-   * @param callCtx the polaris call context
-   * @param catalogId the catalog id
-   * @param entityId the entity id
-   * @param allowListOperation whether to allow LIST operation on the allowedReadLocations and
-   *     allowedWriteLocations
-   * @param allowedReadLocations a set of allowed to read locations
-   * @param allowedWriteLocations a set of allowed to write locations
-   * @return an enum map containing the scoped credentials
-   */
-  @NotNull
-  ScopedCredentialsResult getSubscopedCredsForEntity(
-      @NotNull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      boolean allowListOperation,
-      @NotNull Set<String> allowedReadLocations,
-      @NotNull Set<String> allowedWriteLocations);
-
-  /** Result of a validateAccessToLocations() call */
-  class ValidateAccessResult extends BaseResult {
-
-    // null if not success. Else, set of location/validationResult pairs for each location in the
-    // set
-    private final Map<String, String> validateResult;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public ValidateAccessResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorCode,
-        @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.validateResult = null;
-    }
-
-    /**
-     * Constructor for success
-     *
-     * @param validateResult validate result
-     */
-    public ValidateAccessResult(@NotNull Map<String, String> validateResult) {
-      super(ReturnStatus.SUCCESS);
-      this.validateResult = validateResult;
-    }
-
-    @JsonCreator
-    private ValidateAccessResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") String extraInformation,
-        @JsonProperty("validateResult") Map<String, String> validateResult) {
-      super(returnStatus, extraInformation);
-      this.validateResult = validateResult;
-    }
-
-    public Map<String, String> getValidateResult() {
-      return this.validateResult;
-    }
-  }
-
-  /**
-   * Validate whether the entity has access to the locations with the provided target operations
-   *
-   * @param callCtx the polaris call context
-   * @param catalogId the catalog id
-   * @param entityId the entity id
-   * @param actions a set of operation actions: READ/WRITE/LIST/DELETE/ALL
-   * @param locations a set of locations to verify
-   * @return a Map of {@code <location, validate result>}, a validate result value looks like this
-   *     <pre>
-   * {
-   *   "status" : "failure",
-   *   "actions" : {
-   *     "READ" : {
-   *       "message" : "The specified file was not found",
-   *       "status" : "failure"
-   *     },
-   *     "DELETE" : {
-   *       "message" : "One or more objects could not be deleted (Status Code: 200; Error Code: null)",
-   *       "status" : "failure"
-   *     },
-   *     "LIST" : {
-   *       "status" : "success"
-   *     },
-   *     "WRITE" : {
-   *       "message" : "Access Denied (Status Code: 403; Error Code: AccessDenied)",
-   *       "status" : "failure"
-   *     }
-   *   },
-   *   "message" : "Some of the integration checks failed. Check the Polaris documentation for more information."
-   * }
-   * </pre>
-   */
-  @NotNull
-  ValidateAccessResult validateAccessToLocations(
-      @NotNull PolarisCallContext callCtx,
-      long catalogId,
-      long entityId,
-      @NotNull Set<PolarisStorageActions> actions,
-      @NotNull Set<String> locations);
-
-  /**
-   * Represents an entry in the cache. If we refresh a cached entry, we will only refresh the
-   * information which have changed, based on the version of the entity
-   */
-  class CachedEntryResult extends BaseResult {
-
-    // the entity itself if it was loaded
-    private final @Nullable PolarisBaseEntity entity;
-
-    // version for the grant records, in case the entity was not loaded
-    private final int grantRecordsVersion;
-
-    private final @Nullable List<PolarisGrantRecord> entityGrantRecords;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public CachedEntryResult(
-        @NotNull PolarisMetaStoreManager.ReturnStatus errorCode,
-        @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.entity = null;
-      this.entityGrantRecords = null;
-      this.grantRecordsVersion = 0;
-    }
-
-    /**
-     * Constructor with success
-     *
-     * @param entity the entity for that cached entry
-     * @param grantRecordsVersion the version of the grant records
-     * @param entityGrantRecords the list of grant records
-     */
-    public CachedEntryResult(
-        @Nullable PolarisBaseEntity entity,
-        int grantRecordsVersion,
-        @Nullable List<PolarisGrantRecord> entityGrantRecords) {
-      super(ReturnStatus.SUCCESS);
-      this.entity = entity;
-      this.entityGrantRecords = entityGrantRecords;
-      this.grantRecordsVersion = grantRecordsVersion;
-    }
-
-    @JsonCreator
-    public CachedEntryResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") String extraInformation,
-        @Nullable @JsonProperty("entity") PolarisBaseEntity entity,
-        @JsonProperty("grantRecordsVersion") int grantRecordsVersion,
-        @Nullable @JsonProperty("entityGrantRecords") List<PolarisGrantRecord> entityGrantRecords) {
-      super(returnStatus, extraInformation);
-      this.entity = entity;
-      this.entityGrantRecords = entityGrantRecords;
-      this.grantRecordsVersion = grantRecordsVersion;
-    }
-
-    public @Nullable PolarisBaseEntity getEntity() {
-      return entity;
-    }
-
-    public int getGrantRecordsVersion() {
-      return grantRecordsVersion;
-    }
-
-    public @Nullable List<PolarisGrantRecord> getEntityGrantRecords() {
-      return entityGrantRecords;
-    }
-  }
-
-  /**
-   * Load a cached entry, i.e. an entity definition and associated grant records, from the backend
-   * store. The entity is identified by its id (entity catalog id and id).
-   *
-   * <p>For entities that can be grantees, the associated grant records will include both the grant
-   * records for this entity as a grantee and for this entity as a securable.
-   *
-   * @param callCtx call context
-   * @param entityCatalogId id of the catalog for that entity
-   * @param entityId id of the entity
-   * @return cached entry for this entity. Status will be ENTITY_NOT_FOUND if the entity was not
-   *     found
-   */
-  @NotNull
-  PolarisMetaStoreManager.CachedEntryResult loadCachedEntryById(
-      @NotNull PolarisCallContext callCtx, long entityCatalogId, long entityId);
-
-  /**
-   * Load a cached entry, i.e. an entity definition and associated grant records, from the backend
-   * store. The entity is identified by its name. Will return NULL if the entity does not exist,
-   * i.e. has been purged or dropped.
-   *
-   * <p>For entities that can be grantees, the associated grant records will include both the grant
-   * records for this entity as a grantee and for this entity as a securable.
-   *
-   * @param callCtx call context
-   * @param entityCatalogId id of the catalog for that entity
-   * @param parentId the id of the parent of that entity
-   * @param entityType the type of this entity
-   * @param entityName the name of this entity
-   * @return cached entry for this entity. Status will be ENTITY_NOT_FOUND if the entity was not
-   *     found
-   */
-  @NotNull
-  PolarisMetaStoreManager.CachedEntryResult loadCachedEntryByName(
-      @NotNull PolarisCallContext callCtx,
-      long entityCatalogId,
-      long parentId,
-      @NotNull PolarisEntityType entityType,
-      @NotNull String entityName);
-
-  /**
-   * Refresh a cached entity from the backend store. Will return NULL if the entity does not exist,
-   * i.e. has been purged or dropped. Else, will determine what has changed based on the version
-   * information sent by the caller and will return only what has changed.
-   *
-   * <p>For entities that can be grantees, the associated grant records will include both the grant
-   * records for this entity as a grantee and for this entity as a securable.
-   *
-   * @param callCtx call context
-   * @param entityType type of the entity whose cached entry we are refreshing
-   * @param entityCatalogId id of the catalog for that entity
-   * @param entityId the id of the entity to load
-   * @return cached entry for this entity. Status will be ENTITY_NOT_FOUND if the entity was not *
-   *     found
-   */
-  @NotNull
-  PolarisMetaStoreManager.CachedEntryResult refreshCachedEntity(
-      @NotNull PolarisCallContext callCtx,
-      int entityVersion,
-      int entityGrantRecordsVersion,
-      @NotNull PolarisEntityType entityType,
-      long entityCatalogId,
-      long entityId);
 }

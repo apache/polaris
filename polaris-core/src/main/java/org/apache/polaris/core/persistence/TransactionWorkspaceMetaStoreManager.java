@@ -31,6 +31,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -335,7 +336,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public PolarisMetaStoreManager.CachedEntryResult loadCachedEntryById(
+  public CachedEntryResult loadCachedEntryById(
       @NotNull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
     callCtx
         .getDiagServices()
@@ -344,7 +345,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public PolarisMetaStoreManager.CachedEntryResult loadCachedEntryByName(
+  public CachedEntryResult loadCachedEntryByName(
       @NotNull PolarisCallContext callCtx,
       long entityCatalogId,
       long parentId,
@@ -357,7 +358,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public PolarisMetaStoreManager.CachedEntryResult refreshCachedEntity(
+  public CachedEntryResult refreshCachedEntity(
       @NotNull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
