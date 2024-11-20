@@ -72,7 +72,6 @@ import org.slf4j.LoggerFactory;
  */
 public class IcebergCatalogAdapter
     implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService {
-  private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogAdapter.class);
 
   private final CallContextCatalogFactory catalogFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
@@ -412,7 +411,6 @@ public class IcebergCatalogAdapter
       String table,
       ReportMetricsRequest reportMetricsRequest,
       SecurityContext securityContext) {
-    LOGGER.info("ReportMetricsRequest: {}", reportMetricsRequest.report());
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 
