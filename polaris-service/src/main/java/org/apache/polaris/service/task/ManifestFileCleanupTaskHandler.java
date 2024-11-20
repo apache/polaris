@@ -83,8 +83,8 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
         LOGGER
             .atWarn()
             .addKeyValue("tableId", tableId)
-            .log("Cleanup task scheduled, but input file doesn't exist");
-        return true;
+            .log("Unknown task type {}", task.getTaskType());
+        return false;
       }
     }
   }
