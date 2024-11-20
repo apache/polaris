@@ -62,8 +62,6 @@ import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * {@link IcebergRestCatalogApiService} implementation that delegates operations to {@link

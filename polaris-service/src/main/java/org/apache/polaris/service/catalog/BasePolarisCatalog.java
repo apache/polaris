@@ -1255,9 +1255,12 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     public void doCommit(TableMetadata base, TableMetadata metadata) {
       LOGGER.debug(
           "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
-      LOGGER.info(
-          "doCommit full new metadata: {}",
-          PolarisObjectMapperUtil.serialize(getCurrentPolarisContext(), metadata));
+      LOGGER
+          .atDebug()
+          .setMessage("doCommit full new metadata: {}")
+          .addArgument(
+              () -> PolarisObjectMapperUtil.serialize(getCurrentPolarisContext(), metadata))
+          .log();
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       if (null == base && !namespaceExists(tableIdentifier.namespace())) {
         throw new NoSuchNamespaceException(
