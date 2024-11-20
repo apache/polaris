@@ -20,14 +20,18 @@ package org.apache.polaris.service.config;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 public class DefaultConfigurationStoreTest {
-
   @Test
   public void testGetConfiguration() {
     DefaultConfigurationStore defaultConfigurationStore =
@@ -107,4 +111,77 @@ public class DefaultConfigurationStoreTest {
     String keyTwoRealm3 = defaultConfigurationStore.getConfiguration(realm3Ctx, "key2");
     assertThat(keyTwoRealm3).isEqualTo(defaultKeyTwoValue);
   }
+
+  @Test
+  public void testDynamicConfig() {
+    InMemoryPolarisMetaStoreManagerFactory metastoreFactory =
+        new InMemoryPolarisMetaStoreManagerFactory();
+    PolarisCallContext polarisCtx =
+        new PolarisCallContext(
+            metastoreFactory.getOrCreateSessionSupplier(() -> "realm1").get(),
+            new PolarisDefaultDiagServiceImpl());
+
+    String key = "k1";
+    Map<String, Object> staticConfig = Map.of(key, 10);
+
+    assertThat(
+            new DefaultConfigurationStore(staticConfig, Map.of(), k -> Optional.empty())
+                .<Integer>getConfiguration(polarisCtx, key))
+        .as("The DynamicFeatureConfigResolver always returns Optional.empty()")
+        .isEqualTo(10);
+
+    assertThat(
+            new DefaultConfigurationStore(staticConfig, Map.of(), k -> Optional.of(5))
+                .<Integer>getConfiguration(polarisCtx, key))
+        .as("The DynamicFeatureConfigResolver always returns 5")
+        .isEqualTo(5);
+  }
+
+  @ParameterizedTest
+  @MethodSource("getTestConfigs")
+  public void testPrecedenceIsDynamicThenStaticPerRealmThenStaticGlobal(TestConfig testConfig) {
+    InMemoryPolarisMetaStoreManagerFactory metastoreFactory =
+        new InMemoryPolarisMetaStoreManagerFactory();
+
+    String realm = "realm1";
+    PolarisCallContext polarisCtx =
+        new PolarisCallContext(
+            metastoreFactory.getOrCreateSessionSupplier(() -> realm).get(),
+            new PolarisDefaultDiagServiceImpl());
+
+    String key = "k1";
+
+    Map<String, Object> staticConfig = new HashMap<>();
+    if (testConfig.staticConfig != null) {
+      staticConfig.put(key, testConfig.staticConfig);
+    }
+
+    Map<String, Object> realmConfig = new HashMap<>();
+    if (testConfig.realmConfig != null) {
+      realmConfig.put(key, testConfig.realmConfig);
+    }
+
+    DefaultConfigurationStore configStore =
+        new DefaultConfigurationStore(
+            staticConfig,
+            Map.of(realm, realmConfig),
+            (k) -> Optional.ofNullable(testConfig.dynamicConfig));
+    assertThat(configStore.<Integer>getConfiguration(polarisCtx, key))
+        .isEqualTo(testConfig.expectedValue);
+  }
+
+  private static Stream<TestConfig> getTestConfigs() {
+    return Stream.of(
+        new TestConfig(null, null, null, null),
+        new TestConfig(5, null, null, 5),
+        new TestConfig(5, 6, null, 6),
+        new TestConfig(5, 6, 7, 7),
+        new TestConfig(5, null, 7, 7),
+        new TestConfig(null, null, 7, 7),
+        new TestConfig(null, 6, 7, 7),
+        new TestConfig(null, 6, null, 6));
+  }
+
+  public record TestConfig(
+      Integer staticConfig, Integer realmConfig, Integer dynamicConfig, Integer expectedValue) {}
 }
