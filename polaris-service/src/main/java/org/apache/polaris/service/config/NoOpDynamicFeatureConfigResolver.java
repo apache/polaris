@@ -18,9 +18,11 @@
  */
 package org.apache.polaris.service.config;
 
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.Optional;
 
 /** An empty dynamic config resolver. */
+@JsonTypeName("no-op")
 public class NoOpDynamicFeatureConfigResolver implements DynamicFeatureConfigResolver {
   @Override
   public Optional<Object> resolve(String key) {
