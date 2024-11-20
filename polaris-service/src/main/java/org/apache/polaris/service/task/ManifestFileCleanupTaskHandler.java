@@ -65,7 +65,8 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
 
   @Override
   public boolean canHandleTask(TaskEntity task) {
-    return task.getTaskType() == AsyncTaskType.FILE_CLEANUP;
+    return task.getTaskType() == AsyncTaskType.MANIFEST_FILE_CLEANUP
+        || task.getTaskType() == AsyncTaskType.METADATA_FILE_BATCH_CLEANUP;
   }
 
   @Override
@@ -73,10 +74,10 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
     ManifestCleanupTask cleanupTask = task.readData(ManifestCleanupTask.class);
     TableIdentifier tableId = cleanupTask.getTableId();
     try (FileIO authorizedFileIO = fileIOSupplier.apply(task)) {
-      if (cleanupTask.getManifestFileData() != null) {
+      if (task.getTaskType() == AsyncTaskType.MANIFEST_FILE_CLEANUP) {
         ManifestFile manifestFile = decodeManifestData(cleanupTask.getManifestFileData());
         return cleanUpManifestFile(manifestFile, authorizedFileIO, tableId);
-      } else if (cleanupTask.getMetadataFiles() != null) {
+      } else if (task.getTaskType() == AsyncTaskType.METADATA_FILE_BATCH_CLEANUP) {
         return cleanUpMetadataFiles(cleanupTask.getMetadataFiles(), authorizedFileIO, tableId);
       } else {
         LOGGER

@@ -52,7 +52,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
   private final TaskExecutor taskExecutor;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final Function<TaskEntity, FileIO> fileIOSupplier;
-  private static final int BATCH_SIZE = 10;
+  private static final String BATCH_SIZE_CONFIG_KEY = "TABLE_METADATA_CLEANUP_BATCH_SIZE";
 
   public TableCleanupTaskHandler(
       TaskExecutor taskExecutor,
@@ -189,7 +189,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .setName(taskName)
                   .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
                   .setCreateTimestamp(polarisCallContext.getClock().millis())
-                  .withTaskType(AsyncTaskType.FILE_CLEANUP)
+                  .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
                   .withData(
                       new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                           tableEntity.getTableIdentifier(), TaskUtils.encodeManifestFile(mf)))
@@ -207,7 +207,11 @@ public class TableCleanupTaskHandler implements TaskHandler {
       TableLikeEntity tableEntity,
       PolarisMetaStoreManager metaStoreManager,
       PolarisCallContext polarisCallContext) {
-    return getMetadataFileBatches(tableMetadata).stream()
+    int batchSize =
+        polarisCallContext
+            .getConfigurationStore()
+            .getConfiguration(polarisCallContext, BATCH_SIZE_CONFIG_KEY, 10);
+    return getMetadataFileBatches(tableMetadata, batchSize).stream()
         .map(
             metadataBatch -> {
               String taskName =
@@ -227,7 +231,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .setName(taskName)
                   .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
                   .setCreateTimestamp(polarisCallContext.getClock().millis())
-                  .withTaskType(AsyncTaskType.FILE_CLEANUP)
+                  .withTaskType(AsyncTaskType.METADATA_FILE_BATCH_CLEANUP)
                   .withData(
                       new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                           tableEntity.getTableIdentifier(), metadataBatch))
@@ -236,7 +240,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
             });
   }
 
-  private List<List<String>> getMetadataFileBatches(TableMetadata tableMetadata) {
+  private List<List<String>> getMetadataFileBatches(TableMetadata tableMetadata, int batchSize) {
     List<List<String>> result = new ArrayList<>();
     List<String> metadataFiles =
         Stream.concat(
@@ -244,8 +248,8 @@ public class TableCleanupTaskHandler implements TaskHandler {
                 tableMetadata.statisticsFiles().stream().map(StatisticsFile::path))
             .toList();
 
-    for (int i = 0; i < metadataFiles.size(); i += BATCH_SIZE) {
-      result.add(metadataFiles.subList(i, Math.min(i + BATCH_SIZE, metadataFiles.size())));
+    for (int i = 0; i < metadataFiles.size(); i += batchSize) {
+      result.add(metadataFiles.subList(i, Math.min(i + batchSize, metadataFiles.size())));
     }
     return result;
   }

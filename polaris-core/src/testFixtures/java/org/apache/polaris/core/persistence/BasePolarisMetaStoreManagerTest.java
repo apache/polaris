@@ -240,7 +240,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
         .setName(taskName)
         .withData("data")
         .setId(id)
-        .withTaskType(AsyncTaskType.FILE_CLEANUP)
+        .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
         .setCreateTimestamp(Instant.now().toEpochMilli())
         .build();
   }

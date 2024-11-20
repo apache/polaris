@@ -82,7 +82,7 @@ class ManifestFileCleanupTaskHandlerTest {
       fileIO.deleteFile(manifestFile.path());
       TaskEntity task =
           new TaskEntity.Builder()
-              .withTaskType(AsyncTaskType.FILE_CLEANUP)
+              .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
               .withData(
                   new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                       tableIdentifier,
@@ -112,7 +112,7 @@ class ManifestFileCleanupTaskHandlerTest {
               fileIO, "manifest1.avro", 100L, "dataFile1.parquet", "dataFile2.parquet");
       TaskEntity task =
           new TaskEntity.Builder()
-              .withTaskType(AsyncTaskType.FILE_CLEANUP)
+              .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
               .withData(
                   new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                       tableIdentifier,
@@ -157,7 +157,7 @@ class ManifestFileCleanupTaskHandlerTest {
           TaskTestUtils.manifestFile(fileIO, "manifest1.avro", 100L, dataFile1Path, dataFile2Path);
       TaskEntity task =
           new TaskEntity.Builder()
-              .withTaskType(AsyncTaskType.FILE_CLEANUP)
+              .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
               .withData(
                   new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                       tableIdentifier,
@@ -220,7 +220,7 @@ class ManifestFileCleanupTaskHandlerTest {
           TaskTestUtils.manifestFile(fileIO, "manifest1.avro", 100L, dataFile1Path, dataFile2Path);
       TaskEntity task =
           new TaskEntity.Builder()
-              .withTaskType(AsyncTaskType.FILE_CLEANUP)
+              .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
               .withData(
                   new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                       tableIdentifier,
@@ -318,7 +318,7 @@ class ManifestFileCleanupTaskHandlerTest {
 
       TaskEntity task =
           new TaskEntity.Builder()
-              .withTaskType(AsyncTaskType.FILE_CLEANUP)
+              .withTaskType(AsyncTaskType.METADATA_FILE_BATCH_CLEANUP)
               .withData(
                   new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                       tableIdentifier, cleanupFiles))
@@ -370,7 +370,7 @@ class ManifestFileCleanupTaskHandlerTest {
 
       TaskEntity task =
           new TaskEntity.Builder()
-              .withTaskType(AsyncTaskType.FILE_CLEANUP)
+              .withTaskType(AsyncTaskType.METADATA_FILE_BATCH_CLEANUP)
               .withData(
                   new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                       tableIdentifier, List.of(statisticsFile.path())))
@@ -432,7 +432,7 @@ class ManifestFileCleanupTaskHandlerTest {
 
       TaskEntity task =
           new TaskEntity.Builder()
-              .withTaskType(AsyncTaskType.FILE_CLEANUP)
+              .withTaskType(AsyncTaskType.METADATA_FILE_BATCH_CLEANUP)
               .withData(
                   new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                       tableIdentifier, List.of(statisticsFile.path())))

@@ -114,7 +114,7 @@ class TableCleanupTaskHandlerTest {
                   assertThat(taskEntity)
                       .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                       .extracting(TaskEntity::of)
-                      .returns(AsyncTaskType.FILE_CLEANUP, TaskEntity::getTaskType)
+                      .returns(AsyncTaskType.MANIFEST_FILE_CLEANUP, TaskEntity::getTaskType)
                       .returns(
                           new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                               tableIdentifier,
@@ -126,7 +126,7 @@ class TableCleanupTaskHandlerTest {
                   assertThat(taskEntity)
                       .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                       .extracting(TaskEntity::of)
-                      .returns(AsyncTaskType.FILE_CLEANUP, TaskEntity::getTaskType)
+                      .returns(AsyncTaskType.METADATA_FILE_BATCH_CLEANUP, TaskEntity::getTaskType)
                       .returns(
                           new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                               tableIdentifier, List.of(statisticsFile.path())),
@@ -264,7 +264,7 @@ class TableCleanupTaskHandlerTest {
                   assertThat(taskEntity)
                       .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                       .extracting(TaskEntity::of)
-                      .returns(AsyncTaskType.FILE_CLEANUP, TaskEntity::getTaskType)
+                      .returns(AsyncTaskType.MANIFEST_FILE_CLEANUP, TaskEntity::getTaskType)
                       .returns(
                           new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                               tableIdentifier,
@@ -276,7 +276,7 @@ class TableCleanupTaskHandlerTest {
                   assertThat(taskEntity)
                       .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                       .extracting(TaskEntity::of)
-                      .returns(AsyncTaskType.FILE_CLEANUP, TaskEntity::getTaskType)
+                      .returns(AsyncTaskType.MANIFEST_FILE_CLEANUP, TaskEntity::getTaskType)
                       .returns(
                           new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                               tableIdentifier,
@@ -365,14 +365,37 @@ class TableCleanupTaskHandlerTest {
               .filter(
                   entity -> {
                     AsyncTaskType taskType = TaskEntity.of(entity).getTaskType();
-                    return taskType == AsyncTaskType.FILE_CLEANUP;
+                    return taskType == AsyncTaskType.MANIFEST_FILE_CLEANUP;
                   })
               .toList();
+      List<PolarisBaseEntity> metadataCleanupTasks =
+          entities.stream()
+              .filter(
+                  entity -> {
+                    AsyncTaskType taskType = TaskEntity.of(entity).getTaskType();
+                    return taskType == AsyncTaskType.METADATA_FILE_BATCH_CLEANUP;
+                  })
+              .toList();
+
+      assertThat(metadataCleanupTasks)
+          .hasSize(1)
+          .satisfiesExactlyInAnyOrder(
+              taskEntity ->
+                  assertThat(taskEntity)
+                      .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
+                      .extracting(TaskEntity::of)
+                      .returns(
+                          new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                              tableIdentifier,
+                              List.of(statisticsFile1.path(), statisticsFile2.path())),
+                          entity ->
+                              entity.readData(
+                                  ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
 
       assertThat(manifestCleanupTasks)
           // all three manifests should be present, even though one is excluded from the latest
           // snapshot
-          .hasSize(4)
+          .hasSize(3)
           .satisfiesExactlyInAnyOrder(
               taskEntity ->
                   assertThat(taskEntity)
@@ -404,17 +427,6 @@ class TableCleanupTaskHandlerTest {
                           new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                               tableIdentifier,
                               Base64.encodeBase64String(ManifestFiles.encode(manifestFile3))),
-                          entity ->
-                              entity.readData(
-                                  ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
-              taskEntity ->
-                  assertThat(taskEntity)
-                      .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
-                      .extracting(TaskEntity::of)
-                      .returns(
-                          new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                              tableIdentifier,
-                              List.of(statisticsFile1.path(), statisticsFile2.path())),
                           entity ->
                               entity.readData(
                                   ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
@@ -513,14 +525,38 @@ class TableCleanupTaskHandlerTest {
               .filter(
                   entity -> {
                     AsyncTaskType taskType = TaskEntity.of(entity).getTaskType();
-                    return taskType == AsyncTaskType.FILE_CLEANUP;
+                    return taskType == AsyncTaskType.MANIFEST_FILE_CLEANUP;
+                  })
+              .toList();
+      List<PolarisBaseEntity> metadataCleanupTasks =
+          entities.stream()
+              .filter(
+                  entity -> {
+                    AsyncTaskType taskType = TaskEntity.of(entity).getTaskType();
+                    return taskType == AsyncTaskType.METADATA_FILE_BATCH_CLEANUP;
                   })
               .toList();
 
+      assertThat(metadataCleanupTasks)
+          .hasSize(1)
+          .satisfiesExactlyInAnyOrder(
+              taskEntity ->
+                  assertThat(taskEntity)
+                      .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
+                      .extracting(TaskEntity::of)
+                      .returns(
+                          new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                              tableIdentifier,
+                              List.of(
+                                  firstMetadataFile,
+                                  statisticsFile1.path(),
+                                  statisticsFile2.path())),
+                          entity ->
+                              entity.readData(
+                                  ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
+
       assertThat(manifestCleanupTasks)
-          // all three manifests should be present, even though one is excluded from the latest
-          // snapshot
-          .hasSize(4)
+          .hasSize(3)
           .satisfiesExactlyInAnyOrder(
               taskEntity ->
                   assertThat(taskEntity)
@@ -552,20 +588,6 @@ class TableCleanupTaskHandlerTest {
                           new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                               tableIdentifier,
                               Base64.encodeBase64String(ManifestFiles.encode(manifestFile3))),
-                          entity ->
-                              entity.readData(
-                                  ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
-              taskEntity ->
-                  assertThat(taskEntity)
-                      .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
-                      .extracting(TaskEntity::of)
-                      .returns(
-                          new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                              tableIdentifier,
-                              List.of(
-                                  firstMetadataFile,
-                                  statisticsFile1.path(),
-                                  statisticsFile2.path())),
                           entity ->
                               entity.readData(
                                   ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
