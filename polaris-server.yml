@@ -73,7 +73,8 @@ featureConfiguration:
     - AZURE
     - FILE
 
-dynamicFeatureConfigResolver: no-op
+dynamicFeatureConfigResolver:
+  type: no-op
 
 callContextResolver:
   type: default

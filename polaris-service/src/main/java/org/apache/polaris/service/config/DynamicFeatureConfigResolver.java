@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.config;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.dropwizard.jackson.Discoverable;
 import java.util.Optional;
 
@@ -25,6 +26,7 @@ import java.util.Optional;
  * DynamicFeatureConfigResolvers dynamically resolve featureConfigurations. This is useful for
  * integration with feature flag systems which are intended for fetching configs at runtime.
  */
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 public interface DynamicFeatureConfigResolver extends Discoverable {
   /**
    * Resolves a dynamic config by its key name.
