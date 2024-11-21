@@ -103,12 +103,12 @@ import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -615,19 +615,17 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
     // Iterate starting at the parent, since the most common case should be to manage grants as
     // high up in the resource hierarchy as possible, so we expect earlier termination.
-    for (ResolvedPolarisEntity resolvedSecurableEntity : resolvedPath.getResolvedFullPath()) {
+    for (PolarisEntity resolvedSecurableEntity : resolvedPath.getRawFullPath()) {
       PolarisGrantManager.LoadGrantsResult grantsResult =
           grantManager.loadGrantsOnSecurable(
-              callContext,
-              resolvedSecurableEntity.getEntity().getCatalogId(),
-              resolvedSecurableEntity.getEntity().getId());
+              callContext, resolvedSecurableEntity.getCatalogId(), resolvedSecurableEntity.getId());
       callContext
           .getDiagServices()
           .check(
               grantsResult.isSuccess(),
               "no_grants_for_securable",
               "unable to load grants for securable %s",
-              resolvedSecurableEntity.getEntity().getId());
+              resolvedSecurableEntity.getId());
       for (PolarisGrantRecord grantRecord : grantsResult.getGrantRecords()) {
         if (matchesOrIsSubsumedBy(
             desiredPrivilege, PolarisPrivilege.fromCode(grantRecord.getPrivilegeCode()))) {
