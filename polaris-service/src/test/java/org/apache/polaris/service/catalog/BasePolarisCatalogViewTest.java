@@ -49,6 +49,8 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.EntityCacheGrantManager;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
@@ -88,8 +90,9 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             },
             Clock.systemDefaultZone());
 
+    EntityCache entityCache = new EntityCache(metaStoreManager);
     PolarisEntityManager entityManager =
-        new PolarisEntityManager(metaStoreManager, new StorageCredentialCache());
+        new PolarisEntityManager(metaStoreManager, entityCache, new StorageCredentialCache());
 
     CallContext callContext = CallContext.of(null, polarisContext);
     CallContext.setCurrentContext(callContext);
@@ -114,7 +117,10 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             entityManager,
             metaStoreManager,
             authenticatedRoot,
-            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
+            new PolarisAuthorizerImpl(
+                new PolarisConfigurationStore() {},
+                new EntityCacheGrantManager.EntityCacheGrantManagerFactory(
+                    (realm) -> metaStoreManager, (realm) -> entityCache)));
     adminService.createCatalog(
         new CatalogEntity.Builder()
             .setName(CATALOG_NAME)

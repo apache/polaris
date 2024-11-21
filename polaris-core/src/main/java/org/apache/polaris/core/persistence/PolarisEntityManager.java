@@ -51,11 +51,14 @@ public class PolarisEntityManager {
   /**
    * @param metaStoreManager the metastore manager for the current realm
    * @param credentialCache the storage credential cache for the current realm
+   * @param entityCache
    */
   public PolarisEntityManager(
-      PolarisMetaStoreManager metaStoreManager, StorageCredentialCache credentialCache) {
+      PolarisMetaStoreManager metaStoreManager,
+      EntityCache entityCache,
+      StorageCredentialCache credentialCache) {
     this.metaStoreManager = metaStoreManager;
-    this.entityCache = new EntityCache(metaStoreManager);
+    this.entityCache = entityCache;
     this.credentialCache = credentialCache;
   }
 

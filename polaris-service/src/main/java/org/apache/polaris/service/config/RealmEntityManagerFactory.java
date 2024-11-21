@@ -23,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,7 @@ public class RealmEntityManagerFactory {
           LOGGER.info("Initializing new PolarisEntityManager for realm {}", r);
           return new PolarisEntityManager(
               metaStoreManagerFactory.getOrCreateMetaStoreManager(context),
+              new EntityCache(metaStoreManagerFactory.getOrCreateMetaStoreManager(context)),
               metaStoreManagerFactory.getOrCreateStorageCredentialCache(context));
         });
   }

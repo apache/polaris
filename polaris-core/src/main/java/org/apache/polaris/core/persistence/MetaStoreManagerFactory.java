@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.monitor.PolarisMetricRegistry;
@@ -33,7 +34,7 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
  * configuration
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
-public interface MetaStoreManagerFactory {
+public interface MetaStoreManagerFactory extends PolarisGrantManager.Factory {
 
   PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext);
 
@@ -49,4 +50,17 @@ public interface MetaStoreManagerFactory {
 
   /** Purge all metadata for the realms provided */
   void purgeRealms(List<String> realms);
+
+  /**
+   * Default {@link PolarisGrantManager} factory that returns the {@link PolarisMetaStoreManager} as
+   * the grant manager.
+   *
+   * @param realm the current realm
+   * @return the {@link PolarisMetaStoreManager} returned by {@link
+   *     #getOrCreateMetaStoreManager(RealmContext)}
+   */
+  @Override
+  default PolarisGrantManager getGrantManagerForRealm(RealmContext realm) {
+    return getOrCreateMetaStoreManager(realm);
+  }
 }

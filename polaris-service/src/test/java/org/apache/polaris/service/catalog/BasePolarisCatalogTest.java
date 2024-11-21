@@ -81,6 +81,8 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.EntityCacheGrantManager;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -157,7 +159,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
               }
             },
             Clock.systemDefaultZone());
-    entityManager = new PolarisEntityManager(metaStoreManager, new StorageCredentialCache());
+    EntityCache entityCache = new EntityCache(metaStoreManager);
+    entityManager =
+        new PolarisEntityManager(metaStoreManager, entityCache, new StorageCredentialCache());
 
     CallContext callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
@@ -182,7 +186,11 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             entityManager,
             metaStoreManager,
             authenticatedRoot,
-            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
+            new PolarisAuthorizerImpl(
+                new PolarisConfigurationStore() {},
+                new EntityCacheGrantManager.EntityCacheGrantManagerFactory(
+                    (realm) -> metaStoreManager, (realm) -> entityCache)));
+
     String storageLocation = "s3://my-bucket/path/to/data";
     storageConfigModel =
         AwsStorageConfigInfo.builder()
