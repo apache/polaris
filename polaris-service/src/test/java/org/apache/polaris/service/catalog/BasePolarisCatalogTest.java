@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.iceberg.BaseTable;
@@ -206,8 +205,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                     PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                 .addProperty(
                     PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    PolarisConfiguration.METADATA_CACHE_MAX_BYTES.catalogConfig(), "-1")
+                .addProperty(PolarisConfiguration.METADATA_CACHE_MAX_BYTES.catalogConfig(), "-1")
                 .setStorageConfigurationInfo(storageConfigModel, storageLocation)
                 .build());
 
@@ -1581,7 +1579,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             metaStoreManager,
             passthroughView,
             () -> {
-              throw new IllegalStateException("Fell back even though a cache entry should be updated on write");
+              throw new IllegalStateException(
+                  "Fell back even though a cache entry should be updated on write");
             });
 
     Assertions.assertThat(reloadedMetadata).isNotSameAs(cachedMetadata);

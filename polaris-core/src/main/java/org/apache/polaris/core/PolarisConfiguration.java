@@ -234,9 +234,9 @@ public class PolarisConfiguration<T> {
           .key("METADATA_CACHE_MAX_BYTES")
           .catalogConfig("metadata.cache.max.bytes")
           .description(
-              "If nonzero, the approximate max size a table's metadata can be in order to be cached in the persistence" +
-                  " layer. If zero, no metadata will be cached or served from the cache. If -1, all metadata" +
-                  " will be cached.")
+              "If nonzero, the approximate max size a table's metadata can be in order to be cached in the persistence"
+                  + " layer. If zero, no metadata will be cached or served from the cache. If -1, all metadata"
+                  + " will be cached.")
           .defaultValue(METADATA_CACHE_MAX_BYTES_NO_CACHING)
           .validation(value -> value >= -1)
           .build();

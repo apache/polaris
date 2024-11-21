@@ -27,7 +27,6 @@ import com.google.common.collect.Iterables;
 import com.google.common.collect.Sets;
 import java.io.Closeable;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1387,11 +1386,12 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                   catalogEntity,
                   PolarisConfiguration.METADATA_CACHE_MAX_BYTES);
       String metadataJson = TableMetadataParser.toJson(metadata);
-      boolean shouldPersistMetadata = switch (maxMetadataCacheBytes) {
-        case PolarisConfiguration.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING -> true;
-        case PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING -> false;
-        default -> metadataJson.length() <= maxMetadataCacheBytes;
-      };
+      boolean shouldPersistMetadata =
+          switch (maxMetadataCacheBytes) {
+            case PolarisConfiguration.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING -> true;
+            case PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING -> false;
+            default -> metadataJson.length() <= maxMetadataCacheBytes;
+          };
       final TableLikeEntity.Builder builder;
       if (null == entity) {
         existingLocation = null;
