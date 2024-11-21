@@ -31,13 +31,13 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,7 +71,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   // Catalog, Principal, and PrincipalRole.
   // This simulated entity will be used if the actual resolver fails to resolve the rootContainer
   // on the backend due to compatibility mismatches.
-  private ResolvedPolarisEntity simulatedResolvedRootContainerEntity = null;
+  private PolarisEntity simulatedResolvedRootContainerEntity = null;
 
   private int currentPathIndex = 0;
 
@@ -209,16 +209,19 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
             "Returning null for key {} due to size mismatch from getPassthroughResolvedPath "
                 + "resolvedPath: {}, requestedPath.getEntityNames(): {}",
             key,
-            resolvedPath.stream().map(ResolvedPolarisEntity::new).collect(Collectors.toList()),
+            resolvedPath,
             requestedPath.getEntityNames());
         return null;
       }
     }
 
-    List<ResolvedPolarisEntity> resolvedEntities = new ArrayList<>();
-    resolvedEntities.add(
-        new ResolvedPolarisEntity(passthroughResolver.getResolvedReferenceCatalog()));
-    resolvedPath.forEach(cacheEntry -> resolvedEntities.add(new ResolvedPolarisEntity(cacheEntry)));
+    List<PolarisEntity> resolvedEntities = new ArrayList<>();
+    EntityCacheEntry referenceCatalog = passthroughResolver.getResolvedReferenceCatalog();
+    if (referenceCatalog != null) {
+      resolvedEntities.add(PolarisEntity.of(referenceCatalog.getEntity()));
+    }
+    resolvedPath.forEach(
+        cacheEntry -> resolvedEntities.add(PolarisEntity.of(cacheEntry.getEntity())));
     LOGGER.debug(
         "Returning resolvedEntities from getPassthroughResolvedPath: {}", resolvedEntities);
     return new PolarisResolvedPathWrapper(resolvedEntities);
@@ -265,11 +268,11 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   }
 
   public void setSimulatedResolvedRootContainerEntity(
-      ResolvedPolarisEntity simulatedResolvedRootContainerEntity) {
+      PolarisEntity simulatedResolvedRootContainerEntity) {
     this.simulatedResolvedRootContainerEntity = simulatedResolvedRootContainerEntity;
   }
 
-  private ResolvedPolarisEntity getResolvedRootContainerEntity() {
+  private PolarisEntity getResolvedRootContainerEntity() {
     if (primaryResolverStatus.getStatus() != ResolverStatus.StatusEnum.SUCCESS) {
       return null;
     }
@@ -280,7 +283,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
       LOGGER.debug("Failed to find rootContainer, so using simulated rootContainer instead.");
       return simulatedResolvedRootContainerEntity;
     }
-    return new ResolvedPolarisEntity(resolvedCacheEntry);
+    return PolarisEntity.of(resolvedCacheEntry.getEntity());
   }
 
   public PolarisResolvedPathWrapper getResolvedRootContainerEntityAsPath() {
@@ -300,14 +303,13 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     if (prependRootContainer) {
       // Operations directly on Catalogs also consider the root container to be a parent of its
       // authorization chain.
-      // TODO: Throw appropriate Catalog NOT_FOUND exception before any call to
-      // getResolvedReferenceCatalogEntity().
       return new PolarisResolvedPathWrapper(
           List.of(
-              getResolvedRootContainerEntity(), new ResolvedPolarisEntity(resolvedCachedCatalog)));
+              getResolvedRootContainerEntity(),
+              PolarisEntity.of(resolvedCachedCatalog.getEntity())));
     } else {
       return new PolarisResolvedPathWrapper(
-          List.of(new ResolvedPolarisEntity(resolvedCachedCatalog)));
+          List.of(PolarisEntity.of(resolvedCachedCatalog.getEntity())));
     }
   }
 
@@ -355,12 +357,16 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
       }
     }
 
-    List<ResolvedPolarisEntity> resolvedEntities = new ArrayList<>();
+    List<PolarisEntity> resolvedEntities = new ArrayList<>();
     if (prependRootContainer) {
       resolvedEntities.add(getResolvedRootContainerEntity());
     }
-    resolvedEntities.add(new ResolvedPolarisEntity(primaryResolver.getResolvedReferenceCatalog()));
-    resolvedPath.forEach(cacheEntry -> resolvedEntities.add(new ResolvedPolarisEntity(cacheEntry)));
+    EntityCacheEntry referenceCatalog = primaryResolver.getResolvedReferenceCatalog();
+    if (referenceCatalog != null) {
+      resolvedEntities.add(PolarisEntity.of(referenceCatalog.getEntity()));
+    }
+    resolvedPath.forEach(
+        cacheEntry -> resolvedEntities.add(PolarisEntity.of(cacheEntry.getEntity())));
     return new PolarisResolvedPathWrapper(resolvedEntities);
   }
 
@@ -377,7 +383,11 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     if (resolvedPath.getRawLeafEntity() != null
         && subType != PolarisEntitySubType.ANY_SUBTYPE
         && resolvedPath.getRawLeafEntity().getSubType() != subType) {
-      return null;
+      if (true) {
+        if (true) {
+          return null;
+        }
+      }
     }
     return resolvedPath;
   }
@@ -403,10 +413,10 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
       return null;
     }
 
-    ResolvedPolarisEntity resolvedRootContainerEntity = getResolvedRootContainerEntity();
+    PolarisEntity resolvedRootContainerEntity = getResolvedRootContainerEntity();
     return resolvedRootContainerEntity == null
-        ? new PolarisResolvedPathWrapper(List.of(new ResolvedPolarisEntity(resolvedCacheEntry)))
+        ? new PolarisResolvedPathWrapper(List.of(PolarisEntity.of(resolvedCacheEntry.getEntity())))
         : new PolarisResolvedPathWrapper(
-            List.of(resolvedRootContainerEntity, new ResolvedPolarisEntity(resolvedCacheEntry)));
+            List.of(resolvedRootContainerEntity, PolarisEntity.of(resolvedCacheEntry.getEntity())));
   }
 }

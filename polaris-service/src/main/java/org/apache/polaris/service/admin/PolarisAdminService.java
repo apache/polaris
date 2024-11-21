@@ -191,7 +191,7 @@ public class PolarisAdminService {
 
     // TODO: If we do add more "self" privilege operations for PRINCIPAL targets this should
     // be extracted into an EnumSet and/or pushed down into PolarisAuthorizer.
-    if (topLevelEntityWrapper.getResolvedLeafEntity().getEntity().getId()
+    if (topLevelEntityWrapper.getResolvedLeafEntity().getId()
             == authenticatedPrincipal.getPrincipalEntity().getId()
         && (op.equals(PolarisAuthorizableOperation.ROTATE_CREDENTIALS)
             || op.equals(PolarisAuthorizableOperation.RESET_CREDENTIALS))) {
