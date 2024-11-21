@@ -18,17 +18,24 @@
  */
 package org.apache.polaris.core.persistence.cache;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.BaseResult;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * PolarisGrantManger implementation that uses an EntityCache to retrieve entities and is backed by
@@ -37,8 +44,11 @@ import org.jetbrains.annotations.Nullable;
  * EntityCacheEntry} specifics.
  */
 public class EntityCacheGrantManager implements PolarisGrantManager {
+  private static final Logger LOGGER = LoggerFactory.getLogger(EntityCacheGrantManager.class);
   private final PolarisGrantManager delegateGrantManager;
   private final EntityCache entityCache;
+  private PolarisGrantRecord serviceAdminRootContainerGrant;
+  private PolarisBaseEntity serviceAdminEntity;
 
   public static final class EntityCacheGrantManagerFactory implements PolarisGrantManager.Factory {
     private final PolarisGrantManager.Factory delegateGrantManagerFactory;
@@ -73,6 +83,7 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
     try {
       return delegateGrantManager.grantUsageOnRoleToGrantee(callCtx, catalog, role, grantee);
     } finally {
+      LOGGER.debug("Invalidating cache for role {} and grantee {}", role, grantee);
       invalidate(role);
       invalidate(grantee);
     }
@@ -94,6 +105,7 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
     try {
       return delegateGrantManager.revokeUsageOnRoleFromGrantee(callCtx, catalog, role, grantee);
     } finally {
+      LOGGER.debug("Invalidating cache for role {} and grantee {}", role, grantee);
       invalidate(role);
       invalidate(grantee);
     }
@@ -110,6 +122,7 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
       return delegateGrantManager.grantPrivilegeOnSecurableToRole(
           callCtx, grantee, catalogPath, securable, privilege);
     } finally {
+      LOGGER.debug("Invalidating cache for securable {} and grantee {}", securable, grantee);
       invalidate(securable);
       invalidate(grantee);
     }
@@ -126,6 +139,7 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
       return delegateGrantManager.revokePrivilegeOnSecurableFromRole(
           callCtx, grantee, catalogPath, securable, privilege);
     } finally {
+      LOGGER.debug("Invalidating cache for securable {} and grantee {}", securable, grantee);
       invalidate(securable);
       invalidate(grantee);
     }
@@ -139,18 +153,64 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
     if (lookupResult == null || lookupResult.getCacheEntry() == null) {
       return new LoadGrantsResult(BaseResult.ReturnStatus.GRANT_NOT_FOUND, null);
     }
+    List<PolarisGrantRecord> grantRecords =
+        lookupResult.getCacheEntry().getGrantRecordsAsSecurable();
     List<PolarisBaseEntity> granteeList =
-        lookupResult.getCacheEntry().getGrantRecordsAsSecurable().stream()
+        grantRecords.stream()
             .map(
                 gr ->
                     entityCache.getOrLoadEntityById(
                         callCtx, gr.getGranteeCatalogId(), gr.getGranteeId()))
             .filter(lr -> lr != null && lr.getCacheEntry() != null)
             .map(lr -> lr.getCacheEntry().getEntity())
-            .collect(Collectors.toList());
+            // make it a mutable list
+            .collect(
+                Collector.of(
+                    ArrayList::new,
+                    List::add,
+                    (l, r) -> {
+                      l.addAll(r);
+                      return l;
+                    },
+                    Collector.Characteristics.IDENTITY_FINISH));
+
+    // If the securable is the root container, then we need to add a grant record for the
+    // service_admin
+    // PrincipalRole, which is the only role that has the SERVICE_MANAGE_ACCESS privilege on the
+    // root
+    if (lookupResult
+        .getCacheEntry()
+        .getEntity()
+        .getName()
+        .equals(PolarisEntityConstants.getRootContainerName())) {
+      if (serviceAdminEntity == null || serviceAdminRootContainerGrant == null) {
+        EntityCacheLookupResult serviceAdminRole =
+            entityCache.getOrLoadEntityByName(
+                callCtx,
+                new EntityCacheByNameKey(
+                    0L,
+                    0L,
+                    PolarisEntityType.PRINCIPAL_ROLE,
+                    PolarisEntityConstants.getNameOfPrincipalServiceAdminRole()));
+        if (serviceAdminRole == null || serviceAdminRole.getCacheEntry() == null) {
+          LOGGER.error("Failed to resolve service_admin PrincipalRole");
+          return new LoadGrantsResult(BaseResult.ReturnStatus.GRANT_NOT_FOUND, null);
+        }
+        serviceAdminRootContainerGrant =
+            new PolarisGrantRecord(
+                0L,
+                0L,
+                serviceAdminRole.getCacheEntry().getEntity().getCatalogId(),
+                serviceAdminRole.getCacheEntry().getEntity().getId(),
+                PolarisPrivilege.SERVICE_MANAGE_ACCESS.getCode());
+        serviceAdminEntity = serviceAdminRole.getCacheEntry().getEntity();
+      }
+      grantRecords.add(serviceAdminRootContainerGrant);
+      granteeList.add(serviceAdminEntity);
+    }
     return new LoadGrantsResult(
         lookupResult.getCacheEntry().getEntity().getGrantRecordsVersion(),
-        lookupResult.getCacheEntry().getGrantRecordsAsSecurable(),
+        grantRecords,
         granteeList);
   }
 

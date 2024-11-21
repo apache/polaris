@@ -528,10 +528,13 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     if (properties.containsKey(PolarisEntityConstants.ENTITY_BASE_LOCATION)) {
       return properties.get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
     } else {
-      List<PolarisEntity> parentPath =
-          namespace.length() > 1
-              ? getResolvedParentNamespace(namespace).getRawFullPath()
-              : List.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
+      List<PolarisEntity> parentPath;
+      if (namespace.length() > 1) {
+        parentPath = getResolvedParentNamespace(namespace).getRawFullPath();
+      } else {
+        parentPath =
+            List.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
+      }
 
       String parentLocation = resolveLocationForPath(parentPath);
 
@@ -1663,7 +1666,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       toEntity =
           new TableLikeEntity.Builder(TableLikeEntity.of(leafEntity))
               .setTableIdentifier(to)
-              .setParentId(resolvedNewParentEntities.getResolvedLeafEntity().getEntity().getId())
+              .setParentId(resolvedNewParentEntities.getResolvedLeafEntity().getId())
               .build();
     } else {
       // only the name of the entity is changed
