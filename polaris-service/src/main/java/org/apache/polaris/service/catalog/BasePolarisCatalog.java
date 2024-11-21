@@ -1378,17 +1378,20 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       TableLikeEntity entity =
           TableLikeEntity.of(resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
       String existingLocation;
-      long maxMetadataCacheBytes =
+      int maxMetadataCacheBytes =
           callContext
               .getPolarisCallContext()
               .getConfigurationStore()
               .getConfiguration(
                   callContext.getPolarisCallContext(),
+                  catalogEntity,
                   PolarisConfiguration.METADATA_CACHE_MAX_BYTES);
       String metadataJson = TableMetadataParser.toJson(metadata);
-      boolean shouldPersistMetadata =
-          maxMetadataCacheBytes != PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING
-              && metadataJson.getBytes(StandardCharsets.UTF_8).length <= maxMetadataCacheBytes;
+      boolean shouldPersistMetadata = switch (maxMetadataCacheBytes) {
+        case PolarisConfiguration.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING -> true;
+        case PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING -> false;
+        default -> metadataJson.length() <= maxMetadataCacheBytes;
+      };
       final TableLikeEntity.Builder builder;
       if (null == entity) {
         existingLocation = null;

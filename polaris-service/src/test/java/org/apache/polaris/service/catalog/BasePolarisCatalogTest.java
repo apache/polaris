@@ -206,6 +206,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                     PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
                 .addProperty(
                     PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+                .addProperty(
+                    PolarisConfiguration.METADATA_CACHE_MAX_BYTES.catalogConfig(), "-1")
                 .setStorageConfigurationInfo(storageConfigModel, storageLocation)
                 .build());
 
@@ -1547,18 +1549,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     Table createdTable = catalog.createTable(tableIdentifier, schema);
     TableMetadata originalMetadata = ((BaseTable) createdTable).operations().current();
 
-    TableMetadata loadedMetadata =
-        MetadataCacheManager.loadTableMetadata(
-            tableIdentifier,
-            Long.MAX_VALUE,
-            polarisContext,
-            metaStoreManager,
-            passthroughView,
-            () -> originalMetadata);
-
-    // The first time, the fallback is called
-    Assertions.assertThat(loadedMetadata).isSameAs(originalMetadata);
-
     TableMetadata cachedMetadata =
         MetadataCacheManager.loadTableMetadata(
             tableIdentifier,
@@ -1570,18 +1560,17 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
               throw new IllegalStateException("Fell back even though a cache entry should exist!");
             });
 
-    // The second time, it's loaded from the cache
+    // The metadata object is loaded from the cache
     Assertions.assertThat(cachedMetadata).isNotSameAs(originalMetadata);
 
     // The content should match what was cached
     Assertions.assertThat(TableMetadataParser.toJson(cachedMetadata))
-        .isEqualTo(TableMetadataParser.toJson(loadedMetadata));
+        .isEqualTo(TableMetadataParser.toJson(originalMetadata));
 
     // Update the table
     TableOperations tableOps = catalog.newTableOps(tableIdentifier);
     TableMetadata updatedMetadata = tableOps.current().updateSchema(buildSchema(100), 100);
     tableOps.commit(tableOps.current(), updatedMetadata);
-    AtomicBoolean wasFallbackCalledAgain = new AtomicBoolean(false);
 
     // Read from the cache; it should detect a chance due to the update and load the new fallback
     TableMetadata reloadedMetadata =
@@ -1592,12 +1581,10 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             metaStoreManager,
             passthroughView,
             () -> {
-              wasFallbackCalledAgain.set(true);
-              return updatedMetadata;
+              throw new IllegalStateException("Fell back even though a cache entry should be updated on write");
             });
 
     Assertions.assertThat(reloadedMetadata).isNotSameAs(cachedMetadata);
     Assertions.assertThat(reloadedMetadata.schema().columns().size()).isEqualTo(100);
-    Assertions.assertThat(wasFallbackCalledAgain.get()).isTrue();
   }
 }
