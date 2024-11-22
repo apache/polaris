@@ -20,7 +20,6 @@ package org.apache.polaris.core.persistence.cache;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
@@ -87,15 +86,8 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
       return delegateGrantManager.grantUsageOnRoleToGrantee(callCtx, catalog, role, grantee);
     } finally {
       LOGGER.debug("Invalidating cache for role {} and grantee {}", role, grantee);
-      invalidate(role);
-      invalidate(grantee);
-    }
-  }
-
-  private void invalidate(@NotNull PolarisEntityCore role) {
-    EntityCacheEntry roleEntity = entityCache.getEntityById(role.getId());
-    if (roleEntity != null) {
-      entityCache.removeCacheEntry(roleEntity);
+      entityCache.removeCacheEntry(role);
+      entityCache.removeCacheEntry(grantee);
     }
   }
 
@@ -109,8 +101,8 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
       return delegateGrantManager.revokeUsageOnRoleFromGrantee(callCtx, catalog, role, grantee);
     } finally {
       LOGGER.debug("Invalidating cache for role {} and grantee {}", role, grantee);
-      invalidate(role);
-      invalidate(grantee);
+      entityCache.removeCacheEntry(role);
+      entityCache.removeCacheEntry(grantee);
     }
   }
 
@@ -126,8 +118,8 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
           callCtx, grantee, catalogPath, securable, privilege);
     } finally {
       LOGGER.debug("Invalidating cache for securable {} and grantee {}", securable, grantee);
-      invalidate(securable);
-      invalidate(grantee);
+      entityCache.removeCacheEntry(securable);
+      entityCache.removeCacheEntry(grantee);
     }
   }
 
@@ -143,8 +135,8 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
           callCtx, grantee, catalogPath, securable, privilege);
     } finally {
       LOGGER.debug("Invalidating cache for securable {} and grantee {}", securable, grantee);
-      invalidate(securable);
-      invalidate(grantee);
+      entityCache.removeCacheEntry(securable);
+      entityCache.removeCacheEntry(grantee);
     }
   }
 
@@ -158,24 +150,21 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
     }
     List<PolarisGrantRecord> grantRecords =
         lookupResult.getCacheEntry().getGrantRecordsAsSecurable();
-    List<PolarisBaseEntity> granteeList =
-        grantRecords.stream()
-            .map(
-                gr ->
-                    entityCache.getOrLoadEntityById(
-                        callCtx, gr.getGranteeCatalogId(), gr.getGranteeId()))
-            .filter(lr -> lr != null && lr.getCacheEntry() != null)
-            .map(lr -> lr.getCacheEntry().getEntity())
-            // make it a mutable list
-            .collect(
-                Collector.of(
-                    ArrayList::new,
-                    List::add,
-                    (l, r) -> {
-                      l.addAll(r);
-                      return l;
-                    },
-                    Collector.Characteristics.IDENTITY_FINISH));
+    List<PolarisBaseEntity> granteeList = new ArrayList<>();
+    grantRecords.stream()
+        .map(
+            gr ->
+                entityCache.getOrLoadEntityById(
+                    callCtx, gr.getGranteeCatalogId(), gr.getGranteeId()))
+        .filter(lr -> lr != null && lr.getCacheEntry() != null)
+        .map(lr -> lr.getCacheEntry().getEntity())
+        .forEach(granteeList::add);
+    if (granteeList.size() != lookupResult.getCacheEntry().getGrantRecordsAsSecurable().size()) {
+      LOGGER.error(
+          "Failed to resolve all grantees for securable {}",
+          lookupResult.getCacheEntry().getEntity());
+      return new LoadGrantsResult(BaseResult.ReturnStatus.GRANT_NOT_FOUND, null);
+    }
 
     // If the securable is the root container, then we need to add a grant record for the
     // service_admin PrincipalRole, which is the only role that has the SERVICE_MANAGE_ACCESS
@@ -224,24 +213,24 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
     if (lookupResult == null || lookupResult.getCacheEntry() == null) {
       return new LoadGrantsResult(BaseResult.ReturnStatus.GRANT_NOT_FOUND, null);
     }
-    List<PolarisBaseEntity> granteeList =
+    List<PolarisBaseEntity> securableList =
         lookupResult.getCacheEntry().getGrantRecordsAsGrantee().stream()
             .map(
                 gr ->
                     entityCache.getOrLoadEntityById(
                         callCtx, gr.getSecurableCatalogId(), gr.getSecurableId()))
-            .takeWhile(
-                lr -> {
-                  if (lr == null || lr.getCacheEntry() == null) {
-                    throw new IllegalStateException("Grantee not found");
-                  }
-                  return true;
-                })
+            .filter(lr -> lr != null && lr.getCacheEntry() != null)
             .map(lr -> lr.getCacheEntry().getEntity())
             .collect(Collectors.toList());
+    if (securableList.size() != lookupResult.getCacheEntry().getGrantRecordsAsGrantee().size()) {
+      LOGGER.error(
+          "Failed to resolve all securables for grantee {}",
+          lookupResult.getCacheEntry().getEntity());
+      return new LoadGrantsResult(BaseResult.ReturnStatus.GRANT_NOT_FOUND, null);
+    }
     return new LoadGrantsResult(
         lookupResult.getCacheEntry().getEntity().getGrantRecordsVersion(),
         lookupResult.getCacheEntry().getGrantRecordsAsGrantee(),
-        granteeList);
+        securableList);
   }
 }
