@@ -83,7 +83,6 @@ public class FileIOIntegrationTest {
               "server.applicationConnectors[0].port",
               "0"), // Bind to random port to support parallelism
           ConfigOverride.config("server.adminConnectors[0].port", "0"),
-          ConfigOverride.config("featureConfiguration.MAX_FILE_IO_READ_BYTES", "10"),
           ConfigOverride.config("io.factoryType", "test"));
 
   private static final String catalogBaseLocation = "file:/tmp/buckets/my-bucket/path/to/data";
