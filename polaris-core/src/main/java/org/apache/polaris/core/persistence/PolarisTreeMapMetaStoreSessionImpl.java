@@ -50,7 +50,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   public PolarisTreeMapMetaStoreSessionImpl(
       @NotNull PolarisTreeMapStore store,
       @NotNull PolarisStorageIntegrationProvider storageIntegrationProvider,
-      PrincipalSecretsGenerator secretsGenerator) {
+      @NotNull PrincipalSecretsGenerator secretsGenerator) {
 
     // init store
     this.store = store;
