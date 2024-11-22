@@ -176,15 +176,7 @@ public abstract class PolarisAuthzTestBase {
     this.entityManager = new PolarisEntityManager(metaStoreManager, new StorageCredentialCache());
     this.metaStoreManager = metaStoreManager;
 
-    callContext =
-        CallContext.of(
-            new RealmContext() {
-              @Override
-              public String getRealmIdentifier() {
-                return "test-realm";
-              }
-            },
-            polarisContext);
+    callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
 
     PrincipalEntity rootEntity =
