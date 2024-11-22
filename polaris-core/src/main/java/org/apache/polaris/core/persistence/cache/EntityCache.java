@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
@@ -100,6 +101,13 @@ public class EntityCache {
 
     // remove it from the name key
     this.byName.remove(nameKey, cacheEntry);
+  }
+
+  public void removeCacheEntry(@NotNull PolarisEntityCore entityCore) {
+    EntityCacheEntry cacheEntry = this.getEntityById(entityCore.getId());
+    if (cacheEntry != null) {
+      this.removeCacheEntry(cacheEntry);
+    }
   }
 
   /**
