@@ -383,11 +383,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     if (resolvedPath.getRawLeafEntity() != null
         && subType != PolarisEntitySubType.ANY_SUBTYPE
         && resolvedPath.getRawLeafEntity().getSubType() != subType) {
-      if (true) {
-        if (true) {
-          return null;
-        }
-      }
+      return null;
     }
     return resolvedPath;
   }

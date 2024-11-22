@@ -41,7 +41,10 @@ import org.slf4j.LoggerFactory;
  * PolarisGrantManger implementation that uses an EntityCache to retrieve entities and is backed by
  * a delegate grant manager for persisting grant changes. This allows consumers to reuse cache
  * entities without necessarily being aware of the {@link EntityCache} or the {@link
- * EntityCacheEntry} specifics.
+ * EntityCacheEntry} specifics. Typically, the {@link
+ * org.apache.polaris.core.persistence.resolver.Resolver} is responsible for validating the cache
+ * state. This class does no validation of the entity version or the grant version of any cache
+ * record.
  */
 public class EntityCacheGrantManager implements PolarisGrantManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(EntityCacheGrantManager.class);
@@ -175,9 +178,8 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
                     Collector.Characteristics.IDENTITY_FINISH));
 
     // If the securable is the root container, then we need to add a grant record for the
-    // service_admin
-    // PrincipalRole, which is the only role that has the SERVICE_MANAGE_ACCESS privilege on the
-    // root
+    // service_admin PrincipalRole, which is the only role that has the SERVICE_MANAGE_ACCESS
+    // privilege on the root
     if (lookupResult
         .getCacheEntry()
         .getEntity()
