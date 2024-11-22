@@ -35,6 +35,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
+import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -904,7 +905,7 @@ public class ResolverTest {
     Assertions.assertThat(refEntity).isNotNull();
 
     // reload the cached entry from the backend
-    PolarisMetaStoreManager.CachedEntryResult refCachedEntry =
+    CachedEntryResult refCachedEntry =
         this.metaStoreManager.loadCachedEntryById(
             this.callCtx, refEntity.getCatalogId(), refEntity.getId());
 

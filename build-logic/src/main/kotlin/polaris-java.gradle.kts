@@ -80,6 +80,7 @@ spotless {
     licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
     endWithNewline()
     custom("disallowWildcardImports", disallowWildcardImports)
+    toggleOffOn()
   }
   kotlinGradle {
     ktfmt().googleStyle()

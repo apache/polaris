@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.monitor.PolarisMetricRegistry;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -44,7 +45,7 @@ public interface MetaStoreManagerFactory {
 
   void setMetricRegistry(PolarisMetricRegistry metricRegistry);
 
-  Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> bootstrapRealms(List<String> realms);
+  Map<String, PrincipalSecretsResult> bootstrapRealms(List<String> realms);
 
   /** Purge all metadata for the realms provided */
   void purgeRealms(List<String> realms);

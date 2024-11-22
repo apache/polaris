@@ -20,7 +20,6 @@ package org.apache.polaris.service.catalog;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.iceberg.types.Types.NestedField.required;
-import static org.apache.polaris.service.exception.IcebergExceptionMapper.*;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
@@ -66,6 +65,7 @@ import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -291,8 +291,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
       public void setMetricRegistry(PolarisMetricRegistry metricRegistry) {}
 
       @Override
-      public Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> bootstrapRealms(
-          List<String> realms) {
+      public Map<String, PrincipalSecretsResult> bootstrapRealms(List<String> realms) {
         throw new NotImplementedException("Bootstrapping realms is not supported");
       }
 
