@@ -474,8 +474,8 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
       @NotNull PolarisCallContext callCtx,
       @NotNull String clientId,
       long principalId,
-      @NotNull String mainSecretToRotate,
-      boolean reset) {
+      boolean reset,
+      @NotNull String oldSecretHash) {
 
     // load the existing secrets
     PolarisPrincipalSecrets principalSecrets = this.store.getSlicePrincipalSecrets().read(clientId);
@@ -501,9 +501,9 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
             principalSecrets.getPrincipalId());
 
     // rotate the secrets
-    principalSecrets.rotateSecrets(mainSecretToRotate);
+    principalSecrets.rotateSecrets(oldSecretHash);
     if (reset) {
-      principalSecrets.rotateSecrets(principalSecrets.getMainSecret());
+      principalSecrets.rotateSecrets(principalSecrets.getMainSecretHash());
     }
 
     // write back new secrets

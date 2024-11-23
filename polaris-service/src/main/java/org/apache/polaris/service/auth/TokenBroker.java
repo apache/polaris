@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth;
 
 import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -46,13 +47,12 @@ public interface TokenBroker {
       PolarisMetaStoreManager metaStoreManager, String clientId, String clientSecret) {
     // Validate the principal is present and secrets match
     PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
-    PolarisMetaStoreManager.PrincipalSecretsResult principalSecrets =
+    PrincipalSecretsResult principalSecrets =
         metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
     if (!principalSecrets.isSuccess()) {
       return Optional.empty();
     }
-    if (!principalSecrets.getPrincipalSecrets().getMainSecret().equals(clientSecret)
-        && !principalSecrets.getPrincipalSecrets().getSecondarySecret().equals(clientSecret)) {
+    if (!principalSecrets.getPrincipalSecrets().matchesSecret(clientSecret)) {
       return Optional.empty();
     }
     PolarisMetaStoreManager.EntityResult result =

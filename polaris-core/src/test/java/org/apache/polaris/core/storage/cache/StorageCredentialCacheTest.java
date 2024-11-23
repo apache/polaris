@@ -34,6 +34,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.BaseResult;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
@@ -41,6 +42,7 @@ import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
 import org.apache.polaris.core.persistence.PolarisTreeMapStore;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
+import org.apache.polaris.core.storage.PolarisCredentialVendor.ScopedCredentialsResult;
 import org.assertj.core.api.Assertions;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.RepeatedTest;
@@ -73,9 +75,9 @@ public class StorageCredentialCacheTest {
   @Test
   public void testBadResult() {
     storageCredentialCache = new StorageCredentialCache();
-    PolarisMetaStoreManager.ScopedCredentialsResult badResult =
-        new PolarisMetaStoreManager.ScopedCredentialsResult(
-            PolarisMetaStoreManager.ReturnStatus.SUBSCOPE_CREDS_ERROR, "extra_error_info");
+    ScopedCredentialsResult badResult =
+        new ScopedCredentialsResult(
+            BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, "extra_error_info");
     Mockito.when(
             metaStoreManager.getSubscopedCredsForEntity(
                 Mockito.any(),
@@ -105,7 +107,7 @@ public class StorageCredentialCacheTest {
   @Test
   public void testCacheHit() {
     storageCredentialCache = new StorageCredentialCache();
-    List<PolarisMetaStoreManager.ScopedCredentialsResult> mockedScopedCreds =
+    List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
     Mockito.when(
             metaStoreManager.getSubscopedCredsForEntity(
@@ -147,8 +149,7 @@ public class StorageCredentialCacheTest {
   @RepeatedTest(10)
   public void testCacheEvict() throws InterruptedException {
     storageCredentialCache = new StorageCredentialCache();
-    List<PolarisMetaStoreManager.ScopedCredentialsResult> mockedScopedCreds =
-        getFakeScopedCreds(3, /* expireSoon= */ true);
+    List<ScopedCredentialsResult> mockedScopedCreds = getFakeScopedCreds(3, /* expireSoon= */ true);
 
     Mockito.when(
             metaStoreManager.getSubscopedCredsForEntity(
@@ -205,7 +206,7 @@ public class StorageCredentialCacheTest {
   @Test
   public void testCacheGenerateNewEntries() {
     storageCredentialCache = new StorageCredentialCache();
-    List<PolarisMetaStoreManager.ScopedCredentialsResult> mockedScopedCreds =
+    List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
     Mockito.when(
             metaStoreManager.getSubscopedCredsForEntity(
@@ -291,7 +292,7 @@ public class StorageCredentialCacheTest {
   @Test
   public void testCacheNotAffectedBy() {
     storageCredentialCache = new StorageCredentialCache();
-    List<PolarisMetaStoreManager.ScopedCredentialsResult> mockedScopedCreds =
+    List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
 
     Mockito.when(
@@ -369,9 +370,8 @@ public class StorageCredentialCacheTest {
     }
   }
 
-  private static List<PolarisMetaStoreManager.ScopedCredentialsResult> getFakeScopedCreds(
-      int number, boolean expireSoon) {
-    List<PolarisMetaStoreManager.ScopedCredentialsResult> res = new ArrayList<>();
+  private static List<ScopedCredentialsResult> getFakeScopedCreds(int number, boolean expireSoon) {
+    List<ScopedCredentialsResult> res = new ArrayList<>();
     for (int i = 1; i <= number; i = i + 3) {
       int finalI = i;
       // NOTE: The default behavior of the Caffeine cache seems to have a bug; if our
@@ -386,7 +386,7 @@ public class StorageCredentialCacheTest {
               ? String.valueOf(System.currentTimeMillis() - 100)
               : String.valueOf(Long.MAX_VALUE);
       res.add(
-          new PolarisMetaStoreManager.ScopedCredentialsResult(
+          new ScopedCredentialsResult(
               new EnumMap<>(
                   ImmutableMap.<PolarisCredentialProperty, String>builder()
                       .put(PolarisCredentialProperty.AWS_KEY_ID, "key_id_" + finalI)
@@ -395,7 +395,7 @@ public class StorageCredentialCacheTest {
                       .buildOrThrow())));
       if (res.size() == number) return res;
       res.add(
-          new PolarisMetaStoreManager.ScopedCredentialsResult(
+          new ScopedCredentialsResult(
               new EnumMap<>(
                   ImmutableMap.<PolarisCredentialProperty, String>builder()
                       .put(PolarisCredentialProperty.AZURE_SAS_TOKEN, "sas_token_" + finalI)
@@ -404,7 +404,7 @@ public class StorageCredentialCacheTest {
                       .buildOrThrow())));
       if (res.size() == number) return res;
       res.add(
-          new PolarisMetaStoreManager.ScopedCredentialsResult(
+          new ScopedCredentialsResult(
               new EnumMap<>(
                   ImmutableMap.<PolarisCredentialProperty, String>builder()
                       .put(PolarisCredentialProperty.GCS_ACCESS_TOKEN, "gcs_token_" + finalI)

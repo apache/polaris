@@ -43,6 +43,14 @@ public class ModelPrincipalSecrets {
   // the secondary secret for that principal
   private String secondarySecret;
 
+  // Hash of mainSecret
+  private String mainSecretHash;
+
+  // Hash of secondarySecret
+  private String secondarySecretHash;
+
+  private String secretSalt;
+
   // Used for Optimistic Locking to handle concurrent reads and updates
   @Version private long version;
 
@@ -60,6 +68,18 @@ public class ModelPrincipalSecrets {
 
   public String getSecondarySecret() {
     return secondarySecret;
+  }
+
+  public String getSecretSalt() {
+    return secretSalt;
+  }
+
+  public String getMainSecretHash() {
+    return mainSecretHash;
+  }
+
+  public String getSecondarySecretHash() {
+    return secondarySecretHash;
   }
 
   public static Builder builder() {
@@ -93,6 +113,21 @@ public class ModelPrincipalSecrets {
       return this;
     }
 
+    public Builder secretSalt(String secretSalt) {
+      principalSecrets.secretSalt = secretSalt;
+      return this;
+    }
+
+    public Builder mainSecretHash(String mainSecretHash) {
+      principalSecrets.mainSecretHash = mainSecretHash;
+      return this;
+    }
+
+    public Builder secondarySecretHash(String secondarySecretHash) {
+      principalSecrets.secondarySecretHash = secondarySecretHash;
+      return this;
+    }
+
     public ModelPrincipalSecrets build() {
       return principalSecrets;
     }
@@ -104,8 +139,9 @@ public class ModelPrincipalSecrets {
     return ModelPrincipalSecrets.builder()
         .principalId(record.getPrincipalId())
         .principalClientId(record.getPrincipalClientId())
-        .mainSecret(record.getMainSecret())
-        .secondarySecret(record.getSecondarySecret())
+        .secretSalt(record.getSecretSalt())
+        .mainSecretHash(record.getMainSecretHash())
+        .secondarySecretHash(record.getSecondarySecretHash())
         .build();
   }
 
@@ -116,7 +152,10 @@ public class ModelPrincipalSecrets {
         model.getPrincipalId(),
         model.getPrincipalClientId(),
         model.getMainSecret(),
-        model.getSecondarySecret());
+        model.getSecondarySecret(),
+        model.getSecretSalt(),
+        model.getMainSecretHash(),
+        model.getSecondarySecretHash());
   }
 
   public void update(PolarisPrincipalSecrets principalSecrets) {
@@ -124,7 +163,18 @@ public class ModelPrincipalSecrets {
 
     this.principalId = principalSecrets.getPrincipalId();
     this.principalClientId = principalSecrets.getPrincipalClientId();
+    this.secretSalt = principalSecrets.getSecretSalt();
     this.mainSecret = principalSecrets.getMainSecret();
     this.secondarySecret = principalSecrets.getSecondarySecret();
+    this.mainSecretHash = principalSecrets.getMainSecretHash();
+    this.secondarySecretHash = principalSecrets.getSecondarySecretHash();
+
+    // Once a hash is stored, do not keep the original secret
+    if (this.mainSecretHash != null) {
+      this.mainSecret = null;
+    }
+    if (this.secondarySecretHash != null) {
+      this.secondarySecret = null;
+    }
   }
 }

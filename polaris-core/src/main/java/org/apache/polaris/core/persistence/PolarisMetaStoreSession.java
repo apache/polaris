@@ -444,17 +444,17 @@ public interface PolarisMetaStoreSession {
    * @param callCtx call context
    * @param clientId principal client id
    * @param principalId principal id
-   * @param mainSecretToRotate main secret for comparison with the current entity version
    * @param reset true if the principal secrets should be disabled and replaced with a one-time
    *     password
+   * @param oldSecretHash the principal secret's old main secret hash
    */
   @Nullable
   PolarisPrincipalSecrets rotatePrincipalSecrets(
       @NotNull PolarisCallContext callCtx,
       @NotNull String clientId,
       long principalId,
-      @NotNull String mainSecretToRotate,
-      boolean reset);
+      boolean reset,
+      @NotNull String oldSecretHash);
 
   /**
    * When dropping a principal, we also need to drop the secrets of that principal

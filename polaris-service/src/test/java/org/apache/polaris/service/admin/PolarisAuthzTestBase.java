@@ -176,15 +176,7 @@ public abstract class PolarisAuthzTestBase {
     this.entityManager = new PolarisEntityManager(metaStoreManager, new StorageCredentialCache());
     this.metaStoreManager = metaStoreManager;
 
-    callContext =
-        CallContext.of(
-            new RealmContext() {
-              @Override
-              public String getRealmIdentifier() {
-                return "test-realm";
-              }
-            },
-            polarisContext);
+    callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
 
     PrincipalEntity rootEntity =
@@ -325,8 +317,8 @@ public abstract class PolarisAuthzTestBase {
         callContext.getPolarisCallContext(),
         credentials.getClientId(),
         lookupEntity.getEntity().getId(),
-        credentials.getClientSecret(),
-        false);
+        false,
+        credentials.getClientSecret()); // This should actually be the secret's hash
 
     return new PrincipalEntity(
         PolarisEntity.of(
