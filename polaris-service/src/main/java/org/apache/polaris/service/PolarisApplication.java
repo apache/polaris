@@ -36,6 +36,8 @@ import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
 import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
+import io.dropwizard.jackson.Discoverable;
+import io.dropwizard.jackson.DiscoverableSubtypeResolver;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import io.opentelemetry.api.OpenTelemetry;
@@ -63,6 +65,7 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Executors;
@@ -142,6 +145,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
 
   @Override
   public void initialize(Bootstrap<PolarisApplicationConfig> bootstrap) {
+    registerTypes(bootstrap.getObjectMapper());
     // Enable variable substitution with environment variables
     EnvironmentVariableSubstitutor substitutor = new EnvironmentVariableSubstitutor(false);
     SubstitutingSourceProvider provider =
@@ -150,6 +154,18 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
 
     bootstrap.addCommand(new BootstrapRealmsCommand());
     bootstrap.addCommand(new PurgeRealmsCommand());
+  }
+
+  private void registerTypes(ObjectMapper mapper) {
+    // Reuse the DW service discovery method, but unlike the constructor of
+    // DiscoverableSubtypeResolver, use the first level classes from the `Discoverable`
+    // service descriptor and register them with the ObjectMapper.
+    class Discoverer extends DiscoverableSubtypeResolver {
+      List<Class<?>> discover() {
+        return discoverServices(Discoverable.class);
+      }
+    }
+    new Discoverer().discover().forEach(mapper::registerSubtypes);
   }
 
   @Override

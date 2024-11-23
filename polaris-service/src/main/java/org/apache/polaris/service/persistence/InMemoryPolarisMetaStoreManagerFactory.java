@@ -19,6 +19,7 @@
 package org.apache.polaris.service.persistence;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import io.dropwizard.jackson.Discoverable;
 import jakarta.annotation.Nonnull;
 import java.util.Collections;
 import java.util.HashSet;
@@ -36,7 +37,7 @@ import org.apache.polaris.core.persistence.PolarisTreeMapStore;
 
 @JsonTypeName("in-memory")
 public class InMemoryPolarisMetaStoreManagerFactory
-    extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
+    extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> implements Discoverable {
   final Set<String> bootstrappedRealms = new HashSet<>();
 
   @Override
