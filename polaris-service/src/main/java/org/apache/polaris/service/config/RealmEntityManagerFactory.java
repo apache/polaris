@@ -23,7 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
-import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.RealmEntityCacheFactory;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,28 +35,32 @@ public class RealmEntityManagerFactory {
 
   // Key: realmIdentifier
   private final Map<String, PolarisEntityManager> cachedEntityManagers = new ConcurrentHashMap<>();
+  private final RealmEntityCacheFactory entityCacheFactory;
 
   // Subclasses for test injection.
   protected RealmEntityManagerFactory() {
     this.metaStoreManagerFactory = null;
+    this.entityCacheFactory = null;
   }
 
-  public RealmEntityManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
+  public RealmEntityManagerFactory(
+      @NotNull MetaStoreManagerFactory metaStoreManagerFactory,
+      @NotNull RealmEntityCacheFactory entityCacheFactory) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.entityCacheFactory = entityCacheFactory;
   }
 
   public PolarisEntityManager getOrCreateEntityManager(RealmContext context) {
     String realm = context.getRealmIdentifier();
 
     LOGGER.debug("Looking up PolarisEntityManager for realm {}", realm);
-
     return cachedEntityManagers.computeIfAbsent(
         realm,
         r -> {
           LOGGER.info("Initializing new PolarisEntityManager for realm {}", r);
           return new PolarisEntityManager(
               metaStoreManagerFactory.getOrCreateMetaStoreManager(context),
-              new EntityCache(metaStoreManagerFactory.getOrCreateMetaStoreManager(context)),
+              entityCacheFactory.getOrCreateEntityCache(context),
               metaStoreManagerFactory.getOrCreateStorageCredentialCache(context));
         });
   }
