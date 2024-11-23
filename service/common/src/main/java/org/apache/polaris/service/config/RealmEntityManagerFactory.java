@@ -20,6 +20,7 @@ package org.apache.polaris.service.config;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
+import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.context.RealmContext;
@@ -46,7 +47,8 @@ public class RealmEntityManagerFactory {
 
   @Inject
   public RealmEntityManagerFactory(
-      MetaStoreManagerFactory metaStoreManagerFactory, Provider<EntityCache> entityCache) {
+      @NotNull MetaStoreManagerFactory metaStoreManagerFactory,
+      @NotNull Provider<EntityCache> entityCache) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.entityCache = entityCache;
   }
@@ -55,7 +57,6 @@ public class RealmEntityManagerFactory {
     String realm = context.getRealmIdentifier();
 
     LOGGER.debug("Looking up PolarisEntityManager for realm {}", realm);
-
     return cachedEntityManagers.computeIfAbsent(
         realm,
         r -> {
