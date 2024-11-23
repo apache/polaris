@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.core.storage.cache;
 
+import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
+
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -58,7 +61,6 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -85,7 +87,7 @@ public class EntityCacheGrantManagerTest {
     PolarisDefaultDiagServiceImpl diagServices = new PolarisDefaultDiagServiceImpl();
     PolarisTreeMapStore treeMapStore = new PolarisTreeMapStore(diagServices);
     PolarisTreeMapMetaStoreSessionImpl session =
-        new PolarisTreeMapMetaStoreSessionImpl(treeMapStore, Mockito.mock());
+        new PolarisTreeMapMetaStoreSessionImpl(treeMapStore, Mockito.mock(), RANDOM_SECRETS);
     metastoreManagerFactory =
         new LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore>() {
 
