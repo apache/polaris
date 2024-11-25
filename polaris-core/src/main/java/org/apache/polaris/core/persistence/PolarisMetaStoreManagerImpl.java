@@ -49,6 +49,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
+import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -565,7 +566,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // if it exists, this is an error, the client should retry
     if (otherCatalogRecord != null) {
-      return new CreateCatalogResult(ReturnStatus.ENTITY_ALREADY_EXISTS, null);
+      return new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null);
     }
 
     ms.persistStorageIntegrationIfNeeded(callCtx, catalog, integration);
@@ -706,7 +707,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     ms.runActionInTransaction(callCtx, () -> this.bootstrapPolarisService(callCtx, ms));
 
     // all good
-    return new BaseResult(ReturnStatus.SUCCESS);
+    return new BaseResult(BaseResult.ReturnStatus.SUCCESS);
   }
 
   @Override
@@ -720,7 +721,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     LOGGER.warn("Finished deleting all metadata in the metastore");
 
     // all good
-    return new BaseResult(ReturnStatus.SUCCESS);
+    return new BaseResult(BaseResult.ReturnStatus.SUCCESS);
   }
 
   /**
@@ -739,7 +740,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // return if we failed to resolve
     if (resolver.isFailure()) {
-      return new EntityResult(ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
+      return new EntityResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
     }
 
     // now looking the entity by name
@@ -757,7 +758,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // success, return what we found
     return (entity == null)
-        ? new EntityResult(ReturnStatus.ENTITY_NOT_FOUND, null)
+        ? new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
         : new EntityResult(entity);
   }
 
@@ -791,7 +792,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // return if we failed to resolve
     if (resolver.isFailure()) {
-      return new ListEntitiesResult(ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
+      return new ListEntitiesResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
     }
 
     // return list of active entities
@@ -951,10 +952,10 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // if it exists, this is an error, the client should retry
     if (otherPrincipalRecord != null) {
-      return new CreatePrincipalResult(ReturnStatus.ENTITY_ALREADY_EXISTS, null);
+      return new CreatePrincipalResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null);
     }
 
-    // generate new secretes for this principal
+    // generate new secrets for this principal
     PolarisPrincipalSecrets principalSecrets =
         ms.generateNewPrincipalSecrets(callCtx, principal.getName(), principal.getId());
 
@@ -1002,7 +1003,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
         ms.runInTransaction(callCtx, () -> this.loadPrincipalSecrets(callCtx, ms, clientId));
 
     return (secrets == null)
-        ? new PrincipalSecretsResult(ReturnStatus.ENTITY_NOT_FOUND, null)
+        ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
         : new PrincipalSecretsResult(secrets);
   }
 
@@ -1012,12 +1013,12 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
       @NotNull PolarisMetaStoreSession ms,
       @NotNull String clientId,
       long principalId,
-      @NotNull String masterSecret,
-      boolean reset) {
+      boolean reset,
+      @NotNull String oldSecretHash) {
     // if not found, the principal must have been dropped
     EntityResult loadEntityResult =
         loadEntity(callCtx, ms, PolarisEntityConstants.getNullId(), principalId);
-    if (loadEntityResult.getReturnStatus() != ReturnStatus.SUCCESS) {
+    if (loadEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
       return null;
     }
 
@@ -1033,7 +1034,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
                     PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
                 != null;
     PolarisPrincipalSecrets secrets =
-        ms.rotatePrincipalSecrets(callCtx, clientId, principalId, masterSecret, doReset);
+        ms.rotatePrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash);
 
     if (reset
         && !internalProps.containsKey(
@@ -1061,8 +1062,8 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
       @NotNull PolarisCallContext callCtx,
       @NotNull String clientId,
       long principalId,
-      @NotNull String mainSecret,
-      boolean reset) {
+      boolean reset,
+      @NotNull String oldSecretHash) {
     // get metastore we should be using
     PolarisMetaStoreSession ms = callCtx.getMetaStore();
 
@@ -1071,10 +1072,11 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
         ms.runInTransaction(
             callCtx,
             () ->
-                this.rotatePrincipalSecrets(callCtx, ms, clientId, principalId, mainSecret, reset));
+                this.rotatePrincipalSecrets(
+                    callCtx, ms, clientId, principalId, reset, oldSecretHash));
 
     return (secrets == null)
-        ? new PrincipalSecretsResult(ReturnStatus.ENTITY_NOT_FOUND, null)
+        ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
         : new PrincipalSecretsResult(secrets);
   }
 
@@ -1136,7 +1138,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // return if we failed to resolve
     if (resolver.isFailure()) {
-      return new EntityResult(ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
+      return new EntityResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
     }
 
     // check if an entity does not already exist with the same name. If true, this is an error
@@ -1149,7 +1151,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     PolarisEntityActiveRecord entityActiveRecord = ms.lookupEntityActive(callCtx, entityActiveKey);
     if (entityActiveRecord != null) {
       return new EntityResult(
-          ReturnStatus.ENTITY_ALREADY_EXISTS, entityActiveRecord.getSubTypeCode());
+          BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, entityActiveRecord.getSubTypeCode());
     }
 
     // persist that new entity
@@ -1190,7 +1192,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
             EntityResult entityCreateResult =
                 createEntityIfNotExists(callCtx, ms, catalogPath, entity);
             // abort everything if error
-            if (entityCreateResult.getReturnStatus() != ReturnStatus.SUCCESS) {
+            if (entityCreateResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
               ms.rollback();
               return new EntitiesResult(
                   entityCreateResult.getReturnStatus(), entityCreateResult.getExtraInformation());
@@ -1217,7 +1219,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // if resolution failed, return false
     if (resolver.isFailure()) {
-      return new EntityResult(ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
+      return new EntityResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
     }
 
     // lookup the entity, cannot be null
@@ -1229,7 +1231,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // check that the version of the entity has not changed at all to avoid concurrent updates
     if (entityRefreshed.getEntityVersion() != entity.getEntityVersion()) {
-      return new EntityResult(ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
+      return new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
     }
 
     // update the two properties
@@ -1275,7 +1277,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
               callCtx, ms, entityWithPath.getCatalogPath(), entityWithPath.getEntity());
 
       // if failed, rollback and return the last error
-      if (updatedEntityResult.getReturnStatus() != ReturnStatus.SUCCESS) {
+      if (updatedEntityResult.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
         ms.rollback();
         return new EntitiesResult(
             updatedEntityResult.getReturnStatus(), updatedEntityResult.getExtraInformation());
@@ -1336,7 +1338,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // if resolution failed, return false
     if (resolver.isFailure()) {
-      return new EntityResult(ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
+      return new EntityResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
     }
 
     // find the entity to rename
@@ -1346,17 +1348,17 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     // if this entity was not found, return failure. Not expected here because it was
     // resolved successfully (see above)
     if (refreshEntityToRename == null) {
-      return new EntityResult(ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     // check that the source entity has not changed since it was updated by the caller
     if (refreshEntityToRename.getEntityVersion() != renamedEntity.getEntityVersion()) {
-      return new EntityResult(ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
+      return new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
     }
 
     // ensure it can be renamed
     if (refreshEntityToRename.cannotBeDroppedOrRenamed()) {
-      return new EntityResult(ReturnStatus.ENTITY_CANNOT_BE_RENAMED, null);
+      return new EntityResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RENAMED, null);
     }
 
     // re-resolve the new catalog path if this entity is going to be moved
@@ -1365,7 +1367,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
       // if resolution failed, return false
       if (resolver.isFailure()) {
-        return new EntityResult(ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
+        return new EntityResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
       }
     }
 
@@ -1380,7 +1382,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     PolarisEntityActiveRecord entityActiveRecord = ms.lookupEntityActive(callCtx, entityActiveKey);
     if (entityActiveRecord != null) {
       return new EntityResult(
-          ReturnStatus.ENTITY_ALREADY_EXISTS, entityActiveRecord.getSubTypeCode());
+          BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, entityActiveRecord.getSubTypeCode());
     }
 
     // all good, delete the existing entity from the active slice
@@ -1446,7 +1448,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // if resolution failed, return false
     if (resolver.isFailure()) {
-      return new DropEntityResult(ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
+      return new DropEntityResult(BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED, null);
     }
 
     // first find the entity to drop
@@ -1455,12 +1457,12 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // if this entity was not found, return failure
     if (refreshEntityToDrop == null) {
-      return new DropEntityResult(ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     // ensure that this entity is droppable
     if (refreshEntityToDrop.cannotBeDroppedOrRenamed()) {
-      return new DropEntityResult(ReturnStatus.ENTITY_UNDROPPABLE, null);
+      return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_UNDROPPABLE, null);
     }
 
     // check that the entity has children, in which case it is an error. This only applies to
@@ -1471,7 +1473,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
       // if not all namespaces are dropped, we cannot drop this catalog
       if (ms.hasChildren(callCtx, PolarisEntityType.NAMESPACE, catalogId, catalogId)) {
-        return new DropEntityResult(ReturnStatus.NAMESPACE_NOT_EMPTY, null);
+        return new DropEntityResult(BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY, null);
       }
 
       // get the list of catalog roles, at most 2
@@ -1487,7 +1489,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
       // if we have 2, we cannot drop the catalog. If only one left, better be the admin role
       if (catalogRoles.size() > 1) {
-        return new DropEntityResult(ReturnStatus.CATALOG_NOT_EMPTY, null);
+        return new DropEntityResult(BaseResult.ReturnStatus.CATALOG_NOT_EMPTY, null);
       }
 
       // if 1, drop the last catalog role. Should be the catalog admin role but don't validate this
@@ -1498,7 +1500,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     } else if (refreshEntityToDrop.getType() == PolarisEntityType.NAMESPACE) {
       if (ms.hasChildren(
           callCtx, null, refreshEntityToDrop.getCatalogId(), refreshEntityToDrop.getId())) {
-        return new DropEntityResult(ReturnStatus.NAMESPACE_NOT_EMPTY, null);
+        return new DropEntityResult(BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY, null);
       }
     }
 
@@ -1659,7 +1661,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // if failure to resolve, let the caller know
     if (resolver.isFailure()) {
-      return new PrivilegeResult(ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
+      return new PrivilegeResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
     }
 
     // the usage privilege to grant
@@ -1709,7 +1711,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // if failure to resolve, let the caller know
     if (resolver.isFailure()) {
-      return new PrivilegeResult(ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
+      return new PrivilegeResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
     }
 
     // the usage privilege to revoke
@@ -1730,7 +1732,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // this is not a really bad error, no-op really
     if (grantRecord == null) {
-      return new PrivilegeResult(ReturnStatus.GRANT_NOT_FOUND, null);
+      return new PrivilegeResult(BaseResult.ReturnStatus.GRANT_NOT_FOUND, null);
     }
 
     // revoke usage on the role from the grantee
@@ -1772,7 +1774,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // if failure to resolve, let the caller know
     if (resolver.isFailure()) {
-      return new PrivilegeResult(ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
+      return new PrivilegeResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
     }
 
     // grant specified privilege on this securable to this role and return the grant
@@ -1818,7 +1820,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // if failure to resolve, let the caller know
     if (resolver.isFailure()) {
-      return new PrivilegeResult(ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
+      return new PrivilegeResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
     }
 
     // lookup the grants records to find this grant
@@ -1833,7 +1835,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // the grant does not exist, nothing to do really
     if (grantRecord == null) {
-      return new PrivilegeResult(ReturnStatus.GRANT_NOT_FOUND, null);
+      return new PrivilegeResult(BaseResult.ReturnStatus.GRANT_NOT_FOUND, null);
     }
 
     // revoke the specified privilege on this securable from this role
@@ -1875,7 +1877,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // return null if securable does not exists
     if (grantsVersion == 0) {
-      return new LoadGrantsResult(ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new LoadGrantsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     // now fetch all grants for this securable
@@ -1924,7 +1926,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // return null if grantee does not exists
     if (grantsVersion == 0) {
-      return new LoadGrantsResult(ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new LoadGrantsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     // now fetch all grants for this grantee
@@ -1993,7 +1995,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     PolarisBaseEntity entity = ms.lookupEntity(callCtx, entityCatalogId, entityId);
     return (entity != null)
         ? new EntityResult(entity)
-        : new EntityResult(ReturnStatus.ENTITY_NOT_FOUND, null);
+        : new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
   }
 
   /** {@inheritDoc} */
@@ -2086,7 +2088,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // reload the entity, error out if not found
     EntityResult reloadedEntity = loadEntity(callCtx, catalogId, entityId);
-    if (reloadedEntity.getReturnStatus() != ReturnStatus.SUCCESS) {
+    if (reloadedEntity.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
       return new ScopedCredentialsResult(
           reloadedEntity.getReturnStatus(), reloadedEntity.getExtraInformation());
     }
@@ -2117,7 +2119,8 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
               allowedWriteLocations);
       return new ScopedCredentialsResult(creds);
     } catch (Exception ex) {
-      return new ScopedCredentialsResult(ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
+      return new ScopedCredentialsResult(
+          BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, ex.getMessage());
     }
   }
 
@@ -2138,7 +2141,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
             "locations_and_operations_privileges_are_required");
     // reload the entity, error out if not found
     EntityResult reloadedEntity = loadEntity(callCtx, catalogId, entityId);
-    if (reloadedEntity.getReturnStatus() != ReturnStatus.SUCCESS) {
+    if (reloadedEntity.getReturnStatus() != BaseResult.ReturnStatus.SUCCESS) {
       return new ValidateAccessResult(
           reloadedEntity.getReturnStatus(), reloadedEntity.getExtraInformation());
     }
@@ -2221,7 +2224,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // if entity not found, return null
     if (entity == null) {
-      return new CachedEntryResult(ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new CachedEntryResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     // load the grant records
@@ -2251,7 +2254,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
   }
 
   /** {@link #loadCachedEntryById(PolarisCallContext, long, long)} */
-  private @NotNull PolarisMetaStoreManager.CachedEntryResult loadCachedEntryByName(
+  private @NotNull CachedEntryResult loadCachedEntryByName(
       @NotNull PolarisCallContext callCtx,
       @NotNull PolarisMetaStoreSession ms,
       long entityCatalogId,
@@ -2266,7 +2269,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // null if entity not found
     if (entity == null) {
-      return new CachedEntryResult(ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new CachedEntryResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     // load the grant records
@@ -2368,7 +2371,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // if null, the entity has been purged
     if (entityVersions == null) {
-      return new CachedEntryResult(ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new CachedEntryResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     // load the entity if something changed
@@ -2378,7 +2381,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
       // if not found, return null
       if (entity == null) {
-        return new CachedEntryResult(ReturnStatus.ENTITY_NOT_FOUND, null);
+        return new CachedEntryResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
       }
     } else {
       // entity has not changed, no need to reload it
@@ -2405,7 +2408,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
-  public @NotNull PolarisMetaStoreManager.CachedEntryResult refreshCachedEntity(
+  public @NotNull CachedEntryResult refreshCachedEntity(
       @NotNull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,

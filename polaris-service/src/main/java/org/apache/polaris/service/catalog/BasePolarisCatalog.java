@@ -32,7 +32,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -93,6 +92,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TableLikeEntity;
+import org.apache.polaris.core.persistence.BaseResult;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -101,6 +101,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCat
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -194,6 +195,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    */
   public BasePolarisCatalog(
       PolarisEntityManager entityManager,
+      PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView,
       AuthenticatedPolarisPrincipal authenticatedPrincipal,
@@ -209,7 +211,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     this.catalogId = catalogEntity.getId();
     this.catalogName = catalogEntity.getName();
     this.fileIOFactory = fileIOFactory;
-    this.metaStoreManager = entityManager.getMetaStoreManager();
+    this.metaStoreManager = metaStoreManager;
   }
 
   @Override
@@ -927,7 +929,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         entityManager
             .getCredentialCache()
             .getOrGenerateSubScopeCreds(
-                getMetaStoreManager(),
+                getCredentialVendor(),
                 callContext.getPolarisCallContext(),
                 entity,
                 allowList,
@@ -1774,6 +1776,10 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     return metaStoreManager;
   }
 
+  private PolarisCredentialVendor getCredentialVendor() {
+    return metaStoreManager;
+  }
+
   @VisibleForTesting
   void setFileIOFactory(FileIOFactory newFactory) {
     this.fileIOFactory = newFactory;
@@ -1845,7 +1851,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           from,
           to);
       switch (returnedEntityResult.getReturnStatus()) {
-        case PolarisMetaStoreManager.ReturnStatus.ENTITY_ALREADY_EXISTS:
+        case BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS:
           {
             PolarisEntitySubType existingEntitySubType =
                 returnedEntityResult.getAlreadyExistsEntitySubType();
@@ -1864,16 +1870,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 String.format("Unexpected entity type '%s'", existingEntitySubType));
           }
 
-        case PolarisMetaStoreManager.ReturnStatus.ENTITY_NOT_FOUND:
+        case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
           throw new NotFoundException("Cannot rename %s to %s. %s does not exist", from, to, from);
 
           // this is temporary. Should throw a special error that will be caught and retried
-        case PolarisMetaStoreManager.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
-        case PolarisMetaStoreManager.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED:
+        case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
+        case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED:
           throw new RuntimeException("concurrent update detected, please retry");
 
           // some entities cannot be renamed
-        case PolarisMetaStoreManager.ReturnStatus.ENTITY_CANNOT_BE_RENAMED:
+        case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RENAMED:
           throw new BadRequestException("Cannot rename built-in object %s", leafEntity.getName());
 
           // some entities cannot be renamed
@@ -1985,7 +1991,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     if (resolvedEntities == null) {
       // TODO: Error?
       return new PolarisMetaStoreManager.DropEntityResult(
-          PolarisMetaStoreManager.ReturnStatus.ENTITY_NOT_FOUND, null);
+          BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
@@ -2255,16 +2261,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private static boolean isAccessDenied(String errorMsg) {
     // Corresponding error messages for storage providers Aws/Azure/Gcp
     boolean isAccessDenied =
-        errorMsg != null
-            && (errorMsg
-                    .toLowerCase(Locale.ENGLISH)
-                    .contains(IcebergExceptionMapper.AWS_ACCESS_DENIED_HINT)
-                || errorMsg
-                    .toLowerCase(Locale.ENGLISH)
-                    .contains(IcebergExceptionMapper.AZURE_ACCESS_DENIED_HINT)
-                || errorMsg
-                    .toLowerCase(Locale.ENGLISH)
-                    .contains(IcebergExceptionMapper.GCP_ACCESS_DENIED_HINT));
+        errorMsg != null && IcebergExceptionMapper.containsAnyAccessDeniedHint(errorMsg);
     if (isAccessDenied) {
       LOGGER.debug("Access Denied or Forbidden error: {}", errorMsg);
       return true;

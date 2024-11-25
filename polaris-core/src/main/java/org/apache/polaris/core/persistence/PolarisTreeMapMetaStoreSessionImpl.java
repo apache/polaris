@@ -45,14 +45,17 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   // the TreeMap store to use
   private final PolarisTreeMapStore store;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
+  private final PrincipalSecretsGenerator secretsGenerator;
 
   public PolarisTreeMapMetaStoreSessionImpl(
       @NotNull PolarisTreeMapStore store,
-      @NotNull PolarisStorageIntegrationProvider storageIntegrationProvider) {
+      @NotNull PolarisStorageIntegrationProvider storageIntegrationProvider,
+      @NotNull PrincipalSecretsGenerator secretsGenerator) {
 
     // init store
     this.store = store;
     this.storageIntegrationProvider = storageIntegrationProvider;
+    this.secretsGenerator = secretsGenerator;
   }
 
   /** {@inheritDoc} */
@@ -454,7 +457,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
     PolarisPrincipalSecrets lookupPrincipalSecrets;
     do {
       // generate new random client id and secrets
-      principalSecrets = new PolarisPrincipalSecrets(principalId);
+      principalSecrets = secretsGenerator.produceSecrets(principalName, principalId);
 
       // load the existing secrets
       lookupPrincipalSecrets =
@@ -474,8 +477,8 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
       @NotNull PolarisCallContext callCtx,
       @NotNull String clientId,
       long principalId,
-      @NotNull String mainSecretToRotate,
-      boolean reset) {
+      boolean reset,
+      @NotNull String oldSecretHash) {
 
     // load the existing secrets
     PolarisPrincipalSecrets principalSecrets = this.store.getSlicePrincipalSecrets().read(clientId);
@@ -501,9 +504,9 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
             principalSecrets.getPrincipalId());
 
     // rotate the secrets
-    principalSecrets.rotateSecrets(mainSecretToRotate);
+    principalSecrets.rotateSecrets(oldSecretHash);
     if (reset) {
-      principalSecrets.rotateSecrets(principalSecrets.getMainSecret());
+      principalSecrets.rotateSecrets(principalSecrets.getMainSecretHash());
     }
 
     // write back new secrets

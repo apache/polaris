@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.persistence;
 
+import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -35,6 +37,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
+import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -95,7 +98,7 @@ public class ResolverTest {
   public ResolverTest() {
     diagServices = new PolarisDefaultDiagServiceImpl();
     store = new PolarisTreeMapStore(diagServices);
-    metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock());
+    metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(metaStore, diagServices);
     metaStoreManager = new PolarisMetaStoreManagerImpl();
 
@@ -904,7 +907,7 @@ public class ResolverTest {
     Assertions.assertThat(refEntity).isNotNull();
 
     // reload the cached entry from the backend
-    PolarisMetaStoreManager.CachedEntryResult refCachedEntry =
+    CachedEntryResult refCachedEntry =
         this.metaStoreManager.loadCachedEntryById(
             this.callCtx, refEntity.getCatalogId(), refEntity.getId());
 

@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.persistence;
 
+import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
+
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
@@ -82,7 +84,7 @@ public class EntityCacheTest {
   public EntityCacheTest() {
     diagServices = new PolarisDefaultDiagServiceImpl();
     store = new PolarisTreeMapStore(diagServices);
-    metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock());
+    metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(metaStore, diagServices);
     metaStoreManager = new PolarisMetaStoreManagerImpl();
 

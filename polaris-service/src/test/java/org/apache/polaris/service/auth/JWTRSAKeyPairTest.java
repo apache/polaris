@@ -36,15 +36,14 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -119,10 +118,8 @@ public class JWTRSAKeyPairTest {
     String mainSecret = "client-secret";
     PolarisPrincipalSecrets principalSecrets =
         new PolarisPrincipalSecrets(1L, clientId, mainSecret, "otherSecret");
-    PolarisEntityManager entityManager =
-        new PolarisEntityManager(metastoreManager, Mockito::mock, new StorageCredentialCache());
     Mockito.when(metastoreManager.loadPrincipalSecrets(polarisCallContext, clientId))
-        .thenReturn(new PolarisMetaStoreManager.PrincipalSecretsResult(principalSecrets));
+        .thenReturn(new PrincipalSecretsResult(principalSecrets));
     PolarisBaseEntity principal =
         new PolarisBaseEntity(
             0L,
@@ -133,7 +130,7 @@ public class JWTRSAKeyPairTest {
             "principal");
     Mockito.when(metastoreManager.loadEntity(polarisCallContext, 0L, 1L))
         .thenReturn(new PolarisMetaStoreManager.EntityResult(principal));
-    TokenBroker tokenBroker = new JWTRSAKeyPair(entityManager, 420);
+    TokenBroker tokenBroker = new JWTRSAKeyPair(metastoreManager, 420);
     TokenResponse token =
         tokenBroker.generateFromClientSecrets(
             clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, scope);

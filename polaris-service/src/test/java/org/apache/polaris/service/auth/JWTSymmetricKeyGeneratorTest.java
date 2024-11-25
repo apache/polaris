@@ -26,15 +26,14 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -66,10 +65,8 @@ public class JWTSymmetricKeyGeneratorTest {
     String clientId = "test_client_id";
     PolarisPrincipalSecrets principalSecrets =
         new PolarisPrincipalSecrets(1L, clientId, mainSecret, "otherSecret");
-    PolarisEntityManager entityManager =
-        new PolarisEntityManager(metastoreManager, Mockito::mock, new StorageCredentialCache());
     Mockito.when(metastoreManager.loadPrincipalSecrets(polarisCallContext, clientId))
-        .thenReturn(new PolarisMetaStoreManager.PrincipalSecretsResult(principalSecrets));
+        .thenReturn(new PrincipalSecretsResult(principalSecrets));
     PolarisBaseEntity principal =
         new PolarisBaseEntity(
             0L,
@@ -80,7 +77,7 @@ public class JWTSymmetricKeyGeneratorTest {
             "principal");
     Mockito.when(metastoreManager.loadEntity(polarisCallContext, 0L, 1L))
         .thenReturn(new PolarisMetaStoreManager.EntityResult(principal));
-    TokenBroker generator = new JWTSymmetricKeyBroker(entityManager, 666, () -> "polaris");
+    TokenBroker generator = new JWTSymmetricKeyBroker(metastoreManager, 666, () -> "polaris");
     TokenResponse token =
         generator.generateFromClientSecrets(
             clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, "PRINCIPAL_ROLE:TEST");
