@@ -80,7 +80,7 @@ public class MetadataCacheManager {
     }
   }
 
-  /** */
+  /** Convert a {@link TableMetadata} to JSON, with the size bounded */
   public static Optional<String> toBoundedJson(TableMetadata metadata, int maxBytes) {
     try (StringWriter unboundedWriter = new StringWriter()) {
       BoundedWriter boundedWriter = new BoundedWriter(unboundedWriter, maxBytes);
