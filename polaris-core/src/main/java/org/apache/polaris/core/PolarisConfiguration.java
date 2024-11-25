@@ -47,7 +47,8 @@ public class PolarisConfiguration<T> {
     this.typ = (Class<T>) defaultValue.getClass();
     this.validation = validation;
 
-    validate(cast(defaultValue));
+    // Force validation:
+    cast(defaultValue);
   }
 
   public boolean hasCatalogConfig() {
