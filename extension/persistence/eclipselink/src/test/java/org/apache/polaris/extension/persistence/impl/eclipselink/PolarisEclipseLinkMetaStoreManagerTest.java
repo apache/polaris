@@ -19,6 +19,7 @@
 package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import static jakarta.persistence.Persistence.createEntityManagerFactory;
+import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -57,7 +58,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
     PolarisEclipseLinkMetaStoreSessionImpl session =
         new PolarisEclipseLinkMetaStoreSessionImpl(
-            store, Mockito.mock(), () -> "realm", null, "polaris");
+            store, Mockito.mock(), () -> "realm", null, "polaris", RANDOM_SECRETS);
     return new PolarisTestMetaStoreManager(
         new PolarisMetaStoreManagerImpl(),
         new PolarisCallContext(
@@ -78,7 +79,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     try {
       var session =
           new PolarisEclipseLinkMetaStoreSessionImpl(
-              store, Mockito.mock(), () -> "realm", confFile, "polaris");
+              store, Mockito.mock(), () -> "realm", confFile, "polaris", RANDOM_SECRETS);
       assertNotNull(session);
       assertTrue(success);
     } catch (Exception e) {
