@@ -18,12 +18,20 @@
  */
 package org.apache.polaris.service.persistence;
 
+import java.io.IOException;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 import java.util.function.Supplier;
+
+import com.fasterxml.jackson.core.JsonGenerator;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.RuntimeIOException;
+import org.apache.iceberg.util.JsonUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -44,7 +52,7 @@ public class MetadataCacheManager {
    */
   public static TableMetadata loadTableMetadata(
       TableIdentifier tableIdentifier,
-      long maxBytesToCache,
+      int maxBytesToCache,
       PolarisCallContext callContext,
       PolarisMetaStoreManager metastoreManager,
       PolarisResolutionManifestCatalogView resolvedEntityView,
@@ -74,6 +82,20 @@ public class MetadataCacheManager {
     }
   }
 
+  public static Optional<String> toBoundedJson(TableMetadata metadata, int maxBytes) {
+    try (StringWriter writer = new StringWriter()) {
+      BoundedWriter boundedWriter = new BoundedWriter(writer, maxBytes);
+      JsonGenerator generator = JsonUtil.factory().createGenerator(boundedWriter);
+      TableMetadataParser.toJson(metadata, generator);
+      generator.flush();
+      return Optional.ofNullable(writer.toString());
+    } catch (BoundedWriterException b) {
+      return Optional.empty();
+    } catch (IOException e) {
+      throw new RuntimeIOException(e, "Failed to write json for: %s", metadata);
+    }
+  }
+
   /**
    * Attempt to add table metadata to the cache
    *
@@ -82,19 +104,18 @@ public class MetadataCacheManager {
   private static PolarisMetaStoreManager.EntityResult cacheTableMetadata(
       TableLikeEntity tableLikeEntity,
       TableMetadata metadata,
-      long maxBytesToCache,
+      int maxBytesToCache,
       PolarisCallContext callContext,
       PolarisMetaStoreManager metaStoreManager,
       PolarisResolutionManifestCatalogView resolvedEntityView) {
-    String json = TableMetadataParser.toJson(metadata);
+    Optional<String> jsonOpt = toBoundedJson(metadata, maxBytesToCache);
     // We should not reach this method in this case, but check just in case...
     if (maxBytesToCache != PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING) {
-      long sizeInBytes = json.getBytes(StandardCharsets.UTF_8).length;
-      if (sizeInBytes > maxBytesToCache) {
+      if (jsonOpt.isEmpty()) {
         LOGGER.debug(
             String.format(
-                "Will not cache metadata for %s; metadata is %d bytes and the limit is %d",
-                tableLikeEntity.getTableIdentifier(), sizeInBytes, maxBytesToCache));
+                "Will not cache metadata for %s; metadata above the limit of %d bytes",
+                tableLikeEntity.getTableIdentifier(), maxBytesToCache));
         return new PolarisMetaStoreManager.EntityResult(
             PolarisMetaStoreManager.ReturnStatus.SUCCESS, null);
       } else {
@@ -102,7 +123,7 @@ public class MetadataCacheManager {
             String.format("Caching metadata for %s", tableLikeEntity.getTableIdentifier()));
         TableLikeEntity newTableLikeEntity =
             new TableLikeEntity.Builder(tableLikeEntity)
-                .setMetadataContent(tableLikeEntity.getMetadataLocation(), json)
+                .setMetadataContent(tableLikeEntity.getMetadataLocation(), jsonOpt.get())
                 .build();
         PolarisResolvedPathWrapper resolvedPath =
             resolvedEntityView.getResolvedPath(
@@ -134,6 +155,76 @@ public class MetadataCacheManager {
               tableLikeEntity.getTableIdentifier()));
       return new PolarisMetaStoreManager.EntityResult(
           PolarisMetaStoreManager.ReturnStatus.SUCCESS, null);
+    }
+  }
+
+  private static class BoundedWriterException extends RuntimeException {}
+
+  private static class BoundedWriter extends Writer {
+    private final Writer delegate;
+    private final int maxBytes;
+    private long writtenBytes = 0;
+
+    public BoundedWriter(Writer delegate, int maxBytes) {
+      this.delegate = delegate;
+      this.maxBytes = maxBytes;
+    }
+
+    private void checkLimit(long bytesToWrite) throws IOException {
+      if (writtenBytes + bytesToWrite > maxBytes) {
+        throw new BoundedWriterException();
+      }
+    }
+
+    @Override
+    public void write(char[] cbuf, int off, int len) throws IOException {
+      checkLimit(len);
+      delegate.write(cbuf, off, len);
+      writtenBytes += len;
+    }
+
+    @Override
+    public void write(int c) throws IOException {
+      checkLimit(1);
+      delegate.write(c);
+      writtenBytes++;
+    }
+
+    @Override
+    public void write(String str, int off, int len) throws IOException {
+      checkLimit(len);
+      delegate.write(str, off, len);
+      writtenBytes += len;
+    }
+
+    @Override
+    public Writer append(CharSequence csq) throws IOException {
+      String str = (csq == null) ? "null" : csq.toString();
+      write(str, 0, str.length());
+      return this;
+    }
+
+    @Override
+    public Writer append(CharSequence csq, int start, int end) throws IOException {
+      String str = (csq == null) ? "null" : csq.subSequence(start, end).toString();
+      write(str, 0, str.length());
+      return this;
+    }
+
+    @Override
+    public Writer append(char c) throws IOException {
+      write(c);
+      return this;
+    }
+
+    @Override
+    public void flush() throws IOException {
+      delegate.flush();
+    }
+
+    @Override
+    public void close() throws IOException {
+      delegate.close();
     }
   }
 }

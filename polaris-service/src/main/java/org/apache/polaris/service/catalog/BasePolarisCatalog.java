@@ -828,7 +828,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   public TableMetadata loadTableMetadata(TableIdentifier identifier) {
-    long maxMetadataCacheBytes =
+    int maxMetadataCacheBytes =
         callContext
             .getPolarisCallContext()
             .getConfigurationStore()
@@ -1385,14 +1385,14 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                   callContext.getPolarisCallContext(),
                   catalogEntity,
                   PolarisConfiguration.METADATA_CACHE_MAX_BYTES);
-      String metadataJson = null;
+      Optional<String> metadataJsonOpt = Optional.empty();
       boolean shouldPersistMetadata =
           switch (maxMetadataCacheBytes) {
             case PolarisConfiguration.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING -> true;
             case PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING -> false;
             default -> {
-              metadataJson = TableMetadataParser.toJson(metadata);
-              yield metadataJson.length() <= maxMetadataCacheBytes;
+              metadataJsonOpt = MetadataCacheManager.toBoundedJson(metadata, maxMetadataCacheBytes);
+              yield metadataJsonOpt.map(String::length).map(l -> l <= maxMetadataCacheBytes).orElse(false);
             }
           };
       final TableLikeEntity.Builder builder;
@@ -1412,8 +1412,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 .setBaseLocation(metadata.location())
                 .setMetadataLocation(newLocation);
       }
-      if (shouldPersistMetadata) {
-        builder.setMetadataContent(newLocation, metadataJson);
+      if (shouldPersistMetadata && metadataJsonOpt.isPresent()) {
+        builder.setMetadataContent(newLocation, metadataJsonOpt.get());
       }
       entity = builder.build();
       if (!Objects.equal(existingLocation, oldLocation)) {
@@ -1438,7 +1438,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
 
     /**
-     * COPIED FROM {@link BaseMetastoreTableOperations} but without the requirement that base ==
+     * Copied from {@link BaseMetastoreTableOperations} but without the requirement that base ==
      * current()
      *
      * @param base table metadata on which changes were based
@@ -1480,7 +1480,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
 
     /**
-     * COPIED FROM {@link BaseMetastoreTableOperations} as the method is private there This is moved
+     * Copied from {@link BaseMetastoreTableOperations} as the method is private there This is moved
      * to `CatalogUtils` in Iceberg 1.7.0 and can be called from there once we depend on Iceberg
      * 1.7.0
      *

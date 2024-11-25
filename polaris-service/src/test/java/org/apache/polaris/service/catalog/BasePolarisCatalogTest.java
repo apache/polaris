@@ -1550,7 +1550,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     TableMetadata cachedMetadata =
         MetadataCacheManager.loadTableMetadata(
             tableIdentifier,
-            Long.MAX_VALUE,
+            Integer.MAX_VALUE,
             polarisContext,
             metaStoreManager,
             passthroughView,
@@ -1574,7 +1574,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     TableMetadata reloadedMetadata =
         MetadataCacheManager.loadTableMetadata(
             tableIdentifier,
-            Long.MAX_VALUE,
+            Integer.MAX_VALUE,
             polarisContext,
             metaStoreManager,
             passthroughView,
