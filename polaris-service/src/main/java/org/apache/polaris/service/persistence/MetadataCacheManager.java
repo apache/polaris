@@ -18,14 +18,12 @@
  */
 package org.apache.polaris.service.persistence;
 
+import com.fasterxml.jackson.core.JsonGenerator;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.function.Supplier;
-
-import com.fasterxml.jackson.core.JsonGenerator;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;

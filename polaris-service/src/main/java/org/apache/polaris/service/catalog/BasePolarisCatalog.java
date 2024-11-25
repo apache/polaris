@@ -1392,7 +1392,10 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             case PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING -> false;
             default -> {
               metadataJsonOpt = MetadataCacheManager.toBoundedJson(metadata, maxMetadataCacheBytes);
-              yield metadataJsonOpt.map(String::length).map(l -> l <= maxMetadataCacheBytes).orElse(false);
+              yield metadataJsonOpt
+                  .map(String::length)
+                  .map(l -> l <= maxMetadataCacheBytes)
+                  .orElse(false);
             }
           };
       final TableLikeEntity.Builder builder;
