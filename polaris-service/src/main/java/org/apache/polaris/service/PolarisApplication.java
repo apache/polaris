@@ -58,7 +58,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
-import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
@@ -401,13 +400,6 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
               MDC.putCloseable("request_id", httpRequest.getHeader("request_id"))) {
         chain.doFilter(request, response);
       } finally {
-        Object contextCatalog =
-            currentCallContext
-                .contextVariables()
-                .get(CallContext.REQUEST_PATH_CATALOG_INSTANCE_KEY);
-        if (contextCatalog instanceof Closeable closeableCatalog) {
-          closeableCatalog.close();
-        }
         currentCallContext.close();
       }
     }
