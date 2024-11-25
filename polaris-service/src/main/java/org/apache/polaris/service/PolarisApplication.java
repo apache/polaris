@@ -86,12 +86,11 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.context.RealmScopeContext;
+import org.apache.polaris.core.context.RealmScope;
 import org.apache.polaris.core.monitor.PolarisMetricRegistry;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
-import org.apache.polaris.core.persistence.cache.EntityCacheFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
@@ -117,11 +116,13 @@ import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.CallContextResolver;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.context.RealmContextResolver;
+import org.apache.polaris.service.context.RealmScopeContext;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.exception.IcebergJerseyViolationExceptionMapper;
 import org.apache.polaris.service.exception.IcebergJsonProcessingExceptionMapper;
 import org.apache.polaris.service.exception.PolarisExceptionMapper;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.service.persistence.cache.EntityCacheFactory;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilter;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -133,6 +134,7 @@ import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.apache.polaris.service.throttling.StreamReadConstraintsExceptionMapper;
 import org.apache.polaris.service.tracing.TracingFilter;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
+import org.glassfish.hk2.api.Factory;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
@@ -216,8 +218,10 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
               protected void configure() {
                 bind(RealmScopeContext.class).in(Singleton.class);
                 bind(configuration.getMetaStoreManagerFactory()).to(MetaStoreManagerFactory.class);
-                bindFactory(configuration.getMetaStoreManagerFactory())
-                    .to(PolarisMetaStoreManager.class);
+                bindFactory(PolarisMetaStoreManagerFactory.class)
+                    .to(PolarisMetaStoreManager.class)
+                    .in(RealmScope.class);
+
                 bind(configuration.getConfigurationStore()).to(PolarisConfigurationStore.class);
                 bind(configuration.getFileIOFactory()).to(FileIOFactory.class);
                 bind(configuration.getPolarisAuthenticator()).to(Authenticator.class);
@@ -479,5 +483,19 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         currentCallContext.close();
       }
     }
+  }
+
+  private static class PolarisMetaStoreManagerFactory implements Factory<PolarisMetaStoreManager> {
+    @Inject MetaStoreManagerFactory metaStoreManagerFactory;
+
+    @RealmScope
+    @Override
+    public PolarisMetaStoreManager provide() {
+      RealmContext realmContext = CallContext.getCurrentContext().getRealmContext();
+      return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+    }
+
+    @Override
+    public void dispose(PolarisMetaStoreManager instance) {}
   }
 }

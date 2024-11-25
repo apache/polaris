@@ -16,11 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence.cache;
+package org.apache.polaris.service.persistence.cache;
 
 import jakarta.inject.Inject;
 import org.apache.polaris.core.context.RealmScope;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.glassfish.hk2.api.Factory;
 
 public class EntityCacheFactory implements Factory<EntityCache> {
