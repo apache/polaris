@@ -1385,12 +1385,15 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                   callContext.getPolarisCallContext(),
                   catalogEntity,
                   PolarisConfiguration.METADATA_CACHE_MAX_BYTES);
-      String metadataJson = TableMetadataParser.toJson(metadata);
+      String metadataJson = null;
       boolean shouldPersistMetadata =
           switch (maxMetadataCacheBytes) {
             case PolarisConfiguration.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING -> true;
             case PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING -> false;
-            default -> metadataJson.length() <= maxMetadataCacheBytes;
+            default -> {
+              metadataJson = TableMetadataParser.toJson(metadata);
+              yield metadataJson.length() <= maxMetadataCacheBytes;
+            }
           };
       final TableLikeEntity.Builder builder;
       if (null == entity) {
