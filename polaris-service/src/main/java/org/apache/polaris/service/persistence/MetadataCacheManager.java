@@ -144,7 +144,8 @@ public class MetadataCacheManager {
                     "Encountered an error while caching %s: %s",
                     tableLikeEntity.getTableIdentifier(), e));
             return new PolarisMetaStoreManager.EntityResult(
-                PolarisMetaStoreManager.EntityResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, e.getMessage());
+                PolarisMetaStoreManager.EntityResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED,
+                e.getMessage());
           } else {
             throw e;
           }
