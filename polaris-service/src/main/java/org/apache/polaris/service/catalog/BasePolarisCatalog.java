@@ -1390,8 +1390,11 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       Optional<String> metadataJsonOpt = Optional.empty();
       boolean shouldPersistMetadata =
           switch (maxMetadataCacheBytes) {
-            case PolarisConfiguration.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING -> true;
             case PolarisConfiguration.METADATA_CACHE_MAX_BYTES_NO_CACHING -> false;
+            case PolarisConfiguration.METADATA_CACHE_MAX_BYTES_INFINITE_CACHING -> {
+              metadataJsonOpt = MetadataCacheManager.toBoundedJson(metadata, maxMetadataCacheBytes);
+              yield true;
+            }
             default -> {
               metadataJsonOpt = MetadataCacheManager.toBoundedJson(metadata, maxMetadataCacheBytes);
               yield metadataJsonOpt

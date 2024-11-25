@@ -83,7 +83,7 @@ public class MetadataCacheManager {
   /** Convert a {@link TableMetadata} to JSON, with the size bounded */
   public static Optional<String> toBoundedJson(TableMetadata metadata, int maxBytes) {
     try (StringWriter unboundedWriter = new StringWriter()) {
-      BoundedWriter boundedWriter = new BoundedWriter(unboundedWriter, maxBytes);
+      BoundedStringWriter boundedWriter = new BoundedStringWriter(unboundedWriter, maxBytes);
       JsonGenerator generator = JsonUtil.factory().createGenerator(boundedWriter);
       TableMetadataParser.toJson(metadata, generator);
       generator.flush();
@@ -161,22 +161,27 @@ public class MetadataCacheManager {
     }
   }
 
-  private static class BoundedWriter extends Writer {
+  private static class BoundedStringWriter extends Writer {
     private final Writer delegate;
     private final int maxBytes;
     private long writtenBytes = 0;
     private boolean limitExceeded = false;
 
-    public BoundedWriter(Writer delegate, int maxBytes) {
+    /** Create a new BoundedWriter with a given limit `maxBytes`. -1 means no limit. */
+    public BoundedStringWriter(StringWriter delegate, int maxBytes) {
       this.delegate = delegate;
-      this.maxBytes = maxBytes;
+      if (maxBytes == -1) {
+        this.maxBytes = Integer.MAX_VALUE;
+      } else {
+        this.maxBytes = maxBytes;
+      }
     }
 
     private boolean canWriteBytes(long bytesToWrite) throws IOException {
       if (writtenBytes + bytesToWrite > maxBytes) {
         limitExceeded = true;
       }
-      return limitExceeded;
+      return !limitExceeded;
     }
 
     /** `true` when the writer was asked to write more than `maxBytes` bytes */
@@ -236,6 +241,11 @@ public class MetadataCacheManager {
     @Override
     public final void close() throws IOException {
       delegate.close();
+    }
+
+    @Override
+    public final String toString() {
+      return delegate.toString();
     }
   }
 }
