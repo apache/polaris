@@ -50,6 +50,11 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
   protected PolarisMetaStoreSession createMetaStoreSession(
       @NotNull PolarisEclipseLinkStore store, @NotNull RealmContext realmContext) {
     return new PolarisEclipseLinkMetaStoreSessionImpl(
-        store, storageIntegration, realmContext, confFile, persistenceUnitName);
+        store,
+        storageIntegration,
+        realmContext,
+        confFile,
+        persistenceUnitName,
+        secretsGenerator(realmContext));
   }
 }

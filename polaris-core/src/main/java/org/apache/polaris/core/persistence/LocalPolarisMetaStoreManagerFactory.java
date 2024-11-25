@@ -59,10 +59,20 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
 
+  private boolean bootstrap;
+
   protected abstract StoreType createBackingStore(@NotNull PolarisDiagnostics diagnostics);
 
   protected abstract PolarisMetaStoreSession createMetaStoreSession(
       @NotNull StoreType store, @NotNull RealmContext realmContext);
+
+  protected PrincipalSecretsGenerator secretsGenerator(RealmContext realmContext) {
+    if (bootstrap) {
+      return PrincipalSecretsGenerator.bootstrap(realmContext.getRealmIdentifier());
+    } else {
+      return PrincipalSecretsGenerator.RANDOM_SECRETS;
+    }
+  }
 
   private void initializeForRealm(RealmContext realmContext) {
     final StoreType backingStore = createBackingStore(diagServices);
@@ -79,15 +89,20 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   public synchronized Map<String, PrincipalSecretsResult> bootstrapRealms(List<String> realms) {
     Map<String, PrincipalSecretsResult> results = new HashMap<>();
 
-    for (String realm : realms) {
-      RealmContext realmContext = () -> realm;
-      if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
-        initializeForRealm(realmContext);
-        PrincipalSecretsResult secretsResult =
-            bootstrapServiceAndCreatePolarisPrincipalForRealm(
-                realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
-        results.put(realmContext.getRealmIdentifier(), secretsResult);
+    bootstrap = true;
+    try {
+      for (String realm : realms) {
+        RealmContext realmContext = () -> realm;
+        if (!metaStoreManagerMap.containsKey(realmContext.getRealmIdentifier())) {
+          initializeForRealm(realmContext);
+          PrincipalSecretsResult secretsResult =
+              bootstrapServiceAndCreatePolarisPrincipalForRealm(
+                  realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
+          results.put(realmContext.getRealmIdentifier(), secretsResult);
+        }
       }
+    } finally {
+      bootstrap = false;
     }
 
     return results;
