@@ -57,7 +57,7 @@ constructor(objectFactory: ObjectFactory, project: Project) {
   val sourceTarballDigest =
     objectFactory
       .fileProperty()
-      .convention(project.provider { distributionDir.get().file("${baseName.get()}.sha512") })
+      .convention(project.provider { distributionDir.get().file("${baseName.get()}.tar.gz.sha512") })
 
   val mailingLists = objectFactory.listProperty(String::class.java).convention(emptyList())
 

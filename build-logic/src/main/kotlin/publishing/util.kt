@@ -70,9 +70,9 @@ internal fun generateDigest(input: File, output: File, algorithm: String) {
       if (rd == -1) break
       md.update(buf, 0, rd)
     }
-
     output.writeText(
       md.digest().joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
+      + " " + input.getName()
     )
   }
 }
