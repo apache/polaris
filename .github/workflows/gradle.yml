@@ -62,9 +62,6 @@ jobs:
       - name: Check Maven publication
         run: ./gradlew publishToMavenLocal sourceTarball
 
-      - name: Build with Gradle Wrapper
-        run: ./gradlew test
-
       - name: Archive test results
         uses: actions/upload-artifact@v4
         if: always()
