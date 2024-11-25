@@ -119,7 +119,7 @@ public class MetadataCacheManager {
                 "Will not cache metadata for %s; metadata above the limit of %d bytes",
                 tableLikeEntity.getTableIdentifier(), maxBytesToCache));
         return new PolarisMetaStoreManager.EntityResult(
-            PolarisMetaStoreManager.ReturnStatus.SUCCESS, null);
+            PolarisMetaStoreManager.EntityResult.ReturnStatus.SUCCESS, null);
       } else {
         LOGGER.debug(
             String.format("Caching metadata for %s", tableLikeEntity.getTableIdentifier()));
@@ -144,7 +144,7 @@ public class MetadataCacheManager {
                     "Encountered an error while caching %s: %s",
                     tableLikeEntity.getTableIdentifier(), e));
             return new PolarisMetaStoreManager.EntityResult(
-                PolarisMetaStoreManager.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, e.getMessage());
+                PolarisMetaStoreManager.EntityResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, e.getMessage());
           } else {
             throw e;
           }
@@ -156,7 +156,7 @@ public class MetadataCacheManager {
               "Will not cache metadata for %s; metadata caching is disabled",
               tableLikeEntity.getTableIdentifier()));
       return new PolarisMetaStoreManager.EntityResult(
-          PolarisMetaStoreManager.ReturnStatus.SUCCESS, null);
+          PolarisMetaStoreManager.EntityResult.ReturnStatus.SUCCESS, null);
     }
   }
 
