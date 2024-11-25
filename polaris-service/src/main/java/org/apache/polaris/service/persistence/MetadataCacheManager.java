@@ -80,15 +80,19 @@ public class MetadataCacheManager {
     }
   }
 
+  /** */
   public static Optional<String> toBoundedJson(TableMetadata metadata, int maxBytes) {
-    try (StringWriter writer = new StringWriter()) {
-      BoundedWriter boundedWriter = new BoundedWriter(writer, maxBytes);
+    try (StringWriter unboundedWriter = new StringWriter()) {
+      BoundedWriter boundedWriter = new BoundedWriter(unboundedWriter, maxBytes);
       JsonGenerator generator = JsonUtil.factory().createGenerator(boundedWriter);
       TableMetadataParser.toJson(metadata, generator);
       generator.flush();
-      return Optional.ofNullable(writer.toString());
-    } catch (BoundedWriterException b) {
-      return Optional.empty();
+      String result = boundedWriter.toString();
+      if (boundedWriter.isLimitExceeded()) {
+        return Optional.empty();
+      } else {
+        return Optional.ofNullable(result);
+      }
     } catch (IOException e) {
       throw new RuntimeIOException(e, "Failed to write json for: %s", metadata);
     }
@@ -156,72 +160,80 @@ public class MetadataCacheManager {
     }
   }
 
-  private static class BoundedWriterException extends RuntimeException {}
-
   private static class BoundedWriter extends Writer {
     private final Writer delegate;
     private final int maxBytes;
     private long writtenBytes = 0;
+    private boolean limitExceeded = false;
 
     public BoundedWriter(Writer delegate, int maxBytes) {
       this.delegate = delegate;
       this.maxBytes = maxBytes;
     }
 
-    private void checkLimit(long bytesToWrite) throws IOException {
+    private boolean canWriteBytes(long bytesToWrite) throws IOException {
       if (writtenBytes + bytesToWrite > maxBytes) {
-        throw new BoundedWriterException();
+        limitExceeded = true;
+      }
+      return limitExceeded;
+    }
+
+    /** `true` when the writer was asked to write more than `maxBytes` bytes */
+    public final boolean isLimitExceeded() {
+      return limitExceeded;
+    }
+
+    @Override
+    public final void write(char[] cbuf, int off, int len) throws IOException {
+      if (canWriteBytes(len)) {
+        delegate.write(cbuf, off, len);
+        writtenBytes += len;
       }
     }
 
     @Override
-    public void write(char[] cbuf, int off, int len) throws IOException {
-      checkLimit(len);
-      delegate.write(cbuf, off, len);
-      writtenBytes += len;
+    public final void write(int c) throws IOException {
+      if (canWriteBytes(1)) {
+        delegate.write(c);
+        writtenBytes++;
+      }
     }
 
     @Override
-    public void write(int c) throws IOException {
-      checkLimit(1);
-      delegate.write(c);
-      writtenBytes++;
+    public final void write(String str, int off, int len) throws IOException {
+      if (canWriteBytes(len)) {
+        delegate.write(str, off, len);
+        writtenBytes += len;
+      }
     }
 
     @Override
-    public void write(String str, int off, int len) throws IOException {
-      checkLimit(len);
-      delegate.write(str, off, len);
-      writtenBytes += len;
-    }
-
-    @Override
-    public Writer append(CharSequence csq) throws IOException {
+    public final Writer append(CharSequence csq) throws IOException {
       String str = (csq == null) ? "null" : csq.toString();
       write(str, 0, str.length());
       return this;
     }
 
     @Override
-    public Writer append(CharSequence csq, int start, int end) throws IOException {
+    public final Writer append(CharSequence csq, int start, int end) throws IOException {
       String str = (csq == null) ? "null" : csq.subSequence(start, end).toString();
       write(str, 0, str.length());
       return this;
     }
 
     @Override
-    public Writer append(char c) throws IOException {
+    public final Writer append(char c) throws IOException {
       write(c);
       return this;
     }
 
     @Override
-    public void flush() throws IOException {
+    public final void flush() throws IOException {
       delegate.flush();
     }
 
     @Override
-    public void close() throws IOException {
+    public final void close() throws IOException {
       delegate.close();
     }
   }
