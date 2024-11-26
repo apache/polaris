@@ -1019,4 +1019,193 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     Schema latestCommittedSchema = catalog().loadTable(identifier).schema();
     assertThat(latestCommittedSchema.asStruct()).isEqualTo(originalSchema.asStruct());
   }
+
+  @Test
+  public void testTableExistsStatus() {
+    String tableName = "tbl1";
+    Namespace namespace = Namespace.of("ns1");
+    TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    catalog().buildTable(identifier, SCHEMA).create();
+
+    try (Response response =
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/catalog/v1/%s/namespaces/%s/tables/%s",
+                    EXT.getLocalPort(), currentCatalogName, namespace.toString(), tableName))
+            .request("application/json")
+            .header("Authorization", "Bearer " + userToken)
+            .header(REALM_PROPERTY_KEY, realm)
+            .head()) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testDropTableStatus() {
+    String tableName = "tbl1";
+    Namespace namespace = Namespace.of("ns1");
+    TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    catalog().buildTable(identifier, SCHEMA).create();
+
+    try (Response response =
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/catalog/v1/%s/namespaces/%s/tables/%s",
+                    EXT.getLocalPort(), currentCatalogName, namespace.toString(), tableName))
+            .request("application/json")
+            .header("Authorization", "Bearer " + userToken)
+            .header(REALM_PROPERTY_KEY, realm)
+            .delete()) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testViewExistsStatus() {
+    String tableName = "tbl1";
+    String viewName = "view1";
+    Namespace namespace = Namespace.of("ns1");
+    TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    catalog().buildTable(identifier, SCHEMA).create();
+
+    restCatalog
+        .buildView(TableIdentifier.of(namespace, viewName))
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(namespace)
+        .withQuery("spark", VIEW_QUERY)
+        .create();
+
+    try (Response response =
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/catalog/v1/%s/namespaces/%s/views/%s",
+                    EXT.getLocalPort(), currentCatalogName, namespace, viewName))
+            .request("application/json")
+            .header("Authorization", "Bearer " + userToken)
+            .header(REALM_PROPERTY_KEY, realm)
+            .head()) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testDropViewStatus() {
+    String tableName = "tbl1";
+    String viewName = "view1";
+    Namespace namespace = Namespace.of("ns1");
+    TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    catalog().buildTable(identifier, SCHEMA).create();
+
+    restCatalog
+        .buildView(TableIdentifier.of(namespace, viewName))
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(namespace)
+        .withQuery("spark", VIEW_QUERY)
+        .create();
+
+    try (Response response =
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/catalog/v1/%s/namespaces/%s/views/%s",
+                    EXT.getLocalPort(), currentCatalogName, namespace, viewName))
+            .request("application/json")
+            .header("Authorization", "Bearer " + userToken)
+            .header(REALM_PROPERTY_KEY, realm)
+            .delete()) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testRenameViewStatus() {
+    String tableName = "tbl1";
+    String viewName = "view1";
+    String newViewName = "view2";
+    Namespace namespace = Namespace.of("ns1");
+    TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
+
+    if (requiresNamespaceCreate()) {
+      catalog().createNamespace(namespace);
+    }
+
+    catalog().buildTable(identifier, SCHEMA).create();
+
+    restCatalog
+        .buildView(TableIdentifier.of(namespace, viewName))
+        .withSchema(SCHEMA)
+        .withDefaultNamespace(namespace)
+        .withQuery("spark", VIEW_QUERY)
+        .create();
+
+    Map<String, Object> payload =
+        Map.of(
+            "source", Map.of("namespace", List.of(namespace.toString()), "name", viewName),
+            "destination", Map.of("namespace", List.of(namespace.toString()), "name", newViewName));
+
+    // Perform view rename
+    try (Response response =
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/catalog/v1/%s/views/rename",
+                    EXT.getLocalPort(), currentCatalogName))
+            .request("application/json")
+            .header("Authorization", "Bearer " + userToken)
+            .header(REALM_PROPERTY_KEY, realm)
+            .post(Entity.json(payload))) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+
+    // Original view should no longer exists
+    try (Response response =
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/catalog/v1/%s/namespaces/%s/views/%s",
+                    EXT.getLocalPort(), currentCatalogName, namespace, viewName))
+            .request("application/json")
+            .header("Authorization", "Bearer " + userToken)
+            .header(REALM_PROPERTY_KEY, realm)
+            .head()) {
+      assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
+    }
+
+    // New view should exists
+    try (Response response =
+        EXT.client()
+            .target(
+                String.format(
+                    "http://localhost:%d/api/catalog/v1/%s/namespaces/%s/views/%s",
+                    EXT.getLocalPort(), currentCatalogName, namespace, newViewName))
+            .request("application/json")
+            .header("Authorization", "Bearer " + userToken)
+            .header(REALM_PROPERTY_KEY, realm)
+            .head()) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+  }
 }

@@ -2376,6 +2376,70 @@ public class PolarisServiceImplIntegrationTest {
     }
   }
 
+  @Test
+  public void testNamespaceExistsStatus() {
+    // create a catalog
+    String catalogName = "mytablemanagecatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setStorageConfigInfo(
+                new AwsStorageConfigInfo(
+                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+    createCatalog(catalog);
+
+    // create a namespace
+    String namespaceName = "c";
+    createNamespace(catalogName, namespaceName);
+
+    // check if a namespace existed
+    try (Response response =
+        newRequest(
+                "http://localhost:%d/api/catalog/v1/"
+                    + catalogName
+                    + "/namespaces/"
+                    + namespaceName,
+                userToken)
+            .head()) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testDropNamespaceStatus() {
+    // create a catalog
+    String catalogName = "mytablemanagecatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setStorageConfigInfo(
+                new AwsStorageConfigInfo(
+                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+    createCatalog(catalog);
+
+    // create a namespace
+    String namespaceName = "c";
+    createNamespace(catalogName, namespaceName);
+
+    // drop a namespace
+    try (Response response =
+        newRequest(
+                "http://localhost:%d/api/catalog/v1/"
+                    + catalogName
+                    + "/namespaces/"
+                    + namespaceName,
+                userToken)
+            .delete()) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+  }
+
   public static JWTCreator.Builder defaultJwt() {
     Instant now = Instant.now();
     return JWT.create()
