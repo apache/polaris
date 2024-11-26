@@ -4,11 +4,19 @@ Copyright 2024 The Apache Software Foundation
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
-This product includes software licensed under the terms
-of the following licenses, see LICENSE file:
-* Apache Software License, Version 2.0
-* Creative Commons 1.0 Universal
-* Eclipse Distribution License, Version 1.0
-* Eclipse Public License, Version 1.0
-* Eclipse Public License, Version 2.0
-* GNU General Public License, Version 2 with the GNU Classpath Exception
+The initial code for the Polaris project was donated
+to the ASF by Snowflake Inc. (https://www.snowflake.com/) copyright 2024.
+
+Apache Iceberg
+Copyright 2017-2022 The Apache Software Foundation
+
+Apache Spark
+Copyright 2014 and onwards The Apache Software Foundation.
+
+Apache Hadoop
+Copyright 2006 and onwards The Apache Software Foundation.
+
+Dropwizard
+Copyright 2010-2013 Coda Hale and Yammer, Inc., 2014-2020 Dropwizard Team
+
+This product includes software developed by Coda Hale and Yammer, Inc.
