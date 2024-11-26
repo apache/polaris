@@ -19,17 +19,24 @@
 package org.apache.polaris.service.persistence.cache;
 
 import jakarta.inject.Inject;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmScope;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.glassfish.hk2.api.Factory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class EntityCacheFactory implements Factory<EntityCache> {
+  private static Logger LOGGER = LoggerFactory.getLogger(EntityCacheFactory.class);
   @Inject PolarisMetaStoreManager metaStoreManager;
 
   @RealmScope
   @Override
   public EntityCache provide() {
+    LOGGER.debug(
+        "Creating new EntityCache instance for realm {}",
+        CallContext.getCurrentContext().getRealmContext().getRealmIdentifier());
     return new EntityCache(metaStoreManager);
   }
 
