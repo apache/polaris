@@ -71,7 +71,8 @@ internal fun generateDigest(input: File, output: File, algorithm: String) {
     }
 
     output.writeText(
-      md.digest().joinToString(separator = "") { eachByte -> "%02x".format(eachByte) }
+      md.digest().joinToString(separator = "") { eachByte -> "%02x".format(eachByte) } +
+        "  ${input.name}"
     )
   }
 }
