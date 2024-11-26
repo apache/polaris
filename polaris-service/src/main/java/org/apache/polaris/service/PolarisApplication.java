@@ -214,6 +214,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
   @Override
   public void run(PolarisApplicationConfig configuration, Environment environment) {
     OpenTelemetry openTelemetry = setupTracing();
+    PolarisMetricRegistry polarisMetricRegistry =
+        new PolarisMetricRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
     environment
         .jersey()
         .register(
@@ -260,9 +262,16 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                         },
                         configuration.getGcpCredentialsProvider()))
                     .to(PolarisStorageIntegrationProvider.class);
-                bind(new PolarisMetricRegistry(
-                        new PrometheusMeterRegistry(PrometheusConfig.DEFAULT)))
-                    .to(PolarisMetricRegistry.class);
+                bind(polarisMetricRegistry).to(PolarisMetricRegistry.class);
+                polarisMetricRegistry.init(
+                    IcebergRestCatalogApi.class,
+                    IcebergRestConfigurationApi.class,
+                    IcebergRestOAuth2Api.class,
+                    PolarisCatalogsApi.class,
+                    PolarisPrincipalsApi.class,
+                    PolarisPrincipalRolesApi.class);
+                bind((PrometheusMeterRegistry) polarisMetricRegistry.getMeterRegistry())
+                    .to(PrometheusMeterRegistry.class);
                 bind(openTelemetry).to(OpenTelemetry.class);
                 bindAsContract(RealmEntityManagerFactory.class).in(RealmScope.class);
                 bind(PolarisCallContextCatalogFactory.class)
@@ -358,17 +367,6 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         CrossOriginFilter.ALLOW_CREDENTIALS_PARAM,
         configuration.getCorsConfiguration().getAllowCredentials());
     corsRegistration.addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
-    //    environment
-    //        .servlets()
-    //        .addFilter("tracing", TracingFilter.class)
-    //        .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
-    //
-    //    if (configuration.getRateLimiter() != null) {
-    //      environment
-    //          .servlets()
-    //          .addFilter("ratelimiter", RateLimiterFilter.class)
-    //          .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
-    //    }
 
     environment
         .servlets()
@@ -415,11 +413,15 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     Serializers.registerSerializers(objectMapper);
     environment.jersey().register(IcebergJsonProcessingExceptionMapper.class);
     environment.jersey().register(IcebergJerseyViolationExceptionMapper.class);
-    environment.jersey().register(TimedApplicationEventListener.class);
+    environment.jersey().register(new TimedApplicationEventListener(polarisMetricRegistry));
 
     environment
         .admin()
-        .addServlet("metrics", PrometheusMetricsServlet.class)
+        .addServlet(
+            "metrics",
+            new PrometheusMetricsServlet(
+                ((PrometheusMeterRegistry) polarisMetricRegistry.getMeterRegistry())
+                    .getPrometheusRegistry()))
         .addMapping("/metrics");
 
     // For in-memory metastore we need to bootstrap Service and Service principal at startup (for
