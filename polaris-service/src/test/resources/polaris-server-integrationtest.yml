@@ -119,6 +119,8 @@ logging:
   # Logger-specific levels.
   loggers:
     org.apache.polaris: DEBUG
+    # only used to warn about the tokens endpoint being deprecated
+    org.apache.iceberg.rest.RESTSessionCatalog: ERROR
 
   appenders:
 

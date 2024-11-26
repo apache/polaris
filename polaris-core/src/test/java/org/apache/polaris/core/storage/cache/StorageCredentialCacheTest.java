@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.storage.cache;
 
+import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
+
 import com.google.common.collect.ImmutableMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -66,7 +68,7 @@ public class StorageCredentialCacheTest {
     PolarisTreeMapStore store = new PolarisTreeMapStore(diagServices);
     // to interact with the metastore
     PolarisMetaStoreSession metaStore =
-        new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock());
+        new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(metaStore, diagServices);
     metaStoreManager = Mockito.mock(PolarisMetaStoreManagerImpl.class);
     storageCredentialCache = new StorageCredentialCache();

@@ -56,14 +56,11 @@ jobs:
           # Our `gradlew` validates the integrity of the `gradle-wrapper.jar`, so it's safe to disable this.
           validate-wrappers: false
 
-      - name: Check formatting
+      - name: Code style checks and tests
         run: ./gradlew check
 
       - name: Check Maven publication
         run: ./gradlew publishToMavenLocal sourceTarball
-
-      - name: Build with Gradle Wrapper
-        run: ./gradlew test
 
       - name: Archive test results
         uses: actions/upload-artifact@v4
