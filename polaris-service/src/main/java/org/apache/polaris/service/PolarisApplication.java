@@ -26,7 +26,6 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.StreamReadConstraints;
-import com.fasterxml.jackson.databind.DeserializationConfig;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
@@ -182,7 +181,12 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     serviceLocator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
     SimpleValueInstantiators instantiators = new SimpleValueInstantiators();
     ObjectMapper objectMapper = bootstrap.getObjectMapper();
-    DeserializationConfig deserializationConfig = objectMapper.getDeserializationConfig();
+
+    // Use the default ServiceLocator to discover the implementations of various contract providers
+    // and register them
+    // as subtypes with the ObjectMapper. This allows Jackson to discover the various
+    // implementations and use the
+    // type annotations to determine which instance to use when parsing the YAML configuration.
     serviceLocator
         .getDescriptors((c) -> true)
         .forEach(
@@ -203,11 +207,25 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                 throw new RuntimeException("Unable to start Polaris application");
               }
             });
+
+    // Note that we still use Jackson to instantiate the instances. This is because sometimes the
+    // concrete
+    // implementations will require dependency injection for classes that are defined later in the
+    // jersey
+    // setup. Those dependencies are injected later during the Jersey setup. If we try to use HK2 to
+    // instantiate the services now, the ServiceLocator throws an exception because not all
+    // dependencies can be
+    // found
     module.setValueInstantiators(instantiators);
     module.setMixInAnnotation(Authenticator.class, NamedAuthenticator.class);
     objectMapper.registerModule(module);
   }
 
+  /**
+   * Authenticator uses the java Class name in the YAML configuration. Since the Authenticator
+   * interface is owned by Dropwizard, we need to use a MixIn to tell Jackson what field to use to
+   * discover the implemnetation from the configuration.
+   */
   @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "class")
   static final class NamedAuthenticator {}
 
@@ -216,6 +234,9 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     OpenTelemetry openTelemetry = setupTracing();
     PolarisMetricRegistry polarisMetricRegistry =
         new PolarisMetricRegistry(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
+
+    // Use the PolarisApplicationConfig to register dependencies in the Jersey resource
+    // configuration.
     environment
         .jersey()
         .register(
@@ -307,6 +328,13 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
               }
             });
     MetaStoreManagerFactory metaStoreManagerFactory = configuration.getMetaStoreManagerFactory();
+
+    // During the jersey setup, use the new ServiceLocator to inject previously registered
+    // dependencies into
+    // the Jackson-managed PolarisApplicationConfig beans.
+    // This is not ideal, and we should figure out a way to allow Jackson to configure the named
+    // instances and to inject
+    // primitive field values while allowing HK2 to manage DI
     environment
         .jersey()
         .register(
@@ -330,6 +358,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
 
     RealmContextResolver realmContextResolver = configuration.getRealmContextResolver();
     CallContextResolver callContextResolver = configuration.getCallContextResolver();
+
+    // how do we register a filter by class and also add the mapping for url patterns?
     environment
         .servlets()
         .addFilter(
