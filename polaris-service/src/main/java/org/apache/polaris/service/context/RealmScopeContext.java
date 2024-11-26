@@ -44,7 +44,7 @@ public class RealmScopeContext implements Context<RealmScope> {
   public <U> U findOrCreate(ActiveDescriptor<U> activeDescriptor, ServiceHandle<?> root) {
     RealmContext realmContext = CallContext.getCurrentContext().getRealmContext();
     Map<ActiveDescriptor<?>, Object> contextMap =
-        contexts.computeIfAbsent(realmContext.getRealmIdentifier(), k -> new HashMap<>());
+        contexts.computeIfAbsent(realmContext.getRealmIdentifier(), k -> new ConcurrentHashMap<>());
     return (U) contextMap.computeIfAbsent(activeDescriptor, k -> activeDescriptor.create(root));
   }
 
@@ -71,7 +71,8 @@ public class RealmScopeContext implements Context<RealmScope> {
 
   @Override
   public boolean isActive() {
-    return true;
+    return CallContext.getCurrentContext() != null
+        && CallContext.getCurrentContext().getRealmContext() != null;
   }
 
   @Override

@@ -22,6 +22,7 @@ import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmScope;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
@@ -29,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Gets or creates PolarisEntityManager instances based on config values and RealmContext. */
+@RealmScope
 public class RealmEntityManagerFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(RealmEntityManagerFactory.class);
   private final MetaStoreManagerFactory metaStoreManagerFactory;
@@ -64,6 +66,5 @@ public class RealmEntityManagerFactory {
               metaStoreManagerFactory.getOrCreateStorageCredentialCache(context),
               entityCache);
         });
-
   }
 }

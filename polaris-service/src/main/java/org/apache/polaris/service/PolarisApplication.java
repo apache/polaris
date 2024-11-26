@@ -84,6 +84,7 @@ import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.context.RealmScope;
@@ -91,6 +92,7 @@ import org.apache.polaris.core.monitor.PolarisMetricRegistry;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.PolarisRemoteCache;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
@@ -134,8 +136,10 @@ import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.apache.polaris.service.throttling.StreamReadConstraintsExceptionMapper;
 import org.apache.polaris.service.tracing.TracingFilter;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
+import org.glassfish.hk2.api.Context;
 import org.glassfish.hk2.api.Factory;
 import org.glassfish.hk2.api.ServiceLocator;
+import org.glassfish.hk2.api.TypeLiteral;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
 import org.slf4j.Logger;
@@ -216,7 +220,9 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
             new AbstractBinder() {
               @Override
               protected void configure() {
-                bind(RealmScopeContext.class).in(Singleton.class);
+                bind(RealmScopeContext.class)
+                    .in(Singleton.class)
+                    .to(new TypeLiteral<Context<RealmScope>>() {});
                 bind(configuration.getMetaStoreManagerFactory()).to(MetaStoreManagerFactory.class);
                 bindFactory(PolarisMetaStoreManagerFactory.class)
                     .to(PolarisMetaStoreManager.class)
@@ -230,7 +236,18 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                 bind(configuration.getCallContextResolver()).to(CallContextResolver.class);
                 bind(configuration.getRealmContextResolver()).to(RealmContextResolver.class);
                 bind(configuration.getRateLimiter()).to(RateLimiter.class);
-                bindFactory(EntityCacheFactory.class).to(EntityCache.class);
+                bindFactory(EntityCacheFactory.class).in(RealmScope.class).to(EntityCache.class);
+
+                bindFactory(PolarisRemoteCacheFactory.class)
+                    .in(RealmScope.class)
+                    .to(PolarisRemoteCache.class);
+
+                // factory to use a cache delegating grant cache
+                // currently depends explicitly on the metaStoreManager as the delegate grant
+                // manager
+                bindFactory(PolarisMetaStoreManagerFactory.class)
+                    .in(RealmScope.class)
+                    .to(PolarisGrantManager.class);
                 bind(new PolarisStorageIntegrationProviderImpl(
                         () -> {
                           StsClientBuilder stsClientBuilder = StsClient.builder();
@@ -247,7 +264,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                         new PrometheusMeterRegistry(PrometheusConfig.DEFAULT)))
                     .to(PolarisMetricRegistry.class);
                 bind(openTelemetry).to(OpenTelemetry.class);
-                bindAsContract(RealmEntityManagerFactory.class).in(Singleton.class);
+                bindAsContract(RealmEntityManagerFactory.class).in(RealmScope.class);
                 bind(PolarisCallContextCatalogFactory.class)
                     .to(CallContextCatalogFactory.class)
                     .in(Singleton.class);
@@ -497,5 +514,18 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
 
     @Override
     public void dispose(PolarisMetaStoreManager instance) {}
+  }
+
+  private static class PolarisRemoteCacheFactory implements Factory<PolarisRemoteCache> {
+    @Inject PolarisMetaStoreManager metaStoreManager;
+
+    @RealmScope
+    @Override
+    public PolarisRemoteCache provide() {
+      return metaStoreManager;
+    }
+
+    @Override
+    public void dispose(PolarisRemoteCache instance) {}
   }
 }

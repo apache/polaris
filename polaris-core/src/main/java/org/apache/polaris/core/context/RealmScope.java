@@ -22,10 +22,8 @@ import jakarta.inject.Scope;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
-import org.glassfish.hk2.api.Proxiable;
 
 @Scope
-@Proxiable
 @Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD})
 public @interface RealmScope {}
