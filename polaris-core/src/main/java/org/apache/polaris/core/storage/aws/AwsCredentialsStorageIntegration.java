@@ -76,7 +76,9 @@ public class AwsCredentialsStorageIntegration
     credentialMap.put(
         PolarisCredentialProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
     credentialMap.put(PolarisCredentialProperty.AWS_TOKEN, response.credentials().sessionToken());
-    credentialMap.put(PolarisCredentialProperty.CLIENT_REGION, storageConfig.getRegion());
+    if (storageConfig.getRegion() != null) {
+      credentialMap.put(PolarisCredentialProperty.CLIENT_REGION, storageConfig.getRegion());
+    }
     return credentialMap;
   }
 
