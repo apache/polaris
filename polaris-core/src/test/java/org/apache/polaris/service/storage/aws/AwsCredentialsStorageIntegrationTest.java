@@ -537,9 +537,7 @@ class AwsCredentialsStorageIntegrationTest {
                 true, /* allowList = true */
                 Set.of(),
                 Set.of());
-    assertThat(credentials)
-        .isNotEmpty()
-        .doesNotContainKey(PolarisCredentialProperty.CLIENT_REGION);
+    assertThat(credentials).isNotEmpty().doesNotContainKey(PolarisCredentialProperty.CLIENT_REGION);
   }
 
   private static @NotNull String s3Arn(String partition, String bucket, String keyPrefix) {
