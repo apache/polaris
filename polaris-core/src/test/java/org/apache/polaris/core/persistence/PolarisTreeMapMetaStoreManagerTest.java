@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.persistence;
 
+import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
+
 import java.time.ZoneId;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
@@ -32,7 +34,7 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
     PolarisTreeMapStore store = new PolarisTreeMapStore(diagServices);
     PolarisCallContext callCtx =
         new PolarisCallContext(
-            new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock()),
+            new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS),
             diagServices,
             new PolarisConfigurationStore() {},
             timeSource.withZone(ZoneId.systemDefault()));

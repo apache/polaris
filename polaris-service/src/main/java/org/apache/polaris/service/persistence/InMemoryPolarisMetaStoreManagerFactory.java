@@ -47,7 +47,8 @@ public class InMemoryPolarisMetaStoreManagerFactory
   @Override
   protected PolarisMetaStoreSession createMetaStoreSession(
       @NotNull PolarisTreeMapStore store, @NotNull RealmContext realmContext) {
-    return new PolarisTreeMapMetaStoreSessionImpl(store, storageIntegration);
+    return new PolarisTreeMapMetaStoreSessionImpl(
+        store, storageIntegration, secretsGenerator(realmContext));
   }
 
   @Override

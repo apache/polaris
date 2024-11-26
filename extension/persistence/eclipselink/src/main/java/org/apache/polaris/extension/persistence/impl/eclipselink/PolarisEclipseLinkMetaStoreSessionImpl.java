@@ -63,6 +63,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.models.ModelEntity;
 import org.apache.polaris.core.persistence.models.ModelEntityActive;
@@ -98,6 +99,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   private final ThreadLocal<EntityManager> localSession = new ThreadLocal<>();
   private final PolarisEclipseLinkStore store;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
+  private final PrincipalSecretsGenerator secretsGenerator;
 
   /**
    * Create a meta store session against provided realm. Each realm has its own database.
@@ -113,7 +115,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       @NotNull PolarisStorageIntegrationProvider storageIntegrationProvider,
       @NotNull RealmContext realmContext,
       @Nullable String confFile,
-      @Nullable String persistenceUnitName) {
+      @Nullable String persistenceUnitName,
+      @NotNull PrincipalSecretsGenerator secretsGenerator) {
     LOGGER.debug(
         "Creating EclipseLink Meta Store Session for realm {}", realmContext.getRealmIdentifier());
     emf = createEntityManagerFactory(realmContext, confFile, persistenceUnitName);
@@ -124,6 +127,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       this.store.initialize(session);
     }
     this.storageIntegrationProvider = storageIntegrationProvider;
+    this.secretsGenerator = secretsGenerator;
   }
 
   /**
@@ -651,7 +655,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
     ModelPrincipalSecrets lookupPrincipalSecrets;
     do {
       // generate new random client id and secrets
-      principalSecrets = new PolarisPrincipalSecrets(principalId);
+      principalSecrets = secretsGenerator.produceSecrets(principalName, principalId);
 
       // load the existing secrets
       lookupPrincipalSecrets =

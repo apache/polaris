@@ -45,14 +45,17 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   // the TreeMap store to use
   private final PolarisTreeMapStore store;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
+  private final PrincipalSecretsGenerator secretsGenerator;
 
   public PolarisTreeMapMetaStoreSessionImpl(
       @NotNull PolarisTreeMapStore store,
-      @NotNull PolarisStorageIntegrationProvider storageIntegrationProvider) {
+      @NotNull PolarisStorageIntegrationProvider storageIntegrationProvider,
+      @NotNull PrincipalSecretsGenerator secretsGenerator) {
 
     // init store
     this.store = store;
     this.storageIntegrationProvider = storageIntegrationProvider;
+    this.secretsGenerator = secretsGenerator;
   }
 
   /** {@inheritDoc} */
@@ -454,7 +457,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
     PolarisPrincipalSecrets lookupPrincipalSecrets;
     do {
       // generate new random client id and secrets
-      principalSecrets = new PolarisPrincipalSecrets(principalId);
+      principalSecrets = secretsGenerator.produceSecrets(principalName, principalId);
 
       // load the existing secrets
       lookupPrincipalSecrets =

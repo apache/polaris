@@ -133,8 +133,7 @@ internal fun configureOnRootProject(project: Project) =
             "NO STAGING REPOSITORY (no build service) !!"
           }
 
-        val (asfPrj, _) = fetchAsfProject(asfName)
-        val asfProjectName = asfPrj["name"] as String
+        val asfProjectName = fetchAsfProjectName(asfName)
 
         val versionNoRc = version.toString().replace("-rc-?[0-9]+".toRegex(), "")
 
