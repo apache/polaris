@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.storage;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.time.Clock;
 import java.util.EnumMap;
 import java.util.List;
@@ -30,8 +32,6 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -190,11 +190,11 @@ class InMemoryStorageIntegrationTest {
 
     @Override
     public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-        @NotNull PolarisDiagnostics diagnostics,
-        @NotNull PolarisStorageConfigurationInfo storageConfig,
+        @Nonnull PolarisDiagnostics diagnostics,
+        @Nonnull PolarisStorageConfigurationInfo storageConfig,
         boolean allowListOperation,
-        @NotNull Set<String> allowedReadLocations,
-        @NotNull Set<String> allowedWriteLocations) {
+        @Nonnull Set<String> allowedReadLocations,
+        @Nonnull Set<String> allowedWriteLocations) {
       return null;
     }
   }

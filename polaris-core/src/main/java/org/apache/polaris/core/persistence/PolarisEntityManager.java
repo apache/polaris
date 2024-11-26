@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.persistence;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
@@ -31,8 +33,6 @@ import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Wraps logic of handling name-caching and entity-caching against a concrete underlying entity
@@ -60,8 +60,8 @@ public class PolarisEntityManager {
   }
 
   public Resolver prepareResolver(
-      @NotNull CallContext callContext,
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull CallContext callContext,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
       @Nullable String referenceCatalogName) {
     return new Resolver(
         callContext.getPolarisCallContext(),
@@ -76,8 +76,8 @@ public class PolarisEntityManager {
   }
 
   public PolarisResolutionManifest prepareResolutionManifest(
-      @NotNull CallContext callContext,
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull CallContext callContext,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
       @Nullable String referenceCatalogName) {
     PolarisResolutionManifest manifest =
         new PolarisResolutionManifest(

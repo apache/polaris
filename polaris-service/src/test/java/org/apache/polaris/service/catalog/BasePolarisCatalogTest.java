@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterators;
+import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.time.Clock;
 import java.util.Arrays;
@@ -100,7 +101,6 @@ import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
 import org.assertj.core.api.AbstractBooleanAssert;
 import org.assertj.core.api.Assertions;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;

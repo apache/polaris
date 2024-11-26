@@ -19,12 +19,12 @@
 package org.apache.polaris.service.test;
 
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
+import jakarta.annotation.Nullable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Optional;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.platform.commons.util.ReflectionUtils;

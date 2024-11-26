@@ -21,13 +21,13 @@ package org.apache.polaris.service.ratelimiter;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.google.common.annotations.VisibleForTesting;
 import java.time.Clock;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.jetbrains.annotations.VisibleForTesting;
 
 /**
  * Rate limiter that maps the request's realm identifier to its own TokenBucketRateLimiter, with its

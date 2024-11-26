@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.collect.ImmutableMap;
+import jakarta.annotation.Nullable;
 import java.time.Clock;
 import java.util.Date;
 import java.util.HashMap;
@@ -53,7 +54,6 @@ import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 

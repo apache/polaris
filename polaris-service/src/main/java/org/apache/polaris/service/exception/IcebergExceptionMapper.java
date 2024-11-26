@@ -20,6 +20,7 @@ package org.apache.polaris.service.exception;
 
 import com.azure.core.exception.AzureException;
 import com.google.cloud.storage.StorageException;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
@@ -51,7 +52,6 @@ import org.apache.iceberg.exceptions.ServiceUnavailableException;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
-import org.jetbrains.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.model.S3Exception;

@@ -20,6 +20,7 @@ package org.apache.polaris.service;
 
 import static org.apache.polaris.core.monitor.PolarisMetricRegistry.TAG_RESP_CODE;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
 import io.micrometer.core.instrument.Tag;
 import java.lang.reflect.Method;
@@ -33,7 +34,6 @@ import org.glassfish.jersey.server.monitoring.ApplicationEvent;
 import org.glassfish.jersey.server.monitoring.ApplicationEventListener;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
 import org.glassfish.jersey.server.monitoring.RequestEventListener;
-import org.jetbrains.annotations.VisibleForTesting;
 
 /**
  * An ApplicationEventListener that supports timing and error counting of Jersey resource methods

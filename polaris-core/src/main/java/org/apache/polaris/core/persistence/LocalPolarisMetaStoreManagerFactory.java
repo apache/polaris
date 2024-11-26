@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence;
 
+import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,7 +37,6 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.monitor.PolarisMetricRegistry;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,10 +61,10 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
   private boolean bootstrap;
 
-  protected abstract StoreType createBackingStore(@NotNull PolarisDiagnostics diagnostics);
+  protected abstract StoreType createBackingStore(@Nonnull PolarisDiagnostics diagnostics);
 
   protected abstract PolarisMetaStoreSession createMetaStoreSession(
-      @NotNull StoreType store, @NotNull RealmContext realmContext);
+      @Nonnull StoreType store, @Nonnull RealmContext realmContext);
 
   protected PrincipalSecretsGenerator secretsGenerator(RealmContext realmContext) {
     if (bootstrap) {

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.task;
 
+import jakarta.annotation.Nonnull;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -40,7 +41,6 @@ import org.apache.iceberg.io.FileAppender;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.PositionOutputStream;
 import org.apache.iceberg.types.Types;
-import org.jetbrains.annotations.NotNull;
 
 public class TaskTestUtils {
   static ManifestFile manifestFile(
@@ -83,7 +83,7 @@ public class TaskTestUtils {
     out.close();
   }
 
-  static @NotNull TestSnapshot newSnapshot(
+  static @Nonnull TestSnapshot newSnapshot(
       FileIO fileIO,
       String manifestListLocation,
       long sequenceNumber,

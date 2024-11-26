@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.context;
 
+import jakarta.annotation.Nonnull;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -26,7 +27,6 @@ import org.apache.iceberg.io.CloseableGroup;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -133,7 +133,7 @@ public interface CallContext extends AutoCloseable {
 
   Map<String, Object> contextVariables();
 
-  default @NotNull CloseableGroup closeables() {
+  default @Nonnull CloseableGroup closeables() {
     return (CloseableGroup)
         contextVariables().computeIfAbsent(CLOSEABLES, key -> new CloseableGroup());
   }

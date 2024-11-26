@@ -20,12 +20,12 @@ package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * The implementation of Configuration interface for configuring the {@link PolarisMetaStoreManager}
@@ -42,13 +42,13 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
   private String persistenceUnitName;
 
   @Override
-  protected PolarisEclipseLinkStore createBackingStore(@NotNull PolarisDiagnostics diagnostics) {
+  protected PolarisEclipseLinkStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisEclipseLinkStore(diagnostics);
   }
 
   @Override
   protected PolarisMetaStoreSession createMetaStoreSession(
-      @NotNull PolarisEclipseLinkStore store, @NotNull RealmContext realmContext) {
+      @Nonnull PolarisEclipseLinkStore store, @Nonnull RealmContext realmContext) {
     return new PolarisEclipseLinkMetaStoreSessionImpl(
         store,
         storageIntegration,
