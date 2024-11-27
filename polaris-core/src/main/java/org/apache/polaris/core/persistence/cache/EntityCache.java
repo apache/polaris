@@ -25,6 +25,8 @@ import java.util.AbstractMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+
+import com.github.benmanes.caffeine.cache.Weigher;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -71,12 +73,13 @@ public class EntityCache {
         };
 
     // use a Caffeine cache to purge entries when those have not been used for a long time.
-    // Assuming 1KB per entry, 100K entries is about 100MB.
     this.byId =
         Caffeine.newBuilder()
-            .maximumSize(100_000) // Set maximum size to 100,000 elements
+            .maximumWeight(100 * EntityWeigher.WEIGHT_PER_MB) // Goal is ~100MB
+            .weigher(EntityWeigher.asWeigher())
             .expireAfterAccess(1, TimeUnit.HOURS) // Expire entries after 1 hour of no access
             .removalListener(removalListener) // Set the removal listener
+            .softValues() // Account for memory pressure
             .build();
 
     // remember the meta store manager
