@@ -24,6 +24,8 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.base.Preconditions;
 import io.dropwizard.auth.Authenticator;
 import io.dropwizard.core.Configuration;
+import jakarta.annotation.PostConstruct;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
@@ -36,25 +38,41 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.auth.DecodedToken;
 import org.apache.polaris.service.auth.TokenBroker;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
 import org.apache.polaris.service.auth.TokenResponse;
+import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.context.CallContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.types.TokenType;
+import org.glassfish.hk2.api.Factory;
+import org.glassfish.hk2.api.ServiceLocator;
+import org.glassfish.hk2.api.TypeLiteral;
+import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
+import org.glassfish.hk2.utilities.binding.AbstractBinder;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.StsClientBuilder;
 
 /**
  * Configuration specific to a Polaris REST Service. Place these entries in a YML file for them to
  * be picked up, i.e. `iceberg-rest-server.yml`
  */
 public class PolarisApplicationConfig extends Configuration {
+  /**
+   * Override the default binding of registered services so that the configured instances are used.
+   */
+  private static final int OVERRIDE_BINDING_RANK = 10;
+
   private MetaStoreManagerFactory metaStoreManagerFactory;
   private String defaultRealm = "default-realm";
   private RealmContextResolver realmContextResolver;
@@ -76,13 +94,99 @@ public class PolarisApplicationConfig extends Configuration {
   public static final long REQUEST_BODY_BYTES_NO_LIMIT = -1;
   private long maxRequestBodyBytes = REQUEST_BODY_BYTES_NO_LIMIT;
 
+  @Inject ServiceLocator serviceLocator;
+
+  @PostConstruct
+  public void bindToServiceLocator() {
+    ServiceLocatorUtilities.bind(serviceLocator, binder());
+  }
+
+  @NotNull
+  public AbstractBinder binder() {
+    PolarisApplicationConfig config = this;
+    return new AbstractBinder() {
+      @Override
+      protected void configure() {
+        bindFactory(SupplierFactory.create(serviceLocator, config::getStorageIntegrationProvider))
+            .to(PolarisStorageIntegrationProvider.class)
+            .ranked(OVERRIDE_BINDING_RANK);
+        bindFactory(SupplierFactory.create(serviceLocator, config::getMetaStoreManagerFactory))
+            .to(MetaStoreManagerFactory.class)
+            .ranked(OVERRIDE_BINDING_RANK);
+        bindFactory(SupplierFactory.create(serviceLocator, config::getConfigurationStore))
+            .to(PolarisConfigurationStore.class)
+            .ranked(OVERRIDE_BINDING_RANK);
+        bindFactory(SupplierFactory.create(serviceLocator, config::getFileIOFactory))
+            .to(FileIOFactory.class)
+            .ranked(OVERRIDE_BINDING_RANK);
+        bindFactory(SupplierFactory.create(serviceLocator, config::getPolarisAuthenticator))
+            .to(Authenticator.class)
+            .ranked(OVERRIDE_BINDING_RANK);
+        bindFactory(SupplierFactory.create(serviceLocator, config::getTokenBrokerFactory))
+            .to(TokenBrokerFactory.class)
+            .ranked(OVERRIDE_BINDING_RANK);
+        bindFactory(SupplierFactory.create(serviceLocator, config::getOauth2Service))
+            .to(IcebergRestOAuth2ApiService.class)
+            .ranked(OVERRIDE_BINDING_RANK);
+        bindFactory(SupplierFactory.create(serviceLocator, config::getCallContextResolver))
+            .to(CallContextResolver.class)
+            .ranked(OVERRIDE_BINDING_RANK);
+        bindFactory(SupplierFactory.create(serviceLocator, config::getRealmContextResolver))
+            .to(RealmContextResolver.class)
+            .ranked(OVERRIDE_BINDING_RANK);
+        bindFactory(SupplierFactory.create(serviceLocator, config::getRateLimiter))
+            .to(RateLimiter.class)
+            .ranked(OVERRIDE_BINDING_RANK);
+      }
+    };
+  }
+
+  /**
+   * Factory implementation that uses the provided supplier method to retrieve the instance and then
+   * uses the {@link #serviceLocator} to inject dependencies into the instance. This is necessary
+   * since the DI framework doesn't automatically inject dependencies into the instances created.
+   *
+   * @param <T>
+   */
+  private static final class SupplierFactory<T> implements Factory<T> {
+    private final ServiceLocator serviceLocator;
+    private final Supplier<T> supplier;
+
+    private static <T> SupplierFactory<T> create(
+        ServiceLocator serviceLocator, Supplier<T> supplier) {
+      return new SupplierFactory<>(serviceLocator, supplier);
+    }
+
+    private SupplierFactory(ServiceLocator serviceLocator, Supplier<T> supplier) {
+      this.serviceLocator = serviceLocator;
+      this.supplier = supplier;
+    }
+
+    @Override
+    public T provide() {
+      T obj = supplier.get();
+      serviceLocator.inject(obj);
+      return obj;
+    }
+
+    @Override
+    public void dispose(T instance) {}
+  }
+
+  public <T> T findService(Class<T> serviceClass) {
+    return serviceLocator.getService(serviceClass);
+  }
+
+  public <T> T findService(TypeLiteral<T> serviceClass) {
+    return serviceLocator.getService(serviceClass.getRawType());
+  }
+
   @JsonProperty("metaStoreManager")
   public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
   }
 
-  @JsonProperty("metaStoreManager")
-  public MetaStoreManagerFactory getMetaStoreManagerFactory() {
+  private MetaStoreManagerFactory getMetaStoreManagerFactory() {
     return metaStoreManagerFactory;
   }
 
@@ -92,7 +196,7 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   @JsonProperty("io")
-  public FileIOFactory getFileIOFactory() {
+  private FileIOFactory getFileIOFactory() {
     return fileIOFactory;
   }
 
@@ -102,7 +206,7 @@ public class PolarisApplicationConfig extends Configuration {
     this.polarisAuthenticator = polarisAuthenticator;
   }
 
-  public Authenticator<String, AuthenticatedPolarisPrincipal> getPolarisAuthenticator() {
+  private Authenticator<String, AuthenticatedPolarisPrincipal> getPolarisAuthenticator() {
     return polarisAuthenticator;
   }
 
@@ -111,7 +215,7 @@ public class PolarisApplicationConfig extends Configuration {
     this.tokenBrokerFactory = tokenBrokerFactory;
   }
 
-  public TokenBrokerFactory getTokenBrokerFactory() {
+  private TokenBrokerFactory getTokenBrokerFactory() {
     // return a no-op implementation if none is specified
     return Objects.requireNonNullElseGet(
         tokenBrokerFactory,
@@ -147,7 +251,7 @@ public class PolarisApplicationConfig extends Configuration {
                 });
   }
 
-  public RealmContextResolver getRealmContextResolver() {
+  private RealmContextResolver getRealmContextResolver() {
     realmContextResolver.setDefaultRealm(this.defaultRealm);
     return realmContextResolver;
   }
@@ -156,7 +260,7 @@ public class PolarisApplicationConfig extends Configuration {
     this.realmContextResolver = realmContextResolver;
   }
 
-  public CallContextResolver getCallContextResolver() {
+  private CallContextResolver getCallContextResolver() {
     return callContextResolver;
   }
 
@@ -172,7 +276,7 @@ public class PolarisApplicationConfig extends Configuration {
     this.oauth2Service = oauth2Service;
   }
 
-  public OAuth2ApiService getOauth2Service() {
+  private OAuth2ApiService getOauth2Service() {
     return oauth2Service;
   }
 
@@ -197,8 +301,12 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   @JsonProperty("rateLimiter")
-  public RateLimiter getRateLimiter() {
+  private RateLimiter getRateLimiter() {
     return rateLimiter;
+  }
+
+  public boolean hasRateLimiter() {
+    return rateLimiter != null;
   }
 
   @JsonProperty("rateLimiter")
@@ -240,7 +348,7 @@ public class PolarisApplicationConfig extends Configuration {
     return maxRequestBodyBytes;
   }
 
-  public PolarisConfigurationStore getConfigurationStore() {
+  private PolarisConfigurationStore getConfigurationStore() {
     return new DefaultConfigurationStore(globalFeatureConfiguration, realmConfiguration);
   }
 
@@ -248,7 +356,7 @@ public class PolarisApplicationConfig extends Configuration {
     return defaultRealms;
   }
 
-  public AwsCredentialsProvider credentialsProvider() {
+  private AwsCredentialsProvider credentialsProvider() {
     if (StringUtils.isNotBlank(awsAccessKey) && StringUtils.isNotBlank(awsSecretKey)) {
       LoggerFactory.getLogger(PolarisApplicationConfig.class)
           .warn("Using hard-coded AWS credentials - this is not recommended for production");
@@ -270,7 +378,31 @@ public class PolarisApplicationConfig extends Configuration {
     this.defaultRealms = defaultRealms;
   }
 
-  public Supplier<GoogleCredentials> getGcpCredentialsProvider() {
+  private PolarisStorageIntegrationProvider storageIntegrationProvider;
+
+  public void setStorageIntegrationProvider(
+      PolarisStorageIntegrationProvider storageIntegrationProvider) {
+    this.storageIntegrationProvider = storageIntegrationProvider;
+  }
+
+  private PolarisStorageIntegrationProvider getStorageIntegrationProvider() {
+    if (storageIntegrationProvider == null) {
+      storageIntegrationProvider =
+          new PolarisStorageIntegrationProviderImpl(
+              () -> {
+                StsClientBuilder stsClientBuilder = StsClient.builder();
+                AwsCredentialsProvider awsCredentialsProvider = credentialsProvider();
+                if (awsCredentialsProvider != null) {
+                  stsClientBuilder.credentialsProvider(awsCredentialsProvider);
+                }
+                return stsClientBuilder.build();
+              },
+              getGcpCredentialsProvider());
+    }
+    return storageIntegrationProvider;
+  }
+
+  private Supplier<GoogleCredentials> getGcpCredentialsProvider() {
     return () ->
         Optional.ofNullable(gcpAccessToken)
             .map(GoogleCredentials::create)

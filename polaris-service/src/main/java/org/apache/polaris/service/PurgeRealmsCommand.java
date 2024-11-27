@@ -40,7 +40,8 @@ public class PurgeRealmsCommand extends ConfiguredCommand<PolarisApplicationConf
       Namespace namespace,
       PolarisApplicationConfig configuration)
       throws Exception {
-    MetaStoreManagerFactory metaStoreManagerFactory = configuration.getMetaStoreManagerFactory();
+    MetaStoreManagerFactory metaStoreManagerFactory =
+        configuration.findService(MetaStoreManagerFactory.class);
 
     metaStoreManagerFactory.purgeRealms(configuration.getDefaultRealms());
 

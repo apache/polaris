@@ -46,9 +46,11 @@ public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplication
       Bootstrap<PolarisApplicationConfig> bootstrap,
       Namespace namespace,
       PolarisApplicationConfig configuration) {
-    MetaStoreManagerFactory metaStoreManagerFactory = configuration.getMetaStoreManagerFactory();
+    MetaStoreManagerFactory metaStoreManagerFactory =
+        configuration.findService(MetaStoreManagerFactory.class);
 
-    PolarisConfigurationStore configurationStore = configuration.getConfigurationStore();
+    PolarisConfigurationStore configurationStore =
+        configuration.findService(PolarisConfigurationStore.class);
 
     // Execute the bootstrap
     Map<String, PrincipalSecretsResult> results =

@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.service.context;
 
-import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Splitter;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import java.time.Clock;
 import java.time.ZoneId;
 import java.util.HashMap;
@@ -42,7 +42,7 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Example: principal:data-engineer;password:test;realm:acct123
  */
-@JsonTypeName("default")
+@Named("default")
 public class DefaultContextResolver implements RealmContextResolver, CallContextResolver {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultContextResolver.class);
 

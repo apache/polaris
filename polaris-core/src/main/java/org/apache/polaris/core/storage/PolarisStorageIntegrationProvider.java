@@ -18,12 +18,17 @@
  */
 package org.apache.polaris.core.storage;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.annotation.Nullable;
 
 /**
  * Factory interface that knows how to construct a {@link PolarisStorageIntegration} given a {@link
  * PolarisStorageConfigurationInfo}.
  */
+@JsonTypeInfo(
+    use = JsonTypeInfo.Id.NAME,
+    property = "type",
+    defaultImpl = PolarisStorageIntegrationProviderImpl.class)
 public interface PolarisStorageIntegrationProvider {
   @SuppressWarnings("unchecked")
   <T extends PolarisStorageConfigurationInfo> @Nullable

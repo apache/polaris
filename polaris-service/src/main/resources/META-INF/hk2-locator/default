@@ -51,3 +51,8 @@ contract={org.apache.polaris.service.auth.TokenBrokerFactory}
 name=rsa-key-pair
 qualifier={jakarta.inject.Named}
 
+[org.apache.polaris.service.context.DefaultContextResolver]S
+contract={org.apache.polaris.service.context.CallContextResolver, org.apache.polaris.service.context.RealmContextResolver}
+name=default
+qualifier={jakarta.inject.Named}
+
