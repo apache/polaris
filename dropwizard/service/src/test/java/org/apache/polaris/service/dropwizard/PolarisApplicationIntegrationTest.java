@@ -109,7 +109,8 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 })
 public class PolarisApplicationIntegrationTest {
   @TempDir private static Path tempDir;
-  private static final Supplier<String> CURRENT_LOG = () -> tempDir.resolve("application.log").toString();
+  private static final Supplier<String> CURRENT_LOG =
+      () -> tempDir.resolve("application.log").toString();
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisApplicationIntegrationTest.class);
