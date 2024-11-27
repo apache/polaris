@@ -16,49 +16,49 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.persistence.cache;
 
 import com.github.benmanes.caffeine.cache.Weigher;
 import org.checkerframework.checker.index.qual.NonNegative;
 
 /**
- * A {@link Weigher} implementation that weighs {@link EntityCacheEntry} objects
- * by the approximate size of the entity object.
+ * A {@link Weigher} implementation that weighs {@link EntityCacheEntry} objects by the approximate
+ * size of the entity object.
  */
 public class EntityWeigher implements Weigher<Long, EntityCacheEntry> {
 
-    /** The amount of weight that is expected to roughly equate to 1MB of memory usage */
-    public static final long WEIGHT_PER_MB = 1024 * 1024;
+  /** The amount of weight that is expected to roughly equate to 1MB of memory usage */
+  public static final long WEIGHT_PER_MB = 1024 * 1024;
 
-    /* Represents the approximate size of an entity beyond the properties */
-    private static final int APPROXIMATE_ENTITY_OVERHEAD = 1000;
+  /* Represents the approximate size of an entity beyond the properties */
+  private static final int APPROXIMATE_ENTITY_OVERHEAD = 1000;
 
-    /** Singleton instance */
-    private static final EntityWeigher instance = new EntityWeigher();
+  /** Singleton instance */
+  private static final EntityWeigher instance = new EntityWeigher();
 
-    private EntityWeigher() {}
+  private EntityWeigher() {}
 
-    /** Gets the singleton {@link EntityWeigher} */
-    public static EntityWeigher getInstance() {
-        return instance;
-    }
+  /** Gets the singleton {@link EntityWeigher} */
+  public static EntityWeigher getInstance() {
+    return instance;
+  }
 
-    /**
-     * Computes the weight of a given entity
-     * @param key The entity's key; not used
-     * @param value The entity to be cached
-     * @return The weight of the entity
-     */
-    @Override
-    public @NonNegative int weigh(Long key, EntityCacheEntry value) {
-        return APPROXIMATE_ENTITY_OVERHEAD +
-            value.getEntity().getProperties().length() +
-            value.getEntity().getInternalProperties().length();
-    }
+  /**
+   * Computes the weight of a given entity
+   *
+   * @param key The entity's key; not used
+   * @param value The entity to be cached
+   * @return The weight of the entity
+   */
+  @Override
+  public @NonNegative int weigh(Long key, EntityCacheEntry value) {
+    return APPROXIMATE_ENTITY_OVERHEAD
+        + value.getEntity().getProperties().length()
+        + value.getEntity().getInternalProperties().length();
+  }
 
-    /** Factory method to provide a typed Weigher */
-    public static Weigher<Long, EntityCacheEntry> asWeigher() {
-        return (Weigher<Long, EntityCacheEntry>) getInstance();
-    }
+  /** Factory method to provide a typed Weigher */
+  public static Weigher<Long, EntityCacheEntry> asWeigher() {
+    return (Weigher<Long, EntityCacheEntry>) getInstance();
+  }
 }

@@ -22,7 +22,6 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 
 import java.util.List;
 import java.util.stream.Collectors;
-
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -483,16 +482,14 @@ public class EntityCacheTest {
   /* Helper for `testEntityWeigher` */
   private int getEntityWeight(PolarisEntity entity) {
     return EntityWeigher.getInstance()
-        .weigh(
-            -1L,
-            new EntityCacheEntry(diagServices, 1L, entity, List.of(), 1));
+        .weigh(-1L, new EntityCacheEntry(diagServices, 1L, entity, List.of(), 1));
   }
 
   @Test
   void testEntityWeigher() {
-   var smallEntity = new TableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "").build();
-   var mediumEntity =
-       new TableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "")
+    var smallEntity = new TableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "").build();
+    var mediumEntity =
+        new TableLikeEntity.Builder(TableIdentifier.of("ns.t1"), "")
             .setMetadataLocation("a".repeat(10000))
             .build();
     var largeEntity =
