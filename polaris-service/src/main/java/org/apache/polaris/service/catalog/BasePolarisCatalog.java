@@ -266,7 +266,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             CatalogProperties.FILE_IO_IMPL);
       }
     }
-    this.closeableGroup = CallContext.getCurrentContext().closeables();
+    CallContext.getCurrentContext().closeables().addCloseable(this);
+    this.closeableGroup = new CloseableGroup();
     closeableGroup.addCloseable(metricsReporter());
     closeableGroup.setSuppressCloseFailure(true);
 
@@ -764,7 +765,11 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   @Override
-  public void close() throws IOException {}
+  public void close() throws IOException {
+    if (closeableGroup != null) {
+      closeableGroup.close();
+    }
+  }
 
   @Override
   public List<TableIdentifier> listViews(Namespace namespace) {
