@@ -45,7 +45,7 @@ dependencies {
     }
   }
 
-  compileOnly(libs.jetbrains.annotations)
+  compileOnly(libs.jakarta.annotation.api)
 
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))

@@ -109,9 +109,9 @@ dependencies {
   testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
   testFixturesApi(libs.commons.lang3)
   testFixturesApi(libs.threeten.extra)
-  testFixturesApi(libs.jetbrains.annotations)
   testFixturesApi(platform(libs.jackson.bom))
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+  testFixturesApi(libs.jakarta.annotation.api)
 
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jakarta.persistence.api)

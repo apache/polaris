@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.extension.persistence.impl.eclipselink;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import java.util.ArrayList;
@@ -39,8 +41,6 @@ import org.apache.polaris.core.persistence.models.ModelEntityChangeTracking;
 import org.apache.polaris.core.persistence.models.ModelEntityDropped;
 import org.apache.polaris.core.persistence.models.ModelGrantRecord;
 import org.apache.polaris.core.persistence.models.ModelPrincipalSecrets;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,7 +62,7 @@ public class PolarisEclipseLinkStore {
    *
    * @param diagnostics diagnostic services
    */
-  public PolarisEclipseLinkStore(@NotNull PolarisDiagnostics diagnostics) {
+  public PolarisEclipseLinkStore(@Nonnull PolarisDiagnostics diagnostics) {
     this.diagnosticServices = diagnostics;
   }
 
@@ -301,7 +301,7 @@ public class PolarisEclipseLinkStore {
   }
 
   List<ModelEntity> lookupFullEntitiesActive(
-      EntityManager session, long catalogId, long parentId, @NotNull PolarisEntityType entityType) {
+      EntityManager session, long catalogId, long parentId, @Nonnull PolarisEntityType entityType) {
     diagnosticServices.check(session != null, "session_is_null");
     checkInitialized();
 

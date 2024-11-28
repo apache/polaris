@@ -69,7 +69,6 @@ dependencies {
   implementation("io.micrometer:micrometer-registry-prometheus")
 
   compileOnly(libs.swagger.annotations)
-  compileOnly(libs.jetbrains.annotations)
   compileOnly(libs.spotbugs.annotations)
   implementation(libs.swagger.jaxrs)
   implementation(libs.javax.annotation.api)
@@ -81,7 +80,7 @@ dependencies {
   implementation(libs.logback.core)
   implementation(libs.bouncycastle.bcprov)
 
-  compileOnly(libs.jetbrains.annotations)
+  compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.spotbugs.annotations)
 
   implementation(platform(libs.google.cloud.storage.bom))

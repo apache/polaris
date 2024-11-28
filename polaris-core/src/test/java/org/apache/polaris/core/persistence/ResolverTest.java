@@ -20,6 +20,8 @@ package org.apache.polaris.core.persistence;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -42,8 +44,6 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.assertj.core.api.Assertions;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -377,7 +377,7 @@ public class ResolverTest {
    *
    * @return new resolver to test with
    */
-  @NotNull
+  @Nonnull
   private Resolver allocateResolver() {
     return this.allocateResolver(null, null);
   }
@@ -389,7 +389,7 @@ public class ResolverTest {
    * @param referenceCatalogName the reference e catalog name, can be null
    * @return new resolver to test with
    */
-  @NotNull
+  @Nonnull
   private Resolver allocateResolver(@Nullable String referenceCatalogName) {
     return this.allocateResolver(null, referenceCatalogName);
   }
@@ -401,7 +401,7 @@ public class ResolverTest {
    * @param cache if not null, cache to use, else one will be created
    * @return new resolver to test with
    */
-  @NotNull
+  @Nonnull
   private Resolver allocateResolver(@Nullable EntityCache cache) {
     return this.allocateResolver(cache, null);
   }
@@ -414,7 +414,7 @@ public class ResolverTest {
    * @param referenceCatalogName the reference e catalog name, can be null
    * @return new resolver to test with
    */
-  @NotNull
+  @Nonnull
   private Resolver allocateResolver(
       @Nullable EntityCache cache, @Nullable String referenceCatalogName) {
     return this.allocateResolver(cache, null, referenceCatalogName);
@@ -429,7 +429,7 @@ public class ResolverTest {
    * @param referenceCatalogName the reference e catalog name, can be null
    * @return new resolver to test with
    */
-  @NotNull
+  @Nonnull
   private Resolver allocateResolver(
       @Nullable EntityCache cache,
       Set<String> principalRolesScope,

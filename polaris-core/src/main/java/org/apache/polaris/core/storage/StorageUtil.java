@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.core.storage;
 
+import jakarta.annotation.Nonnull;
 import java.net.URI;
-import org.jetbrains.annotations.NotNull;
 
 public class StorageUtil {
   /**
@@ -31,8 +31,8 @@ public class StorageUtil {
    * @param fileSep File separator to use.
    * @return Well formatted file path.
    */
-  public static @NotNull String concatFilePrefixes(
-      @NotNull String leftPath, String rightPath, String fileSep) {
+  public static @Nonnull String concatFilePrefixes(
+      @Nonnull String leftPath, String rightPath, String fileSep) {
     if (leftPath.endsWith(fileSep) && rightPath.startsWith(fileSep)) {
       return leftPath + rightPath.substring(1);
     } else if (!leftPath.endsWith(fileSep) && !rightPath.startsWith(fileSep)) {
@@ -48,7 +48,7 @@ public class StorageUtil {
    * @param path A path to parse
    * @return The bucket/authority of the path
    */
-  public static @NotNull String getBucket(String path) {
+  public static @Nonnull String getBucket(String path) {
     URI uri = URI.create(path);
     return getBucket(uri);
   }
@@ -59,7 +59,7 @@ public class StorageUtil {
    * @param uri A path to parse
    * @return The bucket/authority of the URI
    */
-  public static @NotNull String getBucket(URI uri) {
+  public static @Nonnull String getBucket(URI uri) {
     return uri.getAuthority();
   }
 }

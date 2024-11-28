@@ -20,6 +20,8 @@ package org.apache.polaris.core.persistence.cache;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -28,8 +30,6 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.BaseResult;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Interface to the remote entity cache. This allows the local cache to detect remote entity changes
@@ -46,9 +46,9 @@ public interface PolarisRemoteCache {
    * @return a list of version tracking information. Order in that returned list is the same as the
    *     input list. Some elements might be NULL if the entity has been purged. Not expected to fail
    */
-  @NotNull
+  @Nonnull
   ChangeTrackingResult loadEntitiesChangeTracking(
-      @NotNull PolarisCallContext callCtx, @NotNull List<PolarisEntityId> entityIds);
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEntityId> entityIds);
 
   /**
    * Load a cached entry, i.e. an entity definition and associated grant records, from the backend
@@ -63,9 +63,9 @@ public interface PolarisRemoteCache {
    * @return cached entry for this entity. Status will be ENTITY_NOT_FOUND if the entity was not
    *     found
    */
-  @NotNull
+  @Nonnull
   CachedEntryResult loadCachedEntryById(
-      @NotNull PolarisCallContext callCtx, long entityCatalogId, long entityId);
+      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
 
   /**
    * Load a cached entry, i.e. an entity definition and associated grant records, from the backend
@@ -83,13 +83,13 @@ public interface PolarisRemoteCache {
    * @return cached entry for this entity. Status will be ENTITY_NOT_FOUND if the entity was not
    *     found
    */
-  @NotNull
+  @Nonnull
   CachedEntryResult loadCachedEntryByName(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long entityCatalogId,
       long parentId,
-      @NotNull PolarisEntityType entityType,
-      @NotNull String entityName);
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull String entityName);
 
   /**
    * Refresh a cached entity from the backend store. Will return NULL if the entity does not exist,
@@ -106,12 +106,12 @@ public interface PolarisRemoteCache {
    * @return cached entry for this entity. Status will be ENTITY_NOT_FOUND if the entity was not *
    *     found
    */
-  @NotNull
+  @Nonnull
   CachedEntryResult refreshCachedEntity(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
-      @NotNull PolarisEntityType entityType,
+      @Nonnull PolarisEntityType entityType,
       long entityCatalogId,
       long entityId);
 
@@ -128,7 +128,7 @@ public interface PolarisRemoteCache {
      * @param extraInformation extra information
      */
     public ChangeTrackingResult(
-        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
+        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.changeTrackingVersions = null;
     }
@@ -139,14 +139,14 @@ public interface PolarisRemoteCache {
      * @param changeTrackingVersions change tracking versions
      */
     public ChangeTrackingResult(
-        @NotNull List<PolarisChangeTrackingVersions> changeTrackingVersions) {
+        @Nonnull List<PolarisChangeTrackingVersions> changeTrackingVersions) {
       super(BaseResult.ReturnStatus.SUCCESS);
       this.changeTrackingVersions = changeTrackingVersions;
     }
 
     @JsonCreator
     private ChangeTrackingResult(
-        @JsonProperty("returnStatus") @NotNull BaseResult.ReturnStatus returnStatus,
+        @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
         @JsonProperty("extraInformation") String extraInformation,
         @JsonProperty("changeTrackingVersions")
             List<PolarisChangeTrackingVersions> changeTrackingVersions) {
@@ -180,7 +180,7 @@ public interface PolarisRemoteCache {
      * @param extraInformation extra information
      */
     public CachedEntryResult(
-        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
+        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.entity = null;
       this.entityGrantRecords = null;
@@ -206,7 +206,7 @@ public interface PolarisRemoteCache {
 
     @JsonCreator
     public CachedEntryResult(
-        @JsonProperty("returnStatus") @NotNull BaseResult.ReturnStatus returnStatus,
+        @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
         @JsonProperty("extraInformation") String extraInformation,
         @Nullable @JsonProperty("entity") PolarisBaseEntity entity,
         @JsonProperty("grantRecordsVersion") int grantRecordsVersion,

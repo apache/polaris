@@ -20,13 +20,13 @@ package org.apache.polaris.core.storage;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.persistence.BaseResult;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /** Manage credentials for storage locations. */
 public interface PolarisCredentialVendor {
@@ -43,14 +43,14 @@ public interface PolarisCredentialVendor {
    * @param allowedWriteLocations a set of allowed to write locations
    * @return an enum map containing the scoped credentials
    */
-  @NotNull
+  @Nonnull
   ScopedCredentialsResult getSubscopedCredsForEntity(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
       boolean allowListOperation,
-      @NotNull Set<String> allowedReadLocations,
-      @NotNull Set<String> allowedWriteLocations);
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations);
 
   /**
    * Validate whether the entity has access to the locations with the provided target operations
@@ -85,13 +85,13 @@ public interface PolarisCredentialVendor {
    * }
    * </pre>
    */
-  @NotNull
+  @Nonnull
   ValidateAccessResult validateAccessToLocations(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
-      @NotNull Set<PolarisStorageActions> actions,
-      @NotNull Set<String> locations);
+      @Nonnull Set<PolarisStorageActions> actions,
+      @Nonnull Set<String> locations);
 
   /** Result of a getSubscopedCredsForEntity() call */
   class ScopedCredentialsResult extends BaseResult {
@@ -106,7 +106,7 @@ public interface PolarisCredentialVendor {
      * @param extraInformation extra information
      */
     public ScopedCredentialsResult(
-        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
+        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.credentials = null;
     }
@@ -117,14 +117,14 @@ public interface PolarisCredentialVendor {
      * @param credentials credentials
      */
     public ScopedCredentialsResult(
-        @NotNull EnumMap<PolarisCredentialProperty, String> credentials) {
+        @Nonnull EnumMap<PolarisCredentialProperty, String> credentials) {
       super(BaseResult.ReturnStatus.SUCCESS);
       this.credentials = credentials;
     }
 
     @JsonCreator
     private ScopedCredentialsResult(
-        @JsonProperty("returnStatus") @NotNull BaseResult.ReturnStatus returnStatus,
+        @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
         @JsonProperty("extraInformation") String extraInformation,
         @JsonProperty("credentials") Map<String, String> credentials) {
       super(returnStatus, extraInformation);
@@ -154,7 +154,7 @@ public interface PolarisCredentialVendor {
      * @param extraInformation extra information
      */
     public ValidateAccessResult(
-        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
+        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.validateResult = null;
     }
@@ -164,14 +164,14 @@ public interface PolarisCredentialVendor {
      *
      * @param validateResult validate result
      */
-    public ValidateAccessResult(@NotNull Map<String, String> validateResult) {
+    public ValidateAccessResult(@Nonnull Map<String, String> validateResult) {
       super(BaseResult.ReturnStatus.SUCCESS);
       this.validateResult = validateResult;
     }
 
     @JsonCreator
     private ValidateAccessResult(
-        @JsonProperty("returnStatus") @NotNull BaseResult.ReturnStatus returnStatus,
+        @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
         @JsonProperty("extraInformation") String extraInformation,
         @JsonProperty("validateResult") Map<String, String> validateResult) {
       super(returnStatus, extraInformation);

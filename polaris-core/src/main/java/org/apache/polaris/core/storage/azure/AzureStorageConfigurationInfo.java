@@ -22,11 +22,11 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /** Azure storage configuration information. */
 public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
@@ -35,7 +35,7 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
   @JsonIgnore private static final int MAX_ALLOWED_LOCATIONS = 20;
 
   // Azure tenant id
-  private final @NotNull String tenantId;
+  private final @Nonnull String tenantId;
 
   /** The multi tenant app name for the service principal */
   @JsonProperty(value = "multiTenantAppName", required = false)
@@ -47,9 +47,9 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
 
   @JsonCreator
   public AzureStorageConfigurationInfo(
-      @JsonProperty(value = "allowedLocations", required = true) @NotNull
+      @JsonProperty(value = "allowedLocations", required = true) @Nonnull
           List<String> allowedLocations,
-      @JsonProperty(value = "tenantId", required = true) @NotNull String tenantId) {
+      @JsonProperty(value = "tenantId", required = true) @Nonnull String tenantId) {
     super(StorageType.AZURE, allowedLocations);
     this.tenantId = tenantId;
     validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
@@ -60,7 +60,7 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
     return "org.apache.iceberg.azure.adlsv2.ADLSFileIO";
   }
 
-  public @NotNull String getTenantId() {
+  public @Nonnull String getTenantId() {
     return tenantId;
   }
 

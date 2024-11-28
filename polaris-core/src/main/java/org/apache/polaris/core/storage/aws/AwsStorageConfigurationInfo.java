@@ -22,11 +22,11 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /** Aws Polaris Storage Configuration information */
 public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
@@ -39,7 +39,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   @JsonIgnore public static final String ROLE_ARN_PATTERN = "^arn:aws:iam::\\d{12}:role/.+$";
 
   // AWS role to be assumed
-  private final @NotNull String roleARN;
+  private final @Nonnull String roleARN;
 
   // AWS external ID, optional
   @JsonProperty(value = "externalId")
@@ -51,17 +51,17 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
 
   @JsonCreator
   public AwsStorageConfigurationInfo(
-      @JsonProperty(value = "storageType", required = true) @NotNull StorageType storageType,
-      @JsonProperty(value = "allowedLocations", required = true) @NotNull
+      @JsonProperty(value = "storageType", required = true) @Nonnull StorageType storageType,
+      @JsonProperty(value = "allowedLocations", required = true) @Nonnull
           List<String> allowedLocations,
-      @JsonProperty(value = "roleARN", required = true) @NotNull String roleARN) {
+      @JsonProperty(value = "roleARN", required = true) @Nonnull String roleARN) {
     this(storageType, allowedLocations, roleARN, null);
   }
 
   public AwsStorageConfigurationInfo(
-      @NotNull StorageType storageType,
-      @NotNull List<String> allowedLocations,
-      @NotNull String roleARN,
+      @Nonnull StorageType storageType,
+      @Nonnull List<String> allowedLocations,
+      @Nonnull String roleARN,
       @Nullable String externalId) {
     super(storageType, allowedLocations);
     this.roleARN = roleARN;
@@ -87,7 +87,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     }
   }
 
-  public @NotNull String getRoleARN() {
+  public @Nonnull String getRoleARN() {
     return roleARN;
   }
 

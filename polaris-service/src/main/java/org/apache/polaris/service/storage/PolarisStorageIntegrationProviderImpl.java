@@ -22,6 +22,8 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceOptions;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
@@ -35,8 +37,6 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import software.amazon.awssdk.services.sts.StsClient;
 
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
@@ -82,20 +82,20 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
             new PolarisStorageIntegration<>("file") {
               @Override
               public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-                  @NotNull PolarisDiagnostics diagnostics,
-                  @NotNull T storageConfig,
+                  @Nonnull PolarisDiagnostics diagnostics,
+                  @Nonnull T storageConfig,
                   boolean allowListOperation,
-                  @NotNull Set<String> allowedReadLocations,
-                  @NotNull Set<String> allowedWriteLocations) {
+                  @Nonnull Set<String> allowedReadLocations,
+                  @Nonnull Set<String> allowedWriteLocations) {
                 return new EnumMap<>(PolarisCredentialProperty.class);
               }
 
               @Override
-              public @NotNull Map<String, Map<PolarisStorageActions, ValidationResult>>
+              public @Nonnull Map<String, Map<PolarisStorageActions, ValidationResult>>
                   validateAccessToLocations(
-                      @NotNull T storageConfig,
-                      @NotNull Set<PolarisStorageActions> actions,
-                      @NotNull Set<String> locations) {
+                      @Nonnull T storageConfig,
+                      @Nonnull Set<PolarisStorageActions> actions,
+                      @Nonnull Set<String> locations) {
                 return Map.of();
               }
             };
