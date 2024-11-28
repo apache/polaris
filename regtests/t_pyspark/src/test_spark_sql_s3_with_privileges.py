@@ -792,9 +792,9 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
 
   table2_metadata = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
                                                       "iceberg_table_2",
-                                                      "s3_direct_with_write_table2").metadata_location
+                                                      "vended-credentials").metadata_location
   response = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'), "iceberg_table",
-                                               "s3_direct_with_write")
+                                               "vended-credentials")
   assert response.config is not None
   assert 's3.access-key-id' in response.config
   assert 's3.secret-access-key' in response.config
@@ -884,10 +884,10 @@ def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalo
 
   table2_metadata = reader_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
                                                      "iceberg_table_2",
-                                                     "s3_direct_with_write_table2").metadata_location
+                                                     "vended-credentials").metadata_location
 
   response = reader_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'), "iceberg_table",
-                                              "s3_direct_without_write")
+                                              "vended-credentials")
   assert response.config is not None
   assert 's3.access-key-id' in response.config
   assert 's3.secret-access-key' in response.config
@@ -1034,10 +1034,10 @@ def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, sno
     prefix2 = 'polaris_test/snowflake_catalog/db1/schema/iceberg_table_scope_loc_slashes/path_with_slashes'
     response1 = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
                                                         "iceberg_table_scope_loc",
-                                                        "s3_scoped_table_locations")
+                                                        "vended-credentials")
     response2 = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
                                                         "iceberg_table_scope_loc_slashes",
-                                                        "s3_scoped_table_locations_with_slashes")
+                                                        "vended-credentials")
     assert response1 is not None
     assert response2 is not None
     assert response1.metadata_location.startswith(f"s3://{test_bucket}/{prefix1}/metadata/")
