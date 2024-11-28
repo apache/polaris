@@ -19,10 +19,9 @@
 package org.apache.polaris.service.config;
 
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import java.util.HashMap;
 import java.util.Map;
-
-import jakarta.inject.Provider;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.context.RealmScope;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
