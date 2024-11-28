@@ -2330,9 +2330,7 @@ public class PolarisServiceImplIntegrationTest {
         .untilAsserted(
             () -> {
               try (Response response =
-                  newRequest(
-                          "http://localhost:%d/api/management/v1/principals", "Bearer " + newToken)
-                      .get()) {
+                  newRequest("http://localhost:%d/api/management/v1/principals", newToken).get()) {
                 assertThat(response)
                     .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
               }
@@ -2345,8 +2343,7 @@ public class PolarisServiceImplIntegrationTest {
     String newToken =
         defaultJwt().withClaim(CLAIM_KEY_ACTIVE, false).sign(Algorithm.HMAC256("polaris"));
     try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/principals", "Bearer " + newToken)
-            .get()) {
+        newRequest("http://localhost:%d/api/management/v1/principals", newToken).get()) {
       assertThat(response)
           .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
     }
@@ -2357,8 +2354,7 @@ public class PolarisServiceImplIntegrationTest {
     // SignatureVerificationException - if the signature is invalid.
     String newToken = defaultJwt().sign(Algorithm.HMAC256("invalid_secret"));
     try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/principals", "Bearer " + newToken)
-            .get()) {
+        newRequest("http://localhost:%d/api/management/v1/principals", newToken).get()) {
       assertThat(response)
           .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
     }
@@ -2369,8 +2365,7 @@ public class PolarisServiceImplIntegrationTest {
     String newToken =
         defaultJwt().withClaim(CLAIM_KEY_PRINCIPAL_ID, 0).sign(Algorithm.HMAC256("polaris"));
     try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/principals", "Bearer " + newToken)
-            .get()) {
+        newRequest("http://localhost:%d/api/management/v1/principals", newToken).get()) {
       assertThat(response)
           .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
     }
