@@ -81,20 +81,27 @@ internal fun <T : Any> unsafeCast(o: Any?): T {
   @Suppress("UNCHECKED_CAST") return o as T
 }
 
-internal fun <T : Any> parseJson(url: String): T? {
-  try {
-    return unsafeCast(JsonSlurper().parse(URI(url).toURL())) as T
-  } catch (e: JsonException) {
-    if (e.cause is FileNotFoundException) {
-      return null
+internal fun <T : Any> parseJson(url: String): T {
+  var attempt = 0
+  while (true) {
+    try {
+      return unsafeCast(JsonSlurper().parse(URI(url).toURL())) as T
+    } catch (e: JsonException) {
+      if (e.cause is FileNotFoundException) {
+        throw e
+      }
+      if (attempt == 5) {
+        throw e
+      }
+      Thread.sleep(1000L)
     }
-    throw e
+    attempt++
   }
 }
 
 internal fun fetchAsfProjectName(apacheId: String): String {
   val projectsAll: Map<String, Map<String, Any>> =
-    parseJson("https://whimsy.apache.org/public/public_ldap_projects.json")!!
+    parseJson("https://whimsy.apache.org/public/public_ldap_projects.json")
   val projects = unsafeCast<Map<String, Map<String, Any>>>(projectsAll["projects"])
   val project =
     projects[apacheId]
@@ -106,7 +113,7 @@ internal fun fetchAsfProjectName(apacheId: String): String {
 
 internal fun fetchProjectPeople(apacheId: String): ProjectPeople {
   val projectsAll: Map<String, Map<String, Any>> =
-    parseJson("https://whimsy.apache.org/public/public_ldap_projects.json")!!
+    parseJson("https://whimsy.apache.org/public/public_ldap_projects.json")
   val projects = unsafeCast<Map<String, Map<String, Any>>>(projectsAll["projects"])
   val project =
     projects[apacheId]
@@ -135,7 +142,7 @@ internal fun fetchProjectPeople(apacheId: String): ProjectPeople {
   val bugDatabase: String
   if (isPodlingCurrent) {
     val podlingsAll: Map<String, Map<String, Any>> =
-      parseJson("https://whimsy.apache.org/public/public_podlings.json")!!
+      parseJson("https://whimsy.apache.org/public/public_podlings.json")
     val podlings = unsafeCast<Map<String, Map<String, Any>>>(podlingsAll["podling"])
     val podling =
       podlings[apacheId]
@@ -158,14 +165,14 @@ internal fun fetchProjectPeople(apacheId: String): ProjectPeople {
     mentors.forEach { member -> peopleProjectRoles[member]!!.add("Mentor") }
   } else {
     val tlpPrj: Map<String, Any> =
-      parseJson("https://projects.apache.org/json/projects/$apacheId.json")!!
+      parseJson("https://projects.apache.org/json/projects/$apacheId.json")
     website = tlpPrj["homepage"] as String
     repository = (unsafeCast(tlpPrj["repository"]) as List<String>)[0]
     bugDatabase = tlpPrj["bug-database"] as String
     licenseUrl = tlpPrj["license"] as String
 
     val committeesAll: Map<String, Map<String, Any>> =
-      parseJson("https://whimsy.apache.org/public/committee-info.json")!!
+      parseJson("https://whimsy.apache.org/public/committee-info.json")
     val committees = unsafeCast<Map<String, Map<String, Any>>>(committeesAll["committees"])
     val committee = unsafeCast<Map<String, Any>>(committees[apacheId])
     val pmcChair = unsafeCast<Map<String, Map<String, Any>>>(committee["chair"])
@@ -175,7 +182,7 @@ internal fun fetchProjectPeople(apacheId: String): ProjectPeople {
   }
 
   val peopleNames: Map<String, Map<String, Any>> =
-    parseJson("https://whimsy.apache.org/public/public_ldap_people.json")!!
+    parseJson("https://whimsy.apache.org/public/public_ldap_people.json")
   val people: Map<String, Map<String, Any>> =
     unsafeCast(peopleNames["people"]) as Map<String, Map<String, Any>>
   val peopleList =

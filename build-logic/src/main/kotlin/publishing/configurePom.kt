@@ -135,20 +135,18 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
 fun addContributorsToPom(mavenPom: MavenPom, asfName: String, asfProjectName: String) =
   mavenPom.run {
     contributors {
-      val contributors: List<Map<String, Any>>? =
+      val contributors: List<Map<String, Any>> =
         parseJson("https://api.github.com/repos/apache/$asfName/contributors?per_page=1000")
-      if (contributors != null) {
-        contributors
-          .filter { contributor -> contributor["type"] == "User" }
-          .forEach { contributor ->
-            contributor {
-              name.set(contributor["login"] as String)
-              url.set(contributor["url"] as String)
-              organization.set("$asfProjectName, GitHub contributors")
-              organizationUrl.set("https://github.com/apache/$asfName")
-            }
+      contributors
+        .filter { contributor -> contributor["type"] == "User" }
+        .forEach { contributor ->
+          contributor {
+            name.set(contributor["login"] as String)
+            url.set(contributor["url"] as String)
+            organization.set("$asfProjectName, GitHub contributors")
+            organizationUrl.set("https://github.com/apache/$asfName")
           }
-      }
+        }
     }
   }
 
