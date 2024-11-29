@@ -118,7 +118,7 @@ dependencies {
   testImplementation(libs.mockito.core)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-  testRuntimeOnly(project(":polaris-eclipselink"))
+  testImplementation(project(":polaris-eclipselink"))
 }
 
 if (project.properties.get("eclipseLink") == "true") {
