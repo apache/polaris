@@ -499,12 +499,12 @@ public class DefaultPolarisAuthorizer implements PolarisAuthorizer {
     List<PolarisResolvedPathWrapper> secondaries =
         secondarySelectors.stream().map(s -> s.fromManifest(manifest)).collect(Collectors.toList());
 
-    ResolvedPolarisPrincipal authenticatedPrincipal = manifest.getResolvedPolarisPrincipal();
-    if (authenticatedPrincipal == null) {
-      AuthenticatedPolarisPrincipal principal = manifest.getAuthenticatedPrincipal();
+    PolarisEntity principal = manifest.getResolvedPolarisPrincipal();
+    if (principal == null) {
+      AuthenticatedPolarisPrincipal authPrincipal = manifest.getAuthenticatedPrincipal();
       throw new ForbiddenException(
           "Principal '%s' (ID: %s) could not be resolved",
-          principal.getName(), principal.getPrincipalEntityId());
+          authPrincipal.getName(), authPrincipal.getPrincipalEntityId());
     }
 
     Set<PolarisBaseEntity> activatedEntities = entitySelector.fromManifest(manifest);
@@ -514,36 +514,35 @@ public class DefaultPolarisAuthorizer implements PolarisAuthorizer {
             CallContext.getCurrentContext().getPolarisCallContext(),
             PolarisConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING);
     if (enforceCredentialRotationRequiredState
-        && authenticatedPrincipal
-            .getPrincipalEntity()
+        && principal
             .getInternalPropertiesAsMap()
             .containsKey(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)
         && authzOp != PolarisAuthorizableOperation.ROTATE_CREDENTIALS) {
       throw new ForbiddenException(
           "Principal '%s' is not authorized for op %s due to PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE",
-          authenticatedPrincipal.getName(), authzOp);
+          principal.getName(), authzOp);
     }
 
-    if (isSelfReset(authenticatedPrincipal, authzOp, targets)) {
+    if (isSelfReset(principal, authzOp, targets)) {
       LOGGER
           .atDebug()
-          .addKeyValue("principalName", authenticatedPrincipal.getName())
+          .addKeyValue("principalName", principal.getName())
           .log("Allowing rotate own credentials");
       return;
     }
 
-    if (!isAuthorized(authenticatedPrincipal, activatedEntities, authzOp, targets, secondaries)) {
+    if (!isAuthorized(principal, activatedEntities, authzOp, targets, secondaries)) {
       throw new ForbiddenException(
           "Principal '%s' with activated PrincipalRoles '%s' and activated grants via '%s' is not authorized for op %s",
-          authenticatedPrincipal.getName(),
-          authenticatedPrincipal.getActivatedPrincipalRoleNames(),
+          principal.getName(),
+          manifest.getResolvedPolarisPrincipalRoleNames(),
           activatedEntities.stream().map(PolarisEntityCore::getName).collect(Collectors.toSet()),
           authzOp);
     }
   }
 
   private boolean isSelfReset(
-      ResolvedPolarisPrincipal principal,
+      PolarisEntity principal,
       PolarisAuthorizableOperation op,
       List<PolarisResolvedPathWrapper> targets) {
     if (op != PolarisAuthorizableOperation.ROTATE_CREDENTIALS
@@ -556,12 +555,11 @@ public class DefaultPolarisAuthorizer implements PolarisAuthorizer {
     }
 
     PolarisEntity target = targets.get(0).getResolvedLeafEntity().getEntity();
-    return target.getType() == PolarisEntityType.PRINCIPAL
-        && target.getId() == principal.getPrincipalEntity().getId();
+    return target.getType() == PolarisEntityType.PRINCIPAL && target.getId() == principal.getId();
   }
 
   public boolean isAuthorized(
-      @Nonnull ResolvedPolarisPrincipal authenticatedPolarisPrincipal,
+      @Nonnull PolarisEntity principal,
       @Nonnull Set<PolarisBaseEntity> activatedEntities,
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
@@ -576,8 +574,7 @@ public class DefaultPolarisAuthorizer implements PolarisAuthorizer {
           authzOp,
           privilegeOnTarget);
       for (PolarisResolvedPathWrapper target : targets) {
-        if (!hasTransitivePrivilege(
-            authenticatedPolarisPrincipal, entityIdSet, privilegeOnTarget, target)) {
+        if (!hasTransitivePrivilege(principal, entityIdSet, privilegeOnTarget, target)) {
           // TODO: Collect missing privileges to report all at the end and/or return to code
           // that throws NotAuthorizedException for more useful messages.
           return false;
@@ -591,8 +588,7 @@ public class DefaultPolarisAuthorizer implements PolarisAuthorizer {
           authzOp,
           privilegeOnSecondary);
       for (PolarisResolvedPathWrapper secondary : secondaries) {
-        if (!hasTransitivePrivilege(
-            authenticatedPolarisPrincipal, entityIdSet, privilegeOnSecondary, secondary)) {
+        if (!hasTransitivePrivilege(principal, entityIdSet, privilegeOnSecondary, secondary)) {
           return false;
         }
       }
@@ -610,7 +606,7 @@ public class DefaultPolarisAuthorizer implements PolarisAuthorizer {
    * errors/exceptions.
    */
   public boolean hasTransitivePrivilege(
-      @Nonnull ResolvedPolarisPrincipal authenticatedPolarisPrincipal,
+      @Nonnull PolarisEntity principal,
       Set<Long> activatedGranteeIds,
       PolarisPrivilege desiredPrivilege,
       PolarisResolvedPathWrapper resolvedPath) {
@@ -633,7 +629,7 @@ public class DefaultPolarisAuthorizer implements PolarisAuthorizer {
                 desiredPrivilege,
                 grantRecord,
                 resolvedSecurableEntity,
-                authenticatedPolarisPrincipal.getName(),
+                principal.getName(),
                 activatedGranteeIds);
             return true;
           }
@@ -644,7 +640,7 @@ public class DefaultPolarisAuthorizer implements PolarisAuthorizer {
     LOGGER.debug(
         "Failed to satisfy privilege {} for principalName {} on resolvedPath {}",
         desiredPrivilege,
-        authenticatedPolarisPrincipal.getName(),
+        principal.getName(),
         resolvedPath);
     return false;
   }
