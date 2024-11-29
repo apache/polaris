@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.service.auth;
 
-import static org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal.ANONYMOUS;
-
 import java.util.Optional;
+import java.util.Set;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipalImpl;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 
 /**
@@ -31,6 +31,9 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 @SuppressWarnings("unused")
 public class AnonymousPolarisAuthenticator
     implements DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> {
+
+  private static final AuthenticatedPolarisPrincipal ANONYMOUS =
+      new AuthenticatedPolarisPrincipalImpl(-1, "anonymous", Set.of());
 
   @Override
   public Optional<AuthenticatedPolarisPrincipal> authenticate(String s) {

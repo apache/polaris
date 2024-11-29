@@ -65,6 +65,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipalImpl;
 import org.apache.polaris.core.auth.DefaultPolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.CallContext;
@@ -174,7 +175,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                         "root")
                     .getEntity()));
 
-    authenticatedRoot = AuthenticatedPolarisPrincipal.fromEntity(rootEntity);
+    authenticatedRoot =
+        new AuthenticatedPolarisPrincipalImpl(rootEntity.getId(), rootEntity.getName(), Set.of());
 
     adminService =
         new PolarisAdminService(

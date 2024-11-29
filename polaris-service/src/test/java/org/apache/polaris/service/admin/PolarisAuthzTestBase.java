@@ -49,6 +49,7 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipalImpl;
 import org.apache.polaris.core.auth.DefaultPolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
@@ -191,7 +192,8 @@ public abstract class PolarisAuthzTestBase {
                         "root")
                     .getEntity()));
 
-    this.authenticatedRoot = AuthenticatedPolarisPrincipal.fromEntity(rootEntity);
+    this.authenticatedRoot =
+        new AuthenticatedPolarisPrincipalImpl(rootEntity.getId(), rootEntity.getName(), Set.of());
 
     this.adminService =
         new PolarisAdminService(

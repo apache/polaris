@@ -19,13 +19,9 @@
 package org.apache.polaris.core.auth;
 
 import java.util.Set;
-import org.apache.polaris.core.entity.PrincipalEntity;
 
 /** Holds the results of request authentication. */
 public interface AuthenticatedPolarisPrincipal extends java.security.Principal {
-
-  AuthenticatedPolarisPrincipal ANONYMOUS =
-      new AuthenticatedPolarisPrincipalImpl(-1, "anonymous", Set.of());
 
   /**
    * Principal entity ID obtained during request authentication (e.g. from the authorization token).
@@ -38,18 +34,4 @@ public interface AuthenticatedPolarisPrincipal extends java.security.Principal {
 
   /** A sub-set of the assigned roles that are deemed effective in requests using this principal. */
   Set<String> getActivatedPrincipalRoleNames();
-
-  static AuthenticatedPolarisPrincipal create(long entityId, String name, Set<String> roles) {
-    return new AuthenticatedPolarisPrincipalImpl(entityId, name, roles);
-  }
-
-  static AuthenticatedPolarisPrincipal fromEntity(PrincipalEntity entity) {
-    return fromEntity(entity, Set.of());
-  }
-
-  static AuthenticatedPolarisPrincipal fromEntity(
-      PrincipalEntity entity, Set<String> activatedPrincipalRoles) {
-    return new AuthenticatedPolarisPrincipalImpl(
-        entity.getId(), entity.getName(), activatedPrincipalRoles);
-  }
 }
