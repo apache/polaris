@@ -110,7 +110,6 @@ dependencies {
   testFixturesApi(libs.jakarta.annotation.api)
 
   compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.persistence.api)
 }
 
 openApiValidate { inputSpec = "$rootDir/spec/polaris-management-service.yml" }
