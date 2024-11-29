@@ -18,55 +18,38 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nonnull;
-import java.util.List;
 import java.util.Set;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.entity.PrincipalEntity;
 
 /** Holds the results of request authentication. */
-public class AuthenticatedPolarisPrincipal implements java.security.Principal {
-  private final PolarisEntity principalEntity;
-  private final Set<String> activatedPrincipalRoleNames;
-  // only known and set after the above set of principal role names have been resolved. Before
-  // this, this list is null
-  private List<PrincipalRoleEntity> activatedPrincipalRoles;
+public interface AuthenticatedPolarisPrincipal extends java.security.Principal {
 
-  public AuthenticatedPolarisPrincipal(
-      @Nonnull PolarisEntity principalEntity, @Nonnull Set<String> activatedPrincipalRoles) {
-    this.principalEntity = principalEntity;
-    this.activatedPrincipalRoleNames = activatedPrincipalRoles;
-    this.activatedPrincipalRoles = null;
+  AuthenticatedPolarisPrincipal ANONYMOUS =
+      new AuthenticatedPolarisPrincipalImpl(-1, "anonymous", Set.of());
+
+  /**
+   * Principal entity ID obtained during request authentication (e.g. from the authorization token).
+   *
+   * <p>Negative values indicate that a principal ID was not provided in authenticated data,
+   * however, other authentic information about the principal (e.g. name, roles) may still be
+   * available.
+   */
+  long getPrincipalEntityId();
+
+  /** A sub-set of the assigned roles that are deemed effective in requests using this principal. */
+  Set<String> getActivatedPrincipalRoleNames();
+
+  static AuthenticatedPolarisPrincipal create(long entityId, String name, Set<String> roles) {
+    return new AuthenticatedPolarisPrincipalImpl(entityId, name, roles);
   }
 
-  @Override
-  public String getName() {
-    return principalEntity.getName();
+  static AuthenticatedPolarisPrincipal fromEntity(PrincipalEntity entity) {
+    return fromEntity(entity, Set.of());
   }
 
-  public PolarisEntity getPrincipalEntity() {
-    return principalEntity;
-  }
-
-  public Set<String> getActivatedPrincipalRoleNames() {
-    return activatedPrincipalRoleNames;
-  }
-
-  public List<PrincipalRoleEntity> getActivatedPrincipalRoles() {
-    return activatedPrincipalRoles;
-  }
-
-  public void setActivatedPrincipalRoles(List<PrincipalRoleEntity> activatedPrincipalRoles) {
-    this.activatedPrincipalRoles = activatedPrincipalRoles;
-  }
-
-  @Override
-  public String toString() {
-    return "principalEntity="
-        + getPrincipalEntity()
-        + ";activatedPrincipalRoleNames="
-        + getActivatedPrincipalRoleNames()
-        + ";activatedPrincipalRoles="
-        + getActivatedPrincipalRoles();
+  static AuthenticatedPolarisPrincipal fromEntity(
+      PrincipalEntity entity, Set<String> activatedPrincipalRoles) {
+    return new AuthenticatedPolarisPrincipalImpl(
+        entity.getId(), entity.getName(), activatedPrincipalRoles);
   }
 }

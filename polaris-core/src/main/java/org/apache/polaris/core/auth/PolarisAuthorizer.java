@@ -21,24 +21,68 @@ package org.apache.polaris.core.auth;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
-import java.util.Set;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
-/** Interface for invoking authorization checks. */
+/**
+ * Interface for invoking authorization checks.
+ *
+ * <p>An implementations of this interface is selected at startup time. Implementations should
+ * declare a constrictor with a single argument of type {@link PolarisConfigurationStore}.
+ */
 public interface PolarisAuthorizer {
 
+  /**
+   * Validates whether the requested operation is permitted based on the collection of entities
+   * (including principals, roles, and catalog objects) that are affected by the operation.
+   *
+   * <p>"activated" entities, "targets" and "secondaries" are contained within the provided
+   * manifest. The extra selector parameters merely define what sub-set of objects from the manifest
+   * should be considered as "targets", etc.
+   *
+   * <p>The effective principal information is also provided in the manifest.
+   *
+   * @param manifest defines the input for authorization checks.
+   * @param operation the operation being authorized.
+   * @param activatedEntities selector for roles that should be considered by the authorization
+   *     checks
+   * @param targets target entities affected by the operation (e.g. tables)
+   * @param secondaries secondary entities affected by the operation (e.g. grantee)
+   */
   void authorizeOrThrow(
-      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
-      @Nullable PolarisResolvedPathWrapper target,
-      @Nullable PolarisResolvedPathWrapper secondary);
+      @Nonnull PolarisResolutionManifest manifest,
+      @Nonnull PolarisAuthorizableOperation operation,
+      @Nonnull ActivatedEntitySelector activatedEntities,
+      @Nonnull List<AuthEntitySelector> targets,
+      @Nonnull List<AuthEntitySelector> secondaries);
 
-  void authorizeOrThrow(
-      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
-      @Nullable List<PolarisResolvedPathWrapper> targets,
-      @Nullable List<PolarisResolvedPathWrapper> secondaries);
+  /**
+   * Convenience redirect for {@link #authorizeOrThrow(PolarisResolutionManifest,
+   * PolarisAuthorizableOperation, ActivatedEntitySelector, List, List)}
+   */
+  default void authorizeOrThrow(
+      @Nonnull PolarisResolutionManifest manifest,
+      @Nonnull PolarisAuthorizableOperation operation,
+      @Nonnull ActivatedEntitySelector activatedEntities,
+      @Nullable AuthEntitySelector target) {
+    authorizeOrThrow(manifest, operation, activatedEntities, target, null);
+  }
+
+  /**
+   * Convenience redirect for {@link #authorizeOrThrow(PolarisResolutionManifest,
+   * PolarisAuthorizableOperation, ActivatedEntitySelector, List, List)}
+   */
+  default void authorizeOrThrow(
+      @Nonnull PolarisResolutionManifest manifest,
+      @Nonnull PolarisAuthorizableOperation operation,
+      @Nonnull ActivatedEntitySelector activatedEntities,
+      @Nullable AuthEntitySelector target,
+      @Nullable AuthEntitySelector secondary) {
+    authorizeOrThrow(
+        manifest,
+        operation,
+        activatedEntities,
+        target == null ? List.of() : List.of(target),
+        secondary == null ? List.of() : List.of(secondary));
+  }
 }

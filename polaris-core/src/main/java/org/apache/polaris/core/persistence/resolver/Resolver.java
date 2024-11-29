@@ -147,8 +147,6 @@ public class Resolver {
     // validate inputs
     this.diagnostics.checkNotNull(polarisRemoteCache, "unexpected_null_polarisRemoteCache");
     this.diagnostics.checkNotNull(cache, "unexpected_null_cache");
-    this.diagnostics.check(
-        callerPrincipalId != 0 || callerPrincipalName != null, "principal_must_be_specified");
 
     // paths to resolve
     this.pathsToResolve = new ArrayList<>();
@@ -269,7 +267,7 @@ public class Resolver {
   /**
    * @return the principal we resolved
    */
-  public @Nonnull EntityCacheEntry getResolvedCallerPrincipal() {
+  public @Nullable EntityCacheEntry getResolvedCallerPrincipal() {
     // can only be called if the resolver has been called and was success
     this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
     this.diagnostics.check(
@@ -409,12 +407,17 @@ public class Resolver {
     List<EntityCacheEntry> toValidate = new ArrayList<>();
 
     // first resolve the principal and determine the set of activated principal roles
-    ResolverStatus status =
-        this.resolveCallerPrincipalAndPrincipalRoles(
-            toValidate,
-            this.callerPrincipalId,
-            this.callerPrincipalName,
-            this.callerPrincipalRoleNamesScope);
+    ResolverStatus status;
+    if (this.callerPrincipalId > 0 || this.callerPrincipalName != null) {
+      status =
+          this.resolveCallerPrincipalAndPrincipalRoles(
+              toValidate,
+              this.callerPrincipalId,
+              this.callerPrincipalName,
+              this.callerPrincipalRoleNamesScope);
+    } else {
+      status = new ResolverStatus(ResolverStatus.StatusEnum.SUCCESS);
+    }
 
     // if success, continue resolving
     if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {

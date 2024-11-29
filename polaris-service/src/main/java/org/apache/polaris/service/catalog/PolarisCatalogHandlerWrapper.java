@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.service.catalog;
 
+import static org.apache.polaris.core.auth.ActivatedEntitySelector.ALL_ROLES;
+import static org.apache.polaris.core.auth.AuthEntitySelector.path;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import java.io.Closeable;
@@ -29,7 +32,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -72,6 +74,7 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.auth.AuthEntitySelector;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -210,16 +213,15 @@ public class PolarisCatalogHandlerWrapper {
       }
     }
     resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(namespace, true);
-    if (target == null) {
-      throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
-    }
     authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+        resolutionManifest,
         op,
-        target,
-        null /* secondary */);
+        ALL_ROLES,
+        path(
+            namespace,
+            () -> {
+              throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
+            }));
 
     initializeCatalog();
   }
@@ -243,16 +245,15 @@ public class PolarisCatalogHandlerWrapper {
             Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE, true /* optional */),
         namespace);
     resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(parentNamespace, true);
-    if (target == null) {
-      throw new NoSuchNamespaceException("Namespace does not exist: %s", parentNamespace);
-    }
     authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+        resolutionManifest,
         op,
-        target,
-        null /* secondary */);
+        ALL_ROLES,
+        path(
+            parentNamespace,
+            () -> {
+              throw new NoSuchNamespaceException("Namespace does not exist: %s", parentNamespace);
+            }));
 
     initializeCatalog();
   }
@@ -280,16 +281,15 @@ public class PolarisCatalogHandlerWrapper {
             true /* optional */),
         identifier);
     resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(namespace, true);
-    if (target == null) {
-      throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
-    }
     authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+        resolutionManifest,
         op,
-        target,
-        null /* secondary */);
+        ALL_ROLES,
+        path(
+            namespace,
+            () -> {
+              throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
+            }));
 
     initializeCatalog();
   }
@@ -307,20 +307,20 @@ public class PolarisCatalogHandlerWrapper {
             true /* optional */),
         identifier);
     resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(identifier, subType, true);
-    if (target == null) {
-      if (subType == PolarisEntitySubType.TABLE) {
-        throw new NoSuchTableException("Table does not exist: %s", identifier);
-      } else {
-        throw new NoSuchViewException("View does not exist: %s", identifier);
-      }
-    }
     authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
+        resolutionManifest,
         op,
-        target,
+        ALL_ROLES,
+        path(
+            identifier,
+            subType,
+            () -> {
+              if (subType == PolarisEntitySubType.TABLE) {
+                throw new NoSuchTableException("Table does not exist: %s", identifier);
+              } else {
+                throw new NoSuchViewException("View does not exist: %s", identifier);
+              }
+            }),
         null /* secondary */);
 
     initializeCatalog();
@@ -355,26 +355,20 @@ public class PolarisCatalogHandlerWrapper {
       }
     }
 
-    List<PolarisResolvedPathWrapper> targets =
+    List<AuthEntitySelector> targets =
         ids.stream()
             .map(
                 identifier ->
-                    Optional.ofNullable(
-                            resolutionManifest.getResolvedPath(identifier, subType, true))
-                        .orElseThrow(
-                            () ->
-                                subType == PolarisEntitySubType.TABLE
-                                    ? new NoSuchTableException(
-                                        "Table does not exist: %s", identifier)
-                                    : new NoSuchViewException(
-                                        "View does not exist: %s", identifier)))
+                    AuthEntitySelector.path(
+                        identifier,
+                        subType,
+                        () -> {
+                          throw subType == PolarisEntitySubType.TABLE
+                              ? new NoSuchTableException("Table does not exist: %s", identifier)
+                              : new NoSuchViewException("View does not exist: %s", identifier);
+                        }))
             .toList();
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        targets,
-        null /* secondaries */);
+    authorizer.authorizeOrThrow(resolutionManifest, op, ALL_ROLES, targets, List.of());
 
     initializeCatalog();
   }
@@ -426,15 +420,8 @@ public class PolarisCatalogHandlerWrapper {
       throw new AlreadyExistsException("Cannot rename %s to %s. View already exists", src, dst);
     }
 
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(src, subType, true);
-    PolarisResolvedPathWrapper secondary =
-        resolutionManifest.getResolvedPath(dst.namespace(), true);
     authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        secondary);
+        resolutionManifest, op, ALL_ROLES, path(src, subType), path(dst.namespace()));
 
     initializeCatalog();
   }

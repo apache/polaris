@@ -101,12 +101,15 @@ import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -119,8 +122,8 @@ import org.slf4j.LoggerFactory;
  * the expanded roles of the calling Principal hold SERVICE_MANAGE_ACCESS on the "root" catalog,
  * which translates into a cross-catalog permission.
  */
-public class PolarisAuthorizerImpl implements PolarisAuthorizer {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisAuthorizerImpl.class);
+public class CoreAuthorizer implements PolarisAuthorizer {
+  private static final Logger LOGGER = LoggerFactory.getLogger(CoreAuthorizer.class);
 
   private static final SetMultimap<PolarisPrivilege, PolarisPrivilege> SUPER_PRIVILEGES =
       HashMultimap.create();
@@ -460,7 +463,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   private final PolarisConfigurationStore featureConfig;
 
-  public PolarisAuthorizerImpl(PolarisConfigurationStore featureConfig) {
+  public CoreAuthorizer(PolarisConfigurationStore featureConfig) {
     this.featureConfig = featureConfig;
   }
 
@@ -485,26 +488,27 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   @Override
   public void authorizeOrThrow(
-      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull PolarisResolutionManifest manifest,
       @Nonnull PolarisAuthorizableOperation authzOp,
-      @Nullable PolarisResolvedPathWrapper target,
-      @Nullable PolarisResolvedPathWrapper secondary) {
-    authorizeOrThrow(
-        authenticatedPrincipal,
-        activatedEntities,
-        authzOp,
-        target == null ? null : List.of(target),
-        secondary == null ? null : List.of(secondary));
-  }
+      @Nonnull ActivatedEntitySelector entitySelector,
+      @Nonnull List<AuthEntitySelector> targetSelectors,
+      @Nonnull List<AuthEntitySelector> secondarySelectors) {
 
-  @Override
-  public void authorizeOrThrow(
-      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
-      @Nullable List<PolarisResolvedPathWrapper> targets,
-      @Nullable List<PolarisResolvedPathWrapper> secondaries) {
+    List<PolarisResolvedPathWrapper> targets =
+        targetSelectors.stream().map(s -> s.fromManifest(manifest)).collect(Collectors.toList());
+    List<PolarisResolvedPathWrapper> secondaries =
+        secondarySelectors.stream().map(s -> s.fromManifest(manifest)).collect(Collectors.toList());
+
+    ResolvedPolarisPrincipal authenticatedPrincipal = manifest.getResolvedPolarisPrincipal();
+    if (authenticatedPrincipal == null) {
+      AuthenticatedPolarisPrincipal principal = manifest.getAuthenticatedPrincipal();
+      throw new ForbiddenException(
+          "Principal '%s' (ID: %s) could not be resolved",
+          principal.getName(), principal.getPrincipalEntityId());
+    }
+
+    Set<PolarisBaseEntity> activatedEntities = entitySelector.fromManifest(manifest);
+
     boolean enforceCredentialRotationRequiredState =
         featureConfig.getConfiguration(
             CallContext.getCurrentContext().getPolarisCallContext(),
@@ -518,8 +522,17 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       throw new ForbiddenException(
           "Principal '%s' is not authorized for op %s due to PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE",
           authenticatedPrincipal.getName(), authzOp);
-    } else if (!isAuthorized(
-        authenticatedPrincipal, activatedEntities, authzOp, targets, secondaries)) {
+    }
+
+    if (isSelfReset(authenticatedPrincipal, authzOp, targets)) {
+      LOGGER
+          .atDebug()
+          .addKeyValue("principalName", authenticatedPrincipal.getName())
+          .log("Allowing rotate own credentials");
+      return;
+    }
+
+    if (!isAuthorized(authenticatedPrincipal, activatedEntities, authzOp, targets, secondaries)) {
       throw new ForbiddenException(
           "Principal '%s' with activated PrincipalRoles '%s' and activated grants via '%s' is not authorized for op %s",
           authenticatedPrincipal.getName(),
@@ -529,27 +542,26 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
     }
   }
 
-  /**
-   * Based on the required target/targetParent/secondary/secondaryParent privileges mapped from
-   * {@code authzOp}, determines whether the caller's set of activatedGranteeIds is authorized for
-   * the operation.
-   */
-  public boolean isAuthorized(
-      @Nonnull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
-      @Nullable PolarisResolvedPathWrapper target,
-      @Nullable PolarisResolvedPathWrapper secondary) {
-    return isAuthorized(
-        authenticatedPolarisPrincipal,
-        activatedEntities,
-        authzOp,
-        target == null ? null : List.of(target),
-        secondary == null ? null : List.of(secondary));
+  private boolean isSelfReset(
+      ResolvedPolarisPrincipal principal,
+      PolarisAuthorizableOperation op,
+      List<PolarisResolvedPathWrapper> targets) {
+    if (op != PolarisAuthorizableOperation.ROTATE_CREDENTIALS
+        && op != PolarisAuthorizableOperation.RESET_CREDENTIALS) {
+      return false;
+    }
+
+    if (targets.size() != 1) {
+      return false;
+    }
+
+    PolarisEntity target = targets.get(0).getResolvedLeafEntity().getEntity();
+    return target.getType() == PolarisEntityType.PRINCIPAL
+        && target.getId() == principal.getPrincipalEntity().getId();
   }
 
   public boolean isAuthorized(
-      @Nonnull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+      @Nonnull ResolvedPolarisPrincipal authenticatedPolarisPrincipal,
       @Nonnull Set<PolarisBaseEntity> activatedEntities,
       @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
@@ -598,7 +610,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
    * errors/exceptions.
    */
   public boolean hasTransitivePrivilege(
-      @Nonnull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+      @Nonnull ResolvedPolarisPrincipal authenticatedPolarisPrincipal,
       Set<Long> activatedGranteeIds,
       PolarisPrivilege desiredPrivilege,
       PolarisResolvedPathWrapper resolvedPath) {

@@ -86,7 +86,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
       String catalogName,
       PolarisCallContextCatalogFactory factory) {
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
+        AuthenticatedPolarisPrincipal.fromEntity(principalEntity, activatedPrincipalRoles);
     return new PolarisCatalogHandlerWrapper(
         callContext,
         entityManager,
@@ -213,6 +213,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         metaStoreManager.createPrincipal(
             callContext.getPolarisCallContext(),
             new PrincipalEntity.Builder()
+                .setId(123)
                 .setName(principalName)
                 .setCreateTimestamp(Instant.now().toEpochMilli())
                 .setCredentialRotationRequiredState()
@@ -221,8 +222,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     adminService.assignPrincipalRole(principalName, PRINCIPAL_ROLE2);
 
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        new AuthenticatedPolarisPrincipal(
-            PrincipalEntity.of(newPrincipal.getPrincipal()), Set.of());
+        AuthenticatedPolarisPrincipal.fromEntity(PrincipalEntity.of(newPrincipal.getPrincipal()));
     PolarisCatalogHandlerWrapper wrapper =
         new PolarisCatalogHandlerWrapper(
             callContext,
@@ -253,7 +253,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         rotateAndRefreshPrincipal(
             metaStoreManager, principalName, credentials, callContext.getPolarisCallContext());
     final AuthenticatedPolarisPrincipal authenticatedPrincipal1 =
-        new AuthenticatedPolarisPrincipal(PrincipalEntity.of(refreshPrincipal), Set.of());
+        AuthenticatedPolarisPrincipal.fromEntity(PrincipalEntity.of(refreshPrincipal));
     PolarisCatalogHandlerWrapper refreshedWrapper =
         new PolarisCatalogHandlerWrapper(
             callContext,

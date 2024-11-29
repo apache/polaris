@@ -27,10 +27,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.ResolvedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -74,6 +77,8 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   private ResolvedPolarisEntity simulatedResolvedRootContainerEntity = null;
 
   private int currentPathIndex = 0;
+
+  private ResolvedPolarisPrincipal resolvedPolarisPrincipal;
 
   // Set when resolveAll is called
   private ResolverStatus primaryResolverStatus = null;
@@ -143,11 +148,16 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
     // activated principal roles are known, add them to the call context
     if (primaryResolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
-      List<PrincipalRoleEntity> activatedPrincipalRoles =
-          primaryResolver.getResolvedCallerPrincipalRoles().stream()
-              .map(ce -> PrincipalRoleEntity.of(ce.getEntity()))
-              .collect(Collectors.toList());
-      this.authenticatedPrincipal.setActivatedPrincipalRoles(activatedPrincipalRoles);
+      EntityCacheEntry resolvedPrincipal = primaryResolver.getResolvedCallerPrincipal();
+      if (resolvedPrincipal != null) {
+        List<PrincipalRoleEntity> activatedPrincipalRoles =
+            primaryResolver.getResolvedCallerPrincipalRoles().stream()
+                .map(ce -> PrincipalRoleEntity.of(ce.getEntity()))
+                .collect(Collectors.toList());
+        this.resolvedPolarisPrincipal =
+            new ResolvedPolarisPrincipal(
+                PolarisEntity.of(resolvedPrincipal.getEntity()), activatedPrincipalRoles);
+      }
     }
     return primaryResolverStatus;
   }
@@ -254,6 +264,15 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
           .forEach(activatedRoles::add);
     }
     return activatedRoles;
+  }
+
+  public AuthenticatedPolarisPrincipal getAuthenticatedPrincipal() {
+    return authenticatedPrincipal;
+  }
+
+  @Nullable
+  public ResolvedPolarisPrincipal getResolvedPolarisPrincipal() {
+    return resolvedPolarisPrincipal;
   }
 
   public Set<PolarisBaseEntity> getAllActivatedPrincipalRoleEntities() {

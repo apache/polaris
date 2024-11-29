@@ -27,7 +27,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.view.ViewCatalogTests;
@@ -39,7 +38,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.CoreAuthorizer;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -106,7 +105,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
                         "root")
                     .getEntity()));
     AuthenticatedPolarisPrincipal authenticatedRoot =
-        new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
+        AuthenticatedPolarisPrincipal.fromEntity(rootEntity);
 
     PolarisAdminService adminService =
         new PolarisAdminService(
@@ -114,7 +113,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             entityManager,
             metaStoreManager,
             authenticatedRoot,
-            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
+            new CoreAuthorizer(new PolarisConfigurationStore() {}));
     adminService.createCatalog(
         new CatalogEntity.Builder()
             .setName(CATALOG_NAME)

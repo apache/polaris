@@ -33,6 +33,8 @@ import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.auth.CoreAuthorizer;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.auth.DiscoverableAuthenticator;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -54,6 +56,7 @@ public class PolarisApplicationConfig extends Configuration {
   private RealmContextResolver realmContextResolver;
   private CallContextResolver callContextResolver;
   private DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> polarisAuthenticator;
+  private Class<? extends PolarisAuthorizer> authorizerClass = CoreAuthorizer.class;
   private CorsConfiguration corsConfiguration = new CorsConfiguration();
   private TaskHandlerConfiguration taskHandler = new TaskHandlerConfiguration();
   private Map<String, Object> globalFeatureConfiguration = Map.of();
@@ -98,6 +101,22 @@ public class PolarisApplicationConfig extends Configuration {
   public DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal>
       getPolarisAuthenticator() {
     return polarisAuthenticator;
+  }
+
+  @JsonProperty("authorizer")
+  public void setAuthorizer(Class<? extends PolarisAuthorizer> clazz) {
+    this.authorizerClass = clazz;
+  }
+
+  public PolarisAuthorizer createAuthorizer() {
+    PolarisConfigurationStore featureConfig = getConfigurationStore();
+    try {
+      return authorizerClass
+          .getDeclaredConstructor(PolarisConfigurationStore.class)
+          .newInstance(featureConfig);
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   public RealmContextResolver getRealmContextResolver() {
