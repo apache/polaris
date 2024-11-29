@@ -35,12 +35,12 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.persistence.models.ModelEntity;
-import org.apache.polaris.core.persistence.models.ModelEntityActive;
-import org.apache.polaris.core.persistence.models.ModelEntityChangeTracking;
-import org.apache.polaris.core.persistence.models.ModelEntityDropped;
-import org.apache.polaris.core.persistence.models.ModelGrantRecord;
-import org.apache.polaris.core.persistence.models.ModelPrincipalSecrets;
+import org.apache.polaris.jpa.models.ModelEntity;
+import org.apache.polaris.jpa.models.ModelEntityActive;
+import org.apache.polaris.jpa.models.ModelEntityChangeTracking;
+import org.apache.polaris.jpa.models.ModelEntityDropped;
+import org.apache.polaris.jpa.models.ModelGrantRecord;
+import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
