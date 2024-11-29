@@ -523,7 +523,7 @@ public class DefaultPolarisAuthorizer implements PolarisAuthorizer {
           principal.getName(), authzOp);
     }
 
-    if (isSelfReset(principal, authzOp, targets)) {
+    if (isPrincipalOwnCredentialReset(principal, authzOp, targets)) {
       LOGGER
           .atDebug()
           .addKeyValue("principalName", principal.getName())
@@ -541,7 +541,11 @@ public class DefaultPolarisAuthorizer implements PolarisAuthorizer {
     }
   }
 
-  private boolean isSelfReset(
+  /**
+   * Returns {@code true} if the operation is a reset or rotation of the principal's own secrets. In
+   * this case the operation is implicitly allowed without any specific permission checks.
+   */
+  private boolean isPrincipalOwnCredentialReset(
       PolarisEntity principal,
       PolarisAuthorizableOperation op,
       List<PolarisResolvedPathWrapper> targets) {
