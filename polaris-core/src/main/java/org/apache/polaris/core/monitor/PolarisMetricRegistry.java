@@ -53,14 +53,14 @@ public class PolarisMetricRegistry {
   /**
    * @deprecated See class Javadoc.
    */
-  public static final String TAG_REALM_DEPRECATED = "REALM_ID";
+  @Deprecated public static final String TAG_REALM_DEPRECATED = "REALM_ID";
 
   public static final String TAG_REALM = "realm_id";
 
   /**
    * @deprecated See class Javadoc.
    */
-  public static final String TAG_RESP_CODE_DEPRECATED = "HTTP_RESPONSE_CODE";
+  @Deprecated public static final String TAG_RESP_CODE_DEPRECATED = "HTTP_RESPONSE_CODE";
 
   public static final String TAG_RESP_CODE = "http_response_code";
 
