@@ -27,12 +27,12 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipalImpl;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.service.auth.AuthenticatedPolarisPrincipalImpl;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 

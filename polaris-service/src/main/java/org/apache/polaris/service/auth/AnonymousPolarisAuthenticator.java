@@ -21,7 +21,6 @@ package org.apache.polaris.service.auth;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipalImpl;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 
 /**

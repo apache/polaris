@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.auth;
+package org.apache.polaris.service.auth;
 
 import java.util.Set;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 
 public final class AuthenticatedPolarisPrincipalImpl implements AuthenticatedPolarisPrincipal {
   private final long id;
