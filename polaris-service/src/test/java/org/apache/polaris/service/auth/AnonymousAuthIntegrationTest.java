@@ -40,7 +40,6 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.auth.AllowAllAuthorizer;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
@@ -65,7 +64,7 @@ public class AnonymousAuthIntegrationTest {
           ConfigOverride.config(
               "authenticator.class",
               "org.apache.polaris.service.auth.AnonymousPolarisAuthenticator"),
-          ConfigOverride.config("authorizer", AllowAllAuthorizer.class.getName()),
+          ConfigOverride.config("authorizer.factory", AllowAllAuthorizerFactory.class.getName()),
           // Bind to random port to support parallelism
           ConfigOverride.config("server.applicationConnectors[0].port", "0"),
           // Bind to random port to support parallelism

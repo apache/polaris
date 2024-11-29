@@ -105,7 +105,8 @@ authenticator:
 #    type: symmetric-key
 #    secret: polaris
 
-authorizer: org.apache.polaris.service.auth.CoreAuthorizer
+authorizer:
+  factory: org.apache.polaris.core.auth.DefaultPolarisAuthorizerFactory
 
 cors:
   allowed-origins:

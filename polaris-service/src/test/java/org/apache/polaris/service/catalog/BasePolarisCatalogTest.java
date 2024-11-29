@@ -65,7 +65,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.auth.CoreAuthorizer;
+import org.apache.polaris.core.auth.DefaultPolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -182,7 +182,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             entityManager,
             metaStoreManager,
             authenticatedRoot,
-            new CoreAuthorizer(new PolarisConfigurationStore() {}));
+            new DefaultPolarisAuthorizer(new PolarisConfigurationStore() {}));
     String storageLocation = "s3://my-bucket/path/to/data";
     storageConfigModel =
         AwsStorageConfigInfo.builder()

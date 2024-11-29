@@ -21,15 +21,9 @@ package org.apache.polaris.core.auth;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
-/**
- * Interface for invoking authorization checks.
- *
- * <p>An implementations of this interface is selected at startup time. Implementations should
- * declare a constrictor with a single argument of type {@link PolarisConfigurationStore}.
- */
+/** Interface for invoking authorization checks. */
 public interface PolarisAuthorizer {
 
   /**

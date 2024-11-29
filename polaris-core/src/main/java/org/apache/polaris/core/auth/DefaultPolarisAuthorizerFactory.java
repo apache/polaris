@@ -18,22 +18,12 @@
  */
 package org.apache.polaris.core.auth;
 
-import jakarta.annotation.Nonnull;
-import java.util.List;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
-public class AllowAllAuthorizer implements PolarisAuthorizer {
-
-  public AllowAllAuthorizer(PolarisConfigurationStore config) {}
-
+@SuppressWarnings("unused") // configured in polaris-server.yml
+public class DefaultPolarisAuthorizerFactory implements PolarisAuthorizerFactory {
   @Override
-  public void authorizeOrThrow(
-      @Nonnull PolarisResolutionManifest manifest,
-      @Nonnull PolarisAuthorizableOperation operation,
-      @Nonnull ActivatedEntitySelector activatedEntities,
-      @Nonnull List<AuthEntitySelector> targets,
-      @Nonnull List<AuthEntitySelector> secondaries) {
-    // all operations are permitted
+  public PolarisAuthorizer createAuthorizer(PolarisConfigurationStore config) {
+    return new DefaultPolarisAuthorizer(config);
   }
 }
