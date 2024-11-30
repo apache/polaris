@@ -29,7 +29,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 public class AllowAllAuthorizerFactory implements PolarisAuthorizerFactory {
   @Override
   public PolarisAuthorizer createAuthorizer(PolarisConfigurationStore config) {
-    return (manifest, operation, activatedEntities, targets, secondaries) -> {
+    return (manifest, operation, considerCatalogRoles) -> {
       // all operations are permitted
     };
   }

@@ -490,14 +490,10 @@ public class DefaultPolarisAuthorizer implements PolarisAuthorizer {
   public void authorizeOrThrow(
       @Nonnull PolarisResolutionManifest manifest,
       @Nonnull PolarisAuthorizableOperation authzOp,
-      @Nonnull ActivatedEntitySelector entitySelector,
-      @Nonnull List<AuthEntitySelector> targetSelectors,
-      @Nonnull List<AuthEntitySelector> secondarySelectors) {
+      boolean considerCatalogRoles) {
 
-    List<PolarisResolvedPathWrapper> targets =
-        targetSelectors.stream().map(s -> s.fromManifest(manifest)).collect(Collectors.toList());
-    List<PolarisResolvedPathWrapper> secondaries =
-        secondarySelectors.stream().map(s -> s.fromManifest(manifest)).collect(Collectors.toList());
+    List<PolarisResolvedPathWrapper> targets = manifest.authorizationTargets();
+    List<PolarisResolvedPathWrapper> secondaries = manifest.authorizationSecondaries();
 
     PolarisEntity principal = manifest.getResolvedPolarisPrincipal();
     if (principal == null) {
@@ -507,7 +503,10 @@ public class DefaultPolarisAuthorizer implements PolarisAuthorizer {
           authPrincipal.getName(), authPrincipal.getPrincipalEntityId());
     }
 
-    Set<PolarisBaseEntity> activatedEntities = entitySelector.fromManifest(manifest);
+    Set<PolarisBaseEntity> activatedEntities =
+        considerCatalogRoles
+            ? manifest.getAllActivatedCatalogRoleAndPrincipalRoles()
+            : manifest.getAllActivatedPrincipalRoleEntities();
 
     boolean enforceCredentialRotationRequiredState =
         featureConfig.getConfiguration(

@@ -19,8 +19,6 @@
 package org.apache.polaris.core.auth;
 
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
-import java.util.List;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
 /** Interface for invoking authorization checks. */
@@ -38,45 +36,11 @@ public interface PolarisAuthorizer {
    *
    * @param manifest defines the input for authorization checks.
    * @param operation the operation being authorized.
-   * @param activatedEntities selector for roles that should be considered by the authorization
-   *     checks
-   * @param targets target entities affected by the operation (e.g. tables)
-   * @param secondaries secondary entities affected by the operation (e.g. grantee)
+   * @param considerCatalogRoles whether catalog roles should be considered ({@code true}) or only
+   *     principal roles ({@code false}).
    */
   void authorizeOrThrow(
       @Nonnull PolarisResolutionManifest manifest,
       @Nonnull PolarisAuthorizableOperation operation,
-      @Nonnull ActivatedEntitySelector activatedEntities,
-      @Nonnull List<AuthEntitySelector> targets,
-      @Nonnull List<AuthEntitySelector> secondaries);
-
-  /**
-   * Convenience redirect for {@link #authorizeOrThrow(PolarisResolutionManifest,
-   * PolarisAuthorizableOperation, ActivatedEntitySelector, List, List)}
-   */
-  default void authorizeOrThrow(
-      @Nonnull PolarisResolutionManifest manifest,
-      @Nonnull PolarisAuthorizableOperation operation,
-      @Nonnull ActivatedEntitySelector activatedEntities,
-      @Nullable AuthEntitySelector target) {
-    authorizeOrThrow(manifest, operation, activatedEntities, target, null);
-  }
-
-  /**
-   * Convenience redirect for {@link #authorizeOrThrow(PolarisResolutionManifest,
-   * PolarisAuthorizableOperation, ActivatedEntitySelector, List, List)}
-   */
-  default void authorizeOrThrow(
-      @Nonnull PolarisResolutionManifest manifest,
-      @Nonnull PolarisAuthorizableOperation operation,
-      @Nonnull ActivatedEntitySelector activatedEntities,
-      @Nullable AuthEntitySelector target,
-      @Nullable AuthEntitySelector secondary) {
-    authorizeOrThrow(
-        manifest,
-        operation,
-        activatedEntities,
-        target == null ? List.of() : List.of(target),
-        secondary == null ? List.of() : List.of(secondary));
-  }
+      boolean considerCatalogRoles);
 }
