@@ -41,18 +41,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApi;
-<<<<<<< HEAD:dropwizard/service/src/test/java/org/apache/polaris/service/dropwizard/TimedApplicationEventListenerTest.java
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
 import org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry;
+import org.apache.polaris.service.dropwizard.test.PolarisApplicationUtils;
 import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
 import org.apache.polaris.service.dropwizard.test.PolarisRealm;
 import org.apache.polaris.service.dropwizard.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.dropwizard.test.TestEnvironmentExtension;
 import org.apache.polaris.service.dropwizard.test.TestMetricsUtil;
-=======
-import org.apache.polaris.service.config.PolarisApplicationConfig;
-import org.apache.polaris.service.test.*;
->>>>>>> b2dbbee (refactor test):polaris-service/src/test/java/org/apache/polaris/service/TimedApplicationEventListenerTest.java
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -67,7 +63,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 })
 public class TimedApplicationEventListenerTest {
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-          PolarisApplicationUtils.createTestPolarisApplication();
+      PolarisApplicationUtils.createTestPolarisApplication();
 
   private static final int ERROR_CODE = Response.Status.NOT_FOUND.getStatusCode();
   private static final String ENDPOINT = "api/management/v1/principals";

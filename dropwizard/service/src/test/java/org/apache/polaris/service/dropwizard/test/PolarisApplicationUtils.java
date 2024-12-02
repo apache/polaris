@@ -21,28 +21,26 @@ package org.apache.polaris.service.dropwizard.test;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import org.apache.polaris.service.dropwizard.PolarisApplication;
-import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-
+import org.apache.polaris.service.dropwizard.PolarisApplication;
+import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
 
 public class PolarisApplicationUtils {
 
-    public static DropwizardAppExtension<PolarisApplicationConfig> createTestPolarisApplication(ConfigOverride... configOverrides) {
-        List<ConfigOverride> appConfigOverrides = new ArrayList<>();
-        // Bind to random port to support parallelism
-        appConfigOverrides.add(ConfigOverride.config("server.applicationConnectors[0].port", "0"));
-        appConfigOverrides.add(ConfigOverride.config("server.adminConnectors[0].port", "0"));
-        // add the other input configurations
-        appConfigOverrides.addAll(Arrays.asList(configOverrides));
+  public static DropwizardAppExtension<PolarisApplicationConfig> createTestPolarisApplication(
+      ConfigOverride... configOverrides) {
+    List<ConfigOverride> appConfigOverrides = new ArrayList<>();
+    // Bind to random port to support parallelism
+    appConfigOverrides.add(ConfigOverride.config("server.applicationConnectors[0].port", "0"));
+    appConfigOverrides.add(ConfigOverride.config("server.adminConnectors[0].port", "0"));
+    // add the other input configurations
+    appConfigOverrides.addAll(Arrays.asList(configOverrides));
 
-        return new DropwizardAppExtension<>(
-                PolarisApplication.class,
-                ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-                appConfigOverrides.toArray(new ConfigOverride[0])
-        );
-    }
+    return new DropwizardAppExtension<>(
+        PolarisApplication.class,
+        ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
+        appConfigOverrides.toArray(new ConfigOverride[0]));
+  }
 }

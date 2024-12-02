@@ -21,14 +21,13 @@ package org.apache.polaris.service.dropwizard;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.extension.persistence.impl.eclipselink.EclipseLinkPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
+import org.apache.polaris.service.dropwizard.test.PolarisApplicationUtils;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
-import org.apache.polaris.service.test.PolarisApplicationUtils;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +37,8 @@ public class PolarisApplicationConfigurationTest {
 
   @Nested
   class DefaultMetastore {
-    private final DropwizardAppExtension<PolarisApplicationConfig> app = PolarisApplicationUtils.createTestPolarisApplication();
+    private final DropwizardAppExtension<PolarisApplicationConfig> app =
+        PolarisApplicationUtils.createTestPolarisApplication();
 
     @Test
     void testMetastoreType() {
@@ -50,11 +50,10 @@ public class PolarisApplicationConfigurationTest {
   @Nested
   class EclipseLinkMetastore {
     private final DropwizardAppExtension<PolarisApplicationConfig> app =
-            PolarisApplicationUtils.createTestPolarisApplication(
-                    ConfigOverride.config("metaStoreManager.type", "eclipse-link"),
-                    ConfigOverride.config("metaStoreManager.persistence-unit", "test-unit"),
-                    ConfigOverride.config("metaStoreManager.conf-file", "/test-conf-file"));
-
+        PolarisApplicationUtils.createTestPolarisApplication(
+            ConfigOverride.config("metaStoreManager.type", "eclipse-link"),
+            ConfigOverride.config("metaStoreManager.persistence-unit", "test-unit"),
+            ConfigOverride.config("metaStoreManager.conf-file", "/test-conf-file"));
 
     @Test
     void testMetastoreType() {

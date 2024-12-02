@@ -82,18 +82,13 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.auth.BasePolarisAuthenticator;
-<<<<<<< HEAD:dropwizard/service/src/test/java/org/apache/polaris/service/dropwizard/PolarisApplicationIntegrationTest.java
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
+import org.apache.polaris.service.dropwizard.test.PolarisApplicationUtils;
 import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
 import org.apache.polaris.service.dropwizard.test.PolarisRealm;
 import org.apache.polaris.service.dropwizard.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.dropwizard.test.TestEnvironmentExtension;
 import org.apache.polaris.service.dropwizard.throttling.RequestThrottlingErrorResponse;
-=======
-import org.apache.polaris.service.config.PolarisApplicationConfig;
-import org.apache.polaris.service.test.*;
-import org.apache.polaris.service.throttling.RequestThrottlingErrorResponse;
->>>>>>> b2dbbee (refactor test):polaris-service/src/test/java/org/apache/polaris/service/PolarisApplicationIntegrationTest.java
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
@@ -122,21 +117,10 @@ public class PolarisApplicationIntegrationTest {
       LoggerFactory.getLogger(PolarisApplicationIntegrationTest.class);
 
   public static final String PRINCIPAL_ROLE_NAME = "admin";
-<<<<<<< HEAD:dropwizard/service/src/test/java/org/apache/polaris/service/dropwizard/PolarisApplicationIntegrationTest.java
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config(
-              "server.adminConnectors[0].port", "0"), // Bind to random port to support parallelism
+      PolarisApplicationUtils.createTestPolarisApplication(
           ConfigOverride.config("logging.appenders[1].type", "file"),
           ConfigOverride.config("logging.appenders[1].currentLogFilename", CURRENT_LOG));
-=======
-  private static final DropwizardAppExtension<PolarisApplicationConfig> EXT = PolarisApplicationUtils.createTestPolarisApplication();
->>>>>>> b2dbbee (refactor test):polaris-service/src/test/java/org/apache/polaris/service/PolarisApplicationIntegrationTest.java
 
   private static String userToken;
   private static SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials;

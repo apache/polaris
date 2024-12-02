@@ -34,9 +34,9 @@ import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.entity.CatalogEntity;
-<<<<<<< HEAD:dropwizard/service/src/test/java/org/apache/polaris/service/dropwizard/catalog/PolarisRestCatalogViewIntegrationTest.java
 import org.apache.polaris.service.dropwizard.PolarisApplication;
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
+import org.apache.polaris.service.dropwizard.test.PolarisApplicationUtils;
 import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
 import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension.PolarisToken;
 import org.apache.polaris.service.dropwizard.test.PolarisRealm;
@@ -44,13 +44,6 @@ import org.apache.polaris.service.dropwizard.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.dropwizard.test.SnowmanCredentialsExtension.SnowmanCredentials;
 import org.apache.polaris.service.dropwizard.test.TestEnvironment;
 import org.apache.polaris.service.dropwizard.test.TestEnvironmentExtension;
-=======
-import org.apache.polaris.service.PolarisApplication;
-import org.apache.polaris.service.config.PolarisApplicationConfig;
-import org.apache.polaris.service.test.*;
-import org.apache.polaris.service.test.PolarisConnectionExtension.PolarisToken;
-import org.apache.polaris.service.test.SnowmanCredentialsExtension.SnowmanCredentials;
->>>>>>> b2dbbee (refactor test):polaris-service/src/test/java/org/apache/polaris/service/catalog/PolarisRestCatalogViewIntegrationTest.java
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -69,7 +62,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 })
 public abstract class PolarisRestCatalogViewIntegrationTest extends ViewCatalogTests<RESTCatalog> {
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-          PolarisApplicationUtils.createTestPolarisApplication();
+      PolarisApplicationUtils.createTestPolarisApplication();
 
   private RESTCatalog restCatalog;
 

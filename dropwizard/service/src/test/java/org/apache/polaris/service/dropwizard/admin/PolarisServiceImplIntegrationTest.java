@@ -118,12 +118,12 @@ public class PolarisServiceImplIntegrationTest {
   // slate on every test case; otherwise, leftover state from one test from failures will interfere
   // with other test cases.
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-          PolarisApplicationUtils.createTestPolarisApplication(
-                  // disallow FILE urls for the sake of tests below
-                  ConfigOverride.config(
-                          "featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES", "S3,GCS,AZURE"),
-                  ConfigOverride.config("gcp_credentials.access_token", "abc"),
-                  ConfigOverride.config("gcp_credentials.expires_in", "12345"));
+      PolarisApplicationUtils.createTestPolarisApplication(
+          // disallow FILE urls for the sake of tests below
+          ConfigOverride.config(
+              "featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES", "S3,GCS,AZURE"),
+          ConfigOverride.config("gcp_credentials.access_token", "abc"),
+          ConfigOverride.config("gcp_credentials.expires_in", "12345"));
 
   private static String userToken;
   private static String realm;
