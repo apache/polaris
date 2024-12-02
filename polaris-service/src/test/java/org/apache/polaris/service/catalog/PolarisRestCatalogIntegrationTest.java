@@ -82,12 +82,9 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
-import org.apache.polaris.service.test.PolarisConnectionExtension;
+import org.apache.polaris.service.test.*;
 import org.apache.polaris.service.test.PolarisConnectionExtension.PolarisToken;
-import org.apache.polaris.service.test.PolarisRealm;
-import org.apache.polaris.service.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension.SnowmanCredentials;
-import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
@@ -117,14 +114,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       Optional.ofNullable(System.getenv("INTEGRATION_TEST_S3_PATH"))
           .orElse("file:///tmp/buckets/my-bucket");
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config(
-              "server.adminConnectors[0].port", "0")); // Bind to random port to support parallelism
+          PolarisApplicationUtils.createTestPolarisApplication();
 
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
 

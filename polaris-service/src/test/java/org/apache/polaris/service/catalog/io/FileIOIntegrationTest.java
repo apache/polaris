@@ -55,10 +55,7 @@ import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.catalog.TestUtil;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
-import org.apache.polaris.service.test.PolarisConnectionExtension;
-import org.apache.polaris.service.test.PolarisRealm;
-import org.apache.polaris.service.test.SnowmanCredentialsExtension;
-import org.apache.polaris.service.test.TestEnvironmentExtension;
+import org.apache.polaris.service.test.*;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -76,14 +73,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 })
 public class FileIOIntegrationTest {
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config("server.adminConnectors[0].port", "0"),
-          ConfigOverride.config("io.factoryType", "test"));
+          PolarisApplicationUtils.createTestPolarisApplication(ConfigOverride.config("io.factoryType", "test"));
 
   private static final String catalogBaseLocation = "file:/tmp/buckets/my-bucket/path/to/data";
   private static TestFileIOFactory ioFactory;

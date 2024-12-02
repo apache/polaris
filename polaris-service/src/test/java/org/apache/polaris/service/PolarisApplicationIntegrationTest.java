@@ -81,10 +81,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
-import org.apache.polaris.service.test.PolarisConnectionExtension;
-import org.apache.polaris.service.test.PolarisRealm;
-import org.apache.polaris.service.test.SnowmanCredentialsExtension;
-import org.apache.polaris.service.test.TestEnvironmentExtension;
+import org.apache.polaris.service.test.*;
 import org.apache.polaris.service.throttling.RequestThrottlingErrorResponse;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -109,15 +106,7 @@ public class PolarisApplicationIntegrationTest {
       LoggerFactory.getLogger(PolarisApplicationIntegrationTest.class);
 
   public static final String PRINCIPAL_ROLE_NAME = "admin";
-  private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config(
-              "server.adminConnectors[0].port", "0")); // Bind to random port to support parallelism
+  private static final DropwizardAppExtension<PolarisApplicationConfig> EXT = PolarisApplicationUtils.createTestPolarisApplication();
 
   private static String userToken;
   private static SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials;

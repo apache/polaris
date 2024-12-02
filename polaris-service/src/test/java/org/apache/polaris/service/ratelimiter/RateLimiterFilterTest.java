@@ -34,11 +34,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
-import org.apache.polaris.service.test.PolarisConnectionExtension;
-import org.apache.polaris.service.test.PolarisRealm;
-import org.apache.polaris.service.test.SnowmanCredentialsExtension;
-import org.apache.polaris.service.test.TestEnvironmentExtension;
-import org.apache.polaris.service.test.TestMetricsUtil;
+import org.apache.polaris.service.test.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,17 +53,11 @@ public class RateLimiterFilterTest {
   private static final long REQUESTS_PER_SECOND = 5;
   private static final long WINDOW_SECONDS = 10;
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config("server.adminConnectors[0].port", "0"),
-          ConfigOverride.config("rateLimiter.type", "mock-realm-token-bucket"),
-          ConfigOverride.config(
-              "rateLimiter.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
-          ConfigOverride.config("rateLimiter.windowSeconds", String.valueOf(WINDOW_SECONDS)));
+          PolarisApplicationUtils.createTestPolarisApplication(
+                  ConfigOverride.config("rateLimiter.type", "mock-realm-token-bucket"),
+                  ConfigOverride.config(
+                          "rateLimiter.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
+                  ConfigOverride.config("rateLimiter.windowSeconds", String.valueOf(WINDOW_SECONDS)));
 
   private static String userToken;
   private static String realm;

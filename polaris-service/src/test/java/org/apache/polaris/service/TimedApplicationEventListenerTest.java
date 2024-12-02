@@ -37,11 +37,7 @@ import org.apache.polaris.core.monitor.PolarisMetricRegistry;
 import org.apache.polaris.core.resource.TimedApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApi;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
-import org.apache.polaris.service.test.PolarisConnectionExtension;
-import org.apache.polaris.service.test.PolarisRealm;
-import org.apache.polaris.service.test.SnowmanCredentialsExtension;
-import org.apache.polaris.service.test.TestEnvironmentExtension;
-import org.apache.polaris.service.test.TestMetricsUtil;
+import org.apache.polaris.service.test.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,14 +52,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 })
 public class TimedApplicationEventListenerTest {
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config(
-              "server.adminConnectors[0].port", "0")); // Bind to random port to support parallelism
+          PolarisApplicationUtils.createTestPolarisApplication();
 
   private static final int ERROR_CODE = Response.Status.NOT_FOUND.getStatusCode();
   private static final String ENDPOINT = "api/management/v1/principals";

@@ -43,6 +43,7 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
+import org.apache.polaris.service.test.PolarisApplicationUtils;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.TestEnvironmentExtension;
@@ -68,14 +69,7 @@ import org.slf4j.LoggerFactory;
 })
 public class PolarisSparkIntegrationTest {
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config(
-              "server.adminConnectors[0].port", "0")); // Bind to random port to support parallelism
+          PolarisApplicationUtils.createTestPolarisApplication();
 
   public static final String CATALOG_NAME = "mycatalog";
   public static final String EXTERNAL_CATALOG_NAME = "external_catalog";

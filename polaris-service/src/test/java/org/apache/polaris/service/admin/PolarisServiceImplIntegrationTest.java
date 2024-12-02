@@ -90,6 +90,7 @@ import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
+import org.apache.polaris.service.test.PolarisApplicationUtils;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.TestEnvironmentExtension;
@@ -118,19 +119,13 @@ public class PolarisServiceImplIntegrationTest {
   // slate on every test case; otherwise, leftover state from one test from failures will interfere
   // with other test cases.
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config("server.adminConnectors[0].port", "0"),
+          PolarisApplicationUtils.createTestPolarisApplication(
+                  // disallow FILE urls for the sake of tests below
+                  ConfigOverride.config(
+                          "featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES", "S3,GCS,AZURE"),
+                  ConfigOverride.config("gcp_credentials.access_token", "abc"),
+                  ConfigOverride.config("gcp_credentials.expires_in", "12345"));
 
-          // disallow FILE urls for the sake of tests below
-          ConfigOverride.config(
-              "featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES", "S3,GCS,AZURE"),
-          ConfigOverride.config("gcp_credentials.access_token", "abc"),
-          ConfigOverride.config("gcp_credentials.expires_in", "12345"));
   private static String userToken;
   private static String realm;
   private static String clientId;
