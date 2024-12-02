@@ -19,7 +19,6 @@
 package org.apache.polaris.service.admin;
 
 import static io.dropwizard.jackson.Jackson.newObjectMapper;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,9 +29,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
@@ -45,7 +41,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -90,6 +85,7 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.auth.TokenUtils;
@@ -141,17 +137,13 @@ public class PolarisServiceImplIntegrationTest {
 
   @BeforeAll
   public static void setup(
-      PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String polarisRealm)
+      PolarisConnectionExtension.PolarisToken adminToken,
+      PolarisPrincipalSecrets adminSecrets,
+      @PolarisRealm String polarisRealm)
       throws IOException {
     userToken = adminToken.token();
     realm = polarisRealm;
-
-    Base64.Decoder decoder = Base64.getUrlDecoder();
-    String[] chunks = adminToken.token().split("\\.");
-    String payload = new String(decoder.decode(chunks[1]), UTF_8);
-    JsonElement jsonElement = JsonParser.parseString(payload);
-    clientId = String.valueOf(((JsonObject) jsonElement).get("client_id"));
-
+    clientId = adminSecrets.getPrincipalClientId();
     // Set up test location
     PolarisConnectionExtension.createTestDir(realm);
   }
