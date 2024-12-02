@@ -23,8 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.google.common.collect.ImmutableMap;
-import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
@@ -79,7 +77,6 @@ import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.admin.model.ViewPrivilege;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.*;
@@ -114,7 +111,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       Optional.ofNullable(System.getenv("INTEGRATION_TEST_S3_PATH"))
           .orElse("file:///tmp/buckets/my-bucket");
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-          PolarisApplicationUtils.createTestPolarisApplication();
+      PolarisApplicationUtils.createTestPolarisApplication();
 
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
 

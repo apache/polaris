@@ -23,7 +23,6 @@ import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PR
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
@@ -41,7 +40,6 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisApplicationUtils;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
@@ -60,16 +58,16 @@ import org.junit.jupiter.params.provider.MethodSource;
 })
 public class PolarisOverlappingTableTest {
   private static final DropwizardAppExtension<PolarisApplicationConfig> BASE_EXT =
-          PolarisApplicationUtils.createTestPolarisApplication(
-                  // Enforce table location constraints
-                  ConfigOverride.config("featureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION", "false"),
-                  ConfigOverride.config("featureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP", "false"));
+      PolarisApplicationUtils.createTestPolarisApplication(
+          // Enforce table location constraints
+          ConfigOverride.config("featureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION", "false"),
+          ConfigOverride.config("featureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP", "false"));
 
   private static final DropwizardAppExtension<PolarisApplicationConfig> LAX_EXT =
-          PolarisApplicationUtils.createTestPolarisApplication(
-                  // Relax table location constraints
-                  ConfigOverride.config("featureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION", "true"),
-                  ConfigOverride.config("featureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP", "true"));
+      PolarisApplicationUtils.createTestPolarisApplication(
+          // Relax table location constraints
+          ConfigOverride.config("featureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION", "true"),
+          ConfigOverride.config("featureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP", "true"));
 
   private static PolarisConnectionExtension.PolarisToken adminToken;
   private static String userToken;

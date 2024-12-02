@@ -25,8 +25,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
-import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.ProcessingException;
@@ -106,7 +104,8 @@ public class PolarisApplicationIntegrationTest {
       LoggerFactory.getLogger(PolarisApplicationIntegrationTest.class);
 
   public static final String PRINCIPAL_ROLE_NAME = "admin";
-  private static final DropwizardAppExtension<PolarisApplicationConfig> EXT = PolarisApplicationUtils.createTestPolarisApplication();
+  private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
+      PolarisApplicationUtils.createTestPolarisApplication();
 
   private static String userToken;
   private static SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials;

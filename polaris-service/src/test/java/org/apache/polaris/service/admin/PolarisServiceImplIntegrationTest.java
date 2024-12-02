@@ -30,7 +30,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
@@ -86,7 +85,6 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
@@ -119,12 +117,12 @@ public class PolarisServiceImplIntegrationTest {
   // slate on every test case; otherwise, leftover state from one test from failures will interfere
   // with other test cases.
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-          PolarisApplicationUtils.createTestPolarisApplication(
-                  // disallow FILE urls for the sake of tests below
-                  ConfigOverride.config(
-                          "featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES", "S3,GCS,AZURE"),
-                  ConfigOverride.config("gcp_credentials.access_token", "abc"),
-                  ConfigOverride.config("gcp_credentials.expires_in", "12345"));
+      PolarisApplicationUtils.createTestPolarisApplication(
+          // disallow FILE urls for the sake of tests below
+          ConfigOverride.config(
+              "featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES", "S3,GCS,AZURE"),
+          ConfigOverride.config("gcp_credentials.access_token", "abc"),
+          ConfigOverride.config("gcp_credentials.expires_in", "12345"));
 
   private static String userToken;
   private static String realm;

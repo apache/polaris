@@ -26,7 +26,6 @@ import com.azure.core.exception.AzureException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.collect.Iterators;
 import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import java.util.Collection;
@@ -51,7 +50,6 @@ import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.catalog.TestUtil;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
@@ -73,7 +71,8 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 })
 public class FileIOIntegrationTest {
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-          PolarisApplicationUtils.createTestPolarisApplication(ConfigOverride.config("io.factoryType", "test"));
+      PolarisApplicationUtils.createTestPolarisApplication(
+          ConfigOverride.config("io.factoryType", "test"));
 
   private static final String catalogBaseLocation = "file:/tmp/buckets/my-bucket/path/to/data";
   private static TestFileIOFactory ioFactory;

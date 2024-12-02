@@ -23,8 +23,6 @@ import static org.apache.polaris.service.TimedApplicationEventListener.SINGLETON
 import static org.apache.polaris.service.TimedApplicationEventListener.TAG_API_NAME;
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 
-import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import io.micrometer.core.instrument.Tag;
@@ -52,7 +50,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 })
 public class TimedApplicationEventListenerTest {
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-          PolarisApplicationUtils.createTestPolarisApplication();
+      PolarisApplicationUtils.createTestPolarisApplication();
 
   private static final int ERROR_CODE = Response.Status.NOT_FOUND.getStatusCode();
   private static final String ENDPOINT = "api/management/v1/principals";

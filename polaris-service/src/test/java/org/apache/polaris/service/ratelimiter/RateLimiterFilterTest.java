@@ -24,7 +24,6 @@ import static org.apache.polaris.service.TimedApplicationEventListener.TAG_API_N
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import io.micrometer.core.instrument.Tag;
@@ -32,7 +31,6 @@ import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.List;
 import java.util.function.Consumer;
-import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.*;
 import org.junit.jupiter.api.AfterEach;
@@ -53,11 +51,11 @@ public class RateLimiterFilterTest {
   private static final long REQUESTS_PER_SECOND = 5;
   private static final long WINDOW_SECONDS = 10;
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-          PolarisApplicationUtils.createTestPolarisApplication(
-                  ConfigOverride.config("rateLimiter.type", "mock-realm-token-bucket"),
-                  ConfigOverride.config(
-                          "rateLimiter.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
-                  ConfigOverride.config("rateLimiter.windowSeconds", String.valueOf(WINDOW_SECONDS)));
+      PolarisApplicationUtils.createTestPolarisApplication(
+          ConfigOverride.config("rateLimiter.type", "mock-realm-token-bucket"),
+          ConfigOverride.config(
+              "rateLimiter.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
+          ConfigOverride.config("rateLimiter.windowSeconds", String.valueOf(WINDOW_SECONDS)));
 
   private static String userToken;
   private static String realm;
