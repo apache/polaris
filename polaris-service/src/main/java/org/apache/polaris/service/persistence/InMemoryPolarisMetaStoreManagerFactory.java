@@ -19,6 +19,8 @@
 package org.apache.polaris.service.persistence;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import io.dropwizard.jackson.Discoverable;
+import jakarta.annotation.Nonnull;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -31,21 +33,20 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
 import org.apache.polaris.core.persistence.PolarisTreeMapStore;
-import org.jetbrains.annotations.NotNull;
 
 @JsonTypeName("in-memory")
 public class InMemoryPolarisMetaStoreManagerFactory
-    extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
+    extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> implements Discoverable {
   final Set<String> bootstrappedRealms = new HashSet<>();
 
   @Override
-  protected PolarisTreeMapStore createBackingStore(@NotNull PolarisDiagnostics diagnostics) {
+  protected PolarisTreeMapStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisTreeMapStore(diagnostics);
   }
 
   @Override
   protected PolarisMetaStoreSession createMetaStoreSession(
-      @NotNull PolarisTreeMapStore store, @NotNull RealmContext realmContext) {
+      @Nonnull PolarisTreeMapStore store, @Nonnull RealmContext realmContext) {
     return new PolarisTreeMapMetaStoreSessionImpl(
         store, storageIntegration, secretsGenerator(realmContext));
   }

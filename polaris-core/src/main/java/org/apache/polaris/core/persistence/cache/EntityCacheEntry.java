@@ -19,12 +19,12 @@
 package org.apache.polaris.core.persistence.cache;
 
 import com.google.common.collect.ImmutableList;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
-import org.jetbrains.annotations.NotNull;
 
 /** An entry in our entity cache. Note, this is fully immutable */
 public class EntityCacheEntry {
@@ -57,10 +57,10 @@ public class EntityCacheEntry {
    * @param grantsVersion version of the grants when they were loaded
    */
   EntityCacheEntry(
-      @NotNull PolarisDiagnostics diagnostics,
+      @Nonnull PolarisDiagnostics diagnostics,
       long createdOnNanoTimestamp,
-      @NotNull PolarisBaseEntity entity,
-      @NotNull List<PolarisGrantRecord> grantRecords,
+      @Nonnull PolarisBaseEntity entity,
+      @Nonnull List<PolarisGrantRecord> grantRecords,
       int grantsVersion) {
     // validate not null
     diagnostics.checkNotNull(entity, "entity_null");
@@ -103,21 +103,21 @@ public class EntityCacheEntry {
     return lastAccessedNanoTimestamp;
   }
 
-  public @NotNull PolarisBaseEntity getEntity() {
+  public @Nonnull PolarisBaseEntity getEntity() {
     return entity;
   }
 
-  public @NotNull List<PolarisGrantRecord> getAllGrantRecords() {
+  public @Nonnull List<PolarisGrantRecord> getAllGrantRecords() {
     return grantRecords;
   }
 
-  public @NotNull List<PolarisGrantRecord> getGrantRecordsAsGrantee() {
+  public @Nonnull List<PolarisGrantRecord> getGrantRecordsAsGrantee() {
     return grantRecords.stream()
         .filter(record -> record.getGranteeId() == entity.getId())
         .collect(Collectors.toList());
   }
 
-  public @NotNull List<PolarisGrantRecord> getGrantRecordsAsSecurable() {
+  public @Nonnull List<PolarisGrantRecord> getGrantRecordsAsSecurable() {
     return grantRecords.stream()
         .filter(record -> record.getSecurableId() == entity.getId())
         .collect(Collectors.toList());

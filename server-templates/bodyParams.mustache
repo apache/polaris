@@ -19,4 +19,4 @@ under the License.
 
 Note that this template is copied from https://github.com/OpenAPITools/openapi-generator/blob/783e68c7acbbdcbb2282d167d1644b069f12d486/modules/openapi-generator/src/main/resources/JavaJaxRS/resteasy/bodyParams.mustache
 It is here to remove some unsupported swagger annotations
-}}{{#isBodyParam}}{{#useBeanValidation}}{{#required}} @NotNull{{/required}} @Valid{{/useBeanValidation}} {{{dataType}}} {{paramName}}{{/isBodyParam}}
+}}{{#isBodyParam}}{{#useBeanValidation}}{{#required}} @Nonnull{{/required}} @Valid{{/useBeanValidation}} {{{dataType}}} {{paramName}}{{/isBodyParam}}

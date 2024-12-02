@@ -63,20 +63,5 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
 }
 
 extensions.getByType<PublishingHelperExtension>().apply {
-  asfProjectName = "polaris"
-
   mailingLists.addAll("dev", "issues", "commits")
-
-  podlingPpmcAsfIds.addAll(
-    "anoop",
-    "ashvin",
-    "jackye",
-    "jbonofre",
-    "russellspitzer",
-    "snazy",
-    "takidau",
-    "vvcephei"
-  )
-  podlingMentorsAsfIds.addAll("bdelacretaz", "blue", "holden", "jbonofre", "yao")
-  podlingCommitterAsfIds.addAll("adutra", "annafil", "emaynard", "collado", "yufei", "ebyhr")
 }

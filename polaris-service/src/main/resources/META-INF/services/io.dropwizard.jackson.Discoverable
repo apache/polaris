@@ -18,7 +18,7 @@
 #
 
 org.apache.polaris.service.auth.DiscoverableAuthenticator
-org.apache.polaris.core.persistence.MetaStoreManagerFactory
+org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory
 org.apache.polaris.service.config.OAuth2ApiService
 org.apache.polaris.service.context.RealmContextResolver
 org.apache.polaris.service.context.CallContextResolver

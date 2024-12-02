@@ -193,6 +193,8 @@ public class PolarisConnectionExtension
     } else if (parameterContext.getParameter().getType().equals(String.class)
         && parameterContext.getParameter().isAnnotationPresent(PolarisRealm.class)) {
       return realm;
+    } else if (parameterContext.getParameter().getType().equals(PolarisPrincipalSecrets.class)) {
+      return adminSecrets;
     } else {
       return metaStoreManagerFactory;
     }

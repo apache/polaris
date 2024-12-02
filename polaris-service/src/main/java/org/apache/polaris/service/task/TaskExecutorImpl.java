@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.task;
 
+import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +33,6 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,7 +72,7 @@ public class TaskExecutorImpl implements TaskExecutor {
     tryHandleTask(taskEntityId, clone, null, 1);
   }
 
-  private @NotNull CompletableFuture<Void> tryHandleTask(
+  private @Nonnull CompletableFuture<Void> tryHandleTask(
       long taskEntityId, CallContext clone, Throwable e, int attempt) {
     if (attempt > 3) {
       return CompletableFuture.failedFuture(e);

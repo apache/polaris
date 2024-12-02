@@ -20,12 +20,12 @@ package org.apache.polaris.service.tracing;
 
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.context.propagation.TextMapSetter;
+import jakarta.annotation.Nullable;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.http.HttpRequest;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.StreamSupport;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Implementation of {@link TextMapSetter} and {@link TextMapGetter} that can handle an {@link

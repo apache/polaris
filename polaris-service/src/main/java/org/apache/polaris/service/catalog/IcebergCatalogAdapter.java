@@ -151,14 +151,14 @@ public class IcebergCatalogAdapter
       String prefix, String namespace, SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     newHandlerWrapper(securityContext, prefix).namespaceExists(ns);
-    return Response.ok().build();
+    return Response.status(Response.Status.NO_CONTENT).build();
   }
 
   @Override
   public Response dropNamespace(String prefix, String namespace, SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     newHandlerWrapper(securityContext, prefix).dropNamespace(ns);
-    return Response.ok(Response.Status.NO_CONTENT).build();
+    return Response.status(Response.Status.NO_CONTENT).build();
   }
 
   @Override
@@ -259,7 +259,7 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
     newHandlerWrapper(securityContext, prefix).tableExists(tableIdentifier);
-    return Response.ok().build();
+    return Response.status(Response.Status.NO_CONTENT).build();
   }
 
   @Override
@@ -277,7 +277,7 @@ public class IcebergCatalogAdapter
     } else {
       newHandlerWrapper(securityContext, prefix).dropTableWithoutPurge(tableIdentifier);
     }
-    return Response.ok(Response.Status.NO_CONTENT).build();
+    return Response.status(Response.Status.NO_CONTENT).build();
   }
 
   @Override
@@ -359,7 +359,7 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(view));
     newHandlerWrapper(securityContext, prefix).viewExists(tableIdentifier);
-    return Response.ok().build();
+    return Response.status(Response.Status.NO_CONTENT).build();
   }
 
   @Override
@@ -368,14 +368,14 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(view));
     newHandlerWrapper(securityContext, prefix).dropView(tableIdentifier);
-    return Response.ok(Response.Status.NO_CONTENT).build();
+    return Response.status(Response.Status.NO_CONTENT).build();
   }
 
   @Override
   public Response renameView(
       String prefix, RenameTableRequest renameTableRequest, SecurityContext securityContext) {
     newHandlerWrapper(securityContext, prefix).renameView(renameTableRequest);
-    return Response.ok(Response.Status.NO_CONTENT).build();
+    return Response.status(Response.Status.NO_CONTENT).build();
   }
 
   @Override

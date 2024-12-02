@@ -19,8 +19,6 @@
 
 package publishing
 
-import java.io.ByteArrayOutputStream
-import java.nio.charset.StandardCharsets
 import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.java.archives.Attributes
@@ -34,13 +32,16 @@ import org.gradle.kotlin.dsl.extra
 internal class MemoizedGitInfo {
   companion object {
     private fun execProc(rootProject: Project, cmd: String, vararg args: Any): String {
-      val buf = ByteArrayOutputStream()
-      rootProject.exec {
-        executable = cmd
-        args(args.toList())
-        standardOutput = buf
-      }
-      return buf.toString(StandardCharsets.UTF_8).trim()
+      var out =
+        rootProject.providers
+          .exec {
+            executable = cmd
+            args(args.toList())
+          }
+          .standardOutput
+          .asText
+          .get()
+      return out.trim()
     }
 
     fun gitInfo(rootProject: Project, attribs: Attributes) {

@@ -21,6 +21,8 @@ package org.apache.polaris.core.persistence;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
@@ -35,8 +37,6 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.cache.PolarisRemoteCache;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Polaris Metastore Manager manages all Polaris entities and associated grant records metadata for
@@ -55,8 +55,8 @@ public interface PolarisMetaStoreManager
    * @param callCtx call context
    * @return the result of the bootstrap attempt
    */
-  @NotNull
-  BaseResult bootstrapPolarisService(@NotNull PolarisCallContext callCtx);
+  @Nonnull
+  BaseResult bootstrapPolarisService(@Nonnull PolarisCallContext callCtx);
 
   /**
    * Purge all metadata associated with the Polaris service, resetting the metastore to the state it
@@ -69,8 +69,8 @@ public interface PolarisMetaStoreManager
    * @param callCtx call context
    * @return always success or unexpected error
    */
-  @NotNull
-  BaseResult purge(@NotNull PolarisCallContext callCtx);
+  @Nonnull
+  BaseResult purge(@Nonnull PolarisCallContext callCtx);
 
   /** the return for an entity lookup call */
   class EntityResult extends BaseResult {
@@ -85,7 +85,7 @@ public interface PolarisMetaStoreManager
      * @param extraInformation extra information if error. Implementation specific
      */
     public EntityResult(
-        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
+        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.entity = null;
     }
@@ -95,7 +95,7 @@ public interface PolarisMetaStoreManager
      *
      * @param entity the entity being looked-up
      */
-    public EntityResult(@NotNull PolarisBaseEntity entity) {
+    public EntityResult(@Nonnull PolarisBaseEntity entity) {
       super(ReturnStatus.SUCCESS);
       this.entity = entity;
     }
@@ -107,7 +107,7 @@ public interface PolarisMetaStoreManager
      * @param errorStatus error status, cannot be SUCCESS
      * @param subTypeCode existing entity subtype code
      */
-    public EntityResult(@NotNull BaseResult.ReturnStatus errorStatus, int subTypeCode) {
+    public EntityResult(@Nonnull BaseResult.ReturnStatus errorStatus, int subTypeCode) {
       super(errorStatus, Integer.toString(subTypeCode));
       this.entity = null;
     }
@@ -136,7 +136,7 @@ public interface PolarisMetaStoreManager
 
     @JsonCreator
     private EntityResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
+        @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
         @JsonProperty("extraInformation") @Nullable String extraInformation,
         @JsonProperty("entity") @Nullable PolarisBaseEntity entity) {
       super(returnStatus, extraInformation);
@@ -164,13 +164,13 @@ public interface PolarisMetaStoreManager
    *     entity is not found in the specified path. CONCURRENT_MODIFICATION_DETECTED_NEED_RETRY is
    *     returned if the specified catalog path cannot be resolved.
    */
-  @NotNull
+  @Nonnull
   PolarisMetaStoreManager.EntityResult readEntityByName(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityType entityType,
-      @NotNull PolarisEntitySubType entitySubType,
-      @NotNull String name);
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull String name);
 
   /** the return the result for a list entities call */
   class ListEntitiesResult extends BaseResult {
@@ -185,7 +185,7 @@ public interface PolarisMetaStoreManager
      * @param extraInformation extra information
      */
     public ListEntitiesResult(
-        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
+        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.entities = null;
     }
@@ -195,14 +195,14 @@ public interface PolarisMetaStoreManager
      *
      * @param entities list of entities being returned, implies success
      */
-    public ListEntitiesResult(@NotNull List<PolarisEntityActiveRecord> entities) {
+    public ListEntitiesResult(@Nonnull List<PolarisEntityActiveRecord> entities) {
       super(ReturnStatus.SUCCESS);
       this.entities = entities;
     }
 
     @JsonCreator
     private ListEntitiesResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
+        @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
         @JsonProperty("extraInformation") String extraInformation,
         @JsonProperty("entities") List<PolarisEntityActiveRecord> entities) {
       super(returnStatus, extraInformation);
@@ -226,12 +226,12 @@ public interface PolarisMetaStoreManager
    *     Else exact match will be performed.
    * @return all entities name, ids and subtype under the specified namespace.
    */
-  @NotNull
+  @Nonnull
   ListEntitiesResult listEntities(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityType entityType,
-      @NotNull PolarisEntitySubType entitySubType);
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType);
 
   /** the return for a generate new entity id */
   class GenerateEntityIdResult extends BaseResult {
@@ -246,7 +246,7 @@ public interface PolarisMetaStoreManager
      * @param extraInformation extra information
      */
     public GenerateEntityIdResult(
-        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
+        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.id = null;
     }
@@ -256,14 +256,14 @@ public interface PolarisMetaStoreManager
      *
      * @param id the new id which was generated
      */
-    public GenerateEntityIdResult(@NotNull Long id) {
+    public GenerateEntityIdResult(@Nonnull Long id) {
       super(ReturnStatus.SUCCESS);
       this.id = id;
     }
 
     @JsonCreator
     private GenerateEntityIdResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
+        @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
         @JsonProperty("extraInformation") @Nullable String extraInformation,
         @JsonProperty("id") @Nullable Long id) {
       super(returnStatus, extraInformation);
@@ -282,8 +282,8 @@ public interface PolarisMetaStoreManager
    * @param callCtx call context
    * @return the newly created id, not expected to fail
    */
-  @NotNull
-  GenerateEntityIdResult generateNewEntityId(@NotNull PolarisCallContext callCtx);
+  @Nonnull
+  GenerateEntityIdResult generateNewEntityId(@Nonnull PolarisCallContext callCtx);
 
   /** the return the result of a create-principal method */
   class CreatePrincipalResult extends BaseResult {
@@ -300,7 +300,7 @@ public interface PolarisMetaStoreManager
      * @param extraInformation extra information
      */
     public CreatePrincipalResult(
-        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
+        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.principal = null;
       this.principalSecrets = null;
@@ -313,7 +313,7 @@ public interface PolarisMetaStoreManager
      * @param principalSecrets and associated secret information
      */
     public CreatePrincipalResult(
-        @NotNull PolarisBaseEntity principal, @NotNull PolarisPrincipalSecrets principalSecrets) {
+        @Nonnull PolarisBaseEntity principal, @Nonnull PolarisPrincipalSecrets principalSecrets) {
       super(ReturnStatus.SUCCESS);
       this.principal = principal;
       this.principalSecrets = principalSecrets;
@@ -321,10 +321,10 @@ public interface PolarisMetaStoreManager
 
     @JsonCreator
     private CreatePrincipalResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
+        @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
         @JsonProperty("extraInformation") @Nullable String extraInformation,
-        @JsonProperty("principal") @NotNull PolarisBaseEntity principal,
-        @JsonProperty("principalSecrets") @NotNull PolarisPrincipalSecrets principalSecrets) {
+        @JsonProperty("principal") @Nonnull PolarisBaseEntity principal,
+        @JsonProperty("principalSecrets") @Nonnull PolarisPrincipalSecrets principalSecrets) {
       super(returnStatus, extraInformation);
       this.principal = principal;
       this.principalSecrets = principalSecrets;
@@ -348,9 +348,9 @@ public interface PolarisMetaStoreManager
    * @return the client_id/secret for the new principal which was created. Will return
    *     ENTITY_ALREADY_EXISTS if the principal already exists
    */
-  @NotNull
+  @Nonnull
   CreatePrincipalResult createPrincipal(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity principal);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity principal);
 
   /** the return the result of a create-catalog method */
   class CreateCatalogResult extends BaseResult {
@@ -368,7 +368,7 @@ public interface PolarisMetaStoreManager
      * @param extraInformation extra information
      */
     public CreateCatalogResult(
-        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
+        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.catalog = null;
       this.catalogAdminRole = null;
@@ -381,7 +381,7 @@ public interface PolarisMetaStoreManager
      * @param catalogAdminRole and associated admin role
      */
     public CreateCatalogResult(
-        @NotNull PolarisBaseEntity catalog, @NotNull PolarisBaseEntity catalogAdminRole) {
+        @Nonnull PolarisBaseEntity catalog, @Nonnull PolarisBaseEntity catalogAdminRole) {
       super(ReturnStatus.SUCCESS);
       this.catalog = catalog;
       this.catalogAdminRole = catalogAdminRole;
@@ -389,10 +389,10 @@ public interface PolarisMetaStoreManager
 
     @JsonCreator
     private CreateCatalogResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
+        @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
         @JsonProperty("extraInformation") @Nullable String extraInformation,
-        @JsonProperty("catalog") @NotNull PolarisBaseEntity catalog,
-        @JsonProperty("catalogAdminRole") @NotNull PolarisBaseEntity catalogAdminRole) {
+        @JsonProperty("catalog") @Nonnull PolarisBaseEntity catalog,
+        @JsonProperty("catalogAdminRole") @Nonnull PolarisBaseEntity catalogAdminRole) {
       super(returnStatus, extraInformation);
       this.catalog = catalog;
       this.catalogAdminRole = catalogAdminRole;
@@ -419,11 +419,11 @@ public interface PolarisMetaStoreManager
    *     role of the newly created catalog to the service admin role.
    * @return if success, the catalog which was created and its admin role.
    */
-  @NotNull
+  @Nonnull
   CreateCatalogResult createCatalog(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisBaseEntity catalog,
-      @NotNull List<PolarisEntityCore> principalRoles);
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity catalog,
+      @Nonnull List<PolarisEntityCore> principalRoles);
 
   /**
    * Persist a newly created entity under the specified catalog path if specified, else this is a
@@ -442,11 +442,11 @@ public interface PolarisMetaStoreManager
    *     or if the catalogPath couldn't be resolved. If null is returned, the client app should
    *     retry this operation.
    */
-  @NotNull
+  @Nonnull
   EntityResult createEntityIfNotExists(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisBaseEntity entity);
+      @Nonnull PolarisBaseEntity entity);
 
   /** a set of returned entities result */
   class EntitiesResult extends BaseResult {
@@ -461,7 +461,7 @@ public interface PolarisMetaStoreManager
      * @param extraInformation extra information
      */
     public EntitiesResult(
-        @NotNull BaseResult.ReturnStatus errorStatus, @Nullable String extraInformation) {
+        @Nonnull BaseResult.ReturnStatus errorStatus, @Nullable String extraInformation) {
       super(errorStatus, extraInformation);
       this.entities = null;
     }
@@ -471,14 +471,14 @@ public interface PolarisMetaStoreManager
      *
      * @param entities list of entities being returned, implies success
      */
-    public EntitiesResult(@NotNull List<PolarisBaseEntity> entities) {
+    public EntitiesResult(@Nonnull List<PolarisBaseEntity> entities) {
       super(ReturnStatus.SUCCESS);
       this.entities = entities;
     }
 
     @JsonCreator
     private EntitiesResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
+        @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
         @JsonProperty("extraInformation") String extraInformation,
         @JsonProperty("entities") List<PolarisBaseEntity> entities) {
       super(returnStatus, extraInformation);
@@ -508,11 +508,11 @@ public interface PolarisMetaStoreManager
    *     exists or if the catalogPath couldn't be resolved. If null is returned, the client app
    *     should retry this operation.
    */
-  @NotNull
+  @Nonnull
   EntitiesResult createEntitiesIfNotExist(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull List<? extends PolarisBaseEntity> entities);
+      @Nonnull List<? extends PolarisBaseEntity> entities);
 
   /**
    * Update some properties of this entity assuming it can still be resolved the same way and itself
@@ -524,33 +524,33 @@ public interface PolarisMetaStoreManager
    * @param entity entity to update, cannot be null
    * @return the entity we updated or null if the client should retry
    */
-  @NotNull
+  @Nonnull
   EntityResult updateEntityPropertiesIfNotChanged(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisBaseEntity entity);
+      @Nonnull PolarisBaseEntity entity);
 
   /** Class to represent an entity with its path */
   class EntityWithPath {
     // path to that entity. Could be null if this entity is top-level
-    private final @NotNull List<PolarisEntityCore> catalogPath;
+    private final @Nonnull List<PolarisEntityCore> catalogPath;
 
     // the base entity itself
-    private final @NotNull PolarisBaseEntity entity;
+    private final @Nonnull PolarisBaseEntity entity;
 
     @JsonCreator
     public EntityWithPath(
-        @JsonProperty("catalogPath") @NotNull List<PolarisEntityCore> catalogPath,
-        @JsonProperty("entity") @NotNull PolarisBaseEntity entity) {
+        @JsonProperty("catalogPath") @Nonnull List<PolarisEntityCore> catalogPath,
+        @JsonProperty("entity") @Nonnull PolarisBaseEntity entity) {
       this.catalogPath = catalogPath;
       this.entity = entity;
     }
 
-    public @NotNull List<PolarisEntityCore> getCatalogPath() {
+    public @Nonnull List<PolarisEntityCore> getCatalogPath() {
       return catalogPath;
     }
 
-    public @NotNull PolarisBaseEntity getEntity() {
+    public @Nonnull PolarisBaseEntity getEntity() {
       return entity;
     }
   }
@@ -565,9 +565,9 @@ public interface PolarisMetaStoreManager
    * @return list of all entities we updated or null if the client should retry because one update
    *     failed
    */
-  @NotNull
+  @Nonnull
   EntitiesResult updateEntitiesPropertiesIfNotChanged(
-      @NotNull PolarisCallContext callCtx, @NotNull List<EntityWithPath> entities);
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityWithPath> entities);
 
   /**
    * Rename an entity, potentially re-parenting it.
@@ -581,13 +581,13 @@ public interface PolarisMetaStoreManager
    *     required to update the namespace path of the entity if it has changed
    * @return the entity after renaming it or null if the rename operation has failed
    */
-  @NotNull
+  @Nonnull
   EntityResult renameEntity(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityCore entityToRename,
+      @Nonnull PolarisEntityCore entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
-      @NotNull PolarisEntity renamedEntity);
+      @Nonnull PolarisEntity renamedEntity);
 
   // the return the result of a drop entity
   class DropEntityResult extends BaseResult {
@@ -602,7 +602,7 @@ public interface PolarisMetaStoreManager
      * @param extraInformation extra information
      */
     public DropEntityResult(
-        @NotNull BaseResult.ReturnStatus errorStatus, @Nullable String extraInformation) {
+        @Nonnull BaseResult.ReturnStatus errorStatus, @Nullable String extraInformation) {
       super(errorStatus, extraInformation);
       this.cleanupTaskId = null;
     }
@@ -625,7 +625,7 @@ public interface PolarisMetaStoreManager
 
     @JsonCreator
     private DropEntityResult(
-        @JsonProperty("returnStatus") @NotNull ReturnStatus returnStatus,
+        @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
         @JsonProperty("extraInformation") String extraInformation,
         @JsonProperty("cleanupTaskId") Long cleanupTaskId) {
       super(returnStatus, extraInformation);
@@ -659,11 +659,11 @@ public interface PolarisMetaStoreManager
    *     that the namespace or catalog to drop still has children, this should not be retried and
    *     should cause a failure
    */
-  @NotNull
+  @Nonnull
   DropEntityResult dropEntityIfExists(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityCore entityToDrop,
+      @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup);
 
@@ -675,8 +675,8 @@ public interface PolarisMetaStoreManager
    * @param entityCatalogId id of the catalog for that entity
    * @param entityId the id of the entity to load
    */
-  @NotNull
-  EntityResult loadEntity(@NotNull PolarisCallContext callCtx, long entityCatalogId, long entityId);
+  @Nonnull
+  EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
 
   /**
    * Fetch a list of tasks to be completed. Tasks
@@ -686,6 +686,6 @@ public interface PolarisMetaStoreManager
    * @param limit limit
    * @return list of tasks to be completed
    */
-  @NotNull
-  EntitiesResult loadTasks(@NotNull PolarisCallContext callCtx, String executorId, int limit);
+  @Nonnull
+  EntitiesResult loadTasks(@Nonnull PolarisCallContext callCtx, String executorId, int limit);
 }

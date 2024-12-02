@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.core.auth;
 
+import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
-import org.jetbrains.annotations.NotNull;
 
 /** Holds the results of request authentication. */
 public class AuthenticatedPolarisPrincipal implements java.security.Principal {
@@ -33,7 +33,7 @@ public class AuthenticatedPolarisPrincipal implements java.security.Principal {
   private List<PrincipalRoleEntity> activatedPrincipalRoles;
 
   public AuthenticatedPolarisPrincipal(
-      @NotNull PolarisEntity principalEntity, @NotNull Set<String> activatedPrincipalRoles) {
+      @Nonnull PolarisEntity principalEntity, @Nonnull Set<String> activatedPrincipalRoles) {
     this.principalEntity = principalEntity;
     this.activatedPrincipalRoleNames = activatedPrincipalRoles;
     this.activatedPrincipalRoles = null;

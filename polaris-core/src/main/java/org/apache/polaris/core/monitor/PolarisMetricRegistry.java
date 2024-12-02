@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.monitor;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
@@ -33,7 +34,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.resource.TimedApi;
-import org.jetbrains.annotations.VisibleForTesting;
 
 /**
  * Wrapper around the Micrometer {@link MeterRegistry} providing additional metric management
@@ -53,14 +53,14 @@ public class PolarisMetricRegistry {
   /**
    * @deprecated See class Javadoc.
    */
-  public static final String TAG_REALM_DEPRECATED = "REALM_ID";
+  @Deprecated public static final String TAG_REALM_DEPRECATED = "REALM_ID";
 
   public static final String TAG_REALM = "realm_id";
 
   /**
    * @deprecated See class Javadoc.
    */
-  public static final String TAG_RESP_CODE_DEPRECATED = "HTTP_RESPONSE_CODE";
+  @Deprecated public static final String TAG_RESP_CODE_DEPRECATED = "HTTP_RESPONSE_CODE";
 
   public static final String TAG_RESP_CODE = "http_response_code";
 

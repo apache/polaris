@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.core;
 
+import jakarta.annotation.Nonnull;
 import java.time.Clock;
 import java.time.ZoneId;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * The Call context is allocated each time a new REST request is processed. It contains instances of
@@ -40,10 +40,10 @@ public class PolarisCallContext {
   private final Clock clock;
 
   public PolarisCallContext(
-      @NotNull PolarisMetaStoreSession metaStore,
-      @NotNull PolarisDiagnostics diagServices,
-      @NotNull PolarisConfigurationStore configurationStore,
-      @NotNull Clock clock) {
+      @Nonnull PolarisMetaStoreSession metaStore,
+      @Nonnull PolarisDiagnostics diagServices,
+      @Nonnull PolarisConfigurationStore configurationStore,
+      @Nonnull Clock clock) {
     this.metaStore = metaStore;
     this.diagServices = diagServices;
     this.configurationStore = configurationStore;
@@ -51,7 +51,7 @@ public class PolarisCallContext {
   }
 
   public PolarisCallContext(
-      @NotNull PolarisMetaStoreSession metaStore, @NotNull PolarisDiagnostics diagServices) {
+      @Nonnull PolarisMetaStoreSession metaStore, @Nonnull PolarisDiagnostics diagServices) {
     this.metaStore = metaStore;
     this.diagServices = diagServices;
     this.configurationStore = new PolarisConfigurationStore() {};

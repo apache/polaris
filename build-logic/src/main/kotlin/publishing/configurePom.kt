@@ -20,7 +20,6 @@
 package publishing
 
 import groovy.util.Node
-import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.artifacts.component.ModuleComponentSelector
@@ -50,15 +49,11 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
 
     pom {
       if (project != project.rootProject) {
-        name.set(e.mavenName.get())
-        description.set(project.description)
-
         // Add the license to every pom to make it easier for downstream project to retrieve the
         // license.
         licenses {
           license {
             name.set("Apache-2.0") // SPDX identifier
-            url.set(e.licenseUrl.get())
           }
         }
 
@@ -77,63 +72,60 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
         val mavenPom = this
 
         task.doFirst {
-          val asfName = e.asfProjectName.get()
-          val (asfPrj, fromPodlings) = fetchAsfProject(asfName)
+          mavenPom.run {
+            val asfName = e.asfProjectName.get()
+            val projectPeople = fetchProjectPeople(asfName)
 
-          val asfProjectName = asfPrj["name"] as String
-
-          mavenPom.name.set(asfProjectName)
-          mavenPom.description.set(asfPrj["description"] as String)
-
-          inceptionYear.set(
-            (asfPrj["created"] ?: asfPrj["started"]!!).toString().replace("(\\d+)-.*", "\\1")
-          )
-          url.set(asfPrj["homepage"] as String)
-          organization {
-            name.set("The Apache Software Foundation")
-            url.set("https://www.apache.org/")
-          }
-          licenses {
-            license {
-              name.set("Apache-2.0") // SPDX identifier
-              url.set(e.licenseUrl.get())
+            organization {
+              name.set("The Apache Software Foundation")
+              url.set("https://www.apache.org/")
             }
-          }
-          mailingLists {
-            e.mailingLists.get().forEach { ml ->
-              mailingList {
-                name.set("${ml.capitalized()} Mailing List")
-                subscribe.set("$ml-subscribe@$asfName.apache.org")
-                unsubscribe.set("$ml-ubsubscribe@$asfName.apache.org")
-                post.set("$ml@$asfName.apache.org")
-                archive.set("https://lists.apache.org/list.html?$ml@$asfName.apache.org")
+            licenses {
+              license {
+                name.set("Apache-2.0") // SPDX identifier
+                url.set(projectPeople.licenseUrl)
               }
             }
-          }
-          scm {
-            val codeRepo: String =
-              if (asfPrj.contains("repository")) {
-                val repos: List<String> = unsafeCast(asfPrj["repository"]) as List<String>
-                repos[0]
-              } else {
-                "https://github.com/apache/$asfName.git"
+            mailingLists {
+              e.mailingLists.get().forEach { ml ->
+                mailingList {
+                  name.set("${ml.capitalized()} Mailing List")
+                  subscribe.set("$ml-subscribe@$asfName.apache.org")
+                  unsubscribe.set("$ml-ubsubscribe@$asfName.apache.org")
+                  post.set("$ml@$asfName.apache.org")
+                  archive.set("https://lists.apache.org/list.html?$ml@$asfName.apache.org")
+                }
               }
-            connection.set("scm:git:$codeRepo")
-            developerConnection.set("scm:git:$codeRepo")
-            url.set("$codeRepo/tree/main")
-            tag.set("main")
-          }
-          issueManagement {
-            url.set(
-              if (asfPrj.contains("repository")) {
-                asfPrj["bug-database"] as String
-              } else {
-                "https://github.com/apache/$asfName/issues"
+            }
+
+            scm {
+              val codeRepo: String = projectPeople.repository
+              connection.set("scm:git:$codeRepo")
+              developerConnection.set("scm:git:$codeRepo")
+              url.set("$codeRepo/tree/main")
+              tag.set("main")
+            }
+            issueManagement { url.set(projectPeople.bugDatabase) }
+
+            name.set(projectPeople.name)
+            description.set(projectPeople.description)
+            url.set(projectPeople.website)
+            inceptionYear.set(projectPeople.inceptionYear.toString())
+
+            developers {
+              projectPeople.people.forEach { person ->
+                developer {
+                  this.id.set(person.apacheId)
+                  this.name.set(person.name)
+                  this.organization.set("Apache Software Foundation")
+                  this.email.set("${person.apacheId}@apache.org")
+                  this.roles.addAll(person.roles)
+                }
               }
-            )
+            }
+
+            addContributorsToPom(mavenPom, asfName, "Apache ${projectPeople.name}")
           }
-          addDevelopersToPom(mavenPom, asfName, e, fromPodlings)
-          addContributorsToPom(mavenPom, asfName, asfProjectName)
         }
       }
     }
@@ -143,90 +135,18 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
 fun addContributorsToPom(mavenPom: MavenPom, asfName: String, asfProjectName: String) =
   mavenPom.run {
     contributors {
-      val contributors: List<Map<String, Any>>? =
+      val contributors: List<Map<String, Any>> =
         parseJson("https://api.github.com/repos/apache/$asfName/contributors?per_page=1000")
-      if (contributors != null) {
-        contributors
-          .filter { contributor -> contributor["type"] == "User" }
-          .forEach { contributor ->
-            contributor {
-              name.set(contributor["login"] as String)
-              url.set(contributor["url"] as String)
-              organization.set("$asfProjectName, GitHub contributors")
-              organizationUrl.set("https://github.com/apache/$asfName")
-            }
-          }
-      }
-    }
-  }
-
-/** Adds Apache (P)PMC members + committers, in `name` order. */
-fun addDevelopersToPom(
-  mavenPom: MavenPom,
-  asfName: String,
-  e: PublishingHelperExtension,
-  fromPodlings: Boolean
-) =
-  mavenPom.run {
-    developers {
-      // Cannot use check the 'groups' for podlings, because the (only) podling's group
-      // references the mentors, not the PPMC members/committers. There seems to be no
-      // way to automatically fetch the committers + PPMC members for a podling, except
-      // maybe
-      val people: Map<String, Map<String, Any>> =
-        parseJson("https://projects.apache.org/json/foundation/people.json")!!
-      val filteredPeople: List<Pair<String, Map<String, Any>>>
-      val pmc: (Pair<String, Map<String, Any>>) -> Boolean
-      val mentor: (Pair<String, Map<String, Any>>) -> Boolean
-      val pmcRole: String
-      if (!fromPodlings) {
-        val asfNamePmc = "$asfName-pmc"
-        filteredPeople =
-          people
-            .filter { entry ->
-              val groups: List<String> = unsafeCast(entry.value["groups"])
-              groups.any { it == asfName || it == asfNamePmc }
-            }
-            .toList()
-        pmc = { (_, info) ->
-          val groups: List<String> = unsafeCast(info["groups"])
-          groups.contains(asfNamePmc)
-        }
-        pmcRole = "PMC Member"
-        mentor = { (_, _) -> false }
-      } else {
-        val podlingPpmc = e.podlingPpmcAsfIds.get()
-        val podlingMentors = e.podlingMentorsAsfIds.get()
-        filteredPeople =
-          (e.podlingCommitterAsfIds.get() + podlingPpmc + podlingMentors).map { id ->
-            val info = people[id]
-            if (info == null) {
-              throw GradleException("Person with ASF id '%s' not found in people.json".format(id))
-            }
-            Pair(id, info)
-          }
-        pmc = { (id, _) -> podlingPpmc.contains(id) || podlingMentors.contains(id) }
-        pmcRole = "PPMC Member"
-        mentor = { (id, _) -> podlingMentors.contains(id) }
-      }
-
-      val sortedPeople = filteredPeople.sortedBy { (id, info) -> "${info["name"] as String}_$id" }
-
-      sortedPeople.forEach { (id, info) ->
-        developer {
-          this.id.set(id)
-          this.name.set(info["name"] as String)
-          this.organization.set("Apache Software Foundation")
-          this.email.set("$id@apache.org")
-          this.roles.add("Committer")
-          if (pmc.invoke(Pair(id, info))) {
-            this.roles.add(pmcRole)
-          }
-          if (mentor.invoke(Pair(id, info))) {
-            this.roles.add("Mentor")
+      contributors
+        .filter { contributor -> contributor["type"] == "User" }
+        .forEach { contributor ->
+          contributor {
+            name.set(contributor["login"] as String)
+            url.set(contributor["url"] as String)
+            organization.set("$asfProjectName, GitHub contributors")
+            organizationUrl.set("https://github.com/apache/$asfName")
           }
         }
-      }
     }
   }
 

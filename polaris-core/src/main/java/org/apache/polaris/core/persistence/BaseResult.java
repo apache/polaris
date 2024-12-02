@@ -20,8 +20,8 @@ package org.apache.polaris.core.persistence;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 /** Base result class for any call to the persistence layer */
 public class BaseResult {
@@ -36,14 +36,14 @@ public class BaseResult {
     this.extraInformation = null;
   }
 
-  public BaseResult(@NotNull BaseResult.ReturnStatus returnStatus) {
+  public BaseResult(@Nonnull BaseResult.ReturnStatus returnStatus) {
     this.returnStatusCode = returnStatus.getCode();
     this.extraInformation = null;
   }
 
   @JsonCreator
   public BaseResult(
-      @JsonProperty("returnStatus") @NotNull BaseResult.ReturnStatus returnStatus,
+      @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
       @JsonProperty("extraInformation") @Nullable String extraInformation) {
     this.returnStatusCode = returnStatus.getCode();
     this.extraInformation = extraInformation;

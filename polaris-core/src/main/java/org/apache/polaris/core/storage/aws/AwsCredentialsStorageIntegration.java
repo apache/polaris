@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage.aws;
 
+import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -28,7 +29,6 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.StorageUtil;
-import org.jetbrains.annotations.NotNull;
 import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
 import software.amazon.awssdk.policybuilder.iam.IamEffect;
 import software.amazon.awssdk.policybuilder.iam.IamPolicy;
@@ -51,11 +51,11 @@ public class AwsCredentialsStorageIntegration
   /** {@inheritDoc} */
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-      @NotNull PolarisDiagnostics diagnostics,
-      @NotNull AwsStorageConfigurationInfo storageConfig,
+      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull AwsStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
-      @NotNull Set<String> allowedReadLocations,
-      @NotNull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations) {
     AssumeRoleResponse response =
         stsClient.assumeRole(
             AssumeRoleRequest.builder()
@@ -174,13 +174,13 @@ public class AwsCredentialsStorageIntegration
     }
   }
 
-  private static @NotNull String parseS3Path(URI uri) {
+  private static @Nonnull String parseS3Path(URI uri) {
     String bucket = StorageUtil.getBucket(uri);
     String path = trimLeadingSlash(uri.getPath());
     return String.join("/", bucket, path);
   }
 
-  private static @NotNull String trimLeadingSlash(String path) {
+  private static @Nonnull String trimLeadingSlash(String path) {
     if (path.startsWith("/")) {
       path = path.substring(1);
     }

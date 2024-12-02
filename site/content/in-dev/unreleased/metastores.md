@@ -53,13 +53,13 @@ Polaris creates and connects to a separate database for each realm. Specifically
 ```xml
 <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
     <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
-    <class>org.apache.polaris.core.persistence.models.ModelEntity</class>
-    <class>org.apache.polaris.core.persistence.models.ModelEntityActive</class>
-    <class>org.apache.polaris.core.persistence.models.ModelEntityChangeTracking</class>
-    <class>org.apache.polaris.core.persistence.models.ModelEntityDropped</class>
-    <class>org.apache.polaris.core.persistence.models.ModelGrantRecord</class>
-    <class>org.apache.polaris.core.persistence.models.ModelPrincipalSecrets</class>
-    <class>org.apache.polaris.core.persistence.models.ModelSequenceId</class>
+    <class>org.apache.polaris.jpa.models.ModelEntity</class>
+    <class>org.apache.polaris.jpa.models.ModelEntityActive</class>
+    <class>org.apache.polaris.jpa.models.ModelEntityChangeTracking</class>
+    <class>org.apache.polaris.jpa.models.ModelEntityDropped</class>
+    <class>org.apache.polaris.jpa.models.ModelGrantRecord</class>
+    <class>org.apache.polaris.jpa.models.ModelPrincipalSecrets</class>
+    <class>org.apache.polaris.jpa.models.ModelSequenceId</class>
     <shared-cache-mode>NONE</shared-cache-mode>
     <properties>
       <property name="jakarta.persistence.jdbc.url"
@@ -86,13 +86,13 @@ The following shows a sample configuration for integrating Polaris with Postgres
 ```xml
 <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
   <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
-  <class>org.apache.polaris.core.persistence.models.ModelEntity</class>
-  <class>org.apache.polaris.core.persistence.models.ModelEntityActive</class>
-  <class>org.apache.polaris.core.persistence.models.ModelEntityChangeTracking</class>
-  <class>org.apache.polaris.core.persistence.models.ModelEntityDropped</class>
-  <class>org.apache.polaris.core.persistence.models.ModelGrantRecord</class>
-  <class>org.apache.polaris.core.persistence.models.ModelPrincipalSecrets</class>
-  <class>org.apache.polaris.core.persistence.models.ModelSequenceId</class>
+  <class>org.apache.polaris.jpa.models.ModelEntity</class>
+  <class>org.apache.polaris.jpa.models.ModelEntityActive</class>
+  <class>org.apache.polaris.jpa.models.ModelEntityChangeTracking</class>
+  <class>org.apache.polaris.jpa.models.ModelEntityDropped</class>
+  <class>org.apache.polaris.jpa.models.ModelGrantRecord</class>
+  <class>org.apache.polaris.jpa.models.ModelPrincipalSecrets</class>
+  <class>org.apache.polaris.jpa.models.ModelSequenceId</class>
   <shared-cache-mode>NONE</shared-cache-mode>
   <properties>
     <property name="jakarta.persistence.jdbc.url"

@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage.cache;
 
 import com.google.common.collect.ImmutableMap;
+import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -45,7 +46,6 @@ import org.apache.polaris.core.persistence.secrets.RandomPrincipalSecretsGenerat
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisCredentialVendor.ScopedCredentialsResult;
 import org.assertj.core.api.Assertions;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -416,7 +416,7 @@ public class StorageCredentialCacheTest {
     return res;
   }
 
-  @NotNull
+  @Nonnull
   private static List<PolarisEntity> getPolarisEntities() {
     PolarisEntity polarisEntity1 =
         new PolarisEntity(

@@ -57,7 +57,7 @@ jobs:
           validate-wrappers: false
 
       - name: Code style checks and tests
-        run: ./gradlew check
+        run: ./gradlew --continue check
 
       - name: Check Maven publication
         run: ./gradlew publishToMavenLocal sourceTarball

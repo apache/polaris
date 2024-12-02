@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.storage;
 
+import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +27,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.context.CallContext;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Base class for in-memory implementations of {@link PolarisStorageIntegration}. A basic
@@ -56,9 +56,9 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
    */
   public static Map<String, Map<PolarisStorageActions, ValidationResult>>
       validateSubpathsOfAllowedLocations(
-          @NotNull PolarisStorageConfigurationInfo storageConfig,
-          @NotNull Set<PolarisStorageActions> actions,
-          @NotNull Set<String> locations) {
+          @Nonnull PolarisStorageConfigurationInfo storageConfig,
+          @Nonnull Set<PolarisStorageActions> actions,
+          @Nonnull Set<String> locations) {
     // trim trailing / from allowed locations so that locations missing the trailing slash still
     // match
     Set<String> allowedLocationStrings =
@@ -124,11 +124,11 @@ public abstract class InMemoryStorageIntegration<T extends PolarisStorageConfigu
   }
 
   @Override
-  @NotNull
+  @Nonnull
   public Map<String, Map<PolarisStorageActions, ValidationResult>> validateAccessToLocations(
-      @NotNull T storageConfig,
-      @NotNull Set<PolarisStorageActions> actions,
-      @NotNull Set<String> locations) {
+      @Nonnull T storageConfig,
+      @Nonnull Set<PolarisStorageActions> actions,
+      @Nonnull Set<String> locations) {
     return validateSubpathsOfAllowedLocations(storageConfig, actions, locations);
   }
 }

@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.core.storage;
 
-import jakarta.validation.constraints.NotNull;
+import jakarta.annotation.Nonnull;
 import java.net.URI;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 
@@ -36,7 +36,7 @@ public class StorageLocation {
     }
   }
 
-  protected StorageLocation(@NotNull String location) {
+  protected StorageLocation(@Nonnull String location) {
     if (location == null) {
       this.location = null;
     } else if (location.startsWith("file:/") && !location.startsWith("file:///")) {
@@ -56,7 +56,7 @@ public class StorageLocation {
   }
 
   /** If a path doesn't start with `/`, this will add one */
-  protected final @NotNull String ensureLeadingSlash(@NotNull String location) {
+  protected final @Nonnull String ensureLeadingSlash(@Nonnull String location) {
     if (location.startsWith("/")) {
       return location;
     } else {

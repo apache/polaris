@@ -140,28 +140,25 @@ public class TimedApplicationEventListenerTest {
         EXT, API_ANNOTATION + SUFFIX_COUNTER, Collections.emptyList());
   }
 
+  @SuppressWarnings("deprecation")
   private double getPerApiRealmMetricCount() {
     return TestMetricsUtil.getTotalCounter(
         EXT,
         API_ANNOTATION + SUFFIX_COUNTER + SUFFIX_REALM,
-        List.of(
-            Tag.of(TAG_REALM, realm),
-            // spotless:off
-            Tag.of(TAG_REALM_DEPRECATED, realm)));
-            // spotless:on
+        List.of(Tag.of(TAG_REALM, realm), Tag.of(TAG_REALM_DEPRECATED, realm)));
   }
 
+  @SuppressWarnings("deprecation")
   private double getPerApiMetricErrorCount() {
     return TestMetricsUtil.getTotalCounter(
         EXT,
         API_ANNOTATION + SUFFIX_ERROR,
         List.of(
             Tag.of(TAG_RESP_CODE, String.valueOf(ERROR_CODE)),
-            // spotless:off
             Tag.of(TAG_RESP_CODE_DEPRECATED, String.valueOf(ERROR_CODE))));
-            // spotless:on
   }
 
+  @SuppressWarnings("deprecation")
   private double getPerApiRealmMetricErrorCount() {
     return TestMetricsUtil.getTotalCounter(
         EXT,
@@ -169,10 +166,8 @@ public class TimedApplicationEventListenerTest {
         List.of(
             Tag.of(TAG_REALM, realm),
             Tag.of(TAG_RESP_CODE, String.valueOf(ERROR_CODE)),
-            // spotless:off
             Tag.of(TAG_REALM_DEPRECATED, realm),
             Tag.of(TAG_RESP_CODE_DEPRECATED, String.valueOf(ERROR_CODE))));
-            // spotless:on
   }
 
   private double getCommonMetricCount() {

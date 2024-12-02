@@ -34,7 +34,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
-import org.apache.polaris.core.persistence.models.ModelPrincipalSecrets;
+import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
 import org.apache.polaris.core.persistence.secrets.RandomPrincipalSecretsGenerator;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

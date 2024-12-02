@@ -26,6 +26,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -46,7 +47,6 @@ import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,8 +78,8 @@ public abstract class PolarisStorageConfigurationInfo {
   private final StorageType storageType;
 
   public PolarisStorageConfigurationInfo(
-      @JsonProperty(value = "storageType", required = true) @NotNull StorageType storageType,
-      @JsonProperty(value = "allowedLocations", required = true) @NotNull
+      @JsonProperty(value = "storageType", required = true) @Nonnull StorageType storageType,
+      @JsonProperty(value = "allowedLocations", required = true) @Nonnull
           List<String> allowedLocations) {
     this(storageType, allowedLocations, true);
   }
@@ -125,7 +125,7 @@ public abstract class PolarisStorageConfigurationInfo {
    * @return the PolarisStorageConfiguration object
    */
   public static PolarisStorageConfigurationInfo deserialize(
-      @NotNull PolarisDiagnostics diagnostics, final @NotNull String jsonStr) {
+      @Nonnull PolarisDiagnostics diagnostics, final @Nonnull String jsonStr) {
     try {
       return DEFAULT_MAPPER.readValue(jsonStr, PolarisStorageConfigurationInfo.class);
     } catch (JsonProcessingException exception) {
@@ -205,7 +205,7 @@ public abstract class PolarisStorageConfigurationInfo {
         .orElse(List.of());
   }
 
-  private static @NotNull Optional<PolarisEntity> findStorageInfoFromHierarchy(
+  private static @Nonnull Optional<PolarisEntity> findStorageInfoFromHierarchy(
       List<PolarisEntity> entityPath) {
     for (int i = entityPath.size() - 1; i >= 0; i--) {
       PolarisEntity e = entityPath.get(i);

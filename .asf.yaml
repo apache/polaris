@@ -43,9 +43,11 @@ github:
 
       required_linear_history: true
 
+      del_branch_on_merge: true
+
       required_status_checks:
         # strict means "Require branches to be up to date before merging".
-        strict: true
+        strict: false
         # Contexts are the names of checks that must pass. This is the value
         # of the job's `name` property if it's present.
         contexts:

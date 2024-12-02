@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.core.storage;
 
+import jakarta.annotation.Nonnull;
 import java.util.List;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Allows overriding the allowed locations for specific entities. Only the allowedLocations
@@ -32,7 +32,7 @@ public class StorageConfigurationOverride extends PolarisStorageConfigurationInf
   private final PolarisStorageConfigurationInfo parentStorageConfiguration;
 
   public StorageConfigurationOverride(
-      @NotNull PolarisStorageConfigurationInfo parentStorageConfiguration,
+      @Nonnull PolarisStorageConfigurationInfo parentStorageConfiguration,
       List<String> allowedLocations) {
     super(parentStorageConfiguration.getStorageType(), allowedLocations, false);
     this.parentStorageConfiguration = parentStorageConfiguration;
