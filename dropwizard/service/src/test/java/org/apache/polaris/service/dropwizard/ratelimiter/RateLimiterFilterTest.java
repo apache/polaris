@@ -33,6 +33,7 @@ import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.List;
 import java.util.function.Consumer;
+<<<<<<< HEAD:dropwizard/service/src/test/java/org/apache/polaris/service/dropwizard/ratelimiter/RateLimiterFilterTest.java
 import org.apache.polaris.service.dropwizard.PolarisApplication;
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
 import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
@@ -40,6 +41,11 @@ import org.apache.polaris.service.dropwizard.test.PolarisRealm;
 import org.apache.polaris.service.dropwizard.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.dropwizard.test.TestEnvironmentExtension;
 import org.apache.polaris.service.dropwizard.test.TestMetricsUtil;
+=======
+import org.apache.polaris.service.PolarisApplication;
+import org.apache.polaris.service.config.PolarisApplicationConfig;
+import org.apache.polaris.service.test.*;
+>>>>>>> b2dbbee (refactor test):polaris-service/src/test/java/org/apache/polaris/service/ratelimiter/RateLimiterFilterTest.java
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,6 +64,7 @@ public class RateLimiterFilterTest {
   private static final long REQUESTS_PER_SECOND = 5;
   private static final long WINDOW_SECONDS = 10;
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
+<<<<<<< HEAD:dropwizard/service/src/test/java/org/apache/polaris/service/dropwizard/ratelimiter/RateLimiterFilterTest.java
       new DropwizardAppExtension<>(
           PolarisApplication.class,
           ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
@@ -70,6 +77,13 @@ public class RateLimiterFilterTest {
               "tokenBucketFactory.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
           ConfigOverride.config(
               "tokenBucketFactory.windowSeconds", String.valueOf(WINDOW_SECONDS)));
+=======
+          PolarisApplicationUtils.createTestPolarisApplication(
+                  ConfigOverride.config("rateLimiter.type", "mock-realm-token-bucket"),
+                  ConfigOverride.config(
+                          "rateLimiter.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
+                  ConfigOverride.config("rateLimiter.windowSeconds", String.valueOf(WINDOW_SECONDS)));
+>>>>>>> b2dbbee (refactor test):polaris-service/src/test/java/org/apache/polaris/service/ratelimiter/RateLimiterFilterTest.java
 
   private static String userToken;
   private static String realm;

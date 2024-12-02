@@ -41,11 +41,20 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+<<<<<<< HEAD:dropwizard/service/src/test/java/org/apache/polaris/service/dropwizard/catalog/PolarisSparkIntegrationTest.java
 import org.apache.polaris.service.dropwizard.PolarisApplication;
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
 import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
 import org.apache.polaris.service.dropwizard.test.PolarisRealm;
 import org.apache.polaris.service.dropwizard.test.TestEnvironmentExtension;
+=======
+import org.apache.polaris.service.PolarisApplication;
+import org.apache.polaris.service.config.PolarisApplicationConfig;
+import org.apache.polaris.service.test.PolarisApplicationUtils;
+import org.apache.polaris.service.test.PolarisConnectionExtension;
+import org.apache.polaris.service.test.PolarisRealm;
+import org.apache.polaris.service.test.TestEnvironmentExtension;
+>>>>>>> b2dbbee (refactor test):polaris-service/src/test/java/org/apache/polaris/service/catalog/PolarisSparkIntegrationTest.java
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
@@ -68,14 +77,7 @@ import org.slf4j.LoggerFactory;
 })
 public class PolarisSparkIntegrationTest {
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config(
-              "server.adminConnectors[0].port", "0")); // Bind to random port to support parallelism
+          PolarisApplicationUtils.createTestPolarisApplication();
 
   public static final String CATALOG_NAME = "mycatalog";
   public static final String EXTERNAL_CATALOG_NAME = "external_catalog";
