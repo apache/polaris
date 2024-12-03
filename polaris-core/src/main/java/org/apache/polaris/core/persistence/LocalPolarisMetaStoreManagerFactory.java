@@ -54,7 +54,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   final Map<String, Supplier<PolarisMetaStoreSession>> sessionSupplierMap = new HashMap<>();
   protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
 
-  protected PolarisStorageIntegrationProvider storageIntegration;
+  @Inject protected PolarisStorageIntegrationProvider storageIntegration;
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
@@ -157,7 +157,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     return storageCredentialCacheMap.get(realmContext.getRealmIdentifier());
   }
 
-  @Inject
   public void setStorageIntegrationProvider(PolarisStorageIntegrationProvider storageIntegration) {
     this.storageIntegration = storageIntegration;
   }

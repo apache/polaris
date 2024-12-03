@@ -114,7 +114,7 @@ public class PolarisApplicationConfig extends Configuration {
         bindFactory(SupplierFactory.create(serviceLocator, config::getMetaStoreManagerFactory))
             .to(MetaStoreManagerFactory.class)
             .ranked(OVERRIDE_BINDING_RANK);
-        bindFactory(SupplierFactory.create(serviceLocator, config::getConfigurationStore))
+        bindFactory(SupplierFactory.create(serviceLocator, config::createConfigurationStore))
             .to(PolarisConfigurationStore.class)
             .ranked(OVERRIDE_BINDING_RANK);
         bindFactory(SupplierFactory.create(serviceLocator, config::getFileIOFactory))
@@ -360,7 +360,7 @@ public class PolarisApplicationConfig extends Configuration {
     return maxRequestBodyBytes;
   }
 
-  private PolarisConfigurationStore getConfigurationStore() {
+  private PolarisConfigurationStore createConfigurationStore() {
     return new DefaultConfigurationStore(globalFeatureConfiguration, realmConfiguration);
   }
 

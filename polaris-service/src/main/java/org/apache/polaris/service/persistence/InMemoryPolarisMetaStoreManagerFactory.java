@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.persistence;
 
-import com.fasterxml.jackson.annotation.JsonTypeName;
 import jakarta.annotation.Nonnull;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
@@ -36,7 +35,6 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
 import org.apache.polaris.core.persistence.PolarisTreeMapStore;
 
-@JsonTypeName("in-memory")
 @Named("in-memory")
 @Singleton
 public class InMemoryPolarisMetaStoreManagerFactory
