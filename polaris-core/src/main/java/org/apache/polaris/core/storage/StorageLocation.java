@@ -84,7 +84,7 @@ public class StorageLocation {
   }
 
   /**
-   * Returns true if this StorageLocation's location string starts with the other StorageLocation's
+   * Returns true if this StorageLocation's location string starts with the other StorageLocation's 
    * location string
    */
   public boolean isChildOf(StorageLocation potentialParent) {
@@ -93,6 +93,9 @@ public class StorageLocation {
     } else {
       String slashTerminatedLocation = ensureTrailingSlash(this.location);
       String slashTerminatedParentLocation = ensureTrailingSlash(potentialParent.location);
+      if (slashTerminatedLocation.startsWith("/") && slashTerminatedParentLocation.startsWith("file:///")) {
+        slashTerminatedLocation = "file://" + slashTerminatedLocation;
+      }
       return slashTerminatedLocation.startsWith(slashTerminatedParentLocation);
     }
   }
