@@ -25,6 +25,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.base.Preconditions;
 import io.dropwizard.auth.Authenticator;
 import io.dropwizard.core.Configuration;
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import java.io.IOException;
@@ -56,7 +57,6 @@ import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.api.TypeLiteral;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
@@ -102,7 +102,7 @@ public class PolarisApplicationConfig extends Configuration {
     ServiceLocatorUtilities.bind(serviceLocator, binder());
   }
 
-  @NotNull
+  @Nonnull
   public AbstractBinder binder() {
     PolarisApplicationConfig config = this;
     return new AbstractBinder() {
