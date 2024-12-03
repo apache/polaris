@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import com.fasterxml.jackson.annotation.JsonTypeName;
+import jakarta.inject.Named;
 
 /** Rate limiter that always allows the request */
-@JsonTypeName("no-op")
+@Named("no-op")
 public class NoOpRateLimiter implements RateLimiter {
   @Override
   public boolean tryAcquire() {

@@ -28,6 +28,7 @@ import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.UrlAttributes;
 import jakarta.annotation.Priority;
+import jakarta.inject.Inject;
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -53,6 +54,7 @@ public class TracingFilter implements Filter {
   private static final Logger LOGGER = LoggerFactory.getLogger(TracingFilter.class);
   private final OpenTelemetry openTelemetry;
 
+  @Inject
   public TracingFilter(OpenTelemetry openTelemetry) {
     this.openTelemetry = openTelemetry;
   }

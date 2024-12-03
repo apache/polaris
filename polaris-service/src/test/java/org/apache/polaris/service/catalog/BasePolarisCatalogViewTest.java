@@ -51,11 +51,11 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.EntityCacheGrantManager;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
-import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 
@@ -92,7 +92,8 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
 
     EntityCache entityCache = new EntityCache(metaStoreManager);
     PolarisEntityManager entityManager =
-        new PolarisEntityManager(metaStoreManager, entityCache, new StorageCredentialCache());
+        new PolarisEntityManager(
+            metaStoreManager, new EntityCache(metaStoreManager), new StorageCredentialCache());
 
     CallContext callContext = CallContext.of(null, polarisContext);
     CallContext.setCurrentContext(callContext);
@@ -119,8 +120,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             authenticatedRoot,
             new PolarisAuthorizerImpl(
                 new PolarisConfigurationStore() {},
-                new EntityCacheGrantManager.EntityCacheGrantManagerFactory(
-                    (realm) -> metaStoreManager, (realm) -> entityCache)));
+                () -> new EntityCacheGrantManager(metaStoreManager, entityCache)));
     adminService.createCatalog(
         new CatalogEntity.Builder()
             .setName(CATALOG_NAME)

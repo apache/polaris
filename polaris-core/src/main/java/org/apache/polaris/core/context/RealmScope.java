@@ -16,12 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.config;
+package org.apache.polaris.core.context;
 
-import org.apache.polaris.core.PolarisConfigurationStore;
+import jakarta.inject.Scope;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.Target;
 
-/** Interface allows injection of a {@link PolarisConfigurationStore} */
-public interface ConfigurationStoreAware {
-
-  void setConfigurationStore(PolarisConfigurationStore configurationStore);
-}
+@Scope
+@Documented
+@Retention(java.lang.annotation.RetentionPolicy.RUNTIME)
+@Target({ElementType.TYPE, ElementType.METHOD})
+public @interface RealmScope {}

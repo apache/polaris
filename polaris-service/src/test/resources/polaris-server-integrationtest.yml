@@ -87,16 +87,13 @@ io:
 
 oauth2:
   type: default
-  tokenBroker:
-    type: symmetric-key
-    secret: polaris
 
 authenticator:
   class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator
-  tokenBroker:
-    type: symmetric-key
-    secret: polaris
 
+tokenBroker:
+  type: symmetric-key
+  secret: polaris
 
 callContextResolver:
   type: default

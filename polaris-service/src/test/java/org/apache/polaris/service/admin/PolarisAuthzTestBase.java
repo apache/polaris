@@ -67,6 +67,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.EntityCacheGrantManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
@@ -75,7 +76,6 @@ import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
-import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -171,6 +171,11 @@ public abstract class PolarisAuthzTestBase {
               }
             },
             Clock.systemDefaultZone());
+    this.entityManager =
+        new PolarisEntityManager(
+            metaStoreManager, new EntityCache(metaStoreManager), new StorageCredentialCache());
+    this.metaStoreManager = metaStoreManager;
+
     callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
 
@@ -182,8 +187,7 @@ public abstract class PolarisAuthzTestBase {
                     PolarisConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING
                         .key,
                     true)),
-            new EntityCacheGrantManager.EntityCacheGrantManagerFactory(
-                metaStoreManagerFactory, (realm) -> entityCache));
+            () -> new EntityCacheGrantManager(metaStoreManager, entityCache));
     this.entityManager =
         new PolarisEntityManager(metaStoreManager, entityCache, new StorageCredentialCache());
     this.metaStoreManager = metaStoreManager;

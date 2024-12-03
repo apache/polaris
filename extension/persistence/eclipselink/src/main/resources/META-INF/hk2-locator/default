@@ -16,9 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.monitor;
+[org.apache.polaris.extension.persistence.impl.eclipselink.EclipseLinkPolarisMetaStoreManagerFactory]S
+contract={org.apache.polaris.core.persistence.MetaStoreManagerFactory}
+name=eclipse-link
+qualifier={jakarta.inject.Named}
 
-/** Allows setting a configured instance of {@link PolarisMetricRegistry} */
-public interface MetricRegistryAware {
-  void setMetricRegistry(PolarisMetricRegistry metricRegistry);
-}

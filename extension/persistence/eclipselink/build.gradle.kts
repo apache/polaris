@@ -33,6 +33,7 @@ dependencies {
   implementation(libs.eclipselink)
   implementation(platform(libs.dropwizard.bom))
   implementation("io.dropwizard:dropwizard-jackson")
+  implementation("org.glassfish.hk2:hk2-api:3.0.6")
   val eclipseLinkDeps: String? = project.findProperty("eclipseLinkDeps") as String?
   eclipseLinkDeps?.let {
     val dependenciesList = it.split(",")

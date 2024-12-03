@@ -36,6 +36,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.polaris.core.PolarisConfiguration;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
@@ -102,7 +103,7 @@ public class PolarisOverlappingTableTest {
     private String extensionName() {
       return (extension
               .getConfiguration()
-              .getConfigurationStore()
+              .findService(PolarisConfigurationStore.class)
               .getConfiguration(null, PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP))
           ? "lax"
           : "strict";

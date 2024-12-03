@@ -23,12 +23,14 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalListener;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import jakarta.inject.Inject;
 import jakarta.validation.constraints.NotNull;
 import java.util.AbstractMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.context.RealmScope;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -36,6 +38,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
 
 /** The entity cache, can be private or shared */
+@RealmScope
 public class EntityCache {
 
   // cache mode
@@ -55,6 +58,7 @@ public class EntityCache {
    *
    * @param polarisRemoteCache the meta store manager implementation
    */
+  @Inject
   public EntityCache(@Nonnull PolarisRemoteCache polarisRemoteCache) {
 
     // by name cache

@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.service.auth;
 
-import com.fasterxml.jackson.annotation.JsonTypeName;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.config.HasMetaStoreManagerFactory;
 
-@JsonTypeName("rsa-key-pair")
-public class JWTRSAKeyPairFactory implements TokenBrokerFactory, HasMetaStoreManagerFactory {
+@Named("rsa-key-pair")
+public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
   private int maxTokenGenerationInSeconds = 3600;
   private MetaStoreManagerFactory metaStoreManagerFactory;
 
@@ -39,7 +39,7 @@ public class JWTRSAKeyPairFactory implements TokenBrokerFactory, HasMetaStoreMan
         maxTokenGenerationInSeconds);
   }
 
-  @Override
+  @Inject
   public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
   }

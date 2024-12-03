@@ -18,7 +18,8 @@
  */
 package org.apache.polaris.service.auth;
 
-import com.fasterxml.jackson.annotation.JsonTypeName;
+import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.HashMap;
@@ -32,14 +33,13 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.service.config.HasMetaStoreManagerFactory;
 import org.apache.polaris.service.config.OAuth2ApiService;
 import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@JsonTypeName("test")
-public class TestOAuth2ApiService implements OAuth2ApiService, HasMetaStoreManagerFactory {
+@Named("test")
+public class TestOAuth2ApiService implements OAuth2ApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(TestOAuth2ApiService.class);
 
   private MetaStoreManagerFactory metaStoreManagerFactory;
@@ -108,11 +108,8 @@ public class TestOAuth2ApiService implements OAuth2ApiService, HasMetaStoreManag
     }
   }
 
-  @Override
+  @Inject
   public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
   }
-
-  @Override
-  public void setTokenBroker(TokenBrokerFactory tokenBrokerFactory) {}
 }

@@ -42,6 +42,8 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
+import org.apache.polaris.service.context.CallContextResolver;
+import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
@@ -79,7 +81,7 @@ public class PolarisConnectionExtension
     try {
       PolarisApplicationConfig config =
           (PolarisApplicationConfig) dropwizardAppExtension.getConfiguration();
-      metaStoreManagerFactory = config.getMetaStoreManagerFactory();
+      metaStoreManagerFactory = config.findService(MetaStoreManagerFactory.class);
       if (!(metaStoreManagerFactory instanceof InMemoryPolarisMetaStoreManagerFactory)) {
         metaStoreManagerFactory.bootstrapRealms(List.of(realm));
       }
@@ -92,7 +94,7 @@ public class PolarisConnectionExtension
 
       RealmContext realmContext =
           config
-              .getRealmContextResolver()
+              .findService(RealmContextResolver.class)
               .resolveRealmContext(
                   String.format("%s://%s", testEnvUri.getScheme(), testEnvUri.getHost()),
                   "GET",
@@ -101,7 +103,7 @@ public class PolarisConnectionExtension
                   Map.of(REALM_PROPERTY_KEY, realm));
       CallContext ctx =
           config
-              .getCallContextResolver()
+              .findService(CallContextResolver.class)
               .resolveCallContext(realmContext, "GET", path, Map.of(), Map.of());
       CallContext.setCurrentContext(ctx);
       PolarisMetaStoreManager metaStoreManager =
