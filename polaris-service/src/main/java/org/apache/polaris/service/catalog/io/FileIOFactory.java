@@ -19,7 +19,6 @@
 package org.apache.polaris.service.catalog.io;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import io.dropwizard.jackson.Discoverable;
 import java.util.Map;
 import org.apache.iceberg.io.FileIO;
 
@@ -28,6 +27,6 @@ import org.apache.iceberg.io.FileIO;
     use = JsonTypeInfo.Id.NAME,
     include = JsonTypeInfo.As.PROPERTY,
     property = "factoryType")
-public interface FileIOFactory extends Discoverable {
+public interface FileIOFactory {
   FileIO loadFileIO(String impl, Map<String, String> properties);
 }

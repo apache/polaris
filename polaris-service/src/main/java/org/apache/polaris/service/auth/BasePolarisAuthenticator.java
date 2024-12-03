@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.auth;
 
+import io.dropwizard.auth.Authenticator;
 import jakarta.inject.Inject;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -47,7 +48,7 @@ import org.slf4j.LoggerFactory;
  * these roles will be active in the current request.
  */
 public abstract class BasePolarisAuthenticator
-    implements DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> {
+    implements Authenticator<String, AuthenticatedPolarisPrincipal> {
   public static final String PRINCIPAL_ROLE_ALL = "PRINCIPAL_ROLE:ALL";
   public static final String PRINCIPAL_ROLE_PREFIX = "PRINCIPAL_ROLE:";
   private static final Logger LOGGER = LoggerFactory.getLogger(BasePolarisAuthenticator.class);

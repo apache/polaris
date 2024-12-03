@@ -18,11 +18,9 @@
  */
 package org.apache.polaris.service.context;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 public interface RealmContextResolver {
 
   RealmContext resolveRealmContext(

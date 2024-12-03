@@ -24,6 +24,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceOptions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import jakarta.inject.Named;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
@@ -34,6 +35,7 @@ import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import software.amazon.awssdk.services.sts.StsClient;
 
+@Named("default")
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
   private final Supplier<StsClient> stsClientSupplier;
@@ -47,8 +49,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
 
   @Override
   @SuppressWarnings("unchecked")
-  public <T extends PolarisStorageConfigurationInfo> @Nullable
-      PolarisStorageIntegration<T> getStorageIntegrationForConfig(
+  public <T extends PolarisStorageConfigurationInfo>
+      @Nullable PolarisStorageIntegration<T> getStorageIntegrationForConfig(
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
     if (polarisStorageConfigurationInfo == null) {
       return null;

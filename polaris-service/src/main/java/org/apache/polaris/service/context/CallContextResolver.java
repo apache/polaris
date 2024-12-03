@@ -18,13 +18,11 @@
  */
 package org.apache.polaris.service.context;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.Map;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 
 /** Uses the resolved RealmContext to further resolve elements of the CallContext. */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 public interface CallContextResolver {
   CallContext resolveCallContext(
       RealmContext realmContext,

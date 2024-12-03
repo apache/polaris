@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.persistence;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -30,7 +29,6 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
  * Configuration interface for configuring the {@link PolarisMetaStoreManager} via Dropwizard
  * configuration
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 public interface MetaStoreManagerFactory {
 
   PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext);

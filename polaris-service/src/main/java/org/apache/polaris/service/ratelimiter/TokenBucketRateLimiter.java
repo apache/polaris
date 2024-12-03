@@ -18,12 +18,14 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
+import jakarta.inject.Named;
 import java.time.InstantSource;
 
 /**
  * Token bucket implementation of a Polaris RateLimiter. Acquires tokens at a fixed rate and has a
  * maximum amount of tokens. Each successful "tryAcquire" costs 1 token.
  */
+@Named("token-bucket")
 public class TokenBucketRateLimiter implements RateLimiter {
   private final double tokensPerMilli;
   private final long maxTokens;

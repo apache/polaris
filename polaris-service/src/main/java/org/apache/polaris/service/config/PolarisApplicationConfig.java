@@ -19,6 +19,7 @@
 package org.apache.polaris.service.config;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.base.Preconditions;
@@ -182,6 +183,7 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   @JsonProperty("metaStoreManager")
+  @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
   public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
   }
@@ -191,16 +193,20 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   @JsonProperty("io")
+  @JsonTypeInfo(
+      use = JsonTypeInfo.Id.NAME,
+      include = JsonTypeInfo.As.PROPERTY,
+      property = "factoryType")
   public void setFileIOFactory(FileIOFactory fileIOFactory) {
     this.fileIOFactory = fileIOFactory;
   }
 
-  @JsonProperty("io")
   private FileIOFactory getFileIOFactory() {
     return fileIOFactory;
   }
 
   @JsonProperty("authenticator")
+  @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "class")
   public void setPolarisAuthenticator(
       Authenticator<String, AuthenticatedPolarisPrincipal> polarisAuthenticator) {
     this.polarisAuthenticator = polarisAuthenticator;
@@ -211,6 +217,7 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   @JsonProperty("tokenBroker")
+  @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
   public void setTokenBrokerFactory(TokenBrokerFactory tokenBrokerFactory) {
     this.tokenBrokerFactory = tokenBrokerFactory;
   }
@@ -256,6 +263,8 @@ public class PolarisApplicationConfig extends Configuration {
     return realmContextResolver;
   }
 
+  @JsonProperty("realmContextResolver")
+  @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
   public void setRealmContextResolver(RealmContextResolver realmContextResolver) {
     this.realmContextResolver = realmContextResolver;
   }
@@ -265,6 +274,7 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   @JsonProperty("callContextResolver")
+  @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
   public void setCallContextResolver(CallContextResolver callContextResolver) {
     this.callContextResolver = callContextResolver;
   }
@@ -272,6 +282,7 @@ public class PolarisApplicationConfig extends Configuration {
   private OAuth2ApiService oauth2Service;
 
   @JsonProperty("oauth2")
+  @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
   public void setOauth2Service(OAuth2ApiService oauth2Service) {
     this.oauth2Service = oauth2Service;
   }
@@ -310,6 +321,7 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   @JsonProperty("rateLimiter")
+  @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
   public void setRateLimiter(@Nullable RateLimiter rateLimiter) {
     this.rateLimiter = rateLimiter;
   }

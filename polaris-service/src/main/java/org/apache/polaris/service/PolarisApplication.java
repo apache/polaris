@@ -173,7 +173,6 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     bootstrap.addCommand(new BootstrapRealmsCommand());
     bootstrap.addCommand(new PurgeRealmsCommand());
     serviceLocator = ServiceLocatorUtilities.createAndPopulateServiceLocator();
-    SimpleValueInstantiators instantiators = new SimpleValueInstantiators();
     ObjectMapper objectMapper = bootstrap.getObjectMapper();
 
     // Register the PolarisApplicationConfig class with the ServiceLocator so that we can inject
@@ -182,6 +181,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     // so that they are used for DI.
     ServiceLocatorUtilities.addClasses(serviceLocator, PolarisApplicationConfig.class);
     TypeFactory typeFactory = TypeFactory.defaultInstance();
+    SimpleValueInstantiators instantiators = new SimpleValueInstantiators();
     instantiators.addValueInstantiator(
         PolarisApplicationConfig.class,
         new ServiceLocatorValueInstantiator(
@@ -193,6 +193,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     // and register them as subtypes with the ObjectMapper. This allows Jackson to discover the
     // various implementations and use the type annotations to determine which instance to use when
     // parsing the YAML configuration.
+    SimpleModule module = new SimpleModule();
     serviceLocator
         .getDescriptors((c) -> true)
         .forEach(
@@ -204,9 +205,9 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                         .loadClass(descriptor.getImplementation());
                 String name = descriptor.getName();
                 if (name == null) {
-                  objectMapper.registerSubtypes(klazz);
+                  module.registerSubtypes(klazz);
                 } else {
-                  objectMapper.registerSubtypes(new NamedType(klazz, name));
+                  module.registerSubtypes(new NamedType(klazz, name));
                 }
               } catch (ClassNotFoundException e) {
                 LOGGER.error("Error loading class {}", descriptor.getImplementation(), e);
@@ -223,7 +224,6 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
             bind(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT)).to(MeterRegistry.class);
           }
         });
-    SimpleModule module = new SimpleModule();
     module.setValueInstantiators(instantiators);
     module.setMixInAnnotation(Authenticator.class, NamedAuthenticator.class);
     objectMapper.registerModule(module);
