@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
@@ -36,11 +35,6 @@ import org.apache.polaris.core.persistence.BaseResult;
 
 /** Manage grants for Polaris entities. */
 public interface PolarisGrantManager {
-
-  @FunctionalInterface
-  interface Factory {
-    PolarisGrantManager getGrantManagerForRealm(RealmContext realm);
-  }
 
   /**
    * Grant usage on a role to a grantee, for example granting usage on a catalog role to a principal
