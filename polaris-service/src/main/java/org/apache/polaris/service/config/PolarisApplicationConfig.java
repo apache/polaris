@@ -102,6 +102,10 @@ public class PolarisApplicationConfig extends Configuration {
     ServiceLocatorUtilities.bind(serviceLocator, binder());
   }
 
+  public ServiceLocator getServiceLocator() {
+    return serviceLocator;
+  }
+
   @Nonnull
   public AbstractBinder binder() {
     PolarisApplicationConfig config = this;
