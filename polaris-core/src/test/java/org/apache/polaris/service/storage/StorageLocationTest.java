@@ -25,18 +25,11 @@ import org.junit.jupiter.api.Test;
 public class StorageLocationTest {
 
   @Test
-  public void testIsChildOfMatchingPrefixes() {
-    StorageLocation parentLocation = StorageLocation.of("file:///path/to/file");
-    StorageLocation childLocation = StorageLocation.of("file:///path/to/file/child");
-    Assertions.assertThat(childLocation.isChildOf(parentLocation)).isTrue();
-  }
-
-  @Test
-  public void testIsChildOfDifferentPrefixes() {
-    StorageLocation parentLocation = StorageLocation.of("file:///path/to/file");
-    StorageLocation childLocationLeadingSlash = StorageLocation.of("/path/to/file/child");
-    StorageLocation childLocationSingleSlashFile = StorageLocation.of("file:/path/to/file/child");
-    Assertions.assertThat(childLocationLeadingSlash.isChildOf(parentLocation)).isTrue();
-    Assertions.assertThat(childLocationSingleSlashFile.isChildOf(parentLocation)).isTrue();
+  public void testOfDifferentPrefixes() {
+    StorageLocation StandardLocation = StorageLocation.of("file:///path/to/file");
+    StorageLocation slashLeadingLocation = StorageLocation.of("/path/to/file");
+    StorageLocation fileSingleSlashLocation = StorageLocation.of("file:/path/to/file");
+    Assertions.assertThat(slashLeadingLocation.equals(StandardLocation)).isTrue();
+    Assertions.assertThat(fileSingleSlashLocation.equals(StandardLocation)).isTrue();
   }
 }
