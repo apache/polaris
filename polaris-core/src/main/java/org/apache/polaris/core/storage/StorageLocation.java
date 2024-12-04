@@ -25,6 +25,7 @@ import org.apache.polaris.core.storage.azure.AzureLocation;
 /** An abstraction over a storage location */
 public class StorageLocation {
   private final String location;
+  public static final String LOCAL_PATH_PREFIX = "file:///";
 
   /** Create a StorageLocation from a String path */
   public static StorageLocation of(String location) {
@@ -39,8 +40,8 @@ public class StorageLocation {
   protected StorageLocation(@Nonnull String location) {
     if (location == null) {
       this.location = null;
-    } else if (location.startsWith("file:/") && !location.startsWith("file:///")) {
-      this.location = URI.create(location.replaceFirst("file:/+", "file:///")).toString();
+    } else if (location.startsWith("file:/") && !location.startsWith(LOCAL_PATH_PREFIX)) {
+      this.location = URI.create(location.replaceFirst("file:/+", LOCAL_PATH_PREFIX)).toString();
     } else {
       this.location = URI.create(location).toString();
     }
@@ -84,7 +85,7 @@ public class StorageLocation {
   }
 
   /**
-   * Returns true if this StorageLocation's location string starts with the other StorageLocation's 
+   * Returns true if this StorageLocation's location string starts with the other StorageLocation's
    * location string
    */
   public boolean isChildOf(StorageLocation potentialParent) {
@@ -93,8 +94,9 @@ public class StorageLocation {
     } else {
       String slashTerminatedLocation = ensureTrailingSlash(this.location);
       String slashTerminatedParentLocation = ensureTrailingSlash(potentialParent.location);
-      if (slashTerminatedLocation.startsWith("/") && slashTerminatedParentLocation.startsWith("file:///")) {
-        slashTerminatedLocation = "file://" + slashTerminatedLocation;
+      if (slashTerminatedLocation.startsWith("/")
+          && slashTerminatedParentLocation.startsWith(LOCAL_PATH_PREFIX)) {
+        slashTerminatedLocation = slashTerminatedLocation.replaceFirst("/+", LOCAL_PATH_PREFIX);
       }
       return slashTerminatedLocation.startsWith(slashTerminatedParentLocation);
     }
