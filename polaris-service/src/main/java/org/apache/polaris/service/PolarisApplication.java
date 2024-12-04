@@ -141,6 +141,7 @@ import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.api.TypeLiteral;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
+import org.glassfish.jersey.servlet.ServletProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -223,6 +224,9 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         new AbstractBinder() {
           @Override
           protected void configure() {
+            bind(RealmScopeContext.class)
+                .in(Singleton.class)
+                .to(new TypeLiteral<Context<RealmScope>>() {});
             bind(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT)).to(MeterRegistry.class);
           }
         });
@@ -279,16 +283,16 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
 
     // Use the PolarisApplicationConfig to register dependencies in the Jersey resource
     // configuration. This uses a different ServiceLocator from the one in the bootstrap step
-    environment.jersey().register(configuration.binder());
+    environment
+        .getApplicationContext()
+        .setAttribute(ServletProperties.SERVICE_LOCATOR, configuration.getServiceLocator());
+
     environment
         .jersey()
         .register(
             new AbstractBinder() {
               @Override
               protected void configure() {
-                bind(RealmScopeContext.class)
-                    .in(Singleton.class)
-                    .to(new TypeLiteral<Context<RealmScope>>() {});
                 bindFactory(PolarisMetaStoreManagerFactory.class)
                     .to(PolarisMetaStoreManager.class)
                     .in(RealmScope.class);
@@ -309,7 +313,6 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                     .in(RealmScope.class)
                     .to(PolarisGrantManager.class)
                     .ranked(100);
-                bind(polarisMetricRegistry).to(PolarisMetricRegistry.class);
                 polarisMetricRegistry.init(
                     IcebergRestCatalogApi.class,
                     IcebergRestConfigurationApi.class,
@@ -317,8 +320,6 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                     PolarisCatalogsApi.class,
                     PolarisPrincipalsApi.class,
                     PolarisPrincipalRolesApi.class);
-                bind((PrometheusMeterRegistry) polarisMetricRegistry.getMeterRegistry())
-                    .to(PrometheusMeterRegistry.class);
                 bind(openTelemetry).to(OpenTelemetry.class);
                 bindAsContract(RealmEntityManagerFactory.class).in(RealmScope.class);
                 bind(PolarisCallContextCatalogFactory.class)
