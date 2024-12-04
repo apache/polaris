@@ -42,6 +42,8 @@ public class StorageLocation {
       this.location = null;
     } else if (location.startsWith("file:/") && !location.startsWith(LOCAL_PATH_PREFIX)) {
       this.location = URI.create(location.replaceFirst("file:/+", LOCAL_PATH_PREFIX)).toString();
+    } else if (location.startsWith("/")){
+      this.location = URI.create(location.replaceFirst("/+", LOCAL_PATH_PREFIX)).toString();
     } else {
       this.location = URI.create(location).toString();
     }
@@ -94,10 +96,6 @@ public class StorageLocation {
     } else {
       String slashTerminatedLocation = ensureTrailingSlash(this.location);
       String slashTerminatedParentLocation = ensureTrailingSlash(potentialParent.location);
-      if (slashTerminatedLocation.startsWith("/")
-          && slashTerminatedParentLocation.startsWith(LOCAL_PATH_PREFIX)) {
-        slashTerminatedLocation = slashTerminatedLocation.replaceFirst("/+", LOCAL_PATH_PREFIX);
-      }
       return slashTerminatedLocation.startsWith(slashTerminatedParentLocation);
     }
   }
