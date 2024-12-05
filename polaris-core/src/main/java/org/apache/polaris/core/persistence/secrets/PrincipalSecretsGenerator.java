@@ -20,8 +20,6 @@ package org.apache.polaris.core.persistence.secrets;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.Locale;
-import java.util.function.Function;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 
 /**
