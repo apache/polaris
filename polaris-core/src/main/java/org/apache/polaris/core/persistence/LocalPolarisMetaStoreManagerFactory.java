@@ -19,7 +19,6 @@
 package org.apache.polaris.core.persistence;
 
 import jakarta.annotation.Nonnull;
-import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +34,6 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,8 +51,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   final Map<String, StoreType> backingStoreMap = new HashMap<>();
   final Map<String, Supplier<PolarisMetaStoreSession>> sessionSupplierMap = new HashMap<>();
   protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-
-  @Inject protected PolarisStorageIntegrationProvider storageIntegration;
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
@@ -155,10 +151,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     }
 
     return storageCredentialCacheMap.get(realmContext.getRealmIdentifier());
-  }
-
-  public void setStorageIntegrationProvider(PolarisStorageIntegrationProvider storageIntegration) {
-    this.storageIntegration = storageIntegration;
   }
 
   /**

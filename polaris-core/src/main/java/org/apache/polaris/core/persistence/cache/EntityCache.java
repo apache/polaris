@@ -29,14 +29,14 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.RealmScope;
+import org.apache.polaris.core.context.RealmScoped;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
 
 /** The entity cache, can be private or shared */
-@RealmScope
+@RealmScoped
 public class EntityCache {
 
   // cache mode

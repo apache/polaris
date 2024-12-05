@@ -25,18 +25,18 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.context.RealmScope;
+import org.apache.polaris.core.context.RealmScoped;
 import org.glassfish.hk2.api.ActiveDescriptor;
 import org.glassfish.hk2.api.Context;
 import org.glassfish.hk2.api.ServiceHandle;
 
 @Singleton
-public class RealmScopeContext implements Context<RealmScope> {
+public class RealmScopeContext implements Context<RealmScoped> {
   private final Map<String, Map<ActiveDescriptor<?>, Object>> contexts = new ConcurrentHashMap<>();
 
   @Override
   public Class<? extends Annotation> getScope() {
-    return RealmScope.class;
+    return RealmScoped.class;
   }
 
   @SuppressWarnings("unchecked")

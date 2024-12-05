@@ -19,14 +19,15 @@
 package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.dropwizard.jackson.Discoverable;
 import jakarta.annotation.Nonnull;
+import jakarta.inject.Inject;
 import jakarta.inject.Named;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
 /**
  * The implementation of Configuration interface for configuring the {@link PolarisMetaStoreManager}
@@ -35,12 +36,14 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
  */
 @Named("eclipse-link")
 public class EclipseLinkPolarisMetaStoreManagerFactory
-    extends LocalPolarisMetaStoreManagerFactory<PolarisEclipseLinkStore> implements Discoverable {
+    extends LocalPolarisMetaStoreManagerFactory<PolarisEclipseLinkStore> {
   @JsonProperty("conf-file")
   private String confFile;
 
   @JsonProperty("persistence-unit")
   private String persistenceUnitName;
+
+  @Inject protected PolarisStorageIntegrationProvider storageIntegration;
 
   @Override
   protected PolarisEclipseLinkStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
