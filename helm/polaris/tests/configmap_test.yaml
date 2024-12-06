@@ -225,9 +225,6 @@ tests:
             polaris-server.yml: |-
               authenticator:
                 class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator
-              tokenBroker:
-                secret: polaris
-                type: symmetric-key
               callContextResolver:
                 type: default
               cors:
@@ -288,3 +285,6 @@ tests:
                 requestLog:
                   appenders:
                   - type: console
+              tokenBroker:
+                secret: polaris
+                type: symmetric-key
