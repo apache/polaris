@@ -19,9 +19,9 @@
 [org.apache.polaris.service.catalog.io.TestFileIOFactory]S
 contract={org.apache.polaris.service.catalog.io.FileIOFactory}
 name=test
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 
 [org.apache.polaris.service.ratelimiter.MockRealmTokenBucketRateLimiter]S
 contract={org.apache.polaris.service.ratelimiter.RateLimiter}
 name=mock-realm-token-bucket
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}

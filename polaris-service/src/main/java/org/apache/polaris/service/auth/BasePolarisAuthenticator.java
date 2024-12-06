@@ -53,12 +53,7 @@ public abstract class BasePolarisAuthenticator
   public static final String PRINCIPAL_ROLE_PREFIX = "PRINCIPAL_ROLE:";
   private static final Logger LOGGER = LoggerFactory.getLogger(BasePolarisAuthenticator.class);
 
-  protected MetaStoreManagerFactory metaStoreManagerFactory;
-
-  @Inject
-  public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
-  }
+  @Inject protected MetaStoreManagerFactory metaStoreManagerFactory;
 
   public PolarisCallContext getCurrentPolarisContext() {
     return CallContext.getCurrentContext().getPolarisCallContext();

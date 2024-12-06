@@ -20,7 +20,7 @@ package org.apache.polaris.service.auth;
 
 import com.google.common.base.Splitter;
 import io.dropwizard.auth.AuthenticationException;
-import jakarta.inject.Named;
+import io.smallrye.common.annotation.Identifier;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
  * This class does not expect a client to be either present or correct. Lookup is delegated to the
  * {@link PolarisMetaStoreManager} for the current realm.
  */
-@Named("test")
+@Identifier("test")
 public class TestInlineBearerTokenPolarisAuthenticator extends BasePolarisAuthenticator {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TestInlineBearerTokenPolarisAuthenticator.class);

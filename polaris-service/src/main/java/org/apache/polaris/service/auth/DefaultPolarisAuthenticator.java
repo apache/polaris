@@ -18,15 +18,15 @@
  */
 package org.apache.polaris.service.auth;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import java.util.Optional;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 
-@Named("default")
+@Identifier("default")
 public class DefaultPolarisAuthenticator extends BasePolarisAuthenticator {
-  private TokenBrokerFactory tokenBrokerFactory;
+  @Inject private TokenBrokerFactory tokenBrokerFactory;
 
   @Override
   public Optional<AuthenticatedPolarisPrincipal> authenticate(String credentials) {
@@ -34,10 +34,5 @@ public class DefaultPolarisAuthenticator extends BasePolarisAuthenticator {
         tokenBrokerFactory.apply(CallContext.getCurrentContext().getRealmContext());
     DecodedToken decodedToken = handler.verify(credentials);
     return getPrincipal(decodedToken);
-  }
-
-  @Inject
-  public void setTokenBroker(TokenBrokerFactory tokenBrokerFactory) {
-    this.tokenBrokerFactory = tokenBrokerFactory;
   }
 }

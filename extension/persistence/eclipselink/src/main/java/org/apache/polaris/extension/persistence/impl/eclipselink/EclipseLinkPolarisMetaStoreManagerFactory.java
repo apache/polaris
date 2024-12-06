@@ -19,9 +19,9 @@
 package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
@@ -34,7 +34,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
  * using an EclipseLink based meta store to store and retrieve all Polaris metadata. It can be
  * configured through persistence.xml to use supported RDBMS as the meta store.
  */
-@Named("eclipse-link")
+@Identifier("eclipse-link")
 public class EclipseLinkPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisEclipseLinkStore> {
   @JsonProperty("conf-file")

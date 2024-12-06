@@ -18,14 +18,14 @@
  */
 package org.apache.polaris.service.catalog.io;
 
-import jakarta.inject.Named;
+import io.smallrye.common.annotation.Identifier;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.io.FileIO;
 
 /** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
-@Named("wasb")
+@Identifier("wasb")
 public class WasbTranslatingFileIOFactory implements FileIOFactory {
   @Override
   public FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
