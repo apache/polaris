@@ -321,7 +321,7 @@ polarisServerConfig:
   oauth2:
     type: test
   #  type: default # - uncomment to support Auth0 JWT tokens
-#tokenBroker:
+# tokenBroker:
 #  type: symmetric-key
 #  secret: polaris
 
