@@ -67,15 +67,7 @@ import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
-<<<<<<< HEAD
-import org.apache.polaris.core.persistence.models.ModelEntity;
-import org.apache.polaris.core.persistence.models.ModelEntityActive;
-import org.apache.polaris.core.persistence.models.ModelEntityChangeTracking;
-import org.apache.polaris.core.persistence.models.ModelGrantRecord;
-import org.apache.polaris.core.persistence.models.ModelPrincipalSecrets;
 import org.apache.polaris.core.persistence.secrets.PrincipalSecretsGenerator;
-=======
->>>>>>> c7ec45fa799bffa8526fbc758cb4a5d07815be9e
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
