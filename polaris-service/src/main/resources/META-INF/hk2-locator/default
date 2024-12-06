@@ -19,70 +19,70 @@
 [org.apache.polaris.service.auth.DefaultPolarisAuthenticator]S
 contract={org.apache.polaris.service.auth.BasePolarisAuthenticator}
 name=default
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 
 [org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator]S
 contract={io.dropwizard.auth.Authenticator}
 name=test
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 
 [org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory]S
 contract={org.apache.polaris.core.persistence.MetaStoreManagerFactory}
 name=in-memory
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 
 [org.apache.polaris.service.auth.DefaultOAuth2ApiService]S
 contract={org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService}
 name=default
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 
 [org.apache.polaris.service.auth.TestOAuth2ApiService]S
 contract={org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService}
 name=test
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 
 [org.apache.polaris.service.auth.JWTSymmetricKeyFactory]S
 contract={org.apache.polaris.service.auth.TokenBrokerFactory}
 name=symmetric-key
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 
 [org.apache.polaris.service.auth.JWTRSAKeyPairFactory]S
 contract={org.apache.polaris.service.auth.TokenBrokerFactory}
 name=rsa-key-pair
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 
 [org.apache.polaris.service.context.DefaultContextResolver]S
 contract={org.apache.polaris.service.context.CallContextResolver,org.apache.polaris.service.context.RealmContextResolver}
 name=default
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 
 [org.apache.polaris.core.storage.PolarisStorageIntegrationProvider]S
 contract={org.apache.polaris.core.storage.PolarisStorageIntegrationProvider}
 name=default
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 
 [org.apache.polaris.service.catalog.io.DefaultFileIOFactory]S
 contract={org.apache.polaris.service.catalog.io.FileIOFactory}
 name=default
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 
 [org.apache.polaris.service.catalog.io.WasbTranslatingFileIOFactory]S
 contract={org.apache.polaris.service.catalog.io.FileIOFactory}
 name=wasb
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 
 [org.apache.polaris.service.ratelimiter.NoOpRateLimiter]S
 contract={org.apache.polaris.service.ratelimiter.RateLimiter}
 name=no-op
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 
 [org.apache.polaris.service.ratelimiter.TokenBucketRateLimiter]S
 contract={org.apache.polaris.service.ratelimiter.RateLimiter}
 name=token-bucket
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 
 [org.apache.polaris.service.ratelimiter.RealmTokenBucketRateLimiter]S
 contract={org.apache.polaris.service.ratelimiter.RateLimiter}
 name=realm-token-bucket
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 

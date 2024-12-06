@@ -18,15 +18,16 @@
  */
 package org.apache.polaris.service.auth;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 
-@Named("rsa-key-pair")
+@Identifier("rsa-key-pair")
 public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
   private int maxTokenGenerationInSeconds = 3600;
-  private MetaStoreManagerFactory metaStoreManagerFactory;
+
+  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
 
   public void setMaxTokenGenerationInSeconds(int maxTokenGenerationInSeconds) {
     this.maxTokenGenerationInSeconds = maxTokenGenerationInSeconds;
@@ -37,10 +38,5 @@ public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
     return new JWTRSAKeyPair(
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
         maxTokenGenerationInSeconds);
-  }
-
-  @Inject
-  public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
   }
 }

@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import jakarta.inject.Named;
+import io.smallrye.common.annotation.Identifier;
 
 /** Rate limiter that always allows the request */
-@Named("no-op")
+@Identifier("no-op")
 public class NoOpRateLimiter implements RateLimiter {
   @Override
   public boolean tryAcquire() {

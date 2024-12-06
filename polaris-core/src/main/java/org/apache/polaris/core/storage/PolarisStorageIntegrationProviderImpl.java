@@ -22,9 +22,9 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceOptions;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import jakarta.inject.Named;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
@@ -35,7 +35,7 @@ import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import software.amazon.awssdk.services.sts.StsClient;
 
-@Named("default")
+@Identifier("default")
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
   private final Supplier<StsClient> stsClientSupplier;

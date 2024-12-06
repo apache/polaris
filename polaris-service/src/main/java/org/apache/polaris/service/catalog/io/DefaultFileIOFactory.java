@@ -18,14 +18,14 @@
  */
 package org.apache.polaris.service.catalog.io;
 
-import jakarta.inject.Named;
+import io.smallrye.common.annotation.Identifier;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.io.FileIO;
 
 /** A simple FileIOFactory implementation that defers all the work to the Iceberg SDK */
-@Named("default")
+@Identifier("default")
 public class DefaultFileIOFactory implements FileIOFactory {
   @Override
   public FileIO loadFileIO(String impl, Map<String, String> properties) {

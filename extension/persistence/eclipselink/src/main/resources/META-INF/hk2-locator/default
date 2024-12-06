@@ -19,5 +19,5 @@
 [org.apache.polaris.extension.persistence.impl.eclipselink.EclipseLinkPolarisMetaStoreManagerFactory]S
 contract={org.apache.polaris.core.persistence.MetaStoreManagerFactory}
 name=eclipse-link
-qualifier={jakarta.inject.Named}
+qualifier={io.smallrye.common.annotation.Identifier}
 

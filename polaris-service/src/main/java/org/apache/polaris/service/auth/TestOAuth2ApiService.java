@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.service.auth;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.HashMap;
@@ -38,11 +38,11 @@ import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@Named("test")
+@Identifier("test")
 public class TestOAuth2ApiService implements OAuth2ApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(TestOAuth2ApiService.class);
 
-  private MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
 
   @Override
   public Response getToken(
@@ -106,10 +106,5 @@ public class TestOAuth2ApiService implements OAuth2ApiService {
       }
       return principalResult.getEntity().getName();
     }
-  }
-
-  @Inject
-  public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
   }
 }
