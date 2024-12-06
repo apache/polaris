@@ -21,8 +21,8 @@ package org.apache.polaris.core.persistence.secrets;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doReturn;
 
+import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
