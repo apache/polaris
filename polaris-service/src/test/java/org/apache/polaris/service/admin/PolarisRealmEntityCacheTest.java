@@ -55,6 +55,7 @@ import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.glassfish.hk2.api.ServiceLocator;
+import org.glassfish.jersey.process.internal.RequestScope;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -125,14 +126,16 @@ public class PolarisRealmEntityCacheTest {
   @Test
   public void testRealmEntityCacheEquality() {
     ServiceLocator serviceLocator = accessor.getServiceLocator();
+    RequestScope requestScope = serviceLocator.getService(RequestScope.class);
     EntityCache cache1;
     // check that multiple calls to the serviceLocator return the same instance of the EntityCache
     // within the same call context
     try (CallContext ctx =
         CallContext.setCurrentContext(
             CallContext.of(() -> realm, new PolarisCallContext(null, null)))) {
-      cache1 = serviceLocator.getService(EntityCache.class);
-      EntityCache cache2 = serviceLocator.getService(EntityCache.class);
+      cache1 = requestScope.runInScope(() -> serviceLocator.getService(EntityCache.class));
+      EntityCache cache2 =
+          requestScope.runInScope(() -> serviceLocator.getService(EntityCache.class));
       assertThat(cache1).isSameAs(cache2);
     }
 
@@ -140,7 +143,8 @@ public class PolarisRealmEntityCacheTest {
     try (CallContext ctx =
         CallContext.setCurrentContext(
             CallContext.of(() -> "anotherrealm", new PolarisCallContext(null, null)))) {
-      EntityCache cache2 = serviceLocator.getService(EntityCache.class);
+      EntityCache cache2 =
+          requestScope.runInScope(() -> serviceLocator.getService(EntityCache.class));
       assertThat(cache1).isNotSameAs(cache2);
     }
 
@@ -149,7 +153,8 @@ public class PolarisRealmEntityCacheTest {
     try (CallContext ctx =
         CallContext.setCurrentContext(
             CallContext.of(() -> realm, new PolarisCallContext(null, null)))) {
-      EntityCache cache2 = serviceLocator.getService(EntityCache.class);
+      EntityCache cache2 =
+          requestScope.runInScope(() -> serviceLocator.getService(EntityCache.class));
       assertThat(cache1).isSameAs(cache2);
     }
   }
@@ -159,6 +164,7 @@ public class PolarisRealmEntityCacheTest {
     // create a catalog
     String catalogName = "mycachecatalog";
     ServiceLocator serviceLocator = accessor.getServiceLocator();
+    RequestScope requestScope = serviceLocator.getService(RequestScope.class);
     listCatalogs();
 
     // check for the catalog - it should not exist
@@ -166,7 +172,8 @@ public class PolarisRealmEntityCacheTest {
     try (CallContext ctx =
         CallContext.setCurrentContext(
             CallContext.of(() -> realm, new PolarisCallContext(null, null)))) {
-      EntityCache cache = serviceLocator.getService(EntityCache.class);
+      EntityCache cache =
+          requestScope.runInScope(() -> serviceLocator.getService(EntityCache.class));
       assertThat(cache).isNotNull();
       EntityCacheEntry cachedCatalog =
           cache.getEntityByName(new EntityCacheByNameKey(PolarisEntityType.CATALOG, catalogName));
@@ -200,7 +207,8 @@ public class PolarisRealmEntityCacheTest {
     try (CallContext ctx =
         CallContext.setCurrentContext(
             CallContext.of(() -> realm, new PolarisCallContext(null, null)))) {
-      EntityCache cache = serviceLocator.getService(EntityCache.class);
+      EntityCache cache =
+          requestScope.runInScope(() -> serviceLocator.getService(EntityCache.class));
       assertThat(cache).isNotNull();
       EntityCacheEntry cachedCatalog =
           cache.getEntityByName(new EntityCacheByNameKey(PolarisEntityType.CATALOG, catalogName));
@@ -215,7 +223,8 @@ public class PolarisRealmEntityCacheTest {
     try (CallContext ctx =
         CallContext.setCurrentContext(
             CallContext.of(() -> "another-realm", new PolarisCallContext(null, null)))) {
-      EntityCache cache = serviceLocator.getService(EntityCache.class);
+      EntityCache cache =
+          requestScope.runInScope(() -> serviceLocator.getService(EntityCache.class));
       assertThat(cache).isNotNull();
       EntityCacheEntry cachedCatalog =
           cache.getEntityByName(new EntityCacheByNameKey(PolarisEntityType.CATALOG, catalogName));

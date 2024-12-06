@@ -61,6 +61,7 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.semconv.ServiceAttributes;
 import io.prometheus.metrics.exporter.servlet.jakarta.PrometheusMetricsServlet;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.Filter;
@@ -222,11 +223,6 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         new AbstractBinder() {
           @Override
           protected void configure() {
-            bindFactory(CallContextFactory.class).to(CallContext.class).in(RequestScoped.class);
-            bindFactory(RealmContextFactory.class).to(RealmContext.class).in(RequestScoped.class);
-            bind(RealmScopeContext.class)
-                .in(Singleton.class)
-                .to(new TypeLiteral<Context<RealmScoped>>() {});
             bind(setupTracing()).to(OpenTelemetry.class);
             bind(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT)).to(MeterRegistry.class);
           }
@@ -284,6 +280,13 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
             new AbstractBinder() {
               @Override
               protected void configure() {
+                bindFactory(CallContextFactory.class).to(CallContext.class).in(RequestScoped.class);
+                bindFactory(RealmContextFactory.class)
+                    .to(RealmContext.class)
+                    .in(RequestScoped.class);
+                bind(RealmScopeContext.class)
+                    .in(Singleton.class)
+                    .to(new TypeLiteral<Context<RealmScoped>>() {});
                 bindFactory(PolarisMetaStoreManagerFactory.class)
                     .to(PolarisMetaStoreManager.class)
                     .in(RealmScoped.class);
@@ -536,12 +539,12 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
 
   @RequestScoped
   private static class RealmContextFactory implements Factory<RealmContext> {
-    @Inject CallContext callContext;
+    @Inject Provider<CallContext> callContext;
 
     @RequestScoped
     @Override
     public RealmContext provide() {
-      return callContext.getRealmContext();
+      return callContext.get().getRealmContext();
     }
 
     @Override

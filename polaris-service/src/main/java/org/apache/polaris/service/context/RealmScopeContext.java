@@ -18,21 +18,27 @@
  */
 package org.apache.polaris.service.context;
 
+import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.context.RealmScoped;
 import org.glassfish.hk2.api.ActiveDescriptor;
 import org.glassfish.hk2.api.Context;
+import org.glassfish.hk2.api.IterableProvider;
 import org.glassfish.hk2.api.ServiceHandle;
+import org.glassfish.hk2.api.ServiceLocator;
 
 @Singleton
 public class RealmScopeContext implements Context<RealmScoped> {
   private final Map<String, Map<ActiveDescriptor<?>, Object>> contexts = new ConcurrentHashMap<>();
+
+  @Inject private ServiceLocator locator;
+  @Inject private IterableProvider<RealmContext> realmContextProvider;
 
   @Override
   public Class<? extends Annotation> getScope() {
@@ -42,7 +48,7 @@ public class RealmScopeContext implements Context<RealmScoped> {
   @SuppressWarnings("unchecked")
   @Override
   public <U> U findOrCreate(ActiveDescriptor<U> activeDescriptor, ServiceHandle<?> root) {
-    RealmContext realmContext = CallContext.getCurrentContext().getRealmContext();
+    RealmContext realmContext = realmContextProvider.iterator().next();
     Map<ActiveDescriptor<?>, Object> contextMap =
         contexts.computeIfAbsent(realmContext.getRealmIdentifier(), k -> new ConcurrentHashMap<>());
     return (U) contextMap.computeIfAbsent(activeDescriptor, k -> activeDescriptor.create(root));
@@ -50,7 +56,7 @@ public class RealmScopeContext implements Context<RealmScoped> {
 
   @Override
   public boolean containsKey(ActiveDescriptor<?> descriptor) {
-    RealmContext realmContext = CallContext.getCurrentContext().getRealmContext();
+    RealmContext realmContext = realmContextProvider.iterator().next();
     Map<ActiveDescriptor<?>, Object> contextMap =
         contexts.computeIfAbsent(realmContext.getRealmIdentifier(), k -> new HashMap<>());
     return contextMap.containsKey(descriptor);
@@ -58,7 +64,7 @@ public class RealmScopeContext implements Context<RealmScoped> {
 
   @Override
   public void destroyOne(ActiveDescriptor<?> descriptor) {
-    RealmContext realmContext = CallContext.getCurrentContext().getRealmContext();
+    RealmContext realmContext = realmContextProvider.iterator().next();
     Map<ActiveDescriptor<?>, Object> contextMap =
         contexts.computeIfAbsent(realmContext.getRealmIdentifier(), k -> new HashMap<>());
     contextMap.remove(descriptor);
@@ -71,8 +77,19 @@ public class RealmScopeContext implements Context<RealmScoped> {
 
   @Override
   public boolean isActive() {
-    return CallContext.getCurrentContext() != null
-        && CallContext.getCurrentContext().getRealmContext() != null;
+    Optional<Context> first =
+        locator.getAllServices(Context.class).stream()
+            .filter(
+                context ->
+                    context
+                        .getScope()
+                        .equals(
+                            realmContextProvider
+                                .getHandle()
+                                .getActiveDescriptor()
+                                .getScopeAnnotation()))
+            .findFirst();
+    return first.map(Context::isActive).orElse(false);
   }
 
   @Override
