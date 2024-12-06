@@ -51,19 +51,9 @@ public class DefaultContextResolver implements RealmContextResolver, CallContext
   public static final String PRINCIPAL_PROPERTY_KEY = "principal";
   public static final String PRINCIPAL_PROPERTY_DEFAULT_VALUE = "default-principal";
 
-  private MetaStoreManagerFactory metaStoreManagerFactory;
-  private PolarisConfigurationStore configurationStore;
+  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject private PolarisConfigurationStore configurationStore;
   private String defaultRealm = "default-realm";
-
-  /**
-   * During CallContext resolution that might depend on RealmContext, the {@code
-   * entityManagerFactory} will be used to resolve elements of the CallContext which require
-   * additional information from an underlying entity store.
-   */
-  @Inject
-  public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
-  }
 
   @Override
   public RealmContext resolveRealmContext(
@@ -163,10 +153,5 @@ public class DefaultContextResolver implements RealmContextResolver, CallContext
       }
     }
     return parsedProperties;
-  }
-
-  @Inject
-  public void setConfigurationStore(PolarisConfigurationStore configurationStore) {
-    this.configurationStore = configurationStore;
   }
 }

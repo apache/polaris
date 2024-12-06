@@ -23,7 +23,6 @@ import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.service.config.PolarisApplicationConfig.REQUEST_BODY_BYTES_NO_LIMIT;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.databind.DeserializationConfig;
@@ -63,6 +62,7 @@ import io.opentelemetry.semconv.ServiceAttributes;
 import io.prometheus.metrics.exporter.servlet.jakarta.PrometheusMetricsServlet;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
+import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import jakarta.servlet.DispatcherType;
 import jakarta.servlet.Filter;
@@ -90,7 +90,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.context.RealmScope;
+import org.apache.polaris.core.context.RealmScoped;
 import org.apache.polaris.core.monitor.PolarisMetricRegistry;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -141,6 +141,7 @@ import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.api.TypeLiteral;
 import org.glassfish.hk2.utilities.ServiceLocatorUtilities;
 import org.glassfish.hk2.utilities.binding.AbstractBinder;
+import org.glassfish.jersey.process.internal.RequestScoped;
 import org.glassfish.jersey.servlet.ServletProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -224,14 +225,11 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         new AbstractBinder() {
           @Override
           protected void configure() {
-            bind(RealmScopeContext.class)
-                .in(Singleton.class)
-                .to(new TypeLiteral<Context<RealmScope>>() {});
+            bind(setupTracing()).to(OpenTelemetry.class);
             bind(new PrometheusMeterRegistry(PrometheusConfig.DEFAULT)).to(MeterRegistry.class);
           }
         });
     module.setValueInstantiators(instantiators);
-    module.setMixInAnnotation(Authenticator.class, NamedAuthenticator.class);
     objectMapper.registerModule(module);
   }
 
@@ -264,17 +262,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     }
   }
 
-  /**
-   * Authenticator uses the java Class name in the YAML configuration. Since the Authenticator
-   * interface is owned by Dropwizard, we need to use a MixIn to tell Jackson what field to use to
-   * discover the implementation from the configuration.
-   */
-  @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "class")
-  static final class NamedAuthenticator {}
-
   @Override
   public void run(PolarisApplicationConfig configuration, Environment environment) {
-    OpenTelemetry openTelemetry = setupTracing();
     PolarisMetricRegistry polarisMetricRegistry =
         configuration.findService(PolarisMetricRegistry.class);
 
@@ -293,24 +282,31 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
             new AbstractBinder() {
               @Override
               protected void configure() {
+                bindFactory(CallContextFactory.class).to(CallContext.class).in(RequestScoped.class);
+                bindFactory(RealmContextFactory.class)
+                    .to(RealmContext.class)
+                    .in(RequestScoped.class);
+                bind(RealmScopeContext.class)
+                    .in(Singleton.class)
+                    .to(new TypeLiteral<Context<RealmScoped>>() {});
                 bindFactory(PolarisMetaStoreManagerFactory.class)
                     .to(PolarisMetaStoreManager.class)
-                    .in(RealmScope.class);
-                bindFactory(EntityCacheFactory.class).in(RealmScope.class).to(EntityCache.class);
+                    .in(RealmScoped.class);
+                bindFactory(EntityCacheFactory.class).in(RealmScoped.class).to(EntityCache.class);
 
                 bindFactory(PolarisRemoteCacheFactory.class)
-                    .in(RealmScope.class)
+                    .in(RealmScoped.class)
                     .to(PolarisRemoteCache.class);
 
                 // factory to use a cache delegating grant cache
                 // currently depends explicitly on the metaStoreManager as the delegate grant
                 // manager
                 bindFactory(PolarisMetaStoreManagerFactory.class)
-                    .in(RealmScope.class)
+                    .in(RealmScoped.class)
                     .named("delegateGrantManager")
                     .to(PolarisGrantManager.class);
                 bindFactory(EntityCacheGrantManagerFactory.class)
-                    .in(RealmScope.class)
+                    .in(RealmScoped.class)
                     .to(PolarisGrantManager.class)
                     .ranked(100);
                 polarisMetricRegistry.init(
@@ -320,8 +316,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                     PolarisCatalogsApi.class,
                     PolarisPrincipalsApi.class,
                     PolarisPrincipalRolesApi.class);
-                bind(openTelemetry).to(OpenTelemetry.class);
-                bindAsContract(RealmEntityManagerFactory.class).in(RealmScope.class);
+                bindAsContract(RealmEntityManagerFactory.class).in(Singleton.class);
                 bind(PolarisCallContextCatalogFactory.class)
                     .to(CallContextCatalogFactory.class)
                     .in(Singleton.class);
@@ -395,6 +390,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         configuration.getCorsConfiguration().getAllowCredentials());
     corsRegistration.addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), true, "/*");
 
+    OpenTelemetry openTelemetry = configuration.findService(OpenTelemetry.class);
     environment
         .servlets()
         .addFilter("tracing", new TracingFilter(openTelemetry))
@@ -541,7 +537,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
 
     @Inject EntityCache entityCache;
 
-    @RealmScope
+    @RealmScoped
     @Override
     public PolarisGrantManager provide() {
       return new EntityCacheGrantManager(grantManager, entityCache);
@@ -551,10 +547,38 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     public void dispose(PolarisGrantManager instance) {}
   }
 
+  /** Factory to create a CallContext based on the request contents. */
+  @RequestScoped
+  private static class CallContextFactory implements Factory<CallContext> {
+
+    @RequestScoped
+    @Override
+    public CallContext provide() {
+      return CallContext.getCurrentContext();
+    }
+
+    @Override
+    public void dispose(CallContext instance) {}
+  }
+
+  @RequestScoped
+  private static class RealmContextFactory implements Factory<RealmContext> {
+    @Inject Provider<CallContext> callContext;
+
+    @RequestScoped
+    @Override
+    public RealmContext provide() {
+      return callContext.get().getRealmContext();
+    }
+
+    @Override
+    public void dispose(RealmContext instance) {}
+  }
+
   private static class PolarisMetaStoreManagerFactory implements Factory<PolarisMetaStoreManager> {
     @Inject MetaStoreManagerFactory metaStoreManagerFactory;
 
-    @RealmScope
+    @RealmScoped
     @Override
     public PolarisMetaStoreManager provide() {
       RealmContext realmContext = CallContext.getCurrentContext().getRealmContext();
@@ -568,7 +592,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
   private static class PolarisRemoteCacheFactory implements Factory<PolarisRemoteCache> {
     @Inject PolarisMetaStoreManager metaStoreManager;
 
-    @RealmScope
+    @RealmScoped
     @Override
     public PolarisRemoteCache provide() {
       return metaStoreManager;

@@ -18,9 +18,10 @@
  */
 package org.apache.polaris.service.persistence;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
+import jakarta.inject.Inject;
 import jakarta.inject.Named;
-import jakarta.inject.Singleton;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
@@ -34,11 +35,13 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
 import org.apache.polaris.core.persistence.PolarisTreeMapStore;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
 @Named("in-memory")
-@Singleton
 public class InMemoryPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
+  @Inject protected PolarisStorageIntegrationProvider storageIntegration;
+
   final Set<String> bootstrappedRealms = new HashSet<>();
 
   @Override
@@ -87,5 +90,11 @@ public class InMemoryPolarisMetaStoreManagerFactory
             principalSecrets.getPrincipalSecrets().getPrincipalClientId(),
             principalSecrets.getPrincipalSecrets().getMainSecret());
     System.out.println(msg);
+  }
+
+  @VisibleForTesting
+  public void setStorageIntegrationProvider(
+      PolarisStorageIntegrationProvider storageIntegrationProvider) {
+    this.storageIntegration = storageIntegrationProvider;
   }
 }
