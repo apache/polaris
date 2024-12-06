@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
 import java.time.OffsetDateTime;
@@ -72,6 +73,7 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -116,6 +118,7 @@ public class PolarisCatalogHandlerWrapper {
   private final PolarisMetaStoreManager metaStoreManager;
   private final String catalogName;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
+  private final SecurityContext securityContext;
   private final PolarisAuthorizer authorizer;
   private final CallContextCatalogFactory catalogFactory;
 
@@ -132,7 +135,7 @@ public class PolarisCatalogHandlerWrapper {
       CallContext callContext,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
-      AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      SecurityContext securityContext,
       CallContextCatalogFactory catalogFactory,
       String catalogName,
       PolarisAuthorizer authorizer) {
@@ -140,7 +143,16 @@ public class PolarisCatalogHandlerWrapper {
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
     this.catalogName = catalogName;
-    this.authenticatedPrincipal = authenticatedPrincipal;
+    PolarisDiagnostics diagServices = callContext.getPolarisCallContext().getDiagServices();
+    diagServices.checkNotNull(securityContext, "null_security_context");
+    diagServices.checkNotNull(securityContext.getUserPrincipal(), "null_user_principal");
+    diagServices.check(
+        securityContext.getUserPrincipal() instanceof AuthenticatedPolarisPrincipal,
+        "invalid_principal_type",
+        "Principal must be an AuthenticatedPolarisPrincipal");
+    this.securityContext = securityContext;
+    this.authenticatedPrincipal =
+        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     this.authorizer = authorizer;
     this.catalogFactory = catalogFactory;
   }
@@ -169,7 +181,7 @@ public class PolarisCatalogHandlerWrapper {
   private void initializeCatalog() {
     this.baseCatalog =
         catalogFactory.createCallContextCatalog(
-            callContext, authenticatedPrincipal, resolutionManifest);
+            callContext, authenticatedPrincipal, securityContext, resolutionManifest);
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
     this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
@@ -186,7 +198,7 @@ public class PolarisCatalogHandlerWrapper {
       List<Namespace> extraPassthroughNamespaces,
       List<TableIdentifier> extraPassthroughTableLikes) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
         namespace);
@@ -227,7 +239,7 @@ public class PolarisCatalogHandlerWrapper {
   private void authorizeCreateNamespaceUnderNamespaceOperationOrThrow(
       PolarisAuthorizableOperation op, Namespace namespace) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
 
     Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(namespace);
     resolutionManifest.addPath(
@@ -262,7 +274,7 @@ public class PolarisCatalogHandlerWrapper {
     Namespace namespace = identifier.namespace();
 
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
         namespace);
@@ -297,7 +309,7 @@ public class PolarisCatalogHandlerWrapper {
   private void authorizeBasicTableLikeOperationOrThrow(
       PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
 
     // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
     resolutionManifest.addPassthroughPath(
@@ -331,7 +343,7 @@ public class PolarisCatalogHandlerWrapper {
       final PolarisEntitySubType subType,
       List<TableIdentifier> ids) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
     ids.forEach(
         identifier ->
             resolutionManifest.addPassthroughPath(
@@ -385,7 +397,7 @@ public class PolarisCatalogHandlerWrapper {
       TableIdentifier src,
       TableIdentifier dst) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
     // Add src, dstParent, and dst(optional)
     resolutionManifest.addPath(
         new ResolverPath(

@@ -19,6 +19,7 @@
 package org.apache.polaris.service.context;
 
 import jakarta.inject.Inject;
+import jakarta.ws.rs.core.SecurityContext;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
@@ -67,6 +68,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   public Catalog createCallContextCatalog(
       CallContext context,
       AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      SecurityContext securityContext,
       final PolarisResolutionManifest resolvedManifest) {
     PolarisBaseEntity baseCatalogEntity =
         resolvedManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity();
@@ -85,6 +87,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             metaStoreManagerFactory.getOrCreateMetaStoreManager(context.getRealmContext()),
             context,
             resolvedManifest,
+            securityContext,
             authenticatedPrincipal,
             taskExecutor,
             fileIOFactory);

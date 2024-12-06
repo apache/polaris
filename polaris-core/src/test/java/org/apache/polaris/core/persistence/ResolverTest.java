@@ -22,21 +22,28 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import jakarta.ws.rs.core.SecurityContext;
+import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
 import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
@@ -439,12 +446,53 @@ public class ResolverTest {
     if (cache == null) {
       this.cache = new EntityCache(this.metaStoreManager);
     }
+    boolean allRoles = principalRolesScope == null;
+    Optional<List<PrincipalRoleEntity>> roleEntities =
+        Optional.ofNullable(principalRolesScope)
+            .map(
+                scopes ->
+                    scopes.stream()
+                        .map(
+                            role ->
+                                metaStoreManager.readEntityByName(
+                                    callCtx,
+                                    null,
+                                    PolarisEntityType.PRINCIPAL_ROLE,
+                                    PolarisEntitySubType.NULL_SUBTYPE,
+                                    role))
+                        .filter(PolarisMetaStoreManager.EntityResult::isSuccess)
+                        .map(PolarisMetaStoreManager.EntityResult::getEntity)
+                        .map(PrincipalRoleEntity::of)
+                        .collect(Collectors.toList()));
+    AuthenticatedPolarisPrincipal authenticatedPrincipal =
+        new AuthenticatedPolarisPrincipal(
+            PrincipalEntity.of(P1), Optional.ofNullable(principalRolesScope).orElse(Set.of()));
     return new Resolver(
         this.callCtx,
-        this.metaStoreManager,
-        this.P1.getId(),
-        null,
-        principalRolesScope,
+        metaStoreManager,
+        new SecurityContext() {
+          @Override
+          public Principal getUserPrincipal() {
+            return authenticatedPrincipal;
+          }
+
+          @Override
+          public boolean isUserInRole(String role) {
+            return roleEntities
+                .map(l -> l.stream().map(PrincipalRoleEntity::getName).anyMatch(role::equals))
+                .orElse(allRoles);
+          }
+
+          @Override
+          public boolean isSecure() {
+            return false;
+          }
+
+          @Override
+          public String getAuthenticationScheme() {
+            return "";
+          }
+        },
         this.cache,
         referenceCatalogName);
   }
@@ -724,9 +772,6 @@ public class ResolverTest {
               .isNull();
         }
       }
-
-      // validate that we were able to resolve the caller principal
-      this.ensureResolved(resolver.getResolvedCallerPrincipal(), PolarisEntityType.PRINCIPAL, "P1");
 
       // validate that the correct set if principal roles have been activated
       List<EntityCacheEntry> principalRolesResolved = resolver.getResolvedCallerPrincipalRoles();

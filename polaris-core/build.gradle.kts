@@ -67,6 +67,7 @@ dependencies {
   implementation(libs.swagger.jaxrs)
   implementation(libs.jakarta.inject.api)
   implementation(libs.jakarta.validation.api)
+  implementation(libs.jakarta.ws.rs.api)
   implementation(libs.smallrye.common.annotation)
 
   implementation("org.apache.iceberg:iceberg-aws")

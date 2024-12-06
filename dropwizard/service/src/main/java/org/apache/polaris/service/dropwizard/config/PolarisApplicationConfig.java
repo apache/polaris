@@ -71,7 +71,7 @@ public class PolarisApplicationConfig extends Configuration {
   /**
    * Override the default binding of registered services so that the configured instances are used.
    */
-  private static final int OVERRIDE_BINDING_RANK = 10;
+  private static final int OVERRIDE_BINDING_RANK = 20;
 
   private MetaStoreManagerFactory metaStoreManagerFactory;
   private String defaultRealm = "default-realm";
@@ -125,7 +125,7 @@ public class PolarisApplicationConfig extends Configuration {
             .to(FileIOFactory.class)
             .ranked(OVERRIDE_BINDING_RANK);
         bindFactory(SupplierFactory.create(serviceLocator, config::getPolarisAuthenticator))
-            .to(Authenticator.class)
+            .to(new TypeLiteral<Authenticator<String, AuthenticatedPolarisPrincipal>>() {})
             .ranked(OVERRIDE_BINDING_RANK);
         bindFactory(SupplierFactory.create(serviceLocator, () -> tokenBroker))
             .to(TokenBrokerFactoryConfig.class);

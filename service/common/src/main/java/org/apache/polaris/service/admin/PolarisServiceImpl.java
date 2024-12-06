@@ -111,7 +111,7 @@ public class PolarisServiceImpl
         CallContext.getCurrentContext(),
         entityManager,
         metaStoreManager,
-        authenticatedPrincipal,
+        securityContext,
         polarisAuthorizer);
   }
 

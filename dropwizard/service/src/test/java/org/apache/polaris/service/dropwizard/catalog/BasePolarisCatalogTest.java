@@ -26,6 +26,7 @@ import static org.mockito.Mockito.when;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterators;
 import jakarta.annotation.Nullable;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.time.Clock;
 import java.util.Arrays;
@@ -133,6 +134,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   private PolarisEntityManager entityManager;
   private AuthenticatedPolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
+  private SecurityContext securityContext;
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -179,13 +181,17 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     authenticatedRoot = new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
 
+    securityContext = Mockito.mock(SecurityContext.class);
+    when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
+    when(securityContext.isUserInRole(isA(String.class))).thenReturn(true);
     adminService =
         new PolarisAdminService(
             callContext,
             entityManager,
             metaStoreManager,
-            authenticatedRoot,
+            securityContext,
             new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
+
     String storageLocation = "s3://my-bucket/path/to/data";
     storageConfigModel =
         AwsStorageConfigInfo.builder()
@@ -210,7 +216,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, entityManager, authenticatedRoot, CATALOG_NAME);
+            callContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     this.catalog =
         new BasePolarisCatalog(
@@ -218,6 +224,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             metaStoreManager,
             callContext,
             passthroughView,
+            securityContext,
             authenticatedRoot,
             taskExecutor,
             new DefaultFileIOFactory());
@@ -786,7 +793,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     CallContext callContext = CallContext.getCurrentContext();
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, entityManager, authenticatedRoot, catalogWithoutStorage);
+            callContext, entityManager, securityContext, catalogWithoutStorage);
     TaskExecutor taskExecutor = Mockito.mock();
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
@@ -794,6 +801,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             metaStoreManager,
             callContext,
             passthroughView,
+            securityContext,
             authenticatedRoot,
             taskExecutor,
             new DefaultFileIOFactory());
@@ -851,7 +859,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     CallContext callContext = CallContext.getCurrentContext();
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, entityManager, authenticatedRoot, catalogName);
+            callContext, entityManager, securityContext, catalogName);
     TaskExecutor taskExecutor = Mockito.mock();
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
@@ -859,6 +867,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             metaStoreManager,
             callContext,
             passthroughView,
+            securityContext,
             authenticatedRoot,
             taskExecutor,
             new DefaultFileIOFactory());
@@ -1392,13 +1401,14 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     CallContext callContext = CallContext.of(realmContext, polarisContext);
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, entityManager, authenticatedRoot, noPurgeCatalogName);
+            callContext, entityManager, securityContext, noPurgeCatalogName);
     BasePolarisCatalog noPurgeCatalog =
         new BasePolarisCatalog(
             entityManager,
             metaStoreManager,
             callContext,
             passthroughView,
+            securityContext,
             authenticatedRoot,
             Mockito.mock(),
             new DefaultFileIOFactory());
@@ -1474,7 +1484,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     CallContext.setCurrentContext(callContext);
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, entityManager, authenticatedRoot, CATALOG_NAME);
+            callContext, entityManager, securityContext, CATALOG_NAME);
 
     TestFileIOFactory measured = new TestFileIOFactory();
     BasePolarisCatalog catalog =
@@ -1483,6 +1493,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             metaStoreManager,
             callContext,
             passthroughView,
+            securityContext,
             authenticatedRoot,
             Mockito.mock(),
             measured);

@@ -37,8 +37,6 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.module.SimpleValueInstantiators;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import io.dropwizard.auth.AuthDynamicFeature;
-import io.dropwizard.auth.AuthFilter;
-import io.dropwizard.auth.oauth.OAuthCredentialAuthFilter;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
@@ -59,6 +57,7 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.semconv.ServiceAttributes;
 import io.prometheus.metrics.exporter.servlet.jakarta.PrometheusMetricsServlet;
+import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
@@ -70,17 +69,24 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.ws.rs.Priorities;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.security.Principal;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.rest.RESTSerializers;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
@@ -116,6 +122,7 @@ import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.CallContextResolver;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.context.RealmContextResolver;
+import org.apache.polaris.service.dropwizard.auth.PolarisPrincipalRoleSecurityContextProvider;
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
 import org.apache.polaris.service.dropwizard.context.RealmScopeContext;
 import org.apache.polaris.service.dropwizard.exception.JerseyViolationExceptionMapper;
@@ -297,12 +304,9 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                     .in(RealmScoped.class)
                     .to(PolarisRemoteCache.class);
 
-                // factory to use a cache delegating grant cache
                 // currently depends explicitly on the metaStoreManager as the delegate grant
                 // manager
-                bindFactory(PolarisMetaStoreManagerFactory.class)
-                    .in(RealmScoped.class)
-                    .to(PolarisGrantManager.class);
+                bindFactory(PolarisMetaStoreManagerFactory.class).to(PolarisGrantManager.class);
                 polarisMetricRegistry.init(
                     IcebergRestCatalogApi.class,
                     IcebergRestConfigurationApi.class,
@@ -396,14 +400,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     if (configuration.hasRateLimiter()) {
       environment.jersey().register(RateLimiterFilter.class);
     }
-    Authenticator<String, AuthenticatedPolarisPrincipal> authenticator =
-        configuration.findService(new TypeLiteral<>() {});
-    AuthFilter<String, AuthenticatedPolarisPrincipal> oauthCredentialAuthFilter =
-        new OAuthCredentialAuthFilter.Builder<AuthenticatedPolarisPrincipal>()
-            .setAuthenticator(authenticator::authenticate)
-            .setPrefix("Bearer")
-            .buildAuthFilter();
-    environment.jersey().register(new AuthDynamicFeature(oauthCredentialAuthFilter));
+    environment.jersey().register(new AuthDynamicFeature(PolarisPrincipalAuthenticator.class));
+    environment.jersey().register(PolarisPrincipalRoleSecurityContextProvider.class);
     environment.healthChecks().register("polaris", new PolarisHealthCheck());
 
     environment.jersey().register(IcebergRestOAuth2Api.class);
@@ -476,6 +474,52 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                 TextMapPropagator.composite(
                     W3CTraceContextPropagator.getInstance(), W3CBaggagePropagator.getInstance())))
         .build();
+  }
+
+  @jakarta.ws.rs.ext.Provider
+  @Priority(Priorities.AUTHENTICATION)
+  private static class PolarisPrincipalAuthenticator implements ContainerRequestFilter {
+    @Inject private Authenticator<String, AuthenticatedPolarisPrincipal> authenticator;
+
+    @Override
+    public void filter(ContainerRequestContext requestContext) throws IOException {
+      String authHeader = requestContext.getHeaderString("Authorization");
+      if (authHeader == null) {
+        throw new IOException("Authorization header is missing");
+      }
+      int spaceIdx = authHeader.indexOf(' ');
+      if (spaceIdx <= 0 || !authHeader.substring(0, spaceIdx).equalsIgnoreCase("Bearer")) {
+        throw new IOException("Authorization header is not a Bearer token");
+      }
+      String credential = authHeader.substring(spaceIdx + 1);
+      Optional<AuthenticatedPolarisPrincipal> principal = authenticator.authenticate(credential);
+      if (principal.isEmpty()) {
+        throw new NotAuthorizedException("Unable to authenticate");
+      }
+      SecurityContext securityContext = requestContext.getSecurityContext();
+      requestContext.setSecurityContext(
+          new SecurityContext() {
+            @Override
+            public Principal getUserPrincipal() {
+              return principal.get();
+            }
+
+            @Override
+            public boolean isUserInRole(String role) {
+              return securityContext.isUserInRole(role);
+            }
+
+            @Override
+            public boolean isSecure() {
+              return securityContext.isSecure();
+            }
+
+            @Override
+            public String getAuthenticationScheme() {
+              return securityContext.getAuthenticationScheme();
+            }
+          });
+    }
   }
 
   /** Resolves and sets ThreadLocal CallContext/RealmContext based on the request contents. */

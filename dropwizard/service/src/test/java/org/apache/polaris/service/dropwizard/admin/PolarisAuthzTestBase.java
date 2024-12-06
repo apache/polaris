@@ -25,6 +25,7 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.time.Clock;
 import java.util.Date;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Catalog;
@@ -199,7 +201,11 @@ public abstract class PolarisAuthzTestBase {
 
     this.adminService =
         new PolarisAdminService(
-            callContext, entityManager, metaStoreManager, authenticatedRoot, polarisAuthorizer);
+            callContext,
+            entityManager,
+            metaStoreManager,
+            securityContext(authenticatedRoot, Set.of()),
+            polarisAuthorizer);
 
     String storageLocation = "file:///tmp/authz";
     FileStorageConfigInfo storageConfigModel =
@@ -305,6 +311,32 @@ public abstract class PolarisAuthzTestBase {
     }
   }
 
+  protected @Nonnull SecurityContext securityContext(
+      AuthenticatedPolarisPrincipal p, Set<String> roles) {
+    SecurityContext securityContext = Mockito.mock(SecurityContext.class);
+    Mockito.when(securityContext.getUserPrincipal()).thenReturn(p);
+    Set<String> principalRoleNames = loadPrincipalRolesNames(p);
+    Mockito.when(securityContext.isUserInRole(Mockito.anyString()))
+        .thenAnswer(invocation -> principalRoleNames.contains(invocation.getArgument(0)));
+    return securityContext;
+  }
+
+  protected @Nonnull Set<String> loadPrincipalRolesNames(AuthenticatedPolarisPrincipal p) {
+    return metaStoreManager
+        .loadGrantsToGrantee(
+            callContext.getPolarisCallContext(), 0L, p.getPrincipalEntity().getId())
+        .getGrantRecords()
+        .stream()
+        .filter(gr -> gr.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode())
+        .map(
+            gr ->
+                metaStoreManager.loadEntity(
+                    callContext.getPolarisCallContext(), 0L, gr.getSecurableId()))
+        .map(PolarisMetaStoreManager.EntityResult::getEntity)
+        .map(PolarisBaseEntity::getName)
+        .collect(Collectors.toSet());
+  }
+
   protected @Nonnull PrincipalEntity rotateAndRefreshPrincipal(
       PolarisMetaStoreManager metaStoreManager,
       String principalName,
@@ -350,15 +382,19 @@ public abstract class PolarisAuthzTestBase {
         throw new RuntimeException(e);
       }
     }
+    SecurityContext securityContext = Mockito.mock(SecurityContext.class);
+    Mockito.when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
+    Mockito.when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, entityManager, authenticatedRoot, CATALOG_NAME);
+            callContext, entityManager, securityContext, CATALOG_NAME);
     this.baseCatalog =
         new BasePolarisCatalog(
             entityManager,
             metaStoreManager,
             callContext,
             passthroughView,
+            securityContext,
             authenticatedRoot,
             Mockito.mock(),
             new DefaultFileIOFactory());
@@ -386,11 +422,13 @@ public abstract class PolarisAuthzTestBase {
     public Catalog createCallContextCatalog(
         CallContext context,
         AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+        SecurityContext securityContext,
         final PolarisResolutionManifest resolvedManifest) {
       // This depends on the BasePolarisCatalog allowing calling initialize multiple times
       // to override the previous config.
       Catalog catalog =
-          super.createCallContextCatalog(context, authenticatedPolarisPrincipal, resolvedManifest);
+          super.createCallContextCatalog(
+              context, authenticatedPolarisPrincipal, securityContext, resolvedManifest);
       catalog.initialize(
           CATALOG_NAME,
           ImmutableMap.of(
