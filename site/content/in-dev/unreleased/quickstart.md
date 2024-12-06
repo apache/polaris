@@ -57,7 +57,7 @@ Once installed, make sure Docker is running.
 
 If you plan to build Polaris from source yourself, you will need to satisfy a few prerequisites first.
 
-Polaris is built using [gradle](https://gradle.org/) and is compatible with Java 21. We recommend the use of [jenv](https://www.jenv.be/) to manage multiple Java versions. For example, to install Java 21 via [homebrew](https://brew.sh/) and configure it with jenv: 
+Polaris is built using [gradle](https://gradle.org/) and is compatible with Java 21. We recommend the use of [jenv](https://www.jenv.be/) to manage multiple Java versions. For example, to install Java 21 via [homebrew](https://brew.sh/) and configure it with jenv:
 
 ```shell
 cd ~/polaris
@@ -135,7 +135,7 @@ realm: default-realm root principal credentials: <client-id>:<client-secret>
 Be sure to note of these credentials as we'll be using them below. You can also set these credentials as environment variables for use with the Polaris CLI:
 
 ```shell
-export CLIENT_ID=<client-id> 
+export CLIENT_ID=<client-id>
 export CLIENT_SECRET=<client-secret>
 ```
 
@@ -262,7 +262,7 @@ _Note: the credentials provided here are those for our principal, not the root c
 
 ```shell
 bin/spark-shell \
---packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.7.0,org.apache.hadoop:hadoop-aws:3.4.0 \
+--packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.7.1,org.apache.hadoop:hadoop-aws:3.4.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
 --conf spark.sql.catalog.quickstart_catalog.warehouse=quickstart_catalog \
 --conf spark.sql.catalog.quickstart_catalog.header.X-Iceberg-Access-Delegation=vended-credentials \
@@ -291,7 +291,7 @@ spark.sql("USE NAMESPACE quickstart_namespace.schema")
 spark.sql("""
 	CREATE TABLE IF NOT EXISTS quickstart_table (
 		id BIGINT, data STRING
-	) 
+	)
 USING ICEBERG
 """)
 ```
