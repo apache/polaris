@@ -69,7 +69,6 @@ dependencyResolutionManagement {
   repositories {
     mavenCentral()
     gradlePluginPortal()
-    maven(url = "https://repository.apache.org/content/repositories/snapshots")
   }
 }
 
