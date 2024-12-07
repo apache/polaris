@@ -19,26 +19,28 @@
 package org.apache.polaris.core.auth;
 
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
-import java.util.List;
-import java.util.Set;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
 /** Interface for invoking authorization checks. */
 public interface PolarisAuthorizer {
 
+  /**
+   * Validates whether the requested operation is permitted based on the collection of entities
+   * (including principals, roles, and catalog objects) that are affected by the operation.
+   *
+   * <p>"activated" entities, "targets" and "secondaries" are contained within the provided
+   * manifest. The extra selector parameters merely define what sub-set of objects from the manifest
+   * should be considered as "targets", etc.
+   *
+   * <p>The effective principal information is also provided in the manifest.
+   *
+   * @param manifest defines the input for authorization checks.
+   * @param operation the operation being authorized.
+   * @param considerCatalogRoles whether catalog roles should be considered ({@code true}) or only
+   *     principal roles ({@code false}).
+   */
   void authorizeOrThrow(
-      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
-      @Nullable PolarisResolvedPathWrapper target,
-      @Nullable PolarisResolvedPathWrapper secondary);
-
-  void authorizeOrThrow(
-      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      @Nonnull Set<PolarisBaseEntity> activatedEntities,
-      @Nonnull PolarisAuthorizableOperation authzOp,
-      @Nullable List<PolarisResolvedPathWrapper> targets,
-      @Nullable List<PolarisResolvedPathWrapper> secondaries);
+      @Nonnull PolarisResolutionManifest manifest,
+      @Nonnull PolarisAuthorizableOperation operation,
+      boolean considerCatalogRoles);
 }

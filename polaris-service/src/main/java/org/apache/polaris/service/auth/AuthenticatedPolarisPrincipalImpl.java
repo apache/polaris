@@ -16,22 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.auth;
+package org.apache.polaris.service.auth;
 
 import java.util.Set;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 
-/** Holds the results of request authentication. */
-public interface AuthenticatedPolarisPrincipal extends java.security.Principal {
+public final class AuthenticatedPolarisPrincipalImpl implements AuthenticatedPolarisPrincipal {
+  private final long id;
+  private final String name;
+  private final Set<String> roles;
 
-  /**
-   * Principal entity ID obtained during request authentication (e.g. from the authorization token).
-   *
-   * <p>Negative values indicate that a principal ID was not provided in authenticated data,
-   * however, other authentic information about the principal (e.g. name, roles) may still be
-   * available.
-   */
-  long getPrincipalEntityId();
+  public AuthenticatedPolarisPrincipalImpl(long id, String name, Set<String> roles) {
+    this.id = id;
+    this.name = name;
+    this.roles = roles;
+  }
 
-  /** A sub-set of the assigned roles that are deemed effective in requests using this principal. */
-  Set<String> getActivatedPrincipalRoleNames();
+  @Override
+  public String getName() {
+    return name;
+  }
+
+  @Override
+  public long getPrincipalEntityId() {
+    return id;
+  }
+
+  @Override
+  public Set<String> getActivatedPrincipalRoleNames() {
+    return roles;
+  }
 }

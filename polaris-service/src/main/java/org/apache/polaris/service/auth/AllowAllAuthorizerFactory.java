@@ -16,22 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.auth;
+package org.apache.polaris.service.auth;
 
-import java.util.Set;
+import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.auth.PolarisAuthorizerFactory;
 
-/** Holds the results of request authentication. */
-public interface AuthenticatedPolarisPrincipal extends java.security.Principal {
-
-  /**
-   * Principal entity ID obtained during request authentication (e.g. from the authorization token).
-   *
-   * <p>Negative values indicate that a principal ID was not provided in authenticated data,
-   * however, other authentic information about the principal (e.g. name, roles) may still be
-   * available.
-   */
-  long getPrincipalEntityId();
-
-  /** A sub-set of the assigned roles that are deemed effective in requests using this principal. */
-  Set<String> getActivatedPrincipalRoleNames();
+/**
+ * Makes a {@link PolarisAuthorizer} that allows all operations regardless of the principal and role
+ * assignments.
+ */
+public class AllowAllAuthorizerFactory implements PolarisAuthorizerFactory {
+  @Override
+  public PolarisAuthorizer createAuthorizer(PolarisConfigurationStore config) {
+    return (manifest, operation, considerCatalogRoles) -> {
+      // all operations are permitted
+    };
+  }
 }

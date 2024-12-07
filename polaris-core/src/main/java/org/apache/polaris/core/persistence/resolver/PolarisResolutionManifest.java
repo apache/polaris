@@ -26,15 +26,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
@@ -65,6 +68,8 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   private final Multimap<String, PolarisEntityType> addedTopLevelNames = HashMultimap.create();
 
   private final Map<Object, ResolverPath> passthroughPaths = new HashMap<>();
+  private final List<Getter> primaryTargets = new ArrayList<>();
+  private final List<Getter> secondaryTargets = new ArrayList<>();
 
   // For applicable operations, this represents the topmost root entity which services as an
   // authorization parent for all other entities that reside at the root level, such as
@@ -97,6 +102,18 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     addTopLevelName(PolarisEntityConstants.getRootContainerName(), PolarisEntityType.ROOT, true);
   }
 
+  public List<PolarisResolvedPathWrapper> authorizationTargets() {
+    return primaryTargets.stream().map(g -> g.get(this)).collect(Collectors.toList());
+  }
+
+  public List<PolarisResolvedPathWrapper> authorizationSecondaries() {
+    return secondaryTargets.stream().map(g -> g.get(this)).collect(Collectors.toList());
+  }
+
+  public void addRootContainer(AuthorizationTargetType targetType) {
+    targetType.addTo(this, Getter.rootContainer());
+  }
+
   /** Adds a name of a top-level entity (Catalog, Principal, PrincipalRole) to be resolved. */
   public void addTopLevelName(String entityName, PolarisEntityType entityType, boolean isOptional) {
     addedTopLevelNames.put(entityName, entityType);
@@ -105,6 +122,15 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     } else {
       primaryResolver.addEntityByName(entityType, entityName);
     }
+  }
+
+  public void addTopLevelName(
+      AuthorizationTargetType targetType,
+      String entityName,
+      PolarisEntityType entityType,
+      boolean isOptional) {
+    addTopLevelName(entityName, entityType, isOptional);
+    targetType.addTo(this, Getter.topLevelEntity(entityName, entityType));
   }
 
   /**
@@ -122,6 +148,26 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
     ++currentPathIndex;
   }
 
+  public void addPath(AuthorizationTargetType targetType, ResolverPath path, Object key) {
+    addPath(path, key);
+    targetType.addTo(this, Getter.path(key));
+  }
+
+  public void addPath(
+      AuthorizationTargetType targetType, ResolverPath path, Object key, Runnable notFoundHandler) {
+    addPath(path, key);
+    targetType.addTo(this, Getter.path(key, notFoundHandler));
+  }
+
+  public void addPath(
+      AuthorizationTargetType targetType,
+      ResolverPath path,
+      Object key,
+      PolarisEntitySubType subType) {
+    addPath(path, key);
+    targetType.addTo(this, Getter.path(key, subType));
+  }
+
   /**
    * Adds a path that is allowed to be dynamically resolved with a new Resolver when
    * getPassthroughResolvedPath is called. These paths are also included in the primary static
@@ -130,6 +176,16 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   public void addPassthroughPath(ResolverPath path, Object key) {
     addPath(path, key);
     passthroughPaths.put(key, path);
+  }
+
+  public void addPassthroughPath(
+      AuthorizationTargetType targetType,
+      ResolverPath path,
+      Object key,
+      PolarisEntitySubType subType,
+      Runnable notFoundHandler) {
+    addPassthroughPath(path, key);
+    targetType.addTo(this, Getter.path(key, subType, notFoundHandler));
   }
 
   public ResolverStatus resolveAll() {
@@ -141,14 +197,6 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
             != ResolverStatus.StatusEnum.CALLER_PRINCIPAL_DOES_NOT_EXIST,
         "caller_principal_does_not_exist_at_resolution_time");
 
-    // activated principal roles are known, add them to the call context
-    if (primaryResolverStatus.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
-      List<PrincipalRoleEntity> activatedPrincipalRoles =
-          primaryResolver.getResolvedCallerPrincipalRoles().stream()
-              .map(ce -> PrincipalRoleEntity.of(ce.getEntity()))
-              .collect(Collectors.toList());
-      this.authenticatedPrincipal.setActivatedPrincipalRoles(activatedPrincipalRoles);
-    }
     return primaryResolverStatus;
   }
 
@@ -254,6 +302,23 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
           .forEach(activatedRoles::add);
     }
     return activatedRoles;
+  }
+
+  public AuthenticatedPolarisPrincipal getAuthenticatedPrincipal() {
+    return authenticatedPrincipal;
+  }
+
+  @Nullable
+  public PolarisEntity getResolvedPolarisPrincipal() {
+    EntityCacheEntry entry = primaryResolver.getResolvedCallerPrincipal();
+    return entry == null ? null : PolarisEntity.of(entry.getEntity());
+  }
+
+  @Nonnull
+  public List<String> getResolvedPolarisPrincipalRoleNames() {
+    return primaryResolver.getResolvedCallerPrincipalRoles().stream()
+        .map(ce -> ce.getEntity().getName())
+        .collect(Collectors.toList());
   }
 
   public Set<PolarisBaseEntity> getAllActivatedPrincipalRoleEntities() {
@@ -408,5 +473,61 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
         ? new PolarisResolvedPathWrapper(List.of(new ResolvedPolarisEntity(resolvedCacheEntry)))
         : new PolarisResolvedPathWrapper(
             List.of(resolvedRootContainerEntity, new ResolvedPolarisEntity(resolvedCacheEntry)));
+  }
+
+  public enum AuthorizationTargetType {
+    PRIMARY(m -> m.primaryTargets),
+    SECONDARY(m -> m.secondaryTargets),
+    ;
+
+    private final Function<PolarisResolutionManifest, List<Getter>> list;
+
+    AuthorizationTargetType(Function<PolarisResolutionManifest, List<Getter>> list) {
+      this.list = list;
+    }
+
+    private void addTo(PolarisResolutionManifest manifest, Getter getter) {
+      list.apply(manifest).add(getter);
+    }
+  }
+
+  private interface Getter {
+    PolarisResolvedPathWrapper get(PolarisResolutionManifest manifest);
+
+    static Getter rootContainer() {
+      return PolarisResolutionManifest::getResolvedRootContainerEntityAsPath;
+    }
+
+    static Getter topLevelEntity(String entityName, PolarisEntityType type) {
+      return m -> m.getResolvedTopLevelEntity(entityName, type);
+    }
+
+    static Getter path(Object key, PolarisEntitySubType subType) {
+      return path(key, subType, () -> {});
+    }
+
+    static Getter path(Object key, PolarisEntitySubType subType, Runnable notFoundHandler) {
+      return manifest -> {
+        PolarisResolvedPathWrapper resolved = manifest.getResolvedPath(key, subType, true);
+        if (resolved == null) {
+          notFoundHandler.run();
+        }
+        return resolved;
+      };
+    }
+
+    static Getter path(Object key) {
+      return path(key, () -> {});
+    }
+
+    static Getter path(Object key, Runnable notFoundHandler) {
+      return manifest -> {
+        PolarisResolvedPathWrapper resolved = manifest.getResolvedPath(key, true);
+        if (resolved == null) {
+          notFoundHandler.run();
+        }
+        return resolved;
+      };
+    }
   }
 }

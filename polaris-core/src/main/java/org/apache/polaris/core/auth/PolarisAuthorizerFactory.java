@@ -18,20 +18,14 @@
  */
 package org.apache.polaris.core.auth;
 
-import java.util.Set;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import org.apache.polaris.core.PolarisConfigurationStore;
 
-/** Holds the results of request authentication. */
-public interface AuthenticatedPolarisPrincipal extends java.security.Principal {
-
-  /**
-   * Principal entity ID obtained during request authentication (e.g. from the authorization token).
-   *
-   * <p>Negative values indicate that a principal ID was not provided in authenticated data,
-   * however, other authentic information about the principal (e.g. name, roles) may still be
-   * available.
-   */
-  long getPrincipalEntityId();
-
-  /** A sub-set of the assigned roles that are deemed effective in requests using this principal. */
-  Set<String> getActivatedPrincipalRoleNames();
+/**
+ * A factory for creating {@link PolarisAuthorizer} instances configured via a {@link
+ * PolarisConfigurationStore}
+ */
+@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "factory")
+public interface PolarisAuthorizerFactory {
+  PolarisAuthorizer createAuthorizer(PolarisConfigurationStore config);
 }

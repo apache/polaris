@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+
 server:
   # Maximum number of threads.
   maxThreads: 200
@@ -66,12 +67,33 @@ server:
         archive: true
 
 featureConfiguration:
-  ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: false
+  ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: true
+  ALLOW_WILDCARD_LOCATION: true
+  ALLOW_SPECIFYING_FILE_IO_IMPL: true
+  SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION: true
+  ALLOW_OVERLAPPING_CATALOG_URLS: true
+  ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING: false
   SUPPORTED_CATALOG_STORAGE_TYPES:
+    - FILE
     - S3
     - GCS
     - AZURE
-    - FILE
+
+metaStoreManager:
+  type: in-memory
+
+io:
+  factoryType: default
+
+oauth2:
+  type: default
+  tokenBroker:
+    type: symmetric-key
+    secret: polaris
+
+authenticator:
+  class: org.apache.polaris.service.auth.AnonymousPolarisAuthenticator
+
 
 callContextResolver:
   type: default
@@ -79,55 +101,13 @@ callContextResolver:
 realmContextResolver:
   type: default
 
-defaultRealms:
-  - default-realm
-
-metaStoreManager:
-  type: in-memory
-  # type: eclipse-link # uncomment to use eclipse-link as metastore
-  # persistence-unit: polaris
-
-io:
-  factoryType: wasb
-
-# TODO - avoid duplicating token broker config
-oauth2:
-  type: test
-#  type: default # - uncomment to support Auth0 JWT tokens
-#  tokenBroker:
-#    type: symmetric-key
-#    secret: polaris
-
-authenticator:
-  class: org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator
-#  class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator # - uncomment to support Auth0 JWT tokens
-#  tokenBroker:
-#    type: symmetric-key
-#    secret: polaris
-
-authorizer:
-  factory: org.apache.polaris.core.auth.DefaultPolarisAuthorizerFactory
+defaultRealm: POLARIS
 
 cors:
   allowed-origins:
-    - http://localhost:8080
-  allowed-timing-origins:
-    - http://localhost:8080
-  allowed-methods:
-    - PATCH
-    - POST
-    - DELETE
-    - GET
-    - PUT
-  allowed-headers:
-    - "*"
-  exposed-headers:
-    - "*"
-  preflight-max-age: 600
-  allowed-credentials: true
+    - localhost
 
-# Logging settings.
-
+  # Logging settings.
 logging:
 
   # The default level of all loggers. Can be OFF, ERROR, WARN, INFO, DEBUG, TRACE, or ALL.
@@ -135,7 +115,6 @@ logging:
 
   # Logger-specific levels.
   loggers:
-    org.apache.iceberg.rest: DEBUG
     org.apache.polaris: DEBUG
 
   appenders:
@@ -154,22 +133,26 @@ logging:
       #      enabled: true
       # Do not write log statements below this threshold to the file.
       threshold: ALL
-      layout:
-        type: polaris
-        flattenKeyValues: false
-        includeKeyValues: true
+      # Custom Logback PatternLayout with threadname.
+      logFormat: "%-5p [%d{ISO8601} - %-6r] [%t] [%X{aid}%X{sid}%X{tid}%X{wid}%X{oid}%X{srv}%X{job}%X{rid}] %c: %m %kvp%n%ex"
+
+      # when using json logging, you must use a format like this, else the
+      # mdc section of the json log will be incorrect
+      #    logFormat: "%-5p [%d{ISO8601} - %-6r] [%t] [%X] %c: %m%n%ex"
 
       # The file to which statements will be logged.
-      currentLogFilename: ./logs/polaris.log
-      #  When the log file rolls over, the file will be archived to polaris-2012-03-15.log.gz,
+      currentLogFilename: ./logs/iceberg-rest.log
+      # When the log file rolls over, the file will be archived to polaris-2012-03-15.log.gz,
       # polaris.log will be truncated, and new statements written to it.
-      archivedLogFilenamePattern: ./logs/polaris-%d.log.gz
+      archivedLogFilenamePattern: ./logs/iceberg-rest-%d.log.gz
       # The maximum number of log files to archive.
       archivedFileCount: 14
 
 # Limits the size of request bodies sent to Polaris. -1 means no limit.
-maxRequestBodyBytes: -1
+maxRequestBodyBytes: 1000000
 
-# Optional, not specifying a "rateLimiter" section also means no rate limiter
+# Limits the request rate per realm
 rateLimiter:
-  type: no-op
+  type: realm-token-bucket
+  requestsPerSecond: 9999
+  windowSeconds: 10

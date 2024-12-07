@@ -65,7 +65,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.DefaultPolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -88,6 +88,7 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
+import org.apache.polaris.service.auth.AuthenticatedPolarisPrincipalImpl;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.TestFileIOFactory;
@@ -174,7 +175,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                         "root")
                     .getEntity()));
 
-    authenticatedRoot = new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
+    authenticatedRoot =
+        new AuthenticatedPolarisPrincipalImpl(rootEntity.getId(), rootEntity.getName(), Set.of());
 
     adminService =
         new PolarisAdminService(
@@ -182,7 +184,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             entityManager,
             metaStoreManager,
             authenticatedRoot,
-            new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
+            new DefaultPolarisAuthorizer(new PolarisConfigurationStore() {}));
     String storageLocation = "s3://my-bucket/path/to/data";
     storageConfigModel =
         AwsStorageConfigInfo.builder()

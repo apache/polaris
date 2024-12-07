@@ -32,6 +32,7 @@ import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.service.auth.AuthenticatedPolarisPrincipalImpl;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -42,7 +43,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
 
   private PolarisAdminService newTestAdminService(Set<String> activatedPrincipalRoles) {
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
+        new AuthenticatedPolarisPrincipalImpl(
+            principalEntity.getId(), principalEntity.getName(), activatedPrincipalRoles);
     return new PolarisAdminService(
         callContext, entityManager, metaStoreManager, authenticatedPrincipal, polarisAuthorizer);
   }
