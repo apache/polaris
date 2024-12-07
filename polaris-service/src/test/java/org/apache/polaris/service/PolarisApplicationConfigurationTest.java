@@ -24,6 +24,7 @@ import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.extension.persistence.impl.eclipselink.EclipseLinkPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
@@ -50,7 +51,7 @@ public class PolarisApplicationConfigurationTest {
 
     @Test
     void testMetastoreType() {
-      assertThat(app.getConfiguration().getMetaStoreManagerFactory())
+      assertThat(app.getConfiguration().findService(MetaStoreManagerFactory.class))
           .isInstanceOf(InMemoryPolarisMetaStoreManagerFactory.class);
     }
   }
@@ -69,7 +70,7 @@ public class PolarisApplicationConfigurationTest {
 
     @Test
     void testMetastoreType() {
-      assertThat(app.getConfiguration().getMetaStoreManagerFactory())
+      assertThat(app.getConfiguration().findService(MetaStoreManagerFactory.class))
           .isInstanceOf(EclipseLinkPolarisMetaStoreManagerFactory.class)
           .extracting("persistenceUnitName", "confFile")
           .containsExactly("test-unit", "/test-conf-file");

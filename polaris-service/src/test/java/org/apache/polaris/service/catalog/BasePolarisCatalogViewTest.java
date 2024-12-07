@@ -49,6 +49,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
@@ -89,7 +90,8 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             Clock.systemDefaultZone());
 
     PolarisEntityManager entityManager =
-        new PolarisEntityManager(metaStoreManager, new StorageCredentialCache());
+        new PolarisEntityManager(
+            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
 
     CallContext callContext = CallContext.of(null, polarisContext);
     CallContext.setCurrentContext(callContext);

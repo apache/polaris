@@ -374,6 +374,14 @@ io.prometheus:prometheus-metrics-exposition-formats
 io.prometheus:prometheus-metrics-model
 io.prometheus:prometheus-metrics-shaded-protobuf
 io.prometheus:prometheus-metrics-tracer-common
+io.smallrye.common:smallrye-common-annotation
+io.smallrye.common:smallrye-common-classloader
+io.smallrye.common:smallrye-common-constraint
+io.smallrye.common:smallrye-common-expression
+io.smallrye.common:smallrye-common-function
+io.smallrye.config:smallrye-config
+io.smallrye.config:smallrye-config-common
+io.smallrye.config:smallrye-config-core
 io.swagger:swagger-annotations
 io.swagger:swagger-core
 io.swagger:swagger-jaxrs
@@ -445,6 +453,7 @@ org.eclipse.jetty:jetty-servlets
 org.eclipse.jetty:jetty-util
 org.eclipse.jetty:jetty-webapp
 org.eclipse.jetty:jetty-xml
+org.eclipse.microprofile.config:microprofile-config-api
 org.glassfish.jersey.containers:jersey-container-servlet
 org.glassfish.jersey.containers:jersey-container-servlet-core
 org.glassfish.jersey.core:jersey-client

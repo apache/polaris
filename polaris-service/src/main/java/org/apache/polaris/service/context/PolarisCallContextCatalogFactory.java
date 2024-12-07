@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.context;
 
+import jakarta.inject.Inject;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
@@ -50,6 +51,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final FileIOFactory fileIOFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
 
+  @Inject
   public PolarisCallContextCatalogFactory(
       RealmEntityManagerFactory entityManagerFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,

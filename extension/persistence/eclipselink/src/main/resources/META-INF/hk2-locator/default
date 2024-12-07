@@ -16,12 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.config;
+[org.apache.polaris.extension.persistence.impl.eclipselink.EclipseLinkPolarisMetaStoreManagerFactory]S
+contract={org.apache.polaris.core.persistence.MetaStoreManagerFactory}
+name=eclipse-link
+qualifier={io.smallrye.common.annotation.Identifier}
 
-import org.apache.polaris.core.PolarisConfigurationStore;
-
-/** Interface allows injection of a {@link PolarisConfigurationStore} */
-public interface ConfigurationStoreAware {
-
-  void setConfigurationStore(PolarisConfigurationStore configurationStore);
-}

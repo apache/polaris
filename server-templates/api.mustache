@@ -52,6 +52,8 @@ import {{javaxPackage}}.servlet.http.HttpServletResponse;
 import {{javaxPackage}}.ws.rs.core.Context;
 import {{javaxPackage}}.ws.rs.core.SecurityContext;
 
+import {{javaxPackage}}.inject.Inject;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -83,6 +85,7 @@ public class {{classname}}  {
 
   private final {{classname}}Service service;
 
+  @Inject
   public {{classname}}({{classname}}Service service) {
     this.service = service;
   }

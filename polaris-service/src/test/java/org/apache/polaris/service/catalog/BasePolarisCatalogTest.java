@@ -76,11 +76,11 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
-import org.apache.polaris.core.monitor.PolarisMetricRegistry;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -157,7 +157,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
               }
             },
             Clock.systemDefaultZone());
-    entityManager = new PolarisEntityManager(metaStoreManager, new StorageCredentialCache());
+    entityManager =
+        new PolarisEntityManager(
+            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
 
     CallContext callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
@@ -288,9 +290,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
       }
 
       @Override
-      public void setMetricRegistry(PolarisMetricRegistry metricRegistry) {}
-
-      @Override
       public Map<String, PrincipalSecretsResult> bootstrapRealms(List<String> realms) {
         throw new NotImplementedException("Bootstrapping realms is not supported");
       }
@@ -299,10 +298,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
       public void purgeRealms(List<String> realms) {
         throw new NotImplementedException("Purging realms is not supported");
       }
-
-      @Override
-      public void setStorageIntegrationProvider(
-          PolarisStorageIntegrationProvider storageIntegrationProvider) {}
     };
   }
 

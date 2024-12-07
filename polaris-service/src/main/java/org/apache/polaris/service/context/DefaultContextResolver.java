@@ -18,8 +18,9 @@
  */
 package org.apache.polaris.service.context;
 
-import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Splitter;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.inject.Inject;
 import java.time.Clock;
 import java.time.ZoneId;
 import java.util.HashMap;
@@ -32,7 +33,6 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
-import org.apache.polaris.service.config.ConfigurationStoreAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,9 +42,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Example: principal:data-engineer;password:test;realm:acct123
  */
-@JsonTypeName("default")
-public class DefaultContextResolver
-    implements RealmContextResolver, CallContextResolver, ConfigurationStoreAware {
+@Identifier("default")
+public class DefaultContextResolver implements RealmContextResolver, CallContextResolver {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultContextResolver.class);
 
   public static final String REALM_PROPERTY_KEY = "realm";
@@ -52,19 +51,9 @@ public class DefaultContextResolver
   public static final String PRINCIPAL_PROPERTY_KEY = "principal";
   public static final String PRINCIPAL_PROPERTY_DEFAULT_VALUE = "default-principal";
 
-  private MetaStoreManagerFactory metaStoreManagerFactory;
-  private PolarisConfigurationStore configurationStore;
+  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject private PolarisConfigurationStore configurationStore;
   private String defaultRealm = "default-realm";
-
-  /**
-   * During CallContext resolution that might depend on RealmContext, the {@code
-   * entityManagerFactory} will be used to resolve elements of the CallContext which require
-   * additional information from an underlying entity store.
-   */
-  @Override
-  public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
-  }
 
   @Override
   public RealmContext resolveRealmContext(
@@ -164,10 +153,5 @@ public class DefaultContextResolver
       }
     }
     return parsedProperties;
-  }
-
-  @Override
-  public void setConfigurationStore(PolarisConfigurationStore configurationStore) {
-    this.configurationStore = configurationStore;
   }
 }
