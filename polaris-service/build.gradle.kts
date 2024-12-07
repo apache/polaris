@@ -41,6 +41,11 @@ dependencies {
     exclude("ch.qos.reload4j", "reload4j")
     exclude("log4j", "log4j")
     exclude("org.apache.zookeeper", "zookeeper")
+    exclude("org.apache.hadoop.thirdparty", "hadoop-shaded-protobuf_3_25")
+    exclude("com.github.pjfanning", "jersey-json")
+    exclude("com.sun.jersey", "jersey-core")
+    exclude("com.sun.jersey", "jersey-server")
+    exclude("com.sun.jersey", "jersey-servlet")
   }
   implementation(libs.hadoop.hdfs.client)
 
