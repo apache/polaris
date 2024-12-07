@@ -828,7 +828,7 @@ public class PolarisTestMetaStoreManager {
   }
 
   /** Grant a privilege to a catalog role */
-  void grantPrivilege(
+  public void grantPrivilege(
       PolarisBaseEntity role,
       List<PolarisEntityCore> catalogPath,
       PolarisBaseEntity securable,
@@ -1006,7 +1006,7 @@ public class PolarisTestMetaStoreManager {
    *
    * @return the identity we found
    */
-  PolarisBaseEntity ensureExistsByName(
+  public PolarisBaseEntity ensureExistsByName(
       List<PolarisEntityCore> catalogPath,
       PolarisEntityType entityType,
       PolarisEntitySubType entitySubType,
@@ -1052,7 +1052,7 @@ public class PolarisTestMetaStoreManager {
    *
    * @return the identity we found
    */
-  PolarisBaseEntity ensureExistsByName(
+  public PolarisBaseEntity ensureExistsByName(
       List<PolarisEntityCore> catalogPath, PolarisEntityType entityType, String name) {
     return this.ensureExistsByName(
         catalogPath, entityType, PolarisEntitySubType.NULL_SUBTYPE, name);
@@ -1067,7 +1067,7 @@ public class PolarisTestMetaStoreManager {
    * @param internalProps updated internal properties
    * @return updated entity
    */
-  PolarisBaseEntity updateEntity(
+  public PolarisBaseEntity updateEntity(
       List<PolarisEntityCore> catalogPath,
       PolarisBaseEntity entity,
       String props,
@@ -1553,7 +1553,7 @@ public class PolarisTestMetaStoreManager {
     this.ensureGrantRecordExists(principalRole, principal, PolarisPrivilege.PRINCIPAL_ROLE_USAGE);
   }
 
-  void testCreateTestCatalog() {
+  public void testCreateTestCatalog() {
     // create test catalog
     this.createTestCatalog("test");
 
@@ -2075,7 +2075,7 @@ public class PolarisTestMetaStoreManager {
    * @param newCatPath new catalog path
    * @param newName new name
    */
-  void renameEntity(
+  public void renameEntity(
       List<PolarisEntityCore> catPath,
       PolarisBaseEntity entity,
       List<PolarisEntityCore> newCatPath,
