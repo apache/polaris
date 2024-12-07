@@ -19,7 +19,6 @@
 package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import static jakarta.persistence.Persistence.createEntityManagerFactory;
-import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -35,6 +34,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
+import org.apache.polaris.core.persistence.secrets.RandomPrincipalSecretsGenerator;
 import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -58,7 +58,12 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
     PolarisEclipseLinkMetaStoreSessionImpl session =
         new PolarisEclipseLinkMetaStoreSessionImpl(
-            store, Mockito.mock(), () -> "realm", null, "polaris", RANDOM_SECRETS);
+            store,
+            Mockito.mock(),
+            () -> "realm",
+            null,
+            "polaris",
+            new RandomPrincipalSecretsGenerator());
     return new PolarisTestMetaStoreManager(
         new PolarisMetaStoreManagerImpl(),
         new PolarisCallContext(
@@ -79,7 +84,12 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     try {
       var session =
           new PolarisEclipseLinkMetaStoreSessionImpl(
-              store, Mockito.mock(), () -> "realm", confFile, "polaris", RANDOM_SECRETS);
+              store,
+              Mockito.mock(),
+              () -> "realm",
+              confFile,
+              "polaris",
+              new RandomPrincipalSecretsGenerator());
       assertNotNull(session);
       assertTrue(success);
     } catch (Exception e) {

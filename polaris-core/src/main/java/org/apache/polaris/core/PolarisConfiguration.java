@@ -206,4 +206,11 @@ public class PolarisConfiguration<T> {
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
           .defaultValue(true)
           .build();
+
+  public static final PolarisConfiguration<Boolean> BOOTSTRAP_PRINT_CREDENTIALS =
+      PolarisConfiguration.<Boolean>builder()
+          .key("BOOTSTRAP_PRINT_CREDENTIALS")
+          .description("If set to true, credentials are printed to stdout by the bootstrap command")
+          .defaultValue(true)
+          .build();
 }

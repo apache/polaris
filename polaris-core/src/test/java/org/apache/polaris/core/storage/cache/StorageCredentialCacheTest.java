@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.storage.cache;
 
-import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
-
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
@@ -44,6 +42,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
 import org.apache.polaris.core.persistence.PolarisTreeMapStore;
+import org.apache.polaris.core.persistence.secrets.RandomPrincipalSecretsGenerator;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisCredentialVendor.ScopedCredentialsResult;
 import org.assertj.core.api.Assertions;
@@ -68,7 +67,8 @@ public class StorageCredentialCacheTest {
     PolarisTreeMapStore store = new PolarisTreeMapStore(diagServices);
     // to interact with the metastore
     PolarisMetaStoreSession metaStore =
-        new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
+        new PolarisTreeMapMetaStoreSessionImpl(
+            store, Mockito.mock(), new RandomPrincipalSecretsGenerator());
     callCtx = new PolarisCallContext(metaStore, diagServices);
     metaStoreManager = Mockito.mock(PolarisMetaStoreManagerImpl.class);
     storageCredentialCache = new StorageCredentialCache();
