@@ -24,6 +24,7 @@ import io.github.gradlenexus.publishplugin.NexusPublishPlugin
 import io.github.gradlenexus.publishplugin.internal.StagingRepositoryDescriptorRegistryBuildService
 import org.gradle.api.Project
 import org.gradle.api.services.BuildServiceRegistration
+import org.gradle.api.tasks.Exec
 import org.gradle.kotlin.dsl.apply
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
@@ -40,27 +41,24 @@ internal fun configureOnRootProject(project: Project) =
     val isRelease = project.hasProperty("release")
     val isSigning = isRelease || project.hasProperty("signArtifacts")
 
-    val sourceTarball = tasks.register("sourceTarball")
-    sourceTarball.configure() {
+    val sourceTarball = tasks.register<Exec>("sourceTarball")
+    sourceTarball.configure {
       group = "build"
       description =
         "Generate a source tarball for a release to be uploaded to dist.apache.org/repos/dist"
 
-      doFirst {
-        val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-        mkdir(e.distributionDir)
-        exec {
-          executable = "git"
-          args(
-            "archive",
-            "--prefix=${e.baseName.get()}/",
-            "--format=tar.gz",
-            "--output=${e.sourceTarball.get().asFile.relativeTo(projectDir)}",
-            "HEAD"
-          )
-          workingDir(project.projectDir)
-        }
-      }
+      val e = project.extensions.getByType(PublishingHelperExtension::class.java)
+      doFirst { mkdir(e.distributionDir) }
+
+      executable = "git"
+      args(
+        "archive",
+        "--prefix=${e.baseName.get()}/",
+        "--format=tar.gz",
+        "--output=${e.sourceTarball.get().asFile.relativeTo(projectDir)}",
+        "HEAD"
+      )
+      workingDir(project.projectDir)
     }
 
     val digestSourceTarball = tasks.register("digestSourceTarball")
@@ -133,8 +131,7 @@ internal fun configureOnRootProject(project: Project) =
             "NO STAGING REPOSITORY (no build service) !!"
           }
 
-        val (asfPrj, _) = fetchAsfProject(asfName)
-        val asfProjectName = asfPrj["name"] as String
+        val asfProjectName = fetchAsfProjectName(asfName)
 
         val versionNoRc = version.toString().replace("-rc-?[0-9]+".toRegex(), "")
 
@@ -151,16 +148,15 @@ internal fun configureOnRootProject(project: Project) =
               I propose that we release the following RC as the official
               $asfProjectName $versionNoRc release.
 
-              The commit ID is 229d8f6fcd109e6c8943ea7cbb41dab746c6d0ed
               * This corresponds to the tag: apache-$asfName-$version
               * https://github.com/apache/$asfName/commits/apache-$asfName-$version
               * https://github.com/apache/$asfName/tree/$gitCommitId
 
               The release tarball, signature, and checksums are here:
-              * https://dist.apache.org/repos/dist/dev/$asfName/apache-$asfName-$version
+              * https://dist.apache.org/repos/dist/dev/incubator/$asfName/apache-$asfName-$version
 
               You can find the KEYS file here:
-              * https://dist.apache.org/repos/dist/dev/$asfName/KEYS
+              * https://dist.apache.org/repos/dist/release/incubator/$asfName/KEYS
 
               Convenience binary artifacts are staged on Nexus. The Maven repository URL is:
               * $staginRepoUrl
@@ -169,13 +165,16 @@ internal fun configureOnRootProject(project: Project) =
 
               Please vote in the next 72 hours.
 
-              [ ] +1 Release this as Apache Iceberg 1.6.0
+              [ ] +1 Release this as Apache $asfName $version
               [ ] +0
               [ ] -1 Do not release this because...
 
-              Only PMC members have binding votes, but other community members are
+              Only PPMC members and mentors have binding votes, but other community members are
               encouraged to cast non-binding votes. This vote will pass if there are
               3 binding +1 votes and more binding +1 votes than -1 votes.
+
+              NB: if this vote pass, a new vote has to be started on the Incubator general mailing
+              list.
 
               Thanks
               Regards

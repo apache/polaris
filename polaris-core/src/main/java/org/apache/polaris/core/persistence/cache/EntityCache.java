@@ -21,6 +21,8 @@ package org.apache.polaris.core.persistence.cache;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalListener;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.AbstractMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,9 +31,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
 
 /** The entity cache, can be private or shared */
 public class EntityCache {
@@ -40,7 +40,7 @@ public class EntityCache {
   private EntityCacheMode cacheMode;
 
   // the meta store manager
-  private final PolarisMetaStoreManager metaStoreManager;
+  private final PolarisRemoteCache polarisRemoteCache;
 
   // Caffeine cache to keep entries by id
   private final Cache<Long, EntityCacheEntry> byId;
@@ -51,9 +51,9 @@ public class EntityCache {
   /**
    * Constructor. Cache can be private or shared
    *
-   * @param metaStoreManager the meta store manager implementation
+   * @param polarisRemoteCache the meta store manager implementation
    */
-  public EntityCache(@NotNull PolarisMetaStoreManager metaStoreManager) {
+  public EntityCache(@Nonnull PolarisRemoteCache polarisRemoteCache) {
 
     // by name cache
     this.byName = new ConcurrentHashMap<>();
@@ -80,7 +80,7 @@ public class EntityCache {
             .build();
 
     // remember the meta store manager
-    this.metaStoreManager = metaStoreManager;
+    this.polarisRemoteCache = polarisRemoteCache;
 
     // enabled by default
     this.cacheMode = EntityCacheMode.ENABLE;
@@ -91,7 +91,7 @@ public class EntityCache {
    *
    * @param cacheEntry cache entry to remove
    */
-  public void removeCacheEntry(@NotNull EntityCacheEntry cacheEntry) {
+  public void removeCacheEntry(@Nonnull EntityCacheEntry cacheEntry) {
     // compute name key
     EntityCacheByNameKey nameKey = new EntityCacheByNameKey(cacheEntry.getEntity());
 
@@ -107,7 +107,7 @@ public class EntityCache {
    *
    * @param cacheEntry new cache entry
    */
-  private void cacheNewEntry(@NotNull EntityCacheEntry cacheEntry) {
+  private void cacheNewEntry(@Nonnull EntityCacheEntry cacheEntry) {
 
     // compute name key
     EntityCacheByNameKey nameKey = new EntityCacheByNameKey(cacheEntry.getEntity());
@@ -160,7 +160,7 @@ public class EntityCache {
    * @param newCacheEntry new entry
    */
   private void replaceCacheEntry(
-      @Nullable EntityCacheEntry oldCacheEntry, @NotNull EntityCacheEntry newCacheEntry) {
+      @Nullable EntityCacheEntry oldCacheEntry, @Nonnull EntityCacheEntry newCacheEntry) {
 
     // need to remove old?
     if (oldCacheEntry != null) {
@@ -192,7 +192,7 @@ public class EntityCache {
    * @return true if there is a mismatch
    */
   private boolean entityNameKeyMismatch(
-      @NotNull PolarisBaseEntity entity, @NotNull PolarisBaseEntity otherEntity) {
+      @Nonnull PolarisBaseEntity entity, @Nonnull PolarisBaseEntity otherEntity) {
     return entity.getId() != otherEntity.getId()
         || entity.getParentId() != otherEntity.getParentId()
         || !entity.getName().equals(otherEntity.getName())
@@ -233,7 +233,7 @@ public class EntityCache {
    * @param entityNameKey entity name key
    * @return the cache entry or null if not found
    */
-  public @Nullable EntityCacheEntry getEntityByName(@NotNull EntityCacheByNameKey entityNameKey) {
+  public @Nullable EntityCacheEntry getEntityByName(@Nonnull EntityCacheByNameKey entityNameKey) {
     return byName.get(entityNameKey);
   }
 
@@ -250,8 +250,8 @@ public class EntityCache {
    * @return the cache entry for the entity or null if the specified entity does not exist
    */
   public @Nullable EntityCacheEntry getAndRefreshIfNeeded(
-      @NotNull PolarisCallContext callContext,
-      @NotNull PolarisBaseEntity entityToValidate,
+      @Nonnull PolarisCallContext callContext,
+      @Nonnull PolarisBaseEntity entityToValidate,
       int entityMinVersion,
       int entityGrantRecordsMinVersion) {
     long entityCatalogId = entityToValidate.getCatalogId();
@@ -281,7 +281,7 @@ public class EntityCache {
         || existingCacheEntry.getEntity().getGrantRecordsVersion() < entityGrantRecordsMinVersion) {
 
       // the refreshed entity
-      final PolarisMetaStoreManager.CachedEntryResult refreshedCacheEntry;
+      final CachedEntryResult refreshedCacheEntry;
 
       // was not found in the cache?
       final PolarisBaseEntity entity;
@@ -290,7 +290,7 @@ public class EntityCache {
       if (existingCacheEntry == null) {
         // try to load it
         refreshedCacheEntry =
-            this.metaStoreManager.loadCachedEntryById(callContext, entityCatalogId, entityId);
+            this.polarisRemoteCache.loadCachedEntryById(callContext, entityCatalogId, entityId);
         if (refreshedCacheEntry.isSuccess()) {
           entity = refreshedCacheEntry.getEntity();
           grantRecords = refreshedCacheEntry.getEntityGrantRecords();
@@ -301,7 +301,7 @@ public class EntityCache {
       } else {
         // refresh it
         refreshedCacheEntry =
-            this.metaStoreManager.refreshCachedEntity(
+            this.polarisRemoteCache.refreshCachedEntity(
                 callContext,
                 existingCacheEntry.getEntity().getEntityVersion(),
                 existingCacheEntry.getEntity().getGrantRecordsVersion(),
@@ -366,7 +366,7 @@ public class EntityCache {
    *     entity, either as found in the cache or loaded from the backend
    */
   public @Nullable EntityCacheLookupResult getOrLoadEntityById(
-      @NotNull PolarisCallContext callContext, long entityCatalogId, long entityId) {
+      @Nonnull PolarisCallContext callContext, long entityCatalogId, long entityId) {
 
     // if it exists, we are set
     EntityCacheEntry entry = this.getEntityById(entityId);
@@ -378,8 +378,8 @@ public class EntityCache {
       cacheHit = false;
 
       // load it
-      PolarisMetaStoreManager.CachedEntryResult result =
-          metaStoreManager.loadCachedEntryById(callContext, entityCatalogId, entityId);
+      CachedEntryResult result =
+          polarisRemoteCache.loadCachedEntryById(callContext, entityCatalogId, entityId);
 
       // not found, exit
       if (!result.isSuccess()) {
@@ -418,7 +418,7 @@ public class EntityCache {
    *     entity, either as found in the cache or loaded from the backend
    */
   public @Nullable EntityCacheLookupResult getOrLoadEntityByName(
-      @NotNull PolarisCallContext callContext, @NotNull EntityCacheByNameKey entityNameKey) {
+      @Nonnull PolarisCallContext callContext, @Nonnull EntityCacheByNameKey entityNameKey) {
 
     // if it exists, we are set
     EntityCacheEntry entry = this.getEntityByName(entityNameKey);
@@ -430,8 +430,8 @@ public class EntityCache {
       cacheHit = false;
 
       // load it
-      PolarisMetaStoreManager.CachedEntryResult result =
-          metaStoreManager.loadCachedEntryByName(
+      CachedEntryResult result =
+          polarisRemoteCache.loadCachedEntryByName(
               callContext,
               entityNameKey.getCatalogId(),
               entityNameKey.getParentId(),

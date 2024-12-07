@@ -20,6 +20,8 @@ package org.apache.polaris.core.entity;
 
 import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum.AZURE;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,8 +44,6 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Catalog specific subclass of the {@link PolarisEntity} that handles conversion from the {@link
@@ -283,7 +283,7 @@ public class CatalogEntity extends PolarisEntity {
     }
   }
 
-  protected static @NotNull String getDefaultBaseLocation(Catalog catalog) {
+  protected static @Nonnull String getDefaultBaseLocation(Catalog catalog) {
     return catalog.getProperties().getDefaultBaseLocation();
   }
 }

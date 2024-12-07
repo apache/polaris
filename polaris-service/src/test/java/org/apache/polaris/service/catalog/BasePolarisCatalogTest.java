@@ -20,12 +20,12 @@ package org.apache.polaris.service.catalog;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.iceberg.types.Types.NestedField.required;
-import static org.apache.polaris.service.exception.IcebergExceptionMapper.*;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterators;
+import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.time.Clock;
 import java.util.Arrays;
@@ -66,6 +66,7 @@ import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -100,7 +101,6 @@ import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
 import org.assertj.core.api.AbstractBooleanAssert;
 import org.assertj.core.api.Assertions;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
@@ -291,8 +291,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
       public void setMetricRegistry(PolarisMetricRegistry metricRegistry) {}
 
       @Override
-      public Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> bootstrapRealms(
-          List<String> realms) {
+      public Map<String, PrincipalSecretsResult> bootstrapRealms(List<String> realms) {
         throw new NotImplementedException("Bootstrapping realms is not supported");
       }
 

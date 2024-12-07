@@ -19,34 +19,37 @@
 package org.apache.polaris.service.persistence;
 
 import com.fasterxml.jackson.annotation.JsonTypeName;
+import io.dropwizard.jackson.Discoverable;
+import jakarta.annotation.Nonnull;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
 import org.apache.polaris.core.persistence.PolarisTreeMapStore;
-import org.jetbrains.annotations.NotNull;
 
 @JsonTypeName("in-memory")
 public class InMemoryPolarisMetaStoreManagerFactory
-    extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
+    extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> implements Discoverable {
   final Set<String> bootstrappedRealms = new HashSet<>();
 
   @Override
-  protected PolarisTreeMapStore createBackingStore(@NotNull PolarisDiagnostics diagnostics) {
+  protected PolarisTreeMapStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisTreeMapStore(diagnostics);
   }
 
   @Override
   protected PolarisMetaStoreSession createMetaStoreSession(
-      @NotNull PolarisTreeMapStore store, @NotNull RealmContext realmContext) {
-    return new PolarisTreeMapMetaStoreSessionImpl(store, storageIntegration);
+      @Nonnull PolarisTreeMapStore store, @Nonnull RealmContext realmContext) {
+    return new PolarisTreeMapMetaStoreSessionImpl(
+        store, storageIntegration, secretsGenerator(realmContext));
   }
 
   @Override
@@ -70,11 +73,11 @@ public class InMemoryPolarisMetaStoreManagerFactory
   }
 
   private void bootstrapRealmAndPrintCredentials(String realmId) {
-    Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> results =
+    Map<String, PrincipalSecretsResult> results =
         this.bootstrapRealms(Collections.singletonList(realmId));
     bootstrappedRealms.add(realmId);
 
-    PolarisMetaStoreManager.PrincipalSecretsResult principalSecrets = results.get(realmId);
+    PrincipalSecretsResult principalSecrets = results.get(realmId);
 
     String msg =
         String.format(

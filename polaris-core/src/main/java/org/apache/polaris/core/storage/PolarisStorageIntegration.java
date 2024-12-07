@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.core.storage;
 
+import jakarta.annotation.Nonnull;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Abstract of Polaris Storage Integration. It holds the reference to an object that having the
@@ -55,11 +55,11 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    * @return An enum map including the scoped credentials
    */
   public abstract EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-      @NotNull PolarisDiagnostics diagnostics,
-      @NotNull T storageConfig,
+      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull T storageConfig,
       boolean allowListOperation,
-      @NotNull Set<String> allowedReadLocations,
-      @NotNull Set<String> allowedWriteLocations);
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations);
 
   /**
    * Validate access for the provided operation actions and locations.
@@ -92,12 +92,12 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    * }
    * </pre>
    */
-  @NotNull
+  @Nonnull
   public abstract Map<String, Map<PolarisStorageActions, ValidationResult>>
       validateAccessToLocations(
-          @NotNull T storageConfig,
-          @NotNull Set<PolarisStorageActions> actions,
-          @NotNull Set<String> locations);
+          @Nonnull T storageConfig,
+          @Nonnull Set<PolarisStorageActions> actions,
+          @Nonnull Set<String> locations);
 
   /**
    * Result of calling {@link #validateAccessToLocations(PolarisStorageConfigurationInfo, Set, Set)}

@@ -23,6 +23,8 @@ import static org.apache.iceberg.types.Types.NestedField.required;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.collect.ImmutableMap;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.time.Clock;
 import java.util.Date;
@@ -73,8 +75,6 @@ import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.assertj.core.api.Assertions;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
@@ -176,15 +176,7 @@ public abstract class PolarisAuthzTestBase {
     this.entityManager = new PolarisEntityManager(metaStoreManager, new StorageCredentialCache());
     this.metaStoreManager = metaStoreManager;
 
-    callContext =
-        CallContext.of(
-            new RealmContext() {
-              @Override
-              public String getRealmIdentifier() {
-                return "test-realm";
-              }
-            },
-            polarisContext);
+    callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
 
     PrincipalEntity rootEntity =
@@ -309,7 +301,7 @@ public abstract class PolarisAuthzTestBase {
     }
   }
 
-  protected @NotNull PrincipalEntity rotateAndRefreshPrincipal(
+  protected @Nonnull PrincipalEntity rotateAndRefreshPrincipal(
       PolarisMetaStoreManager metaStoreManager,
       String principalName,
       PrincipalWithCredentialsCredentials credentials,
@@ -325,8 +317,8 @@ public abstract class PolarisAuthzTestBase {
         callContext.getPolarisCallContext(),
         credentials.getClientId(),
         lookupEntity.getEntity().getId(),
-        credentials.getClientSecret(),
-        false);
+        false,
+        credentials.getClientSecret()); // This should actually be the secret's hash
 
     return new PrincipalEntity(
         PolarisEntity.of(

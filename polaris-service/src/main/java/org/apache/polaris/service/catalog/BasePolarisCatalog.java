@@ -23,6 +23,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import jakarta.annotation.Nonnull;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
@@ -86,6 +87,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TableLikeEntity;
+import org.apache.polaris.core.persistence.BaseResult;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -94,6 +96,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCat
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
+import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -104,8 +107,6 @@ import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.TestOnly;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkException;
@@ -210,7 +211,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     return catalogName;
   }
 
-  @TestOnly
+  @VisibleForTesting
   FileIO getIo() {
     return catalogFileIO;
   }
@@ -264,7 +265,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             CatalogProperties.FILE_IO_IMPL);
       }
     }
-    this.closeableGroup = CallContext.getCurrentContext().closeables();
+    CallContext.getCurrentContext().closeables().addCloseable(this);
+    this.closeableGroup = new CloseableGroup();
     closeableGroup.addCloseable(metricsReporter());
     closeableGroup.setSuppressCloseFailure(true);
 
@@ -551,7 +553,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private static @NotNull String resolveLocationForPath(List<PolarisEntity> parentPath) {
+  private static @Nonnull String resolveLocationForPath(List<PolarisEntity> parentPath) {
     // always take the first object. If it has the base-location, stop there
     AtomicBoolean foundBaseLocation = new AtomicBoolean(false);
     return parentPath.reversed().stream()
@@ -762,7 +764,11 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   @Override
-  public void close() throws IOException {}
+  public void close() throws IOException {
+    if (closeableGroup != null) {
+      closeableGroup.close();
+    }
+  }
 
   @Override
   public List<TableIdentifier> listViews(Namespace namespace) {
@@ -843,7 +849,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     return specifiedTableLikeLocation;
   }
 
-  private @NotNull Optional<PolarisEntity> findStorageInfo(TableIdentifier tableIdentifier) {
+  private @Nonnull Optional<PolarisEntity> findStorageInfo(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper resolvedTableEntities =
         resolvedEntityView.getResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
 
@@ -892,7 +898,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         entityManager
             .getCredentialCache()
             .getOrGenerateSubScopeCreds(
-                getMetaStoreManager(),
+                getCredentialVendor(),
                 callContext.getPolarisCallContext(),
                 entity,
                 allowList,
@@ -1420,7 +1426,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private static @NotNull Optional<PolarisEntity> findStorageInfoFromHierarchy(
+  private static @Nonnull Optional<PolarisEntity> findStorageInfoFromHierarchy(
       PolarisResolvedPathWrapper resolvedStorageEntity) {
     Optional<PolarisEntity> storageInfoEntity =
         resolvedStorageEntity.getRawFullPath().reversed().stream()
@@ -1623,6 +1629,10 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     return metaStoreManager;
   }
 
+  private PolarisCredentialVendor getCredentialVendor() {
+    return metaStoreManager;
+  }
+
   @VisibleForTesting
   void setFileIOFactory(FileIOFactory newFactory) {
     this.fileIOFactory = newFactory;
@@ -1694,7 +1704,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           from,
           to);
       switch (returnedEntityResult.getReturnStatus()) {
-        case PolarisMetaStoreManager.ReturnStatus.ENTITY_ALREADY_EXISTS:
+        case BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS:
           {
             PolarisEntitySubType existingEntitySubType =
                 returnedEntityResult.getAlreadyExistsEntitySubType();
@@ -1713,16 +1723,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 String.format("Unexpected entity type '%s'", existingEntitySubType));
           }
 
-        case PolarisMetaStoreManager.ReturnStatus.ENTITY_NOT_FOUND:
+        case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
           throw new NotFoundException("Cannot rename %s to %s. %s does not exist", from, to, from);
 
           // this is temporary. Should throw a special error that will be caught and retried
-        case PolarisMetaStoreManager.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
-        case PolarisMetaStoreManager.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED:
+        case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
+        case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED:
           throw new RuntimeException("concurrent update detected, please retry");
 
           // some entities cannot be renamed
-        case PolarisMetaStoreManager.ReturnStatus.ENTITY_CANNOT_BE_RENAMED:
+        case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RENAMED:
           throw new BadRequestException("Cannot rename built-in object %s", leafEntity.getName());
 
           // some entities cannot be renamed
@@ -1824,7 +1834,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   @SuppressWarnings("FormatStringAnnotation")
-  private @NotNull PolarisMetaStoreManager.DropEntityResult dropTableLike(
+  private @Nonnull PolarisMetaStoreManager.DropEntityResult dropTableLike(
       PolarisEntitySubType subType,
       TableIdentifier identifier,
       Map<String, String> storageProperties,
@@ -1834,7 +1844,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     if (resolvedEntities == null) {
       // TODO: Error?
       return new PolarisMetaStoreManager.DropEntityResult(
-          PolarisMetaStoreManager.ReturnStatus.ENTITY_NOT_FOUND, null);
+          BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();

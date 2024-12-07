@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -79,7 +80,7 @@ public class TestOAuth2ApiService implements OAuth2ApiService, HasMetaStoreManag
         metaStoreManagerFactory.getOrCreateMetaStoreManager(
             CallContext.getCurrentContext().getRealmContext());
     PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
-    PolarisMetaStoreManager.PrincipalSecretsResult secretsResult =
+    PrincipalSecretsResult secretsResult =
         metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
     if (secretsResult.isSuccess()) {
       LOGGER.debug("Found principal secrets for client id {}", clientId);

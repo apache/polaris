@@ -21,18 +21,18 @@ package org.apache.polaris.core.storage.cache;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
+import org.apache.polaris.core.storage.PolarisCredentialVendor;
 
 /** A storage credential cached entry. */
 public class StorageCredentialCacheEntry {
   /** The scoped creds map that is fetched from a creds vending service */
   public final EnumMap<PolarisCredentialProperty, String> credsMap;
 
-  private final PolarisMetaStoreManager.ScopedCredentialsResult scopedCredentialsResult;
+  private final PolarisCredentialVendor.ScopedCredentialsResult scopedCredentialsResult;
 
   public StorageCredentialCacheEntry(
-      PolarisMetaStoreManager.ScopedCredentialsResult scopedCredentialsResult) {
+      PolarisCredentialVendor.ScopedCredentialsResult scopedCredentialsResult) {
     this.scopedCredentialsResult = scopedCredentialsResult;
     this.credsMap = scopedCredentialsResult.getCredentials();
   }

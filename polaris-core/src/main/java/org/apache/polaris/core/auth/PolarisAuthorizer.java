@@ -18,27 +18,27 @@
  */
 package org.apache.polaris.core.auth;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /** Interface for invoking authorization checks. */
 public interface PolarisAuthorizer {
 
   void authorizeOrThrow(
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      @NotNull Set<PolarisBaseEntity> activatedEntities,
-      @NotNull PolarisAuthorizableOperation authzOp,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable PolarisResolvedPathWrapper target,
       @Nullable PolarisResolvedPathWrapper secondary);
 
   void authorizeOrThrow(
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      @NotNull Set<PolarisBaseEntity> activatedEntities,
-      @NotNull PolarisAuthorizableOperation authzOp,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries);
 }
