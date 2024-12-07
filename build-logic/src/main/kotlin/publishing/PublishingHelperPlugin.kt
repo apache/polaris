@@ -45,14 +45,7 @@ import org.gradle.plugins.signing.SigningPlugin
  * The task `sourceTarball` (available on the root project) generates a source tarball using `git
  * archive`.
  *
- * The task `releaseEmailTemplate` generates the release-vote email subject + body. Outputs on the
- * console and in the `build/distributions/` directory.
- *
  * Signing tip: If you want to use `gpg-agent`, set the `useGpgAgent` Gradle project property
- *
- * The following command publishes the project artifacts to your local maven repository, generates
- * the source tarball - and uses `gpg-agent` to sign all artifacts and the tarball. Note that this
- * requires a Git tag!
  *
  * ```
  * ./gradlew publishToMavenLocal sourceTarball -Prelease -PuseGpgAgent

@@ -22,17 +22,36 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-if [[ ! -d content/releases ]] ; then
-  echo "Directory content/releases does not exists"
-  exit 1
-fi
+force=
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --force)
+      force=1
+      shift
+      ;;
+    *)
+      echo "Unexpected argument '$1'" > /dev/stderr
+      exit 1
+      ;;
+  esac
+done
 
-cd content/releases
-if git diff-index --quiet HEAD -- ; then
-  cd ../..
+if [[ ${force} ]] ; then
   rm -rf content/releases
   git worktree prune
 else
-  echo "Directory content/releases contains uncommitted changes"
-  exit 1
+  if [[ ! -d content/releases ]] ; then
+    echo "Directory content/releases does not exists" > /dev/stderr
+    exit 1
+  fi
+
+  cd content/releases
+  if git diff-index --quiet HEAD -- ; then
+    cd ../..
+    rm -rf content/releases
+    git worktree prune
+  else
+    echo "Directory content/releases contains uncommitted changes" > /dev/stderr
+    exit 1
+  fi
 fi
