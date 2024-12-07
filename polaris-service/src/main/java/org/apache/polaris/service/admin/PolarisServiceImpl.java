@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.admin;
 
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
@@ -82,6 +83,7 @@ public class PolarisServiceImpl
   private final PolarisAuthorizer polarisAuthorizer;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
 
+  @Inject
   public PolarisServiceImpl(
       RealmEntityManagerFactory entityManagerFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,

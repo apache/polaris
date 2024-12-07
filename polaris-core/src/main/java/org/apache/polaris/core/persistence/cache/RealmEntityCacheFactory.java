@@ -16,21 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog.io;
+package org.apache.polaris.core.persistence.cache;
 
-import io.smallrye.common.annotation.Identifier;
-import java.util.Map;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.iceberg.CatalogUtil;
-import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.context.RealmContext;
 
-/** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
-@Identifier("wasb")
-public class WasbTranslatingFileIOFactory implements FileIOFactory {
-  @Override
-  public FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
-    WasbTranslatingFileIO wrapped =
-        new WasbTranslatingFileIO(CatalogUtil.loadFileIO(ioImpl, properties, new Configuration()));
-    return wrapped;
-  }
+/** Factory interface for finding the {@link EntityCache} for a realm */
+@FunctionalInterface
+public interface RealmEntityCacheFactory {
+  EntityCache getOrCreateEntityCache(RealmContext realm);
 }

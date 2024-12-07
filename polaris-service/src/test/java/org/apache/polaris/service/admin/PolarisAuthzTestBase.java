@@ -64,7 +64,10 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.EntityCacheGrantManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
@@ -73,7 +76,6 @@ import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
-import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -130,12 +132,7 @@ public abstract class PolarisAuthzTestBase {
       new Schema(
           required(3, "id", Types.IntegerType.get(), "unique ID 🤪"),
           required(4, "data", Types.StringType.get()));
-  protected final PolarisAuthorizer polarisAuthorizer =
-      new PolarisAuthorizerImpl(
-          new DefaultConfigurationStore(
-              Map.of(
-                  PolarisConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING.key,
-                  true)));
+  protected PolarisAuthorizer polarisAuthorizer;
 
   protected BasePolarisCatalog baseCatalog;
   protected PolarisAdminService adminService;
@@ -162,6 +159,7 @@ public abstract class PolarisAuthzTestBase {
     Map<String, Object> configMap =
         Map.of(
             "ALLOW_SPECIFYING_FILE_IO_IMPL", true, "ALLOW_EXTERNAL_METADATA_FILE_LOCATION", true);
+
     PolarisCallContext polarisContext =
         new PolarisCallContext(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -173,11 +171,26 @@ public abstract class PolarisAuthzTestBase {
               }
             },
             Clock.systemDefaultZone());
-    this.entityManager = new PolarisEntityManager(metaStoreManager, new StorageCredentialCache());
+    this.entityManager =
+        new PolarisEntityManager(
+            metaStoreManager, new EntityCache(metaStoreManager), new StorageCredentialCache());
     this.metaStoreManager = metaStoreManager;
 
     callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
+
+    EntityCache entityCache = new EntityCache(metaStoreManager);
+    polarisAuthorizer =
+        new PolarisAuthorizerImpl(
+            new DefaultConfigurationStore(
+                Map.of(
+                    PolarisConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING
+                        .key,
+                    true)),
+            () -> new EntityCacheGrantManager(metaStoreManager, entityCache));
+    this.entityManager =
+        new PolarisEntityManager(metaStoreManager, entityCache, new StorageCredentialCache());
+    this.metaStoreManager = metaStoreManager;
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(

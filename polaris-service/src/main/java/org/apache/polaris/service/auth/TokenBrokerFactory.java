@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.auth;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import io.dropwizard.jackson.Discoverable;
 import java.util.function.Function;
 import org.apache.polaris.core.context.RealmContext;
 
@@ -27,5 +25,4 @@ import org.apache.polaris.core.context.RealmContext;
  * Factory that creates a {@link TokenBroker} for generating and parsing. The {@link TokenBroker} is
  * created based on the realm context.
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
-public interface TokenBrokerFactory extends Function<RealmContext, TokenBroker>, Discoverable {}
+public interface TokenBrokerFactory extends Function<RealmContext, TokenBroker> {}

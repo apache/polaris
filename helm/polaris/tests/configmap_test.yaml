@@ -184,14 +184,11 @@ tests:
           factoryType: default
         oauth2:
           type: default
-          tokenBroker:
-            type: symmetric-key
-            secret: polaris
+        tokenBroker:
+          type: symmetric-key
+          secret: polaris
         authenticator:
           class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator
-          tokenBroker:
-            type: symmetric-key
-            secret: polaris
         cors:
           allowed-origins:
           - http://localhost:8080
@@ -228,9 +225,9 @@ tests:
             polaris-server.yml: |-
               authenticator:
                 class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator
-                tokenBroker:
-                  secret: polaris
-                  type: symmetric-key
+              tokenBroker:
+                secret: polaris
+                type: symmetric-key
               callContextResolver:
                 type: default
               cors:
@@ -274,9 +271,6 @@ tests:
                 persistence-unit: polaris
                 type: eclipse-link
               oauth2:
-                tokenBroker:
-                  secret: polaris
-                  type: symmetric-key
                 type: default
               rateLimiter:
                 type: no-op

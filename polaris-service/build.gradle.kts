@@ -43,6 +43,7 @@ dependencies {
     exclude("org.apache.zookeeper", "zookeeper")
   }
   implementation(libs.hadoop.hdfs.client)
+  implementation(libs.smallrye)
 
   implementation(platform(libs.dropwizard.bom))
   implementation("io.dropwizard:dropwizard-core")

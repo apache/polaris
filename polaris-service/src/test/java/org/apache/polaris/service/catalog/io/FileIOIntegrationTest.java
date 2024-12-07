@@ -95,7 +95,7 @@ public class FileIOIntegrationTest {
       PolarisConnectionExtension.PolarisToken adminToken,
       SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials,
       @PolarisRealm String realm) {
-    ioFactory = (TestFileIOFactory) EXT.getConfiguration().getFileIOFactory();
+    ioFactory = (TestFileIOFactory) EXT.getConfiguration().findService(FileIOFactory.class);
 
     FileStorageConfigInfo storageConfigInfo =
         FileStorageConfigInfo.builder()
