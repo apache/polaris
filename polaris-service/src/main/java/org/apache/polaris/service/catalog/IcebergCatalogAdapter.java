@@ -27,6 +27,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.iceberg.catalog.Catalog;
@@ -44,7 +45,6 @@ import org.apache.iceberg.rest.requests.RegisterTableRequest;
 import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
-import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
@@ -461,11 +461,37 @@ public class IcebergCatalogAdapter
     EntityCacheEntry resolvedReferenceCatalog = resolver.getResolvedReferenceCatalog();
     Map<String, String> properties =
         PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
+    List<String> endpoints =
+        List.of(
+            // namespace endpoints
+            String.join(" ", "GET", ExtendedResourcePaths.V1_NAMESPACES),
+            String.join(" ", "GET", ExtendedResourcePaths.V1_NAMESPACE),
+            String.join(" ", "POST", ExtendedResourcePaths.V1_NAMESPACES),
+            String.join(" ", "POST", ExtendedResourcePaths.V1_NAMESPACE_PROPERTIES),
+            String.join(" ", "DELETE", ExtendedResourcePaths.V1_NAMESPACE),
+            String.join(" ", "POST", ExtendedResourcePaths.V1_TRANSACTIONS_COMMIT),
+            // table endpoints
+            String.join(" ", "GET", ExtendedResourcePaths.V1_TABLES),
+            String.join(" ", "GET", ExtendedResourcePaths.V1_TABLE),
+            String.join(" ", "POST", ExtendedResourcePaths.V1_TABLES),
+            String.join(" ", "POST", ExtendedResourcePaths.V1_TABLE),
+            String.join(" ", "DELETE", ExtendedResourcePaths.V1_TABLE),
+            String.join(" ", "POST", ExtendedResourcePaths.V1_TABLE_RENAME),
+            String.join(" ", "POST", ExtendedResourcePaths.V1_TABLE_REGISTER),
+            String.join(" ", "POST", ExtendedResourcePaths.V1_TABLE_METRICS),
+            // view endpoints
+            String.join(" ", "GET", ExtendedResourcePaths.V1_VIEWS),
+            String.join(" ", "GET", ExtendedResourcePaths.V1_VIEW),
+            String.join(" ", "POST", ExtendedResourcePaths.V1_VIEWS),
+            String.join(" ", "POST", ExtendedResourcePaths.V1_VIEW),
+            String.join(" ", "DELETE", ExtendedResourcePaths.V1_VIEW),
+            String.join(" ", "POST", ExtendedResourcePaths.V1_VIEW_RENAME));
 
     return Response.ok(
-            ConfigResponse.builder()
+            ExtendedConfigResponse.extendedBuilder()
                 .withDefaults(properties) // catalog properties are defaults
                 .withOverrides(ImmutableMap.of("prefix", warehouse))
+                .withEndpoints(endpoints)
                 .build())
         .build();
   }
