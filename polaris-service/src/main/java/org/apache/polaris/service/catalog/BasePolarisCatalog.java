@@ -123,18 +123,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   static final String ALLOW_SPECIFYING_FILE_IO_IMPL = "ALLOW_SPECIFYING_FILE_IO_IMPL";
   static final boolean ALLOW_SPECIFYING_FILE_IO_IMPL_DEFAULT = false;
 
-  // Config key for whether to skip credential-subscoping indirection entirely whenever trying
-  // to obtain storage credentials for instantiating a FileIO. If 'true', no attempt is made
-  // to use StorageConfigs to generate table-specific storage credentials, but instead the default
-  // fallthrough of table-level credential properties or else provider-specific APPLICATION_DEFAULT
-  // credential-loading will be used for the FileIO.
-  // Typically this setting is used in single-tenant server deployments that don't rely on
-  // "credential-vending" and can use server-default environment variables or credential config
-  // files for all storage access, or in test/dev scenarios.
-  static final String SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION =
-      "SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION";
-  static final boolean SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION_DEFAULT = false;
-
   // Config key for initializing a default "catalogFileIO" that is available either via getIo()
   // or for any TableOperations/ViewOperations instantiated, via ops.io() before entity-specific
   // FileIO initialization is triggered for any such operations.
@@ -876,7 +864,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       PolarisEntity entity) {
     Boolean skipCredentialSubscopingIndirection =
         getBooleanContextConfiguration(
-            SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION, SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION_DEFAULT);
+            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
+            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
     if (Boolean.TRUE.equals(skipCredentialSubscopingIndirection)) {
       LOGGER
           .atInfo()

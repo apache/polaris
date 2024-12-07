@@ -1361,7 +1361,10 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, SECRET_ACCESS_KEY)
         .containsEntry(PolarisCredentialProperty.AWS_TOKEN, SESSION_TOKEN);
     FileIO fileIO =
-        new TaskFileIOSupplier(createMockMetaStoreManagerFactory(), new DefaultFileIOFactory())
+        new TaskFileIOSupplier(
+                createMockMetaStoreManagerFactory(),
+                new DefaultFileIOFactory(),
+                polarisContext.getConfigurationStore())
             .apply(taskEntity);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(InMemoryFileIO.class);
   }
