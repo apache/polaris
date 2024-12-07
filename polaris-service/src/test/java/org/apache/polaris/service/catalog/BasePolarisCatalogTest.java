@@ -23,6 +23,9 @@ import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterators;
 import jakarta.annotation.Nullable;
@@ -106,6 +109,7 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
@@ -1522,5 +1526,47 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 .getEntities()
                 .getFirst()));
     Assertions.assertThat(measured.getNumDeletedFiles()).as("A table was deleted").isGreaterThan(0);
+  }
+
+  @Test
+  public void testCommitLogsMetadata() {
+    Logger logger = (Logger) LoggerFactory.getLogger(BasePolarisCatalog.class);
+    ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
+    listAppender.start();
+    logger.addAppender(listAppender);
+
+    RealmContext realmContext = () -> "realm";
+    CallContext callContext = CallContext.of(realmContext, polarisContext);
+    CallContext.setCurrentContext(callContext);
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            callContext, entityManager, authenticatedRoot, CATALOG_NAME);
+
+    BasePolarisCatalog catalog =
+        new BasePolarisCatalog(
+            entityManager,
+            metaStoreManager,
+            callContext,
+            passthroughView,
+            authenticatedRoot,
+            Mockito.mock(),
+            new TestFileIOFactory());
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+
+    Assertions.assertThat(
+            listAppender.list.stream()
+                .anyMatch(
+                    log ->
+                        log.getMessage().contains("doCommit full new metadata")
+                            && log.getFormattedMessage()
+                                .contains(SCHEMA.columns().getFirst().doc())))
+        .as("The full metadata log line should be emitted")
+        .isTrue();
   }
 }
