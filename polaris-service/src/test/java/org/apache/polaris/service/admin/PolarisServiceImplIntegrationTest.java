@@ -2355,7 +2355,10 @@ public class PolarisServiceImplIntegrationTest {
   @Test
   public void testTokenInvalidPrincipalId() {
     String newToken =
-        defaultJwt().withClaim(CLAIM_KEY_PRINCIPAL_ID, 0).sign(Algorithm.HMAC256("polaris"));
+        defaultJwt()
+            .withClaim(CLAIM_KEY_PRINCIPAL_ID, 0)
+            .withClaim(CLAIM_KEY_CLIENT_ID, "foo")
+            .sign(Algorithm.HMAC256("polaris"));
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/principals", newToken).get()) {
       assertThat(response)
