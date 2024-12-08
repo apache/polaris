@@ -34,6 +34,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Wraps an existing impl of PolarisMetaStoreManager and delegates expected "read" operations
@@ -126,6 +127,23 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
     callCtx
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "loadPrincipalSecrets");
+    return null;
+  }
+
+  @Override
+  public @NotNull SecretValidationResult validateSecret(
+      @NotNull PolarisCallContext callCtx, @NotNull String clientId, @NotNull String clientSecret) {
+    callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "validateSecret");
+    return null;
+  }
+
+  @Override
+  public @NotNull EntityResult loadPrincipal(
+      @NotNull PolarisCallContext callCtx,
+      @Nullable String roleName,
+      @Nullable String clientId,
+      @Nullable Long principalId) {
+    callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "validateSecret");
     return null;
   }
 
