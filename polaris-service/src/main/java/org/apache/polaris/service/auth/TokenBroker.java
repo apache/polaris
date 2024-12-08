@@ -21,9 +21,8 @@ package org.apache.polaris.service.auth;
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
+import org.apache.polaris.core.auth.PolarisSecretsManager;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.types.TokenType;
@@ -47,20 +46,11 @@ public interface TokenBroker {
       PolarisMetaStoreManager metaStoreManager, String clientId, String clientSecret) {
     // Validate the principal is present and secrets match
     PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
-    PrincipalSecretsResult principalSecrets =
-        metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
-    if (!principalSecrets.isSuccess()) {
+    PolarisSecretsManager.SecretValidationResult result =
+        metaStoreManager.validateSecret(polarisCallContext, clientId, clientSecret);
+    if (!result.isSuccess()) {
       return Optional.empty();
     }
-    if (!principalSecrets.getPrincipalSecrets().matchesSecret(clientSecret)) {
-      return Optional.empty();
-    }
-    PolarisMetaStoreManager.EntityResult result =
-        metaStoreManager.loadEntity(
-            polarisCallContext, 0L, principalSecrets.getPrincipalSecrets().getPrincipalId());
-    if (!result.isSuccess() || result.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
-      return Optional.empty();
-    }
-    return Optional.of(PrincipalEntity.of(result.getEntity()));
+    return Optional.of(PrincipalEntity.of(result.getPrincipal()));
   }
 }

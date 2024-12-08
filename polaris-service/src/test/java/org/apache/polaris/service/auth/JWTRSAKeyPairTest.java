@@ -36,13 +36,12 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
+import org.apache.polaris.core.auth.PolarisSecretsManager;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.junit.jupiter.api.Test;
@@ -116,10 +115,6 @@ public class JWTRSAKeyPairTest {
     CallContext.setCurrentContext(getTestCallContext(polarisCallContext));
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     String mainSecret = "client-secret";
-    PolarisPrincipalSecrets principalSecrets =
-        new PolarisPrincipalSecrets(1L, clientId, mainSecret, "otherSecret");
-    Mockito.when(metastoreManager.loadPrincipalSecrets(polarisCallContext, clientId))
-        .thenReturn(new PrincipalSecretsResult(principalSecrets));
     PolarisBaseEntity principal =
         new PolarisBaseEntity(
             0L,
@@ -128,8 +123,8 @@ public class JWTRSAKeyPairTest {
             PolarisEntitySubType.NULL_SUBTYPE,
             0L,
             "principal");
-    Mockito.when(metastoreManager.loadEntity(polarisCallContext, 0L, 1L))
-        .thenReturn(new PolarisMetaStoreManager.EntityResult(principal));
+    Mockito.when(metastoreManager.validateSecret(polarisCallContext, clientId, mainSecret))
+        .thenReturn(new PolarisSecretsManager.SecretValidationResult(principal));
     TokenBroker tokenBroker = new JWTRSAKeyPair(metastoreManager, 420);
     TokenResponse token =
         tokenBroker.generateFromClientSecrets(
