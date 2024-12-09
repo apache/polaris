@@ -30,7 +30,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.ResolutionManifest;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
@@ -65,9 +65,9 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   public Catalog createCallContextCatalog(
       CallContext context,
       AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      final PolarisResolutionManifest resolvedManifest) {
+      ResolutionManifest resolutionManifest) {
     PolarisBaseEntity baseCatalogEntity =
-        resolvedManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity();
+        resolutionManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity();
     String catalogName = baseCatalogEntity.getName();
 
     String realm = context.getRealmContext().getRealmIdentifier();
@@ -82,7 +82,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             entityManager,
             metaStoreManagerFactory.getOrCreateMetaStoreManager(context.getRealmContext()),
             context,
-            resolvedManifest,
+            resolutionManifest,
             authenticatedPrincipal,
             taskExecutor,
             fileIOFactory);
