@@ -18,21 +18,17 @@
  */
 package org.apache.polaris.core.persistence;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.monitor.PolarisMetricRegistry;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /**
  * Configuration interface for configuring the {@link PolarisMetaStoreManager} via Dropwizard
  * configuration
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
 public interface MetaStoreManagerFactory {
 
   PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext);
@@ -40,10 +36,6 @@ public interface MetaStoreManagerFactory {
   Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(RealmContext realmContext);
 
   StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext);
-
-  void setStorageIntegrationProvider(PolarisStorageIntegrationProvider storageIntegrationProvider);
-
-  void setMetricRegistry(PolarisMetricRegistry metricRegistry);
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(List<String> realms);
 

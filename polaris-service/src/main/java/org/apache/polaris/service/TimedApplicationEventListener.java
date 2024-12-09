@@ -23,6 +23,7 @@ import static org.apache.polaris.core.monitor.PolarisMetricRegistry.TAG_RESP_COD
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
 import io.micrometer.core.instrument.Tag;
+import jakarta.inject.Inject;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -54,6 +55,7 @@ public class TimedApplicationEventListener implements ApplicationEventListener {
   // The PolarisMetricRegistry instance used for recording metrics and error counters.
   private final PolarisMetricRegistry polarisMetricRegistry;
 
+  @Inject
   public TimedApplicationEventListener(PolarisMetricRegistry polarisMetricRegistry) {
     this.polarisMetricRegistry = polarisMetricRegistry;
   }

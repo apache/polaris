@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
+import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.Response;
@@ -33,6 +34,7 @@ public class RateLimiterFilter implements ContainerRequestFilter {
 
   private final RateLimiter rateLimiter;
 
+  @Inject
   public RateLimiterFilter(RateLimiter rateLimiter) {
     this.rateLimiter = rateLimiter;
   }

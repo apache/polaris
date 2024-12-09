@@ -28,6 +28,7 @@ import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmMemoryMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
+import jakarta.inject.Inject;
 import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
@@ -68,6 +69,7 @@ public class PolarisMetricRegistry {
   public static final String SUFFIX_ERROR = ".error";
   public static final String SUFFIX_REALM = ".realm";
 
+  @Inject
   public PolarisMetricRegistry(MeterRegistry meterRegistry) {
     this.meterRegistry = meterRegistry;
     new ClassLoaderMetrics().bindTo(meterRegistry);

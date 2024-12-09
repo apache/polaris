@@ -43,6 +43,7 @@ dependencies {
     exclude("org.apache.zookeeper", "zookeeper")
   }
   implementation(libs.hadoop.hdfs.client)
+  implementation(libs.smallrye)
 
   implementation(platform(libs.dropwizard.bom))
   implementation("io.dropwizard:dropwizard-core")
@@ -251,6 +252,7 @@ val shadowJar =
   tasks.named<ShadowJar>("shadowJar") {
     manifest { attributes["Main-Class"] = "org.apache.polaris.service.PolarisApplication" }
     mergeServiceFiles()
+    append("META-INF/hk2-locator/default")
     isZip64 = true
     finalizedBy("startScripts")
   }

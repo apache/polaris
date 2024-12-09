@@ -16,23 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.persistence.cache;
 
-import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
-import java.util.Optional;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmScoped;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.glassfish.hk2.api.Factory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-@Identifier("default")
-public class DefaultPolarisAuthenticator extends BasePolarisAuthenticator {
-  @Inject private TokenBrokerFactory tokenBrokerFactory;
+public class EntityCacheFactory implements Factory<EntityCache> {
+  private static Logger LOGGER = LoggerFactory.getLogger(EntityCacheFactory.class);
+  @Inject PolarisMetaStoreManager metaStoreManager;
+
+  @RealmScoped
+  @Override
+  public EntityCache provide() {
+    LOGGER.debug(
+        "Creating new EntityCache instance for realm {}",
+        CallContext.getCurrentContext().getRealmContext().getRealmIdentifier());
+    return new EntityCache(metaStoreManager);
+  }
 
   @Override
-  public Optional<AuthenticatedPolarisPrincipal> authenticate(String credentials) {
-    TokenBroker handler =
-        tokenBrokerFactory.apply(CallContext.getCurrentContext().getRealmContext());
-    DecodedToken decodedToken = handler.verify(credentials);
-    return getPrincipal(decodedToken);
+  public void dispose(EntityCache instance) {
+    // no-op
   }
 }
