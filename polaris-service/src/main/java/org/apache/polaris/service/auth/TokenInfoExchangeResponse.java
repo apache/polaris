@@ -133,21 +133,4 @@ public class TokenInfoExchangeResponse implements DecodedToken {
   public void setToken(String token) {
     this.token = token;
   }
-
-  private long integrationId;
-
-  public long getIntegrationId() {
-    return integrationId;
-  }
-
-  @JsonProperty("integration_id")
-  public void setIntegrationId(long integrationId) {
-    this.integrationId = integrationId;
-  }
-
-  /* integration ID is effectively principal ID */
-  @Override
-  public Long getPrincipalId() {
-    return integrationId;
-  }
 }
