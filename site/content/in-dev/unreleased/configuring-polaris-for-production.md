@@ -88,7 +88,7 @@ java -jar /path/to/jar/polaris-service-all.jar server polaris-server.yml
 > When bootstrapping Polaris, the `root` principal will be created. By default, this principal will use random secrets which cannot be discovered
 > from the EclipseLink metastore. In order to retrieve these credentials, consider enabling the
 > feature configuration `BOOTSTRAP_PRINT_CREDENTIALS` which will print the bootstrap credentials to stdout.
-> <br>
+> <br><br>
 > In production environments, consider providing the bootstrap credentials via environment variables instead. For the `root` principal in the realm `default-realm`,
 > this means setting following the environment variables:
 > <ul>
