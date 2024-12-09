@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence;
+package org.apache.polaris.core.persistence.impl;
 
 import com.google.common.collect.ImmutableList;
 import jakarta.annotation.Nonnull;
@@ -25,7 +25,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
@@ -33,6 +36,10 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.persistence.BaseResult;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.resolution.ResolutionManifestBuilder;
+import org.apache.polaris.core.persistence.resolver.ResolverBuilder;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 
 /**
@@ -368,5 +375,14 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "refreshCachedEntity");
     return null;
+  }
+
+  @Override
+  public @Nonnull ResolutionManifestBuilder newResolutionManifestBuilder(
+      @Nonnull CallContext callCtx,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull Supplier<ResolverBuilder> resolverSupplier,
+      @Nullable String referenceCatalogName) {
+    throw new RuntimeException("illegal_method_in_transaction_workspace");
   }
 }

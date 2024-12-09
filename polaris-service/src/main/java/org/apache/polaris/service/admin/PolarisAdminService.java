@@ -34,9 +34,6 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.CommitFailedException;
-import org.apache.iceberg.exceptions.NoSuchNamespaceException;
-import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
@@ -75,12 +72,12 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.entity.TableLikeEntity;
+import org.apache.polaris.core.persistence.EntityNotFoundException;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolution.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolution.ResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
-import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -108,7 +105,7 @@ public class PolarisAdminService {
   private final PolarisMetaStoreManager metaStoreManager;
 
   // Initialized in the authorize methods.
-  private PolarisResolutionManifest resolutionManifest = null;
+  private ResolutionManifest resolutionManifest = null;
 
   public PolarisAdminService(
       CallContext callContext,
@@ -151,9 +148,10 @@ public class PolarisAdminService {
 
   private void authorizeBasicRootOperationOrThrow(PolarisAuthorizableOperation op) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(
-            callContext, authenticatedPrincipal, null /* referenceCatalogName */);
-    resolutionManifest.resolveAll();
+        entityManager
+            .prepareResolutionManifest(callContext, authenticatedPrincipal, null)
+            .notFoundExceptionMapper(EntityNotFoundException::asGenericIcebergNotFoundException)
+            .buildResolved();
     PolarisResolvedPathWrapper rootContainerWrapper =
         resolutionManifest.getResolvedRootContainerEntityAsPath();
     authorizer.authorizeOrThrow(
@@ -178,14 +176,11 @@ public class PolarisAdminService {
       PolarisEntityType entityType,
       @Nullable String referenceCatalogName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(
-            callContext, authenticatedPrincipal, referenceCatalogName);
-    resolutionManifest.addTopLevelName(topLevelEntityName, entityType, false /* isOptional */);
-    ResolverStatus status = resolutionManifest.resolveAll();
-    if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
-      throw new NotFoundException(
-          "TopLevelEntity of type %s does not exist: %s", entityType, topLevelEntityName);
-    }
+        entityManager
+            .prepareResolutionManifest(callContext, authenticatedPrincipal, referenceCatalogName)
+            .notFoundExceptionMapper(EntityNotFoundException::asGenericIcebergNotFoundException)
+            .addTopLevelName(topLevelEntityName, entityType, false /* isOptional */)
+            .buildResolved();
     PolarisResolvedPathWrapper topLevelEntityWrapper =
         resolutionManifest.getResolvedTopLevelEntity(topLevelEntityName, entityType);
 
@@ -212,11 +207,13 @@ public class PolarisAdminService {
   private void authorizeBasicCatalogRoleOperationOrThrow(
       PolarisAuthorizableOperation op, String catalogName, String catalogRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
-    resolutionManifest.addPath(
-        new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
-        catalogRoleName);
-    resolutionManifest.resolveAll();
+        entityManager
+            .prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName)
+            .notFoundExceptionMapper(EntityNotFoundException::asGenericIcebergNotFoundException)
+            .addPath(
+                new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
+                catalogRoleName)
+            .buildResolved();
     PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(catalogRoleName, true);
     if (target == null) {
       throw new NotFoundException("CatalogRole does not exist: %s", catalogRoleName);
@@ -232,16 +229,12 @@ public class PolarisAdminService {
   private void authorizeGrantOnRootContainerToPrincipalRoleOperationOrThrow(
       PolarisAuthorizableOperation op, String principalRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, null);
-    resolutionManifest.addTopLevelName(
-        principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */);
-    ResolverStatus status = resolutionManifest.resolveAll();
-
-    if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
-      throw new NotFoundException(
-          "Entity %s not found when trying to grant on root to %s",
-          status.getFailedToResolvedEntityName(), principalRoleName);
-    }
+        entityManager
+            .prepareResolutionManifest(callContext, authenticatedPrincipal, null)
+            .notFoundExceptionMapper(EntityNotFoundException::asGenericIcebergNotFoundException)
+            .addTopLevelName(
+                principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */)
+            .buildResolved();
 
     // TODO: Merge this method into authorizeGrantOnTopLevelEntityToPrincipalRoleOperationOrThrow
     // once we remove any special handling logic for the rootContainer.
@@ -265,21 +258,13 @@ public class PolarisAdminService {
       PolarisEntityType topLevelEntityType,
       String principalRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, null);
-    resolutionManifest.addTopLevelName(
-        topLevelEntityName, topLevelEntityType, false /* isOptional */);
-    resolutionManifest.addTopLevelName(
-        principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */);
-    ResolverStatus status = resolutionManifest.resolveAll();
-
-    if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
-      throw new NotFoundException(
-          "Entity %s not found when trying to assign %s of type %s to %s",
-          status.getFailedToResolvedEntityName(),
-          topLevelEntityName,
-          topLevelEntityType,
-          principalRoleName);
-    }
+        entityManager
+            .prepareResolutionManifest(callContext, authenticatedPrincipal, null)
+            .notFoundExceptionMapper(EntityNotFoundException::asGenericIcebergNotFoundException)
+            .addTopLevelName(topLevelEntityName, topLevelEntityType, false /* isOptional */)
+            .addTopLevelName(
+                principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */)
+            .buildResolved();
 
     PolarisResolvedPathWrapper topLevelEntityWrapper =
         resolutionManifest.getResolvedTopLevelEntity(topLevelEntityName, topLevelEntityType);
@@ -298,18 +283,13 @@ public class PolarisAdminService {
   private void authorizeGrantOnPrincipalRoleToPrincipalOperationOrThrow(
       PolarisAuthorizableOperation op, String principalRoleName, String principalName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, null);
-    resolutionManifest.addTopLevelName(
-        principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */);
-    resolutionManifest.addTopLevelName(
-        principalName, PolarisEntityType.PRINCIPAL, false /* isOptional */);
-    ResolverStatus status = resolutionManifest.resolveAll();
-
-    if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
-      throw new NotFoundException(
-          "Entity %s not found when trying to assign %s to %s",
-          status.getFailedToResolvedEntityName(), principalRoleName, principalName);
-    }
+        entityManager
+            .prepareResolutionManifest(callContext, authenticatedPrincipal, null)
+            .notFoundExceptionMapper(EntityNotFoundException::asGenericIcebergNotFoundException)
+            .addTopLevelName(
+                principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */)
+            .addTopLevelName(principalName, PolarisEntityType.PRINCIPAL, false /* isOptional */)
+            .buildResolved();
 
     PolarisResolvedPathWrapper principalRoleWrapper =
         resolutionManifest.getResolvedTopLevelEntity(
@@ -331,23 +311,15 @@ public class PolarisAdminService {
       String catalogRoleName,
       String principalRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
-    resolutionManifest.addPath(
-        new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
-        catalogRoleName);
-    resolutionManifest.addTopLevelName(
-        principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */);
-    ResolverStatus status = resolutionManifest.resolveAll();
-
-    if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
-      throw new NotFoundException(
-          "Entity %s not found when trying to assign %s.%s to %s",
-          status.getFailedToResolvedEntityName(), catalogName, catalogRoleName, principalRoleName);
-    } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
-      throw new NotFoundException(
-          "Entity %s not found when trying to assign %s.%s to %s",
-          status.getFailedToResolvePath(), catalogName, catalogRoleName, principalRoleName);
-    }
+        entityManager
+            .prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName)
+            .notFoundExceptionMapper(EntityNotFoundException::asGenericIcebergNotFoundException)
+            .addPath(
+                new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
+                catalogRoleName)
+            .addTopLevelName(
+                principalRoleName, PolarisEntityType.PRINCIPAL_ROLE, false /* isOptional */)
+            .buildResolved();
 
     PolarisResolvedPathWrapper principalRoleWrapper =
         resolutionManifest.getResolvedTopLevelEntity(
@@ -366,19 +338,14 @@ public class PolarisAdminService {
   private void authorizeGrantOnCatalogOperationOrThrow(
       PolarisAuthorizableOperation op, String catalogName, String catalogRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
-    resolutionManifest.addTopLevelName(
-        catalogName, PolarisEntityType.CATALOG, false /* isOptional */);
-    resolutionManifest.addPath(
-        new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
-        catalogRoleName);
-    ResolverStatus status = resolutionManifest.resolveAll();
-
-    if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
-      throw new NotFoundException("Catalog not found: %s", catalogName);
-    } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
-      throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);
-    }
+        entityManager
+            .prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName)
+            .notFoundExceptionMapper(EntityNotFoundException::asGenericIcebergNotFoundException)
+            .addTopLevelName(catalogName, PolarisEntityType.CATALOG, false /* isOptional */)
+            .addPath(
+                new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
+                catalogRoleName)
+            .buildResolved();
 
     PolarisResolvedPathWrapper catalogWrapper =
         resolutionManifest.getResolvedTopLevelEntity(catalogName, PolarisEntityType.CATALOG);
@@ -398,25 +365,16 @@ public class PolarisAdminService {
       Namespace namespace,
       String catalogRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
-    resolutionManifest.addPath(
-        new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
-        namespace);
-    resolutionManifest.addPath(
-        new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
-        catalogRoleName);
-    ResolverStatus status = resolutionManifest.resolveAll();
-
-    if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
-      throw new NotFoundException("Catalog not found: %s", catalogName);
-    } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
-      if (status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.NAMESPACE) {
-        throw new NoSuchNamespaceException(
-            "Namespace does not exist: %s", status.getFailedToResolvePath().getEntityNames());
-      } else {
-        throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);
-      }
-    }
+        entityManager
+            .prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName)
+            .notFoundExceptionMapper(EntityNotFoundException::asGenericIcebergNotFoundException)
+            .addPath(
+                new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
+                namespace)
+            .addPath(
+                new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
+                catalogRoleName)
+            .buildResolved();
 
     PolarisResolvedPathWrapper namespaceWrapper =
         resolutionManifest.getResolvedPath(namespace, true);
@@ -438,29 +396,18 @@ public class PolarisAdminService {
       TableIdentifier identifier,
       String catalogRoleName) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
-    resolutionManifest.addPath(
-        new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(identifier), PolarisEntityType.TABLE_LIKE),
-        identifier);
-    resolutionManifest.addPath(
-        new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
-        catalogRoleName);
-    ResolverStatus status = resolutionManifest.resolveAll();
-
-    if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
-      throw new NotFoundException("Catalog not found: %s", catalogName);
-    } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
-      if (status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.TABLE_LIKE) {
-        if (subType == PolarisEntitySubType.TABLE) {
-          throw new NoSuchTableException("Table does not exist: %s", identifier);
-        } else {
-          throw new NoSuchViewException("View does not exist: %s", identifier);
-        }
-      } else {
-        throw new NotFoundException("CatalogRole not found: %s.%s", catalogName, catalogRoleName);
-      }
-    }
+        entityManager
+            .prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName)
+            .notFoundExceptionMapper(EntityNotFoundException::asGenericIcebergNotFoundException)
+            .addPath(
+                new ResolverPath(
+                    PolarisCatalogHelpers.tableIdentifierToList(identifier),
+                    PolarisEntityType.TABLE_LIKE),
+                identifier)
+            .addPath(
+                new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
+                catalogRoleName)
+            .buildResolved();
 
     PolarisResolvedPathWrapper tableLikeWrapper =
         resolutionManifest.getResolvedPath(identifier, subType, true);

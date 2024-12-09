@@ -30,11 +30,11 @@ import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
-import org.apache.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
-import org.apache.polaris.core.persistence.PolarisTreeMapStore;
+import org.apache.polaris.core.persistence.local.LocalPolarisMetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.local.inmem.PolarisTreeMapMetaStoreSessionImpl;
+import org.apache.polaris.core.persistence.local.inmem.PolarisTreeMapStore;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
 @Identifier("in-memory")

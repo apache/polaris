@@ -23,7 +23,7 @@ import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolution.PolarisResolvedPathWrapper;
 
 /** Interface for invoking authorization checks. */
 public interface PolarisAuthorizer {

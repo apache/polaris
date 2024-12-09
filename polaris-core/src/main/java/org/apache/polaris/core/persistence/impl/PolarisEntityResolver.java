@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence;
+package org.apache.polaris.core.persistence.impl;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -32,6 +32,7 @@ import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 
 /**
  * Utility class used by the meta store manager to ensure that all entities which had been resolved

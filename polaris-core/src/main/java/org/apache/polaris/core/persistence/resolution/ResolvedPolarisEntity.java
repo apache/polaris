@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence;
+package org.apache.polaris.core.persistence.resolution;
 
 import com.google.common.collect.ImmutableList;
 import jakarta.annotation.Nonnull;

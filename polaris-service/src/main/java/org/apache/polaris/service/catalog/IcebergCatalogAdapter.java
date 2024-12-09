@@ -60,7 +60,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
 import org.apache.polaris.core.persistence.resolver.Resolver;
-import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.persistence.resolver.ResolverException;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
@@ -490,11 +490,13 @@ public class IcebergCatalogAdapter
     if (warehouse == null) {
       throw new BadRequestException("Please specify a warehouse");
     }
-    Resolver resolver =
-        entityManager.prepareResolver(
-            CallContext.getCurrentContext(), authenticatedPrincipal, warehouse);
-    ResolverStatus resolverStatus = resolver.resolveAll();
-    if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
+    Resolver resolver;
+    try {
+      resolver =
+          entityManager
+              .prepareResolver(CallContext.getCurrentContext(), authenticatedPrincipal, warehouse)
+              .buildResolved();
+    } catch (ResolverException.EntityNotResolvedException e) {
       throw new NotFoundException("Unable to find warehouse %s", warehouse);
     }
     EntityCacheEntry resolvedReferenceCatalog = resolver.getResolvedReferenceCatalog();
