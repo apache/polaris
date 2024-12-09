@@ -16,34 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.entity;
+package org.apache.polaris.service.storage;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonValue;
+import org.apache.polaris.core.storage.StorageLocation;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public enum AsyncTaskType {
-  ENTITY_CLEANUP_SCHEDULER(1),
-  MANIFEST_FILE_CLEANUP(2),
-  METADATA_FILE_BATCH_CLEANUP(3);
+public class StorageLocationTest {
 
-  private final int typeCode;
-
-  AsyncTaskType(int typeCode) {
-    this.typeCode = typeCode;
-  }
-
-  @JsonValue
-  public int typeCode() {
-    return typeCode;
-  }
-
-  @JsonCreator
-  public static AsyncTaskType fromTypeCode(int typeCode) {
-    for (AsyncTaskType taskType : AsyncTaskType.values()) {
-      if (taskType.typeCode == typeCode) {
-        return taskType;
-      }
-    }
-    return null;
+  @Test
+  public void testOfDifferentPrefixes() {
+    StorageLocation StandardLocation = StorageLocation.of("file:///path/to/file");
+    StorageLocation slashLeadingLocation = StorageLocation.of("/path/to/file");
+    StorageLocation fileSingleSlashLocation = StorageLocation.of("file:/path/to/file");
+    Assertions.assertThat(slashLeadingLocation.equals(StandardLocation)).isTrue();
+    Assertions.assertThat(fileSingleSlashLocation.equals(StandardLocation)).isTrue();
   }
 }

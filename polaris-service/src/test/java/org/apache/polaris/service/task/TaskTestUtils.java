@@ -20,6 +20,7 @@ package org.apache.polaris.service.task;
 
 import jakarta.annotation.Nonnull;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
@@ -27,6 +28,8 @@ import java.util.UUID;
 import org.apache.iceberg.DataFile;
 import org.apache.iceberg.DataFiles;
 import org.apache.iceberg.FileFormat;
+import org.apache.iceberg.GenericBlobMetadata;
+import org.apache.iceberg.GenericStatisticsFile;
 import org.apache.iceberg.ManifestFile;
 import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.ManifestWriter;
@@ -34,12 +37,16 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.SortOrder;
+import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.avro.Avro;
 import org.apache.iceberg.io.FileAppender;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.PositionOutputStream;
+import org.apache.iceberg.puffin.Blob;
+import org.apache.iceberg.puffin.Puffin;
+import org.apache.iceberg.puffin.PuffinWriter;
 import org.apache.iceberg.types.Types;
 
 public class TaskTestUtils {
@@ -62,25 +69,55 @@ public class TaskTestUtils {
     return writer.toManifestFile();
   }
 
-  static void writeTableMetadata(FileIO fileIO, String metadataFile, Snapshot... snapshots)
+  static TableMetadata writeTableMetadata(FileIO fileIO, String metadataFile, Snapshot... snapshots)
       throws IOException {
-    TableMetadata.Builder tmBuidler =
-        TableMetadata.buildFromEmpty()
-            .setLocation("path/to/table")
-            .addSchema(
-                new Schema(
-                    List.of(Types.NestedField.of(1, false, "field1", Types.StringType.get()))),
-                1)
-            .addSortOrder(SortOrder.unsorted())
-            .assignUUID(UUID.randomUUID().toString())
-            .addPartitionSpec(PartitionSpec.unpartitioned());
-    for (Snapshot snapshot : snapshots) {
-      tmBuidler.addSnapshot(snapshot);
+    return writeTableMetadata(fileIO, metadataFile, null, null, null, snapshots);
+  }
+
+  static TableMetadata writeTableMetadata(
+      FileIO fileIO,
+      String metadataFile,
+      List<StatisticsFile> statisticsFiles,
+      Snapshot... snapshots)
+      throws IOException {
+    return writeTableMetadata(fileIO, metadataFile, null, null, statisticsFiles, snapshots);
+  }
+
+  static TableMetadata writeTableMetadata(
+      FileIO fileIO,
+      String metadataFile,
+      TableMetadata prevMetadata,
+      String prevMetadataFile,
+      List<StatisticsFile> statisticsFiles,
+      Snapshot... snapshots)
+      throws IOException {
+    TableMetadata.Builder tmBuilder;
+    if (prevMetadata == null) {
+      tmBuilder = TableMetadata.buildFromEmpty();
+    } else {
+      tmBuilder = TableMetadata.buildFrom(prevMetadata).setPreviousFileLocation(prevMetadataFile);
     }
-    TableMetadata tableMetadata = tmBuidler.build();
+    tmBuilder
+        .setLocation("path/to/table")
+        .addSchema(
+            new Schema(List.of(Types.NestedField.of(1, false, "field1", Types.StringType.get()))),
+            1)
+        .addSortOrder(SortOrder.unsorted())
+        .assignUUID(UUID.randomUUID().toString())
+        .addPartitionSpec(PartitionSpec.unpartitioned());
+
+    int statisticsFileIndex = 0;
+    for (Snapshot snapshot : snapshots) {
+      tmBuilder.addSnapshot(snapshot);
+      if (statisticsFiles != null) {
+        tmBuilder.setStatistics(snapshot.snapshotId(), statisticsFiles.get(statisticsFileIndex++));
+      }
+    }
+    TableMetadata tableMetadata = tmBuilder.build();
     PositionOutputStream out = fileIO.newOutputFile(metadataFile).createOrOverwrite();
     out.write(TableMetadataParser.toJson(tableMetadata).getBytes(StandardCharsets.UTF_8));
     out.close();
+    return tableMetadata;
   }
 
   static @Nonnull TestSnapshot newSnapshot(
@@ -102,5 +139,27 @@ public class TaskTestUtils {
     TestSnapshot snapshot =
         new TestSnapshot(sequenceNumber, snapshotId, parentSnapshot, 1L, manifestListLocation);
     return snapshot;
+  }
+
+  public static StatisticsFile writeStatsFile(
+      long snapshotId, long snapshotSequenceNumber, String statsLocation, FileIO fileIO)
+      throws IOException {
+    try (PuffinWriter puffinWriter = Puffin.write(fileIO.newOutputFile(statsLocation)).build()) {
+      puffinWriter.add(
+          new Blob(
+              "some-blob-type",
+              List.of(1),
+              snapshotId,
+              snapshotSequenceNumber,
+              ByteBuffer.wrap("blob content".getBytes(StandardCharsets.UTF_8))));
+      puffinWriter.finish();
+
+      return new GenericStatisticsFile(
+          snapshotId,
+          statsLocation,
+          puffinWriter.fileSize(),
+          puffinWriter.footerSize(),
+          puffinWriter.writtenBlobsMetadata().stream().map(GenericBlobMetadata::from).toList());
+    }
   }
 }

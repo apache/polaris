@@ -47,7 +47,6 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.TableOperations;
-import org.apache.iceberg.aws.s3.S3FileIOProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -101,7 +100,6 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
-import org.apache.polaris.core.storage.aws.PolarisS3FileIOClientFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -2064,8 +2062,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    */
   private FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
     Map<String, String> propertiesWithS3CustomizedClientFactory = new HashMap<>(properties);
-    propertiesWithS3CustomizedClientFactory.put(
-        S3FileIOProperties.CLIENT_FACTORY, PolarisS3FileIOClientFactory.class.getName());
     return fileIOFactory.loadFileIO(ioImpl, propertiesWithS3CustomizedClientFactory);
   }
 
