@@ -70,10 +70,7 @@ public abstract class BasePolarisAuthenticator
       principal =
           PolarisEntity.of(
               metaStoreManager.loadPrincipal(
-                  getCurrentPolarisContext(),
-                  tokenInfo.getSub(),
-                  tokenInfo.getClientId(),
-                  tokenInfo.getPrincipalId()));
+                  getCurrentPolarisContext(), tokenInfo.getSub(), tokenInfo.getClientId()));
     } catch (Exception e) {
       LOGGER
           .atError()

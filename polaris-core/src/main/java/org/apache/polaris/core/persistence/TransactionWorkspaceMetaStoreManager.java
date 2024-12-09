@@ -139,10 +139,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public @NotNull EntityResult loadPrincipal(
-      @NotNull PolarisCallContext callCtx,
-      @Nullable String roleName,
-      @Nullable String clientId,
-      @Nullable Long principalId) {
+      @NotNull PolarisCallContext callCtx, @Nullable String roleName, @Nullable String clientId) {
     callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "validateSecret");
     return null;
   }

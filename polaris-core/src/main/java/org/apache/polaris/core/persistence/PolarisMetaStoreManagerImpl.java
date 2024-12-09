@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core.persistence;
 
-import static com.google.common.base.Preconditions.checkArgument;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -1027,17 +1025,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
   @Override
   public @NotNull EntityResult loadPrincipal(
-      @NotNull PolarisCallContext callCtx,
-      @Nullable String roleName,
-      @Nullable String clientId,
-      @Nullable Long principalId) {
-    checkArgument(principalId != null || clientId != null || roleName != null);
-    if (principalId != null && principalId > 0) {
-      EntityResult result = loadEntity(callCtx, 0L, principalId);
-      if (result.isSuccess() && result.getEntity().getType() == PolarisEntityType.PRINCIPAL) {
-        return result;
-      }
-    }
+      @NotNull PolarisCallContext callCtx, @Nullable String roleName, @Nullable String clientId) {
     if (roleName != null) {
       EntityResult result =
           readEntityByName(

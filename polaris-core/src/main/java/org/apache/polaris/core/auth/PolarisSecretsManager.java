@@ -47,10 +47,7 @@ public interface PolarisSecretsManager {
 
   @Nonnull
   EntityResult loadPrincipal(
-      @Nonnull PolarisCallContext callCtx,
-      @Nullable String roleName,
-      @Nullable String clientId,
-      @Nullable Long principalId);
+      @Nonnull PolarisCallContext callCtx, @Nullable String roleName, @Nullable String clientId);
 
   /**
    * Rotate secrets
