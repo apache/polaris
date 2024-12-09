@@ -32,10 +32,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -51,6 +58,8 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
+import org.apache.polaris.core.persistence.resolver.Resolver;
+import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -1004,6 +1013,114 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     return (secrets == null)
         ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
         : new PrincipalSecretsResult(secrets);
+  }
+
+  @Override
+  @Nonnull
+  public ResolutionManifestBuilder newResolutionManifestBuilder(
+      @Nonnull CallContext callContext,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull Supplier<Resolver> resolverSupplier,
+      @Nullable String referenceCatalogName) {
+    return new ResolutionManifestBuilder() {
+      private Function<EntityNotFoundException, RuntimeException> notFoundExceptionMapper =
+          nf -> nf;
+
+      private final PolarisResolutionManifest manifest =
+          new PolarisResolutionManifest(
+              authenticatedPrincipal,
+              referenceCatalogName,
+              resolverSupplier,
+              callContext.getPolarisCallContext().getDiagServices());
+
+      @Override
+      public ResolutionManifestBuilder withRootContainerEntity(
+          ResolvedPolarisEntity simulatedResolvedRootContainerEntity) {
+        manifest.setSimulatedResolvedRootContainerEntity(simulatedResolvedRootContainerEntity);
+        return this;
+      }
+
+      @Override
+      public ResolutionManifestBuilder addTopLevelName(
+          String topLevelEntityName, PolarisEntityType entityType, boolean optional) {
+        manifest.addTopLevelName(topLevelEntityName, entityType, optional);
+        return this;
+      }
+
+      @Override
+      public ResolutionManifestBuilder addPath(ResolverPath resolverPath, String catalogRoleName) {
+        manifest.addPath(resolverPath, catalogRoleName);
+        return this;
+      }
+
+      @Override
+      public ResolutionManifestBuilder addPath(ResolverPath resolverPath, Namespace namespace) {
+        manifest.addPath(resolverPath, namespace);
+        return this;
+      }
+
+      @Override
+      public ResolutionManifestBuilder addPath(
+          ResolverPath resolverPath, TableIdentifier tableIdentifier) {
+        manifest.addPath(resolverPath, tableIdentifier);
+        return this;
+      }
+
+      @Override
+      public ResolutionManifestBuilder addPassthroughPath(
+          ResolverPath resolverPath, TableIdentifier tableIdentifier) {
+        manifest.addPassthroughPath(resolverPath, tableIdentifier);
+        return this;
+      }
+
+      @Override
+      public ResolutionManifestBuilder addPassthroughPath(
+          ResolverPath resolverPath, Namespace namespace) {
+        manifest.addPassthroughPath(resolverPath, namespace);
+        return this;
+      }
+
+      @Override
+      public ResolutionManifestBuilder notFoundExceptionMapper(
+          Function<EntityNotFoundException, RuntimeException> notFoundExceptionMapper) {
+        this.notFoundExceptionMapper = notFoundExceptionMapper;
+        return this;
+      }
+
+      @Override
+      public ResolutionManifest buildResolved() {
+        return buildResolved(null);
+      }
+
+      @Override
+      public ResolutionManifest buildResolved(PolarisEntitySubType subType) {
+        var status = manifest.resolveAll();
+
+        switch (status.getStatus()) {
+          case SUCCESS:
+            return manifest;
+          case CALLER_PRINCIPAL_DOES_NOT_EXIST:
+            throw new NotFoundException("Caller principal does not exist");
+          case ENTITY_COULD_NOT_BE_RESOLVED:
+            throw notFoundExceptionMapper.apply(
+                new EntityNotFoundException(
+                    status.getFailedToResolvedEntityType(),
+                    Optional.ofNullable(subType),
+                    status.getFailedToResolvedEntityName()));
+          case PATH_COULD_NOT_BE_FULLY_RESOLVED:
+            var path = status.getFailedToResolvePath();
+            var names = path.getEntityNames();
+            throw notFoundExceptionMapper.apply(
+                new EntityNotFoundException(
+                    path.getLastEntityType(),
+                    Optional.ofNullable(subType),
+                    String.join(".", names)));
+
+          default:
+            throw new IllegalStateException("Unexpected status " + status);
+        }
+      }
+    };
   }
 
   /** See {@link #} */
