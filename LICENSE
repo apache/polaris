@@ -277,6 +277,7 @@ commons-collections:commons-collections
 commons-io:commons-io
 commons-logging:commons-logging
 commons-net:commons-net
+dev.failsafe:failsafe
 io.airlift:aircompressor
 io.dropwizard.logback:logback-throttling-appender
 io.dropwizard.metrics:metrics-annotation
