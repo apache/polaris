@@ -158,6 +158,7 @@ openApiGenerate {
       "GetNamespaceResponse" to "org.apache.iceberg.rest.responses.GetNamespaceResponse",
       "ListNamespacesResponse" to "org.apache.iceberg.rest.responses.ListNamespacesResponse",
       "ListTablesResponse" to "org.apache.iceberg.rest.responses.ListTablesResponse",
+      "LoadCredentialsResponse" to "org.apache.iceberg.rest.responses.LoadCredentialsResponse",
       "LoadTableResult" to "org.apache.iceberg.rest.responses.LoadTableResponse",
       "LoadViewResult" to "org.apache.iceberg.rest.responses.LoadTableResponse",
       "OAuthTokenResponse" to "org.apache.iceberg.rest.responses.OAuthTokenResponse",
