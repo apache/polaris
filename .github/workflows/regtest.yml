@@ -18,23 +18,29 @@
 #
 
 name: Regression Tests
+
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
   pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
+
 
 jobs:
   regtest:
-
-    runs-on: ubuntu-latest
     permissions:
       contents: read
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
       - name: fix permissions
-        run: mkdir -p regtests/output && chmod 777 regtests/output && chmod 777 regtests/t_*/ref/*
+        run: |
+          mkdir -p regtests/output
+          chmod 777 regtests/output
+          chmod 777 regtests/t_*/ref/*
       - name: Regression Test
         env:
           AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
