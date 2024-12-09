@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.service.catalog;
 
+import static org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest.AuthorizationTargetType.PRIMARY;
+import static org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest.AuthorizationTargetType.SECONDARY;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import java.io.Closeable;
@@ -29,7 +32,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -188,8 +190,12 @@ public class PolarisCatalogHandlerWrapper {
     resolutionManifest =
         entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
     resolutionManifest.addPath(
+        PRIMARY,
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
-        namespace);
+        namespace,
+        () -> {
+          throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
+        });
 
     if (extraPassthroughNamespaces != null) {
       for (Namespace ns : extraPassthroughNamespaces) {
@@ -210,16 +216,7 @@ public class PolarisCatalogHandlerWrapper {
       }
     }
     resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(namespace, true);
-    if (target == null) {
-      throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
-    }
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
+    authorizer.authorizeOrThrow(resolutionManifest, op, true);
 
     initializeCatalog();
   }
@@ -231,8 +228,12 @@ public class PolarisCatalogHandlerWrapper {
 
     Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(namespace);
     resolutionManifest.addPath(
+        PRIMARY,
         new ResolverPath(Arrays.asList(parentNamespace.levels()), PolarisEntityType.NAMESPACE),
-        parentNamespace);
+        parentNamespace,
+        () -> {
+          throw new NoSuchNamespaceException("Namespace does not exist: %s", parentNamespace);
+        });
 
     // When creating an entity under a namespace, the authz target is the parentNamespace, but we
     // must also add the actual path that will be created as an "optional" passthrough resolution
@@ -243,16 +244,7 @@ public class PolarisCatalogHandlerWrapper {
             Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE, true /* optional */),
         namespace);
     resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(parentNamespace, true);
-    if (target == null) {
-      throw new NoSuchNamespaceException("Namespace does not exist: %s", parentNamespace);
-    }
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
+    authorizer.authorizeOrThrow(resolutionManifest, op, true);
 
     initializeCatalog();
   }
@@ -264,8 +256,12 @@ public class PolarisCatalogHandlerWrapper {
     resolutionManifest =
         entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
     resolutionManifest.addPath(
+        PRIMARY,
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
-        namespace);
+        namespace,
+        () -> {
+          throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
+        });
 
     // When creating an entity under a namespace, the authz target is the namespace, but we must
     // also
@@ -280,16 +276,7 @@ public class PolarisCatalogHandlerWrapper {
             true /* optional */),
         identifier);
     resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(namespace, true);
-    if (target == null) {
-      throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
-    }
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
+    authorizer.authorizeOrThrow(resolutionManifest, op, true);
 
     initializeCatalog();
   }
@@ -301,27 +288,22 @@ public class PolarisCatalogHandlerWrapper {
 
     // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
     resolutionManifest.addPassthroughPath(
+        PRIMARY,
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(identifier),
             PolarisEntityType.TABLE_LIKE,
             true /* optional */),
-        identifier);
+        identifier,
+        subType,
+        () -> {
+          if (subType == PolarisEntitySubType.TABLE) {
+            throw new NoSuchTableException("Table does not exist: %s", identifier);
+          } else {
+            throw new NoSuchViewException("View does not exist: %s", identifier);
+          }
+        });
     resolutionManifest.resolveAll();
-    PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(identifier, subType, true);
-    if (target == null) {
-      if (subType == PolarisEntitySubType.TABLE) {
-        throw new NoSuchTableException("Table does not exist: %s", identifier);
-      } else {
-        throw new NoSuchViewException("View does not exist: %s", identifier);
-      }
-    }
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        null /* secondary */);
+    authorizer.authorizeOrThrow(resolutionManifest, op, true);
 
     initializeCatalog();
   }
@@ -335,10 +317,17 @@ public class PolarisCatalogHandlerWrapper {
     ids.forEach(
         identifier ->
             resolutionManifest.addPassthroughPath(
+                PRIMARY,
                 new ResolverPath(
                     PolarisCatalogHelpers.tableIdentifierToList(identifier),
                     PolarisEntityType.TABLE_LIKE),
-                identifier));
+                identifier,
+                subType,
+                () -> {
+                  throw subType == PolarisEntitySubType.TABLE
+                      ? new NoSuchTableException("Table does not exist: %s", identifier)
+                      : new NoSuchViewException("View does not exist: %s", identifier);
+                }));
 
     ResolverStatus status = resolutionManifest.resolveAll();
 
@@ -355,26 +344,7 @@ public class PolarisCatalogHandlerWrapper {
       }
     }
 
-    List<PolarisResolvedPathWrapper> targets =
-        ids.stream()
-            .map(
-                identifier ->
-                    Optional.ofNullable(
-                            resolutionManifest.getResolvedPath(identifier, subType, true))
-                        .orElseThrow(
-                            () ->
-                                subType == PolarisEntitySubType.TABLE
-                                    ? new NoSuchTableException(
-                                        "Table does not exist: %s", identifier)
-                                    : new NoSuchViewException(
-                                        "View does not exist: %s", identifier)))
-            .toList();
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        targets,
-        null /* secondaries */);
+    authorizer.authorizeOrThrow(resolutionManifest, op, true);
 
     initializeCatalog();
   }
@@ -388,10 +358,13 @@ public class PolarisCatalogHandlerWrapper {
         entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
     // Add src, dstParent, and dst(optional)
     resolutionManifest.addPath(
+        PRIMARY,
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(src), PolarisEntityType.TABLE_LIKE),
-        src);
+        src,
+        subType);
     resolutionManifest.addPath(
+        SECONDARY,
         new ResolverPath(Arrays.asList(dst.namespace().levels()), PolarisEntityType.NAMESPACE),
         dst.namespace());
     resolutionManifest.addPath(
@@ -426,15 +399,7 @@ public class PolarisCatalogHandlerWrapper {
       throw new AlreadyExistsException("Cannot rename %s to %s. View already exists", src, dst);
     }
 
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(src, subType, true);
-    PolarisResolvedPathWrapper secondary =
-        resolutionManifest.getResolvedPath(dst.namespace(), true);
-    authorizer.authorizeOrThrow(
-        authenticatedPrincipal,
-        resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
-        op,
-        target,
-        secondary);
+    authorizer.authorizeOrThrow(resolutionManifest, op, true);
 
     initializeCatalog();
   }

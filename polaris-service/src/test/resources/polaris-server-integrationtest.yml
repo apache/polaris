@@ -97,6 +97,8 @@ authenticator:
     type: symmetric-key
     secret: polaris
 
+authorizer:
+  factory: org.apache.polaris.core.auth.DefaultPolarisAuthorizerFactory
 
 callContextResolver:
   type: default

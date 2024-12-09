@@ -61,6 +61,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
+import org.apache.polaris.service.auth.AuthenticatedPolarisPrincipalImpl;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
@@ -86,7 +87,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
       String catalogName,
       PolarisCallContextCatalogFactory factory) {
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
+        new AuthenticatedPolarisPrincipalImpl(
+            principalEntity.getId(), principalEntity.getName(), activatedPrincipalRoles);
     return new PolarisCatalogHandlerWrapper(
         callContext,
         entityManager,
@@ -213,6 +215,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         metaStoreManager.createPrincipal(
             callContext.getPolarisCallContext(),
             new PrincipalEntity.Builder()
+                .setId(123)
                 .setName(principalName)
                 .setCreateTimestamp(Instant.now().toEpochMilli())
                 .setCredentialRotationRequiredState()
@@ -221,8 +224,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     adminService.assignPrincipalRole(principalName, PRINCIPAL_ROLE2);
 
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
-        new AuthenticatedPolarisPrincipal(
-            PrincipalEntity.of(newPrincipal.getPrincipal()), Set.of());
+        new AuthenticatedPolarisPrincipalImpl(
+            newPrincipal.getPrincipal().getId(), newPrincipal.getPrincipal().getName(), Set.of());
     PolarisCatalogHandlerWrapper wrapper =
         new PolarisCatalogHandlerWrapper(
             callContext,
@@ -253,7 +256,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         rotateAndRefreshPrincipal(
             metaStoreManager, principalName, credentials, callContext.getPolarisCallContext());
     final AuthenticatedPolarisPrincipal authenticatedPrincipal1 =
-        new AuthenticatedPolarisPrincipal(PrincipalEntity.of(refreshPrincipal), Set.of());
+        new AuthenticatedPolarisPrincipalImpl(
+            refreshPrincipal.getId(), refreshPrincipal.getName(), Set.of());
     PolarisCatalogHandlerWrapper refreshedWrapper =
         new PolarisCatalogHandlerWrapper(
             callContext,

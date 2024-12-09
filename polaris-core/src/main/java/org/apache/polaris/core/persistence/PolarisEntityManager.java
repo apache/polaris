@@ -66,7 +66,7 @@ public class PolarisEntityManager {
     return new Resolver(
         callContext.getPolarisCallContext(),
         metaStoreManager,
-        authenticatedPrincipal.getPrincipalEntity().getId(),
+        authenticatedPrincipal.getPrincipalEntityId(),
         null, /* callerPrincipalName */
         authenticatedPrincipal.getActivatedPrincipalRoleNames().isEmpty()
             ? null
