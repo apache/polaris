@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence;
+package org.apache.polaris.core.persistence.impl;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
@@ -37,7 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** A mapper to serialize/deserialize polaris objects. */
-public class PolarisObjectMapperUtil {
+public final class PolarisObjectMapperUtil {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisObjectMapperUtil.class);
 
   /** mapper, allows to serialize/deserialize properties to/from JSON */
@@ -49,6 +49,8 @@ public class PolarisObjectMapperUtil {
     RESTSerializers.registerAll(mapper);
     return mapper;
   }
+
+  private PolarisObjectMapperUtil() {}
 
   /**
    * Given the internal property as a map of key/value pairs, serialize it to a String
@@ -186,9 +188,5 @@ public class PolarisObjectMapperUtil {
           .log("Unable to parse task properties");
       return null;
     }
-  }
-
-  long now() {
-    return 0;
   }
 }
