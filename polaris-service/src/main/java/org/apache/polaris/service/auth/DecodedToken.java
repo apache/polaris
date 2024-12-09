@@ -19,8 +19,6 @@
 package org.apache.polaris.service.auth;
 
 public interface DecodedToken {
-  Long getPrincipalId();
-
   String getClientId();
 
   String getSub();
