@@ -38,10 +38,10 @@
         value="jdbc:h2:file:./build/test_data/polaris/{realm}/db"/>
       <property name="jakarta.persistence.jdbc.user" value="sa"/>
       <property name="jakarta.persistence.jdbc.password" value=""/>
-      <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
       <property name="eclipselink.logging.level.sql" value="FINE"/>
       <property name="eclipselink.logging.parameters" value="true"/>
       <property name="eclipselink.persistence-context.flush-mode" value="auto"/>
+      <property name="eclipselink.ddl-generation" value="create-or-extend-tables"/>
     </properties>
   </persistence-unit>
 </persistence>
