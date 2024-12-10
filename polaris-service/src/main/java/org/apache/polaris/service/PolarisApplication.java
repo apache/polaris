@@ -110,6 +110,7 @@ import org.apache.polaris.service.exception.PolarisExceptionMapper;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilter;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.task.BatchFileCleanupTaskHandler;
 import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutorImpl;
@@ -232,6 +233,9 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         new TableCleanupTaskHandler(taskExecutor, metaStoreManagerFactory, fileIOSupplier));
     taskExecutor.addTaskHandler(
         new ManifestFileCleanupTaskHandler(
+            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+    taskExecutor.addTaskHandler(
+        new BatchFileCleanupTaskHandler(
             fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
 
     LOGGER.info(
