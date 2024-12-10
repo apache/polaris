@@ -18,10 +18,10 @@
 #
 
 [versions]
-hadoop = "3.4.0"
+hadoop = "3.4.1"
 iceberg = "1.7.1"
-dropwizard = "4.0.8"
-slf4j = "2.0.13"
+dropwizard = "4.0.11"
+slf4j = "2.0.16"
 swagger = "1.6.14"
 
 [bundles]
