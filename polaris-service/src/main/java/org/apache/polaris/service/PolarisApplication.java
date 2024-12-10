@@ -125,7 +125,6 @@ import org.apache.polaris.service.exception.PolarisExceptionMapper;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.persistence.cache.EntityCacheFactory;
 import org.apache.polaris.service.ratelimiter.RateLimiterFilter;
-import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.BatchFileCleanupTaskHandler;
 import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
