@@ -23,8 +23,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseResult;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager.EntityResult;
 
 /** Manages secrets for Polaris principals. */
 public interface PolarisSecretsManager {
@@ -38,6 +40,17 @@ public interface PolarisSecretsManager {
   @Nonnull
   PrincipalSecretsResult loadPrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId);
+
+  @Nonnull
+  SecretValidationResult validateSecret(
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, @Nonnull String clientSecret);
+
+  @Nonnull
+  EntityResult loadPrincipal(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable String roleName,
+      @Nullable String clientId,
+      @Nullable Long principalId);
 
   /**
    * Rotate secrets
@@ -98,6 +111,36 @@ public interface PolarisSecretsManager {
 
     public PolarisPrincipalSecrets getPrincipalSecrets() {
       return principalSecrets;
+    }
+  }
+
+  /** the result of load/rotate principal secrets */
+  class SecretValidationResult extends BaseResult {
+
+    private final PolarisBaseEntity principal;
+
+    public SecretValidationResult(
+        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
+      super(errorCode, extraInformation);
+      this.principal = null;
+    }
+
+    public SecretValidationResult(@Nonnull PolarisBaseEntity principal) {
+      super(BaseResult.ReturnStatus.SUCCESS);
+      this.principal = principal;
+    }
+
+    @JsonCreator
+    private SecretValidationResult(
+        @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
+        @JsonProperty("extraInformation") @Nullable String extraInformation,
+        @JsonProperty("principalSecrets") @Nonnull PolarisBaseEntity principal) {
+      super(returnStatus, extraInformation);
+      this.principal = principal;
+    }
+
+    public PolarisBaseEntity getPrincipal() {
+      return principal;
     }
   }
 }
