@@ -16,11 +16,5 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-#
 
-polaris-core=polaris-core
-polaris-service-common=polaris-service/common
-polaris-service-dropwizard=polaris-service/dropwizard
-polaris-eclipselink=extension/persistence/eclipselink
-polaris-jpa-model=extension/persistence/jpa-model
-aggregated-license-report=aggregated-license-report
+org.apache.polaris.service.dropwizard.logging.PolarisJsonLayoutFactory
