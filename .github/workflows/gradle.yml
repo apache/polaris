@@ -39,6 +39,10 @@ jobs:
     permissions:
       contents: read
 
+    env:
+      # https://docs.gradle.com/develocity/gradle-plugin/current/#via_environment_variable
+      DEVELOCITY_ACCESS_KEY: ${{secrets.GE_ACCESS_TOKEN}}
+
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 21
