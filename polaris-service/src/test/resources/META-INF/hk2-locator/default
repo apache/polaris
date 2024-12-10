@@ -16,9 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.monitor;
+[org.apache.polaris.service.catalog.io.TestFileIOFactory]S
+contract={org.apache.polaris.service.catalog.io.FileIOFactory}
+name=test
+qualifier={io.smallrye.common.annotation.Identifier}
 
-/** Allows setting a configured instance of {@link PolarisMetricRegistry} */
-public interface MetricRegistryAware {
-  void setMetricRegistry(PolarisMetricRegistry metricRegistry);
-}
+[org.apache.polaris.service.ratelimiter.MockRealmTokenBucketRateLimiter]S
+contract={org.apache.polaris.service.ratelimiter.RateLimiter}
+name=mock-realm-token-bucket
+qualifier={io.smallrye.common.annotation.Identifier}

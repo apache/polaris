@@ -21,7 +21,10 @@ package org.apache.polaris.service.catalog;
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.net.URLEncoder;
@@ -29,13 +32,16 @@ import java.nio.charset.Charset;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.NotFoundException;
+import org.apache.iceberg.rest.Endpoint;
 import org.apache.iceberg.rest.RESTUtil;
+import org.apache.iceberg.rest.ResourcePaths;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -71,11 +77,44 @@ import org.apache.polaris.service.types.NotificationRequest;
 public class IcebergCatalogAdapter
     implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService {
 
+  private static final Set<Endpoint> DEFAULT_ENDPOINTS =
+      ImmutableSet.<Endpoint>builder()
+          .add(Endpoint.V1_LIST_NAMESPACES)
+          .add(Endpoint.V1_LOAD_NAMESPACE)
+          .add(Endpoint.V1_CREATE_NAMESPACE)
+          .add(Endpoint.V1_UPDATE_NAMESPACE)
+          .add(Endpoint.V1_DELETE_NAMESPACE)
+          .add(Endpoint.V1_LIST_TABLES)
+          .add(Endpoint.V1_LOAD_TABLE)
+          .add(Endpoint.V1_CREATE_TABLE)
+          .add(Endpoint.V1_UPDATE_TABLE)
+          .add(Endpoint.V1_DELETE_TABLE)
+          .add(Endpoint.V1_RENAME_TABLE)
+          .add(Endpoint.V1_REGISTER_TABLE)
+          .add(Endpoint.V1_REPORT_METRICS)
+          .build();
+
+  private static final Set<Endpoint> VIEW_ENDPOINTS =
+      ImmutableSet.<Endpoint>builder()
+          .add(Endpoint.V1_LIST_VIEWS)
+          .add(Endpoint.V1_LOAD_VIEW)
+          .add(Endpoint.V1_CREATE_VIEW)
+          .add(Endpoint.V1_UPDATE_VIEW)
+          .add(Endpoint.V1_DELETE_VIEW)
+          .add(Endpoint.V1_RENAME_VIEW)
+          .build();
+
+  private static final Set<Endpoint> COMMIT_ENDPOINT =
+      ImmutableSet.<Endpoint>builder()
+          .add(Endpoint.create("POST", ResourcePaths.V1_TRANSACTIONS_COMMIT))
+          .build();
+
   private final CallContextCatalogFactory catalogFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final RealmEntityManagerFactory entityManagerFactory;
   private final PolarisAuthorizer polarisAuthorizer;
 
+  @Inject
   public IcebergCatalogAdapter(
       CallContextCatalogFactory catalogFactory,
       RealmEntityManagerFactory entityManagerFactory,
@@ -466,6 +505,12 @@ public class IcebergCatalogAdapter
             ConfigResponse.builder()
                 .withDefaults(properties) // catalog properties are defaults
                 .withOverrides(ImmutableMap.of("prefix", warehouse))
+                .withEndpoints(
+                    ImmutableList.<Endpoint>builder()
+                        .addAll(DEFAULT_ENDPOINTS)
+                        .addAll(VIEW_ENDPOINTS)
+                        .addAll(COMMIT_ENDPOINT)
+                        .build())
                 .build())
         .build();
   }

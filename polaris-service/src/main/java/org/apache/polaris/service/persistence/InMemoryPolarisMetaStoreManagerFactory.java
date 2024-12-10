@@ -18,9 +18,10 @@
  */
 package org.apache.polaris.service.persistence;
 
-import com.fasterxml.jackson.annotation.JsonTypeName;
-import io.dropwizard.jackson.Discoverable;
+import com.google.common.annotations.VisibleForTesting;
+import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.inject.Inject;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
@@ -34,10 +35,13 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
 import org.apache.polaris.core.persistence.PolarisTreeMapStore;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
-@JsonTypeName("in-memory")
+@Identifier("in-memory")
 public class InMemoryPolarisMetaStoreManagerFactory
-    extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> implements Discoverable {
+    extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
+  @Inject protected PolarisStorageIntegrationProvider storageIntegration;
+
   final Set<String> bootstrappedRealms = new HashSet<>();
 
   @Override
@@ -86,5 +90,11 @@ public class InMemoryPolarisMetaStoreManagerFactory
             principalSecrets.getPrincipalSecrets().getPrincipalClientId(),
             principalSecrets.getPrincipalSecrets().getMainSecret());
     System.out.println(msg);
+  }
+
+  @VisibleForTesting
+  public void setStorageIntegrationProvider(
+      PolarisStorageIntegrationProvider storageIntegrationProvider) {
+    this.storageIntegration = storageIntegrationProvider;
   }
 }

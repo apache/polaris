@@ -18,11 +18,14 @@
  */
 package org.apache.polaris.service.config;
 
+import jakarta.inject.Inject;
+import jakarta.inject.Provider;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,15 +35,20 @@ public class RealmEntityManagerFactory {
   private final MetaStoreManagerFactory metaStoreManagerFactory;
 
   // Key: realmIdentifier
-  private final Map<String, PolarisEntityManager> cachedEntityManagers = new ConcurrentHashMap<>();
+  private final Map<String, PolarisEntityManager> cachedEntityManagers = new HashMap<>();
+  private final Provider<EntityCache> entityCache;
 
   // Subclasses for test injection.
   protected RealmEntityManagerFactory() {
     this.metaStoreManagerFactory = null;
+    this.entityCache = null;
   }
 
-  public RealmEntityManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
+  @Inject
+  public RealmEntityManagerFactory(
+      MetaStoreManagerFactory metaStoreManagerFactory, Provider<EntityCache> entityCache) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.entityCache = entityCache;
   }
 
   public PolarisEntityManager getOrCreateEntityManager(RealmContext context) {
@@ -54,7 +62,8 @@ public class RealmEntityManagerFactory {
           LOGGER.info("Initializing new PolarisEntityManager for realm {}", r);
           return new PolarisEntityManager(
               metaStoreManagerFactory.getOrCreateMetaStoreManager(context),
-              metaStoreManagerFactory.getOrCreateStorageCredentialCache(context));
+              metaStoreManagerFactory.getOrCreateStorageCredentialCache(context),
+              entityCache.get());
         });
   }
 }

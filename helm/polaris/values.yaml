@@ -321,9 +321,9 @@ polarisServerConfig:
   oauth2:
     type: test
   #  type: default # - uncomment to support Auth0 JWT tokens
-  #  tokenBroker:
-  #    type: symmetric-key
-  #    secret: polaris
+# tokenBroker:
+#  type: symmetric-key
+#  secret: polaris
 
   authenticator:
     class: org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator

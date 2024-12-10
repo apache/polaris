@@ -21,11 +21,8 @@ package org.apache.polaris.service;
 import io.dropwizard.core.cli.ConfiguredCommand;
 import io.dropwizard.core.setup.Bootstrap;
 import net.sourceforge.argparse4j.inf.Namespace;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.service.config.ConfigurationStoreAware;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
-import org.apache.polaris.service.context.CallContextResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,17 +40,8 @@ public class PurgeRealmsCommand extends ConfiguredCommand<PolarisApplicationConf
       Namespace namespace,
       PolarisApplicationConfig configuration)
       throws Exception {
-    MetaStoreManagerFactory metaStoreManagerFactory = configuration.getMetaStoreManagerFactory();
-
-    PolarisConfigurationStore configurationStore = configuration.getConfigurationStore();
-    if (metaStoreManagerFactory instanceof ConfigurationStoreAware) {
-      ((ConfigurationStoreAware) metaStoreManagerFactory).setConfigurationStore(configurationStore);
-    }
-    CallContextResolver callContextResolver = configuration.getCallContextResolver();
-    callContextResolver.setMetaStoreManagerFactory(metaStoreManagerFactory);
-    if (callContextResolver instanceof ConfigurationStoreAware csa) {
-      csa.setConfigurationStore(configurationStore);
-    }
+    MetaStoreManagerFactory metaStoreManagerFactory =
+        configuration.findService(MetaStoreManagerFactory.class);
 
     metaStoreManagerFactory.purgeRealms(configuration.getDefaultRealms());
 

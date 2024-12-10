@@ -100,6 +100,38 @@ paths:
 
         Common catalog configuration settings are documented at
         https://iceberg.apache.org/docs/latest/configuration/#catalog-properties
+
+
+        The catalog configuration also holds an optional `endpoints` field that contains information about the endpoints
+        supported by the server. If a server does not send the `endpoints` field, a default set of endpoints is assumed:
+
+          - GET /v1/{prefix}/namespaces
+
+          - POST /v1/{prefix}/namespaces
+
+          - GET /v1/{prefix}/namespaces/{namespace}
+
+          - DELETE /v1/{prefix}/namespaces/{namespace}
+
+          - POST /v1/{prefix}/namespaces/{namespace}/properties
+
+          - GET /v1/{prefix}/namespaces/{namespace}/tables
+
+          - POST /v1/{prefix}/namespaces/{namespace}/tables
+
+          - GET /v1/{prefix}/namespaces/{namespace}/tables/{table}
+
+          - POST /v1/{prefix}/namespaces/{namespace}/tables/{table}
+
+          - DELETE /v1/{prefix}/namespaces/{namespace}/tables/{table}
+
+          - POST /v1/{prefix}/namespaces/{namespace}/register
+
+          - POST /v1/{prefix}/namespaces/{namespace}/tables/{table}/metrics
+
+          - POST /v1/{prefix}/tables/rename
+
+          - POST /v1/{prefix}/transactions/commit
         "
       responses:
         200:
@@ -114,7 +146,14 @@ paths:
                 },
                 "defaults": {
                   "clients": "4"
-                }
+                },
+                "endpoints": [
+                  "GET /v1/{prefix}/namespaces/{namespace}",
+                  "GET /v1/{prefix}/namespaces",
+                  "POST /v1/{prefix}/namespaces",
+                  "GET /v1/{prefix}/namespaces/{namespace}/tables/{table}",
+                  "GET /v1/{prefix}/namespaces/{namespace}/views/{view}"
+                ]
               }
         400:
           $ref: '#/components/responses/BadRequestErrorResponse'
@@ -134,9 +173,22 @@ paths:
     post:
       tags:
         - OAuth2 API
-      summary: Get a token using an OAuth2 flow
+      summary: Get a token using an OAuth2 flow (DEPRECATED for REMOVAL)
+      deprecated: true
       operationId: getToken
       description:
+        The `oauth/tokens` endpoint is **DEPRECATED for REMOVAL**. It is _not_ recommended to
+        implement this endpoint, unless you are fully aware of the potential security implications.
+
+        All clients are encouraged to explicitly set the configuration property `oauth2-server-uri`
+        to the correct OAuth endpoint.
+
+        Deprecated since Iceberg (Java) 1.6.0. The endpoint and related types will be removed from
+        this spec in Iceberg (Java) 2.0.
+
+        See [Security improvements in the Iceberg REST specification](https://github.com/apache/iceberg/issues/10537)
+
+
         Exchange credentials for a token using the OAuth2 client credentials flow or token exchange.
 
 
@@ -681,6 +733,8 @@ paths:
         Commits have two parts, requirements and updates. Requirements are assertions that will be validated
         before attempting to make and commit changes. For example, `assert-ref-snapshot-id` will check that a
         named ref's snapshot ID has a certain value.
+        Server implementations are required to fail with a 400 status code
+        if any unknown updates or requirements are received.
 
 
         Updates are changes to make to table metadata. For example, after asserting that the current main ref
@@ -844,6 +898,44 @@ paths:
         404:
           description:
             Not Found - NoSuchTableException, Table not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                TableToLoadDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTableError'
+        419:
+          $ref: '#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+
+  /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/namespace'
+      - $ref: '#/components/parameters/table'
+
+    get:
+      tags:
+        - Catalog API
+      summary: Load vended credentials for a table from the catalog
+      operationId: loadCredentials
+      description: Load vended credentials for a table from the catalog.
+      responses:
+        200:
+          $ref: '#/components/responses/LoadCredentialsResponse'
+        400:
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchTableException, table to load credentials for does not exist
           content:
             application/json:
               schema:
@@ -1051,7 +1143,8 @@ paths:
           A commit for a single table consists of a table identifier with requirements and updates.
           Requirements are assertions that will be validated before attempting to make and commit changes.
           For example, `assert-ref-snapshot-id` will check that a named ref's snapshot ID has a certain value.
-
+          Server implementations are required to fail with a 400 status code
+          if any unknown updates or requirements are received.
 
           Updates are changes to make to table metadata. For example, after asserting that the current main ref
           is at the expected snapshot, a commit may add a new child snapshot and set the ref to the new
@@ -1645,6 +1738,19 @@ components:
             type: string
           description:
             Properties that should be used as default configuration; applied before client configuration.
+        endpoints:
+          type: array
+          items:
+            type: string
+          description: A list of endpoints that the server supports. The format of each endpoint must be "<HTTP verb> <resource path from OpenAPI REST spec>".
+            The HTTP verb and the resource path must be separated by a space character.
+          example: [
+            "GET /v1/{prefix}/namespaces/{namespace}",
+            "GET /v1/{prefix}/namespaces",
+            "POST /v1/{prefix}/namespaces",
+            "GET /v1/{prefix}/namespaces/{namespace}/tables/{table}",
+            "GET /v1/{prefix}/namespaces/{namespace}/views/{view}"
+          ]
 
     CreateNamespaceRequest:
       type: object
@@ -1836,6 +1942,8 @@ components:
 
     Expression:
       oneOf:
+        - $ref: '#/components/schemas/TrueExpression'
+        - $ref: '#/components/schemas/FalseExpression'
         - $ref: '#/components/schemas/AndOrExpression'
         - $ref: '#/components/schemas/NotExpression'
         - $ref: '#/components/schemas/SetExpression'
@@ -1845,6 +1953,8 @@ components:
     ExpressionType:
       type: string
       example:
+        - "true"
+        - "false"
         - "eq"
         - "and"
         - "or"
@@ -1862,6 +1972,24 @@ components:
         - "not-null"
         - "is-nan"
         - "not-nan"
+
+    TrueExpression:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          $ref: '#/components/schemas/ExpressionType'
+          enum: ["true"]
+
+    FalseExpression:
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          $ref: '#/components/schemas/ExpressionType'
+          enum: ["false"]
 
     AndOrExpression:
       type: object
@@ -2197,11 +2325,11 @@ components:
         metadata-log:
           $ref: '#/components/schemas/MetadataLog'
         # statistics
-        statistics-files:
+        statistics:
           type: array
           items:
             $ref: '#/components/schemas/StatisticsFile'
-        partition-statistics-files:
+        partition-statistics:
           type: array
           items:
             $ref: '#/components/schemas/PartitionStatisticsFile'
@@ -2330,6 +2458,7 @@ components:
           remove-statistics: '#/components/schemas/RemoveStatisticsUpdate'
           set-partition-statistics: '#/components/schemas/SetPartitionStatisticsUpdate'
           remove-partition-statistics: '#/components/schemas/RemovePartitionStatisticsUpdate'
+          remove-partition-specs: '#/components/schemas/RemovePartitionSpecsUpdate'
       type: object
       required:
         - action
@@ -2632,6 +2761,20 @@ components:
           type: integer
           format: int64
 
+    RemovePartitionSpecsUpdate:
+      allOf:
+        - $ref: '#/components/schemas/BaseUpdate'
+      required:
+        - spec-ids
+      properties:
+        action:
+          type: string
+          enum: [ "remove-partition-specs" ]
+        spec-ids:
+          type: array
+          items:
+            type: integer
+
     TableUpdate:
       anyOf:
         - $ref: '#/components/schemas/AssignUUIDUpdate'
@@ -2651,6 +2794,7 @@ components:
         - $ref: '#/components/schemas/RemovePropertiesUpdate'
         - $ref: '#/components/schemas/SetStatisticsUpdate'
         - $ref: '#/components/schemas/RemoveStatisticsUpdate'
+        - $ref: '#/components/schemas/RemovePartitionSpecsUpdate'
 
     ViewUpdate:
       anyOf:
@@ -2664,6 +2808,7 @@ components:
         - $ref: '#/components/schemas/SetCurrentViewVersionUpdate'
 
     TableRequirement:
+      type: object
       discriminator:
         propertyName: type
         mapping:
@@ -2675,16 +2820,17 @@ components:
           assert-last-assigned-partition-id: '#/components/schemas/AssertLastAssignedPartitionId'
           assert-default-spec-id: '#/components/schemas/AssertDefaultSpecId'
           assert-default-sort-order-id: '#/components/schemas/AssertDefaultSortOrderId'
-      type: object
-      required:
-        - type
-      properties:
-        type:
-          type: "string"
+      oneOf:
+        - $ref: '#/components/schemas/AssertCreate'
+        - $ref: '#/components/schemas/AssertTableUUID'
+        - $ref: '#/components/schemas/AssertRefSnapshotId'
+        - $ref: '#/components/schemas/AssertLastAssignedFieldId'
+        - $ref: '#/components/schemas/AssertCurrentSchemaId'
+        - $ref: '#/components/schemas/AssertLastAssignedPartitionId'
+        - $ref: '#/components/schemas/AssertDefaultSpecId'
+        - $ref: '#/components/schemas/AssertDefaultSortOrderId'
 
     AssertCreate:
-      allOf:
-        - $ref: "#/components/schemas/TableRequirement"
       type: object
       description: The table must not already exist; used for create transactions
       required:
@@ -2695,8 +2841,6 @@ components:
           enum: ["assert-create"]
 
     AssertTableUUID:
-      allOf:
-        - $ref: "#/components/schemas/TableRequirement"
       description: The table UUID must match the requirement's `uuid`
       required:
         - type
@@ -2709,8 +2853,6 @@ components:
           type: string
 
     AssertRefSnapshotId:
-      allOf:
-        - $ref: "#/components/schemas/TableRequirement"
       description:
         The table branch or tag identified by the requirement's `ref` must reference the requirement's `snapshot-id`;
         if `snapshot-id` is `null` or missing, the ref must not already exist
@@ -2729,8 +2871,6 @@ components:
           format: int64
 
     AssertLastAssignedFieldId:
-      allOf:
-        - $ref: "#/components/schemas/TableRequirement"
       description:
         The table's last assigned column id must match the requirement's `last-assigned-field-id`
       required:
@@ -2744,8 +2884,6 @@ components:
           type: integer
 
     AssertCurrentSchemaId:
-      allOf:
-        - $ref: "#/components/schemas/TableRequirement"
       description:
         The table's current schema id must match the requirement's `current-schema-id`
       required:
@@ -2759,8 +2897,6 @@ components:
           type: integer
 
     AssertLastAssignedPartitionId:
-      allOf:
-        - $ref: "#/components/schemas/TableRequirement"
       description:
         The table's last assigned partition id must match the requirement's `last-assigned-partition-id`
       required:
@@ -2774,8 +2910,6 @@ components:
           type: integer
 
     AssertDefaultSpecId:
-      allOf:
-        - $ref: "#/components/schemas/TableRequirement"
       description:
         The table's default spec id must match the requirement's `default-spec-id`
       required:
@@ -2789,8 +2923,6 @@ components:
           type: integer
 
     AssertDefaultSortOrderId:
-      allOf:
-        - $ref: "#/components/schemas/TableRequirement"
       description:
         The table's default sort order id must match the requirement's `default-sort-order-id`
       required:
@@ -2804,20 +2936,15 @@ components:
           type: integer
 
     ViewRequirement:
+      type: object
       discriminator:
         propertyName: type
         mapping:
           assert-view-uuid: '#/components/schemas/AssertViewUUID'
-      type: object
-      required:
-        - type
-      properties:
-        type:
-          type: "string"
+      oneOf:
+        - $ref: '#/components/schemas/AssertViewUUID'
 
     AssertViewUUID:
-      allOf:
-        - $ref: "#/components/schemas/ViewRequirement"
       description: The view UUID must match the requirement's `uuid`
       required:
         - type
@@ -2828,6 +2955,31 @@ components:
           enum: ["assert-view-uuid"]
         uuid:
           type: string
+
+    StorageCredential:
+      type: object
+      required:
+        - prefix
+        - config
+      properties:
+        prefix:
+          type: string
+          description: Indicates a storage location prefix where the credential is relevant. Clients should choose the most
+            specific prefix (by selecting the longest prefix) if several credentials of the same type are available.
+        config:
+          type: object
+          additionalProperties:
+            type: string
+
+    LoadCredentialsResponse:
+      type: object
+      required:
+        - storage-credentials
+      properties:
+        storage-credentials:
+          type: array
+          items:
+            $ref: '#/components/schemas/StorageCredential'
 
     LoadTableResult:
       description: |
@@ -2851,10 +3003,15 @@ components:
         
         The following configurations should be respected when working with tables stored in AWS S3
          - `client.region`: region to configure client for making requests to AWS
-         - `s3.access-key-id`: id for for credentials that provide access to the data in S3
+         - `s3.access-key-id`: id for credentials that provide access to the data in S3
          - `s3.secret-access-key`: secret for credentials that provide access to data in S3 
          - `s3.session-token`: if present, this value should be used for as the session token 
          - `s3.remote-signing-enabled`: if `true` remote signing should be performed as described in the `s3-signer-open-api.yaml` specification
+
+        ## Storage Credentials
+
+        Credentials for ADLS / GCS / S3 / ... are provided through the `storage-credentials` field.
+        Clients must first check whether the respective credentials exist in the `storage-credentials` field before checking the `config` for credentials.
       type: object
       required:
         - metadata
@@ -2868,6 +3025,10 @@ components:
           type: object
           additionalProperties:
             type: string
+        storage-credentials:
+          type: array
+          items:
+            $ref: '#/components/schemas/StorageCredential'
 
     CommitTableRequest:
       type: object
@@ -3017,7 +3178,12 @@ components:
         See https://datatracker.ietf.org/doc/html/rfc8693#section-3
 
     OAuthClientCredentialsRequest:
+      deprecated: true
       description:
+        The `oauth/tokens` endpoint and related schemas are **DEPRECATED for REMOVAL** from this
+        spec, see description of the endpoint.
+
+
         OAuth2 client credentials request
 
 
@@ -3052,7 +3218,12 @@ components:
             a Basic Authorization header.
 
     OAuthTokenExchangeRequest:
+      deprecated: true
       description:
+        The `oauth/tokens` endpoint and related schemas are **DEPRECATED for REMOVAL** from this
+        spec, see description of the endpoint.
+
+
         OAuth2 token exchange request
 
 
@@ -3083,6 +3254,10 @@ components:
           $ref: '#/components/schemas/TokenType'
 
     OAuthTokenRequest:
+      deprecated: true
+      description:
+        The `oauth/tokens` endpoint and related schemas are **DEPRECATED for REMOVAL** from this
+        spec, see description of the endpoint.
       anyOf:
         - $ref: '#/components/schemas/OAuthClientCredentialsRequest'
         - $ref: '#/components/schemas/OAuthTokenExchangeRequest'
@@ -3124,7 +3299,7 @@ components:
       type: object
       additionalProperties:
         $ref: '#/components/schemas/MetricResult'
-      example:
+      example: {
         "metrics": {
           "total-planning-duration": {
             "count": 1,
@@ -3164,6 +3339,7 @@ components:
             "value": 0,
           }
         }
+      }
 
     ReportMetricsRequest:
       anyOf:
@@ -3276,6 +3452,10 @@ components:
           $ref: '#/components/schemas/TableMetadata'
 
     OAuthError:
+      deprecated: true
+      description:
+        The `oauth/tokens` endpoint and related schemas are **DEPRECATED for REMOVAL** from this
+        spec, see description of the endpoint.
       type: object
       required:
         - error
@@ -3295,6 +3475,10 @@ components:
           type: string
 
     OAuthTokenResponse:
+      deprecated: true
+      description:
+        The `oauth/tokens` endpoint and related schemas are **DEPRECATED for REMOVAL** from this
+        spec, see description of the endpoint.
       type: object
       required:
         - access_token
@@ -3488,6 +3672,8 @@ components:
             type: integer
         properties:
           type: object
+          additionalProperties:
+            type: string
 
     PartitionStatisticsFile:
       type: object
@@ -3678,6 +3864,7 @@ components:
       type: object
       required:
         - spec-id
+        - partition
         - content
         - file-path
         - file-format
@@ -3697,8 +3884,8 @@ components:
           items:
             $ref: '#/components/schemas/PrimitiveTypeValue'
           description:
-            "A list of partition field values ordered based on the fields of the partition spec specified by the 
-            `spec-id`"
+            A list of partition field values ordered based on the fields of
+            the partition spec specified by the `spec-id`
           example: [1, "bar"]
         file-size-in-bytes:
           type: integer
@@ -3755,6 +3942,16 @@ components:
           allOf:
             - $ref: '#/components/schemas/ValueMap'
           description: "Map of column id to upper bound primitive type values"
+
+    DeleteFile:
+      discriminator:
+        propertyName: content
+        mapping:
+          position-deletes: '#/components/schemas/PositionDeleteFile'
+          equality-deletes: '#/components/schemas/EqualityDeleteFile'
+      oneOf:
+        - $ref: '#/components/schemas/PositionDeleteFile'
+        - $ref: '#/components/schemas/EqualityDeleteFile'
 
     PositionDeleteFile:
       allOf:
@@ -4020,6 +4217,13 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/CommitTableResponse'
+
+    LoadCredentialsResponse:
+      description: Table credentials result when loading credentials for a table
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadCredentialsResponse'
 
   #######################################
   # Common examples of different values #
