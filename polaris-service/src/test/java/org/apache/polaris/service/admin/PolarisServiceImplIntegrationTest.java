@@ -22,6 +22,9 @@ import static io.dropwizard.jackson.Jackson.newObjectMapper;
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.JWTCreator;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,9 +37,13 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.rest.RESTUtil;
@@ -78,21 +85,34 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.service.PolarisApplication;
+import org.apache.polaris.service.auth.BasePolarisAuthenticator;
 import org.apache.polaris.service.auth.TokenUtils;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
+import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 
-@ExtendWith({DropwizardExtensionsSupport.class, PolarisConnectionExtension.class})
+@ExtendWith({
+  DropwizardExtensionsSupport.class,
+  TestEnvironmentExtension.class,
+  PolarisConnectionExtension.class
+})
 public class PolarisServiceImplIntegrationTest {
   private static final int MAX_IDENTIFIER_LENGTH = 256;
+  private static final String ISSUER_KEY = "polaris";
+  private static final String CLAIM_KEY_ACTIVE = "active";
+  private static final String CLAIM_KEY_CLIENT_ID = "client_id";
+  private static final String CLAIM_KEY_PRINCIPAL_ID = "principalId";
+  private static final String CLAIM_KEY_SCOPE = "scope";
 
   // TODO: Add a test-only hook that fully clobbers all persistence state so we can have a fresh
   // slate on every test case; otherwise, leftover state from one test from failures will interfere
@@ -113,14 +133,17 @@ public class PolarisServiceImplIntegrationTest {
           ConfigOverride.config("gcp_credentials.expires_in", "12345"));
   private static String userToken;
   private static String realm;
+  private static String clientId;
 
   @BeforeAll
   public static void setup(
-      PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String polarisRealm)
+      PolarisConnectionExtension.PolarisToken adminToken,
+      PolarisPrincipalSecrets adminSecrets,
+      @PolarisRealm String polarisRealm)
       throws IOException {
     userToken = adminToken.token();
     realm = polarisRealm;
-
+    clientId = adminSecrets.getPrincipalClientId();
     // Set up test location
     PolarisConnectionExtension.createTestDir(realm);
   }
@@ -567,6 +590,66 @@ public class PolarisServiceImplIntegrationTest {
       assertThat(error)
           .isNotNull()
           .returns("Unsupported storage type: FILE", ErrorResponse::message);
+    }
+  }
+
+  @Test
+  public void testUpdateCatalogWithoutDefaultBaseLocationInUpdate() throws JsonProcessingException {
+    AwsStorageConfigInfo awsConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
+            .setExternalId("externalId")
+            .setUserArn("userArn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .build();
+    String catalogName = "mycatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setStorageConfigInfo(awsConfigModel)
+            .build();
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs", userToken)
+            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
+      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    // 200 successful GET after creation
+    Catalog fetchedCatalog = null;
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs/" + catalogName, userToken)
+            .get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      fetchedCatalog = response.readEntity(Catalog.class);
+
+      assertThat(fetchedCatalog.getName()).isEqualTo(catalogName);
+      assertThat(fetchedCatalog.getProperties().toMap())
+          .isEqualTo(Map.of("default-base-location", "s3://bucket/path/to/data"));
+      assertThat(fetchedCatalog.getEntityVersion()).isGreaterThan(0);
+    }
+
+    // Create an UpdateCatalogRequest that only sets a new property foo=bar but omits
+    // default-base-location.
+    UpdateCatalogRequest updateRequest =
+        new UpdateCatalogRequest(
+            fetchedCatalog.getEntityVersion(), Map.of("foo", "bar"), null /* storageConfigIno */);
+
+    // Successfully update
+    Catalog updatedCatalog = null;
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/catalogs/" + catalogName, userToken)
+            .put(Entity.json(updateRequest))) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      updatedCatalog = response.readEntity(Catalog.class);
+
+      assertThat(updatedCatalog.getName()).isEqualTo(catalogName);
+      // Check that default-base-location is preserved in addition to adding the new property
+      assertThat(updatedCatalog.getProperties().toMap())
+          .isEqualTo(Map.of("default-base-location", "s3://bucket/path/to/data", "foo", "bar"));
+      assertThat(updatedCatalog.getEntityVersion()).isGreaterThan(0);
     }
   }
 
@@ -2223,6 +2306,139 @@ public class PolarisServiceImplIntegrationTest {
         new CatalogGrant(CatalogPrivilege.TABLE_CREATE, GrantResource.TypeEnum.CATALOG),
         manageAccessUserToken,
         Response.Status.FORBIDDEN);
+  }
+
+  @Test
+  public void testTokenExpiry() {
+    // TokenExpiredException - if the token has expired.
+    String newToken =
+        defaultJwt()
+            .withExpiresAt(Instant.now().plus(1, ChronoUnit.SECONDS))
+            .sign(Algorithm.HMAC256("polaris"));
+    Awaitility.await("expected list of records should be produced")
+        .atMost(Duration.ofSeconds(2))
+        .pollDelay(Duration.ofSeconds(1))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              try (Response response =
+                  newRequest("http://localhost:%d/api/management/v1/principals", newToken).get()) {
+                assertThat(response)
+                    .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
+              }
+            });
+  }
+
+  @Test
+  public void testTokenInactive() {
+    // InvalidClaimException - if a claim contained a different value than the expected one.
+    String newToken =
+        defaultJwt().withClaim(CLAIM_KEY_ACTIVE, false).sign(Algorithm.HMAC256("polaris"));
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/principals", newToken).get()) {
+      assertThat(response)
+          .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testTokenInvalidSignature() {
+    // SignatureVerificationException - if the signature is invalid.
+    String newToken = defaultJwt().sign(Algorithm.HMAC256("invalid_secret"));
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/principals", newToken).get()) {
+      assertThat(response)
+          .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testTokenInvalidPrincipalId() {
+    String newToken =
+        defaultJwt().withClaim(CLAIM_KEY_PRINCIPAL_ID, 0).sign(Algorithm.HMAC256("polaris"));
+    try (Response response =
+        newRequest("http://localhost:%d/api/management/v1/principals", newToken).get()) {
+      assertThat(response)
+          .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testNamespaceExistsStatus() {
+    // create a catalog
+    String catalogName = "mytablemanagecatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setStorageConfigInfo(
+                new AwsStorageConfigInfo(
+                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+    createCatalog(catalog);
+
+    // create a namespace
+    String namespaceName = "c";
+    createNamespace(catalogName, namespaceName);
+
+    // check if a namespace existed
+    try (Response response =
+        newRequest(
+                "http://localhost:%d/api/catalog/v1/"
+                    + catalogName
+                    + "/namespaces/"
+                    + namespaceName,
+                userToken)
+            .head()) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testDropNamespaceStatus() {
+    // create a catalog
+    String catalogName = "mytablemanagecatalog";
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(catalogName)
+            .setStorageConfigInfo(
+                new AwsStorageConfigInfo(
+                    "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
+            .setProperties(new CatalogProperties("s3://bucket1/"))
+            .build();
+    createCatalog(catalog);
+
+    // create a namespace
+    String namespaceName = "c";
+    createNamespace(catalogName, namespaceName);
+
+    // drop a namespace
+    try (Response response =
+        newRequest(
+                "http://localhost:%d/api/catalog/v1/"
+                    + catalogName
+                    + "/namespaces/"
+                    + namespaceName,
+                userToken)
+            .delete()) {
+      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  public static JWTCreator.Builder defaultJwt() {
+    Instant now = Instant.now();
+    return JWT.create()
+        .withIssuer(ISSUER_KEY)
+        .withSubject(String.valueOf(1))
+        .withIssuedAt(now)
+        .withExpiresAt(now.plus(10, ChronoUnit.SECONDS))
+        .withJWTId(UUID.randomUUID().toString())
+        .withClaim(CLAIM_KEY_ACTIVE, true)
+        .withClaim(CLAIM_KEY_CLIENT_ID, clientId)
+        .withClaim(CLAIM_KEY_PRINCIPAL_ID, 1)
+        .withClaim(CLAIM_KEY_SCOPE, BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL);
   }
 
   private static void createNamespace(String catalogName, String namespaceName) {

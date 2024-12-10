@@ -23,12 +23,9 @@ import io.dropwizard.core.setup.Bootstrap;
 import java.util.Map;
 import net.sourceforge.argparse4j.inf.Namespace;
 import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.service.config.ConfigurationStoreAware;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
-import org.apache.polaris.service.context.CallContextResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,28 +46,19 @@ public class BootstrapRealmsCommand extends ConfiguredCommand<PolarisApplication
       Bootstrap<PolarisApplicationConfig> bootstrap,
       Namespace namespace,
       PolarisApplicationConfig configuration) {
-    MetaStoreManagerFactory metaStoreManagerFactory = configuration.getMetaStoreManagerFactory();
+    MetaStoreManagerFactory metaStoreManagerFactory =
+        configuration.findService(MetaStoreManagerFactory.class);
 
-    PolarisConfigurationStore configurationStore = configuration.getConfigurationStore();
-    if (metaStoreManagerFactory instanceof ConfigurationStoreAware) {
-      ((ConfigurationStoreAware) metaStoreManagerFactory).setConfigurationStore(configurationStore);
-    }
-    RealmEntityManagerFactory entityManagerFactory =
-        new RealmEntityManagerFactory(metaStoreManagerFactory);
-    CallContextResolver callContextResolver = configuration.getCallContextResolver();
-    callContextResolver.setEntityManagerFactory(entityManagerFactory);
-    if (callContextResolver instanceof ConfigurationStoreAware csa) {
-      csa.setConfigurationStore(configurationStore);
-    }
+    PolarisConfigurationStore configurationStore =
+        configuration.findService(PolarisConfigurationStore.class);
 
     // Execute the bootstrap
-    Map<String, PolarisMetaStoreManager.PrincipalSecretsResult> results =
+    Map<String, PrincipalSecretsResult> results =
         metaStoreManagerFactory.bootstrapRealms(configuration.getDefaultRealms());
 
     // Log any errors:
     boolean success = true;
-    for (Map.Entry<String, PolarisMetaStoreManager.PrincipalSecretsResult> result :
-        results.entrySet()) {
+    for (Map.Entry<String, PrincipalSecretsResult> result : results.entrySet()) {
       if (!result.getValue().isSuccess()) {
         LOGGER.error(
             "Bootstrapping `{}` failed: {}",

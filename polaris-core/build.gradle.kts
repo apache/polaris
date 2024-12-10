@@ -33,10 +33,6 @@ dependencies {
   constraints {
     implementation("io.airlift:aircompressor:0.27") { because("Vulnerability detected in 0.25") }
   }
-  // TODO - this is only here for the Discoverable interface
-  // We should use a different mechanism to discover the plugin implementations
-  implementation(platform(libs.dropwizard.bom))
-  implementation("io.dropwizard:dropwizard-jackson")
 
   implementation(platform(libs.jackson.bom))
   implementation("com.fasterxml.jackson.core:jackson-annotations")
@@ -50,13 +46,6 @@ dependencies {
   compileOnly(libs.jetbrains.annotations)
   compileOnly(libs.spotbugs.annotations)
 
-  implementation(libs.hadoop.common) {
-    exclude("org.slf4j", "slf4j-reload4j")
-    exclude("org.slf4j", "slf4j-log4j12")
-    exclude("ch.qos.reload4j", "reload4j")
-    exclude("log4j", "log4j")
-    exclude("org.apache.zookeeper", "zookeeper")
-  }
   constraints {
     implementation("org.xerial.snappy:snappy-java:1.1.10.4") {
       because("Vulnerability detected in 1.1.8.2")
@@ -74,12 +63,13 @@ dependencies {
       because("Vulnerability detected in 9.8.1")
     }
   }
-  implementation(libs.hadoop.hdfs.client)
 
   implementation(libs.javax.inject)
   implementation(libs.swagger.annotations)
   implementation(libs.swagger.jaxrs)
+  implementation(libs.jakarta.inject.api)
   implementation(libs.jakarta.validation.api)
+  implementation(libs.smallrye)
 
   implementation("org.apache.iceberg:iceberg-aws")
   implementation(platform(libs.awssdk.bom))
@@ -117,12 +107,11 @@ dependencies {
   testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
   testFixturesApi(libs.commons.lang3)
   testFixturesApi(libs.threeten.extra)
-  testFixturesApi(libs.jetbrains.annotations)
   testFixturesApi(platform(libs.jackson.bom))
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+  testFixturesApi(libs.jakarta.annotation.api)
 
   compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.persistence.api)
 }
 
 openApiValidate { inputSpec = "$rootDir/spec/polaris-management-service.yml" }

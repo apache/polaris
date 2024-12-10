@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.auth;
 
+import io.dropwizard.auth.Authenticator;
+import jakarta.inject.Inject;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Optional;
@@ -32,8 +34,8 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,17 +48,12 @@ import org.slf4j.LoggerFactory;
  * these roles will be active in the current request.
  */
 public abstract class BasePolarisAuthenticator
-    implements DiscoverableAuthenticator<String, AuthenticatedPolarisPrincipal> {
+    implements Authenticator<String, AuthenticatedPolarisPrincipal> {
   public static final String PRINCIPAL_ROLE_ALL = "PRINCIPAL_ROLE:ALL";
   public static final String PRINCIPAL_ROLE_PREFIX = "PRINCIPAL_ROLE:";
   private static final Logger LOGGER = LoggerFactory.getLogger(BasePolarisAuthenticator.class);
 
-  protected RealmEntityManagerFactory entityManagerFactory;
-
-  @Override
-  public void setEntityManagerFactory(RealmEntityManagerFactory entityManagerFactory) {
-    this.entityManagerFactory = entityManagerFactory;
-  }
+  @Inject protected MetaStoreManagerFactory metaStoreManagerFactory;
 
   public PolarisCallContext getCurrentPolarisContext() {
     return CallContext.getCurrentContext().getPolarisCallContext();
@@ -66,7 +63,7 @@ public abstract class BasePolarisAuthenticator
     LOGGER.debug("Resolving principal for tokenInfo client_id={}", tokenInfo.getClientId());
     RealmContext realmContext = CallContext.getCurrentContext().getRealmContext();
     PolarisMetaStoreManager metaStoreManager =
-        entityManagerFactory.getOrCreateEntityManager(realmContext).getMetaStoreManager();
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     PolarisEntity principal;
     try {
       principal =

@@ -20,38 +20,40 @@
 package publishing
 
 import com.github.jengelman.gradle.plugins.shadow.ShadowExtension
-import org.gradle.api.*
 import javax.inject.Inject
+import org.gradle.api.*
 import org.gradle.api.component.SoftwareComponentFactory
 import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.publish.maven.plugins.MavenPublishPlugin
 import org.gradle.api.publish.tasks.GenerateModuleMetadata
+import org.gradle.jvm.tasks.Jar
 import org.gradle.kotlin.dsl.*
 import org.gradle.plugins.signing.SigningExtension
 import org.gradle.plugins.signing.SigningPlugin
-import org.gradle.jvm.tasks.Jar
 
-/** Release-publishing helper plugin to generate publications that pass Sonatype validations,
- *  generate Apache release source tarball.
+/**
+ * Release-publishing helper plugin to generate publications that pass Sonatype validations,
+ * generate Apache release source tarball.
  *
- * The `release` Gradle project property triggers: signed artifacts + jars with Git information.
- * The current Git HEAD  must point to a Git tag.
+ * The `release` Gradle project property triggers: signed artifacts + jars with Git information. The
+ * current Git HEAD must point to a Git tag.
  *
  * The `jarWithGitInfo` Gradle project property triggers: jars with Git information (not necessary
  * with `release`).
  *
- * The task `sourceTarball` (available on the root project) generates a source tarball using
- * `git archive`.
+ * The task `sourceTarball` (available on the root project) generates a source tarball using `git
+ * archive`.
  *
- * The task `releaseEmailTemplate` generates the release-vote email subject + body. Outputs on
- * the console and in the `build/distributions/` directory.
+ * The task `releaseEmailTemplate` generates the release-vote email subject + body. Outputs on the
+ * console and in the `build/distributions/` directory.
  *
- * Signing tip:  If you want to use `gpg-agent`, set the `useGpgAgent` Gradle project property
+ * Signing tip: If you want to use `gpg-agent`, set the `useGpgAgent` Gradle project property
  *
- * The following command publishes the project artifacts to your local maven repository,
- * generates the source tarball - and uses `gpg-agent`  to sign all artifacts and the tarball.
- * Note that this requires a Git tag!
+ * The following command publishes the project artifacts to your local maven repository, generates
+ * the source tarball - and uses `gpg-agent` to sign all artifacts and the tarball. Note that this
+ * requires a Git tag!
+ *
  * ```
  * ./gradlew publishToMavenLocal sourceTarball -Prelease -PuseGpgAgent
  * ```
@@ -144,4 +146,3 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
       }
     }
 }
-

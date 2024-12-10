@@ -84,6 +84,7 @@ import org.apache.polaris.service.config.PolarisApplicationConfig;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
+import org.apache.polaris.service.test.TestEnvironmentExtension;
 import org.apache.polaris.service.throttling.RequestThrottlingErrorResponse;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -99,6 +100,7 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 @ExtendWith({
   DropwizardExtensionsSupport.class,
+  TestEnvironmentExtension.class,
   PolarisConnectionExtension.class,
   SnowmanCredentialsExtension.class
 })
@@ -154,8 +156,8 @@ public class PolarisApplicationIntegrationTest {
         EXT.client()
             .target(
                 String.format(
-                    "http://localhost:%d/api/management/v1/principals/snowman/principal-roles",
-                    EXT.getLocalPort()))
+                    "http://localhost:%d/api/management/v1/principals/%s/principal-roles",
+                    EXT.getLocalPort(), snowmanCredentials.identifier().principalName()))
             .request("application/json")
             .header("Authorization", "Bearer " + PolarisApplicationIntegrationTest.userToken)
             .header(REALM_PROPERTY_KEY, realm)

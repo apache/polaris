@@ -38,13 +38,16 @@ github:
   protected_branches:
     main:
       required_pull_request_reviews:
+        require_code_owner_reviews: false
         required_approving_review_count: 1
 
       required_linear_history: true
 
+      del_branch_on_merge: true
+
       required_status_checks:
         # strict means "Require branches to be up to date before merging".
-        strict: true
+        strict: false
         # Contexts are the names of checks that must pass. This is the value
         # of the job's `name` property if it's present.
         contexts:
@@ -57,7 +60,7 @@ github:
   features:
     wiki: false
     issues: true
-    projects: false
+    projects: true
   ghp_branch: gh-pages
   ghp_path: /
 

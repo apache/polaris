@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.context;
 
+import jakarta.inject.Inject;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,6 +29,7 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
@@ -47,12 +49,16 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final RealmEntityManagerFactory entityManagerFactory;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
+  private final MetaStoreManagerFactory metaStoreManagerFactory;
 
+  @Inject
   public PolarisCallContextCatalogFactory(
       RealmEntityManagerFactory entityManagerFactory,
+      MetaStoreManagerFactory metaStoreManagerFactory,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory) {
     this.entityManagerFactory = entityManagerFactory;
+    this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
   }
@@ -76,6 +82,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     BasePolarisCatalog catalogInstance =
         new BasePolarisCatalog(
             entityManager,
+            metaStoreManagerFactory.getOrCreateMetaStoreManager(context.getRealmContext()),
             context,
             resolvedManifest,
             authenticatedPrincipal,

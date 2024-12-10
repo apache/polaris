@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.core.storage.cache;
 
+import jakarta.annotation.Nullable;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.jetbrains.annotations.Nullable;
 
 public class StorageCredentialCacheKey {
 

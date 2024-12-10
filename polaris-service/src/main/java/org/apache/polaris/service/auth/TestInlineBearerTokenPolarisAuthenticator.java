@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth;
 
 import com.google.common.base.Splitter;
 import io.dropwizard.auth.AuthenticationException;
+import io.smallrye.common.annotation.Identifier;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,6 +46,7 @@ import org.slf4j.LoggerFactory;
  * This class does not expect a client to be either present or correct. Lookup is delegated to the
  * {@link PolarisMetaStoreManager} for the current realm.
  */
+@Identifier("test")
 public class TestInlineBearerTokenPolarisAuthenticator extends BasePolarisAuthenticator {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TestInlineBearerTokenPolarisAuthenticator.class);
@@ -54,9 +56,8 @@ public class TestInlineBearerTokenPolarisAuthenticator extends BasePolarisAuthen
       throws AuthenticationException {
     Map<String, String> properties = extractPrincipal(credentials);
     PolarisMetaStoreManager metaStoreManager =
-        entityManagerFactory
-            .getOrCreateEntityManager(CallContext.getCurrentContext().getRealmContext())
-            .getMetaStoreManager();
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(
+            CallContext.getCurrentContext().getRealmContext());
     PolarisCallContext callContext = CallContext.getCurrentContext().getPolarisCallContext();
     String principal = properties.get("principal");
 

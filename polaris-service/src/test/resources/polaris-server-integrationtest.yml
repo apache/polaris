@@ -72,6 +72,7 @@ featureConfiguration:
   ALLOW_SPECIFYING_FILE_IO_IMPL: true
   SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION: true
   ALLOW_OVERLAPPING_CATALOG_URLS: true
+  ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING: false
   SUPPORTED_CATALOG_STORAGE_TYPES:
     - FILE
     - S3
@@ -86,16 +87,13 @@ io:
 
 oauth2:
   type: default
-  tokenBroker:
-    type: symmetric-key
-    secret: polaris
 
 authenticator:
   class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator
-  tokenBroker:
-    type: symmetric-key
-    secret: polaris
 
+tokenBroker:
+  type: symmetric-key
+  secret: polaris
 
 callContextResolver:
   type: default
@@ -118,6 +116,8 @@ logging:
   # Logger-specific levels.
   loggers:
     org.apache.polaris: DEBUG
+    # only used to warn about the tokens endpoint being deprecated
+    org.apache.iceberg.rest.RESTSessionCatalog: ERROR
 
   appenders:
 

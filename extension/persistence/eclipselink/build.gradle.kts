@@ -29,8 +29,11 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
+  implementation(project(":polaris-jpa-model"))
   implementation(libs.eclipselink)
   implementation(platform(libs.dropwizard.bom))
+  implementation(libs.jakarta.inject.api)
+  implementation(libs.smallrye)
   implementation("io.dropwizard:dropwizard-jackson")
   val eclipseLinkDeps: String? = project.findProperty("eclipseLinkDeps") as String?
   eclipseLinkDeps?.let {
@@ -45,7 +48,7 @@ dependencies {
     }
   }
 
-  compileOnly(libs.jetbrains.annotations)
+  compileOnly(libs.jakarta.annotation.api)
 
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))

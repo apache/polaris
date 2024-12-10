@@ -35,6 +35,15 @@ dependencies {
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
   implementation("org.apache.iceberg:iceberg-aws")
+  implementation(libs.hadoop.common) {
+    exclude("org.slf4j", "slf4j-reload4j")
+    exclude("org.slf4j", "slf4j-log4j12")
+    exclude("ch.qos.reload4j", "reload4j")
+    exclude("log4j", "log4j")
+    exclude("org.apache.zookeeper", "zookeeper")
+  }
+  implementation(libs.hadoop.hdfs.client)
+  implementation(libs.smallrye)
 
   implementation(platform(libs.dropwizard.bom))
   implementation("io.dropwizard:dropwizard-core")
@@ -61,7 +70,6 @@ dependencies {
   implementation("io.micrometer:micrometer-registry-prometheus")
 
   compileOnly(libs.swagger.annotations)
-  compileOnly(libs.jetbrains.annotations)
   compileOnly(libs.spotbugs.annotations)
   implementation(libs.swagger.jaxrs)
   implementation(libs.javax.annotation.api)
@@ -73,7 +81,7 @@ dependencies {
   implementation(libs.logback.core)
   implementation(libs.bouncycastle.bcprov)
 
-  compileOnly(libs.jetbrains.annotations)
+  compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.spotbugs.annotations)
 
   implementation(platform(libs.google.cloud.storage.bom))
@@ -82,6 +90,8 @@ dependencies {
   implementation("software.amazon.awssdk:sts")
   implementation("software.amazon.awssdk:iam-policy-builder")
   implementation("software.amazon.awssdk:s3")
+  implementation(platform(libs.azuresdk.bom))
+  implementation("com.azure:azure-core")
 
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
   testImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")
@@ -109,7 +119,7 @@ dependencies {
   testImplementation(libs.mockito.core)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
-  testRuntimeOnly(project(":polaris-eclipselink"))
+  testImplementation(project(":polaris-eclipselink"))
 }
 
 if (project.properties.get("eclipseLink") == "true") {
@@ -149,6 +159,7 @@ openApiGenerate {
       "GetNamespaceResponse" to "org.apache.iceberg.rest.responses.GetNamespaceResponse",
       "ListNamespacesResponse" to "org.apache.iceberg.rest.responses.ListNamespacesResponse",
       "ListTablesResponse" to "org.apache.iceberg.rest.responses.ListTablesResponse",
+      "LoadCredentialsResponse" to "org.apache.iceberg.rest.responses.LoadCredentialsResponse",
       "LoadTableResult" to "org.apache.iceberg.rest.responses.LoadTableResponse",
       "LoadViewResult" to "org.apache.iceberg.rest.responses.LoadTableResponse",
       "OAuthTokenResponse" to "org.apache.iceberg.rest.responses.OAuthTokenResponse",
@@ -241,6 +252,7 @@ val shadowJar =
   tasks.named<ShadowJar>("shadowJar") {
     manifest { attributes["Main-Class"] = "org.apache.polaris.service.PolarisApplication" }
     mergeServiceFiles()
+    append("META-INF/hk2-locator/default")
     isZip64 = true
     finalizedBy("startScripts")
   }

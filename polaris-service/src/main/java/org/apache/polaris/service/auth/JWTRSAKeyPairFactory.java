@@ -18,15 +18,16 @@
  */
 package org.apache.polaris.service.auth;
 
-import com.fasterxml.jackson.annotation.JsonTypeName;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.inject.Inject;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.config.HasEntityManagerFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 
-@JsonTypeName("rsa-key-pair")
-public class JWTRSAKeyPairFactory implements TokenBrokerFactory, HasEntityManagerFactory {
+@Identifier("rsa-key-pair")
+public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
   private int maxTokenGenerationInSeconds = 3600;
-  private RealmEntityManagerFactory realmEntityManagerFactory;
+
+  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
 
   public void setMaxTokenGenerationInSeconds(int maxTokenGenerationInSeconds) {
     this.maxTokenGenerationInSeconds = maxTokenGenerationInSeconds;
@@ -35,12 +36,7 @@ public class JWTRSAKeyPairFactory implements TokenBrokerFactory, HasEntityManage
   @Override
   public TokenBroker apply(RealmContext realmContext) {
     return new JWTRSAKeyPair(
-        realmEntityManagerFactory.getOrCreateEntityManager(realmContext),
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
         maxTokenGenerationInSeconds);
-  }
-
-  @Override
-  public void setEntityManagerFactory(RealmEntityManagerFactory entityManagerFactory) {
-    this.realmEntityManagerFactory = entityManagerFactory;
   }
 }

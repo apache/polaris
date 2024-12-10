@@ -18,15 +18,15 @@
  */
 package org.apache.polaris.service.auth;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.inject.Inject;
 import java.util.Optional;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.service.config.HasEntityManagerFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 
+@Identifier("default")
 public class DefaultPolarisAuthenticator extends BasePolarisAuthenticator {
-  private TokenBrokerFactory tokenBrokerFactory;
+  @Inject private TokenBrokerFactory tokenBrokerFactory;
 
   @Override
   public Optional<AuthenticatedPolarisPrincipal> authenticate(String credentials) {
@@ -34,18 +34,5 @@ public class DefaultPolarisAuthenticator extends BasePolarisAuthenticator {
         tokenBrokerFactory.apply(CallContext.getCurrentContext().getRealmContext());
     DecodedToken decodedToken = handler.verify(credentials);
     return getPrincipal(decodedToken);
-  }
-
-  @Override
-  public void setEntityManagerFactory(RealmEntityManagerFactory entityManagerFactory) {
-    super.setEntityManagerFactory(entityManagerFactory);
-    if (tokenBrokerFactory instanceof HasEntityManagerFactory) {
-      ((HasEntityManagerFactory) tokenBrokerFactory).setEntityManagerFactory(entityManagerFactory);
-    }
-  }
-
-  @JsonProperty("tokenBroker")
-  public void setTokenBroker(TokenBrokerFactory tokenBrokerFactory) {
-    this.tokenBrokerFactory = tokenBrokerFactory;
   }
 }

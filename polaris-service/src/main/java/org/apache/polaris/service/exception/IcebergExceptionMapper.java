@@ -18,10 +18,19 @@
  */
 package org.apache.polaris.service.exception;
 
+import com.azure.core.exception.AzureException;
+import com.google.cloud.storage.StorageException;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableSet;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Locale;
+import java.util.Set;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.CherrypickAncestorCommitException;
 import org.apache.iceberg.exceptions.CleanableFailure;
@@ -45,9 +54,17 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException> {
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergExceptionMapper.class);
+
+  // Case-insensitive parts of exception messages that a request to a cloud provider was denied due
+  // to lack of permissions
+  // We may want to consider a change to Iceberg Core to wrap cloud provider IO exceptions to
+  // Iceberg ForbiddenException
+  private static final Set<String> ACCESS_DENIED_HINTS =
+      Set.of("access denied", "not authorized", "forbidden");
 
   public IcebergExceptionMapper() {}
 
@@ -79,6 +96,12 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
           case RESTException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
           case IllegalArgumentException e -> Response.Status.BAD_REQUEST.getStatusCode();
           case UnsupportedOperationException e -> Response.Status.NOT_ACCEPTABLE.getStatusCode();
+          case S3Exception e when doesAnyThrowableContainAccessDeniedHint(e) ->
+              Response.Status.FORBIDDEN.getStatusCode();
+          case AzureException e when doesAnyThrowableContainAccessDeniedHint(e) ->
+              Response.Status.FORBIDDEN.getStatusCode();
+          case StorageException e when doesAnyThrowableContainAccessDeniedHint(e) ->
+              Response.Status.FORBIDDEN.getStatusCode();
           case WebApplicationException e -> e.getResponse().getStatus();
           default -> Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
         };
@@ -99,5 +122,24 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
             .build();
     LOGGER.debug("Mapped exception to errorResp: {}", errorResp);
     return errorResp;
+  }
+
+  /**
+   * @return whether any throwable in the exception chain case-insensitive-contains the given
+   *     message
+   */
+  static boolean doesAnyThrowableContainAccessDeniedHint(Exception e) {
+    return Arrays.stream(ExceptionUtils.getThrowables(e))
+        .anyMatch(t -> containsAnyAccessDeniedHint(t.getMessage()));
+  }
+
+  public static boolean containsAnyAccessDeniedHint(String message) {
+    String messageLower = message.toLowerCase(Locale.ENGLISH);
+    return ACCESS_DENIED_HINTS.stream().anyMatch(messageLower::contains);
+  }
+
+  @VisibleForTesting
+  public static Collection<String> getAccessDeniedHints() {
+    return ImmutableSet.copyOf(ACCESS_DENIED_HINTS);
   }
 }

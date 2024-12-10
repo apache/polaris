@@ -18,7 +18,8 @@
  */
 package org.apache.polaris.service.auth;
 
-import com.fasterxml.jackson.annotation.JsonTypeName;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.HashMap;
@@ -26,23 +27,22 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.service.config.HasEntityManagerFactory;
 import org.apache.polaris.service.config.OAuth2ApiService;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@JsonTypeName("test")
-public class TestOAuth2ApiService implements OAuth2ApiService, HasEntityManagerFactory {
+@Identifier("test")
+public class TestOAuth2ApiService implements OAuth2ApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(TestOAuth2ApiService.class);
 
-  private RealmEntityManagerFactory entityManagerFactory;
+  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
 
   @Override
   public Response getToken(
@@ -76,19 +76,17 @@ public class TestOAuth2ApiService implements OAuth2ApiService, HasEntityManagerF
   }
 
   private String getPrincipalName(String clientId) {
-    PolarisEntityManager entityManager =
-        entityManagerFactory.getOrCreateEntityManager(
+    PolarisMetaStoreManager metaStoreManager =
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(
             CallContext.getCurrentContext().getRealmContext());
     PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
-    PolarisMetaStoreManager.PrincipalSecretsResult secretsResult =
-        entityManager.getMetaStoreManager().loadPrincipalSecrets(polarisCallContext, clientId);
+    PrincipalSecretsResult secretsResult =
+        metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
     if (secretsResult.isSuccess()) {
       LOGGER.debug("Found principal secrets for client id {}", clientId);
       PolarisMetaStoreManager.EntityResult principalResult =
-          entityManager
-              .getMetaStoreManager()
-              .loadEntity(
-                  polarisCallContext, 0L, secretsResult.getPrincipalSecrets().getPrincipalId());
+          metaStoreManager.loadEntity(
+              polarisCallContext, 0L, secretsResult.getPrincipalSecrets().getPrincipalId());
       if (!principalResult.isSuccess()) {
         throw new NotAuthorizedException("Failed to load principal entity");
       }
@@ -97,26 +95,16 @@ public class TestOAuth2ApiService implements OAuth2ApiService, HasEntityManagerF
       LOGGER.debug(
           "Unable to find principal secrets for client id {} - trying as principal name", clientId);
       PolarisMetaStoreManager.EntityResult principalResult =
-          entityManager
-              .getMetaStoreManager()
-              .readEntityByName(
-                  polarisCallContext,
-                  null,
-                  PolarisEntityType.PRINCIPAL,
-                  PolarisEntitySubType.NULL_SUBTYPE,
-                  clientId);
+          metaStoreManager.readEntityByName(
+              polarisCallContext,
+              null,
+              PolarisEntityType.PRINCIPAL,
+              PolarisEntitySubType.NULL_SUBTYPE,
+              clientId);
       if (!principalResult.isSuccess()) {
         throw new NotAuthorizedException("Failed to read principal entity");
       }
       return principalResult.getEntity().getName();
     }
   }
-
-  @Override
-  public void setEntityManagerFactory(RealmEntityManagerFactory entityManagerFactory) {
-    this.entityManagerFactory = entityManagerFactory;
-  }
-
-  @Override
-  public void setTokenBroker(TokenBrokerFactory tokenBrokerFactory) {}
 }

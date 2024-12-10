@@ -21,7 +21,6 @@ package org.apache.polaris.service.test;
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -47,7 +46,10 @@ public class SnowmanCredentialsExtension
   private static final Logger LOGGER = LoggerFactory.getLogger(SnowmanCredentialsExtension.class);
   private SnowmanCredentials snowmanCredentials;
 
-  public record SnowmanCredentials(String clientId, String clientSecret) {}
+  public record SnowmanIdentifier(String principalName, String principalRoleName) {}
+
+  public record SnowmanCredentials(
+      String clientId, String clientSecret, SnowmanIdentifier identifier) {}
 
   @Override
   public void beforeAll(ExtensionContext extensionContext) throws Exception {
@@ -64,27 +66,22 @@ public class SnowmanCredentialsExtension
               "No admin secrets configured - you must also configure your test with PolarisConnectionExtension");
       return;
     }
-    DropwizardAppExtension dropwizard =
-        PolarisConnectionExtension.findDropwizardExtension(extensionContext);
-    if (dropwizard == null) {
-      return;
-    }
+
+    TestEnvironment testEnv = TestEnvironmentExtension.getEnv(extensionContext);
     String userToken =
         TokenUtils.getTokenFromSecrets(
-            dropwizard.client(),
-            dropwizard.getLocalPort(),
+            testEnv.apiClient(),
+            testEnv.baseUri().toString(),
             adminSecrets.getPrincipalClientId(),
             adminSecrets.getMainSecret(),
             realm);
 
-    PrincipalRole principalRole = new PrincipalRole("catalog-admin");
+    SnowmanIdentifier snowmanIdentifier = getSnowmanIdentifier(testEnv);
+    PrincipalRole principalRole = new PrincipalRole(snowmanIdentifier.principalRoleName());
     try (Response createPrResponse =
-        dropwizard
-            .client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principal-roles",
-                    dropwizard.getLocalPort()))
+        testEnv
+            .apiClient()
+            .target(String.format("%s/api/management/v1/principal-roles", testEnv.baseUri()))
             .request("application/json")
             .header("Authorization", "Bearer " + userToken)
             .header(REALM_PROPERTY_KEY, realm)
@@ -93,14 +90,12 @@ public class SnowmanCredentialsExtension
           .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
 
-    Principal principal = new Principal("snowman");
+    Principal principal = new Principal(snowmanIdentifier.principalName());
 
     try (Response createPResponse =
-        dropwizard
-            .client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principals", dropwizard.getLocalPort()))
+        testEnv
+            .apiClient()
+            .target(String.format("%s/api/management/v1/principals", testEnv.baseUri()))
             .request("application/json")
             .header("Authorization", "Bearer " + userToken) // how is token getting used?
             .header(REALM_PROPERTY_KEY, realm)
@@ -110,19 +105,19 @@ public class SnowmanCredentialsExtension
       PrincipalWithCredentials snowmanWithCredentials =
           createPResponse.readEntity(PrincipalWithCredentials.class);
       try (Response rotateResp =
-          dropwizard
-              .client()
+          testEnv
+              .apiClient()
               .target(
                   String.format(
-                      "http://localhost:%d/api/management/v1/principals/%s/rotate",
-                      dropwizard.getLocalPort(), "snowman"))
+                      "%s/api/management/v1/principals/%s/rotate",
+                      testEnv.baseUri(), principal.getName()))
               .request(MediaType.APPLICATION_JSON)
               .header(
                   "Authorization",
                   "Bearer "
                       + TokenUtils.getTokenFromSecrets(
-                          dropwizard.client(),
-                          dropwizard.getLocalPort(),
+                          testEnv.apiClient(),
+                          testEnv.baseUri().toString(),
                           snowmanWithCredentials.getCredentials().getClientId(),
                           snowmanWithCredentials.getCredentials().getClientSecret(),
                           realm))
@@ -137,15 +132,16 @@ public class SnowmanCredentialsExtension
       snowmanCredentials =
           new SnowmanCredentials(
               snowmanWithCredentials.getCredentials().getClientId(),
-              snowmanWithCredentials.getCredentials().getClientSecret());
+              snowmanWithCredentials.getCredentials().getClientSecret(),
+              snowmanIdentifier);
     }
     try (Response assignPrResponse =
-        dropwizard
-            .client()
+        testEnv
+            .apiClient()
             .target(
                 String.format(
-                    "http://localhost:%d/api/management/v1/principals/snowman/principal-roles",
-                    dropwizard.getLocalPort()))
+                    "%s/api/management/v1/principals/%s/principal-roles",
+                    testEnv.baseUri(), principal.getName()))
             .request("application/json")
             .header("Authorization", "Bearer " + userToken) // how is token getting used?
             .header(REALM_PROPERTY_KEY, realm)
@@ -170,37 +166,35 @@ public class SnowmanCredentialsExtension
               "No admin secrets configured - you must also configure your test with PolarisConnectionExtension");
       return;
     }
-    DropwizardAppExtension dropwizard =
-        PolarisConnectionExtension.findDropwizardExtension(extensionContext);
-    if (dropwizard == null) {
-      return;
-    }
+
+    TestEnvironment testEnv = TestEnvironmentExtension.getEnv(extensionContext);
     String userToken =
         TokenUtils.getTokenFromSecrets(
-            dropwizard.client(),
-            dropwizard.getLocalPort(),
+            testEnv.apiClient(),
+            testEnv.baseUri().toString(),
             adminSecrets.getPrincipalClientId(),
             adminSecrets.getMainSecret(),
             realm);
 
-    dropwizard
-        .client()
+    SnowmanIdentifier snowmanIdentifier = getSnowmanIdentifier(testEnv);
+    testEnv
+        .apiClient()
         .target(
             String.format(
-                "http://localhost:%d/api/management/v1/principal-roles/%s",
-                dropwizard.getLocalPort(), "catalog-admin"))
+                "%s/api/management/v1/principal-roles/%s",
+                testEnv.baseUri(), snowmanIdentifier.principalRoleName()))
         .request("application/json")
         .header("Authorization", "Bearer " + userToken)
         .header(REALM_PROPERTY_KEY, realm)
         .delete()
         .close();
 
-    dropwizard
-        .client()
+    testEnv
+        .apiClient()
         .target(
             String.format(
-                "http://localhost:%d/api/management/v1/principals/%s",
-                dropwizard.getLocalPort(), "snowman"))
+                "%s/api/management/v1/principals/%s",
+                testEnv.baseUri(), snowmanIdentifier.principalName()))
         .request("application/json")
         .header("Authorization", "Bearer " + userToken)
         .header(REALM_PROPERTY_KEY, realm)
@@ -225,5 +219,9 @@ public class SnowmanCredentialsExtension
       ParameterContext parameterContext, ExtensionContext extensionContext)
       throws ParameterResolutionException {
     return snowmanCredentials;
+  }
+
+  private static SnowmanIdentifier getSnowmanIdentifier(TestEnvironment testEnv) {
+    return new SnowmanIdentifier("snowman" + testEnv.testId(), "catalog-admin" + testEnv.testId());
   }
 }

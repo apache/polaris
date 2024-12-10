@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.core.storage.azure;
 
+import jakarta.annotation.Nonnull;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.StorageLocation;
-import org.jetbrains.annotations.NotNull;
 
 /** This class represents all information for a azure location */
 public class AzureLocation extends StorageLocation {
@@ -45,7 +45,7 @@ public class AzureLocation extends StorageLocation {
    *
    * @param location a uri
    */
-  public AzureLocation(@NotNull String location) {
+  public AzureLocation(@Nonnull String location) {
     super(location);
 
     Matcher matcher = URI_PATTERN.matcher(location);
@@ -103,14 +103,15 @@ public class AzureLocation extends StorageLocation {
    * by the other StorageLocation.
    */
   @Override
-  public boolean isChildOf(@NotNull StorageLocation potentialParent) {
+  public boolean isChildOf(@Nonnull StorageLocation potentialParent) {
     if (potentialParent instanceof AzureLocation) {
       AzureLocation potentialAzureParent = (AzureLocation) potentialParent;
       if (this.container.equals(potentialAzureParent.container)) {
         if (this.storageAccount.equals(potentialAzureParent.storageAccount)) {
-          String slashTerminatedFilePath = ensureTrailingSlash(this.filePath);
-          String slashTerminatedParentFilePath = ensureTrailingSlash(potentialAzureParent.filePath);
-          return slashTerminatedFilePath.startsWith(slashTerminatedParentFilePath);
+          String formattedFilePath = ensureLeadingSlash(ensureTrailingSlash(this.filePath));
+          String formattedParentFilePath =
+              ensureLeadingSlash(ensureTrailingSlash(potentialAzureParent.filePath));
+          return formattedFilePath.startsWith(formattedParentFilePath);
         }
       }
     }

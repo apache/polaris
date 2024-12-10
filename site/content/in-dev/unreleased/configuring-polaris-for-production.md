@@ -61,6 +61,13 @@ Be sure to secure your metastore backend since it will be storing credentials an
 
 To use EclipseLink for metastore management, specify the configuration `metaStoreManager.conf-file` to point to an EclipseLink `persistence.xml` file. This file, local to the Polaris service, contains details of the database used for metastore management and the connection settings. For more information, refer to the [metastore documentation]({{% ref "metastores" %}}).
 
+> [!IMPORTANT]
+> EclipseLink requires
+> 1. Building the JAR for the EclipseLink extension
+> 2. Setting the `eclipseLink` gradle property to `true`.
+>
+> This can be achieved by setting `eclipseLink=true` in the `gradle.properties` file, or by passing the property explicitly while building all JARs, e.g.: `./gradlew -PeclipseLink=true clean assemble`
+
 ### Bootstrapping
 
 Before using Polaris when using a metastore manager other than `in-memory`, you must **bootstrap** the metastore manager. This is a manual operation that must be performed **only once** in order to prepare the metastore manager to integrate with Polaris. When the metastore manager is bootstrapped, any existing Polaris entities in the metastore manager may be **purged**.

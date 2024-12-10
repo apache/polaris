@@ -18,21 +18,33 @@
  */
 package org.apache.polaris.service.config;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.jetbrains.annotations.Nullable;
+import org.apache.polaris.core.context.CallContext;
 
 public class DefaultConfigurationStore implements PolarisConfigurationStore {
-  private final Map<String, Object> properties;
+  private final Map<String, Object> config;
+  private final Map<String, Map<String, Object>> realmConfig;
 
-  public DefaultConfigurationStore(Map<String, Object> properties) {
-    this.properties = properties;
+  public DefaultConfigurationStore(Map<String, Object> config) {
+    this.config = config;
+    this.realmConfig = Map.of();
+  }
+
+  public DefaultConfigurationStore(
+      Map<String, Object> config, Map<String, Map<String, Object>> realmConfig) {
+    this.config = config;
+    this.realmConfig = realmConfig;
   }
 
   @SuppressWarnings("unchecked")
   @Override
-  public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
-    return (T) properties.get(configName);
+  public <T> @Nullable T getConfiguration(@Nonnull PolarisCallContext ctx, String configName) {
+    String realm = CallContext.getCurrentContext().getRealmContext().getRealmIdentifier();
+    return (T)
+        realmConfig.getOrDefault(realm, Map.of()).getOrDefault(configName, config.get(configName));
   }
 }

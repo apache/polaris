@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.core.persistence.cache;
 
-import org.jetbrains.annotations.Nullable;
+import jakarta.annotation.Nullable;
 
 /** Result of a lookup operation */
 public class EntityCacheLookupResult {

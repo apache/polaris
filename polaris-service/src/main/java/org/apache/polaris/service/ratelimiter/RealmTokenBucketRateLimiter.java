@@ -20,20 +20,20 @@ package org.apache.polaris.service.ratelimiter;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.google.common.annotations.VisibleForTesting;
+import io.smallrye.common.annotation.Identifier;
 import java.time.Clock;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.jetbrains.annotations.VisibleForTesting;
 
 /**
  * Rate limiter that maps the request's realm identifier to its own TokenBucketRateLimiter, with its
  * own capacity.
  */
-@JsonTypeName("realm-token-bucket")
+@Identifier("realm-token-bucket")
 public class RealmTokenBucketRateLimiter implements RateLimiter {
   private final long requestsPerSecond;
   private final long windowSeconds;

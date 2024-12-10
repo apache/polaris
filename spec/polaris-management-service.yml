@@ -936,7 +936,8 @@ components:
         - $ref: '#/components/schemas/StorageConfigInfo'
 
     UpdateCatalogRequest:
-      description: Updates to apply to a Catalog
+      description: Updates to apply to a Catalog. Any fields which are required in the Catalog
+        will remain unaltered if omitted from the contents of this Update request.
       type: object
       properties:
         currentEntityVersion:
@@ -1160,7 +1161,6 @@ components:
       type: string
       enum:
         - CATALOG_MANAGE_ACCESS
-        - VIEW_CREATE
         - VIEW_DROP
         - VIEW_LIST
         - VIEW_READ_PROPERTIES
@@ -1174,7 +1174,6 @@ components:
         - TABLE_DROP
         - TABLE_LIST
         - TABLE_READ_PROPERTIES
-        - VIEW_READ_PROPERTIES
         - TABLE_WRITE_PROPERTIES
         - TABLE_READ_DATA
         - TABLE_WRITE_DATA
