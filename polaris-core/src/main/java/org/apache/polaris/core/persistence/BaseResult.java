@@ -111,6 +111,8 @@ public class BaseResult {
 
     // error caught while sub-scoping credentials. Error message will be returned
     SUBSCOPE_CREDS_ERROR(13),
+
+    SECRET_VALIDATION_FAILED(14),
     ;
 
     // code for the enum

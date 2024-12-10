@@ -44,7 +44,6 @@ abstract class JWTBroker implements TokenBroker {
   private static final String ISSUER_KEY = "polaris";
   private static final String CLAIM_KEY_ACTIVE = "active";
   private static final String CLAIM_KEY_CLIENT_ID = "client_id";
-  private static final String CLAIM_KEY_PRINCIPAL_ID = "principalId";
   private static final String CLAIM_KEY_SCOPE = "scope";
 
   private final PolarisMetaStoreManager metaStoreManager;
@@ -64,11 +63,6 @@ abstract class JWTBroker implements TokenBroker {
     try {
       DecodedJWT decodedJWT = verifier.verify(token);
       return new DecodedToken() {
-        @Override
-        public Long getPrincipalId() {
-          return decodedJWT.getClaim("principalId").asLong();
-        }
-
         @Override
         public String getClientId() {
           return decodedJWT.getClaim("client_id").asString();
@@ -102,17 +96,16 @@ abstract class JWTBroker implements TokenBroker {
     }
     DecodedToken decodedToken = verify(subjectToken);
     PolarisMetaStoreManager.EntityResult principalLookup =
-        metaStoreManager.loadEntity(
+        metaStoreManager.loadPrincipal(
             CallContext.getCurrentContext().getPolarisCallContext(),
-            0L,
-            decodedToken.getPrincipalId());
+            null,
+            decodedToken.getClientId());
     if (!principalLookup.isSuccess()
         || principalLookup.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.unauthorized_client);
     }
     String tokenString =
-        generateTokenString(
-            decodedToken.getClientId(), decodedToken.getScope(), decodedToken.getPrincipalId());
+        generateTokenString(subjectToken, decodedToken.getClientId(), decodedToken.getScope());
     return new TokenResponse(
         tokenString, TokenType.ACCESS_TOKEN.getValue(), maxTokenGenerationInSeconds);
   }
@@ -133,22 +126,21 @@ abstract class JWTBroker implements TokenBroker {
     if (principal.isEmpty()) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.unauthorized_client);
     }
-    String tokenString = generateTokenString(clientId, scope, principal.get().getId());
+    String tokenString = generateTokenString(principal.get().getName(), clientId, scope);
     return new TokenResponse(
         tokenString, TokenType.ACCESS_TOKEN.getValue(), maxTokenGenerationInSeconds);
   }
 
-  private String generateTokenString(String clientId, String scope, Long principalId) {
+  private String generateTokenString(String principalName, String clientId, String scope) {
     Instant now = Instant.now();
     return JWT.create()
         .withIssuer(ISSUER_KEY)
-        .withSubject(String.valueOf(principalId))
+        .withSubject(String.valueOf(principalName))
         .withIssuedAt(now)
         .withExpiresAt(now.plus(maxTokenGenerationInSeconds, ChronoUnit.SECONDS))
         .withJWTId(UUID.randomUUID().toString())
         .withClaim(CLAIM_KEY_ACTIVE, true)
         .withClaim(CLAIM_KEY_CLIENT_ID, clientId)
-        .withClaim(CLAIM_KEY_PRINCIPAL_ID, principalId)
         .withClaim(CLAIM_KEY_SCOPE, scopes(scope))
         .sign(getAlgorithm());
   }

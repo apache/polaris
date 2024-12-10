@@ -79,8 +79,6 @@ public class TestInlineBearerTokenPolarisAuthenticator extends BasePolarisAuthen
       // not be a clientId/clientSecret, and instead we'll let the BasePolarisAuthenticator
       // resolve the principal by name from the persistence store.
       LOGGER.warn("Failed to load secrets for principal {}", principal);
-    } else {
-      tokenInfo.setIntegrationId(secrets.getPrincipalId());
     }
 
     return getPrincipal(tokenInfo);
