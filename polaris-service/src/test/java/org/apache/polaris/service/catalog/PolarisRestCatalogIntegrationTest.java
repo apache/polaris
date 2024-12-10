@@ -513,6 +513,55 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   }
 
   @Test
+  public void testCreateForeignTable(PolarisToken adminToken) {
+    try (Response response =
+             EXT.client()
+                 .target(
+                     String.format(
+                         "http://localhost:%d/api/management/v1/catalogs/%s",
+                         EXT.getLocalPort(), currentCatalogName))
+                 .request("application/json")
+                 .header("Authorization", "Bearer " + adminToken.token())
+                 .header(REALM_PROPERTY_KEY, realm)
+                 .get()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      Catalog catalog = response.readEntity(Catalog.class);
+      Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
+      catalogProps.put(
+          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
+      try (Response updateResponse =
+               EXT.client()
+                   .target(
+                       String.format(
+                           "http://localhost:%d/api/management/v1/catalogs/%s",
+                           EXT.getLocalPort(), catalog.getName()))
+                   .request("application/json")
+                   .header("Authorization", "Bearer " + adminToken.token())
+                   .header(REALM_PROPERTY_KEY, realm)
+                   .put(
+                       Entity.json(
+                           new UpdateCatalogRequest(
+                               catalog.getEntityVersion(),
+                               catalogProps,
+                               catalog.getStorageConfigInfo())))) {
+        assertThat(updateResponse).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      }
+    }
+
+    restCatalog.createNamespace(Namespace.of("ns1"),
+        ImmutableMap.of(
+        PolarisEntityConstants.ENTITY_BASE_LOCATION,
+        catalogBaseLocation + "/checkpoint_dir/delta"));
+
+    TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("ns1"), "tbl1");
+    restCatalog
+        .buildTable(tableIdentifier, SCHEMA)
+        .withLocation(catalogBaseLocation + "/checkpoint_dir/delta/t1")
+        .withProperty("format", "delta")
+        .create();
+  }
+
+  @Test
   public void testCreateTableWithOverriddenBaseLocation(PolarisToken adminToken) {
     try (Response response =
         EXT.client()

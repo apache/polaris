@@ -25,9 +25,9 @@ import org.apache.iceberg.rest.RESTUtil;
 public class ForeignTableEntity extends TableLikeEntity {
 
   /**
-   * A string which describes the underlying format/source. For example "delta", "hudi", "cassandra". Polaris will
-   * not validate or use this except when deciding whether a table should be passed through the
-   * TableConversionService.
+   * A string which describes the underlying format/source. For example "delta", "hudi",
+   * "cassandra". Polaris will not validate or use this except when deciding whether a table should
+   * be passed through the TableConversionService.
    */
   public static final String FOREIGN_SOURCE_KEY = "_source";
 

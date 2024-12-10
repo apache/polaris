@@ -78,14 +78,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.NamespaceEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisTaskConstants;
-import org.apache.polaris.core.entity.TableLikeEntity;
+import org.apache.polaris.core.entity.*;
 import org.apache.polaris.core.persistence.BaseResult;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -1292,11 +1285,12 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               : resolvedTableEntities.getRawParentPath();
       CatalogEntity catalog = CatalogEntity.of(resolvedNamespace.getFirst());
 
-      if (base == null
+      boolean isForeignTable = !metadata.property("format", "").isEmpty();
+      if (!isForeignTable && (base == null
           || !metadata.location().equals(base.location())
           || !Objects.equal(
               base.properties().get(TableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY),
-              metadata.properties().get(TableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY))) {
+              metadata.properties().get(TableLikeEntity.USER_SPECIFIED_WRITE_DATA_LOCATION_KEY)))) {
         // If location is changing then we must validate that the requested location is valid
         // for the storage configuration inherited under this entity's path.
         Set<String> dataLocations = new HashSet<>();
@@ -1325,7 +1319,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         }
       }
 
-      String newLocation = writeNewMetadataIfRequired(base == null, metadata);
+      String newLocation = isForeignTable? null : writeNewMetadataIfRequired(base == null, metadata);
       String oldLocation = base == null ? null : base.metadataFileLocation();
 
       PolarisResolvedPathWrapper resolvedView =
@@ -1348,14 +1342,26 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       String existingLocation;
       if (null == entity) {
         existingLocation = null;
-        entity =
-            new TableLikeEntity.Builder(tableIdentifier, newLocation)
-                .setCatalogId(getCatalogId())
-                .setSubType(PolarisEntitySubType.TABLE)
-                .setBaseLocation(metadata.location())
-                .setId(
-                    getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
-                .build();
+        if (isForeignTable) {
+          entity = new ForeignTableEntity.Builder(tableIdentifier, metadata.location())
+              .setSource(metadata.properties().get("format"))
+              .setCatalogId(getCatalogId())
+              .setSubType(PolarisEntitySubType.FOREIGN_TABLE)
+              .setBaseLocation(metadata.location())
+              .setId(
+                  getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
+              .build();
+        } else{
+          entity =
+              new TableLikeEntity.Builder(tableIdentifier, newLocation)
+                  .setCatalogId(getCatalogId())
+                  .setSubType(PolarisEntitySubType.TABLE)
+                  .setBaseLocation(metadata.location())
+                  .setId(
+                      getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
+                  .build();
+        }
+
       } else {
         existingLocation = entity.getMetadataLocation();
         entity =

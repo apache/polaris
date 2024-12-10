@@ -280,6 +280,22 @@ public class PolarisSparkIntegrationTest {
     assertThat(recordCount).isEqualTo(3);
   }
 
+
+  @Test
+  public void testCreateDeltaTable() {
+    long namespaceCount = onSpark("SHOW NAMESPACES").count();
+    assertThat(namespaceCount).isEqualTo(0L);
+
+    onSpark("CREATE NAMESPACE ns1");
+    onSpark("USE ns1");
+    onSpark("CREATE TABLE table2 (country STRING, continent STRING) TBLPROPERTIES(\"format\"=\"delta\", \"source_location\"=\"/Users/yzou/checkpoint_dir/delta/t1\")");
+
+    // onSpark("SELECT * FROM table2").show();
+
+    // long recordCount = onSpark("SELECT * FROM tb1").count();
+    // assertThat(recordCount).isEqualTo(3);
+  }
+
   @Test
   public void testCreateAndUpdateExternalTable() {
     long namespaceCount = onSpark("SHOW NAMESPACES").count();

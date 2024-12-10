@@ -559,6 +559,7 @@ public class PolarisCatalogHandlerWrapper {
     return doCatalogOperation(() -> CatalogHandlers.listTables(baseCatalog, namespace));
   }
 
+
   public LoadTableResponse createTableDirect(Namespace namespace, CreateTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
