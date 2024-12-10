@@ -17,24 +17,25 @@
 # under the License.
 #
 
-name: "Hugo Site"
+name: Hugo Site
+
 on:
   push:
-    branches: [ "main", "versioned-docs" ]
+    branches:
+      - main
+      - versioned-docs
   pull_request:
 
 jobs:
   site:
-
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          ref: "versioned-docs"
+          ref: versioned-docs
           path: site/content/releases
-
       - name: Install docker-compose
         run: |
           sudo curl -SL \
@@ -42,13 +43,10 @@ jobs:
             -o /usr/local/bin/docker-compose
           sudo chmod 755 /usr/local/bin/docker-compose
           sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
-
       - name: Build Apache Site
         run: site/bin/create-static-site.sh
-
       - name: Copy .asf.yaml
         run: sudo cp .asf.yaml site/build/apache-site/
-
       - name: Deploy Static Site to GitHub
         if: github.event_name == 'push' && github.repository == 'apache/polaris'
         uses: peaceiris/actions-gh-pages@4f9cc6602d3f66b9c108549d475ec49e8ef4d45e # v4
