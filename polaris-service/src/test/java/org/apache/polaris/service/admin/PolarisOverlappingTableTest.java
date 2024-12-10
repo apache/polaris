@@ -23,7 +23,6 @@ import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PR
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.client.Entity;
@@ -42,8 +41,8 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.service.PolarisApplication;
 import org.apache.polaris.service.config.PolarisApplicationConfig;
+import org.apache.polaris.service.test.PolarisApplicationUtils;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.TestEnvironmentExtension;
@@ -60,23 +59,13 @@ import org.junit.jupiter.params.provider.MethodSource;
 })
 public class PolarisOverlappingTableTest {
   private static final DropwizardAppExtension<PolarisApplicationConfig> BASE_EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          // Bind to random port to support parallelism
-          ConfigOverride.config("server.applicationConnectors[0].port", "0"),
-          ConfigOverride.config("server.adminConnectors[0].port", "0"),
+      PolarisApplicationUtils.createTestPolarisApplication(
           // Enforce table location constraints
           ConfigOverride.config("featureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION", "false"),
           ConfigOverride.config("featureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP", "false"));
 
   private static final DropwizardAppExtension<PolarisApplicationConfig> LAX_EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          // Bind to random port to support parallelism
-          ConfigOverride.config("server.applicationConnectors[0].port", "0"),
-          ConfigOverride.config("server.adminConnectors[0].port", "0"),
+      PolarisApplicationUtils.createTestPolarisApplication(
           // Relax table location constraints
           ConfigOverride.config("featureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION", "true"),
           ConfigOverride.config("featureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP", "true"));
