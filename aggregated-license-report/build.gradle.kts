@@ -22,7 +22,7 @@ import org.gradle.kotlin.dsl.support.unzipTo
 val licenseReports by configurations.creating { description = "Used to generate license reports" }
 
 dependencies {
-  licenseReports(project(":polaris-service-dropwizard", "licenseReports"))
+  licenseReports(project(":polaris-dropwizard-service", "licenseReports"))
 }
 
 val collectLicenseReportJars by

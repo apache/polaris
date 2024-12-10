@@ -17,6 +17,6 @@
 # under the License.
 #
 
-polaris-service/dropwizard/logs
+logs
 build
 .idea

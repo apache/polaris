@@ -69,7 +69,7 @@ jobs:
           name: upload-test-artifacts
           path: |
             polaris-core/build/test-results/test
-            polaris-service/dropwizard/build/test-results/test
+            dropwizard/service/build/test-results/test
 
     # NOTE: The Gradle Wrapper is the default and recommended way to run Gradle (https://docs.gradle.org/current/userguide/gradle_wrapper.html).
     # If your project does not have the Gradle Wrapper configured, you can use the following configuration to run Gradle with a specified version.
