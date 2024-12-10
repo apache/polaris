@@ -37,12 +37,6 @@ public class ModelPrincipalSecrets {
   // the client id for that principal
   @Id private String principalClientId;
 
-  // the main secret for that principal
-  private String mainSecret;
-
-  // the secondary secret for that principal
-  private String secondarySecret;
-
   // Hash of mainSecret
   private String mainSecretHash;
 
@@ -60,14 +54,6 @@ public class ModelPrincipalSecrets {
 
   public String getPrincipalClientId() {
     return principalClientId;
-  }
-
-  public String getMainSecret() {
-    return mainSecret;
-  }
-
-  public String getSecondarySecret() {
-    return secondarySecret;
   }
 
   public String getSecretSalt() {
@@ -100,16 +86,6 @@ public class ModelPrincipalSecrets {
 
     public Builder principalClientId(String principalClientId) {
       principalSecrets.principalClientId = principalClientId;
-      return this;
-    }
-
-    public Builder mainSecret(String mainSecret) {
-      principalSecrets.mainSecret = mainSecret;
-      return this;
-    }
-
-    public Builder secondarySecret(String secondarySecret) {
-      principalSecrets.secondarySecret = secondarySecret;
       return this;
     }
 
@@ -151,8 +127,8 @@ public class ModelPrincipalSecrets {
     return new PolarisPrincipalSecrets(
         model.getPrincipalId(),
         model.getPrincipalClientId(),
-        model.getMainSecret(),
-        model.getSecondarySecret(),
+        null,
+        null,
         model.getSecretSalt(),
         model.getMainSecretHash(),
         model.getSecondarySecretHash());
@@ -164,17 +140,7 @@ public class ModelPrincipalSecrets {
     this.principalId = principalSecrets.getPrincipalId();
     this.principalClientId = principalSecrets.getPrincipalClientId();
     this.secretSalt = principalSecrets.getSecretSalt();
-    this.mainSecret = principalSecrets.getMainSecret();
-    this.secondarySecret = principalSecrets.getSecondarySecret();
     this.mainSecretHash = principalSecrets.getMainSecretHash();
     this.secondarySecretHash = principalSecrets.getSecondarySecretHash();
-
-    // Once a hash is stored, do not keep the original secret
-    if (this.mainSecretHash != null) {
-      this.mainSecret = null;
-    }
-    if (this.secondarySecretHash != null) {
-      this.secondarySecret = null;
-    }
   }
 }
