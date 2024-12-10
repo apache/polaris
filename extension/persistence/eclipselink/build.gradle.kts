@@ -33,7 +33,7 @@ dependencies {
   implementation(libs.eclipselink)
   implementation(platform(libs.dropwizard.bom))
   implementation(libs.jakarta.inject.api)
-  implementation(libs.smallrye)
+  implementation(libs.smallrye.common.annotation)
   implementation("io.dropwizard:dropwizard-jackson")
   val eclipseLinkDeps: String? = project.findProperty("eclipseLinkDeps") as String?
   eclipseLinkDeps?.let {
