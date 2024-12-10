@@ -64,7 +64,6 @@ dependencies {
     }
   }
 
-  implementation(libs.javax.inject)
   implementation(libs.swagger.annotations)
   implementation(libs.swagger.jaxrs)
   implementation(libs.jakarta.inject.api)

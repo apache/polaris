@@ -17,6 +17,4 @@
 # under the License.
 #
 
-logs
-build
-.idea
+org.apache.polaris.service.dropwizard.logging.PolarisJsonLayoutFactory

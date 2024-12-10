@@ -84,8 +84,8 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("gradle/wrapper/gradle-wrapper*.jar*")
 
   excludes.add("logs/**")
-  excludes.add("polaris-service/src/**/banner.txt")
-  excludes.add("polaris-service/logs")
+  excludes.add("service/common/src/**/banner.txt")
+  excludes.add("dropwizard/service/logs")
 
   excludes.add("site/node_modules/**")
   excludes.add("site/layouts/robots.txt")
