@@ -94,6 +94,7 @@ import com.google.common.collect.SetMultimap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -461,11 +462,11 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   }
 
   private final PolarisConfigurationStore featureConfig;
-  private final PolarisGrantManager.Factory grantManagerFactory;
+  private final Provider<PolarisGrantManager> grantManagerFactory;
 
   @Inject
   public PolarisAuthorizerImpl(
-      PolarisConfigurationStore featureConfig, PolarisGrantManager.Factory grantManagerFactory) {
+      PolarisConfigurationStore featureConfig, Provider<PolarisGrantManager> grantManagerFactory) {
     this.featureConfig = featureConfig;
     this.grantManagerFactory = grantManagerFactory;
   }
@@ -608,9 +609,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       Set<Long> activatedGranteeIds,
       PolarisPrivilege desiredPrivilege,
       PolarisResolvedPathWrapper resolvedPath) {
-    PolarisGrantManager grantManager =
-        grantManagerFactory.getGrantManagerForRealm(
-            CallContext.getCurrentContext().getRealmContext());
+    PolarisGrantManager grantManager = grantManagerFactory.get();
     PolarisCallContext callContext = CallContext.getCurrentContext().getPolarisCallContext();
 
     // Iterate starting at the parent, since the most common case should be to manage grants as

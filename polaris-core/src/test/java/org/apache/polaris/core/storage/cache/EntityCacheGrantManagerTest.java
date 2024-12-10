@@ -243,7 +243,7 @@ public class EntityCacheGrantManagerTest {
     PolarisResolutionManifest manifest =
         new PolarisResolutionManifest(
             CallContext.of(realmContext, polarisCallContext),
-            new PolarisEntityManager(metaStoreManager, entityCache, new StorageCredentialCache()),
+            new PolarisEntityManager(metaStoreManager, new StorageCredentialCache(), entityCache),
             new AuthenticatedPolarisPrincipal(
                 principal, Set.of(principalRole1.getName(), principalRole2.getName())),
             catalog.getName());
@@ -307,7 +307,7 @@ public class EntityCacheGrantManagerTest {
     PolarisResolutionManifest manifest =
         new PolarisResolutionManifest(
             CallContext.of(realmContext, polarisCallContext),
-            new PolarisEntityManager(metaStoreManager, entityCache, new StorageCredentialCache()),
+            new PolarisEntityManager(metaStoreManager, new StorageCredentialCache(), entityCache),
             new AuthenticatedPolarisPrincipal(
                 principal, Set.of(principalRole1.getName(), principalRole2.getName())),
             catalog.getName());
@@ -378,7 +378,7 @@ public class EntityCacheGrantManagerTest {
     PolarisResolutionManifest manifest =
         new PolarisResolutionManifest(
             CallContext.of(realmContext, polarisCallContext),
-            new PolarisEntityManager(metaStoreManager, entityCache, new StorageCredentialCache()),
+            new PolarisEntityManager(metaStoreManager, new StorageCredentialCache(), entityCache),
             new AuthenticatedPolarisPrincipal(
                 principal, Set.of(principalRole1.getName(), principalRole2.getName())),
             catalog.getName());
