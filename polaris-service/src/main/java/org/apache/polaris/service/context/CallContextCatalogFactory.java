@@ -21,11 +21,11 @@ package org.apache.polaris.service.context;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolution.ResolutionManifest;
 
 public interface CallContextCatalogFactory {
   Catalog createCallContextCatalog(
       CallContext context,
       AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      PolarisResolutionManifest resolvedManifest);
+      ResolutionManifest resolutionManifest);
 }

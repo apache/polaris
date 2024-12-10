@@ -59,7 +59,7 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolution.ResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
@@ -1688,7 +1688,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
           public Catalog createCallContextCatalog(
               CallContext context,
               AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
-              PolarisResolutionManifest resolvedManifest) {
+              ResolutionManifest resolvedManifest) {
             Catalog catalog =
                 super.createCallContextCatalog(
                     context, authenticatedPolarisPrincipal, resolvedManifest);

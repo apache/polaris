@@ -106,8 +106,8 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.resolution.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolution.ResolvedPolarisEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

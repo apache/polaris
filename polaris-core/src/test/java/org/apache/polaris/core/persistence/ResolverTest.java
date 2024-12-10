@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -40,9 +41,14 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
 import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
+import org.apache.polaris.core.persistence.impl.PolarisMetaStoreManagerImpl;
+import org.apache.polaris.core.persistence.local.inmem.PolarisTreeMapMetaStoreSessionImpl;
+import org.apache.polaris.core.persistence.local.inmem.PolarisTreeMapStore;
 import org.apache.polaris.core.persistence.resolver.Resolver;
+import org.apache.polaris.core.persistence.resolver.ResolverBuilder;
+import org.apache.polaris.core.persistence.resolver.ResolverBuilderImpl;
+import org.apache.polaris.core.persistence.resolver.ResolverException;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
-import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -119,7 +125,7 @@ public class ResolverTest {
 
     // resolve same principal but now make it non optional, so should fail
     this.resolveDriver(
-        null, null, "P3", false, null, ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED);
+        null, null, "P3", false, null, ResolverException.EntityNotResolvedException.class);
 
     // then resolve a principal which does exist
     this.resolveDriver(null, null, "P2", false, null, null);
@@ -207,21 +213,13 @@ public class ResolverTest {
     ResolverPath N5_N6_T8 =
         new ResolverPath(List.of("N5", "N6", "T8"), PolarisEntityType.TABLE_LIKE);
     this.resolveDriver(
-        this.cache,
-        "test",
-        N5_N6_T8,
-        null,
-        ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED);
+        this.cache, "test", N5_N6_T8, null, ResolverException.PathNotFullyResolvedException.class);
 
     // Error scenarios: N8/N6/T8 which does not exists
     ResolverPath N8_N6_T8 =
         new ResolverPath(List.of("N8", "N6", "T8"), PolarisEntityType.TABLE_LIKE);
     this.resolveDriver(
-        this.cache,
-        "test",
-        N8_N6_T8,
-        null,
-        ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED);
+        this.cache, "test", N8_N6_T8, null, ResolverException.PathNotFullyResolvedException.class);
 
     // now test multiple paths
     this.resolveDriver(
@@ -231,7 +229,7 @@ public class ResolverTest {
         "test",
         null,
         List.of(N1, N5_N6_T8, N5_N6_T5, N1_N2),
-        ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED);
+        ResolverException.PathNotFullyResolvedException.class);
 
     // except if the optional flag is specified
     N5_N6_T8 = new ResolverPath(List.of("N5", "N6", "T8"), PolarisEntityType.TABLE_LIKE, true);
@@ -262,18 +260,13 @@ public class ResolverTest {
 
     // now resolve it again. Should fail because the entity was dropped
     this.resolveDriver(
-        this.cache,
-        null,
-        "P2",
-        false,
-        null,
-        ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED);
+        this.cache, null, "P2", false, null, ResolverException.EntityNotResolvedException.class);
 
     // recreate P2
     this.tm.createPrincipal("P2");
 
     // now resolve it again. Should succeed because the entity has been re-created
-    this.resolveDriver(this.cache, null, "P2", false, null, ResolverStatus.StatusEnum.SUCCESS);
+    this.resolveDriver(this.cache, null, "P2", false, null, null);
 
     // resolve existing grants on catalog
     this.resolveDriver(this.cache, Set.of("PR1", "PR2"), "test", Set.of("R1", "R2"));
@@ -347,7 +340,7 @@ public class ResolverTest {
         "test",
         N1_N2_T1_PATH,
         null,
-        ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED);
+        ResolverException.PathNotFullyResolvedException.class);
 
     // but we should be able to resolve it under N1/N3
     ResolverPath N1_N3_T1_PATH =
@@ -368,7 +361,7 @@ public class ResolverTest {
 
     // failure scenario
     this.resolveDriver(
-        this.cache, "test", "R5", ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED);
+        this.cache, "test", "R5", ResolverException.EntityNotResolvedException.class);
   }
 
   /**
@@ -378,7 +371,7 @@ public class ResolverTest {
    * @return new resolver to test with
    */
   @Nonnull
-  private Resolver allocateResolver() {
+  private ResolverBuilder allocateResolver() {
     return this.allocateResolver(null, null);
   }
 
@@ -390,7 +383,7 @@ public class ResolverTest {
    * @return new resolver to test with
    */
   @Nonnull
-  private Resolver allocateResolver(@Nullable String referenceCatalogName) {
+  private ResolverBuilder allocateResolver(@Nullable String referenceCatalogName) {
     return this.allocateResolver(null, referenceCatalogName);
   }
 
@@ -402,7 +395,7 @@ public class ResolverTest {
    * @return new resolver to test with
    */
   @Nonnull
-  private Resolver allocateResolver(@Nullable EntityCache cache) {
+  private ResolverBuilder allocateResolver(@Nullable EntityCache cache) {
     return this.allocateResolver(cache, null);
   }
 
@@ -415,7 +408,7 @@ public class ResolverTest {
    * @return new resolver to test with
    */
   @Nonnull
-  private Resolver allocateResolver(
+  private ResolverBuilder allocateResolver(
       @Nullable EntityCache cache, @Nullable String referenceCatalogName) {
     return this.allocateResolver(cache, null, referenceCatalogName);
   }
@@ -430,7 +423,7 @@ public class ResolverTest {
    * @return new resolver to test with
    */
   @Nonnull
-  private Resolver allocateResolver(
+  private ResolverBuilder allocateResolver(
       @Nullable EntityCache cache,
       Set<String> principalRolesScope,
       @Nullable String referenceCatalogName) {
@@ -439,7 +432,7 @@ public class ResolverTest {
     if (cache == null) {
       this.cache = new EntityCache(this.metaStoreManager);
     }
-    return new Resolver(
+    return new ResolverBuilderImpl(
         this.callCtx,
         this.metaStoreManager,
         this.P1.getId(),
@@ -459,22 +452,19 @@ public class ResolverTest {
    */
   private void resolvePrincipalAndPrincipalRole(
       EntityCache cache, String principalName, boolean exists, String principalRoleName) {
-    Resolver resolver = allocateResolver(cache);
+    var resolverBuilder = allocateResolver(cache);
 
     // for a principal creation, we simply want to test if the principal we are creating exists
     // or not
-    resolver.addOptionalEntityByName(PolarisEntityType.PRINCIPAL, principalName);
+    resolverBuilder.addOptionalEntityByName(PolarisEntityType.PRINCIPAL, principalName);
 
     // add principal role if one passed-in
     if (principalRoleName != null) {
-      resolver.addOptionalEntityByName(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName);
+      resolverBuilder.addOptionalEntityByName(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName);
     }
 
     // done, run resolve
-    ResolverStatus status = resolver.resolveAll();
-
-    // we expect success
-    Assertions.assertThat(status.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+    var resolver = resolverBuilder.buildResolved();
 
     // the principal does not exist, check that this is the case
     if (exists) {
@@ -532,7 +522,7 @@ public class ResolverTest {
       String principalName,
       boolean isPrincipalNameOptional,
       String principalRoleName,
-      ResolverStatus.StatusEnum expectedStatus) {
+      Class<? extends ResolverException> expectedStatus) {
     return this.resolveDriver(
         cache,
         principalRolesScope,
@@ -562,7 +552,7 @@ public class ResolverTest {
       String catalogName,
       ResolverPath path,
       List<ResolverPath> paths,
-      ResolverStatus.StatusEnum expectedStatus) {
+      Class<? extends ResolverException> expectedStatus) {
     return this.resolveDriver(
         cache, null, null, false, null, catalogName, null, path, paths, expectedStatus, null);
   }
@@ -609,7 +599,7 @@ public class ResolverTest {
       EntityCache cache,
       String catalogName,
       String catalogRoleName,
-      ResolverStatus.StatusEnum expectedStatus) {
+      Class<? extends ResolverException> expectedStatus) {
     return this.resolveDriver(
         cache,
         null,
@@ -651,189 +641,181 @@ public class ResolverTest {
       String catalogRoleName,
       ResolverPath path,
       List<ResolverPath> paths,
-      ResolverStatus.StatusEnum expectedStatus,
+      Class<? extends ResolverException> expectedStatus,
       Set<String> expectedActivatedCatalogRoles) {
 
-    // if null we expect success
-    if (expectedStatus == null) {
-      expectedStatus = ResolverStatus.StatusEnum.SUCCESS;
-    }
-
     // allocate resolver
-    Resolver resolver = allocateResolver(cache, principalRolesScope, catalogName);
+    var resolverBuilder = allocateResolver(cache, principalRolesScope, catalogName);
 
     // principal name?
     if (principalName != null) {
       if (isPrincipalNameOptional) {
-        resolver.addOptionalEntityByName(PolarisEntityType.PRINCIPAL, principalName);
+        resolverBuilder.addOptionalEntityByName(PolarisEntityType.PRINCIPAL, principalName);
       } else {
-        resolver.addEntityByName(PolarisEntityType.PRINCIPAL, principalName);
+        resolverBuilder.addEntityByName(PolarisEntityType.PRINCIPAL, principalName);
       }
     }
 
     // add principal role if one passed-in
     if (principalRoleName != null) {
-      resolver.addEntityByName(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName);
+      resolverBuilder.addEntityByName(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName);
     }
 
     // add catalog role if one passed-in
     if (catalogRoleName != null) {
-      resolver.addEntityByName(PolarisEntityType.CATALOG_ROLE, catalogRoleName);
+      resolverBuilder.addEntityByName(PolarisEntityType.CATALOG_ROLE, catalogRoleName);
     }
 
     // add all paths
     if (path != null) {
-      resolver.addPath(path);
+      resolverBuilder.addPath(path);
     } else if (paths != null) {
-      paths.forEach(resolver::addPath);
+      paths.forEach(resolverBuilder::addPath);
     }
 
     // done, run resolve
-    ResolverStatus status = resolver.resolveAll();
+    if (expectedStatus != null) {
+      assertThatThrownBy(resolverBuilder::buildResolved).isInstanceOf(expectedStatus);
+      return null;
+    }
 
-    // we expect success unless a status
-    Assertions.assertThat(status).isNotNull();
-    Assertions.assertThat(status.getStatus()).isEqualTo(expectedStatus);
+    var resolver = resolverBuilder.buildResolved();
 
-    // validate if status is success
-    if (status.getStatus() == ResolverStatus.StatusEnum.SUCCESS) {
-
-      // the principal does not exist, check that this is the case
-      if (principalName != null) {
-        // see if the principal exists
-        PolarisMetaStoreManager.EntityResult result =
-            this.metaStoreManager.readEntityByName(
-                this.callCtx,
-                null,
-                PolarisEntityType.PRINCIPAL,
-                PolarisEntitySubType.NULL_SUBTYPE,
-                principalName);
-        // if found, ensure properly resolved
-        if (result.getEntity() != null) {
-          // the principal exist, check that this is the case
-          this.ensureResolved(
-              resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL, principalName),
+    // the principal does not exist, check that this is the case
+    if (principalName != null) {
+      // see if the principal exists
+      PolarisMetaStoreManager.EntityResult result =
+          this.metaStoreManager.readEntityByName(
+              this.callCtx,
+              null,
               PolarisEntityType.PRINCIPAL,
+              PolarisEntitySubType.NULL_SUBTYPE,
               principalName);
-        } else {
-          // principal was optional
-          Assertions.assertThat(isPrincipalNameOptional).isTrue();
-          // not found
-          Assertions.assertThat(
-                  resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL, principalName))
-              .isNull();
-        }
-      }
-
-      // validate that we were able to resolve the caller principal
-      this.ensureResolved(resolver.getResolvedCallerPrincipal(), PolarisEntityType.PRINCIPAL, "P1");
-
-      // validate that the correct set if principal roles have been activated
-      List<EntityCacheEntry> principalRolesResolved = resolver.getResolvedCallerPrincipalRoles();
-      principalRolesResolved.sort(Comparator.comparing(p -> p.getEntity().getName()));
-
-      // expect two principal roles if not scoped
-      int expectedSize;
-      if (principalRolesScope != null) {
-        expectedSize = 0;
-        for (String pr : principalRolesScope) {
-          if (pr.equals("PR1") || pr.equals("PR2")) {
-            expectedSize++;
-          }
-        }
-      } else {
-        // both PR1 and PR2
-        expectedSize = 2;
-      }
-
-      // ensure the right set of principal roles were activated
-      Assertions.assertThat(principalRolesResolved).hasSize(expectedSize);
-
-      // expect either PR1 and PR2
-      for (EntityCacheEntry principalRoleResolved : principalRolesResolved) {
-        Assertions.assertThat(principalRoleResolved).isNotNull();
-        Assertions.assertThat(principalRoleResolved.getEntity()).isNotNull();
-        String roleName = principalRoleResolved.getEntity().getName();
-
-        // should be either PR1 or PR2
-        Assertions.assertThat(roleName.equals("PR1") || roleName.equals("PR2")).isTrue();
-
-        // ensure they are PR1 and PR2
-        this.ensureResolved(principalRoleResolved, PolarisEntityType.PRINCIPAL_ROLE, roleName);
-      }
-
-      // if a principal role was passed-in, ensure it exists
-      if (principalRoleName != null) {
+      // if found, ensure properly resolved
+      if (result.getEntity() != null) {
+        // the principal exist, check that this is the case
         this.ensureResolved(
-            resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName),
-            PolarisEntityType.PRINCIPAL_ROLE,
-            principalRoleName);
+            resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL, principalName),
+            PolarisEntityType.PRINCIPAL,
+            principalName);
+      } else {
+        // principal was optional
+        Assertions.assertThat(isPrincipalNameOptional).isTrue();
+        // not found
+        Assertions.assertThat(
+                resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL, principalName))
+            .isNull();
+      }
+    }
+
+    // validate that we were able to resolve the caller principal
+    this.ensureResolved(resolver.getResolvedCallerPrincipal(), PolarisEntityType.PRINCIPAL, "P1");
+
+    // validate that the correct set if principal roles have been activated
+    List<EntityCacheEntry> principalRolesResolved = resolver.getResolvedCallerPrincipalRoles();
+    principalRolesResolved.sort(Comparator.comparing(p -> p.getEntity().getName()));
+
+    // expect two principal roles if not scoped
+    int expectedSize;
+    if (principalRolesScope != null) {
+      expectedSize = 0;
+      for (String pr : principalRolesScope) {
+        if (pr.equals("PR1") || pr.equals("PR2")) {
+          expectedSize++;
+        }
+      }
+    } else {
+      // both PR1 and PR2
+      expectedSize = 2;
+    }
+
+    // ensure the right set of principal roles were activated
+    Assertions.assertThat(principalRolesResolved).hasSize(expectedSize);
+
+    // expect either PR1 and PR2
+    for (EntityCacheEntry principalRoleResolved : principalRolesResolved) {
+      Assertions.assertThat(principalRoleResolved).isNotNull();
+      Assertions.assertThat(principalRoleResolved.getEntity()).isNotNull();
+      String roleName = principalRoleResolved.getEntity().getName();
+
+      // should be either PR1 or PR2
+      Assertions.assertThat(roleName.equals("PR1") || roleName.equals("PR2")).isTrue();
+
+      // ensure they are PR1 and PR2
+      this.ensureResolved(principalRoleResolved, PolarisEntityType.PRINCIPAL_ROLE, roleName);
+    }
+
+    // if a principal role was passed-in, ensure it exists
+    if (principalRoleName != null) {
+      this.ensureResolved(
+          resolver.getResolvedEntity(PolarisEntityType.PRINCIPAL_ROLE, principalRoleName),
+          PolarisEntityType.PRINCIPAL_ROLE,
+          principalRoleName);
+    }
+
+    // if a catalog was passed-in, ensure it exists
+    if (catalogName != null) {
+      EntityCacheEntry catalogEntry =
+          resolver.getResolvedEntity(PolarisEntityType.CATALOG, catalogName);
+      Assertions.assertThat(catalogEntry).isNotNull();
+      this.ensureResolved(catalogEntry, PolarisEntityType.CATALOG, catalogName);
+
+      // if a catalog role was passed-in, ensure that it was properly resolved
+      if (catalogRoleName != null) {
+        EntityCacheEntry catalogRoleEntry =
+            resolver.getResolvedEntity(PolarisEntityType.CATALOG_ROLE, catalogRoleName);
+        this.ensureResolved(
+            catalogRoleEntry,
+            List.of(catalogEntry.getEntity()),
+            PolarisEntityType.CATALOG_ROLE,
+            catalogRoleName);
       }
 
-      // if a catalog was passed-in, ensure it exists
-      if (catalogName != null) {
-        EntityCacheEntry catalogEntry =
-            resolver.getResolvedEntity(PolarisEntityType.CATALOG, catalogName);
-        Assertions.assertThat(catalogEntry).isNotNull();
-        this.ensureResolved(catalogEntry, PolarisEntityType.CATALOG, catalogName);
+      // validate activated catalog roles
+      Map<Long, EntityCacheEntry> activatedCatalogs = resolver.getResolvedCatalogRoles();
 
-        // if a catalog role was passed-in, ensure that it was properly resolved
-        if (catalogRoleName != null) {
-          EntityCacheEntry catalogRoleEntry =
-              resolver.getResolvedEntity(PolarisEntityType.CATALOG_ROLE, catalogRoleName);
-          this.ensureResolved(
-              catalogRoleEntry,
-              List.of(catalogEntry.getEntity()),
-              PolarisEntityType.CATALOG_ROLE,
-              catalogRoleName);
-        }
+      // if there is an expected set, ensure we have the same set
+      if (expectedActivatedCatalogRoles != null) {
+        Assertions.assertThat(activatedCatalogs).hasSameSizeAs(expectedActivatedCatalogRoles);
+      }
 
-        // validate activated catalog roles
-        Map<Long, EntityCacheEntry> activatedCatalogs = resolver.getResolvedCatalogRoles();
+      // process each of those
+      for (EntityCacheEntry resolvedActivatedCatalogEntry : activatedCatalogs.values()) {
+        // must be in the expected list
+        Assertions.assertThat(resolvedActivatedCatalogEntry).isNotNull();
+        PolarisBaseEntity activatedCatalogRole = resolvedActivatedCatalogEntry.getEntity();
+        Assertions.assertThat(activatedCatalogRole).isNotNull();
+        // ensure well resolved
+        this.ensureResolved(
+            resolvedActivatedCatalogEntry,
+            List.of(catalogEntry.getEntity()),
+            PolarisEntityType.CATALOG_ROLE,
+            activatedCatalogRole.getName());
 
-        // if there is an expected set, ensure we have the same set
-        if (expectedActivatedCatalogRoles != null) {
-          Assertions.assertThat(activatedCatalogs).hasSameSizeAs(expectedActivatedCatalogRoles);
-        }
+        // in the set of expected catalog roles
+        Assertions.assertThat(
+                expectedActivatedCatalogRoles == null
+                    || expectedActivatedCatalogRoles.contains(activatedCatalogRole.getName()))
+            .isTrue();
+      }
 
-        // process each of those
-        for (EntityCacheEntry resolvedActivatedCatalogEntry : activatedCatalogs.values()) {
-          // must be in the expected list
-          Assertions.assertThat(resolvedActivatedCatalogEntry).isNotNull();
-          PolarisBaseEntity activatedCatalogRole = resolvedActivatedCatalogEntry.getEntity();
-          Assertions.assertThat(activatedCatalogRole).isNotNull();
-          // ensure well resolved
-          this.ensureResolved(
-              resolvedActivatedCatalogEntry,
-              List.of(catalogEntry.getEntity()),
-              PolarisEntityType.CATALOG_ROLE,
-              activatedCatalogRole.getName());
+      // resolve each path
+      if (path != null || paths != null) {
+        // path to validate
+        List<ResolverPath> allPathsToCheck = (paths == null) ? List.of(path) : paths;
 
-          // in the set of expected catalog roles
-          Assertions.assertThat(
-                  expectedActivatedCatalogRoles == null
-                      || expectedActivatedCatalogRoles.contains(activatedCatalogRole.getName()))
-              .isTrue();
-        }
+        // all resolved path
+        List<List<EntityCacheEntry>> allResolvedPaths = resolver.getResolvedPaths();
 
-        // resolve each path
-        if (path != null || paths != null) {
-          // path to validate
-          List<ResolverPath> allPathsToCheck = (paths == null) ? List.of(path) : paths;
+        // same size
+        Assertions.assertThat(allResolvedPaths).hasSameSizeAs(allPathsToCheck);
 
-          // all resolved path
-          List<List<EntityCacheEntry>> allResolvedPaths = resolver.getResolvedPaths();
-
-          // same size
-          Assertions.assertThat(allResolvedPaths).hasSameSizeAs(allPathsToCheck);
-
-          // check that each path was properly resolved
-          int pathCount = 0;
-          Iterator<ResolverPath> allPathsToCheckIt = allPathsToCheck.iterator();
-          for (List<EntityCacheEntry> resolvedPath : allResolvedPaths) {
-            this.ensurePathResolved(
-                pathCount++, catalogEntry.getEntity(), allPathsToCheckIt.next(), resolvedPath);
-          }
+        // check that each path was properly resolved
+        int pathCount = 0;
+        Iterator<ResolverPath> allPathsToCheckIt = allPathsToCheck.iterator();
+        for (List<EntityCacheEntry> resolvedPath : allResolvedPaths) {
+          this.ensurePathResolved(
+              pathCount++, catalogEntry.getEntity(), allPathsToCheckIt.next(), resolvedPath);
         }
       }
     }

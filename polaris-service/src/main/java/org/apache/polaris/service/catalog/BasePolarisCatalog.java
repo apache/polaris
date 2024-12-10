@@ -87,13 +87,12 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.persistence.BaseResult;
+import org.apache.polaris.core.persistence.EntityNotFoundException;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
+import org.apache.polaris.core.persistence.resolution.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.resolution.ResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
-import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -160,7 +159,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   private final PolarisEntityManager entityManager;
   private final CallContext callContext;
-  private final PolarisResolutionManifestCatalogView resolvedEntityView;
+  private final ResolutionManifest resolutionManifest;
   private final CatalogEntity catalogEntity;
   private final TaskExecutor taskExecutor;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
@@ -179,7 +178,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    * @param entityManager provides handle to underlying PolarisMetaStoreManager with which to
    *     perform mutations on entities.
    * @param callContext the current CallContext
-   * @param resolvedEntityView accessor to resolved entity paths that have been pre-vetted to ensure
+   * @param resolutionManifest accessor to resolved entity paths that have been pre-vetted to ensure
    *     this catalog instance only interacts with authorized resolved paths.
    * @param taskExecutor Executor we use to register cleanup task handlers
    */
@@ -187,15 +186,15 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
-      PolarisResolutionManifestCatalogView resolvedEntityView,
+      ResolutionManifest resolutionManifest,
       AuthenticatedPolarisPrincipal authenticatedPrincipal,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory) {
     this.entityManager = entityManager;
     this.callContext = callContext;
-    this.resolvedEntityView = resolvedEntityView;
+    this.resolutionManifest = resolutionManifest;
     this.catalogEntity =
-        CatalogEntity.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
+        CatalogEntity.of(resolutionManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity());
     this.authenticatedPrincipal = authenticatedPrincipal;
     this.taskExecutor = taskExecutor;
     this.catalogId = catalogEntity.getId();
@@ -314,7 +313,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     TableOperations ops = newTableOps(identifier);
 
     PolarisResolvedPathWrapper resolvedParent =
-        resolvedEntityView.getResolvedPath(identifier.namespace());
+        resolutionManifest.getResolvedPath(identifier.namespace());
     if (resolvedParent == null) {
       // Illegal state because the namespace should've already been in the static resolution set.
       throw new IllegalStateException(
@@ -357,7 +356,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           defaultNamespaceLocation(tableIdentifier.namespace()), tableIdentifier.name());
     } else {
       PolarisResolvedPathWrapper resolvedNamespace =
-          resolvedEntityView.getResolvedPath(tableIdentifier.namespace());
+          resolutionManifest.getResolvedPath(tableIdentifier.namespace());
       if (resolvedNamespace == null) {
         throw new NoSuchNamespaceException(
             "Namespace does not exist: %s", tableIdentifier.namespace());
@@ -489,7 +488,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // TODO: These should really be helpers in core Iceberg Namespace.
     Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(namespace);
 
-    PolarisResolvedPathWrapper resolvedParent = resolvedEntityView.getResolvedPath(parentNamespace);
+    PolarisResolvedPathWrapper resolvedParent = resolutionManifest.getResolvedPath(parentNamespace);
     if (resolvedParent == null) {
       throw new NoSuchNamespaceException(
           "Cannot create namespace %s. Parent namespace does not exist.", namespace);
@@ -543,7 +542,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       List<PolarisEntity> parentPath =
           namespace.length() > 1
               ? getResolvedParentNamespace(namespace).getRawFullPath()
-              : List.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
+              : List.of(resolutionManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity());
 
       String parentLocation = resolveLocationForPath(parentPath);
 
@@ -596,21 +595,21 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private PolarisResolvedPathWrapper getResolvedParentNamespace(Namespace namespace) {
     Namespace parentNamespace =
         Namespace.of(Arrays.copyOf(namespace.levels(), namespace.length() - 1));
-    PolarisResolvedPathWrapper resolvedParent = resolvedEntityView.getResolvedPath(parentNamespace);
+    PolarisResolvedPathWrapper resolvedParent = resolutionManifest.getResolvedPath(parentNamespace);
     if (resolvedParent == null) {
-      return resolvedEntityView.getPassthroughResolvedPath(parentNamespace);
+      return resolutionManifest.getPassthroughResolvedPath(parentNamespace);
     }
     return resolvedParent;
   }
 
   @Override
   public boolean namespaceExists(Namespace namespace) {
-    return resolvedEntityView.getResolvedPath(namespace) != null;
+    return resolutionManifest.getResolvedPath(namespace) != null;
   }
 
   @Override
   public boolean dropNamespace(Namespace namespace) throws NamespaceNotEmptyException {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities = resolutionManifest.getResolvedPath(namespace);
     if (resolvedEntities == null) {
       return false;
     }
@@ -643,7 +642,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   @Override
   public boolean setProperties(Namespace namespace, Map<String, String> properties)
       throws NoSuchNamespaceException {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities = resolutionManifest.getResolvedPath(namespace);
     if (resolvedEntities == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
@@ -690,7 +689,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   @Override
   public boolean removeProperties(Namespace namespace, Set<String> properties)
       throws NoSuchNamespaceException {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities = resolutionManifest.getResolvedPath(namespace);
     if (resolvedEntities == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
@@ -722,7 +721,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   @Override
   public Map<String, String> loadNamespaceMetadata(Namespace namespace)
       throws NoSuchNamespaceException {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities = resolutionManifest.getResolvedPath(namespace);
     if (resolvedEntities == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
@@ -743,7 +742,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public List<Namespace> listNamespaces(Namespace namespace) throws NoSuchNamespaceException {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities = resolutionManifest.getResolvedPath(namespace);
     if (resolvedEntities == null) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", namespace);
     }
@@ -849,11 +848,11 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   private @Nonnull Optional<PolarisEntity> findStorageInfo(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper resolvedTableEntities =
-        resolvedEntityView.getResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
+        resolutionManifest.getResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
 
     PolarisResolvedPathWrapper resolvedStorageEntity =
         resolvedTableEntities == null
-            ? resolvedEntityView.getResolvedPath(tableIdentifier.namespace())
+            ? resolutionManifest.getResolvedPath(tableIdentifier.namespace())
             : resolvedTableEntities;
 
     return findStorageInfoFromHierarchy(resolvedStorageEntity);
@@ -919,12 +918,12 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    */
   private void validateLocationForTableLike(TableIdentifier identifier, String location) {
     PolarisResolvedPathWrapper resolvedStorageEntity =
-        resolvedEntityView.getResolvedPath(identifier, PolarisEntitySubType.ANY_SUBTYPE);
+        resolutionManifest.getResolvedPath(identifier, PolarisEntitySubType.ANY_SUBTYPE);
     if (resolvedStorageEntity == null) {
-      resolvedStorageEntity = resolvedEntityView.getResolvedPath(identifier.namespace());
+      resolvedStorageEntity = resolutionManifest.getResolvedPath(identifier.namespace());
     }
     if (resolvedStorageEntity == null) {
-      resolvedStorageEntity = resolvedEntityView.getPassthroughResolvedPath(identifier.namespace());
+      resolvedStorageEntity = resolutionManifest.getPassthroughResolvedPath(identifier.namespace());
     }
 
     validateLocationForTableLike(identifier, location, resolvedStorageEntity);
@@ -1113,25 +1112,30 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     LOGGER.debug(
         "Resolving {} sibling entities to validate location",
         siblingTables.size() + siblingNamespaces.size());
-    PolarisResolutionManifest resolutionManifest =
-        new PolarisResolutionManifest(
-            callContext, entityManager, authenticatedPrincipal, parentPath.getFirst().getName());
+
+    var referenceCatalogName = parentPath.getFirst().getName();
+    var resolutionManifestBuilder =
+        metaStoreManager
+            .newResolutionManifestBuilder(
+                callContext,
+                authenticatedPrincipal,
+                () ->
+                    entityManager.prepareResolver(
+                        callContext, authenticatedPrincipal, referenceCatalogName),
+                referenceCatalogName)
+            .notFoundExceptionMapper(
+                EntityNotFoundException::asSpecializedIcebergNotFoundException);
     siblingTables.forEach(
         tbl ->
-            resolutionManifest.addPath(
+            resolutionManifestBuilder.addPath(
                 new ResolverPath(
                     PolarisCatalogHelpers.tableIdentifierToList(tbl), PolarisEntityType.TABLE_LIKE),
                 tbl));
     siblingNamespaces.forEach(
         ns ->
-            resolutionManifest.addPath(
+            resolutionManifestBuilder.addPath(
                 new ResolverPath(Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE), ns));
-    ResolverStatus status = resolutionManifest.resolveAll();
-    if (!status.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
-      throw new IllegalStateException(
-          "Unable to resolve sibling entities to validate location - could not resolve"
-              + status.getFailedToResolvedEntityName());
-    }
+    var resolutionManifest = resolutionManifestBuilder.buildResolved();
 
     StorageLocation targetLocation = StorageLocation.of(location);
     Stream.concat(
@@ -1212,7 +1216,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       // While doing refresh/commit protocols, we must fetch the fresh "passthrough" resolved
       // table entity instead of the statically-resolved authz resolution set.
       PolarisResolvedPathWrapper resolvedEntities =
-          resolvedEntityView.getPassthroughResolvedPath(
+          resolutionManifest.getPassthroughResolvedPath(
               tableIdentifier, PolarisEntitySubType.TABLE);
       TableLikeEntity entity = null;
 
@@ -1266,7 +1270,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       }
 
       PolarisResolvedPathWrapper resolvedTableEntities =
-          resolvedEntityView.getPassthroughResolvedPath(
+          resolutionManifest.getPassthroughResolvedPath(
               tableIdentifier, PolarisEntitySubType.TABLE);
 
       // Fetch credentials for the resolved entity. The entity could be the table itself (if it has
@@ -1274,7 +1278,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       // table's namespace or catalog.
       PolarisResolvedPathWrapper resolvedStorageEntity =
           resolvedTableEntities == null
-              ? resolvedEntityView.getResolvedPath(tableIdentifier.namespace())
+              ? resolutionManifest.getResolvedPath(tableIdentifier.namespace())
               : resolvedTableEntities;
 
       // refresh credentials because we need to read the metadata file to validate its location
@@ -1288,7 +1292,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
       List<PolarisEntity> resolvedNamespace =
           resolvedTableEntities == null
-              ? resolvedEntityView.getResolvedPath(tableIdentifier.namespace()).getRawFullPath()
+              ? resolutionManifest.getResolvedPath(tableIdentifier.namespace()).getRawFullPath()
               : resolvedTableEntities.getRawParentPath();
       CatalogEntity catalog = CatalogEntity.of(resolvedNamespace.getFirst());
 
@@ -1329,7 +1333,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       String oldLocation = base == null ? null : base.metadataFileLocation();
 
       PolarisResolvedPathWrapper resolvedView =
-          resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, PolarisEntitySubType.VIEW);
+          resolutionManifest.getPassthroughResolvedPath(tableIdentifier, PolarisEntitySubType.VIEW);
       if (resolvedView != null) {
         throw new AlreadyExistsException("View with same name already exists: %s", tableIdentifier);
       }
@@ -1341,7 +1345,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       // modification between our checking of unchanged metadataLocation here and actual
       // persistence-layer commit).
       PolarisResolvedPathWrapper resolvedEntities =
-          resolvedEntityView.getPassthroughResolvedPath(
+          resolutionManifest.getPassthroughResolvedPath(
               tableIdentifier, PolarisEntitySubType.TABLE);
       TableLikeEntity entity =
           TableLikeEntity.of(resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
@@ -1450,7 +1454,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     @Override
     public void doRefresh() {
       PolarisResolvedPathWrapper resolvedEntities =
-          resolvedEntityView.getPassthroughResolvedPath(identifier, PolarisEntitySubType.VIEW);
+          resolutionManifest.getPassthroughResolvedPath(identifier, PolarisEntitySubType.VIEW);
       TableLikeEntity entity = null;
 
       if (resolvedEntities != null) {
@@ -1504,25 +1508,25 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       }
 
       PolarisResolvedPathWrapper resolvedTable =
-          resolvedEntityView.getPassthroughResolvedPath(identifier, PolarisEntitySubType.TABLE);
+          resolutionManifest.getPassthroughResolvedPath(identifier, PolarisEntitySubType.TABLE);
       if (resolvedTable != null) {
         throw new AlreadyExistsException("Table with same name already exists: %s", identifier);
       }
 
       PolarisResolvedPathWrapper resolvedEntities =
-          resolvedEntityView.getPassthroughResolvedPath(identifier, PolarisEntitySubType.VIEW);
+          resolutionManifest.getPassthroughResolvedPath(identifier, PolarisEntitySubType.VIEW);
 
       // Fetch credentials for the resolved entity. The entity could be the view itself (if it has
       // already been stored and credentials have been configured directly) or it could be the
       // table's namespace or catalog.
       PolarisResolvedPathWrapper resolvedStorageEntity =
           resolvedEntities == null
-              ? resolvedEntityView.getResolvedPath(identifier.namespace())
+              ? resolutionManifest.getResolvedPath(identifier.namespace())
               : resolvedEntities;
 
       List<PolarisEntity> resolvedNamespace =
           resolvedEntities == null
-              ? resolvedEntityView.getResolvedPath(identifier.namespace()).getRawFullPath()
+              ? resolutionManifest.getResolvedPath(identifier.namespace()).getRawFullPath()
               : resolvedEntities.getRawParentPath();
       if (base == null || !metadata.location().equals(base.location())) {
         // If location is changing then we must validate that the requested location is valid
@@ -1649,7 +1653,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private void renameTableLike(
       PolarisEntitySubType subType, TableIdentifier from, TableIdentifier to) {
     LOGGER.debug("Renaming tableLike from {} to {}", from, to);
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(from, subType);
+    PolarisResolvedPathWrapper resolvedEntities = resolutionManifest.getResolvedPath(from, subType);
     if (resolvedEntities == null) {
       if (subType == PolarisEntitySubType.VIEW) {
         throw new NoSuchViewException("Cannot rename %s to %s. View does not exist", from, to);
@@ -1663,7 +1667,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     List<PolarisEntity> newCatalogPath = null;
     if (!from.namespace().equals(to.namespace())) {
       PolarisResolvedPathWrapper resolvedNewParentEntities =
-          resolvedEntityView.getResolvedPath(to.namespace());
+          resolutionManifest.getResolvedPath(to.namespace());
       if (resolvedNewParentEntities == null) {
         throw new NoSuchNamespaceException(
             "Cannot rename %s to %s. Namespace does not exist: %s", from, to, to.namespace());
@@ -1706,19 +1710,11 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           {
             PolarisEntitySubType existingEntitySubType =
                 returnedEntityResult.getAlreadyExistsEntitySubType();
-            if (existingEntitySubType == null) {
-              // this code path is unexpected
-              throw new AlreadyExistsException(
-                  "Cannot rename %s to %s. Object already exists", from, to);
-            } else if (existingEntitySubType == PolarisEntitySubType.TABLE) {
-              throw new AlreadyExistsException(
-                  "Cannot rename %s to %s. Table already exists", from, to);
-            } else if (existingEntitySubType == PolarisEntitySubType.VIEW) {
-              throw new AlreadyExistsException(
-                  "Cannot rename %s to %s. View already exists", from, to);
-            }
-            throw new IllegalStateException(
-                String.format("Unexpected entity type '%s'", existingEntitySubType));
+            throw new AlreadyExistsException(
+                "Cannot rename %s to %s. %s already exists",
+                from,
+                to,
+                existingEntitySubType != null ? existingEntitySubType.readableName() : "Object");
           }
 
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
@@ -1765,7 +1761,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    */
   private void createTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedParent =
-        resolvedEntityView.getResolvedPath(identifier.namespace());
+        resolutionManifest.getResolvedPath(identifier.namespace());
     if (resolvedParent == null) {
       // Illegal state because the namespace should've already been in the static resolution set.
       throw new IllegalStateException(
@@ -1806,7 +1802,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   private void updateTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getResolvedPath(identifier, entity.getSubType());
+        resolutionManifest.getResolvedPath(identifier, entity.getSubType());
     if (resolvedEntities == null) {
       // Illegal state because the identifier should've already been in the static resolution set.
       throw new IllegalStateException(
@@ -1838,7 +1834,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       Map<String, String> storageProperties,
       boolean purge) {
     PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getResolvedPath(identifier, subType);
+        resolutionManifest.getResolvedPath(identifier, subType);
     if (resolvedEntities == null) {
       // TODO: Error?
       return new PolarisMetaStoreManager.DropEntityResult(
@@ -1883,7 +1879,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     LOGGER.debug(
         "Handling notification request {} for tableIdentifier {}", request, tableIdentifier);
     PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, subType);
+        resolutionManifest.getPassthroughResolvedPath(tableIdentifier, subType);
 
     NotificationType notificationType = request.getNotificationType();
 
@@ -1907,7 +1903,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 Arrays.stream(tableIdentifier.namespace().levels())
                     .limit(i)
                     .toArray(String[]::new));
-        resolvedStorageEntity = resolvedEntityView.getResolvedPath(nsLevel);
+        resolvedStorageEntity = resolutionManifest.getResolvedPath(nsLevel);
         if (resolvedStorageEntity != null) {
           storageInfoEntity = findStorageInfoFromHierarchy(resolvedStorageEntity);
           break;
@@ -1943,7 +1939,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       Namespace ns = tableIdentifier.namespace();
       createNonExistingNamespaces(ns);
 
-      PolarisResolvedPathWrapper resolvedParent = resolvedEntityView.getPassthroughResolvedPath(ns);
+      PolarisResolvedPathWrapper resolvedParent = resolutionManifest.getPassthroughResolvedPath(ns);
 
       TableLikeEntity entity =
           TableLikeEntity.of(resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
@@ -2023,17 +2019,17 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     for (int i = 1; i <= namespace.length(); i++) {
       Namespace nsLevel =
           Namespace.of(Arrays.stream(namespace.levels()).limit(i).toArray(String[]::new));
-      if (resolvedEntityView.getPassthroughResolvedPath(nsLevel) == null) {
+      if (resolutionManifest.getPassthroughResolvedPath(nsLevel) == null) {
         Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(nsLevel);
         PolarisResolvedPathWrapper resolvedParent =
-            resolvedEntityView.getPassthroughResolvedPath(parentNamespace);
+            resolutionManifest.getPassthroughResolvedPath(parentNamespace);
         createNamespaceInternal(nsLevel, Collections.emptyMap(), resolvedParent);
       }
     }
   }
 
   private List<TableIdentifier> listTableLike(PolarisEntitySubType subType, Namespace namespace) {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    PolarisResolvedPathWrapper resolvedEntities = resolutionManifest.getResolvedPath(namespace);
     if (resolvedEntities == null) {
       // Illegal state because the namespace should've already been in the static resolution set.
       throw new IllegalStateException(
