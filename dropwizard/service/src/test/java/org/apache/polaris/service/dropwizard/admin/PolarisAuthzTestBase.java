@@ -188,8 +188,7 @@ public abstract class PolarisAuthzTestBase {
                     PolarisConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING
                         .key,
                     true)),
-            new EntityCacheGrantManager.EntityCacheGrantManagerFactory(
-                metaStoreManagerFactory, (realm) -> entityCache));
+            () -> new EntityCacheGrantManager(metaStoreManager, entityCache));
     this.entityManager =
         new PolarisEntityManager(metaStoreManager, new StorageCredentialCache(), entityCache);
     this.metaStoreManager = metaStoreManager;

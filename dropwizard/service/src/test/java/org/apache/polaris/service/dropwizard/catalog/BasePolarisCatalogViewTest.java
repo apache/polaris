@@ -120,8 +120,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             authenticatedRoot,
             new PolarisAuthorizerImpl(
                 new PolarisConfigurationStore() {},
-                new EntityCacheGrantManager.EntityCacheGrantManagerFactory(
-                    (realm) -> metaStoreManager, (realm) -> entityCache)));
+                () -> new EntityCacheGrantManager(metaStoreManager, entityCache)));
     adminService.createCatalog(
         new CatalogEntity.Builder()
             .setName(CATALOG_NAME)

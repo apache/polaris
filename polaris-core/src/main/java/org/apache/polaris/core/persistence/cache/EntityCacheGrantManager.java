@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
@@ -51,24 +50,6 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
   private final EntityCache entityCache;
   private PolarisGrantRecord serviceAdminRootContainerGrant;
   private PolarisBaseEntity serviceAdminEntity;
-
-  public static final class EntityCacheGrantManagerFactory implements PolarisGrantManager.Factory {
-    private final PolarisGrantManager.Factory delegateGrantManagerFactory;
-    private final RealmEntityCacheFactory realmEntityCacheFactory;
-
-    public EntityCacheGrantManagerFactory(
-        Factory delegateGrantManagerFactory, RealmEntityCacheFactory realmEntityCacheFactory) {
-      this.delegateGrantManagerFactory = delegateGrantManagerFactory;
-      this.realmEntityCacheFactory = realmEntityCacheFactory;
-    }
-
-    @Override
-    public PolarisGrantManager getGrantManagerForRealm(RealmContext realm) {
-      return new EntityCacheGrantManager(
-          delegateGrantManagerFactory.getGrantManagerForRealm(realm),
-          realmEntityCacheFactory.getOrCreateEntityCache(realm));
-    }
-  }
 
   public EntityCacheGrantManager(
       PolarisGrantManager delegateGrantManager, EntityCache entityCache) {

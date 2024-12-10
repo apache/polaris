@@ -188,8 +188,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             authenticatedRoot,
             new PolarisAuthorizerImpl(
                 new PolarisConfigurationStore() {},
-                new EntityCacheGrantManager.EntityCacheGrantManagerFactory(
-                    (realm) -> metaStoreManager, (realm) -> entityCache)));
+                () -> new EntityCacheGrantManager(metaStoreManager, entityCache)));
 
     String storageLocation = "s3://my-bucket/path/to/data";
     storageConfigModel =
