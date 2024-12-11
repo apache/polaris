@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.persistence;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -34,8 +36,6 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Interface to the Polaris metadata store, allows to persist and retrieve all Polaris metadata like
@@ -58,7 +58,7 @@ public interface PolarisMetaStoreSession {
    * @param callCtx call context
    * @param transactionCode code of the transaction being executed, a supplier lambda
    */
-  <T> T runInTransaction(@NotNull PolarisCallContext callCtx, @NotNull Supplier<T> transactionCode);
+  <T> T runInTransaction(@Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode);
 
   /**
    * Run the specified transaction code (a runnable lambda type) in a database read/write
@@ -70,7 +70,7 @@ public interface PolarisMetaStoreSession {
    * @param transactionCode code of the transaction being executed, a runnable lambda
    */
   void runActionInTransaction(
-      @NotNull PolarisCallContext callCtx, @NotNull Runnable transactionCode);
+      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode);
 
   /**
    * Run the specified transaction code (a Supplier lambda type) in a database read transaction. If
@@ -82,7 +82,7 @@ public interface PolarisMetaStoreSession {
    * @param transactionCode code of the transaction being executed, a supplier lambda
    */
   <T> T runInReadTransaction(
-      @NotNull PolarisCallContext callCtx, @NotNull Supplier<T> transactionCode);
+      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode);
 
   /**
    * Run the specified transaction code (a runnable lambda type) in a database read transaction. If
@@ -93,13 +93,13 @@ public interface PolarisMetaStoreSession {
    * @param transactionCode code of the transaction being executed, a runnable lambda
    */
   void runActionInReadTransaction(
-      @NotNull PolarisCallContext callCtx, @NotNull Runnable transactionCode);
+      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode);
 
   /**
    * @param callCtx call context
    * @return new unique entity identifier
    */
-  long generateNewId(@NotNull PolarisCallContext callCtx);
+  long generateNewId(@Nonnull PolarisCallContext callCtx);
 
   /**
    * Write the base entity to the entities table. If there is a conflict (existing record with the
@@ -109,7 +109,7 @@ public interface PolarisMetaStoreSession {
    * @param entity entity record to write, potentially replacing an existing entity record with the
    *     same key
    */
-  void writeToEntities(@NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity entity);
+  void writeToEntities(@Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   /**
    * Write the base entity to the entities_active table. If there is a conflict (existing record
@@ -120,7 +120,7 @@ public interface PolarisMetaStoreSession {
    *     same key
    */
   void writeToEntitiesActive(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity entity);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   /**
    * Write the base entity to the entities_dropped table. If there is a conflict (existing record
@@ -131,7 +131,7 @@ public interface PolarisMetaStoreSession {
    *     same key
    */
   void writeToEntitiesDropped(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity entity);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   /**
    * Write the base entity to the entities change tracking table. If there is a conflict (existing
@@ -142,7 +142,7 @@ public interface PolarisMetaStoreSession {
    *     same key
    */
   void writeToEntitiesChangeTracking(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity entity);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   /**
    * Write the specified grantRecord to the grant_records table. If there is a conflict (existing
@@ -153,7 +153,7 @@ public interface PolarisMetaStoreSession {
    *     the same key
    */
   void writeToGrantRecords(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisGrantRecord grantRec);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec);
 
   /**
    * Delete the base entity from the entities table.
@@ -161,7 +161,7 @@ public interface PolarisMetaStoreSession {
    * @param callCtx call context
    * @param entity entity record to delete
    */
-  void deleteFromEntities(@NotNull PolarisCallContext callCtx, @NotNull PolarisEntityCore entity);
+  void deleteFromEntities(@Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity);
 
   /**
    * Delete the base entity from the entities_active table.
@@ -170,7 +170,7 @@ public interface PolarisMetaStoreSession {
    * @param entity entity record to delete
    */
   void deleteFromEntitiesActive(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisEntityCore entity);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity);
 
   /**
    * Delete the base entity to the entities_dropped table
@@ -179,7 +179,7 @@ public interface PolarisMetaStoreSession {
    * @param entity entity record to delete
    */
   void deleteFromEntitiesDropped(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity entity);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   /**
    * Delete the base entity from the entities change tracking table
@@ -188,7 +188,7 @@ public interface PolarisMetaStoreSession {
    * @param entity entity record to delete
    */
   void deleteFromEntitiesChangeTracking(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisEntityCore entity);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity);
 
   /**
    * Delete the specified grantRecord to the grant_records table.
@@ -197,7 +197,7 @@ public interface PolarisMetaStoreSession {
    * @param grantRec entity record to delete.
    */
   void deleteFromGrantRecords(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisGrantRecord grantRec);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec);
 
   /**
    * Delete the all grant records in the grant_records table for the specified entity. This method
@@ -211,10 +211,10 @@ public interface PolarisMetaStoreSession {
    * @param grantsOnSecurable all grants on that securable entity
    */
   void deleteAllEntityGrantRecords(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisEntityCore entity,
-      @NotNull List<PolarisGrantRecord> grantsOnGrantee,
-      @NotNull List<PolarisGrantRecord> grantsOnSecurable);
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore entity,
+      @Nonnull List<PolarisGrantRecord> grantsOnGrantee,
+      @Nonnull List<PolarisGrantRecord> grantsOnSecurable);
 
   /**
    * Delete Polaris entity and grant record metadata from all tables. This is used during metadata
@@ -222,7 +222,7 @@ public interface PolarisMetaStoreSession {
    *
    * @param callCtx call context
    */
-  void deleteAll(@NotNull PolarisCallContext callCtx);
+  void deleteAll(@Nonnull PolarisCallContext callCtx);
 
   /**
    * Lookup an entity given its catalog id (which can be NULL_ID for top-level entities) and its
@@ -235,7 +235,7 @@ public interface PolarisMetaStoreSession {
    */
   @Nullable
   PolarisBaseEntity lookupEntity(
-      @NotNull PolarisCallContext callCtx, long catalogId, long entityId);
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId);
 
   /**
    * Lookup a set of entities given their catalog id/entity id unique identifier
@@ -245,9 +245,9 @@ public interface PolarisMetaStoreSession {
    * @return list of polaris base entities, parallel to the input list of ids. An entity in the list
    *     will be null if the corresponding entity could not be found.
    */
-  @NotNull
+  @Nonnull
   List<PolarisBaseEntity> lookupEntities(
-      @NotNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
+      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
 
   /**
    * Lookup in the entities_change_tracking table the current version of an entity given its catalog
@@ -259,7 +259,7 @@ public interface PolarisMetaStoreSession {
    * @param entityId unique entity id
    * @return current version for that entity or 0 if entity was not found.
    */
-  int lookupEntityVersion(@NotNull PolarisCallContext callCtx, long catalogId, long entityId);
+  int lookupEntityVersion(@Nonnull PolarisCallContext callCtx, long catalogId, long entityId);
 
   /**
    * Get change tracking versions for all specified entity ids.
@@ -269,9 +269,9 @@ public interface PolarisMetaStoreSession {
    * @return list parallel to the input list of entity versions. If an entity cannot be found, the
    *     corresponding element in the list will be null
    */
-  @NotNull
+  @Nonnull
   List<PolarisChangeTrackingVersions> lookupEntityVersions(
-      @NotNull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
+      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
 
   /**
    * Lookup in the entities_active table to determine if the specified entity exists. Return the
@@ -283,7 +283,7 @@ public interface PolarisMetaStoreSession {
    */
   @Nullable
   PolarisEntityActiveRecord lookupEntityActive(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisEntitiesActiveKey entityActiveKey);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntitiesActiveKey entityActiveKey);
 
   /**
    * Lookup in the entities_active table to determine if the specified set of entities exist. Return
@@ -292,9 +292,9 @@ public interface PolarisMetaStoreSession {
    *
    * @return the list of entities_active records for the specified lookup operation
    */
-  @NotNull
+  @Nonnull
   List<PolarisEntityActiveRecord> lookupEntityActiveBatch(
-      @NotNull PolarisCallContext callCtx, List<PolarisEntitiesActiveKey> entityActiveKeys);
+      @Nonnull PolarisCallContext callCtx, List<PolarisEntitiesActiveKey> entityActiveKeys);
 
   /**
    * List all active entities of the specified type which are child entities of the specified parent
@@ -305,12 +305,12 @@ public interface PolarisMetaStoreSession {
    * @param entityType type of entities to list
    * @return the list of entities_active records for the specified list operation
    */
-  @NotNull
+  @Nonnull
   List<PolarisEntityActiveRecord> listActiveEntities(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
-      @NotNull PolarisEntityType entityType);
+      @Nonnull PolarisEntityType entityType);
 
   /**
    * List active entities where some predicate returns true
@@ -323,13 +323,13 @@ public interface PolarisMetaStoreSession {
    *     returns true are returned in the list
    * @return the list of entities for which the predicate returns true
    */
-  @NotNull
+  @Nonnull
   List<PolarisEntityActiveRecord> listActiveEntities(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
-      @NotNull PolarisEntityType entityType,
-      @NotNull Predicate<PolarisBaseEntity> entityFilter);
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter);
 
   /**
    * List active entities where some predicate returns true and transform the entities with a
@@ -346,15 +346,15 @@ public interface PolarisMetaStoreSession {
    *     returning
    * @return the list of entities for which the predicate returns true
    */
-  @NotNull
+  @Nonnull
   <T> List<T> listActiveEntities(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
-      @NotNull PolarisEntityType entityType,
+      @Nonnull PolarisEntityType entityType,
       int limit,
-      @NotNull Predicate<PolarisBaseEntity> entityFilter,
-      @NotNull Function<PolarisBaseEntity, T> transformer);
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull Function<PolarisBaseEntity, T> transformer);
 
   /**
    * Lookup in the entities_change_tracking table the current version of the grant records for this
@@ -367,7 +367,7 @@ public interface PolarisMetaStoreSession {
    * @return current grant records version for that entity.
    */
   int lookupEntityGrantRecordsVersion(
-      @NotNull PolarisCallContext callCtx, long catalogId, long entityId);
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId);
 
   /**
    * Lookup the specified grant record from the grant_records table. Return NULL if not found
@@ -383,7 +383,7 @@ public interface PolarisMetaStoreSession {
    */
   @Nullable
   PolarisGrantRecord lookupGrantRecord(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long securableCatalogId,
       long securableId,
       long granteeCatalogId,
@@ -399,9 +399,9 @@ public interface PolarisMetaStoreSession {
    * @param securableId id of the securable entity
    * @return the list of grant records for the specified securable
    */
-  @NotNull
+  @Nonnull
   List<PolarisGrantRecord> loadAllGrantRecordsOnSecurable(
-      @NotNull PolarisCallContext callCtx, long securableCatalogId, long securableId);
+      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId);
 
   /**
    * Get all grant records granted to the specified grantee entity.
@@ -411,9 +411,9 @@ public interface PolarisMetaStoreSession {
    * @param granteeId id of the grantee entity
    * @return the list of grant records for the specified grantee
    */
-  @NotNull
+  @Nonnull
   List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
-      @NotNull PolarisCallContext callCtx, long granteeCatalogId, long granteeId);
+      @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId);
 
   /**
    * Allows to retrieve to the secrets of a principal given its unique client id
@@ -424,7 +424,7 @@ public interface PolarisMetaStoreSession {
    */
   @Nullable
   PolarisPrincipalSecrets loadPrincipalSecrets(
-      @NotNull PolarisCallContext callCtx, @NotNull String clientId);
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId);
 
   /**
    * generate and store a client id and associated secrets for a newly created principal entity
@@ -433,9 +433,9 @@ public interface PolarisMetaStoreSession {
    * @param principalName name of the principal
    * @param principalId principal id
    */
-  @NotNull
+  @Nonnull
   PolarisPrincipalSecrets generateNewPrincipalSecrets(
-      @NotNull PolarisCallContext callCtx, @NotNull String principalName, long principalId);
+      @Nonnull PolarisCallContext callCtx, @Nonnull String principalName, long principalId);
 
   /**
    * Rotate the secrets of a principal entity, i.e. make the specified main secrets the secondary
@@ -450,11 +450,11 @@ public interface PolarisMetaStoreSession {
    */
   @Nullable
   PolarisPrincipalSecrets rotatePrincipalSecrets(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull String clientId,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull String clientId,
       long principalId,
       boolean reset,
-      @NotNull String oldSecretHash);
+      @Nonnull String oldSecretHash);
 
   /**
    * When dropping a principal, we also need to drop the secrets of that principal
@@ -464,7 +464,7 @@ public interface PolarisMetaStoreSession {
    * @param principalId the id of the principal whose secrets are dropped
    */
   void deletePrincipalSecrets(
-      @NotNull PolarisCallContext callCtx, @NotNull String clientId, long principalId);
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId);
 
   /**
    * Create an in-memory storage integration
@@ -477,7 +477,7 @@ public interface PolarisMetaStoreSession {
    */
   @Nullable
   <T extends PolarisStorageConfigurationInfo> PolarisStorageIntegration<T> createStorageIntegration(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
       PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
@@ -490,8 +490,8 @@ public interface PolarisMetaStoreSession {
    * @param storageIntegration the storage integration to persist
    */
   <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
-      @NotNull PolarisCallContext callContext,
-      @NotNull PolarisBaseEntity entity,
+      @Nonnull PolarisCallContext callContext,
+      @Nonnull PolarisBaseEntity entity,
       @Nullable PolarisStorageIntegration<T> storageIntegration);
 
   /**
@@ -504,7 +504,7 @@ public interface PolarisMetaStoreSession {
   @Nullable
   <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @NotNull PolarisCallContext callContext, @NotNull PolarisBaseEntity entity);
+          @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity);
 
   /**
    * Check if the specified parent entity has children.
@@ -517,7 +517,7 @@ public interface PolarisMetaStoreSession {
    * @return true if the parent entity has children
    */
   boolean hasChildren(
-      @NotNull PolarisCallContext callContext,
+      @Nonnull PolarisCallContext callContext,
       @Nullable PolarisEntityType optionalEntityType,
       long catalogId,
       long parentId);

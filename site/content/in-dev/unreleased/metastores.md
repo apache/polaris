@@ -53,13 +53,13 @@ Polaris creates and connects to a separate database for each realm. Specifically
 ```xml
 <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
     <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
-    <class>org.apache.polaris.core.persistence.models.ModelEntity</class>
-    <class>org.apache.polaris.core.persistence.models.ModelEntityActive</class>
-    <class>org.apache.polaris.core.persistence.models.ModelEntityChangeTracking</class>
-    <class>org.apache.polaris.core.persistence.models.ModelEntityDropped</class>
-    <class>org.apache.polaris.core.persistence.models.ModelGrantRecord</class>
-    <class>org.apache.polaris.core.persistence.models.ModelPrincipalSecrets</class>
-    <class>org.apache.polaris.core.persistence.models.ModelSequenceId</class>
+    <class>org.apache.polaris.jpa.models.ModelEntity</class>
+    <class>org.apache.polaris.jpa.models.ModelEntityActive</class>
+    <class>org.apache.polaris.jpa.models.ModelEntityChangeTracking</class>
+    <class>org.apache.polaris.jpa.models.ModelEntityDropped</class>
+    <class>org.apache.polaris.jpa.models.ModelGrantRecord</class>
+    <class>org.apache.polaris.jpa.models.ModelPrincipalSecrets</class>
+    <class>org.apache.polaris.jpa.models.ModelSequenceId</class>
     <shared-cache-mode>NONE</shared-cache-mode>
     <properties>
       <property name="jakarta.persistence.jdbc.url"
@@ -76,7 +76,7 @@ A single `persistence.xml` can describe multiple [persistence units](https://ecl
 To build Polaris with the necessary H2 dependency and start the Polaris service, run the following:
 ```bash
 polaris> ./gradlew --no-daemon --info -PeclipseLink=true -PeclipseLinkDeps=com.h2database:h2:2.3.232 clean shadowJar
-polaris> java -jar  polaris-service/build/libs/polaris-service-*.jar server ./polaris-server.yml
+polaris> java -jar dropwizard/service/build/libs/polaris-dropwizard-service-*.jar server ./polaris-server.yml
 ```
 
 ### Postgres
@@ -86,13 +86,13 @@ The following shows a sample configuration for integrating Polaris with Postgres
 ```xml
 <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
   <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
-  <class>org.apache.polaris.core.persistence.models.ModelEntity</class>
-  <class>org.apache.polaris.core.persistence.models.ModelEntityActive</class>
-  <class>org.apache.polaris.core.persistence.models.ModelEntityChangeTracking</class>
-  <class>org.apache.polaris.core.persistence.models.ModelEntityDropped</class>
-  <class>org.apache.polaris.core.persistence.models.ModelGrantRecord</class>
-  <class>org.apache.polaris.core.persistence.models.ModelPrincipalSecrets</class>
-  <class>org.apache.polaris.core.persistence.models.ModelSequenceId</class>
+  <class>org.apache.polaris.jpa.models.ModelEntity</class>
+  <class>org.apache.polaris.jpa.models.ModelEntityActive</class>
+  <class>org.apache.polaris.jpa.models.ModelEntityChangeTracking</class>
+  <class>org.apache.polaris.jpa.models.ModelEntityDropped</class>
+  <class>org.apache.polaris.jpa.models.ModelGrantRecord</class>
+  <class>org.apache.polaris.jpa.models.ModelPrincipalSecrets</class>
+  <class>org.apache.polaris.jpa.models.ModelSequenceId</class>
   <shared-cache-mode>NONE</shared-cache-mode>
   <properties>
     <property name="jakarta.persistence.jdbc.url"
@@ -108,5 +108,5 @@ The following shows a sample configuration for integrating Polaris with Postgres
 To build Polaris with the necessary Postgres dependency and start the Polaris service, run the following:
 ```bash
 polaris> ./gradlew --no-daemon --info -PeclipseLink=true -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 clean shadowJar
-polaris> java -jar  polaris-service/build/libs/polaris-service-*.jar server ./polaris-server.yml
+polaris> java -jar dropwizard/service/build/libs/polaris-dropwizard-service-*.jar server ./polaris-server.yml
 ```

@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.persistence;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -30,8 +32,6 @@ import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Utility class used by the meta store manager to ensure that all entities which had been resolved
@@ -77,8 +77,8 @@ public class PolarisEntityResolver {
    *     or a principal can be specified here
    */
   PolarisEntityResolver(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisMetaStoreSession ms,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisMetaStoreSession ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nullable PolarisEntityCore resolvedEntity,
       @Nullable List<PolarisEntityCore> otherTopLevelEntities) {
@@ -156,8 +156,8 @@ public class PolarisEntityResolver {
    *     like a catalog.
    */
   PolarisEntityResolver(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisMetaStoreSession ms,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisMetaStoreSession ms,
       @Nullable List<PolarisEntityCore> catalogPath) {
     this(callCtx, ms, catalogPath, null, null);
   }
@@ -172,8 +172,8 @@ public class PolarisEntityResolver {
    * @param resolvedEntityDto resolved entity DTO
    */
   PolarisEntityResolver(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisMetaStoreSession ms,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisMetaStoreSession ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       PolarisEntityCore resolvedEntityDto) {
     this(callCtx, ms, catalogPath, resolvedEntityDto, null);
@@ -189,10 +189,10 @@ public class PolarisEntityResolver {
    * @param entity Polaris base entity
    */
   PolarisEntityResolver(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisMetaStoreSession ms,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisMetaStoreSession ms,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisBaseEntity entity) {
+      @Nonnull PolarisBaseEntity entity) {
     this(callCtx, ms, catalogPath, new PolarisEntityCore(entity), null);
   }
 
@@ -238,8 +238,8 @@ public class PolarisEntityResolver {
    * @return true if all entities have been resolved successfully
    */
   private boolean resolveEntitiesIfNeeded(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisMetaStoreSession ms,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisMetaStoreSession ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nullable PolarisEntityCore resolvedEntity,
       @Nullable List<PolarisEntityCore> otherTopLevelEntities) {

@@ -21,7 +21,7 @@ package org.apache.polaris.extension.persistence.impl.eclipselink;
 import jakarta.persistence.*;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.polaris.core.persistence.models.ModelSequenceId;
+import org.apache.polaris.jpa.models.ModelSequenceId;
 import org.eclipse.persistence.internal.jpa.EntityManagerImpl;
 import org.eclipse.persistence.platform.database.DatabasePlatform;
 import org.eclipse.persistence.platform.database.PostgreSQLPlatform;
