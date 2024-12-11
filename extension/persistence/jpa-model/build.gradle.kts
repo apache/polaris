@@ -18,7 +18,8 @@
  */
 
 plugins {
-  id("java-library")
+  id("polaris-server")
+  `java-library`
 }
 
 dependencies {
