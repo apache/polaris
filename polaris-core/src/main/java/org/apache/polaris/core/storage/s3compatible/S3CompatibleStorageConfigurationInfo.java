@@ -27,81 +27,52 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-/** Polaris Storage Configuration information for an S3 Compatible solution, MinIO, Dell ECS... */
+/**
+ * Polaris Storage Configuration information for an S3 Compatible solution, MinIO, Ceph, Dell ECS...
+ */
 public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
   // 5 is the approximate max allowed locations for the size of AccessPolicy when LIST is required
   // for allowed read and write locations for subscoping creds.
   @JsonIgnore private static final int MAX_ALLOWED_LOCATIONS = 5;
-  private @NotNull CredsVendingStrategyEnum credsVendingStrategy;
-  private @NotNull CredsCatalogAndClientStrategyEnum credsCatalogAndClientStrategy;
   private @NotNull String s3endpoint;
-  private @NotNull Boolean s3pathStyleAccess;
-  private @NotNull String s3CredentialsCatalogAccessKeyId;
-  private @NotNull String s3CredentialsCatalogSecretAccessKey;
+  private @Nullable String s3CredentialsCatalogAccessKeyId;
+  private @Nullable String s3CredentialsCatalogSecretAccessKey;
+  private @Nullable Boolean s3pathStyleAccess;
+  private @NotNull Boolean skipCredentialSubscopingIndirection;
   private @Nullable String s3CredentialsClientAccessKeyId;
   private @Nullable String s3CredentialsClientSecretAccessKey;
-
-  // Define how and what the catalog client will receive as credentials
-  public static enum CredsVendingStrategyEnum {
-    KEYS_SAME_AS_CATALOG,
-    KEYS_DEDICATED_TO_CLIENT,
-    TOKEN_WITH_ASSUME_ROLE;
-  };
-
-  // Define how the access and secret keys will be receive during the catalog creation, if
-  // ENV_VAR_NAME, the variable must exist in the Polaris running environement - it is more secured,
-  // but less dynamic
-  public static enum CredsCatalogAndClientStrategyEnum {
-    VALUE,
-    ENV_VAR_NAME;
-  };
 
   // Constructor
   @JsonCreator
   public S3CompatibleStorageConfigurationInfo(
       @JsonProperty(value = "storageType", required = true) @NotNull StorageType storageType,
-      @JsonProperty(value = "credsVendingStrategy", required = true) @NotNull
-          CredsVendingStrategyEnum credsVendingStrategy,
-      @JsonProperty(value = "credsCatalogAndClientStrategy", required = true) @NotNull
-          CredsCatalogAndClientStrategyEnum credsCatalogAndClientStrategy,
       @JsonProperty(value = "s3Endpoint", required = true) @NotNull String s3Endpoint,
       @JsonProperty(value = "s3CredentialsCatalogAccessKeyId", required = true) @NotNull
           String s3CredentialsCatalogAccessKeyId,
       @JsonProperty(value = "s3CredentialsCatalogSecretAccessKey", required = true) @NotNull
           String s3CredentialsCatalogSecretAccessKey,
+      @JsonProperty(value = "SkipCredentialSubscopingIndirection", required = false) @Nullable
+          Boolean skipCredentialSubscopingIndirection,
       @JsonProperty(value = "s3CredentialsClientAccessKeyId", required = false) @Nullable
           String s3CredentialsClientAccessKeyId,
       @JsonProperty(value = "s3CredentialsClientSecretAccessKey", required = false) @Nullable
           String s3CredentialsClientSecretAccessKey,
-      @JsonProperty(value = "s3PathStyleAccess", required = false) @NotNull
+      @JsonProperty(value = "s3PathStyleAccess", required = false) @Nullable
           Boolean s3PathStyleAccess,
-      @JsonProperty(value = "allowedLocations", required = true) @NotNull
+      @JsonProperty(value = "allowedLocations", required = true) @Nullable
           List<String> allowedLocations) {
 
     // storing properties
     super(storageType, allowedLocations);
     validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
-    this.credsVendingStrategy =
-        CredsVendingStrategyEnum.valueOf(
-            CredsVendingStrategyEnum.class, credsVendingStrategy.name());
-    this.credsCatalogAndClientStrategy =
-        CredsCatalogAndClientStrategyEnum.valueOf(
-            CredsCatalogAndClientStrategyEnum.class, credsCatalogAndClientStrategy.name());
     this.s3pathStyleAccess = s3PathStyleAccess;
     this.s3endpoint = s3Endpoint;
     this.s3CredentialsCatalogAccessKeyId = s3CredentialsCatalogAccessKeyId;
     this.s3CredentialsCatalogSecretAccessKey = s3CredentialsCatalogSecretAccessKey;
     this.s3CredentialsClientAccessKeyId = s3CredentialsClientAccessKeyId;
     this.s3CredentialsClientSecretAccessKey = s3CredentialsClientSecretAccessKey;
-  }
-
-  public @NotNull CredsVendingStrategyEnum getCredsVendingStrategy() {
-    return this.credsVendingStrategy;
-  }
-
-  public @NotNull CredsCatalogAndClientStrategyEnum getCredsCatalogAndClientStrategy() {
-    return this.credsCatalogAndClientStrategy;
+    this.skipCredentialSubscopingIndirection = skipCredentialSubscopingIndirection;
   }
 
   public @NotNull String getS3Endpoint() {
@@ -113,19 +84,31 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
   }
 
   public @NotNull String getS3CredentialsCatalogAccessKeyId() {
-    return this.s3CredentialsCatalogAccessKeyId;
+    return (this.s3CredentialsCatalogAccessKeyId == null)
+        ? ""
+        : this.s3CredentialsCatalogAccessKeyId;
   }
 
   public @NotNull String getS3CredentialsCatalogSecretAccessKey() {
-    return this.s3CredentialsCatalogSecretAccessKey;
+    return (this.s3CredentialsCatalogSecretAccessKey == null)
+        ? ""
+        : this.s3CredentialsCatalogSecretAccessKey;
   }
 
-  public @Nullable String getS3CredentialsClientAccessKeyId() {
-    return this.s3CredentialsClientAccessKeyId;
+  public @NotNull String getS3CredentialsClientAccessKeyId() {
+    return (this.s3CredentialsClientAccessKeyId == null)
+        ? ""
+        : this.s3CredentialsClientAccessKeyId;
   }
 
-  public @Nullable String getS3CredentialsClientSecretAccessKey() {
-    return this.s3CredentialsClientSecretAccessKey;
+  public @NotNull String getS3CredentialsClientSecretAccessKey() {
+    return (this.s3CredentialsClientSecretAccessKey == null)
+        ? ""
+        : this.s3CredentialsClientSecretAccessKey;
+  }
+
+  public @Nullable Boolean getSkipCredentialSubscopingIndirection() {
+    return this.skipCredentialSubscopingIndirection;
   }
 
   @Override

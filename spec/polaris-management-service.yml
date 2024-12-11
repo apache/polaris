@@ -909,57 +909,42 @@ components:
 
     S3CompatibleStorageConfigInfo:
       type: object
-      description: S3 compatible storage configuration info (MinIO, Dell ECS, Netapp StorageGRID, ...)
+      description: S3 compatible storage configuration info (MinIO, Ceph, Dell ECS, Netapp StorageGRID, ...)
       allOf:
         - $ref: '#/components/schemas/StorageConfigInfo'
       properties:
-        credsCatalogAndClientStrategy:
-          type: string
-          enum:
-            - VALUE
-            - ENV_VAR_NAME
-          default: ENV_VAR_NAME
-          example: "'ENV_VAR_NAME' -> CATALOG_1_ACCESS_KEY or 'VALUE' -> ae12cnb5vbn...."
-          description: How to provide S3 keys to Polaris catalog - Default recommended and secured strategy is 'ENV_VAR_NAME', only a name of variable will appear in debug logs or in getCatalog() response. However the variable must be available in Polaris running context. If strategy is setted to 'VALUE' be careful, the secrets may be visible in debug logs, and also in getCatalog response, it is not a secured strategy and is not recommended for production deployment exposing confidential data or if the S3 secret key should not be divulged
-        credsVendingStrategy:
-          type: string
-          enum:
-            - TOKEN_WITH_ASSUME_ROLE
-            - KEYS_SAME_AS_CATALOG
-            - KEYS_DEDICATED_TO_CLIENT
-          default: TOKEN_WITH_ASSUME_ROLE
-          description: The catalog strategy to vend credentials to client. Default secured strategy is 'TOKEN_WITH_ASSUME_ROLE' (Using STS methods 'assumeRole' compatible with MinIO, Dell ECS, NetApp StorageGrid,...). Other strategies options are less secured - they will disabling the subScoping credential token corresponding to each request received by the catalog limiting access to minimum data required. 'KEYS_SAME_AS_CATALOG' will communicate to Spark or Trino the keys used by catalog itself, with access to all the catalog content. 'KEYS_DEDICATED_TO_CLIENT' will send to Spark or Trino another pair of keys, not the one used by the catalog, it will let you revoke these keys without breaking the catalog access to storage
-        s3.path-style-access:
-          type: boolean
-          description: if true use path style
-          default: false
         s3.endpoint:
           type: string
           description: the S3 endpoint, will also be used as STS endpoint
           example: "http[s]://host:port"
         s3.credentials.catalog.access-key-id:
           type: string
-          description: The 'ACCESS_KEY_ID' used by the catalog to communicate with S3, by default the aws sdk environement variable name is used
+          description: The environement variable name for the 'ACCESS_KEY_ID' used by the catalog to communicate with S3, default to aws sdk environement variable name
           default: "AWS_ACCESS_KEY_ID"
-          example: "CATALOG_1_ACCESS_KEY"
+          example: "CATALOG_1_ACCESS_KEY_ENV_VARIABLE_NAME"
         s3.credentials.catalog.secret-access-key:
           type: string
-          description: The 'SECRET_ACCESS_KEY' used by the catalog to communicate with S3, by default the aws sdk environement variable name is used
+          description: The environement variable name for the 'SECRET_ACCESS_KEY' used by the catalog to communicate with S3, default to aws sdk environement variable name
           default: "AWS_SECRET_ACCESS_KEY"
-          example: "CATALOG_1_SECRET_KEY"
+          example: "CATALOG_1_SECRET_KEY_ENV_VARIABLE_NAME"
+        s3.path-style-access:
+          type: boolean
+          description: if true use path style
+          default: false
+        skip-credential-subscoping-indirection:
+          type: boolean
+          default: false
+          description: By default, the catalog sends to the client a temporary token (STS) limited to the requested resource. If set to true (when STS is not available) the catalog will skip subscoping, allowing technical access to all the catalog content
         s3.credentials.client.access-key-id:
           type: string
-          description: Optional - 'ACCESS_KEY_ID' vended by the catalog to the client (Spark, Trino,...) in case of CredentialVendedStrategy 'KEYS_DEDICATED_TO_CLIENT' is selected. It is less secure than 'TOKEN_WITH_ASSUME_ROLE' strategy, it will disable the subScoping, all the catalog content will be accessible, but it could be revoked without breaking the catalog access itself
-          example: "CLIENT_OF_CATALOG_1_ACCESS_KEY"
+          description: Optional - if not empty, it will be used when 'skip-credential-subscoping-indirection' is true
+          example: "CLIENT_OF_CATALOG_1_ACCESS_KEY_ENV_VARIABLE_NAME"
         s3.credentials.client.secret-access-key:
           type: string
-          description: Optional - 'SECRET_ACCESS_KEY' vended by the catalog to the client (Spark, Trino,...) in case of CredentialVendedStrategy 'KEYS_DEDICATED_TO_CLIENT' is selected. It is less secure than 'TOKEN_WITH_ASSUME_ROLE' strategy, it will disable the subScoping, all the catalog content will be accessible, but it could be revoked without breaking the catalog access itself
-          example: "CLIENT_OF_CATALOG_1_SECRET_KEY"
+          description: Optional - if not empty, it will be used when 'skip-credential-subscoping-indirection' is true
+          example: "CLIENT_OF_CATALOG_1_SECRET_KEY_ENV_VARIABLE_NAME"
       required:
-        - credsVendingStrategy
         - s3.endpoint
-        - s3.credentials.catalog.access-key-id
-        - s3.credentials.catalog.secret-access-key
 
     AzureStorageConfigInfo:
       type: object
