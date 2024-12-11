@@ -19,7 +19,6 @@
 package org.apache.polaris.service.types;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Preconditions;
 import io.swagger.annotations.ApiModelProperty;
 import java.util.Objects;
 import org.apache.iceberg.TableMetadata;
@@ -125,20 +124,23 @@ public class TableUpdateNotification {
 
   @Override
   public String toString() {
-    return """
-        class TableUpdateNotification {
-            tableName: %s
-            timestamp: %s
-            tableUuid: %s
-            metadataLocation: %s
-            metadata: %s
-        }"""
-        .formatted(
-            toIndentedString(tableName),
-            toIndentedString(timestamp),
-            toIndentedString(tableUuid),
-            toIndentedString(metadataLocation),
-            toIndentedString(metadata));
+    return "class TableUpdateNotification {\n"
+        + "    tableName: "
+        + toIndentedString(tableName)
+        + "\n"
+        + "    timestamp: "
+        + toIndentedString(timestamp)
+        + "\n"
+        + "    tableUuid: "
+        + toIndentedString(tableUuid)
+        + "\n"
+        + "    metadataLocation: "
+        + toIndentedString(metadataLocation)
+        + "\n"
+        + "    metadata: "
+        + toIndentedString(metadata)
+        + "\n"
+        + "}";
   }
 
   /**
@@ -166,19 +168,25 @@ public class TableUpdateNotification {
     private Builder() {}
 
     public final Builder tableName(String tableName) {
-      Preconditions.checkArgument(tableName != null, "Null table name supplied");
+      if (tableName == null) {
+        throw new IllegalArgumentException("Null table name supplied");
+      }
       this.tableName = tableName;
       return this;
     }
 
     public final Builder timestamp(Long timestamp) {
-      Preconditions.checkArgument(timestamp != null, "timestamp can't be null");
+      if (timestamp == null) {
+        throw new IllegalArgumentException("timestamp can't be null");
+      }
       this.timestamp = timestamp;
       return this;
     }
 
     public final Builder metadataLocation(String metadataLocation) {
-      Preconditions.checkArgument(metadataLocation != null, "metadataLocation can't be null");
+      if (metadataLocation == null) {
+        throw new IllegalArgumentException("metadataLocation can't be null");
+      }
       this.metadataLocation = metadataLocation;
       return this;
     }
@@ -189,7 +197,9 @@ public class TableUpdateNotification {
     }
 
     public final Builder tableUuid(String tableUuid) {
-      Preconditions.checkArgument(tableUuid != null, "timestamp can't be null");
+      if (tableUuid == null) {
+        throw new IllegalArgumentException("timestamp can't be null");
+      }
       this.tableUuid = tableUuid;
       return this;
     }

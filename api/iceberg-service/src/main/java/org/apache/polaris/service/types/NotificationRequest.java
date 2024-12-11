@@ -22,10 +22,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.annotations.ApiModelProperty;
 import java.util.Objects;
 
-@jakarta.annotation.Generated(
-    value = "org.openapitools.codegen.languages.JavaResteasyServerCodegen",
-    date = "2024-05-25T00:53:53.298853423Z[UTC]",
-    comments = "Generator version: 7.5.0")
 public class NotificationRequest {
 
   private NotificationType notificationType;
@@ -73,12 +69,14 @@ public class NotificationRequest {
 
   @Override
   public String toString() {
-    return """
-        class NotificationRequest {
-            notificationType: %s
-            payload: %s
-        }"""
-        .formatted(toIndentedString(notificationType), toIndentedString(payload));
+    return "class NotificationRequest {\n"
+        + "    notificationType: "
+        + toIndentedString(notificationType)
+        + "\n"
+        + "    payload: "
+        + toIndentedString(payload)
+        + "\n"
+        + "}";
   }
 
   /**
