@@ -20,8 +20,8 @@ package org.apache.polaris.service.config;
 
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -35,7 +35,7 @@ public class RealmEntityManagerFactory {
   private final MetaStoreManagerFactory metaStoreManagerFactory;
 
   // Key: realmIdentifier
-  private final Map<String, PolarisEntityManager> cachedEntityManagers = new HashMap<>();
+  private final Map<String, PolarisEntityManager> cachedEntityManagers = new ConcurrentHashMap<>();
   private final Provider<EntityCache> entityCache;
 
   // Subclasses for test injection.
