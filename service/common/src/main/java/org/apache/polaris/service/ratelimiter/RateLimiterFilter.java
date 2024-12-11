@@ -42,7 +42,7 @@ public class RateLimiterFilter implements ContainerRequestFilter {
   /** Returns a 429 if the rate limiter says so. Otherwise, forwards the request along. */
   @Override
   public void filter(ContainerRequestContext ctx) throws IOException {
-    if (!rateLimiter.tryAcquire()) {
+    if (!rateLimiter.canProceed()) {
       ctx.abortWith(Response.status(Response.Status.TOO_MANY_REQUESTS).build());
       LOGGER.atDebug().log("Rate limiting request");
     }

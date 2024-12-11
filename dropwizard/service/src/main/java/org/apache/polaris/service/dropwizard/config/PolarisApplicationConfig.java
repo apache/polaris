@@ -52,6 +52,7 @@ import org.apache.polaris.service.config.TaskHandlerConfiguration;
 import org.apache.polaris.service.context.CallContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
+import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.types.TokenType;
 import org.glassfish.hk2.api.Factory;
@@ -90,6 +91,7 @@ public class PolarisApplicationConfig extends Configuration {
   private String awsSecretKey;
   private FileIOFactory fileIOFactory;
   private RateLimiter rateLimiter;
+  private TokenBucketFactory tokenBucketFactory;
   private TokenBrokerFactory tokenBrokerFactory;
 
   private AccessToken gcpAccessToken;
@@ -143,6 +145,9 @@ public class PolarisApplicationConfig extends Configuration {
             .ranked(OVERRIDE_BINDING_RANK);
         bindFactory(SupplierFactory.create(serviceLocator, config::getRateLimiter))
             .to(RateLimiter.class)
+            .ranked(OVERRIDE_BINDING_RANK);
+        bindFactory(SupplierFactory.create(serviceLocator, config::getTokenBucketFactory))
+            .to(TokenBucketFactory.class)
             .ranked(OVERRIDE_BINDING_RANK);
       }
     };
@@ -330,6 +335,17 @@ public class PolarisApplicationConfig extends Configuration {
   @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
   public void setRateLimiter(@Nullable RateLimiter rateLimiter) {
     this.rateLimiter = rateLimiter;
+  }
+
+  @JsonProperty("tokenBucketFactory")
+  private TokenBucketFactory getTokenBucketFactory() {
+    return tokenBucketFactory;
+  }
+
+  @JsonProperty("tokenBucketFactory")
+  @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+  public void setTokenBucketFactory(@Nullable TokenBucketFactory tokenBucketFactory) {
+    this.tokenBucketFactory = tokenBucketFactory;
   }
 
   public void setTaskHandler(TaskHandlerConfiguration taskHandler) {

@@ -65,14 +65,15 @@ public class RateLimiterFilterTest {
               "server.applicationConnectors[0].port",
               "0"), // Bind to random port to support parallelism
           ConfigOverride.config("server.adminConnectors[0].port", "0"),
-          ConfigOverride.config("rateLimiter.type", "mock-realm-token-bucket"),
+          ConfigOverride.config("tokenBucketFactory.type", "mock"),
           ConfigOverride.config(
-              "rateLimiter.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
-          ConfigOverride.config("rateLimiter.windowSeconds", String.valueOf(WINDOW_SECONDS)));
+              "tokenBucketFactory.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
+          ConfigOverride.config(
+              "tokenBucketFactory.windowSeconds", String.valueOf(WINDOW_SECONDS)));
 
   private static String userToken;
   private static String realm;
-  private static MutableClock clock = MockRealmTokenBucketRateLimiter.CLOCK;
+  private static MutableClock clock = MockTokenBucketFactory.CLOCK;
 
   @BeforeAll
   public static void setup(

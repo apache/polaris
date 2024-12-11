@@ -18,15 +18,13 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import io.smallrye.common.annotation.Identifier;
 import java.time.InstantSource;
 
 /**
- * Token bucket implementation of a Polaris RateLimiter. Acquires tokens at a fixed rate and has a
- * maximum amount of tokens. Each successful "tryAcquire" costs 1 token.
+ * General-purpose Token bucket implementation. Acquires tokens at a fixed rate and has a maximum
+ * amount of tokens. Each successful "tryAcquire" costs 1 token.
  */
-@Identifier("token-bucket")
-public class TokenBucketRateLimiter implements RateLimiter {
+public class TokenBucket {
   private final double tokensPerMilli;
   private final long maxTokens;
   private final InstantSource instantSource;
@@ -34,7 +32,7 @@ public class TokenBucketRateLimiter implements RateLimiter {
   private double tokens;
   private long lastTokenGenerationMillis;
 
-  public TokenBucketRateLimiter(long tokensPerSecond, long maxTokens, InstantSource instantSource) {
+  public TokenBucket(long tokensPerSecond, long maxTokens, InstantSource instantSource) {
     this.tokensPerMilli = tokensPerSecond / 1000D;
     this.maxTokens = maxTokens;
     this.instantSource = instantSource;
@@ -48,7 +46,6 @@ public class TokenBucketRateLimiter implements RateLimiter {
    *
    * @return whether a token was successfully acquired and spent
    */
-  @Override
   public synchronized boolean tryAcquire() {
     // Grant tokens for the time that has passed since our last tryAcquire()
     long t = instantSource.millis();

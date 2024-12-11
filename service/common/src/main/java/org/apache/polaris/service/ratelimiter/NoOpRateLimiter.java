@@ -24,7 +24,7 @@ import io.smallrye.common.annotation.Identifier;
 @Identifier("no-op")
 public class NoOpRateLimiter implements RateLimiter {
   @Override
-  public boolean tryAcquire() {
+  public boolean canProceed() {
     return true;
   }
 }

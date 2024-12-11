@@ -38,8 +38,8 @@ public class TokenBucketRateLimiterTest {
     MutableClock clock = MutableClock.of(Instant.now(), ZoneOffset.UTC);
     clock.add(Duration.ofSeconds(5));
 
-    RateLimitResultAsserter asserter =
-        new RateLimitResultAsserter(new TokenBucketRateLimiter(10, 100, clock));
+    TokenBucketResultAsserter asserter =
+        new TokenBucketResultAsserter(new TokenBucket(10, 100, clock)::tryAcquire);
 
     asserter.canAcquire(100);
     asserter.cantAcquire();
@@ -63,9 +63,8 @@ public class TokenBucketRateLimiterTest {
     int numTasks = 50000;
     int tokensPerSecond = 10; // Can be anything above 0
 
-    TokenBucketRateLimiter rl =
-        new TokenBucketRateLimiter(
-            tokensPerSecond, maxTokens, Clock.fixed(Instant.now(), ZoneOffset.UTC));
+    TokenBucket rl =
+        new TokenBucket(tokensPerSecond, maxTokens, Clock.fixed(Instant.now(), ZoneOffset.UTC));
     AtomicInteger numAcquired = new AtomicInteger();
     CountDownLatch startLatch = new CountDownLatch(numTasks);
     CountDownLatch endLatch = new CountDownLatch(numTasks);
