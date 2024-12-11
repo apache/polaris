@@ -83,6 +83,9 @@ dependencies {
 
   implementation(platform(libs.azuresdk.bom))
   implementation("com.azure:azure-core")
+
+  implementation(platform(libs.micrometer.bom))
+  compileOnly("io.micrometer:micrometer-core")
 }
 
 openApiGenerate {

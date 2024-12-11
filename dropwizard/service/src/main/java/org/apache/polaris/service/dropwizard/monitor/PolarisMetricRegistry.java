@@ -16,9 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.monitor;
+package org.apache.polaris.service.dropwizard.monitor;
 
 import com.google.common.annotations.VisibleForTesting;
+import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
@@ -34,7 +35,6 @@ import java.util.Collections;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
-import org.apache.polaris.core.resource.TimedApi;
 
 /**
  * Wrapper around the Micrometer {@link MeterRegistry} providing additional metric management
@@ -93,8 +93,8 @@ public class PolarisMetricRegistry {
     for (Class<?> clazz : classes) {
       Method[] methods = clazz.getDeclaredMethods();
       for (Method method : methods) {
-        if (method.isAnnotationPresent(TimedApi.class)) {
-          TimedApi timedApi = method.getAnnotation(TimedApi.class);
+        if (method.isAnnotationPresent(Timed.class)) {
+          Timed timedApi = method.getAnnotation(Timed.class);
           String metric = timedApi.value();
           timers.put(metric, Timer.builder(metric).register(meterRegistry));
           counters.put(
