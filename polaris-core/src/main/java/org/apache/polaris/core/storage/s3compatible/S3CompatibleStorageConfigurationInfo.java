@@ -96,9 +96,7 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
   }
 
   public @NotNull String getS3CredentialsClientAccessKeyId() {
-    return (this.s3CredentialsClientAccessKeyId == null)
-        ? ""
-        : this.s3CredentialsClientAccessKeyId;
+    return (this.s3CredentialsClientAccessKeyId == null) ? "" : this.s3CredentialsClientAccessKeyId;
   }
 
   public @NotNull String getS3CredentialsClientSecretAccessKey() {

@@ -185,7 +185,7 @@ curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: appl
 
 
 echo -e "\n----\nStart Spark-sql to test Polaris catalog with queries\n"
-${SPARK_HOME}/bin/spark-sql \
+${SPARK_HOME}/bin/spark-sql --verbose \
   --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
   --conf spark.sql.catalog.polaris.token="${SPARK_BEARER_TOKEN}" \
   --conf spark.sql.catalog.polaris.warehouse=manual_spark \
