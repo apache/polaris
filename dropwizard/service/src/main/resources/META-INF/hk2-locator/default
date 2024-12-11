@@ -51,8 +51,13 @@ contract={org.apache.polaris.service.auth.TokenBrokerFactory}
 name=rsa-key-pair
 qualifier={io.smallrye.common.annotation.Identifier}
 
-[org.apache.polaris.service.context.DefaultContextResolver]S
-contract={org.apache.polaris.service.context.CallContextResolver,org.apache.polaris.service.context.RealmContextResolver}
+[org.apache.polaris.service.context.DefaultRealmContextResolver]S
+contract={org.apache.polaris.service.context.RealmContextResolver}
+name=default
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.service.context.DefaultCallContextResolver]S
+contract={org.apache.polaris.service.context.CallContextResolver}
 name=default
 qualifier={io.smallrye.common.annotation.Identifier}
 

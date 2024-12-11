@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.test;
 
-import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
+import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.apache.polaris.service.test.DropwizardTestEnvironmentResolver.findDropwizardExtension;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
