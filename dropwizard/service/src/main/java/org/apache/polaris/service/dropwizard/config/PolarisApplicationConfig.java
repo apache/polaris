@@ -48,7 +48,6 @@ import org.apache.polaris.service.auth.TokenResponse;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
-import org.apache.polaris.service.config.OAuth2ApiService;
 import org.apache.polaris.service.config.TaskHandlerConfiguration;
 import org.apache.polaris.service.context.CallContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
@@ -286,15 +285,15 @@ public class PolarisApplicationConfig extends Configuration {
     this.callContextResolver = callContextResolver;
   }
 
-  private OAuth2ApiService oauth2Service;
+  private IcebergRestOAuth2ApiService oauth2Service;
 
   @JsonProperty("oauth2")
   @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
-  public void setOauth2Service(OAuth2ApiService oauth2Service) {
+  public void setOauth2Service(IcebergRestOAuth2ApiService oauth2Service) {
     this.oauth2Service = oauth2Service;
   }
 
-  private OAuth2ApiService getOauth2Service() {
+  private IcebergRestOAuth2ApiService getOauth2Service() {
     return oauth2Service;
   }
 
