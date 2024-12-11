@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.admin;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
@@ -542,19 +544,17 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG;
     authorizeBasicRootOperationOrThrow(op);
 
+    checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
+
     if (catalogOverlapsWithExistingCatalog((CatalogEntity) entity)) {
       throw new ValidationException(
           "Cannot create Catalog %s. One or more of its locations overlaps with an existing catalog",
           entity.getName());
     }
 
-    long id =
-        entity.getId() <= 0
-            ? metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId()
-            : entity.getId();
     PolarisEntity polarisEntity =
         new PolarisEntity.Builder(entity)
-            .setId(id)
+            .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
             .setCreateTimestamp(System.currentTimeMillis())
             .build();
     PolarisMetaStoreManager.CreateCatalogResult catalogResult =
@@ -747,15 +747,13 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_PRINCIPAL;
     authorizeBasicRootOperationOrThrow(op);
 
-    long id =
-        entity.getId() <= 0
-            ? metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId()
-            : entity.getId();
+    checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
+
     PolarisMetaStoreManager.CreatePrincipalResult principalResult =
         metaStoreManager.createPrincipal(
             getCurrentPolarisContext(),
             new PolarisEntity.Builder(entity)
-                .setId(id)
+                .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
                 .setCreateTimestamp(System.currentTimeMillis())
                 .build());
     if (principalResult.alreadyExists()) {
@@ -911,17 +909,15 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_PRINCIPAL_ROLE;
     authorizeBasicRootOperationOrThrow(op);
 
-    long id =
-        entity.getId() <= 0
-            ? metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId()
-            : entity.getId();
+    checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
+
     PolarisEntity returnedEntity =
         PolarisEntity.of(
             metaStoreManager.createEntityIfNotExists(
                 getCurrentPolarisContext(),
                 null,
                 new PolarisEntity.Builder(entity)
-                    .setId(id)
+                    .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
                     .setCreateTimestamp(System.currentTimeMillis())
                     .build()));
     if (returnedEntity == null) {
@@ -1021,21 +1017,19 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG_ROLE;
     authorizeBasicTopLevelEntityOperationOrThrow(op, catalogName, PolarisEntityType.CATALOG);
 
+    checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
+
     PolarisEntity catalogEntity =
         findCatalogByName(catalogName)
             .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
 
-    long id =
-        entity.getId() <= 0
-            ? metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId()
-            : entity.getId();
     PolarisEntity returnedEntity =
         PolarisEntity.of(
             metaStoreManager.createEntityIfNotExists(
                 getCurrentPolarisContext(),
                 PolarisEntity.toCoreList(List.of(catalogEntity)),
                 new PolarisEntity.Builder(entity)
-                    .setId(id)
+                    .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
                     .setCatalogId(catalogEntity.getId())
                     .setParentId(catalogEntity.getId())
                     .setCreateTimestamp(System.currentTimeMillis())
