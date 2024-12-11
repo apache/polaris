@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  * for file deletions and skips files that are already missing. Subclasses must implement
  * task-specific logic.
  */
-public class FileCleanupTaskHandler implements TaskHandler {
+public abstract class FileCleanupTaskHandler implements TaskHandler {
 
   public static final int MAX_ATTEMPTS = 3;
   public static final int FILE_DELETION_RETRY_MILLIS = 100;
@@ -49,18 +49,12 @@ public class FileCleanupTaskHandler implements TaskHandler {
   }
 
   @Override
-  public boolean canHandleTask(TaskEntity task) {
-    throw new UnsupportedOperationException("This method must be implemented by subclasses.");
-  }
+  public abstract boolean canHandleTask(TaskEntity task);
 
   @Override
-  public boolean handleTask(TaskEntity task) {
-    throw new UnsupportedOperationException("This method must be implemented by subclasses.");
-  }
+  public abstract boolean handleTask(TaskEntity task);
 
-  public Logger getLogger() {
-    return LOGGER;
-  }
+  public abstract Logger getLogger();
 
   public CompletableFuture<Void> tryDelete(
       TableIdentifier tableId,
