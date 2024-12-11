@@ -22,8 +22,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.context.CallContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class PolarisConfiguration<T> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisConfiguration.class);
 
   public final String key;
   public final String description;
@@ -94,6 +99,25 @@ public class PolarisConfiguration<T> {
       }
       return new PolarisConfiguration<>(key, description, defaultValue, catalogConfig);
     }
+  }
+
+  /**
+   * Returns the value of a `PolarisConfiguration`, or the default if it cannot be loaded. This
+   * method does not need to be used when a `CallContext` is already available
+   */
+  public static <T> T loadConfig(PolarisConfiguration<T> configuration) {
+    var callContext = CallContext.getCurrentContext();
+    if (callContext == null) {
+      LOGGER.warn(
+          String.format(
+              "Unable to load current call context; using %s = %s",
+              configuration.key, configuration.defaultValue));
+      return configuration.defaultValue;
+    }
+    return callContext
+        .getPolarisCallContext()
+        .getConfigurationStore()
+        .getConfiguration(callContext.getPolarisCallContext(), configuration);
   }
 
   public static <T> Builder<T> builder() {
@@ -205,5 +229,23 @@ public class PolarisConfiguration<T> {
           .description(
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
           .defaultValue(true)
+          .build();
+
+  public static final PolarisConfiguration<Integer> STORAGE_CREDENTIAL_DURATION_SECONDS =
+      PolarisConfiguration.<Integer>builder()
+          .key("STORAGE_CREDENTIAL_DURATION_SECONDS")
+          .description(
+              "The duration of time that vended storage credentials are valid for. Support for"
+                  + " longer (or shorter) durations is dependent on the storage provider.")
+          .defaultValue(60 * 60) // 1 hour
+          .build();
+
+  public static final PolarisConfiguration<Integer> STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS =
+      PolarisConfiguration.<Integer>builder()
+          .key("STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS")
+          .description(
+              "How long to store storage credentials in the local cache. This should be less than "
+                  + STORAGE_CREDENTIAL_DURATION_SECONDS.key)
+          .defaultValue(30 * 60) // 30 minutes
           .build();
 }
