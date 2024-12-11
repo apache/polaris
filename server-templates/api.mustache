@@ -22,7 +22,7 @@ package {{package}};
 import {{import}};
 {{/imports}}
 
-import org.apache.polaris.core.resource.TimedApi;
+import io.micrometer.core.annotation.Timed;
 
 import java.util.Map;
 import java.util.List;
@@ -104,7 +104,7 @@ public class {{classname}}  {
   @Consumes({ {{#consumes}}"{{{mediaType}}}"{{^-last}}, {{/-last}}{{/consumes}} }){{/hasConsumes}}{{#hasProduces}}
   @Produces({ {{#produces}}"{{{mediaType}}}"{{^-last}}, {{/-last}}{{/produces}} }){{/hasProduces}}{{#hasAuthMethods}}
   {{#authMethods}}{{#isOAuth}}@RolesAllowed({ {{#scopes}}"{{scope}}"{{^-last}}, {{/-last}}{{/scopes}} }){{/isOAuth}}{{/authMethods}}{{/hasAuthMethods}}
-  @TimedApi("{{metricsPrefix}}.{{baseName}}.{{nickname}}")
+  @Timed("{{metricsPrefix}}.{{baseName}}.{{nickname}}")
   public Response {{nickname}}({{#isMultipart}}MultipartFormDataInput input,{{/isMultipart}}{{#allParams}}{{>queryParams}}{{>pathParams}}{{>headerParams}}{{>bodyParams}}{{^isMultipart}}{{>formParams}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}@Context SecurityContext securityContext) {
 {{! Don't log form or header params in case there are secrets, e.g., OAuth tokens }}
     LOGGER.atDebug().setMessage("Invoking {{baseName}} with params")

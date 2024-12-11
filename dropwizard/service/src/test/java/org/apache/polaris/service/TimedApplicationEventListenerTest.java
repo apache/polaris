@@ -18,27 +18,33 @@
  */
 package org.apache.polaris.service;
 
-import static org.apache.polaris.core.monitor.PolarisMetricRegistry.*;
 import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
 import static org.apache.polaris.service.dropwizard.TimedApplicationEventListener.SINGLETON_METRIC_NAME;
 import static org.apache.polaris.service.dropwizard.TimedApplicationEventListener.TAG_API_NAME;
+import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.SUFFIX_COUNTER;
+import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.SUFFIX_ERROR;
+import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.SUFFIX_REALM;
+import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.TAG_REALM;
+import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.TAG_REALM_DEPRECATED;
+import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.TAG_RESP_CODE;
+import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.TAG_RESP_CODE_DEPRECATED;
 
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.Tag;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import org.apache.polaris.core.monitor.PolarisMetricRegistry;
-import org.apache.polaris.core.resource.TimedApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApi;
 import org.apache.polaris.service.dropwizard.PolarisApplication;
 import org.apache.polaris.service.dropwizard.TimedApplicationEventListener;
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
+import org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry;
 import org.apache.polaris.service.test.PolarisConnectionExtension;
 import org.apache.polaris.service.test.PolarisRealm;
 import org.apache.polaris.service.test.SnowmanCredentialsExtension;
@@ -74,7 +80,7 @@ public class TimedApplicationEventListenerTest {
           .filter(m -> m.getName().contains("getPrincipal"))
           .findFirst()
           .orElseThrow()
-          .getAnnotation(TimedApi.class)
+          .getAnnotation(Timed.class)
           .value();
 
   private static PolarisConnectionExtension.PolarisToken userToken;

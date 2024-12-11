@@ -18,9 +18,10 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import static org.apache.polaris.core.monitor.PolarisMetricRegistry.*;
 import static org.apache.polaris.service.dropwizard.TimedApplicationEventListener.SINGLETON_METRIC_NAME;
 import static org.apache.polaris.service.dropwizard.TimedApplicationEventListener.TAG_API_NAME;
+import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.SUFFIX_ERROR;
+import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.TAG_RESP_CODE;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.dropwizard.testing.ConfigOverride;

@@ -95,9 +95,6 @@ dependencies {
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
 
-  implementation(platform(libs.micrometer.bom))
-  implementation("io.micrometer:micrometer-core")
-
   testFixturesApi(platform(libs.junit.bom))
   testFixturesApi("org.junit.jupiter:junit-jupiter")
   testFixturesApi(libs.assertj.core)

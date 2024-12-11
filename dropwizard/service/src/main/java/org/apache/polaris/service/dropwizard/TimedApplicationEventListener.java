@@ -18,10 +18,11 @@
  */
 package org.apache.polaris.service.dropwizard;
 
-import static org.apache.polaris.core.monitor.PolarisMetricRegistry.TAG_RESP_CODE;
+import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.TAG_RESP_CODE;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Stopwatch;
+import io.micrometer.core.annotation.Timed;
 import io.micrometer.core.instrument.Tag;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.ext.Provider;
@@ -29,8 +30,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.monitor.PolarisMetricRegistry;
-import org.apache.polaris.core.resource.TimedApi;
+import org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry;
 import org.glassfish.jersey.server.monitoring.ApplicationEvent;
 import org.glassfish.jersey.server.monitoring.ApplicationEventListener;
 import org.glassfish.jersey.server.monitoring.RequestEvent;
@@ -38,8 +38,8 @@ import org.glassfish.jersey.server.monitoring.RequestEventListener;
 
 /**
  * An ApplicationEventListener that supports timing and error counting of Jersey resource methods
- * annotated by {@link TimedApi}. It uses the {@link PolarisMetricRegistry} for metric collection
- * and properly times the resource on success and increments the error counter on failure.
+ * annotated by {@link Timed}. It uses the {@link PolarisMetricRegistry} for metric collection and
+ * properly times the resource on success and increments the error counter on failure.
  */
 @Provider
 public class TimedApplicationEventListener implements ApplicationEventListener {
@@ -89,8 +89,8 @@ public class TimedApplicationEventListener implements ApplicationEventListener {
       if (event.getType() == RequestEvent.Type.REQUEST_MATCHED) {
         Method method =
             event.getUriInfo().getMatchedResourceMethod().getInvocable().getHandlingMethod();
-        if (method.isAnnotationPresent(TimedApi.class)) {
-          TimedApi timedApi = method.getAnnotation(TimedApi.class);
+        if (method.isAnnotationPresent(Timed.class)) {
+          Timed timedApi = method.getAnnotation(Timed.class);
           metric = timedApi.value();
 
           // Increment both the counter with the API name in the metric name and a common metric
