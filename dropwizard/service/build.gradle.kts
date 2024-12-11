@@ -160,12 +160,7 @@ tasks.register<Jar>("testJar") {
 
 val shadowJar =
   tasks.named<ShadowJar>("shadowJar") {
-    manifest {
-      attributes["Main-Class"] = "org.apache.polaris.service.dropwizard.PolarisApplication"
-    }
-    mergeServiceFiles()
     append("META-INF/hk2-locator/default")
-    isZip64 = true
     finalizedBy("startScripts")
   }
 

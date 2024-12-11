@@ -29,12 +29,11 @@ shadowJar.configure {
   mergeServiceFiles()
 }
 
-tasks.named<Jar>("jar").configure {
-  dependsOn(shadowJar)
-  archiveClassifier = "raw"
-}
+tasks.named<Jar>("jar").configure { archiveClassifier = "raw" }
 
 tasks.withType<ShadowJar>().configureEach {
   exclude("META-INF/jandex.idx")
   isZip64 = true
 }
+
+tasks.named("assemble").configure { dependsOn("shadowJar") }
