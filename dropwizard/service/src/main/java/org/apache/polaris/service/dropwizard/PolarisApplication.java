@@ -155,7 +155,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
   }
 
   private static void printAsciiArt() throws IOException {
-    URL url = PolarisApplication.class.getResource("banner.txt");
+    URL url = PolarisApplication.class.getResource("/org/apache/polaris/service/banner.txt");
     try (InputStream in =
         requireNonNull(url, "banner.txt not found on classpath")
             .openConnection()
