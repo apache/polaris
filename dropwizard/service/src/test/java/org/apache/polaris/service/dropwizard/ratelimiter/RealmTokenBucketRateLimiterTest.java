@@ -22,7 +22,7 @@ import static org.apache.polaris.service.ratelimiter.MockTokenBucketFactory.CLOC
 
 import java.time.Duration;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.service.ratelimiter.RateLimiter;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 /** Main unit test class for TokenBucketRateLimiter */
@@ -32,16 +32,15 @@ public class RealmTokenBucketRateLimiterTest {
   void testDifferentBucketsDontTouch() {
     RealmTokenBucketRateLimiter rateLimiter = new RealmTokenBucketRateLimiter();
     rateLimiter.tokenBucketFactory = new DefaultTokenBucketFactory(10, 10, CLOCK);
-    TokenBucketResultAsserter asserter = new TokenBucketResultAsserter(rateLimiter::canProceed);
 
     for (int i = 0; i < 202; i++) {
       String realm = (i % 2 == 0) ? "realm1" : "realm2";
       CallContext.setCurrentContext(CallContext.of(() -> realm, null));
 
       if (i < 200) {
-        asserter.canAcquire(1);
+        Assertions.assertTrue(rateLimiter.canProceed());
       } else {
-        asserter.cantAcquire();
+        assertCannotProceed(rateLimiter);
       }
     }
 
@@ -51,10 +50,16 @@ public class RealmTokenBucketRateLimiterTest {
       CallContext.setCurrentContext(CallContext.of(() -> realm, null));
 
       if (i < 20) {
-        asserter.canAcquire(1);
+        Assertions.assertTrue(rateLimiter.canProceed());
       } else {
-        asserter.cantAcquire();
+        assertCannotProceed(rateLimiter);
       }
+    }
+  }
+
+  private void assertCannotProceed(RealmTokenBucketRateLimiter rateLimiter) {
+    for (int i = 0; i < 5; i++) {
+      Assertions.assertFalse(rateLimiter.canProceed());
     }
   }
 }

@@ -38,19 +38,18 @@ public class TokenBucketRateLimiterTest {
     MutableClock clock = MutableClock.of(Instant.now(), ZoneOffset.UTC);
     clock.add(Duration.ofSeconds(5));
 
-    TokenBucketResultAsserter asserter =
-        new TokenBucketResultAsserter(new TokenBucket(10, 100, clock)::tryAcquire);
+    TokenBucket tokenBucket = new TokenBucket(10, 100, clock);
 
-    asserter.canAcquire(100);
-    asserter.cantAcquire();
+    assertCanAcquire(tokenBucket, 100);
+    assertCannotAcquire(tokenBucket);
 
     clock.add(Duration.ofSeconds(1));
-    asserter.canAcquire(10);
-    asserter.cantAcquire();
+    assertCanAcquire(tokenBucket, 10);
+    assertCannotAcquire(tokenBucket);
 
     clock.add(Duration.ofSeconds(10));
-    asserter.canAcquire(100);
-    asserter.cantAcquire();
+    assertCanAcquire(tokenBucket, 100);
+    assertCannotAcquire(tokenBucket);
   }
 
   /**
@@ -93,5 +92,17 @@ public class TokenBucketRateLimiterTest {
 
     endLatch.await();
     Assertions.assertEquals(maxTokens, numAcquired.get());
+  }
+
+  private void assertCanAcquire(TokenBucket tokenBucket, int times) {
+    for (int i = 0; i < times; i++) {
+      Assertions.assertTrue(tokenBucket.tryAcquire());
+    }
+  }
+
+  private void assertCannotAcquire(TokenBucket tokenBucket) {
+    for (int i = 0; i < 5; i++) {
+      Assertions.assertFalse(tokenBucket.tryAcquire());
+    }
   }
 }
