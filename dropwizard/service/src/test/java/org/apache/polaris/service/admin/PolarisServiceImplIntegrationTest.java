@@ -19,7 +19,7 @@
 package org.apache.polaris.service.admin;
 
 import static io.dropwizard.jackson.Jackson.newObjectMapper;
-import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
+import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.auth0.jwt.JWT;

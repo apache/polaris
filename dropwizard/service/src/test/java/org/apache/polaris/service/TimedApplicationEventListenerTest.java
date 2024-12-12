@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service;
 
-import static org.apache.polaris.service.context.DefaultContextResolver.REALM_PROPERTY_KEY;
+import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.apache.polaris.service.dropwizard.TimedApplicationEventListener.SINGLETON_METRIC_NAME;
 import static org.apache.polaris.service.dropwizard.TimedApplicationEventListener.TAG_API_NAME;
 import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.SUFFIX_COUNTER;

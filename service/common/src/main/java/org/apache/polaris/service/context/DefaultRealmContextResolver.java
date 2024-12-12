@@ -20,19 +20,9 @@ package org.apache.polaris.service.context;
 
 import com.google.common.base.Splitter;
 import io.smallrye.common.annotation.Identifier;
-import jakarta.inject.Inject;
-import java.time.Clock;
-import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,16 +33,11 @@ import org.slf4j.LoggerFactory;
  * <p>Example: principal:data-engineer;password:test;realm:acct123
  */
 @Identifier("default")
-public class DefaultContextResolver implements RealmContextResolver, CallContextResolver {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DefaultContextResolver.class);
+public class DefaultRealmContextResolver implements RealmContextResolver {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DefaultRealmContextResolver.class);
 
   public static final String REALM_PROPERTY_KEY = "realm";
 
-  public static final String PRINCIPAL_PROPERTY_KEY = "principal";
-  public static final String PRINCIPAL_PROPERTY_DEFAULT_VALUE = "default-principal";
-
-  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
-  @Inject private PolarisConfigurationStore configurationStore;
   private String defaultRealm = "default-realm";
 
   @Override
@@ -96,49 +81,11 @@ public class DefaultContextResolver implements RealmContextResolver, CallContext
     return this.defaultRealm;
   }
 
-  @Override
-  public CallContext resolveCallContext(
-      final RealmContext realmContext,
-      String method,
-      String path,
-      Map<String, String> queryParams,
-      Map<String, String> headers) {
-    LOGGER
-        .atDebug()
-        .addKeyValue("realmContext", realmContext.getRealmIdentifier())
-        .addKeyValue("method", method)
-        .addKeyValue("path", path)
-        .addKeyValue("queryParams", queryParams)
-        .addKeyValue("headers", headers)
-        .log("Resolving CallContext");
-    final Map<String, String> parsedProperties = parseBearerTokenAsKvPairs(headers);
-
-    if (!parsedProperties.containsKey(PRINCIPAL_PROPERTY_KEY)) {
-      LOGGER.warn(
-          "Failed to parse {} from headers ({}); using {}",
-          PRINCIPAL_PROPERTY_KEY,
-          headers,
-          PRINCIPAL_PROPERTY_DEFAULT_VALUE);
-      parsedProperties.put(PRINCIPAL_PROPERTY_KEY, PRINCIPAL_PROPERTY_DEFAULT_VALUE);
-    }
-
-    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-    PolarisMetaStoreSession metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
-    PolarisCallContext polarisContext =
-        new PolarisCallContext(
-            metaStoreSession,
-            diagServices,
-            configurationStore,
-            Clock.system(ZoneId.systemDefault()));
-    return CallContext.of(realmContext, polarisContext);
-  }
-
   /**
    * Returns kv pairs parsed from the "Authorization: Bearer k1:v1;k2:v2;k3:v3" header if it exists;
    * if missing, returns empty map.
    */
-  private static Map<String, String> parseBearerTokenAsKvPairs(Map<String, String> headers) {
+  static Map<String, String> parseBearerTokenAsKvPairs(Map<String, String> headers) {
     Map<String, String> parsedProperties = new HashMap<>();
     if (headers != null) {
       String authHeader = headers.get("Authorization");
