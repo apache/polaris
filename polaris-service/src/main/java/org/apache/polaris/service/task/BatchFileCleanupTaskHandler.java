@@ -19,7 +19,6 @@
 package org.apache.polaris.service.task;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Function;
@@ -52,8 +51,8 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
   @Override
   public boolean handleTask(TaskEntity task) {
     BatchFileCleanupTask cleanupTask = task.readData(BatchFileCleanupTask.class);
-    TableIdentifier tableId = cleanupTask.getTableId();
-    List<String> batchFiles = cleanupTask.getBatchFiles();
+    TableIdentifier tableId = cleanupTask.tableId();
+    List<String> batchFiles = cleanupTask.batchFiles();
     try (FileIO authorizedFileIO = fileIOSupplier.apply(task)) {
       List<String> validFiles =
           batchFiles.stream().filter(file -> TaskUtils.exists(file, authorizedFileIO)).toList();
@@ -62,7 +61,7 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
             .atWarn()
             .addKeyValue("batchFiles", batchFiles.toString())
             .addKeyValue("tableId", tableId)
-            .log("File batch cleanup task scheduled, but the none of the file in batch exists");
+            .log("File batch cleanup task scheduled, but none of the files in batch exists");
         return true;
       }
       if (validFiles.size() < batchFiles.size()) {
@@ -103,43 +102,5 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
     return LOGGER;
   }
 
-  public static final class BatchFileCleanupTask {
-    private TableIdentifier tableId;
-    private List<String> batchFiles;
-
-    public BatchFileCleanupTask(TableIdentifier tableId, List<String> batchFiles) {
-      this.tableId = tableId;
-      this.batchFiles = batchFiles;
-    }
-
-    public BatchFileCleanupTask() {}
-
-    public TableIdentifier getTableId() {
-      return tableId;
-    }
-
-    public void setTableId(TableIdentifier tableId) {
-      this.tableId = tableId;
-    }
-
-    public List<String> getBatchFiles() {
-      return batchFiles;
-    }
-
-    public void setBatchFiles(List<String> batchFiles) {
-      this.batchFiles = batchFiles;
-    }
-
-    @Override
-    public boolean equals(Object object) {
-      if (this == object) return true;
-      if (!(object instanceof BatchFileCleanupTaskHandler.BatchFileCleanupTask that)) return false;
-      return Objects.equals(tableId, that.tableId) && Objects.equals(batchFiles, that.batchFiles);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(tableId, batchFiles);
-    }
-  }
+  public record BatchFileCleanupTask(TableIdentifier tableId, List<String> batchFiles) {}
 }

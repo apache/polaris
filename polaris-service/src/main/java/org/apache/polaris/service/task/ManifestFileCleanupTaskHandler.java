@@ -20,7 +20,6 @@ package org.apache.polaris.service.task;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.concurrent.CompletableFuture;
@@ -63,9 +62,9 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
   @Override
   public boolean handleTask(TaskEntity task) {
     ManifestCleanupTask cleanupTask = task.readData(ManifestCleanupTask.class);
-    TableIdentifier tableId = cleanupTask.getTableId();
+    TableIdentifier tableId = cleanupTask.tableId();
     try (FileIO authorizedFileIO = fileIOSupplier.apply(task)) {
-      ManifestFile manifestFile = decodeManifestData(cleanupTask.getManifestFileData());
+      ManifestFile manifestFile = decodeManifestData(cleanupTask.manifestFileData());
       return cleanUpManifestFile(manifestFile, authorizedFileIO, tableId);
     }
   }
@@ -135,44 +134,6 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
   }
 
   /** Serialized Task data sent from the {@link TableCleanupTaskHandler} */
-  public static final class ManifestCleanupTask {
-    private TableIdentifier tableId;
-    private String manifestFileData;
-
-    public ManifestCleanupTask(TableIdentifier tableId, String manifestFileData) {
-      this.tableId = tableId;
-      this.manifestFileData = manifestFileData;
-    }
-
-    public ManifestCleanupTask() {}
-
-    public TableIdentifier getTableId() {
-      return tableId;
-    }
-
-    public void setTableId(TableIdentifier tableId) {
-      this.tableId = tableId;
-    }
-
-    public String getManifestFileData() {
-      return manifestFileData;
-    }
-
-    public void setManifestFileData(String manifestFileData) {
-      this.manifestFileData = manifestFileData;
-    }
-
-    @Override
-    public boolean equals(Object object) {
-      if (this == object) return true;
-      if (!(object instanceof ManifestCleanupTask that)) return false;
-      return Objects.equals(tableId, that.tableId)
-          && Objects.equals(manifestFileData, that.manifestFileData);
-    }
-
-    @Override
-    public int hashCode() {
-      return Objects.hash(tableId, manifestFileData);
-    }
-  }
+  public record ManifestCleanupTask(TableIdentifier tableId, String manifestFileData) {}
+  ;
 }
