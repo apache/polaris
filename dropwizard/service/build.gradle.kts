@@ -29,6 +29,8 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
+  implementation(project(":polaris-api-management-service"))
+  implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-service-common"))
 
   implementation(platform(libs.dropwizard.bom))
@@ -90,6 +92,8 @@ dependencies {
   compileOnly(libs.spotbugs.annotations)
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.spotbugs.annotations)
+
+  testImplementation(project(":polaris-api-management-model"))
 
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
   testImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")
