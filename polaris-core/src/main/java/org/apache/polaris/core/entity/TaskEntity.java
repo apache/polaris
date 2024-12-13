@@ -20,7 +20,7 @@ package org.apache.polaris.core.entity;
 
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
+import org.apache.polaris.core.persistence.impl.PolarisObjectMapperUtil;
 
 /**
  * Represents an asynchronous task entity in the persistence layer. A task executor is responsible

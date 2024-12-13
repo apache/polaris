@@ -27,11 +27,11 @@ public enum PolarisEntitySubType {
   // ANY_SUBTYPE is not stored but is used to indicate that any subtype entities should be
   // returned, for example when doing a list operation or checking if a table like object of
   // name X exists
-  ANY_SUBTYPE(-1, null),
+  ANY_SUBTYPE(-1, null, "Table or view"),
   // the NULL value is used when an entity has no subtype, i.e. NOT_APPLICABLE really
-  NULL_SUBTYPE(0, null),
-  TABLE(2, PolarisEntityType.TABLE_LIKE),
-  VIEW(3, PolarisEntityType.TABLE_LIKE);
+  NULL_SUBTYPE(0, null, "(null)"),
+  TABLE(2, PolarisEntityType.TABLE_LIKE, "Table"),
+  VIEW(3, PolarisEntityType.TABLE_LIKE, "View");
 
   // to efficiently map the code of a subtype to its corresponding subtype enum, use a reverse
   // array which is initialized below
@@ -63,10 +63,13 @@ public enum PolarisEntitySubType {
   // parent type for this entity
   private final PolarisEntityType parentType;
 
-  PolarisEntitySubType(int code, PolarisEntityType parentType) {
+  private final String readableName;
+
+  PolarisEntitySubType(int code, PolarisEntityType parentType, String readableName) {
     // remember the id of this entity
     this.code = code;
     this.parentType = parentType;
+    this.readableName = readableName;
   }
 
   /**
@@ -110,5 +113,9 @@ public enum PolarisEntitySubType {
     }
 
     return null;
+  }
+
+  public String readableName() {
+    return readableName;
   }
 }

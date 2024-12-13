@@ -25,9 +25,12 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
@@ -36,6 +39,8 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.cache.PolarisRemoteCache;
+import org.apache.polaris.core.persistence.resolution.ResolutionManifestBuilder;
+import org.apache.polaris.core.persistence.resolver.ResolverBuilder;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 
 /**
@@ -71,6 +76,13 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   BaseResult purge(@Nonnull PolarisCallContext callCtx);
+
+  @Nonnull
+  ResolutionManifestBuilder newResolutionManifestBuilder(
+      @Nonnull CallContext callContext,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull Supplier<ResolverBuilder> resolverSupplier,
+      @Nullable String referenceCatalogName);
 
   /** the return for an entity lookup call */
   class EntityResult extends BaseResult {

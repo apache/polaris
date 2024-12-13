@@ -24,17 +24,17 @@ import jakarta.annotation.Nullable;
 
 /** Types of entities with their id */
 public enum PolarisEntityType {
-  NULL_TYPE(0, null, false, false),
-  ROOT(1, null, false, false),
-  PRINCIPAL(2, ROOT, true, false),
-  PRINCIPAL_ROLE(3, ROOT, true, false),
-  CATALOG(4, ROOT, false, false),
-  CATALOG_ROLE(5, CATALOG, true, false),
-  NAMESPACE(6, CATALOG, false, true),
+  NULL_TYPE(0, null, false, false, "(null)"),
+  ROOT(1, null, false, false, "Root"),
+  PRINCIPAL(2, ROOT, true, false, "Principal"),
+  PRINCIPAL_ROLE(3, ROOT, true, false, "Principal role"),
+  CATALOG(4, ROOT, false, false, "Catalog"),
+  CATALOG_ROLE(5, CATALOG, true, false, "Catalog role"),
+  NAMESPACE(6, CATALOG, false, true, "Namespace"),
   // generic table is either a view or a real table
-  TABLE_LIKE(7, NAMESPACE, false, false),
-  TASK(8, ROOT, false, false),
-  FILE(9, TABLE_LIKE, false, false);
+  TABLE_LIKE(7, NAMESPACE, false, false, "Table/view"),
+  TASK(8, ROOT, false, false, "Task"),
+  FILE(9, TABLE_LIKE, false, false, "File");
 
   // to efficiently map a code to its corresponding entity type, use a reverse array which
   // is initialized below
@@ -70,13 +70,20 @@ public enum PolarisEntityType {
 
   // parent entity type, null for an ACCOUNT
   private final PolarisEntityType parentType;
+  private final String readableName;
 
-  PolarisEntityType(int id, PolarisEntityType parentType, boolean isGrantee, boolean sefRef) {
+  PolarisEntityType(
+      int id,
+      PolarisEntityType parentType,
+      boolean isGrantee,
+      boolean sefRef,
+      String readableName) {
     // remember the id of this entity
     this.code = id;
     this.isGrantee = isGrantee;
     this.parentType = parentType;
     this.parentSelfReference = sefRef;
+    this.readableName = readableName;
   }
 
   /**
@@ -131,5 +138,9 @@ public enum PolarisEntityType {
    */
   public PolarisEntityType getParentType() {
     return this.parentType;
+  }
+
+  public String readableName() {
+    return readableName;
   }
 }

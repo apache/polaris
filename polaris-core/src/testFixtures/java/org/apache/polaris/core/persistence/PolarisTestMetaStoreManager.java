@@ -44,6 +44,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
+import org.apache.polaris.core.persistence.impl.PolarisObjectMapperUtil;
 import org.assertj.core.api.Assertions;
 
 /** Test the Polaris persistence layer */

@@ -24,9 +24,9 @@ import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.local.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
 /**

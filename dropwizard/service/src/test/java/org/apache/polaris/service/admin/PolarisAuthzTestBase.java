@@ -65,7 +65,7 @@ import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.resolution.ResolutionManifest;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
@@ -385,7 +385,7 @@ public abstract class PolarisAuthzTestBase {
     public Catalog createCallContextCatalog(
         CallContext context,
         AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
-        final PolarisResolutionManifest resolvedManifest) {
+        ResolutionManifest resolvedManifest) {
       // This depends on the BasePolarisCatalog allowing calling initialize multiple times
       // to override the previous config.
       Catalog catalog =
