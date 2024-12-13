@@ -19,7 +19,6 @@
 
 name: Feature request
 description: Suggest an idea for this project
-title: "[FEATURE REQUEST] (provide short, concise summary)"
 labels: ["enhancement"]
 body:
   - type: markdown

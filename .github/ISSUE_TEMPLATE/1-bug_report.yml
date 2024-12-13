@@ -19,7 +19,6 @@
 
 name: Bug report
 description: Create a report to help us improve.
-title: "[BUG] (provide short, concise summary)"
 labels: ["bug"]
 body:
   - type: markdown
