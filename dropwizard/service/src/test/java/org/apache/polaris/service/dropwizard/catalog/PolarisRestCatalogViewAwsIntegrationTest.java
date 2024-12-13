@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.dropwizard.catalog;
 
+import io.quarkus.test.junit.QuarkusTest;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -26,6 +27,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.assertj.core.util.Strings;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on AWS. */
+@QuarkusTest
 public class PolarisRestCatalogViewAwsIntegrationTest
     extends PolarisRestCatalogViewIntegrationTest {
   public static final String ROLE_ARN =

@@ -19,205 +19,125 @@
 package org.apache.polaris.service.dropwizard;
 
 import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
-import static org.apache.polaris.service.dropwizard.TimedApplicationEventListener.SINGLETON_METRIC_NAME;
-import static org.apache.polaris.service.dropwizard.TimedApplicationEventListener.TAG_API_NAME;
-import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.SUFFIX_COUNTER;
-import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.SUFFIX_ERROR;
-import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.SUFFIX_REALM;
-import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.TAG_REALM;
-import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.TAG_REALM_DEPRECATED;
-import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.TAG_RESP_CODE;
-import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.TAG_RESP_CODE_DEPRECATED;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
-import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
-import io.micrometer.core.annotation.Timed;
-import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import org.apache.polaris.service.admin.api.PolarisPrincipalsApi;
-import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
-import org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry;
-import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
-import org.apache.polaris.service.dropwizard.test.PolarisRealm;
-import org.apache.polaris.service.dropwizard.test.SnowmanCredentialsExtension;
+import java.util.Map;
+import org.apache.polaris.service.dropwizard.TimedApplicationEventListenerTest.Profile;
+import org.apache.polaris.service.dropwizard.test.PolarisIntegrationTestFixture;
+import org.apache.polaris.service.dropwizard.test.PolarisIntegrationTestHelper;
+import org.apache.polaris.service.dropwizard.test.TestEnvironment;
 import org.apache.polaris.service.dropwizard.test.TestEnvironmentExtension;
 import org.apache.polaris.service.dropwizard.test.TestMetricsUtil;
+import org.hawkular.agent.prometheus.types.MetricFamily;
+import org.hawkular.agent.prometheus.types.Summary;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-@ExtendWith({
-  DropwizardExtensionsSupport.class,
-  TestEnvironmentExtension.class,
-  PolarisConnectionExtension.class,
-  SnowmanCredentialsExtension.class
-})
+@QuarkusTest
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(TestEnvironmentExtension.class)
+@TestProfile(Profile.class)
 public class TimedApplicationEventListenerTest {
-  private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config(
-              "server.adminConnectors[0].port", "0")); // Bind to random port to support parallelism
+
+  public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of("polaris.metrics.tags.environment", "prod");
+    }
+  }
 
   private static final int ERROR_CODE = Response.Status.NOT_FOUND.getStatusCode();
   private static final String ENDPOINT = "api/management/v1/principals";
-  private static final String API_ANNOTATION =
-      Arrays.stream(PolarisPrincipalsApi.class.getMethods())
-          .filter(m -> m.getName().contains("getPrincipal"))
-          .findFirst()
-          .orElseThrow()
-          .getAnnotation(Timed.class)
-          .value();
+  private static final String METRIC_NAME = "polaris_principals_getPrincipal_seconds";
 
-  private static PolarisConnectionExtension.PolarisToken userToken;
-  private static SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials;
-  private static String realm;
+  @Inject PolarisIntegrationTestHelper helper;
+  @Inject MeterRegistry registry;
+
+  private TestEnvironment testEnv;
+  private PolarisIntegrationTestFixture fixture;
 
   @BeforeAll
-  public static void setup(
-      PolarisConnectionExtension.PolarisToken userToken,
-      SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials,
-      @PolarisRealm String realm)
-      throws IOException {
-    TimedApplicationEventListenerTest.userToken = userToken;
-    TimedApplicationEventListenerTest.snowmanCredentials = snowmanCredentials;
-    TimedApplicationEventListenerTest.realm = realm;
+  public void createFixture(TestEnvironment testEnv, TestInfo testInfo) {
+    this.testEnv = testEnv;
+    fixture = helper.createFixture(testEnv, testInfo);
   }
 
   @BeforeEach
   public void clearMetrics() {
-    getPolarisMetricRegistry().clear();
+    registry.clear();
   }
 
   @Test
   public void testMetricsEmittedOnSuccessfulRequest() {
     sendSuccessfulRequest();
-    Assertions.assertTrue(getPerApiMetricCount() > 0);
-    Assertions.assertTrue(getPerApiRealmMetricCount() > 0);
-    Assertions.assertTrue(getCommonMetricCount() > 0);
-    Assertions.assertTrue(getCommonRealmMetricCount() > 0);
-    Assertions.assertEquals(0, getPerApiMetricErrorCount());
-    Assertions.assertEquals(0, getPerApiRealmMetricErrorCount());
-    Assertions.assertEquals(0, getCommonMetricErrorCount());
-    Assertions.assertEquals(0, getCommonRealmMetricErrorCount());
+    Map<String, MetricFamily> allMetrics =
+        TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri());
+    assertThat(allMetrics).containsKey(METRIC_NAME);
+    assertThat(allMetrics.get(METRIC_NAME).getMetrics())
+        .satisfiesOnlyOnce(
+            metric -> {
+              assertThat(metric.getLabels())
+                  .contains(
+                      Map.entry("application", "Polaris"),
+                      Map.entry("environment", "prod"),
+                      Map.entry("realm_id", fixture.realm),
+                      Map.entry(
+                          "class", "org.apache.polaris.service.admin.api.PolarisPrincipalsApi"),
+                      Map.entry("exception", "none"),
+                      Map.entry("method", "getPrincipal"));
+              assertThat(metric)
+                  .asInstanceOf(type(Summary.class))
+                  .extracting(Summary::getSampleCount)
+                  .isEqualTo(1L);
+            });
   }
 
   @Test
   public void testMetricsEmittedOnFailedRequest() {
     sendFailingRequest();
-    Assertions.assertTrue(getPerApiMetricCount() > 0);
-    Assertions.assertTrue(getPerApiRealmMetricCount() > 0);
-    Assertions.assertTrue(getCommonMetricCount() > 0);
-    Assertions.assertTrue(getCommonRealmMetricCount() > 0);
-    Assertions.assertTrue(getPerApiMetricErrorCount() > 0);
-    Assertions.assertTrue(getPerApiRealmMetricErrorCount() > 0);
-    Assertions.assertTrue(getCommonMetricErrorCount() > 0);
-    Assertions.assertTrue(getCommonRealmMetricErrorCount() > 0);
-  }
-
-  private PolarisMetricRegistry getPolarisMetricRegistry() {
-    TimedApplicationEventListener listener =
-        (TimedApplicationEventListener)
-            EXT.getEnvironment().jersey().getResourceConfig().getSingletons().stream()
-                .filter(
-                    s ->
-                        TimedApplicationEventListener.class
-                            .getName()
-                            .equals(s.getClass().getName()))
-                .findAny()
-                .orElseThrow();
-    return listener.getMetricRegistry();
-  }
-
-  private double getPerApiMetricCount() {
-    return TestMetricsUtil.getTotalCounter(
-        EXT, API_ANNOTATION + SUFFIX_COUNTER, Collections.emptyList());
-  }
-
-  @SuppressWarnings("deprecation")
-  private double getPerApiRealmMetricCount() {
-    return TestMetricsUtil.getTotalCounter(
-        EXT,
-        API_ANNOTATION + SUFFIX_COUNTER + SUFFIX_REALM,
-        List.of(Tag.of(TAG_REALM, realm), Tag.of(TAG_REALM_DEPRECATED, realm)));
-  }
-
-  @SuppressWarnings("deprecation")
-  private double getPerApiMetricErrorCount() {
-    return TestMetricsUtil.getTotalCounter(
-        EXT,
-        API_ANNOTATION + SUFFIX_ERROR,
-        List.of(
-            Tag.of(TAG_RESP_CODE, String.valueOf(ERROR_CODE)),
-            Tag.of(TAG_RESP_CODE_DEPRECATED, String.valueOf(ERROR_CODE))));
-  }
-
-  @SuppressWarnings("deprecation")
-  private double getPerApiRealmMetricErrorCount() {
-    return TestMetricsUtil.getTotalCounter(
-        EXT,
-        API_ANNOTATION + SUFFIX_ERROR + SUFFIX_REALM,
-        List.of(
-            Tag.of(TAG_REALM, realm),
-            Tag.of(TAG_RESP_CODE, String.valueOf(ERROR_CODE)),
-            Tag.of(TAG_REALM_DEPRECATED, realm),
-            Tag.of(TAG_RESP_CODE_DEPRECATED, String.valueOf(ERROR_CODE))));
-  }
-
-  private double getCommonMetricCount() {
-    return TestMetricsUtil.getTotalCounter(
-        EXT,
-        SINGLETON_METRIC_NAME + SUFFIX_COUNTER,
-        Collections.singleton(Tag.of(TAG_API_NAME, API_ANNOTATION)));
-  }
-
-  private double getCommonRealmMetricCount() {
-    return TestMetricsUtil.getTotalCounter(
-        EXT,
-        SINGLETON_METRIC_NAME + SUFFIX_COUNTER + SUFFIX_REALM,
-        List.of(Tag.of(TAG_API_NAME, API_ANNOTATION), Tag.of(TAG_REALM, realm)));
-  }
-
-  private double getCommonMetricErrorCount() {
-    return TestMetricsUtil.getTotalCounter(
-        EXT,
-        SINGLETON_METRIC_NAME + SUFFIX_ERROR,
-        List.of(
-            Tag.of(TAG_API_NAME, API_ANNOTATION),
-            Tag.of(TAG_RESP_CODE, String.valueOf(ERROR_CODE))));
-  }
-
-  private double getCommonRealmMetricErrorCount() {
-    return TestMetricsUtil.getTotalCounter(
-        EXT,
-        SINGLETON_METRIC_NAME + SUFFIX_ERROR + SUFFIX_REALM,
-        List.of(
-            Tag.of(TAG_API_NAME, API_ANNOTATION),
-            Tag.of(TAG_REALM, realm),
-            Tag.of(TAG_RESP_CODE, String.valueOf(ERROR_CODE))));
+    Map<String, MetricFamily> allMetrics =
+        TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri());
+    assertThat(allMetrics).containsKey(METRIC_NAME);
+    assertThat(allMetrics.get(METRIC_NAME).getMetrics())
+        .satisfiesOnlyOnce(
+            metric -> {
+              assertThat(metric.getLabels())
+                  .contains(
+                      Map.entry("application", "Polaris"),
+                      Map.entry("environment", "prod"),
+                      Map.entry("realm_id", fixture.realm),
+                      Map.entry(
+                          "class", "org.apache.polaris.service.admin.api.PolarisPrincipalsApi"),
+                      Map.entry("exception", "NotFoundException"),
+                      Map.entry("method", "getPrincipal"));
+              assertThat(metric)
+                  .asInstanceOf(type(Summary.class))
+                  .extracting(Summary::getSampleCount)
+                  .isEqualTo(1L);
+            });
   }
 
   private int sendRequest(String principalName) {
     try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/%s/%s", EXT.getLocalPort(), ENDPOINT, principalName))
+        fixture
+            .client
+            .target(String.format("%s/%s/%s", testEnv.baseUri(), ENDPOINT, principalName))
             .request("application/json")
-            .header("Authorization", "Bearer " + userToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
+            .header("Authorization", "Bearer " + fixture.adminToken)
+            .header(REALM_PROPERTY_KEY, fixture.realm)
             .get()) {
       return response.getStatus();
     }
@@ -226,7 +146,7 @@ public class TimedApplicationEventListenerTest {
   private void sendSuccessfulRequest() {
     Assertions.assertEquals(
         Response.Status.OK.getStatusCode(),
-        sendRequest(snowmanCredentials.identifier().principalName()));
+        sendRequest(fixture.snowmanCredentials.identifier().principalName()));
   }
 
   private void sendFailingRequest() {
