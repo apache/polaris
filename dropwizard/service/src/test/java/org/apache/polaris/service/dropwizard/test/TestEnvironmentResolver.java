@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-[org.apache.polaris.service.dropwizard.catalog.io.TestFileIOFactory]S
-contract={org.apache.polaris.service.catalog.io.FileIOFactory}
-name=test
-qualifier={io.smallrye.common.annotation.Identifier}
+package org.apache.polaris.service.dropwizard.test;
 
-[org.apache.polaris.service.dropwizard.ratelimiter.MockRealmTokenBucketRateLimiter]S
-contract={org.apache.polaris.service.ratelimiter.RateLimiter}
-name=mock-realm-token-bucket
-qualifier={io.smallrye.common.annotation.Identifier}
+import org.junit.jupiter.api.extension.ExtensionContext;
+
+/** Interface for determining the test environment that tests should run in */
+public interface TestEnvironmentResolver {
+  TestEnvironment resolveTestEnvironment(ExtensionContext extensionContext);
+}
