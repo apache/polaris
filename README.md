@@ -6,9 +6,9 @@
   to you under the Apache License, Version 2.0 (the
   "License"); you may not use this file except in compliance
   with the License.  You may obtain a copy of the License at
- 
+
    http://www.apache.org/licenses/LICENSE-2.0
- 
+
   Unless required by applicable law or agreed to in writing,
   software distributed under the License is distributed on an
   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -19,7 +19,7 @@
 
 # Apache Polaris (incubating)
 
-Apache Polaris&trade; is an open-source, fully-featured catalog for Apache Iceberg&trade;. It implements Iceberg's 
+Apache Polaris&trade; is an open-source, fully-featured catalog for Apache Iceberg&trade;. It implements Iceberg's
 [REST API](https://github.com/apache/iceberg/blob/main/open-api/rest-catalog-open-api.yaml),
 enabling seamless multi-engine interoperability across a wide range of platforms, including Apache Doris™, Apache Flink®,
 Apache Spark™, StarRocks, and Trino.
@@ -36,18 +36,18 @@ for contribution guidelines.
 
 [dev-list-subscribe]: mailto:dev-subscribe@polaris.apache.org
 
-## Building and Running 
+## Building and Running
 
 Apache Polaris is organized into the following modules:
 - `polaris-core` - The main Polaris entity definitions and core business logic
 - `polaris-server` - The Polaris REST API server
 - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
- 
+
 Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
 - `./gradlew assemble` - To skip tests.
 - `./gradlew test` - To run unit tests and integration tests.
-- `./gradlew runApp` - To run the Polaris server locally on localhost:8181. 
+- `./gradlew runApp` - To run the Polaris server locally on localhost:8181.
 - `./regtests/run_spark_sql.sh` - To connect from Spark SQL. Here are some example commands to run in the Spark SQL shell:
 ```sql
 create database db1;
@@ -83,7 +83,7 @@ Running in Kubernetes
 - `kubectl describe deployment polaris-deployment -n polaris` - To troubleshoot if things aren't working as expected.
 
 Running regression tests
-- `./regtests/run.sh` - To run regression tests in another terminal.
+- `./regtests/run.sh` - To run regression tests on localhost (ensure Polaris server start first in another terminal on localhost).
 - `docker compose up --build --exit-code-from regtest` - To run regression tests in a Docker environment.
 
 Building docs
@@ -101,5 +101,5 @@ Apache Polaris is under the Apache License Version 2.0. See the [LICENSE](LICENS
 ## ASF Incubator disclaimer
 
 Apache Polaris&trade; is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.
- 
+
 <sub>Apache&reg;, Apache Polaris&trade;, Apache Iceberg&trade;, Apache Spark&trade; are either registered trademarks or trademarks of the Apache Software Foundation in the United States and/or other countries.</sub>

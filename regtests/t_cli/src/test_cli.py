@@ -29,7 +29,7 @@ from typing import Callable
 
 CLI_PYTHONPATH = f'{os.path.dirname(os.path.abspath(__file__))}/../../client/python'
 ROLE_ARN = 'arn:aws:iam::123456789012:role/my-role'
-POLARIS_HOST = os.getenv('POLARIS_HOST') or 'polaris'
+POLARIS_HOST = os.getenv('POLARIS_HOST') or 'localhost'
 POLARIS_URL = f'http://{POLARIS_HOST}:8181/api/catalog/v1/oauth/tokens'
 
 def get_salt(length=8) -> str:
@@ -379,7 +379,7 @@ def test_update_catalog():
 
 def test_update_principal():
     """
-    Test updating properties on a principal 
+    Test updating properties on a principal
     """
     SALT = get_salt()
     sys.path.insert(0, CLI_PYTHONPATH)
@@ -450,7 +450,7 @@ def test_update_principal():
 
 def test_update_principal_role():
     """
-    Test updating properties on a principal_role 
+    Test updating properties on a principal_role
     """
     SALT = get_salt()
     sys.path.insert(0, CLI_PYTHONPATH)
@@ -521,7 +521,7 @@ def test_update_principal_role():
 
 def test_update_catalog_role():
     """
-    Test updating properties on a catalog_role 
+    Test updating properties on a catalog_role
     """
     SALT = get_salt()
     sys.path.insert(0, CLI_PYTHONPATH)
