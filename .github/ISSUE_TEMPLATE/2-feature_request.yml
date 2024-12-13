@@ -19,17 +19,15 @@
 
 name: Feature request
 description: Suggest an idea for this project
-title: "[FEATURE REQUEST]"
-labels: enhancement
+title: "[FEATURE REQUEST] (provide short, concise summary)"
+labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Verify that the feature request is not already reported, looking at the [currently open issues](https://github.com/apache/polaris/issues), use the `Filter` field to narrow down your search.
-
-        Please provide a title above with a short, concise summary - don't leave it "empty".
-
-        Do **NOT** share any sensitive information like password, security tokens, private URLs etc.
+        * Verify that the feature request is not already reported, looking at the [currently open issues](https://github.com/apache/polaris/issues), use the `Filter` field to narrow down your search.
+        * _**Please provide a title above with a short, concise summary**_ - don't leave it "empty".
+        * Do **NOT** share any sensitive information like password, security tokens, private URLs etc.
 
   - type: textarea
     attributes:

@@ -19,25 +19,16 @@
 
 name: Bug report
 description: Create a report to help us improve.
-title: "[BUG]"
+title: "[BUG] (provide short, concise summary)"
 labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Verify that the issue is not already reported, looking at the [currently open issues](https://github.com/apache/polaris/issues), use the `Filter` field to narrow down your search.
-
-        Please provide a title above with a short, concise summary - don't leave it "empty".
-
-        Do **NOT** share any sensitive information like password, security tokens, private URLs etc.
-
-  - type: checkboxes
-    attributes:
-      label: "Is this a possible security vulnerability?"
-      description: "If yes, then STOP here and contact security@apache.org instead!"
-      options:
-        - label: "This is NOT a possible security vulnerability"
-          required: true
+        * Verify that the issue is not already reported, looking at the [currently open issues](https://github.com/apache/polaris/issues), use the `Filter` field to narrow down your search.
+        * **Possible security vulnerabilities**: STOP here and contact `security@apache.org` instead!
+        * _**Please provide a title above with a short, concise summary**_ - don't leave it "empty".
+        * Do **NOT** share any sensitive information like password, security tokens, private URLs etc.
 
   - type: textarea
     attributes:
