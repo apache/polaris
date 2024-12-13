@@ -159,6 +159,7 @@ public class CatalogEntity extends PolarisEntity {
             .setS3CredentialsClientAccessKeyId(s3Config.getS3CredentialsClientSecretAccessKey())
             .setS3CredentialsClientSecretAccessKey(s3Config.getS3CredentialsClientAccessKeyId())
             .setS3Region(s3Config.getS3Region())
+            .setS3RoleArn(s3Config.getS3RoleArn())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {
@@ -285,6 +286,7 @@ public class CatalogEntity extends PolarisEntity {
                     s3ConfigModel.getS3CredentialsClientSecretAccessKey(),
                     s3ConfigModel.getS3PathStyleAccess(),
                     s3ConfigModel.getS3Region(),
+                    s3ConfigModel.getS3RoleArn(),
                     new ArrayList<>(allowedLocations));
             break;
           case AZURE:

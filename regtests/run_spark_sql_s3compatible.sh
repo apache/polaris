@@ -165,9 +165,10 @@ curl -s -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
               \"storageType\": \"S3_COMPATIBLE\",
               \"allowedLocations\": [\"${S3_LOCATION}/\",\"${S3_LOCATION_2}/\"],
               \"s3.endpoint\": \"https://localhost:9000\",
-              \"s3.path-style-access\": true,
-              \"s3.credentials.catalog.access-key-id\": \"CATALOG_ID\",
-              \"s3.credentials.catalog.secret-access-key\": \"CATALOG_SECRET\"
+              \"s3.pathStyleAccess\": true,
+              \"s3.credentials.catalog.accessKeyId\": \"CATALOG_ID\",
+              \"s3.credentials.catalog.secretAccessKey\": \"CATALOG_SECRET\",
+              \"s3.roleArn\": \"arn:xxx:xxx:xxx:xxxx\"
             }
           }"
 
@@ -194,8 +195,8 @@ ${SPARK_HOME}/bin/spark-sql --verbose \
   -f "minio/queries-for-spark.sql"
 
 
-# skip-credential-subscoping-indirection = true
-echo -e "\n----\nUPDATE the catalog v2, - skip-credential-subscoping-indirection = true \n"
+# skipCredentialSubscopingIndirection = true
+echo -e "\n----\nUPDATE the catalog v2, - skipCredentialSubscopingIndirection = true \n"
 curl -s -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
@@ -209,15 +210,15 @@ curl -s -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
               \"storageType\": \"S3_COMPATIBLE\",
               \"allowedLocations\": [\"${S3_LOCATION}/\",\"${S3_LOCATION_2}/\"],
               \"s3.endpoint\": \"https://localhost:9000\",
-              \"s3.path-style-access\": true,
-              \"s3.credentials.catalog.access-key-id\": \"CATALOG_ID\",
-              \"s3.credentials.catalog.secret-access-key\": \"CATALOG_SECRET\",
-              \"skip-credential-subscoping-indirection\": true,
+              \"s3.pathStyleAccess\": true,
+              \"s3.credentials.catalog.accessKeyId\": \"CATALOG_ID\",
+              \"s3.credentials.catalog.secretAccessKey\": \"CATALOG_SECRET\",
+              \"skipCredentialSubscopingIndirection\": true,
               \"s3.region\": \"rack-1\"
             }
           }"
 
-echo -e "\n\n----\nStart again Spark-sql to test Polaris catalog with queries and skip-credential-subscoping-indirection = true \n"
+echo -e "\n\n----\nStart again Spark-sql to test Polaris catalog with queries and skipCredentialSubscopingIndirection = true \n"
 ${SPARK_HOME}/bin/spark-sql --verbose \
   --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
   --conf spark.sql.catalog.polaris.token="${SPARK_BEARER_TOKEN}" \
@@ -227,10 +228,8 @@ ${SPARK_HOME}/bin/spark-sql --verbose \
   --conf spark.hadoop.fs.s3a.aws.region=rack-1 \
   -f "minio/queries-for-spark.sql"
 
-
 echo -e "\n\n\nEnd of tests, a table and a view data with displayed should be visible in log above"
 echo "Minio stopping, bucket browser will be shutdown, volume data of the bucket remains in 'regtests/minio/miniodata'"
 echo ":-)"
 echo ""
 docker-compose --progress quiet --project-name polaris-minio --project-directory minio/ -f minio/docker-compose.yml down
-

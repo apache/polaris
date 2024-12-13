@@ -917,36 +917,40 @@ components:
           type: string
           description: the S3 endpoint, will also be used as STS endpoint
           example: "http[s]://host:port"
-        s3.credentials.catalog.access-key-id:
+        s3.credentials.catalog.accessKeyId:
           type: string
           description: The environement variable name for the 'ACCESS_KEY_ID' used by the catalog to communicate with S3, default to aws sdk environement variable name
           default: "AWS_ACCESS_KEY_ID"
           example: "CATALOG_1_ACCESS_KEY_ENV_VARIABLE_NAME"
-        s3.credentials.catalog.secret-access-key:
+        s3.credentials.catalog.secretAccessKey:
           type: string
           description: The environement variable name for the 'SECRET_ACCESS_KEY' used by the catalog to communicate with S3, default to aws sdk environement variable name
           default: "AWS_SECRET_ACCESS_KEY"
           example: "CATALOG_1_SECRET_KEY_ENV_VARIABLE_NAME"
-        s3.path-style-access:
+        s3.pathStyleAccess:
           type: boolean
           description: if true use path style
           default: false
-        skip-credential-subscoping-indirection:
+        skipCredentialSubscopingIndirection:
           type: boolean
           default: false
           description: By default, the catalog sends to the client a temporary token (STS) limited to the requested resource. If set to true (when STS is not available) the catalog will skip subscoping, allowing technical access to all the catalog content
-        s3.credentials.client.access-key-id:
+        s3.credentials.client.accessKeyId:
           type: string
           description: Optional - if not empty, it will be used when 'skip-credential-subscoping-indirection' is true
           example: "CLIENT_OF_CATALOG_1_ACCESS_KEY_ENV_VARIABLE_NAME"
-        s3.credentials.client.secret-access-key:
+        s3.credentials.client.secretAccessKey:
           type: string
           description: Optional - if not empty, it will be used when 'skip-credential-subscoping-indirection' is true
           example: "CLIENT_OF_CATALOG_1_SECRET_KEY_ENV_VARIABLE_NAME"
         s3.region:
           type: string
-          description: the s3 region where data is stored
+          description: Optional - the s3 region where data is stored
           example: "rack-1"
+        s3.roleArn:
+          type: string
+          description: Optional - a s3 role arn
+          example: "arn:aws:iam::123456789001:principal/abc1-b-self1234"        
       required:
         - s3.endpoint
 

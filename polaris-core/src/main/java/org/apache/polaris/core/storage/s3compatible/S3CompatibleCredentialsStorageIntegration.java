@@ -100,11 +100,11 @@ public class S3CompatibleCredentialsStorageIntegration
           stsClient.assumeRole(
               AssumeRoleRequest.builder()
                   .roleSessionName("PolarisCredentialsSTS")
+                  .roleArn(
+                      (storageConfig.getS3RoleArn() == null) ? "" : storageConfig.getS3RoleArn())
                   .policy(
                       policyString(allowListOperation, allowedReadLocations, allowedWriteLocations)
                           .toJson())
-                  // @TODO customize duration
-                  // .durationSeconds(1800)
                   .build());
 
       propertiesMap.put(PolarisCredentialProperty.AWS_KEY_ID, response.credentials().accessKeyId());

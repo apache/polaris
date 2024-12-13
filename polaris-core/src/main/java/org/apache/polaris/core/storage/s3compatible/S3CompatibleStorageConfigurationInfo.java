@@ -35,14 +35,15 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
   // 5 is the approximate max allowed locations for the size of AccessPolicy when LIST is required
   // for allowed read and write locations for subscoping creds.
   @JsonIgnore private static final int MAX_ALLOWED_LOCATIONS = 5;
-  private @NotNull String s3endpoint;
+  private @NotNull String s3Endpoint;
   private @Nullable String s3CredentialsCatalogAccessKeyId;
   private @Nullable String s3CredentialsCatalogSecretAccessKey;
-  private @Nullable Boolean s3pathStyleAccess;
+  private @Nullable Boolean s3PathStyleAccess;
   private @NotNull Boolean skipCredentialSubscopingIndirection;
   private @Nullable String s3CredentialsClientAccessKeyId;
   private @Nullable String s3CredentialsClientSecretAccessKey;
   private @Nullable String s3Region;
+  private @Nullable String s3RoleArn;
 
   // Constructor
   @JsonCreator
@@ -61,29 +62,31 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
           String s3CredentialsClientSecretAccessKey,
       @JsonProperty(value = "s3PathStyleAccess", required = false) @Nullable
           Boolean s3PathStyleAccess,
-      @JsonProperty(value = "S3Region", required = false) @Nullable String region,
+      @JsonProperty(value = "s3Region", required = false) @Nullable String s3Region,
+      @JsonProperty(value = "s3RoleArn", required = false) @Nullable String s3RoleArn,
       @JsonProperty(value = "allowedLocations", required = true) @Nullable
           List<String> allowedLocations) {
 
     // storing properties
     super(storageType, allowedLocations);
     validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
-    this.s3pathStyleAccess = s3PathStyleAccess;
-    this.s3endpoint = s3Endpoint;
+    this.s3PathStyleAccess = s3PathStyleAccess;
+    this.s3Endpoint = s3Endpoint;
     this.s3CredentialsCatalogAccessKeyId = s3CredentialsCatalogAccessKeyId;
     this.s3CredentialsCatalogSecretAccessKey = s3CredentialsCatalogSecretAccessKey;
     this.s3CredentialsClientAccessKeyId = s3CredentialsClientAccessKeyId;
     this.s3CredentialsClientSecretAccessKey = s3CredentialsClientSecretAccessKey;
     this.skipCredentialSubscopingIndirection = skipCredentialSubscopingIndirection;
-    this.s3Region = region;
+    this.s3Region = s3Region;
+    this.s3RoleArn = s3RoleArn;
   }
 
   public @NotNull String getS3Endpoint() {
-    return this.s3endpoint;
+    return this.s3Endpoint;
   }
 
   public @NotNull Boolean getS3PathStyleAccess() {
-    return this.s3pathStyleAccess;
+    return this.s3PathStyleAccess;
   }
 
   public @NotNull String getS3CredentialsCatalogAccessKeyId() {
@@ -108,12 +111,12 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
         : this.s3CredentialsClientSecretAccessKey;
   }
 
-  public @Nullable String getS3Region() {
-    return s3Region;
+  public @NotNull String getS3RoleArn() {
+    return this.s3RoleArn;
   }
 
-  public void setS3Region(@Nullable String region) {
-    this.s3Region = region;
+  public @Nullable String getS3Region() {
+    return this.s3Region;
   }
 
   public @Nullable Boolean getSkipCredentialSubscopingIndirection() {
