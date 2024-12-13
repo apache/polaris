@@ -17,7 +17,10 @@
  * under the License.
  */
 
-plugins { id("polaris-client") }
+plugins {
+  id("polaris-client")
+  alias(libs.plugins.jandex)
+}
 
 dependencies {
   implementation(project(":polaris-api-management-model"))
@@ -101,3 +104,5 @@ dependencies {
 
   compileOnly(libs.jakarta.annotation.api)
 }
+
+tasks.named("javadoc") { dependsOn("jandex") }

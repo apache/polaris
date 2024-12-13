@@ -20,6 +20,7 @@
 plugins {
   alias(libs.plugins.openapi.generator)
   id("polaris-client")
+  alias(libs.plugins.jandex)
 }
 
 dependencies {
@@ -60,3 +61,5 @@ listOf("sourcesJar", "compileJava").forEach { task ->
 sourceSets {
   main { java { srcDir(project.layout.buildDirectory.dir("generated/src/main/java")) } }
 }
+
+tasks.named("javadoc") { dependsOn("jandex") }

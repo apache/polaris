@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.service.auth;
 
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import jakarta.inject.Provider;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -43,11 +43,12 @@ import org.slf4j.LoggerFactory;
  * AuthenticatedPolarisPrincipal#getActivatedPrincipalRoleNames()} is used to determine which of the
  * available roles are active for this request.
  */
+@RequestScoped
 public class DefaultActiveRolesProvider implements ActiveRolesProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultActiveRolesProvider.class);
-  @Inject Provider<RealmContext> realmContextProvider;
+
+  @Inject RealmContext realmContext;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-  @Inject Provider<PolarisGrantManager> polarisGrantManagerProvider;
 
   @Override
   public Set<String> getActiveRoles(AuthenticatedPolarisPrincipal principal) {
@@ -55,7 +56,7 @@ public class DefaultActiveRolesProvider implements ActiveRolesProvider {
         loadActivePrincipalRoles(
             principal.getActivatedPrincipalRoleNames(),
             principal.getPrincipalEntity(),
-            metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContextProvider.get()));
+            metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext));
     return activeRoles.stream().map(PrincipalRoleEntity::getName).collect(Collectors.toSet());
   }
 
@@ -63,7 +64,7 @@ public class DefaultActiveRolesProvider implements ActiveRolesProvider {
       Set<String> tokenRoles, PolarisEntity principal, PolarisMetaStoreManager metaStoreManager) {
     PolarisCallContext polarisContext = CallContext.getCurrentContext().getPolarisCallContext();
     PolarisGrantManager.LoadGrantsResult principalGrantResults =
-        polarisGrantManagerProvider.get().loadGrantsToGrantee(polarisContext, principal);
+        metaStoreManager.loadGrantsToGrantee(polarisContext, principal);
     polarisContext
         .getDiagServices()
         .check(

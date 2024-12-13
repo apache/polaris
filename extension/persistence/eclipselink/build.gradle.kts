@@ -22,16 +22,23 @@ fun isValidDep(dep: String): Boolean {
   return dep.matches(depRegex)
 }
 
-plugins { id("polaris-server") }
+plugins {
+  id("polaris-server")
+  alias(libs.plugins.quarkus)
+  alias(libs.plugins.jandex)
+}
 
 dependencies {
   implementation(project(":polaris-core"))
   implementation(project(":polaris-jpa-model"))
+
   implementation(libs.eclipselink)
-  implementation(platform(libs.dropwizard.bom))
-  implementation(libs.jakarta.inject.api)
-  implementation(libs.smallrye.common.annotation)
-  implementation("io.dropwizard:dropwizard-jackson")
+
+  implementation(platform(libs.quarkus.bom))
+  implementation("io.quarkus:quarkus-core")
+
+  implementation(libs.slf4j.api)
+
   val eclipseLinkDeps: String? = project.findProperty("eclipseLinkDeps") as String?
   eclipseLinkDeps?.let {
     val dependenciesList = it.split(",")
@@ -45,10 +52,26 @@ dependencies {
     }
   }
 
+  // only for @VisibleForTesting
+  compileOnly(libs.guava)
+
   compileOnly(libs.jakarta.annotation.api)
+  compileOnly(libs.jakarta.enterprise.cdi.api)
+  compileOnly(libs.jakarta.inject.api)
+  compileOnly("io.smallrye.common:smallrye-common-annotation") // @Identifier
+  compileOnly("io.smallrye.config:smallrye-config-core") // @ConfigMapping
+
+  compileOnly(platform(libs.jackson.bom))
+  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
+  compileOnly("com.fasterxml.jackson.core:jackson-core")
 
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
+
+  testImplementation(platform(libs.junit.bom))
+  testImplementation(libs.bundles.junit.testing)
+  testRuntimeOnly("org.junit.jupiter:junit-jupiter")
+  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.register<Jar>("createTestConfJar") {
@@ -60,3 +83,7 @@ tasks.register<Jar>("createTestConfJar") {
 sourceSets { test { resources.srcDir(layout.buildDirectory.dir("conf")) } }
 
 tasks.named("processTestResources") { dependsOn("createTestConfJar") }
+
+tasks.named("javadoc") { dependsOn("jandex") }
+
+tasks.named("quarkusDependenciesBuild") { dependsOn("jandex") }

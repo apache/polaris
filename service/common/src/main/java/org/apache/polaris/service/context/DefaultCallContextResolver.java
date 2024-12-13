@@ -19,13 +19,12 @@
 package org.apache.polaris.service.context;
 
 import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
-import java.time.ZoneId;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -40,12 +39,15 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Example: principal:data-engineer;password:test;realm:acct123
  */
+@ApplicationScoped
 @Identifier("default")
 public class DefaultCallContextResolver implements CallContextResolver {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultCallContextResolver.class);
 
-  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
-  @Inject private PolarisConfigurationStore configurationStore;
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject PolarisConfigurationStore configurationStore;
+  @Inject PolarisDiagnostics diagnostics;
+  @Inject Clock clock;
 
   @Override
   public CallContext resolveCallContext(
@@ -58,15 +60,10 @@ public class DefaultCallContextResolver implements CallContextResolver {
         .addKeyValue("headers", headers)
         .log("Resolving CallContext");
 
-    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     PolarisMetaStoreSession metaStoreSession =
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     PolarisCallContext polarisContext =
-        new PolarisCallContext(
-            metaStoreSession,
-            diagServices,
-            configurationStore,
-            Clock.system(ZoneId.systemDefault()));
+        new PolarisCallContext(metaStoreSession, diagnostics, configurationStore, clock);
     return CallContext.of(realmContext, polarisContext);
   }
 }

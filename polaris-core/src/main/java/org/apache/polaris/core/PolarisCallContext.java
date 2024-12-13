@@ -58,6 +58,14 @@ public class PolarisCallContext {
     this.clock = Clock.system(ZoneId.systemDefault());
   }
 
+  public static PolarisCallContext copyOf(PolarisCallContext original) {
+    return new PolarisCallContext(
+        original.getMetaStore(),
+        original.getDiagServices(),
+        original.getConfigurationStore(),
+        original.getClock());
+  }
+
   public PolarisMetaStoreSession getMetaStore() {
     return metaStore;
   }

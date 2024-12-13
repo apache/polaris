@@ -20,51 +20,36 @@ package org.apache.polaris.service.dropwizard.test;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import io.micrometer.core.instrument.Tag;
+import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.core.Response;
-import java.util.Collection;
-import java.util.List;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.stream.Collectors;
+import org.hawkular.agent.prometheus.text.TextPrometheusMetricsProcessor;
+import org.hawkular.agent.prometheus.types.MetricFamily;
+import org.hawkular.agent.prometheus.walkers.CollectorPrometheusMetricsWalker;
 
 /** Utils for working with metrics in tests */
 public class TestMetricsUtil {
-  private static final String SUFFIX_TOTAL = ".total";
 
-  /** Gets a total counter by calling the Prometheus metrics endpoint */
-  public static double getTotalCounter(
-      DropwizardAppExtension<PolarisApplicationConfig> dropwizardAppExtension,
-      String metricName,
-      Collection<Tag> tags) {
-
-    metricName += SUFFIX_TOTAL;
-    metricName = metricName.replace('.', '_').replace('-', '_');
-
-    // Example of a line from the metrics endpoint:
-    // polaris_TimedApi_count_realm_total{API_NAME="polaris.principals.getPrincipal",REALM_ID="org_apache_polaris_service_TimedApplicationEventListenerTest"} 1.0
-    // This method assumes that tag ordering isn't guaranteed
-    List<String> tagFilters =
-        tags.stream().map(tag -> String.format("%s=\"%s\"", tag.getKey(), tag.getValue())).toList();
-
+  public static Map<String, MetricFamily> fetchMetrics(Client client, URI baseManagementUri) {
     Response response =
-        dropwizardAppExtension
-            .client()
-            .target(
-                String.format("http://localhost:%d/metrics", dropwizardAppExtension.getAdminPort()))
-            .request()
-            .get();
+        client.target(String.format("%s/q/metrics", baseManagementUri)).request().get();
     assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-    String[] responseLines = response.readEntity(String.class).split("\n");
-    for (String line : responseLines) {
-      int numTags =
-          StringUtils.countMatches(line, '='); // Assumes the tag values don't contain an '='
-      if (line.startsWith(metricName)
-          && tagFilters.stream().allMatch(line::contains)
-          && numTags == tagFilters.size()) {
-        return Double.parseDouble(line.split(" ")[1]);
-      }
-    }
-    return 0;
+    String body = response.readEntity(String.class);
+    InputStream inputStream = new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
+    CollectorPrometheusMetricsWalker walker = new CollectorPrometheusMetricsWalker();
+    new TextPrometheusMetricsProcessor(inputStream, walker).walk();
+    return walker.getAllMetricFamilies().stream()
+        .collect(
+            Collectors.toMap(
+                MetricFamily::getName,
+                metricFamily -> metricFamily,
+                (mf1, mf2) -> {
+                  throw new IllegalStateException("Duplicate metric family: " + mf1.getName());
+                }));
   }
 }

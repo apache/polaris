@@ -18,33 +18,51 @@
  */
 package org.apache.polaris.service.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 
+@ApplicationScoped
 public class DefaultConfigurationStore implements PolarisConfigurationStore {
-  private final Map<String, Object> config;
-  private final Map<String, Map<String, Object>> realmConfig;
 
-  public DefaultConfigurationStore(Map<String, Object> config) {
-    this.config = config;
-    this.realmConfig = Map.of();
+  private final Map<String, Object> defaults;
+  private final Map<String, Map<String, Object>> realmOverrides;
+
+  // FIXME the whole PolarisConfigurationStore + PolarisConfiguration needs to be refactored
+  // to become a proper Quarkus configuration object
+  @Inject
+  public DefaultConfigurationStore(
+      ObjectMapper objectMapper, FeaturesConfiguration configurations) {
+    this(
+        configurations.parseDefaults(objectMapper),
+        configurations.parseRealmOverrides(objectMapper));
+  }
+
+  public DefaultConfigurationStore(Map<String, Object> defaults) {
+    this(defaults, Map.of());
   }
 
   public DefaultConfigurationStore(
-      Map<String, Object> config, Map<String, Map<String, Object>> realmConfig) {
-    this.config = config;
-    this.realmConfig = realmConfig;
+      Map<String, Object> defaults, Map<String, Map<String, Object>> realmOverrides) {
+    this.defaults = Map.copyOf(defaults);
+    this.realmOverrides = Map.copyOf(realmOverrides);
   }
 
-  @SuppressWarnings("unchecked")
   @Override
   public <T> @Nullable T getConfiguration(@Nonnull PolarisCallContext ctx, String configName) {
     String realm = CallContext.getCurrentContext().getRealmContext().getRealmIdentifier();
-    return (T)
-        realmConfig.getOrDefault(realm, Map.of()).getOrDefault(configName, config.get(configName));
+    @SuppressWarnings("unchecked")
+    T confgValue =
+        (T)
+            realmOverrides
+                .getOrDefault(realm, Map.of())
+                .getOrDefault(configName, defaults.get(configName));
+    return confgValue;
   }
 }

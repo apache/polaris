@@ -26,7 +26,6 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -70,7 +69,7 @@ public class JWTSymmetricKeyGeneratorTest {
     PolarisPrincipalSecrets principalSecrets =
         new PolarisPrincipalSecrets(1L, clientId, mainSecret, "otherSecret");
     Mockito.when(metastoreManager.loadPrincipalSecrets(polarisCallContext, clientId))
-        .thenReturn(new PrincipalSecretsResult(principalSecrets));
+        .thenReturn(new PolarisMetaStoreManager.PrincipalSecretsResult(principalSecrets));
     PolarisBaseEntity principal =
         new PolarisBaseEntity(
             0L,
@@ -84,7 +83,11 @@ public class JWTSymmetricKeyGeneratorTest {
     TokenBroker generator = new JWTSymmetricKeyBroker(metastoreManager, 666, () -> "polaris");
     TokenResponse token =
         generator.generateFromClientSecrets(
-            clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, "PRINCIPAL_ROLE:TEST");
+            clientId,
+            mainSecret,
+            TokenRequestValidator.CLIENT_CREDENTIALS,
+            "PRINCIPAL_ROLE:TEST",
+            polarisCallContext);
     assertThat(token).isNotNull();
 
     JWTVerifier verifier = JWT.require(Algorithm.HMAC256("polaris")).withIssuer("polaris").build();

@@ -22,6 +22,7 @@ import static jakarta.ws.rs.core.Response.Status.NO_CONTENT;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.google.common.base.Joiner;
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MultivaluedHashMap;
@@ -84,7 +85,9 @@ public class CatalogApi extends RestApi {
   public List<Namespace> listNamespaces(String catalog, Namespace parent) {
     Map<String, String> queryParams = new HashMap<>();
     if (!parent.isEmpty()) {
-      queryParams.put("parent", RESTUtil.encodeNamespace(parent));
+      // TODO change this for Iceberg 1.7.2:
+      //   queryParams.put("parent", RESTUtil.encodeNamespace(parent));
+      queryParams.put("parent", Joiner.on('\u001f').join(parent.levels()));
     }
     try (Response response =
         request("v1/{cat}/namespaces", Map.of("cat", catalog), queryParams).get()) {

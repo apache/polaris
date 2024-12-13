@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.service.persistence;
 
-import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Collections;
 import java.util.HashSet;
@@ -36,13 +36,29 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
 import org.apache.polaris.core.persistence.PolarisTreeMapStore;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.service.context.RealmContextConfiguration;
 
+@ApplicationScoped
 @Identifier("in-memory")
 public class InMemoryPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
-  @Inject protected PolarisStorageIntegrationProvider storageIntegration;
 
-  final Set<String> bootstrappedRealms = new HashSet<>();
+  private final PolarisStorageIntegrationProvider storageIntegration;
+  private final Set<String> bootstrappedRealms = new HashSet<>();
+
+  public InMemoryPolarisMetaStoreManagerFactory() {
+    this(null);
+  }
+
+  @Inject
+  public InMemoryPolarisMetaStoreManagerFactory(
+      PolarisStorageIntegrationProvider storageIntegration) {
+    this.storageIntegration = storageIntegration;
+  }
+
+  public void onStartup(RealmContextConfiguration realmContextConfiguration) {
+    bootstrapRealmAndPrintCredentials(realmContextConfiguration.defaultRealm());
+  }
 
   @Override
   protected PolarisTreeMapStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
@@ -90,11 +106,5 @@ public class InMemoryPolarisMetaStoreManagerFactory
             principalSecrets.getPrincipalSecrets().getPrincipalClientId(),
             principalSecrets.getPrincipalSecrets().getMainSecret());
     System.out.println(msg);
-  }
-
-  @VisibleForTesting
-  public void setStorageIntegrationProvider(
-      PolarisStorageIntegrationProvider storageIntegrationProvider) {
-    this.storageIntegration = storageIntegrationProvider;
   }
 }

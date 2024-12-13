@@ -20,12 +20,14 @@
 [versions]
 hadoop = "3.4.1"
 iceberg = "1.7.1"
-dropwizard = "4.0.11"
+junit = "5.11.4"
+quarkus = "3.17.6"
 picocli = "4.7.6"
 slf4j = "2.0.16"
 swagger = "1.6.14"
 
 [bundles]
+junit-testing = ["assertj-core", "mockito-core", "mockito-junit-jupiter", "junit-jupiter-api", "junit-jupiter-params", "junit-platform-reporting"]
 
 
 [libraries]
@@ -42,7 +44,6 @@ caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.1.8
 commons-codec1 = { module = "commons-codec:commons-codec", version = "1.17.2" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.13.0" }
-dropwizard-bom = { module = "io.dropwizard:dropwizard-bom", version.ref = "dropwizard" }
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.5" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.36.0" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.47.0" }
@@ -51,27 +52,34 @@ h2 = { module = "com.h2database:h2", version = "2.3.232" }
 # Strict dnsjava downgrade due to https://github.com/dnsjava/dnsjava/issues/329
 dnsjava = { module = "dnsjava:dnsjava", version = "3.5.3!!" }
 hadoop-client-api = { module = "org.apache.hadoop:hadoop-client-api", version.ref = "hadoop" }
+hadoop-client-runtime = { module = "org.apache.hadoop:hadoop-client-runtime", version.ref = "hadoop" }
 hadoop-common = { module = "org.apache.hadoop:hadoop-common", version.ref = "hadoop" }
 hadoop-hdfs-client = { module = "org.apache.hadoop:hadoop-hdfs-client", version.ref = "hadoop" }
 iceberg-bom = { module = "org.apache.iceberg:iceberg-bom", version.ref = "iceberg" }
 jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.18.2" }
 jakarta-annotation-api = { module = "jakarta.annotation:jakarta.annotation-api", version = "3.0.0" }
+jakarta-enterprise-cdi-api = { module = "jakarta.enterprise:jakarta.enterprise.cdi-api", version = "4.1.0" }
 jakarta-inject-api = { module = "jakarta.inject:jakarta.inject-api", version = "2.0.1" }
 jakarta-persistence-api = { module = "jakarta.persistence:jakarta.persistence-api", version = "3.2.0" }
 jakarta-servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version = "6.1.0" }
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version = "3.1.0" }
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
-javax-annotation-api = { module = "javax.annotation:javax.annotation-api", version = "1.3.2" }
+javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
 jetbrains-annotations = { module = "org.jetbrains:annotations", version = "26.0.1" }
-junit-bom = { module = "org.junit:junit-bom", version = "5.11.4" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api", version.ref = "junit" }
+junit-jupiter-params = { module = "org.junit.jupiter:junit-jupiter-params", version.ref = "junit" }
+junit-platform-reporting = { module = "org.junit.platform:junit-platform-reporting", version = "1.11.4" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.4.14" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.14.3" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.15.2" }
+mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.11.0" }
 opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.46.0" }
 opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.25.0-alpha" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
 prometheus-metrics-exporter-servlet-jakarta = { module = "io.prometheus:prometheus-metrics-exporter-servlet-jakarta", version = "1.3.5" }
+quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
 s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "3.12.0" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.9.0" }
@@ -83,5 +91,7 @@ testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 
 [plugins]
+jandex = { id = "org.kordamp.gradle.jandex", version = "2.1.0" }
 openapi-generator = { id = "org.openapi.generator", version = "7.10.0" }
+quarkus = { id = "io.quarkus", version.ref = "quarkus" }
 rat = { id = "org.nosphere.apache.rat", version = "0.8.1" }

@@ -17,4 +17,4 @@
 # under the License.
 #
 
-org.apache.polaris.service.dropwizard.it.DropwizardServerManager
+org.apache.polaris.service.dropwizard.it.QuarkusServerManager
