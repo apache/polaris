@@ -78,6 +78,9 @@ public class S3CompatibleCredentialsStorageIntegration
     propertiesMap.put(
         PolarisCredentialProperty.AWS_PATH_STYLE_ACCESS,
         storageConfig.getS3PathStyleAccess().toString());
+    if (storageConfig.getS3Region() != null) {
+      propertiesMap.put(PolarisCredentialProperty.CLIENT_REGION, storageConfig.getS3Region());
+    }
 
     if (storageConfig.getSkipCredentialSubscopingIndirection() == true) {
       LOGGER.debug("S3Compatible - skipCredentialSubscopingIndirection !");

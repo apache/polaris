@@ -212,7 +212,8 @@ curl -s -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
               \"s3.path-style-access\": true,
               \"s3.credentials.catalog.access-key-id\": \"CATALOG_ID\",
               \"s3.credentials.catalog.secret-access-key\": \"CATALOG_SECRET\",
-              \"skip-credential-subscoping-indirection\": true
+              \"skip-credential-subscoping-indirection\": true,
+              \"s3.region\": \"rack-1\"
             }
           }"
 
@@ -223,6 +224,7 @@ ${SPARK_HOME}/bin/spark-sql --verbose \
   --conf spark.sql.catalog.polaris.warehouse=manual_spark \
   --conf spark.sql.defaultCatalog=polaris \
   --conf spark.hadoop.hive.cli.print.header=true \
+  --conf spark.hadoop.fs.s3a.aws.region=rack-1 \
   -f "minio/queries-for-spark.sql"
 
 

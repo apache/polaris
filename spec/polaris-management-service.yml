@@ -943,6 +943,10 @@ components:
           type: string
           description: Optional - if not empty, it will be used when 'skip-credential-subscoping-indirection' is true
           example: "CLIENT_OF_CATALOG_1_SECRET_KEY_ENV_VARIABLE_NAME"
+        s3.region:
+          type: string
+          description: the s3 region where data is stored
+          example: "rack-1"
       required:
         - s3.endpoint
 

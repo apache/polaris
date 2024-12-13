@@ -42,6 +42,7 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
   private @NotNull Boolean skipCredentialSubscopingIndirection;
   private @Nullable String s3CredentialsClientAccessKeyId;
   private @Nullable String s3CredentialsClientSecretAccessKey;
+  private @Nullable String s3Region;
 
   // Constructor
   @JsonCreator
@@ -60,6 +61,7 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
           String s3CredentialsClientSecretAccessKey,
       @JsonProperty(value = "s3PathStyleAccess", required = false) @Nullable
           Boolean s3PathStyleAccess,
+      @JsonProperty(value = "S3Region", required = false) @Nullable String region,
       @JsonProperty(value = "allowedLocations", required = true) @Nullable
           List<String> allowedLocations) {
 
@@ -73,6 +75,7 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
     this.s3CredentialsClientAccessKeyId = s3CredentialsClientAccessKeyId;
     this.s3CredentialsClientSecretAccessKey = s3CredentialsClientSecretAccessKey;
     this.skipCredentialSubscopingIndirection = skipCredentialSubscopingIndirection;
+    this.s3Region = region;
   }
 
   public @NotNull String getS3Endpoint() {
@@ -103,6 +106,14 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
     return (this.s3CredentialsClientSecretAccessKey == null)
         ? ""
         : this.s3CredentialsClientSecretAccessKey;
+  }
+
+  public @Nullable String getS3Region() {
+    return s3Region;
+  }
+
+  public void setS3Region(@Nullable String region) {
+    this.s3Region = region;
   }
 
   public @Nullable Boolean getSkipCredentialSubscopingIndirection() {
