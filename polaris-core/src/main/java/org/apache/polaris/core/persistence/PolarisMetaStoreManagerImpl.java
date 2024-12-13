@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.persistence;
 
+import static com.google.common.base.Preconditions.checkArgument;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonMappingException;
@@ -55,6 +57,7 @@ import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1004,6 +1007,61 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     return (secrets == null)
         ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
         : new PrincipalSecretsResult(secrets);
+  }
+
+  @Override
+  public @NotNull SecretValidationResult validateSecret(
+      @NotNull PolarisCallContext callCtx, @NotNull String clientId, @NotNull String clientSecret) {
+    PrincipalSecretsResult principalSecrets = loadPrincipalSecrets(callCtx, clientId);
+    if (!principalSecrets.isSuccess()
+        || !principalSecrets.getPrincipalSecrets().matchesSecret(clientSecret)) {
+      return new SecretValidationResult(BaseResult.ReturnStatus.SECRET_VALIDATION_FAILED, "");
+    }
+    PolarisMetaStoreManager.EntityResult result =
+        loadEntity(callCtx, 0L, principalSecrets.getPrincipalSecrets().getPrincipalId());
+    if (!result.isSuccess() || result.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
+      return new SecretValidationResult(BaseResult.ReturnStatus.SECRET_VALIDATION_FAILED, "");
+    }
+    return new SecretValidationResult(result.getEntity());
+  }
+
+  @Override
+  public @NotNull EntityResult loadPrincipal(
+      @NotNull PolarisCallContext callCtx,
+      @Nullable String roleName,
+      @Nullable String clientId,
+      @Nullable Long principalId) {
+    checkArgument(principalId != null || clientId != null || roleName != null);
+    if (principalId != null && principalId > 0) {
+      EntityResult result = loadEntity(callCtx, 0L, principalId);
+      if (result.isSuccess() && result.getEntity().getType() == PolarisEntityType.PRINCIPAL) {
+        return result;
+      }
+    }
+    if (roleName != null) {
+      EntityResult result =
+          readEntityByName(
+              callCtx,
+              null,
+              PolarisEntityType.PRINCIPAL,
+              PolarisEntitySubType.NULL_SUBTYPE,
+              roleName);
+      if (result.isSuccess()) {
+        return result;
+      }
+    }
+    if (clientId != null) {
+      PrincipalSecretsResult principalSecrets = loadPrincipalSecrets(callCtx, clientId);
+      if (principalSecrets.isSuccess()
+          && principalSecrets.getPrincipalSecrets().getPrincipalId() > 0) {
+        EntityResult result =
+            loadEntity(callCtx, 0L, principalSecrets.getPrincipalSecrets().getPrincipalId());
+        if (result.isSuccess() && result.getEntity().getType() == PolarisEntityType.PRINCIPAL) {
+          return result;
+        }
+      }
+    }
+    return new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, "");
   }
 
   /** See {@link #} */

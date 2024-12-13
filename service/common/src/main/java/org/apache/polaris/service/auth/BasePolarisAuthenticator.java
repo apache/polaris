@@ -30,8 +30,6 @@ import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -65,17 +63,12 @@ public abstract class BasePolarisAuthenticator
     PolarisEntity principal;
     try {
       principal =
-          tokenInfo.getPrincipalId() > 0
-              ? PolarisEntity.of(
-                  metaStoreManager.loadEntity(
-                      getCurrentPolarisContext(), 0L, tokenInfo.getPrincipalId()))
-              : PolarisEntity.of(
-                  metaStoreManager.readEntityByName(
-                      getCurrentPolarisContext(),
-                      null,
-                      PolarisEntityType.PRINCIPAL,
-                      PolarisEntitySubType.NULL_SUBTYPE,
-                      tokenInfo.getSub()));
+          PolarisEntity.of(
+              metaStoreManager.loadPrincipal(
+                  getCurrentPolarisContext(),
+                  tokenInfo.getSub(),
+                  tokenInfo.getClientId(),
+                  tokenInfo.getPrincipalId()));
     } catch (Exception e) {
       LOGGER
           .atError()
