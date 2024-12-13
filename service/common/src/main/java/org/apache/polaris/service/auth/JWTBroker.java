@@ -29,6 +29,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -119,7 +120,11 @@ public abstract class JWTBroker implements TokenBroker {
 
   @Override
   public TokenResponse generateFromClientSecrets(
-      String clientId, String clientSecret, String grantType, String scope) {
+      String clientId,
+      String clientSecret,
+      String grantType,
+      String scope,
+      PolarisCallContext polarisCallContext) {
     // Initial sanity checks
     TokenRequestValidator validator = new TokenRequestValidator();
     Optional<OAuthTokenErrorResponse.Error> initialValidationResponse =
@@ -129,7 +134,8 @@ public abstract class JWTBroker implements TokenBroker {
     }
 
     Optional<PrincipalEntity> principal =
-        TokenBroker.findPrincipalEntity(metaStoreManager, clientId, clientSecret);
+        TokenBroker.findPrincipalEntity(
+            metaStoreManager, clientId, clientSecret, polarisCallContext);
     if (principal.isEmpty()) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.unauthorized_client);
     }

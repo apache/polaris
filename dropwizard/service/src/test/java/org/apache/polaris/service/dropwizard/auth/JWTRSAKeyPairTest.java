@@ -138,7 +138,11 @@ public class JWTRSAKeyPairTest {
     TokenBroker tokenBroker = new JWTRSAKeyPair(metastoreManager, 420);
     TokenResponse token =
         tokenBroker.generateFromClientSecrets(
-            clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, scope);
+            clientId,
+            mainSecret,
+            TokenRequestValidator.CLIENT_CREDENTIALS,
+            scope,
+            polarisCallContext);
     assertThat(token).isNotNull();
     assertThat(token.getExpiresIn()).isEqualTo(420);
 

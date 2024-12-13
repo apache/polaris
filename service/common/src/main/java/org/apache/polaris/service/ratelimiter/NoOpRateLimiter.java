@@ -19,9 +19,11 @@
 package org.apache.polaris.service.ratelimiter;
 
 import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
 
 /** Rate limiter that always allows the request */
 @Identifier("no-op")
+@ApplicationScoped
 public class NoOpRateLimiter implements RateLimiter {
   @Override
   public boolean canProceed() {

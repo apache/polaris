@@ -24,6 +24,7 @@ buildscript {
   repositories { maven { url = java.net.URI("https://plugins.gradle.org/m2/") } }
   dependencies {
     classpath("com.diffplug.spotless:spotless-plugin-gradle:${libs.plugins.spotless.get().version}")
+    classpath("org.kordamp.gradle:jandex-gradle-plugin:${libs.plugins.jandex.get().version}")
   }
 }
 
@@ -32,6 +33,7 @@ plugins {
   id("eclipse")
   id("polaris-root")
   alias(libs.plugins.rat)
+  alias(libs.plugins.jandex) apply false
 }
 
 val projectName = rootProject.file("ide-name.txt").readText().trim()

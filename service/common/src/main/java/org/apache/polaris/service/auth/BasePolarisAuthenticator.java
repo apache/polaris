@@ -18,14 +18,12 @@
  */
 package org.apache.polaris.service.auth;
 
-import jakarta.inject.Inject;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
@@ -51,10 +49,13 @@ public abstract class BasePolarisAuthenticator
   public static final String PRINCIPAL_ROLE_PREFIX = "PRINCIPAL_ROLE:";
   private static final Logger LOGGER = LoggerFactory.getLogger(BasePolarisAuthenticator.class);
 
-  @Inject protected MetaStoreManagerFactory metaStoreManagerFactory;
+  protected final MetaStoreManagerFactory metaStoreManagerFactory;
+  protected final CallContext callContext;
 
-  public PolarisCallContext getCurrentPolarisContext() {
-    return CallContext.getCurrentContext().getPolarisCallContext();
+  protected BasePolarisAuthenticator(
+      MetaStoreManagerFactory metaStoreManagerFactory, CallContext callContext) {
+    this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.callContext = callContext;
   }
 
   protected Optional<AuthenticatedPolarisPrincipal> getPrincipal(DecodedToken tokenInfo) {
@@ -68,10 +69,10 @@ public abstract class BasePolarisAuthenticator
           tokenInfo.getPrincipalId() > 0
               ? PolarisEntity.of(
                   metaStoreManager.loadEntity(
-                      getCurrentPolarisContext(), 0L, tokenInfo.getPrincipalId()))
+                      callContext.getPolarisCallContext(), 0L, tokenInfo.getPrincipalId()))
               : PolarisEntity.of(
                   metaStoreManager.readEntityByName(
-                      getCurrentPolarisContext(),
+                      callContext.getPolarisCallContext(),
                       null,
                       PolarisEntityType.PRINCIPAL,
                       PolarisEntitySubType.NULL_SUBTYPE,
