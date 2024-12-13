@@ -38,7 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Generates a JWT Token. */
-abstract class JWTBroker implements TokenBroker {
+public abstract class JWTBroker implements TokenBroker {
   private static final Logger LOGGER = LoggerFactory.getLogger(JWTBroker.class);
 
   private static final String ISSUER_KEY = "polaris";
@@ -55,7 +55,7 @@ abstract class JWTBroker implements TokenBroker {
     this.maxTokenGenerationInSeconds = maxTokenGenerationInSeconds;
   }
 
-  abstract Algorithm getAlgorithm();
+  public abstract Algorithm getAlgorithm();
 
   @Override
   public DecodedToken verify(String token) {

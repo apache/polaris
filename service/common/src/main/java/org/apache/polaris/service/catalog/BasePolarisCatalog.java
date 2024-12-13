@@ -145,7 +145,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   private static final int MAX_RETRIES = 12;
 
-  static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
+  public static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
       ex -> {
         // Default arguments from BaseMetastoreTableOperation only stop retries on
         // NotFoundException. We should more carefully identify the set of retriable
@@ -210,7 +210,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   @VisibleForTesting
-  FileIO getIo() {
+  public FileIO getIo() {
     return catalogFileIO;
   }
 
@@ -1632,7 +1632,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   @VisibleForTesting
-  void setFileIOFactory(FileIOFactory newFactory) {
+  public void setFileIOFactory(FileIOFactory newFactory) {
     this.fileIOFactory = newFactory;
   }
 

@@ -26,7 +26,8 @@ import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.io.FileIO;
 
 public class TaskUtils {
-  static boolean exists(String path, FileIO fileIO) {
+
+  public static boolean exists(String path, FileIO fileIO) {
     try {
       return fileIO.newInputFile(path).exists();
     } catch (NotFoundException e) {
@@ -43,7 +44,7 @@ public class TaskUtils {
    * base64 encode the serialized manifest file entry so we can deserialize it and read the manifest
    * in the {@link ManifestFileCleanupTaskHandler}
    */
-  static String encodeManifestFile(ManifestFile mf) {
+  public static String encodeManifestFile(ManifestFile mf) {
     try {
       return Base64.encodeBase64String(ManifestFiles.encode(mf));
     } catch (IOException e) {

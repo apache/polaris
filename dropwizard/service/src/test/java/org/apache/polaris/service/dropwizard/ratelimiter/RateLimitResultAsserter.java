@@ -16,12 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-[org.apache.polaris.service.dropwizard.catalog.io.TestFileIOFactory]S
-contract={org.apache.polaris.service.catalog.io.FileIOFactory}
-name=test
-qualifier={io.smallrye.common.annotation.Identifier}
+package org.apache.polaris.service.dropwizard.ratelimiter;
 
-[org.apache.polaris.service.dropwizard.ratelimiter.MockRealmTokenBucketRateLimiter]S
-contract={org.apache.polaris.service.ratelimiter.RateLimiter}
-name=mock-realm-token-bucket
-qualifier={io.smallrye.common.annotation.Identifier}
+import org.apache.polaris.service.ratelimiter.RateLimiter;
+import org.junit.jupiter.api.Assertions;
+
+/** Utility class for testing rate limiters. Lets you easily assert the result of tryAcquire(). */
+public class RateLimitResultAsserter {
+  private final RateLimiter rateLimiter;
+
+  public RateLimitResultAsserter(RateLimiter rateLimiter) {
+    this.rateLimiter = rateLimiter;
+  }
+
+  public void canAcquire(int times) {
+    for (int i = 0; i < times; i++) {
+      Assertions.assertTrue(rateLimiter.tryAcquire());
+    }
+  }
+
+  public void cantAcquire() {
+    for (int i = 0; i < 5; i++) {
+      Assertions.assertFalse(rateLimiter.tryAcquire());
+    }
+  }
+}

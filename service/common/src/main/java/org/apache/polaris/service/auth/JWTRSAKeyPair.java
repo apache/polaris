@@ -26,7 +26,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 /** Generates a JWT using a Public/Private RSA Key */
 public class JWTRSAKeyPair extends JWTBroker {
 
-  JWTRSAKeyPair(PolarisMetaStoreManager metaStoreManager, int maxTokenGenerationInSeconds) {
+  public JWTRSAKeyPair(PolarisMetaStoreManager metaStoreManager, int maxTokenGenerationInSeconds) {
     super(metaStoreManager, maxTokenGenerationInSeconds);
   }
 
@@ -35,7 +35,7 @@ public class JWTRSAKeyPair extends JWTBroker {
   }
 
   @Override
-  Algorithm getAlgorithm() {
+  public Algorithm getAlgorithm() {
     KeyProvider keyProvider = getKeyProvider();
     return Algorithm.RSA256(
         (RSAPublicKey) keyProvider.getPublicKey(), (RSAPrivateKey) keyProvider.getPrivateKey());

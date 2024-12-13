@@ -26,7 +26,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 public class JWTSymmetricKeyBroker extends JWTBroker {
   private final Supplier<String> secretSupplier;
 
-  JWTSymmetricKeyBroker(
+  public JWTSymmetricKeyBroker(
       PolarisMetaStoreManager metaStoreManager,
       int maxTokenGenerationInSeconds,
       Supplier<String> secretSupplier) {
@@ -35,7 +35,7 @@ public class JWTSymmetricKeyBroker extends JWTBroker {
   }
 
   @Override
-  Algorithm getAlgorithm() {
+  public Algorithm getAlgorithm() {
     return Algorithm.HMAC256(secretSupplier.get());
   }
 }

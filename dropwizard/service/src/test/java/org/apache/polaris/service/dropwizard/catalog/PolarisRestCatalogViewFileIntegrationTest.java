@@ -16,12 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-[org.apache.polaris.service.dropwizard.catalog.io.TestFileIOFactory]S
-contract={org.apache.polaris.service.catalog.io.FileIOFactory}
-name=test
-qualifier={io.smallrye.common.annotation.Identifier}
+package org.apache.polaris.service.dropwizard.catalog;
 
-[org.apache.polaris.service.dropwizard.ratelimiter.MockRealmTokenBucketRateLimiter]S
-contract={org.apache.polaris.service.ratelimiter.RateLimiter}
-name=mock-realm-token-bucket
-qualifier={io.smallrye.common.annotation.Identifier}
+import java.util.List;
+import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
+
+/** Runs PolarisRestCatalogViewIntegrationTest on the local filesystem. */
+public class PolarisRestCatalogViewFileIntegrationTest
+    extends PolarisRestCatalogViewIntegrationTest {
+  public static final String BASE_LOCATION = "file:///tmp/buckets/my-bucket";
+
+  @Override
+  protected StorageConfigInfo getStorageConfigInfo() {
+    return FileStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
+        .setAllowedLocations(List.of(BASE_LOCATION))
+        .build();
+  }
+
+  @Override
+  protected boolean shouldSkip() {
+    return false;
+  }
+}

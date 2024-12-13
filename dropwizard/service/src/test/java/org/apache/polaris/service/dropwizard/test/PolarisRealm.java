@@ -16,12 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-[org.apache.polaris.service.dropwizard.catalog.io.TestFileIOFactory]S
-contract={org.apache.polaris.service.catalog.io.FileIOFactory}
-name=test
-qualifier={io.smallrye.common.annotation.Identifier}
+package org.apache.polaris.service.dropwizard.test;
 
-[org.apache.polaris.service.dropwizard.ratelimiter.MockRealmTokenBucketRateLimiter]S
-contract={org.apache.polaris.service.ratelimiter.RateLimiter}
-name=mock-realm-token-bucket
-qualifier={io.smallrye.common.annotation.Identifier}
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+/**
+ * Annotation used to specify where to inject the Polaris test realm identifier. This is provided by
+ * PolarisConnectionExtension.
+ */
+@Target({ElementType.PARAMETER})
+@Retention(RetentionPolicy.RUNTIME)
+public @interface PolarisRealm {}
