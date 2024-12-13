@@ -83,7 +83,7 @@ Running in Kubernetes
 - `kubectl describe deployment polaris-deployment -n polaris` - To troubleshoot if things aren't working as expected.
 
 Running regression tests
-- `./regtests/run.sh` - To run regression tests on localhost (ensure Polaris server start first in another terminal on localhost).
+- `./regtests/run.sh` - To execute regression tests locally, ensure that the Polaris server is started on localhost in a separate terminal window before initiating the tests.
 - `docker compose up --build --exit-code-from regtest` - To run regression tests in a Docker environment.
 
 Building docs
