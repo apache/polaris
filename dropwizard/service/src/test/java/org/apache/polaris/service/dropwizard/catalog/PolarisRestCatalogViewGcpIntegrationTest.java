@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.dropwizard.catalog;
 
+import io.quarkus.test.junit.QuarkusTest;
 import java.util.List;
 import java.util.stream.Stream;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
@@ -25,6 +26,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.assertj.core.util.Strings;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on GCP. */
+@QuarkusTest
 public class PolarisRestCatalogViewGcpIntegrationTest
     extends PolarisRestCatalogViewIntegrationTest {
   public static final String SERVICE_ACCOUNT =

@@ -100,8 +100,9 @@ public interface CallContext extends AutoCloseable {
    * CallContext}.
    */
   static CallContext copyOf(CallContext base) {
-    RealmContext realmContext = base.getRealmContext();
-    PolarisCallContext polarisCallContext = base.getPolarisCallContext();
+    String realmId = base.getRealmContext().getRealmIdentifier();
+    RealmContext realmContext = () -> realmId;
+    PolarisCallContext polarisCallContext = PolarisCallContext.copyOf(base.getPolarisCallContext());
     Map<String, Object> contextVariables =
         base.contextVariables().entrySet().stream()
             .filter(e -> !e.getKey().equals(CLOSEABLES))
