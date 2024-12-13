@@ -23,13 +23,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
-import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
-import java.io.IOException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -41,10 +38,9 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.service.dropwizard.PolarisApplication;
-import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
-import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
-import org.apache.polaris.service.dropwizard.test.PolarisRealm;
+import org.apache.polaris.service.dropwizard.test.PolarisIntegrationTestFixture;
+import org.apache.polaris.service.dropwizard.test.PolarisIntegrationTestHelper;
+import org.apache.polaris.service.dropwizard.test.TestEnvironment;
 import org.apache.polaris.service.dropwizard.test.TestEnvironmentExtension;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -58,52 +54,43 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
 
-@ExtendWith({
-  DropwizardExtensionsSupport.class,
-  TestEnvironmentExtension.class,
-  PolarisConnectionExtension.class
-})
+@QuarkusTest
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@ExtendWith(TestEnvironmentExtension.class)
 public class PolarisSparkIntegrationTest {
-  private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config(
-              "server.adminConnectors[0].port", "0")); // Bind to random port to support parallelism
 
   public static final String CATALOG_NAME = "mycatalog";
   public static final String EXTERNAL_CATALOG_NAME = "external_catalog";
-  private static final S3MockContainer s3Container =
+
+  private final S3MockContainer s3Container =
       new S3MockContainer("3.11.0").withInitialBuckets("my-bucket,my-old-bucket");
-  private static PolarisConnectionExtension.PolarisToken polarisToken;
-  private static SparkSession spark;
-  private String realm;
+
+  @Inject PolarisIntegrationTestHelper helper;
+
+  private TestEnvironment testEnv;
+  private PolarisIntegrationTestFixture fixture;
+  private SparkSession spark;
 
   @BeforeAll
-  public static void setup(
-      PolarisConnectionExtension.PolarisToken polarisToken, @PolarisRealm String realm)
-      throws IOException {
+  public void createFixture(TestEnvironment testEnv, TestInfo testInfo) {
+    this.testEnv = testEnv;
     s3Container.start();
-    PolarisSparkIntegrationTest.polarisToken = polarisToken;
-
-    // Set up test location
-    PolarisConnectionExtension.createTestDir(realm);
+    fixture = helper.createFixture(testEnv, testInfo);
   }
 
   @AfterAll
-  public static void cleanup() {
+  public void destroyFixture() {
+    fixture.destroy();
     s3Container.stop();
   }
 
   @BeforeEach
-  public void before(@PolarisRealm String realm) {
-    this.realm = realm;
+  public void before() {
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
@@ -140,12 +127,12 @@ public class PolarisSparkIntegrationTest {
             .build();
 
     try (Response response =
-        EXT.client()
-            .target(
-                String.format("http://localhost:%d/api/management/v1/catalogs", EXT.getLocalPort()))
+        fixture
+            .client
+            .target(String.format("%s/api/management/v1/catalogs", testEnv.baseUri()))
             .request("application/json")
-            .header("Authorization", "BEARER " + polarisToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
+            .header("Authorization", "BEARER " + fixture.adminToken)
+            .header(REALM_PROPERTY_KEY, fixture.realm)
             .post(Entity.json(catalog))) {
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
@@ -178,12 +165,12 @@ public class PolarisSparkIntegrationTest {
             .setRemoteUrl("http://dummy_url")
             .build();
     try (Response response =
-        EXT.client()
-            .target(
-                String.format("http://localhost:%d/api/management/v1/catalogs", EXT.getLocalPort()))
+        fixture
+            .client
+            .target(String.format("%s/api/management/v1/catalogs", testEnv.baseUri()))
             .request("application/json")
-            .header("Authorization", "BEARER " + polarisToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
+            .header("Authorization", "BEARER " + fixture.adminToken)
+            .header(REALM_PROPERTY_KEY, fixture.realm)
             .post(Entity.json(externalCatalog))) {
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
@@ -215,11 +202,11 @@ public class PolarisSparkIntegrationTest {
         .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
         .config(
             String.format("spark.sql.catalog.%s.uri", catalogName),
-            "http://localhost:" + EXT.getLocalPort() + "/api/catalog")
+            testEnv.baseUri() + "/api/catalog")
         .config(String.format("spark.sql.catalog.%s.warehouse", catalogName), catalogName)
         .config(String.format("spark.sql.catalog.%s.scope", catalogName), "PRINCIPAL_ROLE:ALL")
-        .config(String.format("spark.sql.catalog.%s.header.realm", catalogName), realm)
-        .config(String.format("spark.sql.catalog.%s.token", catalogName), polarisToken.token())
+        .config(String.format("spark.sql.catalog.%s.header.realm", catalogName), fixture.realm)
+        .config(String.format("spark.sql.catalog.%s.token", catalogName), fixture.adminToken)
         .config(String.format("spark.sql.catalog.%s.s3.access-key-id", catalogName), "fakekey")
         .config(
             String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
@@ -254,14 +241,13 @@ public class PolarisSparkIntegrationTest {
       onSpark("DROP NAMESPACE " + namespace.getString(0));
     }
     try (Response response =
-        EXT.client()
+        fixture
+            .client
             .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/catalogs/" + catalogName,
-                    EXT.getLocalPort()))
+                String.format("%s/api/management/v1/catalogs/" + catalogName, testEnv.baseUri()))
             .request("application/json")
-            .header("Authorization", "BEARER " + polarisToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
+            .header("Authorization", "BEARER " + fixture.adminToken)
+            .header(REALM_PROPERTY_KEY, fixture.realm)
             .delete()) {
       assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
@@ -303,16 +289,17 @@ public class PolarisSparkIntegrationTest {
 
     LoadTableResponse tableResponse = loadTable(CATALOG_NAME, "ns1", "tb1");
     try (Response registerResponse =
-        EXT.client()
+        fixture
+            .client
             .target(
                 String.format(
-                    "http://localhost:%d/api/catalog/v1/"
+                    "%s/api/catalog/v1/"
                         + EXTERNAL_CATALOG_NAME
                         + "/namespaces/externalns1/register",
-                    EXT.getLocalPort()))
+                    testEnv.baseUri()))
             .request("application/json")
-            .header("Authorization", "BEARER " + polarisToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
+            .header("Authorization", "BEARER " + fixture.adminToken)
+            .header(REALM_PROPERTY_KEY, fixture.realm)
             .post(
                 Entity.json(
                     ImmutableRegisterTableRequest.builder()
@@ -344,14 +331,15 @@ public class PolarisSparkIntegrationTest {
     notificationRequest.setPayload(updateNotification);
     notificationRequest.setNotificationType(NotificationType.UPDATE);
     try (Response notifyResponse =
-        EXT.client()
+        fixture
+            .client
             .target(
                 String.format(
-                    "http://localhost:%d/api/catalog/v1/%s/namespaces/externalns1/tables/mytb1/notifications",
-                    EXT.getLocalPort(), EXTERNAL_CATALOG_NAME))
+                    "%s/api/catalog/v1/%s/namespaces/externalns1/tables/mytb1/notifications",
+                    testEnv.baseUri(), EXTERNAL_CATALOG_NAME))
             .request("application/json")
-            .header("Authorization", "BEARER " + polarisToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
+            .header("Authorization", "BEARER " + fixture.adminToken)
+            .header(REALM_PROPERTY_KEY, fixture.realm)
             .post(Entity.json(notificationRequest))) {
       assertThat(notifyResponse)
           .returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
@@ -378,21 +366,22 @@ public class PolarisSparkIntegrationTest {
 
   private LoadTableResponse loadTable(String catalog, String namespace, String table) {
     try (Response response =
-        EXT.client()
+        fixture
+            .client
             .target(
                 String.format(
-                    "http://localhost:%d/api/catalog/v1/%s/namespaces/%s/tables/%s",
-                    EXT.getLocalPort(), catalog, namespace, table))
+                    "%s/api/catalog/v1/%s/namespaces/%s/tables/%s",
+                    testEnv.baseUri(), catalog, namespace, table))
             .request("application/json")
-            .header("Authorization", "BEARER " + polarisToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
+            .header("Authorization", "BEARER " + fixture.adminToken)
+            .header(REALM_PROPERTY_KEY, fixture.realm)
             .get()) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       return response.readEntity(LoadTableResponse.class);
     }
   }
 
-  private static Dataset<Row> onSpark(@Language("SQL") String sql) {
+  private Dataset<Row> onSpark(@Language("SQL") String sql) {
     return spark.sql(sql);
   }
 }

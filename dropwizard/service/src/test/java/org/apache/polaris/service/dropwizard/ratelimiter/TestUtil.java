@@ -21,10 +21,11 @@ package org.apache.polaris.service.dropwizard.ratelimiter;
 import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import java.util.function.Consumer;
-import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
+import org.apache.polaris.service.dropwizard.test.PolarisIntegrationTestFixture;
+import org.apache.polaris.service.dropwizard.test.TestEnvironment;
 
 /** Common test utils for testing rate limiting */
 public class TestUtil {
@@ -33,20 +34,15 @@ public class TestUtil {
    * of the response. This is a relatively simple type of request that can be used for validating
    * whether the rate limiter intervenes.
    */
-  public static Consumer<Response.Status> constructRequestAsserter(
-      DropwizardAppExtension<PolarisApplicationConfig> dropwizardAppExtension,
-      String userToken,
-      String realm) {
+  public static Consumer<Status> constructRequestAsserter(
+      TestEnvironment testEnv, PolarisIntegrationTestFixture fixture, String realm) {
     return (Response.Status status) -> {
       try (Response response =
-          dropwizardAppExtension
-              .client()
-              .target(
-                  String.format(
-                      "http://localhost:%d/api/management/v1/principal-roles",
-                      dropwizardAppExtension.getLocalPort()))
+          fixture
+              .client
+              .target(String.format("%s/api/management/v1/principal-roles", testEnv.baseUri()))
               .request("application/json")
-              .header("Authorization", "Bearer " + userToken)
+              .header("Authorization", "Bearer " + fixture.adminToken)
               .header(REALM_PROPERTY_KEY, realm)
               .get()) {
         assertThat(response).returns(status.getStatusCode(), Response::getStatus);
