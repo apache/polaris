@@ -69,11 +69,6 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
     }
   }
 
-  @Override
-  public Logger getLogger() {
-    return LOGGER;
-  }
-
   private boolean cleanUpManifestFile(
       ManifestFile manifestFile, FileIO fileIO, TableIdentifier tableId) {
     // if the file doesn't exist, we assume that another task execution was successful, but

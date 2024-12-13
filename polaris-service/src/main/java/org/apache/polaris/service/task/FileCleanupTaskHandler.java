@@ -54,8 +54,6 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
   @Override
   public abstract boolean handleTask(TaskEntity task);
 
-  public abstract Logger getLogger();
-
   public CompletableFuture<Void> tryDelete(
       TableIdentifier tableId,
       FileIO fileIO,
@@ -64,7 +62,7 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
       Throwable e,
       int attempt) {
     if (e != null && attempt <= MAX_ATTEMPTS) {
-      getLogger()
+      LOGGER
           .atWarn()
           .addKeyValue("file", file)
           .addKeyValue("attempt", attempt)
@@ -84,7 +82,7 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
               if (TaskUtils.exists(file, fileIO)) {
                 fileIO.deleteFile(file);
               } else {
-                getLogger()
+                LOGGER
                     .atInfo()
                     .addKeyValue("file", file)
                     .addKeyValue("baseFile", baseFile != null ? baseFile : "")
@@ -95,7 +93,7 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
             executorService)
         .exceptionallyComposeAsync(
             newEx -> {
-              getLogger()
+              LOGGER
                   .atWarn()
                   .addKeyValue("file", file)
                   .addKeyValue("tableIdentifier", tableId)

@@ -97,10 +97,5 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
     }
   }
 
-  @Override
-  public Logger getLogger() {
-    return LOGGER;
-  }
-
   public record BatchFileCleanupTask(TableIdentifier tableId, List<String> batchFiles) {}
 }
