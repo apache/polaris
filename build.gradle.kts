@@ -67,6 +67,9 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("LICENSE")
   excludes.add("NOTICE")
 
+  // Manifest files do not allow comments
+  excludes.add("tools/version/src/jarTest/resources/META-INF/FAKE_MANIFEST.MF")
+
   excludes.add("ide-name.txt")
   excludes.add("version.txt")
   excludes.add(".git")
