@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.service.context;
 
-import static org.apache.polaris.service.context.DefaultRealmContextResolver.parseBearerTokenAsKvPairs;
-
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.time.Clock;
@@ -46,9 +44,6 @@ import org.slf4j.LoggerFactory;
 public class DefaultCallContextResolver implements CallContextResolver {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultCallContextResolver.class);
 
-  public static final String PRINCIPAL_PROPERTY_KEY = "principal";
-  public static final String PRINCIPAL_PROPERTY_DEFAULT_VALUE = "default-principal";
-
   @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject private PolarisConfigurationStore configurationStore;
 
@@ -67,16 +62,6 @@ public class DefaultCallContextResolver implements CallContextResolver {
         .addKeyValue("queryParams", queryParams)
         .addKeyValue("headers", headers)
         .log("Resolving CallContext");
-    final Map<String, String> parsedProperties = parseBearerTokenAsKvPairs(headers);
-
-    if (!parsedProperties.containsKey(PRINCIPAL_PROPERTY_KEY)) {
-      LOGGER.warn(
-          "Failed to parse {} from headers ({}); using {}",
-          PRINCIPAL_PROPERTY_KEY,
-          headers,
-          PRINCIPAL_PROPERTY_DEFAULT_VALUE);
-      parsedProperties.put(PRINCIPAL_PROPERTY_KEY, PRINCIPAL_PROPERTY_DEFAULT_VALUE);
-    }
 
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     PolarisMetaStoreSession metaStoreSession =
