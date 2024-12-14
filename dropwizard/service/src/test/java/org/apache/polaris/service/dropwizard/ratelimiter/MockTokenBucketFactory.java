@@ -23,7 +23,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.smallrye.common.annotation.Identifier;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import org.apache.polaris.service.ratelimiter.RealmTokenBucketRateLimiter;
+import org.apache.polaris.service.ratelimiter.DefaultTokenBucketFactory;
 import org.threeten.extra.MutableClock;
 
 /** TokenBucketFactory with a mock clock */

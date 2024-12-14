@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
+import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.context.CallContext;
@@ -42,5 +43,10 @@ public class RealmTokenBucketRateLimiter implements RateLimiter {
     return tokenBucketFactory
         .getOrCreateTokenBucket(CallContext.getCurrentContext().getRealmContext())
         .tryAcquire();
+  }
+
+  @VisibleForTesting
+  public void setTokenBucketFactory(TokenBucketFactory tokenBucketFactory) {
+    this.tokenBucketFactory = tokenBucketFactory;
   }
 }

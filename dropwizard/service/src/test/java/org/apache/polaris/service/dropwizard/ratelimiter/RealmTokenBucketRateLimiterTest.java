@@ -18,20 +18,21 @@
  */
 package org.apache.polaris.service.dropwizard.ratelimiter;
 
-import static org.apache.polaris.service.ratelimiter.MockTokenBucketFactory.CLOCK;
+import static org.apache.polaris.service.dropwizard.ratelimiter.MockTokenBucketFactory.CLOCK;
 
 import java.time.Duration;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.service.ratelimiter.DefaultTokenBucketFactory;
+import org.apache.polaris.service.ratelimiter.RealmTokenBucketRateLimiter;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 /** Main unit test class for TokenBucketRateLimiter */
 public class RealmTokenBucketRateLimiterTest {
-
   @Test
   void testDifferentBucketsDontTouch() {
     RealmTokenBucketRateLimiter rateLimiter = new RealmTokenBucketRateLimiter();
-    rateLimiter.tokenBucketFactory = new DefaultTokenBucketFactory(10, 10, CLOCK);
+    rateLimiter.setTokenBucketFactory(new DefaultTokenBucketFactory(10, 10, CLOCK));
 
     for (int i = 0; i < 202; i++) {
       String realm = (i % 2 == 0) ? "realm1" : "realm2";
