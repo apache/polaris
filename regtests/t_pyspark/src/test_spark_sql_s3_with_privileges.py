@@ -40,6 +40,7 @@ from polaris.management import ApiClient as ManagementApiClient
 from polaris.management import PolarisDefaultApi, Principal, PrincipalRole, CatalogRole, \
   CatalogGrant, CatalogPrivilege, ApiException, CreateCatalogRoleRequest, CreatePrincipalRoleRequest, \
   CreatePrincipalRequest, AddGrantRequest, GrantCatalogRoleRequest, GrantPrincipalRoleRequest, UpdateCatalogRequest
+from conftest import create_principal, create_principal_role, create_catalog_role
 
 
 @pytest.fixture
@@ -602,15 +603,6 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
     assert len(objects['CommonPrefixes']) >= 3
 
     print(f"Found common prefixes in S3 {objects['CommonPrefixes']}")
-    objs_to_delete = []
-    for prefix in objects['CommonPrefixes']:
-      data_objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                                     Prefix=f'{prefix["Prefix"]}schema/{table_name}/')
-      assert data_objects is not None
-      print(data_objects)
-      assert 'Contents' in data_objects
-      objs_to_delete.extend([{'Key': obj['Key']} for obj in data_objects['Contents']])
-
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
                               Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/metadata/')
     assert objects is not None
@@ -618,14 +610,10 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
     assert len(objects['Contents']) == 15  # 5 metadata.json files, 4 manifest lists, and 6 manifests
     print(f"Found {len(objects['Contents'])} metadata files in S3 before drop")
 
-    # use the api client to ensure the purge flag is set to true
-    snowman_catalog_client.drop_table(snowflake_catalog.name,
-                                      codecs.decode("1F", "hex").decode("UTF-8").join(['db1', 'schema']), table_name,
-                                      purge_requested=True)
+    spark.sql(f'DROP TABLE {table_name} PURGE')
     spark.sql('DROP NAMESPACE db1.schema')
     spark.sql('DROP NAMESPACE db1')
-    s3.delete_objects(Bucket=test_bucket,
-                      Delete={'Objects': objs_to_delete})
+
 
 
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
@@ -700,15 +688,6 @@ def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalo
     assert len(objects['CommonPrefixes']) >= 3
 
     print(f"Found common prefixes in S3 {objects['CommonPrefixes']}")
-    objs_to_delete = []
-    for prefix in objects['CommonPrefixes']:
-      data_objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                                     Prefix=f'{prefix["Prefix"]}')
-      assert data_objects is not None
-      print(data_objects)
-      assert 'Contents' in data_objects
-      objs_to_delete.extend([{'Key': obj['Key']} for obj in data_objects['Contents']])
-
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
                               Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/metadata/')
     assert objects is not None
@@ -716,14 +695,9 @@ def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalo
     assert len(objects['Contents']) == 15  # 5 metadata.json files, 4 manifest lists, and 6 manifests
     print(f"Found {len(objects['Contents'])} metadata files in S3 before drop")
 
-    # use the api client to ensure the purge flag is set to true
-    snowman_catalog_client.drop_table(snowflake_catalog.name,
-                                      codecs.decode("1F", "hex").decode("UTF-8").join(['db1', 'schema']), table_name,
-                                      purge_requested=True)
+    spark.sql(f'DROP TABLE {table_name} PURGE')
     spark.sql('DROP NAMESPACE db1.schema')
     spark.sql('DROP NAMESPACE db1')
-    s3.delete_objects(Bucket=test_bucket,
-                      Delete={'Objects': objs_to_delete})
 
 
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
@@ -1003,32 +977,6 @@ def test_spark_credentials_s3_direct_without_read(
   )
 
 
-def create_principal(polaris_url, polaris_catalog_url, api, principal_name):
-  principal = Principal(name=principal_name, type="SERVICE")
-  try:
-    principal_result = api.create_principal(CreatePrincipalRequest(principal=principal))
-
-    token_client = CatalogApiClient(Configuration(username=principal_result.principal.client_id,
-                                                  password=principal_result.credentials.client_secret,
-                                                  host=polaris_catalog_url))
-    oauth_api = IcebergOAuth2API(token_client)
-    token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=principal_result.principal.client_id,
-                                client_secret=principal_result.credentials.client_secret,
-                                grant_type='client_credentials',
-                                _headers={'realm': 'default-realm'})
-    rotate_client = ManagementApiClient(Configuration(access_token=token.access_token,
-                                                      host=polaris_url))
-    rotate_api = PolarisDefaultApi(rotate_client)
-
-    rotate_credentials = rotate_api.rotate_credentials(principal_name=principal_name)
-    return rotate_credentials
-  except ApiException as e:
-    if e.status == 409:
-      return rotate_api.rotate_credentials(principal_name=principal_name)
-    else:
-      raise e
-
-
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
                     reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, snowflake_catalog, polaris_catalog_url,
@@ -1134,23 +1082,3 @@ def test_spark_ctas(snowflake_catalog, polaris_catalog_url, snowman):
     # Run CTAS
     spark.sql(f"CREATE TABLE {table_name}_t2 AS SELECT * FROM {table_name}_t1")
 
-
-def create_catalog_role(api, catalog, role_name):
-  catalog_role = CatalogRole(name=role_name)
-  try:
-    api.create_catalog_role(catalog_name=catalog.name,
-                            create_catalog_role_request=CreateCatalogRoleRequest(catalog_role=catalog_role))
-    return api.get_catalog_role(catalog_name=catalog.name, catalog_role_name=role_name)
-  except ApiException as e:
-    return api.get_catalog_role(catalog_name=catalog.name, catalog_role_name=role_name)
-  else:
-    raise e
-
-
-def create_principal_role(api, role_name):
-  principal_role = PrincipalRole(name=role_name)
-  try:
-    api.create_principal_role(CreatePrincipalRoleRequest(principal_role=principal_role))
-    return api.get_principal_role(principal_role_name=role_name)
-  except ApiException as e:
-    return api.get_principal_role(principal_role_name=role_name)

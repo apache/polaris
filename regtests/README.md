@@ -60,7 +60,6 @@ AWS_ACCESS_KEY_ID=<your_access_key>
 AWS_SECRET_ACCESS_KEY=<your_secret_key>
 AWS_STORAGE_BUCKET=<your_s3_bucket>
 AWS_ROLE_ARN=<iam_role_with_access_to_bucket>
-AWS_TEST_BASE=s3://<your_s3_bucket>/<any_path>
 
 # GCP variables
 GCS_TEST_ENABLED=true
@@ -69,6 +68,8 @@ GOOGLE_APPLICATION_CREDENTIALS=/tmp/credentials/<your_credentials.json>
 
 # Azure variables
 AZURE_TEST_ENABLED=true
+AZURE_CLIENT_ID=<your_access_key>
+AZURE_CLIENT_SECRET=<your_secret_key>
 AZURE_TENANT_ID=<your_tenant_id>
 AZURE_DFS_TEST_BASE=abfss://<container-name>@<storage-account-name>.dfs.core.windows.net/<any_path>
 AZURE_BLOB_TEST_BASE=abfss://<container-name>@<storage-account-name>.blob.core.windows.net/<any_path>
