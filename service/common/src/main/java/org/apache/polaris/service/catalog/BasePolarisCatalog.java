@@ -263,7 +263,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             CatalogProperties.FILE_IO_IMPL);
       }
     }
-    CallContext.getCurrentContext().closeables().addCloseable(this);
+    callContext.closeables().addCloseable(this);
     this.closeableGroup = new CloseableGroup();
     closeableGroup.addCloseable(metricsReporter());
     closeableGroup.setSuppressCloseFailure(true);
@@ -447,8 +447,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           "Scheduled cleanup task {} for table {}",
           dropEntityResult.getCleanupTaskId(),
           tableIdentifier);
-      taskExecutor.addTaskHandlerContext(
-          dropEntityResult.getCleanupTaskId(), CallContext.getCurrentContext());
+      taskExecutor.addTaskHandlerContext(dropEntityResult.getCleanupTaskId(), callContext);
     }
 
     return true;

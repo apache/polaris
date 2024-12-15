@@ -24,6 +24,7 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-api-management-model"))
+  implementation(project(":polaris-core"))
 
   compileOnly(platform(libs.jackson.bom))
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
