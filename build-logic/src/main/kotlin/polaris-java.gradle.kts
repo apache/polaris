@@ -109,3 +109,34 @@ tasks.withType<Javadoc>().configureEach {
   // don't spam log w/ "warning: no @param/@return"
   opt.addStringOption("Xdoclint:-reference", "-quiet")
 }
+
+tasks.register("printRuntimeClasspath").configure {
+  group = "help"
+  description = "Print the classpath as a path string to be used when running tools like 'jol'"
+  inputs.files(configurations.named("runtimeClasspath"))
+  doLast {
+    val cp = configurations.getByName("runtimeClasspath")
+    val def = configurations.getByName("runtimeElements")
+    logger.lifecycle("${def.outgoing.artifacts.files.asPath}:${cp.asPath}")
+  }
+}
+
+configurations.all {
+  rootProject
+    .file("gradle/banned-dependencies.txt")
+    .readText(Charsets.UTF_8)
+    .trim()
+    .lines()
+    .map { it.trim() }
+    .filterNot { it.isBlank() || it.startsWith("#") }
+    .forEach { line ->
+      val idx = line.indexOf(':')
+      if (idx == -1) {
+        exclude(group = line)
+      } else {
+        val group = line.substring(0, idx)
+        val module = line.substring(idx + 1)
+        exclude(group = group, module = module)
+      }
+    }
+}
