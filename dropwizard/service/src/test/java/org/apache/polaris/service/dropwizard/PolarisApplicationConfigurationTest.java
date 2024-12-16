@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service;
+package org.apache.polaris.service.dropwizard;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,7 +26,6 @@ import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.extension.persistence.impl.eclipselink.EclipseLinkPolarisMetaStoreManagerFactory;
-import org.apache.polaris.service.dropwizard.PolarisApplication;
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.junit.jupiter.api.Nested;
