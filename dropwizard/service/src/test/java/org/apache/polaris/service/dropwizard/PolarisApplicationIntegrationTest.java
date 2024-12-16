@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service;
+package org.apache.polaris.service.dropwizard;
 
 import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.apache.polaris.service.dropwizard.throttling.RequestThrottlingErrorResponse.RequestThrottlingErrorType.REQUEST_TOO_LARGE;
@@ -80,7 +80,6 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.auth.BasePolarisAuthenticator;
-import org.apache.polaris.service.dropwizard.PolarisApplication;
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
 import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
 import org.apache.polaris.service.dropwizard.test.PolarisRealm;

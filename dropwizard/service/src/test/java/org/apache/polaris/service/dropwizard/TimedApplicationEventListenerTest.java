@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service;
+package org.apache.polaris.service.dropwizard;
 
 import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.apache.polaris.service.dropwizard.TimedApplicationEventListener.SINGLETON_METRIC_NAME;
@@ -41,8 +41,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApi;
-import org.apache.polaris.service.dropwizard.PolarisApplication;
-import org.apache.polaris.service.dropwizard.TimedApplicationEventListener;
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
 import org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry;
 import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
