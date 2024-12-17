@@ -19,7 +19,6 @@
 package org.apache.polaris.service.persistence;
 
 import com.google.common.annotations.VisibleForTesting;
-import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import java.util.Collections;
@@ -30,6 +29,7 @@ import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.inject.Identifier;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;

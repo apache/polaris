@@ -50,8 +50,6 @@ dependencies {
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.ws.rs.api)
 
-  compileOnly(libs.smallrye.common.annotation)
-
   implementation(platform(libs.jackson.bom))
   implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
   implementation("com.fasterxml.jackson.core:jackson-annotations")

@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.service.auth;
 
-import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.util.Optional;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.inject.Identifier;
 
 @Identifier("default")
 public class DefaultPolarisAuthenticator extends BasePolarisAuthenticator {

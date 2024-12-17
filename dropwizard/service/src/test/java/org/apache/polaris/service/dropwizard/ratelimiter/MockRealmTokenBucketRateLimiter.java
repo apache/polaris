@@ -20,10 +20,10 @@ package org.apache.polaris.service.dropwizard.ratelimiter;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import io.smallrye.common.annotation.Identifier;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import org.apache.polaris.core.inject.Identifier;
 import org.apache.polaris.service.ratelimiter.RealmTokenBucketRateLimiter;
 import org.threeten.extra.MutableClock;
 

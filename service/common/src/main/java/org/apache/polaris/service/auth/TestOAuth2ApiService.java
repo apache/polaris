@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.auth;
 
-import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -31,6 +30,7 @@ import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.inject.Identifier;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;

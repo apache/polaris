@@ -62,8 +62,6 @@ dependencies {
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.jakarta.ws.rs.api)
 
-  compileOnly(libs.smallrye.common.annotation)
-
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
 
@@ -85,8 +83,6 @@ dependencies {
   implementation("io.opentelemetry:opentelemetry-sdk-trace")
   implementation("io.opentelemetry:opentelemetry-exporter-logging")
   implementation(libs.opentelemetry.semconv)
-
-  implementation(libs.smallrye.common.annotation)
 
   compileOnly(libs.swagger.annotations)
   compileOnly(libs.spotbugs.annotations)
@@ -117,8 +113,6 @@ dependencies {
   testImplementation("software.amazon.awssdk:dynamodb")
 
   testImplementation(libs.auth0.jwt)
-
-  testCompileOnly(libs.smallrye.common.annotation)
 
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")

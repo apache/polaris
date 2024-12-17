@@ -19,10 +19,10 @@
 package org.apache.polaris.service.context;
 
 import com.google.common.base.Splitter;
-import io.smallrye.common.annotation.Identifier;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.inject.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.service.auth;
 
-import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.inject.Identifier;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 
 @Identifier("symmetric-key")

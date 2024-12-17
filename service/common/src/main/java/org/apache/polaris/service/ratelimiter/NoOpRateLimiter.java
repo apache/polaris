@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import io.smallrye.common.annotation.Identifier;
+import org.apache.polaris.core.inject.Identifier;
 
 /** Rate limiter that always allows the request */
 @Identifier("no-op")

@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.service.auth;
 
-import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.inject.Identifier;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 
 @Identifier("rsa-key-pair")

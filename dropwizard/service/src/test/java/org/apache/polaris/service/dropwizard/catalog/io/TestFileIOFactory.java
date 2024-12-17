@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.dropwizard.catalog.io;
 
-import io.smallrye.common.annotation.Identifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +26,7 @@ import java.util.function.Supplier;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.inject.Identifier;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 
 /**

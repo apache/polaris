@@ -16,12 +16,20 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-[org.apache.polaris.service.dropwizard.catalog.io.TestFileIOFactory]S
-contract={org.apache.polaris.service.catalog.io.FileIOFactory}
-name=test
-qualifier={org.apache.polaris.core.inject.Identifier}
+package org.apache.polaris.core.inject;
 
-[org.apache.polaris.service.dropwizard.ratelimiter.MockRealmTokenBucketRateLimiter]S
-contract={org.apache.polaris.service.ratelimiter.RateLimiter}
-name=mock-realm-token-bucket
-qualifier={org.apache.polaris.core.inject.Identifier}
+import jakarta.inject.Qualifier;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+/** String-based {@link Qualifier qualifier}. */
+@Qualifier
+@Documented
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.METHOD, ElementType.TYPE})
+public @interface Identifier {
+  String value();
+}
