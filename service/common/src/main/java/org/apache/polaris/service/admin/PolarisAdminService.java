@@ -518,6 +518,7 @@ public class PolarisAdminService {
 
     Set<String> newCatalogLocations = getCatalogLocations(catalogEntity);
     return listCatalogsUnsafe().stream()
+        .filter(Objects::nonNull)
         .map(CatalogEntity::new)
         .anyMatch(
             existingCatalog -> {
