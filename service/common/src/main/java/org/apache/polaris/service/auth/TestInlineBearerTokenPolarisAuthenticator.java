@@ -19,7 +19,6 @@
 package org.apache.polaris.service.auth;
 
 import com.google.common.base.Splitter;
-import io.smallrye.common.annotation.Identifier;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -29,6 +28,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.inject.Identifier;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

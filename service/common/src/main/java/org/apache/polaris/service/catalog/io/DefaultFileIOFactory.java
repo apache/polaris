@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.service.catalog.io;
 
-import io.smallrye.common.annotation.Identifier;
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.inject.Identifier;
 
 /** A simple FileIOFactory implementation that defers all the work to the Iceberg SDK */
 @Identifier("default")

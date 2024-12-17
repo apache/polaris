@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import io.smallrye.common.annotation.Identifier;
 import java.time.InstantSource;
+import org.apache.polaris.core.inject.Identifier;
 
 /**
  * Token bucket implementation of a Polaris RateLimiter. Acquires tokens at a fixed rate and has a

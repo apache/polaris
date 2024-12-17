@@ -20,7 +20,6 @@ package org.apache.polaris.service.auth;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -29,6 +28,7 @@ import org.apache.hadoop.hdfs.web.oauth2.OAuth2Constants;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.inject.Identifier;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;

@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.context;
 
-import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import java.time.ZoneId;
@@ -29,6 +28,7 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.inject.Identifier;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.slf4j.Logger;
