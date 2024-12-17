@@ -26,7 +26,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.polaris.service.ratelimiter.TokenBucketRateLimiter;
+import org.apache.polaris.service.ratelimiter.TokenBucket;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.threeten.extra.MutableClock;
@@ -38,19 +38,18 @@ public class TokenBucketRateLimiterTest {
     MutableClock clock = MutableClock.of(Instant.now(), ZoneOffset.UTC);
     clock.add(Duration.ofSeconds(5));
 
-    RateLimitResultAsserter asserter =
-        new RateLimitResultAsserter(new TokenBucketRateLimiter(10, 100, clock));
+    TokenBucket tokenBucket = new TokenBucket(10, 100, clock);
 
-    asserter.canAcquire(100);
-    asserter.cantAcquire();
+    assertCanAcquire(tokenBucket, 100);
+    assertCannotAcquire(tokenBucket);
 
     clock.add(Duration.ofSeconds(1));
-    asserter.canAcquire(10);
-    asserter.cantAcquire();
+    assertCanAcquire(tokenBucket, 10);
+    assertCannotAcquire(tokenBucket);
 
     clock.add(Duration.ofSeconds(10));
-    asserter.canAcquire(100);
-    asserter.cantAcquire();
+    assertCanAcquire(tokenBucket, 100);
+    assertCannotAcquire(tokenBucket);
   }
 
   /**
@@ -63,9 +62,8 @@ public class TokenBucketRateLimiterTest {
     int numTasks = 50000;
     int tokensPerSecond = 10; // Can be anything above 0
 
-    TokenBucketRateLimiter rl =
-        new TokenBucketRateLimiter(
-            tokensPerSecond, maxTokens, Clock.fixed(Instant.now(), ZoneOffset.UTC));
+    TokenBucket rl =
+        new TokenBucket(tokensPerSecond, maxTokens, Clock.fixed(Instant.now(), ZoneOffset.UTC));
     AtomicInteger numAcquired = new AtomicInteger();
     CountDownLatch startLatch = new CountDownLatch(numTasks);
     CountDownLatch endLatch = new CountDownLatch(numTasks);
@@ -94,5 +92,17 @@ public class TokenBucketRateLimiterTest {
 
     endLatch.await();
     Assertions.assertEquals(maxTokens, numAcquired.get());
+  }
+
+  private void assertCanAcquire(TokenBucket tokenBucket, int times) {
+    for (int i = 0; i < times; i++) {
+      Assertions.assertTrue(tokenBucket.tryAcquire());
+    }
+  }
+
+  private void assertCannotAcquire(TokenBucket tokenBucket) {
+    for (int i = 0; i < 5; i++) {
+      Assertions.assertFalse(tokenBucket.tryAcquire());
+    }
   }
 }

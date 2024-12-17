@@ -172,3 +172,11 @@ maxRequestBodyBytes: -1
 # Optional, not specifying a "rateLimiter" section also means no rate limiter
 rateLimiter:
   type: no-op
+  # Uncomment to use the realm-token-bucket rate limiter
+  # type: realm-token-bucket
+
+# The token bucket factory to use when using the realm-token-bucket rate limiter.
+tokenBucketFactory:
+  type: default
+  requestsPerSecond: 9999
+  windowSeconds: 10

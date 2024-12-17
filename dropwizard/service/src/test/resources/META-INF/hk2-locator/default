@@ -21,7 +21,7 @@ contract={org.apache.polaris.service.catalog.io.FileIOFactory}
 name=test
 qualifier={io.smallrye.common.annotation.Identifier}
 
-[org.apache.polaris.service.dropwizard.ratelimiter.MockRealmTokenBucketRateLimiter]S
-contract={org.apache.polaris.service.ratelimiter.RateLimiter}
-name=mock-realm-token-bucket
+[org.apache.polaris.service.dropwizard.ratelimiter.MockTokenBucketFactory]S
+contract={org.apache.polaris.service.ratelimiter.TokenBucketFactory}
+name=mock
 qualifier={io.smallrye.common.annotation.Identifier}

@@ -18,36 +18,19 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
-import java.time.Clock;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
+import jakarta.inject.Inject;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 
 /**
- * Rate limiter that maps the request's realm identifier to its own TokenBucketRateLimiter, with its
- * own capacity.
+ * Rate limiter that maps the request's realm identifier to its own TokenBucket, with its own
+ * capacity.
  */
 @Identifier("realm-token-bucket")
 public class RealmTokenBucketRateLimiter implements RateLimiter {
-  private final long requestsPerSecond;
-  private final long windowSeconds;
-  private final Map<String, RateLimiter> perRealmLimiters;
 
-  @VisibleForTesting
-  @JsonCreator
-  public RealmTokenBucketRateLimiter(
-      @JsonProperty("requestsPerSecond") final long requestsPerSecond,
-      @JsonProperty("windowSeconds") final long windowSeconds) {
-    this.requestsPerSecond = requestsPerSecond;
-    this.windowSeconds = windowSeconds;
-    this.perRealmLimiters = new ConcurrentHashMap<>();
-  }
+  @Inject protected TokenBucketFactory tokenBucketFactory;
 
   /**
    * This signifies that a request is being made. That is, the rate limiter should count the request
@@ -56,26 +39,14 @@ public class RealmTokenBucketRateLimiter implements RateLimiter {
    * @return Whether the request is allowed to proceed by the rate limiter
    */
   @Override
-  public boolean tryAcquire() {
-    String key =
-        Optional.ofNullable(CallContext.getCurrentContext())
-            .map(CallContext::getRealmContext)
-            .map(RealmContext::getRealmIdentifier)
-            .orElse("");
-
-    return perRealmLimiters
-        .computeIfAbsent(
-            key,
-            (k) ->
-                new TokenBucketRateLimiter(
-                    requestsPerSecond,
-                    Math.multiplyExact(requestsPerSecond, windowSeconds),
-                    getClock()))
+  public boolean canProceed() {
+    return tokenBucketFactory
+        .getOrCreateTokenBucket(CallContext.getCurrentContext().getRealmContext())
         .tryAcquire();
   }
 
   @VisibleForTesting
-  protected Clock getClock() {
-    return Clock.systemUTC();
+  public void setTokenBucketFactory(TokenBucketFactory tokenBucketFactory) {
+    this.tokenBucketFactory = tokenBucketFactory;
   }
 }

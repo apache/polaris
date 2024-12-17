@@ -18,41 +18,49 @@
  */
 package org.apache.polaris.service.dropwizard.ratelimiter;
 
+import static org.apache.polaris.service.dropwizard.ratelimiter.MockTokenBucketFactory.CLOCK;
+
 import java.time.Duration;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.service.ratelimiter.RateLimiter;
+import org.apache.polaris.service.ratelimiter.DefaultTokenBucketFactory;
+import org.apache.polaris.service.ratelimiter.RealmTokenBucketRateLimiter;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.threeten.extra.MutableClock;
 
 /** Main unit test class for TokenBucketRateLimiter */
 public class RealmTokenBucketRateLimiterTest {
   @Test
   void testDifferentBucketsDontTouch() {
-    RateLimiter rateLimiter = new MockRealmTokenBucketRateLimiter(10, 10);
-    RateLimitResultAsserter asserter = new RateLimitResultAsserter(rateLimiter);
-    MutableClock clock = MockRealmTokenBucketRateLimiter.CLOCK;
+    RealmTokenBucketRateLimiter rateLimiter = new RealmTokenBucketRateLimiter();
+    rateLimiter.setTokenBucketFactory(new DefaultTokenBucketFactory(10, 10, CLOCK));
 
     for (int i = 0; i < 202; i++) {
       String realm = (i % 2 == 0) ? "realm1" : "realm2";
       CallContext.setCurrentContext(CallContext.of(() -> realm, null));
 
       if (i < 200) {
-        asserter.canAcquire(1);
+        Assertions.assertTrue(rateLimiter.canProceed());
       } else {
-        asserter.cantAcquire();
+        assertCannotProceed(rateLimiter);
       }
     }
 
-    clock.add(Duration.ofSeconds(1));
+    CLOCK.add(Duration.ofSeconds(1));
     for (int i = 0; i < 22; i++) {
       String realm = (i % 2 == 0) ? "realm1" : "realm2";
       CallContext.setCurrentContext(CallContext.of(() -> realm, null));
 
       if (i < 20) {
-        asserter.canAcquire(1);
+        Assertions.assertTrue(rateLimiter.canProceed());
       } else {
-        asserter.cantAcquire();
+        assertCannotProceed(rateLimiter);
       }
+    }
+  }
+
+  private void assertCannotProceed(RealmTokenBucketRateLimiter rateLimiter) {
+    for (int i = 0; i < 5; i++) {
+      Assertions.assertFalse(rateLimiter.canProceed());
     }
   }
 }

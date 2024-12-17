@@ -21,26 +21,20 @@ package org.apache.polaris.service.dropwizard.ratelimiter;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.smallrye.common.annotation.Identifier;
-import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import org.apache.polaris.service.ratelimiter.RealmTokenBucketRateLimiter;
+import org.apache.polaris.service.ratelimiter.DefaultTokenBucketFactory;
 import org.threeten.extra.MutableClock;
 
-/** RealmTokenBucketRateLimiter with a mock clock */
-@Identifier("mock-realm-token-bucket")
-public class MockRealmTokenBucketRateLimiter extends RealmTokenBucketRateLimiter {
+/** TokenBucketFactory with a mock clock */
+@Identifier("mock")
+public class MockTokenBucketFactory extends DefaultTokenBucketFactory {
   public static MutableClock CLOCK = MutableClock.of(Instant.now(), ZoneOffset.UTC);
 
   @JsonCreator
-  public MockRealmTokenBucketRateLimiter(
-      @JsonProperty("requestsPerSecond") final long requestsPerSecond,
-      @JsonProperty("windowSeconds") final long windowSeconds) {
-    super(requestsPerSecond, windowSeconds);
-  }
-
-  @Override
-  protected Clock getClock() {
-    return CLOCK;
+  public MockTokenBucketFactory(
+      @JsonProperty("requestsPerSecond") long requestsPerSecond,
+      @JsonProperty("windowSeconds") long windowSeconds) {
+    super(requestsPerSecond, windowSeconds, CLOCK);
   }
 }

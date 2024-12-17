@@ -26,5 +26,5 @@ public interface RateLimiter {
    *
    * @return Whether the request is allowed to proceed by the rate limiter
    */
-  boolean tryAcquire();
+  boolean canProceed();
 }
