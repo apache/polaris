@@ -130,13 +130,12 @@ public class PolarisServiceImpl
   }
 
   private void validateStorageConfig(StorageConfigInfo storageConfigInfo) {
-    PolarisCallContext polarisRealmContext =
-        CallContext.getCurrentContext().getPolarisCallContext();
+    PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
     List<String> allowedStorageTypes =
-        polarisRealmContext
+        polarisCallContext
             .getConfigurationStore()
             .getConfiguration(
-                polarisRealmContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+                polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
     if (!allowedStorageTypes.contains(storageConfigInfo.getStorageType().name())) {
       LOGGER
           .atWarn()
