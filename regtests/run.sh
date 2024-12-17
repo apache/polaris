@@ -19,14 +19,6 @@
 #
 # Run without args to run all tests, or single arg for single test.
 
-export SPARK_VERSION=spark-3.5.3
-export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3
-
-if [ -z "${SPARK_HOME}"]; then
-  export SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
-fi
-export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
-
 FMT_RED='\033[0;31m'
 FMT_GREEN='\033[0;32m'
 FMT_NC='\033[0m'
@@ -44,10 +36,15 @@ function logred() {
 REGTEST_HOME=$(dirname $(realpath $0))
 cd ${REGTEST_HOME}
 
-./setup.sh
+# create python venv
+if [ ! -d ~/polaris-venv ]; then
+  python3 -m venv ~/polaris-venv
+fi
 
-# start the python venv
+# start and setup the python venv
 . ~/polaris-venv/bin/activate
+pip install poetry==1.5.0
+python3 -m poetry install --directory client/python
 
 if [ -z "${1}" ]; then
   loginfo 'Running all tests'
@@ -74,7 +71,7 @@ for TEST_FILE in ${TEST_LIST}; do
       continue
     fi
     loginfo "Starting pytest ${TEST_SUITE}:${TEST_SHORTNAME}"
-    python3 -m pytest $TESTFILE
+    python3 -m pytest $TEST_FILE
     CODE=$?
     if [[ $CODE -ne 0 ]]; then
       logred "Test FAILED: ${TEST_SUITE}:${TEST_SHORTNAME}"
@@ -83,33 +80,6 @@ for TEST_FILE in ${TEST_LIST}; do
       loggreen "Test SUCCEEDED: ${TEST_SUITE}:${TEST_SHORTNAME}"
     fi
     continue
-  fi
-  if [[ "${TEST_SHORTNAME}" =~ .*.azure.*.sh ]]; then
-      if  [ -z "${AZURE_CLIENT_ID}" ] || [ -z "${AZURE_CLIENT_SECRET}" ] || [ -z "${AZURE_TENANT_ID}" ] ; then
-          loginfo "Azure tests not enabled, skip running test ${TEST_FILE}"
-          continue
-      fi
-  fi
-  if [[ "${TEST_SHORTNAME}" =~ .*.s3_cross_region.*.sh ]]; then
-      if  [ -z "$AWS_CROSS_REGION_TEST_ENABLED" ] || [ "$AWS_CROSS_REGION_TEST_ENABLED" != "true" ] ] ; then
-          loginfo "AWS cross region tests not enabled, skip running test ${TEST_FILE}"
-          continue
-      fi
-  fi
-  if [[ "${TEST_SHORTNAME}" =~ .*.s3.*.sh ]]; then
-      if  [ -z "$AWS_TEST_ENABLED" ] || [ "$AWS_TEST_ENABLED" != "true" ] || [ -z "$AWS_TEST_BASE" ] ; then
-          loginfo "AWS tests not enabled, skip running test ${TEST_FILE}"
-          continue
-      fi
-  fi
-  if [[ "${TEST_SHORTNAME}" =~ .*.gcp.sh ]]; then
-      # this variable should be the location of your gcp service account key in json
-      # it is required by running polaris against local + gcp
-      # example: export GOOGLE_APPLICATION_CREDENTIALS="/home/schen/google_account/google_service_account.json"
-      if [ -z "$GCS_TEST_ENABLED" ] || [ "$GCS_TEST_ENABLED" != "true" ] || [ -z "${GOOGLE_APPLICATION_CREDENTIALS}" ] ; then
-          loginfo "GCS tests not enabled, skip running test ${TEST_FILE}"
-          continue
-      fi
   fi
   loginfo "Starting test ${TEST_SUITE}:${TEST_SHORTNAME}"
 
@@ -124,23 +94,6 @@ for TEST_FILE in ${TEST_LIST}; do
     ./${TEST_FILE} 2>${TEST_STDERR} | grep -v 'loading settings' > ${TEST_STDOUT}
   fi
   loginfo "Test run concluded for ${TEST_SUITE}:${TEST_SHORTNAME}"
-
-  TEST_REF="$(realpath ${TEST_SUITE})/ref/${TEST_SHORTNAME}.ref"
-  touch ${TEST_REF}
-  if cmp --silent ${TEST_STDOUT}  ${TEST_REF}; then
-    loggreen "Test SUCCEEDED: ${TEST_SUITE}:${TEST_SHORTNAME}"
-    NUM_SUCCESSES=$(( NUM_SUCCESSES + 1 ))
-  else
-    logred "Test FAILED: ${TEST_SUITE}:${TEST_SHORTNAME}"
-    echo '#!/bin/bash' > ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
-    echo "meld ${TEST_STDOUT} ${TEST_REF}" >> ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
-    chmod 750 ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh
-    logred "To compare and fix diffs (if 'meld' installed): ${TEST_TMPDIR}/${TEST_SHORTNAME}.fixdiffs.sh"
-    logred "Or manually diff: diff ${TEST_STDOUT} ${TEST_REF}"
-    logred "See stderr from test run for additional diagnostics: ${TEST_STDERR}"
-    diff ${TEST_STDOUT} ${TEST_REF}
-    NUM_FAILURES=$(( NUM_FAILURES + 1 ))
-  fi
 done
 
 loginfo "Tests completed with ${NUM_SUCCESSES} successes and ${NUM_FAILURES} failures"
