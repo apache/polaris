@@ -82,6 +82,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.iceberg.rest.RESTSerializers;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
@@ -329,7 +330,10 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                 TaskExecutorImpl taskExecutor =
                     new TaskExecutorImpl(taskConfig.executorService(), metaStoreManagerFactory);
                 TaskFileIOSupplier fileIOSupplier =
-                    new TaskFileIOSupplier(metaStoreManagerFactory, fileIOFactory);
+                    new TaskFileIOSupplier(
+                        metaStoreManagerFactory,
+                        fileIOFactory,
+                        configuration.findService(PolarisConfigurationStore.class));
                 taskExecutor.addTaskHandler(
                     new TableCleanupTaskHandler(
                         taskExecutor, metaStoreManagerFactory, fileIOSupplier));
