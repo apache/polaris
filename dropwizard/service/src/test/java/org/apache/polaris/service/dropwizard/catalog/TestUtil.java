@@ -140,8 +140,6 @@ public class TestUtil {
             .header("Authorization", "Bearer " + adminToken.token())
             .header(REALM_PROPERTY_KEY, realm)
             .get()) {
-      // Buffer the entity so we can read it multiple times
-      response.bufferEntity();
       assertStatusCodeWithFailMessage(response, Response.Status.OK.getStatusCode());
 
       CatalogRole catalogRole = response.readEntity(CatalogRole.class);
@@ -182,7 +180,17 @@ public class TestUtil {
     return restCatalog;
   }
 
+  /**
+   * Asserts that the response has the expected status code, with a custom fail message. The
+   * response entity is buffered so it can be read multiple times.
+   *
+   * @param response The response to check
+   * @param expectedStatusCode The expected status code
+   */
   private static void assertStatusCodeWithFailMessage(Response response, int expectedStatusCode) {
+    // Buffer the entity so we can read it multiple times
+    response.bufferEntity();
+
     assertThat(response)
         .withFailMessage(
             "Expected status code %s but got %s with message: %s",
