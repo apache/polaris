@@ -919,14 +919,12 @@ components:
           example: "http[s]://host:port"
         s3.credentials.catalog.accessKeyId:
           type: string
-          description: The environement variable name for the 'ACCESS_KEY_ID' used by the catalog to communicate with S3, default to aws sdk environement variable name
-          default: "AWS_ACCESS_KEY_ID"
-          example: "CATALOG_1_ACCESS_KEY_ENV_VARIABLE_NAME"
+          description: Default to AWS credentials, otherwise set the environement variable name for the 'ACCESS_KEY_ID' used by the catalog to communicate with S3
+          example: "CATALOG_1_ACCESS_KEY_ENV_VARIABLE_NAME or AWS_ACCESS_KEY_ID"
         s3.credentials.catalog.secretAccessKey:
           type: string
-          description: The environement variable name for the 'SECRET_ACCESS_KEY' used by the catalog to communicate with S3, default to aws sdk environement variable name
-          default: "AWS_SECRET_ACCESS_KEY"
-          example: "CATALOG_1_SECRET_KEY_ENV_VARIABLE_NAME"
+          description: Default to AWS credentials, otherwise set the environement variable name for the 'SECRET_ACCESS_KEY' used by the catalog to communicate with S3
+          example: "CATALOG_1_SECRET_KEY_ENV_VARIABLE_NAME or AWS_SECRET_ACCESS_KEY"
         s3.pathStyleAccess:
           type: boolean
           description: if true use path style
@@ -946,7 +944,7 @@ components:
         s3.region:
           type: string
           description: Optional - the s3 region where data is stored
-          example: "rack-1"
+          example: "rack-1 or us-east-1"
         s3.roleArn:
           type: string
           description: Optional - a s3 role arn

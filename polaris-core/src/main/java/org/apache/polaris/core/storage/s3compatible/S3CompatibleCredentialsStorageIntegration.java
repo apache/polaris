@@ -68,9 +68,6 @@ public class S3CompatibleCredentialsStorageIntegration
 
     caI = System.getenv(storageConfig.getS3CredentialsCatalogAccessKeyId());
     caS = System.getenv(storageConfig.getS3CredentialsCatalogSecretAccessKey());
-    if (caI == null || caS == null) {
-      throw new IllegalArgumentException("Expect valid environment variable for catalog keys");
-    }
 
     EnumMap<PolarisCredentialProperty, String> propertiesMap =
         new EnumMap<>(PolarisCredentialProperty.class);
@@ -121,15 +118,25 @@ public class S3CompatibleCredentialsStorageIntegration
 
   public void createStsClient(S3CompatibleStorageConfigurationInfo storageConfig) {
     LOGGER.debug("S3Compatible - createStsClient()");
-    StsClientBuilder stsBuilder = software.amazon.awssdk.services.sts.StsClient.builder();
-    stsBuilder.endpointOverride(URI.create(storageConfig.getS3Endpoint()));
-    stsBuilder.credentialsProvider(
-        StaticCredentialsProvider.create(AwsBasicCredentials.create(caI, caS)));
-    this.stsClient = stsBuilder.build();
-    LOGGER.debug("S3Compatible - stsClient successfully built");
+    try {
+      StsClientBuilder stsBuilder = software.amazon.awssdk.services.sts.StsClient.builder();
+      stsBuilder.endpointOverride(URI.create(storageConfig.getS3Endpoint()));
+      if (caI != null && caS != null) {
+        // else default provider build credentials from profile or standard AWS env var
+        stsBuilder.credentialsProvider(
+            StaticCredentialsProvider.create(AwsBasicCredentials.create(caI, caS)));
+      }
+      this.stsClient = stsBuilder.build();
+      LOGGER.debug("S3Compatible - stsClient successfully built");
+
+    } catch (Exception e) {
+      System.err.println("S3Compatible - stsClient - build failure : " + e.getMessage());
+    }
   }
 
-  /* function from AwsCredentialsStorageIntegration but without roleArn parameter */
+  /*
+   * function from AwsCredentialsStorageIntegration but without roleArn parameter
+   */
   private IamPolicy policyString(
       boolean allowList, Set<String> readLocations, Set<String> writeLocations) {
     IamPolicy.Builder policyBuilder = IamPolicy.builder();
