@@ -19,6 +19,7 @@
 package org.apache.polaris.service.auth;
 
 import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -39,11 +40,13 @@ import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@RequestScoped
 @Identifier("test")
 public class TestOAuth2ApiService implements IcebergRestOAuth2ApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(TestOAuth2ApiService.class);
 
-  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject CallContext callContext;
 
   @Override
   public Response getToken(
@@ -80,8 +83,7 @@ public class TestOAuth2ApiService implements IcebergRestOAuth2ApiService {
   private String getPrincipalName(String clientId, RealmContext realmContext) {
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    // FIXME remove call to CallContext.getCurrentContext()
-    PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
     PrincipalSecretsResult secretsResult =
         metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
     if (secretsResult.isSuccess()) {

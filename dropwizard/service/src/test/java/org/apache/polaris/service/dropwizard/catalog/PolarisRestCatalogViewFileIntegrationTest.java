@@ -18,11 +18,13 @@
  */
 package org.apache.polaris.service.dropwizard.catalog;
 
+import io.quarkus.test.junit.QuarkusTest;
 import java.util.List;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on the local filesystem. */
+@QuarkusTest
 public class PolarisRestCatalogViewFileIntegrationTest
     extends PolarisRestCatalogViewIntegrationTest {
   public static final String BASE_LOCATION = "file:///tmp/buckets/my-bucket";

@@ -17,7 +17,10 @@
  * under the License.
  */
 
-plugins { id("polaris-server") }
+plugins {
+  id("polaris-server")
+  alias(libs.plugins.jandex)
+}
 
 dependencies {
   implementation(project(":polaris-core"))
@@ -44,16 +47,16 @@ dependencies {
   }
   implementation(libs.hadoop.hdfs.client)
 
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.inject.api)
-  compileOnly(libs.jakarta.servlet.api)
-  compileOnly(libs.jakarta.validation.api)
-  compileOnly(libs.jakarta.ws.rs.api)
+  implementation(libs.jakarta.annotation.api)
+  implementation(libs.jakarta.enterprise.cdi.api)
+  implementation(libs.jakarta.inject.api)
+  implementation(libs.jakarta.servlet.api)
+  implementation(libs.jakarta.validation.api)
+  implementation(libs.jakarta.ws.rs.api)
 
-  compileOnly(libs.smallrye.common.annotation)
+  implementation(libs.smallrye.common.annotation)
 
   implementation(platform(libs.jackson.bom))
-  implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
   implementation("com.fasterxml.jackson.core:jackson-annotations")
 
   implementation(libs.caffeine)
@@ -82,3 +85,5 @@ dependencies {
   implementation(platform(libs.azuresdk.bom))
   implementation("com.azure:azure-core")
 }
+
+tasks.named("javadoc") { dependsOn("jandex") }

@@ -22,12 +22,15 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatPredicate;
 
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -49,21 +52,16 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
-import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskUtils;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+@QuarkusTest
 class ManifestFileCleanupTaskHandlerTest {
-  private InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory;
-  private RealmContext realmContext;
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
 
-  @BeforeEach
-  void setUp() {
-    metaStoreManagerFactory = new InMemoryPolarisMetaStoreManagerFactory();
-    realmContext = () -> "realmName";
-  }
+  private final RealmContext realmContext = () -> "realmName";
 
   @Test
   public void testCleanupFileNotExists() throws IOException {
@@ -441,15 +439,18 @@ class ManifestFileCleanupTaskHandlerTest {
               .setName(UUID.randomUUID().toString())
               .build();
 
-      CompletableFuture<Void> future =
-          CompletableFuture.runAsync(
-              () -> {
-                assertThatPredicate(handler::canHandleTask).accepts(task);
-                handler.handleTask(task); // this will schedule the batch deletion
-              });
-
-      // Wait for all async tasks to finish
-      future.join();
+      try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
+        CompletableFuture<Void> future;
+        future =
+            CompletableFuture.runAsync(
+                () -> {
+                  assertThatPredicate(handler::canHandleTask).accepts(task);
+                  handler.handleTask(task); // this will schedule the batch deletion
+                },
+                executor);
+        // Wait for all async tasks to finish
+        future.join();
+      }
 
       // Check if the file was successfully deleted after retries
       assertThat(TaskUtils.exists(statisticsFile.path(), fileIO)).isFalse();

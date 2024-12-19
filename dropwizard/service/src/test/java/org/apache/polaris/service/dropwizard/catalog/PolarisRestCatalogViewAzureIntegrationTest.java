@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.dropwizard.catalog;
 
+import io.quarkus.test.junit.QuarkusTest;
 import java.util.List;
 import java.util.stream.Stream;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
@@ -25,6 +26,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.assertj.core.util.Strings;
 
 /** Runs PolarisRestCatalogViewIntegrationTest on Azure. */
+@QuarkusTest
 public class PolarisRestCatalogViewAzureIntegrationTest
     extends PolarisRestCatalogViewIntegrationTest {
   public static final String TENANT_ID = System.getenv("INTEGRATION_TEST_AZURE_TENANT_ID");

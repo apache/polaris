@@ -19,6 +19,9 @@
 package org.apache.polaris.service.dropwizard.catalog;
 
 import com.google.common.collect.ImmutableMap;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -63,6 +66,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.catalog.PolarisCatalogHandlerWrapper;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.dropwizard.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -72,20 +76,28 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
+@QuarkusTest
+@TestProfile(PolarisCatalogHandlerWrapperAuthzTest.Profile.class)
 public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase {
+
+  public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of("polaris.config.defaults.ALLOW_EXTERNAL_METADATA_FILE_LOCATION", "true");
+    }
+  }
+
   private PolarisCatalogHandlerWrapper newWrapper() {
     return newWrapper(Set.of());
   }
 
   private PolarisCatalogHandlerWrapper newWrapper(Set<String> activatedPrincipalRoles) {
-    return newWrapper(
-        activatedPrincipalRoles, CATALOG_NAME, new TestPolarisCallContextCatalogFactory());
+    return newWrapper(activatedPrincipalRoles, CATALOG_NAME, callContextCatalogFactory);
   }
 
   private PolarisCatalogHandlerWrapper newWrapper(
-      Set<String> activatedPrincipalRoles,
-      String catalogName,
-      PolarisCallContextCatalogFactory factory) {
+      Set<String> activatedPrincipalRoles, String catalogName, CallContextCatalogFactory factory) {
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
         new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
     return new PolarisCatalogHandlerWrapper(
@@ -230,7 +242,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             entityManager,
             metaStoreManager,
             authenticatedPrincipal,
-            new TestPolarisCallContextCatalogFactory(),
+            callContextCatalogFactory,
             CATALOG_NAME,
             polarisAuthorizer);
 
@@ -261,7 +273,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             entityManager,
             metaStoreManager,
             authenticatedPrincipal1,
-            new TestPolarisCallContextCatalogFactory(),
+            callContextCatalogFactory,
             CATALOG_NAME,
             polarisAuthorizer);
 
@@ -1676,13 +1688,13 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
 
     PolarisCallContextCatalogFactory factory =
         new PolarisCallContextCatalogFactory(
-            new RealmEntityManagerFactory() {
+            new RealmEntityManagerFactory(null) {
               @Override
               public PolarisEntityManager getOrCreateEntityManager(RealmContext realmContext) {
                 return entityManager;
               }
             },
-            metaStoreManagerFactory,
+            managerFactory,
             Mockito.mock(),
             new DefaultFileIOFactory()) {
           @Override
