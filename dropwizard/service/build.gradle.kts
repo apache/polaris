@@ -186,4 +186,13 @@ tasks.register<Sync>("prepareDockerDist") {
 
 tasks.named("build").configure { dependsOn("prepareDockerDist") }
 
+distributions {
+  main {
+    contents {
+      from("../../NOTICE")
+      from("../../LICENSE-BINARY-DIST").rename("LICENSE-BINARY-DIST", "LICENSE")
+    }
+  }
+}
+
 tasks.named("assemble").configure { dependsOn("testJar") }
