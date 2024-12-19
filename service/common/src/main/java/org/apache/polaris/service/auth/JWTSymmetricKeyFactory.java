@@ -18,12 +18,14 @@
  */
 package org.apache.polaris.service.auth;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import io.smallrye.common.annotation.Identifier;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Objects;
 import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -33,31 +35,32 @@ public class JWTSymmetricKeyFactory implements TokenBrokerFactory {
 
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final TokenBrokerFactoryConfig config;
+  private final Supplier<String> secretSupplier;
 
   @Inject
   public JWTSymmetricKeyFactory(
       MetaStoreManagerFactory metaStoreManagerFactory, TokenBrokerFactoryConfig config) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.config = config;
+
+    String secret = config.secret();
+    String file = config.file();
+    checkState(secret != null || file != null, "Either file or secret must be set");
+    this.secretSupplier = secret != null ? () -> secret : readSecretFromDisk(Paths.get(file));
   }
 
   @Override
   public TokenBroker apply(RealmContext realmContext) {
-    String secret = config.secret();
-    if (config.file() == null && secret == null) {
-      throw new IllegalStateException("Either file or secret must be set");
-    }
-    Supplier<String> secretSupplier = secret != null ? () -> secret : readSecretFromDisk();
     return new JWTSymmetricKeyBroker(
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
         config.maxTokenGenerationInSeconds(),
         secretSupplier);
   }
 
-  private Supplier<String> readSecretFromDisk() {
+  private Supplier<String> readSecretFromDisk(Path path) {
     return () -> {
       try {
-        return Files.readString(Paths.get(Objects.requireNonNull(config.file())));
+        return Files.readString(path);
       } catch (IOException e) {
         throw new RuntimeException("Failed to read secret from file: " + config.file(), e);
       }
