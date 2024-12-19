@@ -554,14 +554,27 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .map(
             entity -> {
               if (entity.getType().equals(PolarisEntityType.CATALOG)) {
-                return CatalogEntity.of(entity).getDefaultBaseLocation();
+                CatalogEntity catEntity = CatalogEntity.of(entity);
+                String catalogDefaultBaseLocation = catEntity.getDefaultBaseLocation();
+                if (catalogDefaultBaseLocation == null) {
+                  LOGGER.warn(
+                      "Tried to resolve location with catalog with null default base location. Catalog = {}",
+                      catEntity);
+                }
+                return catalogDefaultBaseLocation;
               } else {
                 String baseLocation =
                     entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
                 if (baseLocation != null) {
                   return baseLocation;
                 } else {
-                  return entity.getName();
+                  String entityName = entity.getName();
+                  if (entityName == null) {
+                    LOGGER.warn(
+                        "Tried to resolve location with entity without base location or name. entity = {}",
+                        entity);
+                  }
+                  return entityName;
                 }
               }
             })
