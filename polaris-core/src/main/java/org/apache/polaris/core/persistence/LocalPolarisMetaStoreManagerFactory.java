@@ -138,6 +138,9 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       initializeForRealm(realmContext);
       checkPolarisServiceBootstrappedForRealm(
           realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
+    } else {
+      checkPolarisServiceBootstrappedForRealm(
+          realmContext, metaStoreManagerMap.get(realmContext.getRealmIdentifier()));
     }
     return sessionSupplierMap.get(realmContext.getRealmIdentifier());
   }
