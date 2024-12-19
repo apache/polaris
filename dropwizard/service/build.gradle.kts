@@ -43,6 +43,9 @@ dependencies {
   implementation("org.apache.iceberg:iceberg-core")
   implementation("org.apache.iceberg:iceberg-aws")
 
+  // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
+  implementation(platform(libs.dnsjava))
+
   implementation(libs.hadoop.common) {
     exclude("org.slf4j", "slf4j-reload4j")
     exclude("org.slf4j", "slf4j-log4j12")
