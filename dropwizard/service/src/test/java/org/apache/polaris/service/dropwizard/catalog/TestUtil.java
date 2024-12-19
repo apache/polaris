@@ -84,7 +84,7 @@ public class TestUtil {
             .header("Authorization", "Bearer " + adminToken.token())
             .header(REALM_PROPERTY_KEY, realm)
             .post(Entity.json(catalog))) {
-      assertStatusCodeWithFailMessage(response, Response.Status.CREATED.getStatusCode());
+      assertStatusCode(response, Response.Status.CREATED.getStatusCode());
     }
 
     // Create a new CatalogRole that has CATALOG_MANAGE_CONTENT and CATALOG_MANAGE_ACCESS
@@ -98,7 +98,7 @@ public class TestUtil {
             .header("Authorization", "Bearer " + adminToken.token())
             .header(REALM_PROPERTY_KEY, realm)
             .post(Entity.json(newRole))) {
-      assertStatusCodeWithFailMessage(response, Response.Status.CREATED.getStatusCode());
+      assertStatusCode(response, Response.Status.CREATED.getStatusCode());
     }
     CatalogGrant grantResource =
         new CatalogGrant(CatalogPrivilege.CATALOG_MANAGE_CONTENT, GrantResource.TypeEnum.CATALOG);
@@ -112,7 +112,7 @@ public class TestUtil {
             .header("Authorization", "Bearer " + adminToken.token())
             .header(REALM_PROPERTY_KEY, realm)
             .put(Entity.json(grantResource))) {
-      assertStatusCodeWithFailMessage(response, Response.Status.CREATED.getStatusCode());
+      assertStatusCode(response, Response.Status.CREATED.getStatusCode());
     }
     CatalogGrant grantAccessResource =
         new CatalogGrant(CatalogPrivilege.CATALOG_MANAGE_ACCESS, GrantResource.TypeEnum.CATALOG);
@@ -126,7 +126,7 @@ public class TestUtil {
             .header("Authorization", "Bearer " + adminToken.token())
             .header(REALM_PROPERTY_KEY, realm)
             .put(Entity.json(grantAccessResource))) {
-      assertStatusCodeWithFailMessage(response, Response.Status.CREATED.getStatusCode());
+      assertStatusCode(response, Response.Status.CREATED.getStatusCode());
     }
 
     // Assign this new CatalogRole to the service_admin PrincipalRole
@@ -140,7 +140,7 @@ public class TestUtil {
             .header("Authorization", "Bearer " + adminToken.token())
             .header(REALM_PROPERTY_KEY, realm)
             .get()) {
-      assertStatusCodeWithFailMessage(response, Response.Status.OK.getStatusCode());
+      assertStatusCode(response, Response.Status.OK.getStatusCode());
 
       CatalogRole catalogRole = response.readEntity(CatalogRole.class);
       try (Response assignResponse =
@@ -155,7 +155,7 @@ public class TestUtil {
               .header("Authorization", "Bearer " + adminToken.token())
               .header(REALM_PROPERTY_KEY, realm)
               .put(Entity.json(catalogRole))) {
-        assertStatusCodeWithFailMessage(assignResponse, Response.Status.CREATED.getStatusCode());
+        assertStatusCode(assignResponse, Response.Status.CREATED.getStatusCode());
       }
     }
 
@@ -181,13 +181,13 @@ public class TestUtil {
   }
 
   /**
-   * Asserts that the response has the expected status code, with a custom fail message. The
-   * response entity is buffered so it can be read multiple times.
+   * Asserts that the response has the expected status code, with a fail message if the assertion
+   * fails. The response entity is buffered so it can be read multiple times.
    *
    * @param response The response to check
    * @param expectedStatusCode The expected status code
    */
-  private static void assertStatusCodeWithFailMessage(Response response, int expectedStatusCode) {
+  private static void assertStatusCode(Response response, int expectedStatusCode) {
     // Buffer the entity so we can read it multiple times
     response.bufferEntity();
 
