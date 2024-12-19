@@ -18,112 +18,173 @@
  */
 package org.apache.polaris.service.dropwizard.ratelimiter;
 
-import static org.apache.polaris.service.dropwizard.TimedApplicationEventListener.SINGLETON_METRIC_NAME;
-import static org.apache.polaris.service.dropwizard.TimedApplicationEventListener.TAG_API_NAME;
-import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.SUFFIX_ERROR;
-import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.TAG_RESP_CODE;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
-import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
-import io.micrometer.core.instrument.Tag;
-import jakarta.ws.rs.core.Response;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
+import jakarta.ws.rs.core.Response.Status;
 import java.time.Duration;
-import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
-import org.apache.polaris.service.dropwizard.PolarisApplication;
-import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
-import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
-import org.apache.polaris.service.dropwizard.test.PolarisRealm;
-import org.apache.polaris.service.dropwizard.test.SnowmanCredentialsExtension;
+import org.apache.polaris.service.dropwizard.ratelimiter.RateLimiterFilterTest.Profile;
+import org.apache.polaris.service.dropwizard.test.PolarisIntegrationTestFixture;
+import org.apache.polaris.service.dropwizard.test.PolarisIntegrationTestHelper;
+import org.apache.polaris.service.dropwizard.test.TestEnvironment;
 import org.apache.polaris.service.dropwizard.test.TestEnvironmentExtension;
 import org.apache.polaris.service.dropwizard.test.TestMetricsUtil;
+import org.hawkular.agent.prometheus.types.MetricFamily;
+import org.hawkular.agent.prometheus.types.Summary;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.threeten.extra.MutableClock;
 
 /** Main integration tests for rate limiting */
-@ExtendWith({
-  DropwizardExtensionsSupport.class,
-  TestEnvironmentExtension.class,
-  PolarisConnectionExtension.class,
-  SnowmanCredentialsExtension.class
-})
+@QuarkusTest
+@TestInstance(Lifecycle.PER_CLASS)
+@TestProfile(Profile.class)
+@ExtendWith(TestEnvironmentExtension.class)
 public class RateLimiterFilterTest {
-  private static final long REQUESTS_PER_SECOND = 5;
-  private static final long WINDOW_SECONDS = 10;
-  private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config("server.adminConnectors[0].port", "0"),
-          ConfigOverride.config("tokenBucketFactory.type", "mock"),
-          ConfigOverride.config(
-              "tokenBucketFactory.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
-          ConfigOverride.config(
-              "tokenBucketFactory.windowSeconds", String.valueOf(WINDOW_SECONDS)));
 
-  private static String userToken;
-  private static String realm;
-  private static MutableClock clock = MockTokenBucketFactory.CLOCK;
+  public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Set<Class<?>> getEnabledAlternatives() {
+      return Set.of(MockTokenBucketFactory.class);
+    }
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.rate-limiter.type",
+          "default",
+          "polaris.rate-limiter.token-bucket.type",
+          "default",
+          "polaris.rate-limiter.token-bucket.requests-per-second",
+          String.valueOf(REQUESTS_PER_SECOND),
+          "polaris.rate-limiter.token-bucket.window",
+          WINDOW.toString(),
+          "polaris.metrics.tags.environment",
+          "prod");
+    }
+  }
+
+  private static final long REQUESTS_PER_SECOND = 5;
+  private static final Duration WINDOW = Duration.ofSeconds(10);
+
+  @Inject PolarisIntegrationTestHelper helper;
+  @Inject MeterRegistry meterRegistry;
+
+  private TestEnvironment testEnv;
+  private PolarisIntegrationTestFixture fixture;
 
   @BeforeAll
-  public static void setup(
-      PolarisConnectionExtension.PolarisToken userToken, @PolarisRealm String polarisRealm) {
-    realm = polarisRealm;
-    RateLimiterFilterTest.userToken = userToken.token();
+  public void createFixture(TestEnvironment testEnv, TestInfo testInfo) {
+    this.testEnv = testEnv;
+    fixture = helper.createFixture(testEnv, testInfo);
+  }
+
+  @AfterAll
+  public void destroyFixture() {
+    if (fixture != null) {
+      fixture.destroy();
+    }
   }
 
   @BeforeEach
   @AfterEach
   public void resetRateLimiter() {
-    clock.add(
-        Duration.ofSeconds(2 * WINDOW_SECONDS)); // Clear any counters from before/after this test
+    MockTokenBucketFactory.CLOCK.add(
+        WINDOW.multipliedBy(2)); // Clear any counters from before/after this test
+  }
+
+  @BeforeEach
+  public void resetMeterRegistry() {
+    meterRegistry.clear();
   }
 
   @Test
   public void testRateLimiter() {
-    Consumer<Response.Status> requestAsserter =
-        TestUtil.constructRequestAsserter(EXT, userToken, realm);
+    Consumer<Status> requestAsserter =
+        TestUtil.constructRequestAsserter(testEnv, fixture, fixture.realm);
 
-    for (int i = 0; i < REQUESTS_PER_SECOND * WINDOW_SECONDS; i++) {
-      requestAsserter.accept(Response.Status.OK);
+    for (int i = 0; i < REQUESTS_PER_SECOND * WINDOW.toSeconds(); i++) {
+      requestAsserter.accept(Status.OK);
     }
-    requestAsserter.accept(Response.Status.TOO_MANY_REQUESTS);
+    requestAsserter.accept(Status.TOO_MANY_REQUESTS);
 
     // Ensure that a different realm identifier gets a separate limit
-    Consumer<Response.Status> requestAsserter2 =
-        TestUtil.constructRequestAsserter(EXT, userToken, realm + "2");
-    requestAsserter2.accept(Response.Status.OK);
+    Consumer<Status> requestAsserter2 =
+        TestUtil.constructRequestAsserter(testEnv, fixture, fixture.realm + "2");
+    requestAsserter2.accept(Status.OK);
   }
 
   @Test
   public void testMetricsAreEmittedWhenRateLimiting() {
-    Consumer<Response.Status> requestAsserter =
-        TestUtil.constructRequestAsserter(EXT, userToken, realm);
+    Consumer<Status> requestAsserter =
+        TestUtil.constructRequestAsserter(testEnv, fixture, fixture.realm);
 
-    for (int i = 0; i < REQUESTS_PER_SECOND * WINDOW_SECONDS; i++) {
-      requestAsserter.accept(Response.Status.OK);
+    for (int i = 0; i < REQUESTS_PER_SECOND * WINDOW.toSeconds(); i++) {
+      requestAsserter.accept(Status.OK);
     }
-    requestAsserter.accept(Response.Status.TOO_MANY_REQUESTS);
+    requestAsserter.accept(Status.TOO_MANY_REQUESTS);
 
-    assertTrue(
-        TestMetricsUtil.getTotalCounter(
-                EXT,
-                SINGLETON_METRIC_NAME + SUFFIX_ERROR,
-                List.of(
-                    Tag.of(TAG_API_NAME, "polaris.principal-roles.listPrincipalRoles"),
-                    Tag.of(
-                        TAG_RESP_CODE,
-                        String.valueOf(Response.Status.TOO_MANY_REQUESTS.getStatusCode()))))
-            > 0);
+    // Examples of expected metrics:
+    // http_server_requests_seconds_count{application="Polaris",environment="prod",method="GET",outcome="CLIENT_ERROR",realm_id="org_apache_polaris_service_ratelimiter_RateLimiterFilterTest",status="429",uri="/api/management/v1/principal-roles"} 1.0
+    // polaris_principal_roles_listPrincipalRoles_seconds_count{application="Polaris",class="org.apache.polaris.service.admin.api.PolarisPrincipalRolesApi",environment="prod",exception="none",method="listPrincipalRoles"} 50.0
+
+    Map<String, MetricFamily> metrics =
+        TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri());
+
+    assertThat(metrics)
+        .isNotEmpty()
+        .containsKey("http_server_requests_seconds")
+        .containsKey("polaris_principal_roles_listPrincipalRoles_seconds");
+
+    assertThat(metrics.get("http_server_requests_seconds").getMetrics())
+        .satisfiesOnlyOnce(
+            metric -> {
+              assertThat(metric.getLabels())
+                  .contains(
+                      Map.entry("application", "Polaris"),
+                      Map.entry("environment", "prod"),
+                      Map.entry("realm_id", fixture.realm),
+                      Map.entry("method", "GET"),
+                      Map.entry("outcome", "CLIENT_ERROR"),
+                      Map.entry("status", String.valueOf(Status.TOO_MANY_REQUESTS.getStatusCode())),
+                      Map.entry("uri", "/api/management/v1/principal-roles"));
+              assertThat(metric)
+                  .asInstanceOf(type(Summary.class))
+                  .extracting(Summary::getSampleCount)
+                  .isEqualTo(1L);
+            });
+
+    assertThat(metrics.get("polaris_principal_roles_listPrincipalRoles_seconds").getMetrics())
+        .satisfiesOnlyOnce(
+            metric -> {
+              assertThat(metric.getLabels())
+                  .contains(
+                      Map.entry("application", "Polaris"),
+                      Map.entry("environment", "prod"),
+                      Map.entry("realm_id", fixture.realm),
+                      Map.entry(
+                          "class", "org.apache.polaris.service.admin.api.PolarisPrincipalRolesApi"),
+                      Map.entry("exception", "none"),
+                      Map.entry("method", "listPrincipalRoles"));
+              assertThat(metric)
+                  .asInstanceOf(type(Summary.class))
+                  .extracting(Summary::getSampleCount)
+                  .isEqualTo(REQUESTS_PER_SECOND * WINDOW.toSeconds());
+            });
   }
 }

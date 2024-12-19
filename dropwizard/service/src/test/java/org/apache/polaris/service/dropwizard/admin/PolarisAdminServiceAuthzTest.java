@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.dropwizard.admin;
 
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.TestProfile;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -36,6 +38,8 @@ import org.apache.polaris.service.admin.PolarisAdminService;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+@QuarkusTest
+@TestProfile(PolarisAuthzTestBase.Profile.class)
 public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   private PolarisAdminService newTestAdminService() {
     return newTestAdminService(Set.of());

@@ -21,72 +21,76 @@ package org.apache.polaris.service.dropwizard.admin;
 import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.service.dropwizard.PolarisApplication;
-import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
-import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
-import org.apache.polaris.service.dropwizard.test.PolarisRealm;
+import org.apache.polaris.service.dropwizard.test.PolarisIntegrationTestFixture;
+import org.apache.polaris.service.dropwizard.test.PolarisIntegrationTestHelper;
+import org.apache.polaris.service.dropwizard.test.TestEnvironment;
 import org.apache.polaris.service.dropwizard.test.TestEnvironmentExtension;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-@ExtendWith({
-  DropwizardExtensionsSupport.class,
-  TestEnvironmentExtension.class,
-  PolarisConnectionExtension.class
-})
+@QuarkusTest
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@TestProfile(PolarisOverlappingCatalogTest.Profile.class)
+@ExtendWith(TestEnvironmentExtension.class)
 public class PolarisOverlappingCatalogTest {
-  private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          // Bind to random port to support parallelism
-          ConfigOverride.config("server.applicationConnectors[0].port", "0"),
-          ConfigOverride.config("server.adminConnectors[0].port", "0"),
-          // Block overlapping catalog paths:
-          ConfigOverride.config("featureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS", "false"));
-  private static String userToken;
-  private static String realm;
+
+  public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of("polaris.config.defaults.ALLOW_OVERLAPPING_CATALOG_URLS", "false");
+    }
+  }
+
+  @Inject PolarisIntegrationTestHelper helper;
+
+  private TestEnvironment testEnv;
+  private PolarisIntegrationTestFixture fixture;
 
   @BeforeAll
-  public static void setup(
-      PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String polarisRealm)
-      throws IOException {
-    userToken = adminToken.token();
-    realm = polarisRealm;
+  public void createFixture(TestEnvironment testEnv, TestInfo testInfo) {
+    this.testEnv = testEnv;
+    fixture = helper.createFixture(testEnv, testInfo);
+  }
 
-    // Set up the database location
-    PolarisConnectionExtension.createTestDir(realm);
+  @AfterAll
+  public void destroyFixture() {
+    fixture.destroy();
   }
 
   private Response createCatalog(String prefix, String defaultBaseLocation, boolean isExternal) {
     return createCatalog(prefix, defaultBaseLocation, isExternal, new ArrayList<String>());
   }
 
-  private static Invocation.Builder request() {
-    return EXT.client()
-        .target(String.format("http://localhost:%d/api/management/v1/catalogs", EXT.getLocalPort()))
+  private Invocation.Builder request() {
+    return fixture
+        .client
+        .target(String.format("%s/api/management/v1/catalogs", testEnv.baseUri()))
         .request("application/json")
-        .header("Authorization", "Bearer " + userToken)
-        .header(REALM_PROPERTY_KEY, realm);
+        .header("Authorization", "Bearer " + fixture.adminToken)
+        .header(REALM_PROPERTY_KEY, fixture.realm);
   }
 
   private Response createCatalog(

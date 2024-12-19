@@ -21,6 +21,7 @@ plugins {
   id("polaris-client")
   id("java-library")
   id("java-test-fixtures")
+  alias(libs.plugins.jandex)
 }
 
 dependencies {
@@ -108,3 +109,5 @@ dependencies {
 
   compileOnly(libs.jakarta.annotation.api)
 }
+
+tasks.named("javadoc") { dependsOn("jandex") }
