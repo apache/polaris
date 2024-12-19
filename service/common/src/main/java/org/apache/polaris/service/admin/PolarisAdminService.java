@@ -27,6 +27,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -518,6 +519,7 @@ public class PolarisAdminService {
 
     Set<String> newCatalogLocations = getCatalogLocations(catalogEntity);
     return listCatalogsUnsafe().stream()
+        .filter(Objects::nonNull)
         .map(CatalogEntity::new)
         .anyMatch(
             existingCatalog -> {
@@ -726,7 +728,12 @@ public class PolarisAdminService {
     return listCatalogsUnsafe();
   }
 
-  /** List all catalogs without checking for permission */
+  /**
+   * List all catalogs without checking for permission. May contain NULLs due to multiple non-atomic
+   * API calls to the persistence layer. Specifically, this can happen when a PolarisEntity is
+   * returned by listCatalogs, but cannot be loaded afterward because it was purged by another
+   * process before it could be loaded.
+   */
   private List<PolarisEntity> listCatalogsUnsafe() {
     return metaStoreManager
         .listEntities(

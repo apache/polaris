@@ -84,7 +84,7 @@ public class TestUtil {
             .header("Authorization", "Bearer " + adminToken.token())
             .header(REALM_PROPERTY_KEY, realm)
             .post(Entity.json(catalog))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+      assertStatusCode(response, Response.Status.CREATED.getStatusCode());
     }
 
     // Create a new CatalogRole that has CATALOG_MANAGE_CONTENT and CATALOG_MANAGE_ACCESS
@@ -98,7 +98,7 @@ public class TestUtil {
             .header("Authorization", "Bearer " + adminToken.token())
             .header(REALM_PROPERTY_KEY, realm)
             .post(Entity.json(newRole))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+      assertStatusCode(response, Response.Status.CREATED.getStatusCode());
     }
     CatalogGrant grantResource =
         new CatalogGrant(CatalogPrivilege.CATALOG_MANAGE_CONTENT, GrantResource.TypeEnum.CATALOG);
@@ -112,7 +112,7 @@ public class TestUtil {
             .header("Authorization", "Bearer " + adminToken.token())
             .header(REALM_PROPERTY_KEY, realm)
             .put(Entity.json(grantResource))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+      assertStatusCode(response, Response.Status.CREATED.getStatusCode());
     }
     CatalogGrant grantAccessResource =
         new CatalogGrant(CatalogPrivilege.CATALOG_MANAGE_ACCESS, GrantResource.TypeEnum.CATALOG);
@@ -126,7 +126,7 @@ public class TestUtil {
             .header("Authorization", "Bearer " + adminToken.token())
             .header(REALM_PROPERTY_KEY, realm)
             .put(Entity.json(grantAccessResource))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+      assertStatusCode(response, Response.Status.CREATED.getStatusCode());
     }
 
     // Assign this new CatalogRole to the service_admin PrincipalRole
@@ -140,7 +140,8 @@ public class TestUtil {
             .header("Authorization", "Bearer " + adminToken.token())
             .header(REALM_PROPERTY_KEY, realm)
             .get()) {
-      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      assertStatusCode(response, Response.Status.OK.getStatusCode());
+
       CatalogRole catalogRole = response.readEntity(CatalogRole.class);
       try (Response assignResponse =
           client
@@ -154,8 +155,7 @@ public class TestUtil {
               .header("Authorization", "Bearer " + adminToken.token())
               .header(REALM_PROPERTY_KEY, realm)
               .put(Entity.json(catalogRole))) {
-        assertThat(assignResponse)
-            .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+        assertStatusCode(assignResponse, Response.Status.CREATED.getStatusCode());
       }
     }
 
@@ -178,5 +178,23 @@ public class TestUtil {
             .putAll(extraProperties);
     restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());
     return restCatalog;
+  }
+
+  /**
+   * Asserts that the response has the expected status code, with a fail message if the assertion
+   * fails. The response entity is buffered so it can be read multiple times.
+   *
+   * @param response The response to check
+   * @param expectedStatusCode The expected status code
+   */
+  private static void assertStatusCode(Response response, int expectedStatusCode) {
+    // Buffer the entity so we can read it multiple times
+    response.bufferEntity();
+
+    assertThat(response)
+        .withFailMessage(
+            "Expected status code %s but got %s with message: %s",
+            expectedStatusCode, response.getStatus(), response.readEntity(String.class))
+        .returns(expectedStatusCode, Response::getStatus);
   }
 }
