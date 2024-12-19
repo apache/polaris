@@ -38,7 +38,9 @@ import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -297,6 +299,79 @@ public class EntityCacheGrantManagerTest {
                       PolarisPrivilege.TABLE_READ_DATA.getCode(),
                       PolarisGrantRecord::getPrivilegeCode);
             });
+  }
+
+  @Test
+  public void testImplicitRootContainerGrantForServiceAdmin() {
+    Namespace ns2 = Namespace.of(PolarisEntityConstants.getRootContainerName());
+    PolarisMetaStoreManager.EntityResult namespaceEntity =
+        metaStoreManager.createEntityIfNotExists(
+            polarisCallContext,
+            List.of(catalog),
+            new NamespaceEntity.Builder(ns2)
+                .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
+                .setCatalogId(catalog.getId())
+                .setParentId(catalog.getId())
+                .setCreateTimestamp(System.currentTimeMillis())
+                .setEntityVersion(1)
+                .build());
+    EntityCache entityCache = new EntityCache(metaStoreManager);
+    PolarisResolutionManifest manifest =
+        new PolarisResolutionManifest(
+            CallContext.of(realmContext, polarisCallContext),
+            new PolarisEntityManager(metaStoreManager, new StorageCredentialCache(), entityCache),
+            new AuthenticatedPolarisPrincipal(
+                principal, Set.of(principalRole1.getName(), principalRole2.getName())),
+            catalog.getName());
+    manifest.addPath(
+        new ResolverPath(
+            List.of(PolarisEntityConstants.getRootContainerName()), PolarisEntityType.NAMESPACE),
+        ns2);
+
+    ResolverStatus resolverStatus = manifest.resolveAll();
+    Assertions.assertThat(resolverStatus.getStatus()).isEqualTo(ResolverStatus.StatusEnum.SUCCESS);
+
+    // now create an EntityCacheGrantManager with a dummy grantManager implementation.
+    // everything should be returned from the cache
+    EntityCacheGrantManager grantManager = new EntityCacheGrantManager(Mockito.mock(), entityCache);
+
+    PolarisBaseEntity serviceAdmin =
+        metaStoreManager
+            .readEntityByName(
+                polarisCallContext,
+                null,
+                PolarisEntityType.PRINCIPAL_ROLE,
+                PolarisEntitySubType.NULL_SUBTYPE,
+                PolarisEntityConstants.getNameOfPrincipalServiceAdminRole())
+            .getEntity();
+    PolarisGrantManager.LoadGrantsResult grantsResult =
+        grantManager.loadGrantsOnSecurable(
+            polarisCallContext, 0L, PolarisEntityConstants.getRootEntityId());
+    Assertions.assertThat(grantsResult)
+        .returns(true, PolarisGrantManager.LoadGrantsResult::isSuccess)
+        .extracting(PolarisGrantManager.LoadGrantsResult::getGrantRecords)
+        .asInstanceOf(InstanceOfAssertFactories.list(PolarisGrantRecord.class))
+        .hasSize(1)
+        .satisfiesExactly(
+            grant -> {
+              Assertions.assertThat(grant)
+                  .returns(serviceAdmin.getId(), PolarisGrantRecord::getGranteeId)
+                  .returns(
+                      PolarisPrivilege.SERVICE_MANAGE_ACCESS.getCode(),
+                      PolarisGrantRecord::getPrivilegeCode);
+            });
+
+    PolarisResolvedPathWrapper resolvedTable = manifest.getResolvedPath(ns2, false);
+    PolarisGrantManager.LoadGrantsResult nsGrantsResult =
+        grantManager.loadGrantsOnSecurable(
+            polarisCallContext,
+            manifest.getResolvedReferenceCatalogEntity().getRawLeafEntity().getId(),
+            resolvedTable.getRawLeafEntity().getId());
+    Assertions.assertThat(nsGrantsResult)
+        .returns(true, PolarisGrantManager.LoadGrantsResult::isSuccess)
+        .extracting(PolarisGrantManager.LoadGrantsResult::getGrantRecords)
+        .asInstanceOf(InstanceOfAssertFactories.list(PolarisGrantRecord.class))
+        .isEmpty();
   }
 
   @Test

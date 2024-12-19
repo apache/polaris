@@ -140,21 +140,17 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
         .filter(lr -> lr != null && lr.getCacheEntry() != null)
         .map(lr -> lr.getCacheEntry().getEntity())
         .forEach(granteeList::add);
+    PolarisBaseEntity entity = lookupResult.getCacheEntry().getEntity();
     if (granteeList.size() != lookupResult.getCacheEntry().getGrantRecordsAsSecurable().size()) {
-      LOGGER.error(
-          "Failed to resolve all grantees for securable {}",
-          lookupResult.getCacheEntry().getEntity());
+      LOGGER.error("Failed to resolve all grantees for securable {}", entity);
       return new LoadGrantsResult(BaseResult.ReturnStatus.GRANT_NOT_FOUND, null);
     }
 
     // If the securable is the root container, then we need to add a grant record for the
     // service_admin PrincipalRole, which is the only role that has the SERVICE_MANAGE_ACCESS
     // privilege on the root
-    if (lookupResult
-        .getCacheEntry()
-        .getEntity()
-        .getName()
-        .equals(PolarisEntityConstants.getRootContainerName())) {
+    if (entity.getName().equals(PolarisEntityConstants.getRootContainerName())
+        && entity.getType().equals(PolarisEntityType.ROOT)) {
       if (serviceAdminEntity == null || serviceAdminRootContainerGrant == null) {
         EntityCacheLookupResult serviceAdminRole =
             entityCache.getOrLoadEntityByName(
@@ -177,13 +173,20 @@ public class EntityCacheGrantManager implements PolarisGrantManager {
                 PolarisPrivilege.SERVICE_MANAGE_ACCESS.getCode());
         serviceAdminEntity = serviceAdminRole.getCacheEntry().getEntity();
       }
-      grantRecords.add(serviceAdminRootContainerGrant);
-      granteeList.add(serviceAdminEntity);
+      grantRecords.stream()
+          .filter(gr -> gr.getGranteeId() == serviceAdminEntity.getId())
+          .findFirst()
+          .ifPresentOrElse(
+              gr -> {
+                LOGGER.trace("service_admin PrincipalRole already has a grant record on the root");
+              },
+              () -> {
+                LOGGER.trace("Adding service_admin PrincipalRole grant record on the root");
+                grantRecords.add(serviceAdminRootContainerGrant);
+                granteeList.add(serviceAdminEntity);
+              });
     }
-    return new LoadGrantsResult(
-        lookupResult.getCacheEntry().getEntity().getGrantRecordsVersion(),
-        grantRecords,
-        granteeList);
+    return new LoadGrantsResult(entity.getGrantRecordsVersion(), grantRecords, granteeList);
   }
 
   @Override
