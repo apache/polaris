@@ -104,6 +104,9 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("regtests/metastore_db/**")
   excludes.add("regtests/client/python/.openapi-generator/**")
   excludes.add("regtests/output/**")
+  excludes.add("regtests/minio/miniodata/**")
+  excludes.add("regtests/minio/**/*.crt")
+  excludes.add("regtests/minio/**/*.key")
 
   excludes.add("**/*.ipynb")
   excludes.add("**/*.iml")
