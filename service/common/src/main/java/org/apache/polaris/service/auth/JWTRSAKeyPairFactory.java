@@ -25,18 +25,21 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 
 @Identifier("rsa-key-pair")
 public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
-  private int maxTokenGenerationInSeconds = 3600;
 
-  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
+  private final TokenBrokerFactoryConfig config;
+  private final MetaStoreManagerFactory metaStoreManagerFactory;
 
-  public void setMaxTokenGenerationInSeconds(int maxTokenGenerationInSeconds) {
-    this.maxTokenGenerationInSeconds = maxTokenGenerationInSeconds;
+  @Inject
+  public JWTRSAKeyPairFactory(
+      TokenBrokerFactoryConfig config, MetaStoreManagerFactory metaStoreManagerFactory) {
+    this.config = config;
+    this.metaStoreManagerFactory = metaStoreManagerFactory;
   }
 
   @Override
   public TokenBroker apply(RealmContext realmContext) {
     return new JWTRSAKeyPair(
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
-        maxTokenGenerationInSeconds);
+        config.maxTokenGenerationInSeconds());
   }
 }
