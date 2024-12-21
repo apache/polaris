@@ -25,6 +25,7 @@ import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
@@ -35,8 +36,8 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   // for allowed read and write locations for subscoping creds.
   @JsonIgnore private static final int MAX_ALLOWED_LOCATIONS = 5;
 
-  // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::\d{12}:role/.+$,
-  @JsonIgnore public static final String ROLE_ARN_PATTERN = "^arn:aws:iam::\\d{12}:role/.+$";
+  // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$,
+  @JsonIgnore public static final String ROLE_ARN_PATTERN = "^arn:aws:iam::(\\d{12}):role/.+$";
 
   // AWS role to be assumed
   private final @Nonnull String roleARN;
@@ -120,6 +121,21 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
 
   public void setRegion(@Nullable String region) {
     this.region = region;
+  }
+
+  public String getAwsAccountId() {
+    return parseAwsAccountId(roleARN);
+  }
+
+  private String parseAwsAccountId(String arn) {
+    validateArn(arn);
+    Pattern pattern = Pattern.compile(ROLE_ARN_PATTERN);
+    Matcher matcher = pattern.matcher(arn);
+    if (matcher.matches()) {
+      return matcher.group(1);
+    } else {
+      throw new IllegalArgumentException("ARN does not match the expected role ARN pattern");
+    }
   }
 
   @Override
