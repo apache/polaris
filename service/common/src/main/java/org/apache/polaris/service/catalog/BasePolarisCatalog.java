@@ -24,6 +24,7 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
@@ -38,8 +39,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import jakarta.annotation.Nullable;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.BaseMetastoreTableOperations;
 import org.apache.iceberg.BaseTable;
@@ -353,7 +352,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             "Namespace does not exist: %s", tableIdentifier.namespace());
       }
       List<PolarisEntity> namespacePath = resolvedNamespace.getRawFullPath();
-      String namespaceLocation = resolveLocationForPath(namespacePath);
+      String namespaceLocation = resolveLocationForPath(callContext, namespacePath);
       return SLASH.join(namespaceLocation, tableIdentifier.name());
     }
   }
@@ -534,13 +533,14 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               ? getResolvedParentNamespace(namespace).getRawFullPath()
               : List.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
 
-      String parentLocation = resolveLocationForPath(parentPath);
+      String parentLocation = resolveLocationForPath(callContext, parentPath);
 
       return parentLocation + "/" + namespace.level(namespace.length() - 1);
     }
   }
 
-  private static @Nonnull String resolveLocationForPath(List<PolarisEntity> parentPath) {
+  private static @Nonnull String resolveLocationForPath(
+      @Nonnull CallContext callContext, List<PolarisEntity> parentPath) {
     // always take the first object. If it has the base-location, stop there
     AtomicBoolean foundBaseLocation = new AtomicBoolean(false);
     return parentPath.reversed().stream()
@@ -553,33 +553,40 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .toList()
         .reversed()
         .stream()
-        .map(this::baseLocation)
+        .map(entity -> baseLocation(callContext, entity))
         .map(BasePolarisCatalog::stripLeadingTrailingSlash)
         .collect(Collectors.joining("/"));
   }
 
-  private static @Nullable String baseLocation(PolarisEntity entity) {
+  private static @Nullable String baseLocation(
+      @Nonnull CallContext callContext, PolarisEntity entity) {
     if (entity.getType().equals(PolarisEntityType.CATALOG)) {
       CatalogEntity catEntity = CatalogEntity.of(entity);
       String catalogDefaultBaseLocation = catEntity.getDefaultBaseLocation();
-      if (catalogDefaultBaseLocation == null) {
-        LOGGER.debug(
-                "Tried to resolve location with catalog with null default base location. Catalog = {}",
-                catEntity);
-      }
+      callContext
+          .getPolarisCallContext()
+          .getDiagServices()
+          .checkNotNull(
+              catalogDefaultBaseLocation,
+              "Tried to resolve location with catalog with null default base location",
+              "catalog = {}",
+              catEntity);
       return catalogDefaultBaseLocation;
     } else {
       String baseLocation =
-              entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+          entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
       if (baseLocation != null) {
         return baseLocation;
       } else {
         String entityName = entity.getName();
-        if (entityName == null) {
-          LOGGER.debug(
-                  "Tried to resolve location with entity without base location or name. entity = {}",
-                  entity);
-        }
+        callContext
+            .getPolarisCallContext()
+            .getDiagServices()
+            .checkNotNull(
+                entityName,
+                "Tried to resolve location with entity without base location or name",
+                "entity = {}",
+                entity);
         return entityName;
       }
     }
