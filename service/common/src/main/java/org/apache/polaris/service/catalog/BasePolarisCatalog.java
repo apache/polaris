@@ -38,6 +38,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import jakarta.annotation.Nullable;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.BaseMetastoreTableOperations;
 import org.apache.iceberg.BaseTable;
@@ -551,35 +553,36 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .toList()
         .reversed()
         .stream()
-        .map(
-            entity -> {
-              if (entity.getType().equals(PolarisEntityType.CATALOG)) {
-                CatalogEntity catEntity = CatalogEntity.of(entity);
-                String catalogDefaultBaseLocation = catEntity.getDefaultBaseLocation();
-                if (catalogDefaultBaseLocation == null) {
-                  LOGGER.warn(
-                      "Tried to resolve location with catalog with null default base location. Catalog = {}",
-                      catEntity);
-                }
-                return catalogDefaultBaseLocation;
-              } else {
-                String baseLocation =
-                    entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
-                if (baseLocation != null) {
-                  return baseLocation;
-                } else {
-                  String entityName = entity.getName();
-                  if (entityName == null) {
-                    LOGGER.warn(
-                        "Tried to resolve location with entity without base location or name. entity = {}",
-                        entity);
-                  }
-                  return entityName;
-                }
-              }
-            })
+        .map(this::baseLocation)
         .map(BasePolarisCatalog::stripLeadingTrailingSlash)
         .collect(Collectors.joining("/"));
+  }
+
+  private static @Nullable String baseLocation(PolarisEntity entity) {
+    if (entity.getType().equals(PolarisEntityType.CATALOG)) {
+      CatalogEntity catEntity = CatalogEntity.of(entity);
+      String catalogDefaultBaseLocation = catEntity.getDefaultBaseLocation();
+      if (catalogDefaultBaseLocation == null) {
+        LOGGER.debug(
+                "Tried to resolve location with catalog with null default base location. Catalog = {}",
+                catEntity);
+      }
+      return catalogDefaultBaseLocation;
+    } else {
+      String baseLocation =
+              entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+      if (baseLocation != null) {
+        return baseLocation;
+      } else {
+        String entityName = entity.getName();
+        if (entityName == null) {
+          LOGGER.debug(
+                  "Tried to resolve location with entity without base location or name. entity = {}",
+                  entity);
+        }
+        return entityName;
+      }
+    }
   }
 
   private static String stripLeadingTrailingSlash(String location) {
