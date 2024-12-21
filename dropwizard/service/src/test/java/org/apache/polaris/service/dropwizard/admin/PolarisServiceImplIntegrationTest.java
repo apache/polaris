@@ -918,14 +918,14 @@ public class PolarisServiceImplIntegrationTest {
     }
 
     // Reject update of fields that can't be currently updated
-    StorageConfigInfo modifiedStorageConfig =
+    StorageConfigInfo invalidModifiedStorageConfig =
         new AwsStorageConfigInfo(
-            "arn:aws:iam::123456789011:role/newrole", StorageConfigInfo.StorageTypeEnum.S3);
+            "arn:aws:iam::123456789012:role/newrole", StorageConfigInfo.StorageTypeEnum.S3);
     UpdateCatalogRequest badUpdateRequest =
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://newbucket/"),
-            modifiedStorageConfig);
+            invalidModifiedStorageConfig);
     try (Response response =
         newRequest("http://localhost:%d/api/management/v1/catalogs/mycatalog")
             .put(Entity.json(badUpdateRequest))) {
@@ -939,11 +939,16 @@ public class PolarisServiceImplIntegrationTest {
           .startsWith("Cannot modify");
     }
 
+    // Allow update of fields that are support (e.g. new default-base-location and role ARN when AWS
+    // account IDs are same)
+    StorageConfigInfo validModifiedStorageConfig =
+        new AwsStorageConfigInfo(
+            "arn:aws:iam::123456789011:role/newrole", StorageConfigInfo.StorageTypeEnum.S3);
     UpdateCatalogRequest updateRequest =
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
             Map.of("default-base-location", "s3://newbucket/"),
-            storageConfig);
+            validModifiedStorageConfig);
 
     // 200 successful update
     try (Response response =
@@ -954,6 +959,9 @@ public class PolarisServiceImplIntegrationTest {
 
       assertThat(fetchedCatalog.getProperties().toMap())
           .isEqualTo(Map.of("default-base-location", "s3://newbucket/"));
+      assertThat(fetchedCatalog.getStorageConfigInfo())
+          .isInstanceOf(AwsStorageConfigInfo.class)
+          .hasFieldOrPropertyWithValue("roleArn", "arn:aws:iam::123456789011:role/newrole");
     }
 
     // 200 GET after update should show new properties

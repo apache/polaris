@@ -75,6 +75,21 @@ class InMemoryStorageIntegrationTest {
   }
 
   @Test
+  public void testAwsAccountIdParsing() {
+    AwsStorageConfigurationInfo awsConfig =
+        new AwsStorageConfigurationInfo(
+            PolarisStorageConfigurationInfo.StorageType.S3,
+            List.of("s3://bucket/path/to/warehouse"),
+            "arn:aws:iam::012345678901:role/jdoe",
+            "us-east-2");
+
+    String expectedAccountId = "012345678901";
+    String actualAccountId = awsConfig.getAwsAccountId();
+
+    Assertions.assertThat(actualAccountId).isEqualTo(expectedAccountId);
+  }
+
+  @Test
   public void testValidateAccessToLocationsWithWildcard() {
     MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
     Map<String, Boolean> config = Map.of("ALLOW_WILDCARD_LOCATION", true);
