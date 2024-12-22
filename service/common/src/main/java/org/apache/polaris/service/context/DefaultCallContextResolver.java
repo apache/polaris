@@ -20,16 +20,9 @@ package org.apache.polaris.service.context;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import java.time.Clock;
 import java.util.Map;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,11 +36,6 @@ import org.slf4j.LoggerFactory;
 @Identifier("default")
 public class DefaultCallContextResolver implements CallContextResolver {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultCallContextResolver.class);
-
-  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-  @Inject PolarisConfigurationStore configurationStore;
-  @Inject PolarisDiagnostics diagnostics;
-  @Inject Clock clock;
 
   @Override
   public CallContext resolveCallContext(
@@ -64,11 +52,6 @@ public class DefaultCallContextResolver implements CallContextResolver {
         .addKeyValue("queryParams", queryParams)
         .addKeyValue("headers", headers)
         .log("Resolving CallContext");
-
-    PolarisMetaStoreSession metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
-    PolarisCallContext polarisContext =
-        new PolarisCallContext(metaStoreSession, diagnostics, configurationStore, clock);
-    return CallContext.of(realmContext, polarisContext);
+    return CallContext.of(realmContext);
   }
 }

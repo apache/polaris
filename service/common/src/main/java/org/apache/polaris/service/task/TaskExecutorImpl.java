@@ -19,6 +19,7 @@
 package org.apache.polaris.service.task;
 
 import jakarta.annotation.Nonnull;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,6 +28,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -34,6 +37,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,23 +51,34 @@ public class TaskExecutorImpl implements TaskExecutor {
 
   private final Executor executor;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final PolarisConfigurationStore configurationStore;
+  private final PolarisDiagnostics diagnostics;
   private final TaskFileIOSupplier fileIOSupplier;
+  private final Clock clock;
   private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
 
   public TaskExecutorImpl(
       Executor executor,
       MetaStoreManagerFactory metaStoreManagerFactory,
-      TaskFileIOSupplier fileIOSupplier) {
+      PolarisConfigurationStore configurationStore,
+      PolarisDiagnostics diagnostics,
+      TaskFileIOSupplier fileIOSupplier,
+      Clock clock) {
     this.executor = executor;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.configurationStore = configurationStore;
+    this.diagnostics = diagnostics;
     this.fileIOSupplier = fileIOSupplier;
+    this.clock = clock;
   }
 
   public void init() {
-    addTaskHandler(new TableCleanupTaskHandler(this, metaStoreManagerFactory, fileIOSupplier));
+    addTaskHandler(
+        new TableCleanupTaskHandler(
+            this, metaStoreManagerFactory, configurationStore, diagnostics, fileIOSupplier, clock));
     addTaskHandler(
         new ManifestFileCleanupTaskHandler(
-            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor(), diagnostics));
   }
 
   /**
@@ -113,8 +128,10 @@ public class TaskExecutorImpl implements TaskExecutor {
     LOGGER.info("Handling task entity id {}", taskEntityId);
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
+    PolarisMetaStoreSession metaStoreSession =
+        metaStoreManagerFactory.getOrCreateSessionSupplier(ctx.getRealmContext()).get();
     PolarisBaseEntity taskEntity =
-        metaStoreManager.loadEntity(ctx.getPolarisCallContext(), 0L, taskEntityId).getEntity();
+        metaStoreManager.loadEntity(metaStoreSession, 0L, taskEntityId).getEntity();
     if (!PolarisEntityType.TASK.equals(taskEntity.getType())) {
       throw new IllegalArgumentException("Provided taskId must be a task entity type");
     }
@@ -125,12 +142,12 @@ public class TaskExecutorImpl implements TaskExecutor {
       LOGGER
           .atWarn()
           .addKeyValue("taskEntityId", taskEntityId)
-          .addKeyValue("taskType", task.getTaskType())
+          .addKeyValue("taskType", task.getTaskType(diagnostics))
           .log("Unable to find handler for task type");
       return;
     }
     TaskHandler handler = handlerOpt.get();
-    boolean success = handler.handleTask(task);
+    boolean success = handler.handleTask(task, ctx.getRealmContext());
     if (success) {
       LOGGER
           .atInfo()
@@ -138,7 +155,7 @@ public class TaskExecutorImpl implements TaskExecutor {
           .addKeyValue("handlerClass", handler.getClass())
           .log("Task successfully handled");
       metaStoreManager.dropEntityIfExists(
-          ctx.getPolarisCallContext(), null, PolarisEntity.toCore(taskEntity), Map.of(), false);
+          metaStoreSession, null, PolarisEntity.toCore(taskEntity), Map.of(), false);
     } else {
       LOGGER
           .atWarn()

@@ -22,13 +22,14 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -52,14 +53,8 @@ public class ResolverTest {
   // diag services
   private final PolarisDiagnostics diagServices;
 
-  // the entity store, use treemap implementation
-  private final PolarisTreeMapStore store;
-
   // to interact with the metastore
   private final PolarisMetaStoreSession metaStore;
-
-  // polaris call context
-  private final PolarisCallContext callCtx;
 
   // utility to bootstrap the mata store
   private final PolarisTestMetaStoreManager tm;
@@ -97,13 +92,16 @@ public class ResolverTest {
    */
   public ResolverTest() {
     diagServices = new PolarisDefaultDiagServiceImpl();
-    store = new PolarisTreeMapStore(diagServices);
-    metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
-    callCtx = new PolarisCallContext(metaStore, diagServices);
-    metaStoreManager = new PolarisMetaStoreManagerImpl();
+    // the entity store, use treemap implementation
+    PolarisTreeMapStore store = new PolarisTreeMapStore(diagServices);
+    metaStore =
+        new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS, diagServices);
+    metaStoreManager =
+        new PolarisMetaStoreManagerImpl(
+            diagServices, new PolarisConfigurationStore() {}, Clock.systemUTC());
 
     // bootstrap the mata store with our test schema
-    tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
+    tm = new PolarisTestMetaStoreManager(metaStoreManager, metaStore, diagServices);
     tm.testCreateTestCatalog();
 
     // principal P1
@@ -437,10 +435,11 @@ public class ResolverTest {
 
     // create a new cache if needs be
     if (cache == null) {
-      this.cache = new EntityCache(this.metaStoreManager);
+      this.cache = new EntityCache(this.metaStoreManager, diagServices);
     }
     return new Resolver(
-        this.callCtx,
+        this.metaStore,
+        this.diagServices,
         this.metaStoreManager,
         this.P1.getId(),
         null,
@@ -703,7 +702,7 @@ public class ResolverTest {
         // see if the principal exists
         PolarisMetaStoreManager.EntityResult result =
             this.metaStoreManager.readEntityByName(
-                this.callCtx,
+                this.metaStore,
                 null,
                 PolarisEntityType.PRINCIPAL,
                 PolarisEntitySubType.NULL_SUBTYPE,
@@ -909,7 +908,7 @@ public class ResolverTest {
     // reload the cached entry from the backend
     CachedEntryResult refCachedEntry =
         this.metaStoreManager.loadCachedEntryById(
-            this.callCtx, refEntity.getCatalogId(), refEntity.getId());
+            this.metaStore, refEntity.getCatalogId(), refEntity.getId());
 
     // should exist
     Assertions.assertThat(refCachedEntry).isNotNull();

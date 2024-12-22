@@ -72,6 +72,7 @@ import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -82,6 +83,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
@@ -112,6 +114,9 @@ public class PolarisCatalogHandlerWrapper {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisCatalogHandlerWrapper.class);
 
   private final CallContext callContext;
+  private final PolarisMetaStoreSession session;
+  private final PolarisConfigurationStore configurationStore;
+  private final PolarisDiagnostics diagnostics;
   private final PolarisEntityManager entityManager;
   private final PolarisMetaStoreManager metaStoreManager;
   private final String catalogName;
@@ -130,6 +135,9 @@ public class PolarisCatalogHandlerWrapper {
 
   public PolarisCatalogHandlerWrapper(
       CallContext callContext,
+      PolarisMetaStoreSession session,
+      PolarisConfigurationStore configurationStore,
+      PolarisDiagnostics diagnostics,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
       AuthenticatedPolarisPrincipal authenticatedPrincipal,
@@ -137,8 +145,11 @@ public class PolarisCatalogHandlerWrapper {
       String catalogName,
       PolarisAuthorizer authorizer) {
     this.callContext = callContext;
+    this.session = session;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
+    this.diagnostics = diagnostics;
+    this.configurationStore = configurationStore;
     this.catalogName = catalogName;
     this.authenticatedPrincipal = authenticatedPrincipal;
     this.authorizer = authorizer;
@@ -186,7 +197,7 @@ public class PolarisCatalogHandlerWrapper {
       List<Namespace> extraPassthroughNamespaces,
       List<TableIdentifier> extraPassthroughTableLikes) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(session, authenticatedPrincipal, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
         namespace);
@@ -227,7 +238,7 @@ public class PolarisCatalogHandlerWrapper {
   private void authorizeCreateNamespaceUnderNamespaceOperationOrThrow(
       PolarisAuthorizableOperation op, Namespace namespace) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(session, authenticatedPrincipal, catalogName);
 
     Namespace parentNamespace = PolarisCatalogHelpers.getParentNamespace(namespace);
     resolutionManifest.addPath(
@@ -262,7 +273,7 @@ public class PolarisCatalogHandlerWrapper {
     Namespace namespace = identifier.namespace();
 
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(session, authenticatedPrincipal, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(namespace.levels()), PolarisEntityType.NAMESPACE),
         namespace);
@@ -297,7 +308,7 @@ public class PolarisCatalogHandlerWrapper {
   private void authorizeBasicTableLikeOperationOrThrow(
       PolarisAuthorizableOperation op, PolarisEntitySubType subType, TableIdentifier identifier) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(session, authenticatedPrincipal, catalogName);
 
     // The underlying Catalog is also allowed to fetch "fresh" versions of the target entity.
     resolutionManifest.addPassthroughPath(
@@ -331,7 +342,7 @@ public class PolarisCatalogHandlerWrapper {
       final PolarisEntitySubType subType,
       List<TableIdentifier> ids) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(session, authenticatedPrincipal, catalogName);
     ids.forEach(
         identifier ->
             resolutionManifest.addPassthroughPath(
@@ -385,7 +396,7 @@ public class PolarisCatalogHandlerWrapper {
       TableIdentifier src,
       TableIdentifier dst) {
     resolutionManifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(session, authenticatedPrincipal, catalogName);
     // Add src, dstParent, and dst(optional)
     resolutionManifest.addPath(
         new ResolverPath(
@@ -823,20 +834,13 @@ public class PolarisCatalogHandlerWrapper {
     }
 
     PolarisResolvedPathWrapper catalogPath = resolutionManifest.getResolvedReferenceCatalogEntity();
-    callContext
-        .getPolarisCallContext()
-        .getDiagServices()
-        .checkNotNull(catalogPath, "No catalog available for loadTable request");
+    diagnostics.checkNotNull(catalogPath, "No catalog available for loadTable request");
     CatalogEntity catalogEntity = CatalogEntity.of(catalogPath.getRawLeafEntity());
-    PolarisConfigurationStore configurationStore =
-        callContext.getPolarisCallContext().getConfigurationStore();
     if (catalogEntity
             .getCatalogType()
             .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.EXTERNAL)
         && !configurationStore.getConfiguration(
-            callContext.getPolarisCallContext(),
-            catalogEntity,
-            PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING)) {
+            catalogEntity, PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING)) {
       throw new ForbiddenException(
           "Access Delegation is not enabled for this catalog. Please consult applicable "
               + "documentation for the catalog config property '%s' to enable this feature",
@@ -1015,7 +1019,7 @@ public class PolarisCatalogHandlerWrapper {
     // only go into an in-memory collection that we can commit as a single atomic unit after all
     // validations.
     TransactionWorkspaceMetaStoreManager transactionMetaStoreManager =
-        new TransactionWorkspaceMetaStoreManager(metaStoreManager);
+        new TransactionWorkspaceMetaStoreManager(metaStoreManager, diagnostics);
     ((BasePolarisCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
 
     commitTransactionRequest.tableChanges().stream()
@@ -1051,12 +1055,8 @@ public class PolarisCatalogHandlerWrapper {
                           if (!currentMetadata
                                   .location()
                                   .equals(((MetadataUpdate.SetLocation) singleUpdate).location())
-                              && !callContext
-                                  .getPolarisCallContext()
-                                  .getConfigurationStore()
-                                  .getConfiguration(
-                                      callContext.getPolarisCallContext(),
-                                      PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+                              && !configurationStore.getConfiguration(
+                                  PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
                             throw new BadRequestException(
                                 "Unsupported operation: commitTransaction containing SetLocation"
                                     + " for table '%s' and new location '%s'",
@@ -1080,8 +1080,7 @@ public class PolarisCatalogHandlerWrapper {
     List<PolarisMetaStoreManager.EntityWithPath> pendingUpdates =
         transactionMetaStoreManager.getPendingUpdates();
     PolarisMetaStoreManager.EntitiesResult result =
-        metaStoreManager.updateEntitiesPropertiesIfNotChanged(
-            callContext.getPolarisCallContext(), pendingUpdates);
+        metaStoreManager.updateEntitiesPropertiesIfNotChanged(session, pendingUpdates);
     if (!result.isSuccess()) {
       // TODO: Retries and server-side cleanup on failure
       throw new CommitFailedException(

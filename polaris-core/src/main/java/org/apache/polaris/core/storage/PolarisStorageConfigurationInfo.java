@@ -37,9 +37,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisConfiguration;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.Catalog;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -136,7 +136,9 @@ public abstract class PolarisStorageConfigurationInfo {
   }
 
   public static Optional<PolarisStorageConfigurationInfo> forEntityPath(
-      PolarisDiagnostics diagnostics, List<PolarisEntity> entityPath) {
+      PolarisConfigurationStore configurationStore,
+      PolarisDiagnostics diagnostics,
+      List<PolarisEntity> entityPath) {
     return findStorageInfoFromHierarchy(entityPath)
         .map(
             storageInfo ->
@@ -162,13 +164,8 @@ public abstract class PolarisStorageConfigurationInfo {
                       .orElse(null);
               CatalogEntity catalog = CatalogEntity.of(entityPath.get(0));
               boolean allowEscape =
-                  CallContext.getCurrentContext()
-                      .getPolarisCallContext()
-                      .getConfigurationStore()
-                      .getConfiguration(
-                          CallContext.getCurrentContext().getPolarisCallContext(),
-                          catalog,
-                          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
+                  configurationStore.getConfiguration(
+                      catalog, PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
               if (!allowEscape
                   && catalog.getCatalogType() != Catalog.TypeEnum.EXTERNAL
                   && baseLocation != null) {

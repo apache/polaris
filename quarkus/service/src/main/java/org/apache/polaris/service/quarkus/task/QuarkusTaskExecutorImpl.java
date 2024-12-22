@@ -26,7 +26,10 @@ import io.quarkus.runtime.Startup;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.time.Clock;
 import java.util.concurrent.ExecutorService;
+import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.tracing.QuarkusTracingFilter;
@@ -39,16 +42,25 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
   private final Tracer tracer;
 
   public QuarkusTaskExecutorImpl() {
-    this(null, null, null, null);
+    this(null, null, null, null, null, null, null);
   }
 
   @Inject
   public QuarkusTaskExecutorImpl(
       @Identifier("task-executor") ExecutorService executorService,
       MetaStoreManagerFactory metaStoreManagerFactory,
+      PolarisConfigurationStore configurationStore,
+      PolarisDiagnostics diagnostics,
       TaskFileIOSupplier fileIOSupplier,
+      Clock clock,
       Tracer tracer) {
-    super(executorService, metaStoreManagerFactory, fileIOSupplier);
+    super(
+        executorService,
+        metaStoreManagerFactory,
+        configurationStore,
+        diagnostics,
+        fileIOSupplier,
+        clock);
     this.tracer = tracer;
   }
 

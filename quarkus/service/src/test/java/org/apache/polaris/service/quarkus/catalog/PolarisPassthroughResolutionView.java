@@ -23,10 +23,10 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
@@ -41,17 +41,17 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
  */
 public class PolarisPassthroughResolutionView implements PolarisResolutionManifestCatalogView {
   private final PolarisEntityManager entityManager;
-  private final CallContext callContext;
+  private final PolarisMetaStoreSession metaStoreSession;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final String catalogName;
 
   public PolarisPassthroughResolutionView(
-      CallContext callContext,
       PolarisEntityManager entityManager,
+      PolarisMetaStoreSession metaStoreSession,
       AuthenticatedPolarisPrincipal authenticatedPrincipal,
       String catalogName) {
     this.entityManager = entityManager;
-    this.callContext = callContext;
+    this.metaStoreSession = metaStoreSession;
     this.authenticatedPrincipal = authenticatedPrincipal;
     this.catalogName = catalogName;
   }
@@ -59,7 +59,8 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
   @Override
   public PolarisResolvedPathWrapper getResolvedReferenceCatalogEntity() {
     PolarisResolutionManifest manifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(
+            metaStoreSession, authenticatedPrincipal, catalogName);
     manifest.resolveAll();
     return manifest.getResolvedReferenceCatalogEntity();
   }
@@ -67,7 +68,8 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
   @Override
   public PolarisResolvedPathWrapper getResolvedPath(Object key) {
     PolarisResolutionManifest manifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(
+            metaStoreSession, authenticatedPrincipal, catalogName);
 
     if (key instanceof Namespace namespace) {
       manifest.addPath(
@@ -85,7 +87,8 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
   @Override
   public PolarisResolvedPathWrapper getResolvedPath(Object key, PolarisEntitySubType subType) {
     PolarisResolutionManifest manifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(
+            metaStoreSession, authenticatedPrincipal, catalogName);
 
     if (key instanceof TableIdentifier identifier) {
       manifest.addPath(
@@ -106,7 +109,8 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
   @Override
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(Object key) {
     PolarisResolutionManifest manifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(
+            metaStoreSession, authenticatedPrincipal, catalogName);
 
     if (key instanceof Namespace namespace) {
       manifest.addPassthroughPath(
@@ -124,7 +128,8 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(
       Object key, PolarisEntitySubType subType) {
     PolarisResolutionManifest manifest =
-        entityManager.prepareResolutionManifest(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolutionManifest(
+            metaStoreSession, authenticatedPrincipal, catalogName);
 
     if (key instanceof TableIdentifier identifier) {
       manifest.addPassthroughPath(

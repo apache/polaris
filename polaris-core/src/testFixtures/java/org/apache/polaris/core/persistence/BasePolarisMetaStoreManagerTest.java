@@ -34,7 +34,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -103,8 +102,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   void testCreateEntities() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    try (CallContext callCtx =
-        CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext)) {
+    try (CallContext callCtx = CallContext.of(() -> "testRealm")) {
       if (CallContext.getCurrentContext() == null) {
         CallContext.setCurrentContext(callCtx);
       }
@@ -113,7 +111,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
       List<PolarisBaseEntity> createdEntities =
           metaStoreManager
               .createEntitiesIfNotExist(
-                  polarisTestMetaStoreManager.polarisCallContext, null, List.of(task1, task2))
+                  polarisTestMetaStoreManager.polarisMetaStoreSession, null, List.of(task1, task2))
               .getEntities();
 
       Assertions.assertThat(createdEntities)
@@ -125,7 +123,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
       List<PolarisEntityActiveRecord> listedEntities =
           metaStoreManager
               .listEntities(
-                  polarisTestMetaStoreManager.polarisCallContext,
+                  polarisTestMetaStoreManager.polarisMetaStoreSession,
                   null,
                   PolarisEntityType.TASK,
                   PolarisEntitySubType.NULL_SUBTYPE)
@@ -154,8 +152,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   void testCreateEntitiesAlreadyExisting() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    try (CallContext callCtx =
-        CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext)) {
+    try (CallContext callCtx = CallContext.of(() -> "testRealm")) {
       if (CallContext.getCurrentContext() == null) {
         CallContext.setCurrentContext(callCtx);
       }
@@ -164,7 +161,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
       List<PolarisBaseEntity> createdEntities =
           metaStoreManager
               .createEntitiesIfNotExist(
-                  polarisTestMetaStoreManager.polarisCallContext, null, List.of(task1, task2))
+                  polarisTestMetaStoreManager.polarisMetaStoreSession, null, List.of(task1, task2))
               .getEntities();
 
       Assertions.assertThat(createdEntities)
@@ -180,7 +177,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
       createdEntities =
           metaStoreManager
               .createEntitiesIfNotExist(
-                  polarisTestMetaStoreManager.polarisCallContext,
+                  polarisTestMetaStoreManager.polarisMetaStoreSession,
                   null,
                   List.of(task1, task2, task3))
               .getEntities();
@@ -198,8 +195,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   void testCreateEntitiesWithConflict() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    try (CallContext callCtx =
-        CallContext.of(() -> "testRealm", polarisTestMetaStoreManager.polarisCallContext)) {
+    try (CallContext callCtx = CallContext.of(() -> "testRealm")) {
       if (CallContext.getCurrentContext() == null) {
         CallContext.setCurrentContext(callCtx);
       }
@@ -209,7 +205,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
       List<PolarisBaseEntity> createdEntities =
           metaStoreManager
               .createEntitiesIfNotExist(
-                  polarisTestMetaStoreManager.polarisCallContext,
+                  polarisTestMetaStoreManager.polarisMetaStoreSession,
                   null,
                   List.of(task1, task2, task3))
               .getEntities();
@@ -229,18 +225,21 @@ public abstract class BasePolarisMetaStoreManagerTest {
       createdEntities =
           metaStoreManager
               .createEntitiesIfNotExist(
-                  polarisTestMetaStoreManager.polarisCallContext, null, List.of(secondTask3, task4))
+                  polarisTestMetaStoreManager.polarisMetaStoreSession,
+                  null,
+                  List.of(secondTask3, task4))
               .getEntities();
       Assertions.assertThat(createdEntities).isNull();
     }
   }
 
-  private static TaskEntity createTask(String taskName, long id) {
+  private TaskEntity createTask(String taskName, long id) {
     return new TaskEntity.Builder()
         .setName(taskName)
-        .withData("data")
+        .withData(polarisTestMetaStoreManager.polarisDiagnostics, "data")
         .setId(id)
-        .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
+        .withTaskType(
+            polarisTestMetaStoreManager.polarisDiagnostics, AsyncTaskType.MANIFEST_FILE_CLEANUP)
         .setCreateTimestamp(Instant.now().toEpochMilli())
         .build();
   }
@@ -288,9 +287,11 @@ public abstract class BasePolarisMetaStoreManagerTest {
     }
     String executorId = "testExecutor_abc";
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
+
     List<PolarisBaseEntity> taskList =
-        metaStoreManager.loadTasks(callCtx, executorId, 5).getEntities();
+        metaStoreManager
+            .loadTasks(polarisTestMetaStoreManager.polarisMetaStoreSession, executorId, 5)
+            .getEntities();
     Assertions.assertThat(taskList)
         .isNotNull()
         .isNotEmpty()
@@ -301,7 +302,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
                     .extracting(
                         e ->
                             PolarisObjectMapperUtil.deserializeProperties(
-                                callCtx, e.getProperties()))
+                                polarisTestMetaStoreManager.polarisDiagnostics, e.getProperties()))
                     .asInstanceOf(InstanceOfAssertFactories.map(String.class, String.class))
                     .containsEntry("lastAttemptExecutorId", executorId)
                     .containsEntry("attemptCount", "1"));
@@ -310,7 +311,9 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
     // grab a second round of tasks. Assert that none of the original 5 are in the list
     List<PolarisBaseEntity> newTaskList =
-        metaStoreManager.loadTasks(callCtx, executorId, 5).getEntities();
+        metaStoreManager
+            .loadTasks(polarisTestMetaStoreManager.polarisMetaStoreSession, executorId, 5)
+            .getEntities();
     Assertions.assertThat(newTaskList)
         .isNotNull()
         .isNotEmpty()
@@ -324,7 +327,9 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
     // only 10 tasks are unassigned. Requesting 20, we should only receive those 10
     List<PolarisBaseEntity> lastTen =
-        metaStoreManager.loadTasks(callCtx, executorId, 20).getEntities();
+        metaStoreManager
+            .loadTasks(polarisTestMetaStoreManager.polarisMetaStoreSession, executorId, 20)
+            .getEntities();
 
     Assertions.assertThat(lastTen)
         .isNotNull()
@@ -338,7 +343,9 @@ public abstract class BasePolarisMetaStoreManagerTest {
             .collect(Collectors.toSet());
 
     List<PolarisBaseEntity> emtpyList =
-        metaStoreManager.loadTasks(callCtx, executorId, 20).getEntities();
+        metaStoreManager
+            .loadTasks(polarisTestMetaStoreManager.polarisMetaStoreSession, executorId, 20)
+            .getEntities();
 
     Assertions.assertThat(emtpyList).isNotNull().isEmpty();
 
@@ -346,7 +353,9 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
     // all the tasks are unassigned. Fetch them all
     List<PolarisBaseEntity> allTasks =
-        metaStoreManager.loadTasks(callCtx, executorId, 20).getEntities();
+        metaStoreManager
+            .loadTasks(polarisTestMetaStoreManager.polarisMetaStoreSession, executorId, 20)
+            .getEntities();
 
     Assertions.assertThat(allTasks)
         .isNotNull()
@@ -357,11 +366,19 @@ public abstract class BasePolarisMetaStoreManagerTest {
 
     // drop all the tasks. Skip the clock forward and fetch. empty list expected
     allTasks.forEach(
-        entity -> metaStoreManager.dropEntityIfExists(callCtx, null, entity, Map.of(), false));
+        entity ->
+            metaStoreManager.dropEntityIfExists(
+                polarisTestMetaStoreManager.polarisMetaStoreSession,
+                null,
+                entity,
+                Map.of(),
+                false));
     timeSource.add(Duration.ofMinutes(10));
 
     List<PolarisBaseEntity> finalList =
-        metaStoreManager.loadTasks(callCtx, executorId, 20).getEntities();
+        metaStoreManager
+            .loadTasks(polarisTestMetaStoreManager.polarisMetaStoreSession, executorId, 20)
+            .getEntities();
 
     Assertions.assertThat(finalList).isNotNull().isEmpty();
   }
@@ -373,7 +390,6 @@ public abstract class BasePolarisMetaStoreManagerTest {
           null, PolarisEntityType.TASK, PolarisEntitySubType.NULL_SUBTYPE, "task_" + i);
     }
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
     List<Future<Set<String>>> futureList = new ArrayList<>();
     List<Set<String>> responses;
     ExecutorService executorService = Executors.newCachedThreadPool();
@@ -390,7 +406,13 @@ public abstract class BasePolarisMetaStoreManagerTest {
                   do {
                     retry = false;
                     try {
-                      taskList = metaStoreManager.loadTasks(callCtx, executorId, 5).getEntities();
+                      taskList =
+                          metaStoreManager
+                              .loadTasks(
+                                  polarisTestMetaStoreManager.polarisMetaStoreSession,
+                                  executorId,
+                                  5)
+                              .getEntities();
                       taskList.stream().map(PolarisBaseEntity::getName).forEach(taskNames::add);
                     } catch (RetryOnConcurrencyException e) {
                       retry = true;

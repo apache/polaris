@@ -22,6 +22,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -35,13 +36,16 @@ public class RealmEntityManagerFactory {
   private static final Logger LOGGER = LoggerFactory.getLogger(RealmEntityManagerFactory.class);
 
   private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final PolarisDiagnostics diagnostics;
 
   // Key: realmIdentifier
   private final Map<String, PolarisEntityManager> cachedEntityManagers = new ConcurrentHashMap<>();
 
   @Inject
-  public RealmEntityManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
+  public RealmEntityManagerFactory(
+      MetaStoreManagerFactory metaStoreManagerFactory, PolarisDiagnostics diagnostics) {
     this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.diagnostics = diagnostics;
   }
 
   public PolarisEntityManager getOrCreateEntityManager(RealmContext context) {
@@ -56,7 +60,8 @@ public class RealmEntityManagerFactory {
           return new PolarisEntityManager(
               metaStoreManagerFactory.getOrCreateMetaStoreManager(context),
               metaStoreManagerFactory.getOrCreateStorageCredentialCache(context),
-              metaStoreManagerFactory.getOrCreateEntityCache(context));
+              metaStoreManagerFactory.getOrCreateEntityCache(context),
+              diagnostics);
         });
   }
 }
