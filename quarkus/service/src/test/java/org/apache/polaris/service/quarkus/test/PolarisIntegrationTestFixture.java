@@ -31,7 +31,6 @@ import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
@@ -100,22 +99,17 @@ public class PolarisIntegrationTestFixture {
       helper.metaStoreManagerFactory.bootstrapRealms(List.of(realm));
     }
 
-    RealmContext realmContext =
-        helper.realmContextResolver.resolveRealmContext(
-            baseUri.toString(), "GET", "/", Map.of(REALM_PROPERTY_KEY, realm));
+    RealmContext realmContext = () -> realm;
 
     PolarisMetaStoreSession metaStoreSession =
         helper.metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
-    PolarisCallContext polarisContext =
-        new PolarisCallContext(
-            metaStoreSession, helper.diagServices, helper.configurationStore, helper.clock);
-    try (CallContext ctx = CallContext.of(realmContext, polarisContext)) {
+    try (CallContext ctx = CallContext.of(realmContext)) {
       CallContext.setCurrentContext(ctx);
       PolarisMetaStoreManager metaStoreManager =
           helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
       PolarisMetaStoreManager.EntityResult principal =
           metaStoreManager.readEntityByName(
-              ctx.getPolarisCallContext(),
+              metaStoreSession,
               null,
               PolarisEntityType.PRINCIPAL,
               PolarisEntitySubType.NULL_SUBTYPE,
@@ -123,7 +117,7 @@ public class PolarisIntegrationTestFixture {
 
       Map<String, String> propertiesMap = readInternalProperties(principal);
       return metaStoreManager
-          .loadPrincipalSecrets(ctx.getPolarisCallContext(), propertiesMap.get("client_id"))
+          .loadPrincipalSecrets(metaStoreSession, propertiesMap.get("client_id"))
           .getPrincipalSecrets();
     } finally {
       CallContext.unsetCurrentContext();

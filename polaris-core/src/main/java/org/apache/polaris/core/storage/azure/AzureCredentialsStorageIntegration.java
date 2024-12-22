@@ -46,6 +46,7 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.polaris.core.PolarisConfiguration;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
@@ -60,10 +61,12 @@ public class AzureCredentialsStorageIntegration
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AzureCredentialsStorageIntegration.class);
 
-  final DefaultAzureCredential defaultAzureCredential;
+  private final PolarisConfigurationStore configurationStore;
+  private final DefaultAzureCredential defaultAzureCredential;
 
-  public AzureCredentialsStorageIntegration() {
-    super(AzureCredentialsStorageIntegration.class.getName());
+  public AzureCredentialsStorageIntegration(PolarisConfigurationStore configurationStore) {
+    super(configurationStore, AzureCredentialsStorageIntegration.class.getName());
+    this.configurationStore = configurationStore;
     // The DefaultAzureCredential will by default load the environment variables for client id,
     // client secret, tenant id
     defaultAzureCredential = new DefaultAzureCredentialBuilder().build();
@@ -126,7 +129,8 @@ public class AzureCredentialsStorageIntegration
     // clock skew between the client and server,
     OffsetDateTime startTime = start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
     int intendedDurationSeconds =
-        PolarisConfiguration.loadConfig(PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+        configurationStore.getConfiguration(
+            PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
     OffsetDateTime intendedEndTime =
         start.plusSeconds(intendedDurationSeconds).atOffset(ZoneOffset.UTC);
     OffsetDateTime maxAllowedEndTime =

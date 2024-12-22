@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.context;
 
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.nio.file.Paths;
@@ -27,21 +27,23 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
+import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-@ApplicationScoped
+@RequestScoped
 public class PolarisCallContextCatalogFactory implements CallContextCatalogFactory {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisCallContextCatalogFactory.class);
@@ -49,19 +51,28 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private static final String WAREHOUSE_LOCATION_BASEDIR =
       "/tmp/iceberg_rest_server_warehouse_data/";
 
-  private final RealmEntityManagerFactory entityManagerFactory;
+  private final PolarisEntityManager entityManager;
+  private final PolarisMetaStoreManager metaStoreManager;
+  private final PolarisMetaStoreSession metaStoreSession;
+  private final PolarisConfigurationStore configurationStore;
+  private final PolarisDiagnostics diagnostics;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
-  private final MetaStoreManagerFactory metaStoreManagerFactory;
 
   @Inject
   public PolarisCallContextCatalogFactory(
-      RealmEntityManagerFactory entityManagerFactory,
-      MetaStoreManagerFactory metaStoreManagerFactory,
+      PolarisEntityManager entityManager,
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisMetaStoreSession metaStoreSession,
+      PolarisConfigurationStore configurationStore,
+      PolarisDiagnostics diagnostics,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory) {
-    this.entityManagerFactory = entityManagerFactory;
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.entityManager = entityManager;
+    this.metaStoreManager = metaStoreManager;
+    this.metaStoreSession = metaStoreSession;
+    this.configurationStore = configurationStore;
+    this.diagnostics = diagnostics;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
   }
@@ -80,17 +91,16 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     String catalogKey = realm + "/" + catalogName;
     LOGGER.info("Initializing new BasePolarisCatalog for key: {}", catalogKey);
 
-    PolarisEntityManager entityManager =
-        entityManagerFactory.getOrCreateEntityManager(context.getRealmContext());
-
     BasePolarisCatalog catalogInstance =
         new BasePolarisCatalog(
             entityManager,
-            metaStoreManagerFactory.getOrCreateMetaStoreManager(context.getRealmContext()),
+            metaStoreManager,
+            metaStoreSession,
+            configurationStore,
+            diagnostics,
             context,
             resolvedManifest,
             securityContext,
-            authenticatedPrincipal,
             taskExecutor,
             fileIOFactory);
 

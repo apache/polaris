@@ -22,27 +22,27 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseResult;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 
 /** Manages secrets for Polaris principals. */
 public interface PolarisSecretsManager {
   /**
    * Load the principal secrets given the client_id.
    *
-   * @param callCtx call context
+   * @param session the metastore session
    * @param clientId principal client id
    * @return the secrets associated to that principal, including the entity id of the principal
    */
   @Nonnull
   PrincipalSecretsResult loadPrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId);
+      @Nonnull PolarisMetaStoreSession session, @Nonnull String clientId);
 
   /**
    * Rotate secrets
    *
-   * @param callCtx call context
+   * @param session the metastore session
    * @param clientId principal client id
    * @param principalId id of the principal
    * @param reset true if the principal's secrets should be disabled and replaced with a one-time
@@ -53,7 +53,7 @@ public interface PolarisSecretsManager {
    */
   @Nonnull
   PrincipalSecretsResult rotatePrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisMetaStoreSession session,
       @Nonnull String clientId,
       long principalId,
       boolean reset,

@@ -107,18 +107,13 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
             // secret and treat it as a new token request
             if (clientId != null && clientSecret != null) {
               yield tokenBroker.generateFromClientSecrets(
-                  clientId,
-                  clientSecret,
-                  CLIENT_CREDENTIALS,
-                  scope,
-                  callContext.getPolarisCallContext());
+                  clientId, clientSecret, CLIENT_CREDENTIALS, scope);
             } else {
               yield tokenBroker.generateFromToken(subjectTokenType, subjectToken, grantType, scope);
             }
           }
           case null ->
-              tokenBroker.generateFromClientSecrets(
-                  clientId, clientSecret, grantType, scope, callContext.getPolarisCallContext());
+              tokenBroker.generateFromClientSecrets(clientId, clientSecret, grantType, scope);
         };
     if (tokenResponse == null) {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.unsupported_grant_type);

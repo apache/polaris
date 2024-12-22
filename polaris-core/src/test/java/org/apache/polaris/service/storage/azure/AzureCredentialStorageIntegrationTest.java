@@ -47,6 +47,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
@@ -346,7 +347,7 @@ public class AzureCredentialStorageIntegrationTest {
     AzureStorageConfigurationInfo azureConfig =
         new AzureStorageConfigurationInfo(allowedLoc, tenantId);
     AzureCredentialsStorageIntegration azureCredsIntegration =
-        new AzureCredentialsStorageIntegration();
+        new AzureCredentialsStorageIntegration(new PolarisConfigurationStore() {});
     EnumMap<PolarisCredentialProperty, String> credsMap =
         azureCredsIntegration.getSubscopedCreds(
             new PolarisDefaultDiagServiceImpl(),

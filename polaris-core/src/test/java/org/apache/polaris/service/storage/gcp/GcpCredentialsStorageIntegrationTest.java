@@ -48,6 +48,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
@@ -168,6 +169,7 @@ class GcpCredentialsStorageIntegrationTest {
     GcpStorageConfigurationInfo gcpConfig = new GcpStorageConfigurationInfo(allowedLoc);
     GcpCredentialsStorageIntegration gcpCredsIntegration =
         new GcpCredentialsStorageIntegration(
+            new PolarisConfigurationStore() {},
             GoogleCredentials.getApplicationDefault(),
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
     EnumMap<PolarisCredentialProperty, String> credsMap =
@@ -184,6 +186,7 @@ class GcpCredentialsStorageIntegrationTest {
   public void testGenerateAccessBoundary() throws IOException {
     GcpCredentialsStorageIntegration integration =
         new GcpCredentialsStorageIntegration(
+            new PolarisConfigurationStore() {},
             GoogleCredentials.newBuilder()
                 .setAccessToken(
                     new AccessToken(
@@ -213,6 +216,7 @@ class GcpCredentialsStorageIntegrationTest {
   public void testGenerateAccessBoundaryWithMultipleBuckets() throws IOException {
     GcpCredentialsStorageIntegration integration =
         new GcpCredentialsStorageIntegration(
+            new PolarisConfigurationStore() {},
             GoogleCredentials.newBuilder()
                 .setAccessToken(
                     new AccessToken(
@@ -247,6 +251,7 @@ class GcpCredentialsStorageIntegrationTest {
   public void testGenerateAccessBoundaryWithoutList() throws IOException {
     GcpCredentialsStorageIntegration integration =
         new GcpCredentialsStorageIntegration(
+            new PolarisConfigurationStore() {},
             GoogleCredentials.newBuilder()
                 .setAccessToken(
                     new AccessToken(
@@ -278,6 +283,7 @@ class GcpCredentialsStorageIntegrationTest {
   public void testGenerateAccessBoundaryWithoutWrites() throws IOException {
     GcpCredentialsStorageIntegration integration =
         new GcpCredentialsStorageIntegration(
+            new PolarisConfigurationStore() {},
             GoogleCredentials.newBuilder()
                 .setAccessToken(
                     new AccessToken(

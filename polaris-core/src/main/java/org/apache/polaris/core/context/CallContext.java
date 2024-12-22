@@ -24,8 +24,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.iceberg.io.CloseableGroup;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,10 +57,6 @@ public interface CallContext extends AutoCloseable {
     return CURRENT_CONTEXT.get();
   }
 
-  static PolarisDiagnostics getDiagnostics() {
-    return CURRENT_CONTEXT.get().getPolarisCallContext().getDiagServices();
-  }
-
   static AuthenticatedPolarisPrincipal getAuthenticatedPrincipal() {
     return (AuthenticatedPolarisPrincipal)
         CallContext.getCurrentContext().contextVariables().get(CallContext.AUTHENTICATED_PRINCIPAL);
@@ -72,18 +66,12 @@ public interface CallContext extends AutoCloseable {
     CURRENT_CONTEXT.remove();
   }
 
-  static CallContext of(
-      final RealmContext realmContext, final PolarisCallContext polarisCallContext) {
+  static CallContext of(final RealmContext realmContext) {
     Map<String, Object> map = new HashMap<>();
     return new CallContext() {
       @Override
       public RealmContext getRealmContext() {
         return realmContext;
-      }
-
-      @Override
-      public PolarisCallContext getPolarisCallContext() {
-        return polarisCallContext;
       }
 
       @Override
@@ -102,7 +90,6 @@ public interface CallContext extends AutoCloseable {
   static CallContext copyOf(CallContext base) {
     String realmId = base.getRealmContext().getRealmIdentifier();
     RealmContext realmContext = () -> realmId;
-    PolarisCallContext polarisCallContext = PolarisCallContext.copyOf(base.getPolarisCallContext());
     Map<String, Object> contextVariables =
         base.contextVariables().entrySet().stream()
             .filter(e -> !e.getKey().equals(CLOSEABLES))
@@ -114,11 +101,6 @@ public interface CallContext extends AutoCloseable {
       }
 
       @Override
-      public PolarisCallContext getPolarisCallContext() {
-        return polarisCallContext;
-      }
-
-      @Override
       public Map<String, Object> contextVariables() {
         return contextVariables;
       }
@@ -126,11 +108,6 @@ public interface CallContext extends AutoCloseable {
   }
 
   RealmContext getRealmContext();
-
-  /**
-   * @return the inner context used for delegating services
-   */
-  PolarisCallContext getPolarisCallContext();
 
   Map<String, Object> contextVariables();
 

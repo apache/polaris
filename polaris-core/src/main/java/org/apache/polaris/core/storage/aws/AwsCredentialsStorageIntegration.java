@@ -19,7 +19,6 @@
 package org.apache.polaris.core.storage.aws;
 
 import static org.apache.polaris.core.PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
-import static org.apache.polaris.core.PolarisConfiguration.loadConfig;
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
@@ -29,6 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
@@ -45,10 +45,14 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 /** Credential vendor that supports generating */
 public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
+
+  private final PolarisConfigurationStore configurationStore;
   private final StsClient stsClient;
 
-  public AwsCredentialsStorageIntegration(StsClient stsClient) {
-    super(AwsCredentialsStorageIntegration.class.getName());
+  public AwsCredentialsStorageIntegration(
+      PolarisConfigurationStore configurationStore, StsClient stsClient) {
+    super(configurationStore, AwsCredentialsStorageIntegration.class.getName());
+    this.configurationStore = configurationStore;
     this.stsClient = stsClient;
   }
 
@@ -73,7 +77,8 @@ public class AwsCredentialsStorageIntegration
                             allowedReadLocations,
                             allowedWriteLocations)
                         .toJson())
-                .durationSeconds(loadConfig(STORAGE_CREDENTIAL_DURATION_SECONDS))
+                .durationSeconds(
+                    configurationStore.getConfiguration(STORAGE_CREDENTIAL_DURATION_SECONDS))
                 .build());
     EnumMap<PolarisCredentialProperty, String> credentialMap =
         new EnumMap<>(PolarisCredentialProperty.class);

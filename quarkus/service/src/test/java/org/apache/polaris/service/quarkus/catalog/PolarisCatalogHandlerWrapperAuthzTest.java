@@ -55,17 +55,14 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.catalog.PolarisCatalogHandlerWrapper;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase;
@@ -93,7 +90,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
   }
 
   private PolarisCatalogHandlerWrapper newWrapper(Set<String> activatedPrincipalRoles) {
-    return newWrapper(activatedPrincipalRoles, CATALOG_NAME, callContextCatalogFactory);
+    return newWrapper(activatedPrincipalRoles, CATALOG_NAME, newCatalogFactory());
   }
 
   private PolarisCatalogHandlerWrapper newWrapper(
@@ -102,12 +99,40 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
     return new PolarisCatalogHandlerWrapper(
         callContext,
+        metaStoreSession,
+        configurationStore,
+        diagServices,
         entityManager,
         metaStoreManager,
         securityContext(authenticatedPrincipal, activatedPrincipalRoles),
         factory,
         catalogName,
         polarisAuthorizer);
+  }
+
+  private PolarisCatalogHandlerWrapper newWrapper(SecurityContext securityContext) {
+    return new PolarisCatalogHandlerWrapper(
+        callContext,
+        metaStoreSession,
+        configurationStore,
+        diagServices,
+        entityManager,
+        metaStoreManager,
+        securityContext,
+        newCatalogFactory(),
+        CATALOG_NAME,
+        polarisAuthorizer);
+  }
+
+  private CallContextCatalogFactory newCatalogFactory() {
+    return new TestPolarisCallContextCatalogFactory(
+        entityManager,
+        metaStoreManager,
+        metaStoreSession,
+        configurationStore,
+        diagServices,
+        Mockito.mock(),
+        new DefaultFileIOFactory());
   }
 
   /**
@@ -224,7 +249,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     String principalName = "all_the_powers";
     PolarisMetaStoreManager.CreatePrincipalResult newPrincipal =
         metaStoreManager.createPrincipal(
-            callContext.getPolarisCallContext(),
+            metaStoreSession,
             new PrincipalEntity.Builder()
                 .setName(principalName)
                 .setCreateTimestamp(Instant.now().toEpochMilli())
@@ -238,14 +263,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PrincipalEntity.of(newPrincipal.getPrincipal()),
             Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
     PolarisCatalogHandlerWrapper wrapper =
-        new PolarisCatalogHandlerWrapper(
-            callContext,
-            entityManager,
-            metaStoreManager,
-            securityContext(authenticatedPrincipal, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2)),
-            callContextCatalogFactory,
-            CATALOG_NAME,
-            polarisAuthorizer);
+        newWrapper(
+            securityContext(authenticatedPrincipal, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2)));
 
     // a variety of actions are all disallowed because the principal's credentials must be rotated
     doTestInsufficientPrivileges(
@@ -263,21 +282,13 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         new PrincipalWithCredentialsCredentials(
             newPrincipal.getPrincipalSecrets().getPrincipalClientId(),
             newPrincipal.getPrincipalSecrets().getMainSecret());
-    PrincipalEntity refreshPrincipal =
-        rotateAndRefreshPrincipal(
-            metaStoreManager, principalName, credentials, callContext.getPolarisCallContext());
+    PrincipalEntity refreshPrincipal = rotateAndRefreshPrincipal(principalName, credentials);
     final AuthenticatedPolarisPrincipal authenticatedPrincipal1 =
         new AuthenticatedPolarisPrincipal(
             PrincipalEntity.of(refreshPrincipal), Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
     PolarisCatalogHandlerWrapper refreshedWrapper =
-        new PolarisCatalogHandlerWrapper(
-            callContext,
-            entityManager,
-            metaStoreManager,
-            securityContext(authenticatedPrincipal1, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2)),
-            callContextCatalogFactory,
-            CATALOG_NAME,
-            polarisAuthorizer);
+        newWrapper(
+            securityContext(authenticatedPrincipal1, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2)));
 
     doTestSufficientPrivilegeSets(
         List.of(Set.of(PolarisPrivilege.NAMESPACE_LIST)),
@@ -1690,13 +1701,11 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
 
     PolarisCallContextCatalogFactory factory =
         new PolarisCallContextCatalogFactory(
-            new RealmEntityManagerFactory(null) {
-              @Override
-              public PolarisEntityManager getOrCreateEntityManager(RealmContext realmContext) {
-                return entityManager;
-              }
-            },
-            managerFactory,
+            entityManager,
+            metaStoreManager,
+            metaStoreSession,
+            configurationStore,
+            diagServices,
             Mockito.mock(),
             new DefaultFileIOFactory()) {
           @Override
@@ -1712,20 +1721,23 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             catalog.initialize(
                 externalCatalog, ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, fileIoImpl));
 
-            FileIO fileIO = CatalogUtil.loadFileIO(fileIoImpl, Map.of(), new Configuration());
-            TableMetadata tableMetadata =
-                TableMetadata.buildFromEmpty()
-                    .addSchema(SCHEMA, SCHEMA.highestFieldId())
-                    .setLocation(
-                        String.format("%s/bucket/table/metadata/v1.metadata.json", storageLocation))
-                    .addPartitionSpec(PartitionSpec.unpartitioned())
-                    .addSortOrder(SortOrder.unsorted())
-                    .assignUUID()
-                    .build();
-            TableMetadataParser.overwrite(
-                tableMetadata, fileIO.newOutputFile(createPayload.getMetadataLocation()));
-            TableMetadataParser.overwrite(
-                tableMetadata, fileIO.newOutputFile(updatePayload.getMetadataLocation()));
+            try (FileIO fileIO =
+                CatalogUtil.loadFileIO(fileIoImpl, Map.of(), new Configuration())) {
+              TableMetadata tableMetadata =
+                  TableMetadata.buildFromEmpty()
+                      .addSchema(SCHEMA, SCHEMA.highestFieldId())
+                      .setLocation(
+                          String.format(
+                              "%s/bucket/table/metadata/v1.metadata.json", storageLocation))
+                      .addPartitionSpec(PartitionSpec.unpartitioned())
+                      .addSortOrder(SortOrder.unsorted())
+                      .assignUUID()
+                      .build();
+              TableMetadataParser.overwrite(
+                  tableMetadata, fileIO.newOutputFile(createPayload.getMetadataLocation()));
+              TableMetadataParser.overwrite(
+                  tableMetadata, fileIO.newOutputFile(updatePayload.getMetadataLocation()));
+            }
             return catalog;
           }
         };

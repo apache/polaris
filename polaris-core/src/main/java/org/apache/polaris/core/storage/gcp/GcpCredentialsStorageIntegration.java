@@ -38,6 +38,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
@@ -59,8 +60,10 @@ public class GcpCredentialsStorageIntegration
   private final HttpTransportFactory transportFactory;
 
   public GcpCredentialsStorageIntegration(
-      GoogleCredentials sourceCredentials, HttpTransportFactory transportFactory) {
-    super(GcpCredentialsStorageIntegration.class.getName());
+      PolarisConfigurationStore configurationStore,
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory) {
+    super(configurationStore, GcpCredentialsStorageIntegration.class.getName());
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
     this.sourceCredentials =

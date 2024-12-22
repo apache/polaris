@@ -61,6 +61,7 @@ public class JWTSymmetricKeyFactory implements TokenBrokerFactory {
   public TokenBroker apply(RealmContext realmContext) {
     return new JWTSymmetricKeyBroker(
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
         (int) maxTokenGeneration.toSeconds(),
         secretSupplier);
   }

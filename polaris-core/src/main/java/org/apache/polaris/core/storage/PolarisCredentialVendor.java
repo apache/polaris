@@ -25,8 +25,8 @@ import jakarta.annotation.Nullable;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.persistence.BaseResult;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 
 /** Manage credentials for storage locations. */
 public interface PolarisCredentialVendor {
@@ -34,7 +34,7 @@ public interface PolarisCredentialVendor {
    * Get a sub-scoped credentials for an entity against the provided allowed read and write
    * locations.
    *
-   * @param callCtx the polaris call context
+   * @param metaStoreSession the meta store session
    * @param catalogId the catalog id
    * @param entityId the entity id
    * @param allowListOperation whether to allow LIST operation on the allowedReadLocations and
@@ -45,7 +45,7 @@ public interface PolarisCredentialVendor {
    */
   @Nonnull
   ScopedCredentialsResult getSubscopedCredsForEntity(
-      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisMetaStoreSession metaStoreSession,
       long catalogId,
       long entityId,
       boolean allowListOperation,
@@ -55,7 +55,7 @@ public interface PolarisCredentialVendor {
   /**
    * Validate whether the entity has access to the locations with the provided target operations
    *
-   * @param callCtx the polaris call context
+   * @param metaStoreSession the meta store session
    * @param catalogId the catalog id
    * @param entityId the entity id
    * @param actions a set of operation actions: READ/WRITE/LIST/DELETE/ALL
@@ -87,7 +87,7 @@ public interface PolarisCredentialVendor {
    */
   @Nonnull
   ValidateAccessResult validateAccessToLocations(
-      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisMetaStoreSession metaStoreSession,
       long catalogId,
       long entityId,
       @Nonnull Set<PolarisStorageActions> actions,
