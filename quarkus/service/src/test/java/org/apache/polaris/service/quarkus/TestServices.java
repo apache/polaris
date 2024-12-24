@@ -30,7 +30,6 @@ import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -93,8 +92,6 @@ public record TestServices(
     PolarisMetaStoreSession session =
         metaStoreManagerFactory.getOrCreateSessionSupplier(testRealm).get();
 
-    CallContext callContext = CallContext.of(testRealm);
-
     RealmEntityManagerFactory realmEntityManagerFactory =
         new RealmEntityManagerFactory(metaStoreManagerFactory, polarisDiagnostics) {};
 
@@ -115,7 +112,7 @@ public record TestServices(
 
     IcebergRestCatalogApiService service =
         new IcebergCatalogAdapter(
-            callContext,
+            testRealm,
             callContextFactory,
             entityManager,
             metaStoreManager,
@@ -167,7 +164,6 @@ public record TestServices(
             new PolarisServiceImpl(
                 entityManager, metaStoreManager, session, configurationStore, authorizer));
 
-    CallContext.setCurrentContext(CallContext.of(testRealm));
     return new TestServices(restApi, catalogsApi, testRealm, securityContext);
   }
 }

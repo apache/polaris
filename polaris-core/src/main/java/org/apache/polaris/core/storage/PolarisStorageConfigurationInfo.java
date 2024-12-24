@@ -40,6 +40,7 @@ import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -136,6 +137,7 @@ public abstract class PolarisStorageConfigurationInfo {
   }
 
   public static Optional<PolarisStorageConfigurationInfo> forEntityPath(
+      RealmContext realmContext,
       PolarisConfigurationStore configurationStore,
       PolarisDiagnostics diagnostics,
       List<PolarisEntity> entityPath) {
@@ -165,7 +167,9 @@ public abstract class PolarisStorageConfigurationInfo {
               CatalogEntity catalog = CatalogEntity.of(entityPath.get(0));
               boolean allowEscape =
                   configurationStore.getConfiguration(
-                      catalog, PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
+                      realmContext,
+                      catalog,
+                      PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
               if (!allowEscape
                   && catalog.getCatalogType() != Catalog.TypeEnum.EXTERNAL
                   && baseLocation != null) {

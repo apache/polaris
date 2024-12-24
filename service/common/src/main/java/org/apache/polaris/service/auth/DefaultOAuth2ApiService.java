@@ -29,7 +29,6 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.hdfs.web.oauth2.OAuth2Constants;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.types.TokenType;
@@ -46,12 +45,10 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultOAuth2ApiService.class);
 
   private final TokenBrokerFactory tokenBrokerFactory;
-  private final CallContext callContext;
 
   @Inject
-  public DefaultOAuth2ApiService(TokenBrokerFactory tokenBrokerFactory, CallContext callContext) {
+  public DefaultOAuth2ApiService(TokenBrokerFactory tokenBrokerFactory) {
     this.tokenBrokerFactory = tokenBrokerFactory;
-    this.callContext = callContext;
   }
 
   @Override

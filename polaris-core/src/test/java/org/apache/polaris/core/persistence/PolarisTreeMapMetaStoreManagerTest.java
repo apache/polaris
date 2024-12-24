@@ -35,6 +35,7 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
         new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS, diagServices);
     return new PolarisTestMetaStoreManager(
         new PolarisMetaStoreManagerImpl(
+            () -> "test",
             diagServices,
             new PolarisConfigurationStore() {},
             timeSource.withZone(ZoneId.systemDefault())),

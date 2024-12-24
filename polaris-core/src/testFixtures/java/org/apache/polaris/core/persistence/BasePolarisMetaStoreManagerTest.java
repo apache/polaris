@@ -34,7 +34,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -102,135 +101,116 @@ public abstract class BasePolarisMetaStoreManagerTest {
   @Test
   void testCreateEntities() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    try (CallContext callCtx = CallContext.of(() -> "testRealm")) {
-      if (CallContext.getCurrentContext() == null) {
-        CallContext.setCurrentContext(callCtx);
-      }
-      TaskEntity task1 = createTask("task1", 100L);
-      TaskEntity task2 = createTask("task2", 101L);
-      List<PolarisBaseEntity> createdEntities =
-          metaStoreManager
-              .createEntitiesIfNotExist(
-                  polarisTestMetaStoreManager.polarisMetaStoreSession, null, List.of(task1, task2))
-              .getEntities();
+    TaskEntity task1 = createTask("task1", 100L);
+    TaskEntity task2 = createTask("task2", 101L);
+    List<PolarisBaseEntity> createdEntities =
+        metaStoreManager
+            .createEntitiesIfNotExist(
+                polarisTestMetaStoreManager.polarisMetaStoreSession, null, List.of(task1, task2))
+            .getEntities();
 
-      Assertions.assertThat(createdEntities)
-          .isNotNull()
-          .hasSize(2)
-          .extracting(PolarisEntity::toCore)
-          .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
+    Assertions.assertThat(createdEntities)
+        .isNotNull()
+        .hasSize(2)
+        .extracting(PolarisEntity::toCore)
+        .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
 
-      List<PolarisEntityActiveRecord> listedEntities =
-          metaStoreManager
-              .listEntities(
-                  polarisTestMetaStoreManager.polarisMetaStoreSession,
-                  null,
-                  PolarisEntityType.TASK,
-                  PolarisEntitySubType.NULL_SUBTYPE)
-              .getEntities();
-      Assertions.assertThat(listedEntities)
-          .isNotNull()
-          .hasSize(2)
-          .containsExactly(
-              new PolarisEntityActiveRecord(
-                  task1.getCatalogId(),
-                  task1.getId(),
-                  task1.getParentId(),
-                  task1.getName(),
-                  task1.getTypeCode(),
-                  task1.getSubTypeCode()),
-              new PolarisEntityActiveRecord(
-                  task2.getCatalogId(),
-                  task2.getId(),
-                  task2.getParentId(),
-                  task2.getName(),
-                  task2.getTypeCode(),
-                  task2.getSubTypeCode()));
-    }
+    List<PolarisEntityActiveRecord> listedEntities =
+        metaStoreManager
+            .listEntities(
+                polarisTestMetaStoreManager.polarisMetaStoreSession,
+                null,
+                PolarisEntityType.TASK,
+                PolarisEntitySubType.NULL_SUBTYPE)
+            .getEntities();
+    Assertions.assertThat(listedEntities)
+        .isNotNull()
+        .hasSize(2)
+        .containsExactly(
+            new PolarisEntityActiveRecord(
+                task1.getCatalogId(),
+                task1.getId(),
+                task1.getParentId(),
+                task1.getName(),
+                task1.getTypeCode(),
+                task1.getSubTypeCode()),
+            new PolarisEntityActiveRecord(
+                task2.getCatalogId(),
+                task2.getId(),
+                task2.getParentId(),
+                task2.getName(),
+                task2.getTypeCode(),
+                task2.getSubTypeCode()));
   }
 
   @Test
   void testCreateEntitiesAlreadyExisting() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    try (CallContext callCtx = CallContext.of(() -> "testRealm")) {
-      if (CallContext.getCurrentContext() == null) {
-        CallContext.setCurrentContext(callCtx);
-      }
-      TaskEntity task1 = createTask("task1", 100L);
-      TaskEntity task2 = createTask("task2", 101L);
-      List<PolarisBaseEntity> createdEntities =
-          metaStoreManager
-              .createEntitiesIfNotExist(
-                  polarisTestMetaStoreManager.polarisMetaStoreSession, null, List.of(task1, task2))
-              .getEntities();
+    TaskEntity task1 = createTask("task1", 100L);
+    TaskEntity task2 = createTask("task2", 101L);
+    List<PolarisBaseEntity> createdEntities =
+        metaStoreManager
+            .createEntitiesIfNotExist(
+                polarisTestMetaStoreManager.polarisMetaStoreSession, null, List.of(task1, task2))
+            .getEntities();
 
-      Assertions.assertThat(createdEntities)
-          .isNotNull()
-          .hasSize(2)
-          .extracting(PolarisEntity::toCore)
-          .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
+    Assertions.assertThat(createdEntities)
+        .isNotNull()
+        .hasSize(2)
+        .extracting(PolarisEntity::toCore)
+        .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
 
-      TaskEntity task3 = createTask("task3", 103L);
+    TaskEntity task3 = createTask("task3", 103L);
 
-      // entities task1 and task2 already exist with the same identifier, so the full list is
-      // returned
-      createdEntities =
-          metaStoreManager
-              .createEntitiesIfNotExist(
-                  polarisTestMetaStoreManager.polarisMetaStoreSession,
-                  null,
-                  List.of(task1, task2, task3))
-              .getEntities();
-      Assertions.assertThat(createdEntities)
-          .isNotNull()
-          .hasSize(3)
-          .extracting(PolarisEntity::toCore)
-          .containsExactly(
-              PolarisEntity.toCore(task1),
-              PolarisEntity.toCore(task2),
-              PolarisEntity.toCore(task3));
-    }
+    // entities task1 and task2 already exist with the same identifier, so the full list is
+    // returned
+    createdEntities =
+        metaStoreManager
+            .createEntitiesIfNotExist(
+                polarisTestMetaStoreManager.polarisMetaStoreSession,
+                null,
+                List.of(task1, task2, task3))
+            .getEntities();
+    Assertions.assertThat(createdEntities)
+        .isNotNull()
+        .hasSize(3)
+        .extracting(PolarisEntity::toCore)
+        .containsExactly(
+            PolarisEntity.toCore(task1), PolarisEntity.toCore(task2), PolarisEntity.toCore(task3));
   }
 
   @Test
   void testCreateEntitiesWithConflict() {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
-    try (CallContext callCtx = CallContext.of(() -> "testRealm")) {
-      if (CallContext.getCurrentContext() == null) {
-        CallContext.setCurrentContext(callCtx);
-      }
-      TaskEntity task1 = createTask("task1", 100L);
-      TaskEntity task2 = createTask("task2", 101L);
-      TaskEntity task3 = createTask("task3", 103L);
-      List<PolarisBaseEntity> createdEntities =
-          metaStoreManager
-              .createEntitiesIfNotExist(
-                  polarisTestMetaStoreManager.polarisMetaStoreSession,
-                  null,
-                  List.of(task1, task2, task3))
-              .getEntities();
+    TaskEntity task1 = createTask("task1", 100L);
+    TaskEntity task2 = createTask("task2", 101L);
+    TaskEntity task3 = createTask("task3", 103L);
+    List<PolarisBaseEntity> createdEntities =
+        metaStoreManager
+            .createEntitiesIfNotExist(
+                polarisTestMetaStoreManager.polarisMetaStoreSession,
+                null,
+                List.of(task1, task2, task3))
+            .getEntities();
 
-      Assertions.assertThat(createdEntities)
-          .isNotNull()
-          .hasSize(3)
-          .extracting(PolarisEntity::toCore)
-          .containsExactly(
-              PolarisEntity.toCore(task1),
-              PolarisEntity.toCore(task2),
-              PolarisEntity.toCore(task3));
+    Assertions.assertThat(createdEntities)
+        .isNotNull()
+        .hasSize(3)
+        .extracting(PolarisEntity::toCore)
+        .containsExactly(
+            PolarisEntity.toCore(task1), PolarisEntity.toCore(task2), PolarisEntity.toCore(task3));
 
-      TaskEntity secondTask3 = createTask("task3", 104L);
+    TaskEntity secondTask3 = createTask("task3", 104L);
 
-      TaskEntity task4 = createTask("task4", 105L);
-      createdEntities =
-          metaStoreManager
-              .createEntitiesIfNotExist(
-                  polarisTestMetaStoreManager.polarisMetaStoreSession,
-                  null,
-                  List.of(secondTask3, task4))
-              .getEntities();
-      Assertions.assertThat(createdEntities).isNull();
-    }
+    TaskEntity task4 = createTask("task4", 105L);
+    createdEntities =
+        metaStoreManager
+            .createEntitiesIfNotExist(
+                polarisTestMetaStoreManager.polarisMetaStoreSession,
+                null,
+                List.of(secondTask3, task4))
+            .getEntities();
+    Assertions.assertThat(createdEntities).isNull();
   }
 
   private TaskEntity createTask(String taskName, long id) {

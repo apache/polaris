@@ -27,7 +27,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
 import java.util.Optional;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.auth.Authenticator;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.jboss.resteasy.reactive.server.ServerRequestFilter;
@@ -50,7 +50,7 @@ public class QuarkusOAuthFilter {
   public static final String OAUTH_ACCESS_TOKEN_PARAM = "access_token";
 
   @Inject Authenticator<String, AuthenticatedPolarisPrincipal> authenticator;
-  @Inject CallContext callContext;
+  @Inject RealmContext realmContext;
 
   @ServerRequestFilter(priority = Priorities.AUTHENTICATION)
   public void authenticate(ContainerRequestContext requestContext) {
@@ -71,7 +71,7 @@ public class QuarkusOAuthFilter {
     if (!authenticate(requestContext, credentials, SecurityContext.BASIC_AUTH)) {
       throw new NotAuthorizedException(
           "Credentials are required to access this resource.",
-          String.format(CHALLENGE_FORMAT, callContext.getRealmContext().getRealmIdentifier()));
+          String.format(CHALLENGE_FORMAT, realmContext.getRealmIdentifier()));
     }
   }
 
@@ -114,8 +114,6 @@ public class QuarkusOAuthFilter {
     if (credentials == null) {
       return false;
     }
-
-    CallContext.setCurrentContext(callContext);
 
     Optional<AuthenticatedPolarisPrincipal> principal = authenticator.authenticate(credentials);
     if (principal.isEmpty()) {

@@ -32,6 +32,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -112,6 +113,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
               @Override
               public @Nonnull Map<String, Map<PolarisStorageActions, ValidationResult>>
                   validateAccessToLocations(
+                      @Nonnull RealmContext realmContext,
                       @Nonnull T storageConfig,
                       @Nonnull Set<PolarisStorageActions> actions,
                       @Nonnull Set<String> locations) {

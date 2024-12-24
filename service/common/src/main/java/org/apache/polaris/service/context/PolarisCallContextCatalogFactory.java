@@ -29,7 +29,7 @@ import org.apache.iceberg.catalog.Catalog;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -78,31 +78,29 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
 
   @Override
   public Catalog createCallContextCatalog(
-      CallContext context,
+      RealmContext realmContext,
       AuthenticatedPolarisPrincipal authenticatedPrincipal,
       final PolarisResolutionManifest resolvedManifest) {
     PolarisBaseEntity baseCatalogEntity =
         resolvedManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity();
     String catalogName = baseCatalogEntity.getName();
 
-    String realm = context.getRealmContext().getRealmIdentifier();
+    String realm = realmContext.getRealmIdentifier();
     String catalogKey = realm + "/" + catalogName;
     LOGGER.info("Initializing new BasePolarisCatalog for key: {}", catalogKey);
 
     BasePolarisCatalog catalogInstance =
         new BasePolarisCatalog(
+            realmContext,
             entityManager,
             metaStoreManager,
             metaStoreSession,
             configurationStore,
             diagnostics,
-            context,
             resolvedManifest,
             authenticatedPrincipal,
             taskExecutor,
             fileIOFactory);
-
-    context.contextVariables().put(CallContext.REQUEST_PATH_CATALOG_INSTANCE_KEY, catalogInstance);
 
     CatalogEntity catalog = CatalogEntity.of(baseCatalogEntity);
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());

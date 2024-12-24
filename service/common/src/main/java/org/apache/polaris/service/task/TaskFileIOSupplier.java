@@ -28,7 +28,6 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -65,13 +64,14 @@ public class TaskFileIOSupplier implements BiFunction<TaskEntity, RealmContext, 
 
     Boolean skipCredentialSubscopingIndirection =
         configurationStore.getConfiguration(
+            realmContext,
             PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
             PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
 
     if (!skipCredentialSubscopingIndirection) {
       properties.putAll(
           metaStoreManagerFactory
-              .getOrCreateStorageCredentialCache(CallContext.getCurrentContext().getRealmContext())
+              .getOrCreateStorageCredentialCache(realmContext)
               .getOrGenerateSubScopeCreds(
                   metaStoreManager,
                   metaStoreSession,

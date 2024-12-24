@@ -53,7 +53,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
@@ -97,7 +97,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
         new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
     return new PolarisCatalogHandlerWrapper(
-        callContext,
+        realmContext,
         metaStoreSession,
         configurationStore,
         diagServices,
@@ -112,7 +112,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
   private PolarisCatalogHandlerWrapper newWrapper(
       AuthenticatedPolarisPrincipal authenticatedPrincipal) {
     return new PolarisCatalogHandlerWrapper(
-        callContext,
+        realmContext,
         metaStoreSession,
         configurationStore,
         diagServices,
@@ -1704,12 +1704,12 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             new DefaultFileIOFactory()) {
           @Override
           public Catalog createCallContextCatalog(
-              CallContext context,
+              RealmContext realmContext,
               AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
               PolarisResolutionManifest resolvedManifest) {
             Catalog catalog =
                 super.createCallContextCatalog(
-                    context, authenticatedPolarisPrincipal, resolvedManifest);
+                    realmContext, authenticatedPolarisPrincipal, resolvedManifest);
             String fileIoImpl = "org.apache.iceberg.inmemory.InMemoryFileIO";
             catalog.initialize(
                 externalCatalog, ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, fileIoImpl));
