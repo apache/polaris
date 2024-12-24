@@ -71,9 +71,10 @@ public class StorageCredentialCacheTest {
         new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS, diagServices);
     metaStoreManager = Mockito.mock(PolarisMetaStoreManagerImpl.class);
     PolarisConfigurationStore configurationStore = Mockito.mock(PolarisConfigurationStore.class);
-    when(configurationStore.getConfiguration(STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS))
+    when(configurationStore.getConfiguration(null, STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS))
         .thenReturn(300);
-    when(configurationStore.getConfiguration(STORAGE_CREDENTIAL_DURATION_SECONDS)).thenReturn(600);
+    when(configurationStore.getConfiguration(null, STORAGE_CREDENTIAL_DURATION_SECONDS))
+        .thenReturn(600);
     storageCredentialCache = new StorageCredentialCache(diagServices, configurationStore);
   }
 

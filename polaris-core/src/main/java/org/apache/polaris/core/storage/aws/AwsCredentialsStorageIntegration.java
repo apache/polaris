@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -59,6 +60,7 @@ public class AwsCredentialsStorageIntegration
   /** {@inheritDoc} */
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
+      @Nonnull RealmContext realmContext,
       @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull AwsStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
@@ -78,7 +80,8 @@ public class AwsCredentialsStorageIntegration
                             allowedWriteLocations)
                         .toJson())
                 .durationSeconds(
-                    configurationStore.getConfiguration(STORAGE_CREDENTIAL_DURATION_SECONDS))
+                    configurationStore.getConfiguration(
+                        realmContext, STORAGE_CREDENTIAL_DURATION_SECONDS))
                 .build());
     EnumMap<PolarisCredentialProperty, String> credentialMap =
         new EnumMap<>(PolarisCredentialProperty.class);

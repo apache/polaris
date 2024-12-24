@@ -35,7 +35,6 @@ import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -103,25 +102,20 @@ public class PolarisIntegrationTestFixture {
 
     PolarisMetaStoreSession metaStoreSession =
         helper.metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
-    try (CallContext ctx = CallContext.of(realmContext)) {
-      CallContext.setCurrentContext(ctx);
-      PolarisMetaStoreManager metaStoreManager =
-          helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
-      PolarisMetaStoreManager.EntityResult principal =
-          metaStoreManager.readEntityByName(
-              metaStoreSession,
-              null,
-              PolarisEntityType.PRINCIPAL,
-              PolarisEntitySubType.NULL_SUBTYPE,
-              PolarisEntityConstants.getRootPrincipalName());
+    PolarisMetaStoreManager metaStoreManager =
+        helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+    PolarisMetaStoreManager.EntityResult principal =
+        metaStoreManager.readEntityByName(
+            metaStoreSession,
+            null,
+            PolarisEntityType.PRINCIPAL,
+            PolarisEntitySubType.NULL_SUBTYPE,
+            PolarisEntityConstants.getRootPrincipalName());
 
-      Map<String, String> propertiesMap = readInternalProperties(principal);
-      return metaStoreManager
-          .loadPrincipalSecrets(metaStoreSession, propertiesMap.get("client_id"))
-          .getPrincipalSecrets();
-    } finally {
-      CallContext.unsetCurrentContext();
-    }
+    Map<String, String> propertiesMap = readInternalProperties(principal);
+    return metaStoreManager
+        .loadPrincipalSecrets(metaStoreSession, propertiesMap.get("client_id"))
+        .getPrincipalSecrets();
   }
 
   private SnowmanCredentials createSnowmanCredentials(TestEnvironment testEnv) {

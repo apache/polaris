@@ -27,7 +27,6 @@ import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -90,7 +89,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
         () -> createMetaStoreSession(backingStore, realmContext, diagnostics));
 
     PolarisMetaStoreManager metaStoreManager =
-        new PolarisMetaStoreManagerImpl(diagnostics, configurationStore, clock);
+        new PolarisMetaStoreManagerImpl(realmContext, diagnostics, configurationStore, clock);
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
@@ -186,11 +185,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
    */
   private PrincipalSecretsResult bootstrapServiceAndCreatePolarisPrincipalForRealm(
       RealmContext realmContext, PolarisMetaStoreManager metaStoreManager) {
-    // While bootstrapping we need to act as a fake privileged context since the real
-    // CallContext hasn't even been resolved yet.
     PolarisMetaStoreSession metaStoreSession =
         sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
-    CallContext.setCurrentContext(CallContext.of(realmContext));
 
     PolarisMetaStoreManager.EntityResult preliminaryRootPrincipalLookup =
         metaStoreManager.readEntityByName(
@@ -246,7 +242,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
     PolarisMetaStoreSession metaStoreSession =
         sessionSupplierMap.get(realmContext.getRealmIdentifier()).get();
-    CallContext.setCurrentContext(CallContext.of(realmContext));
 
     PolarisMetaStoreManager.EntityResult rootPrincipalLookup =
         metaStoreManager.readEntityByName(

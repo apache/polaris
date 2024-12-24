@@ -26,12 +26,14 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 class InMemoryStorageIntegrationTest {
+
+  private RealmContext realmContext = () -> "test";
 
   @Test
   public void testValidateAccessToLocations() {
@@ -39,6 +41,7 @@ class InMemoryStorageIntegrationTest {
         new MockInMemoryStorageIntegration(new PolarisConfigurationStore() {});
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
+            realmContext,
             new AwsStorageConfigurationInfo(
                 PolarisStorageConfigurationInfo.StorageType.S3,
                 List.of(
@@ -93,47 +96,46 @@ class InMemoryStorageIntegrationTest {
         new PolarisConfigurationStore() {
           @SuppressWarnings("unchecked")
           @Override
-          public <T> @Nullable T getConfiguration(String configName) {
+          public <T> @Nullable T getConfiguration(RealmContext realmContext, String configName) {
             return (T) config.get(configName);
           }
         };
     MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration(configurationStore);
-    try (CallContext ignored = CallContext.setCurrentContext(CallContext.of(() -> "realm"))) {
-      Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
-          storage.validateAccessToLocations(
-              new FileStorageConfigurationInfo(List.of("file://", "*")),
-              Set.of(PolarisStorageActions.READ),
-              Set.of(
-                  "s3://bucket/path/to/warehouse/namespace/table",
-                  "file:///etc/passwd",
-                  "a/relative/subdirectory"));
-      Assertions.assertThat(result)
-          .hasSize(3)
-          .hasEntrySatisfying(
-              "s3://bucket/path/to/warehouse/namespace/table",
-              val ->
-                  Assertions.assertThat(val)
-                      .hasSize(1)
-                      .containsKey(PolarisStorageActions.READ)
-                      .extractingByKey(PolarisStorageActions.READ)
-                      .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess))
-          .hasEntrySatisfying(
-              "file:///etc/passwd",
-              val ->
-                  Assertions.assertThat(val)
-                      .hasSize(1)
-                      .containsKey(PolarisStorageActions.READ)
-                      .extractingByKey(PolarisStorageActions.READ)
-                      .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess))
-          .hasEntrySatisfying(
-              "a/relative/subdirectory",
-              val ->
-                  Assertions.assertThat(val)
-                      .hasSize(1)
-                      .containsKey(PolarisStorageActions.READ)
-                      .extractingByKey(PolarisStorageActions.READ)
-                      .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess));
-    }
+    Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
+        storage.validateAccessToLocations(
+            realmContext,
+            new FileStorageConfigurationInfo(List.of("file://", "*")),
+            Set.of(PolarisStorageActions.READ),
+            Set.of(
+                "s3://bucket/path/to/warehouse/namespace/table",
+                "file:///etc/passwd",
+                "a/relative/subdirectory"));
+    Assertions.assertThat(result)
+        .hasSize(3)
+        .hasEntrySatisfying(
+            "s3://bucket/path/to/warehouse/namespace/table",
+            val ->
+                Assertions.assertThat(val)
+                    .hasSize(1)
+                    .containsKey(PolarisStorageActions.READ)
+                    .extractingByKey(PolarisStorageActions.READ)
+                    .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess))
+        .hasEntrySatisfying(
+            "file:///etc/passwd",
+            val ->
+                Assertions.assertThat(val)
+                    .hasSize(1)
+                    .containsKey(PolarisStorageActions.READ)
+                    .extractingByKey(PolarisStorageActions.READ)
+                    .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess))
+        .hasEntrySatisfying(
+            "a/relative/subdirectory",
+            val ->
+                Assertions.assertThat(val)
+                    .hasSize(1)
+                    .containsKey(PolarisStorageActions.READ)
+                    .extractingByKey(PolarisStorageActions.READ)
+                    .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess));
   }
 
   @Test
@@ -142,6 +144,7 @@ class InMemoryStorageIntegrationTest {
         new MockInMemoryStorageIntegration(new PolarisConfigurationStore() {});
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
+            realmContext,
             new AwsStorageConfigurationInfo(
                 PolarisStorageConfigurationInfo.StorageType.S3,
                 List.of(),
@@ -177,6 +180,7 @@ class InMemoryStorageIntegrationTest {
         new MockInMemoryStorageIntegration(new PolarisConfigurationStore() {});
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
+            realmContext,
             new AwsStorageConfigurationInfo(
                 PolarisStorageConfigurationInfo.StorageType.S3,
                 List.of("s3://bucket/path/to/warehouse"),
@@ -202,6 +206,7 @@ class InMemoryStorageIntegrationTest {
 
     @Override
     public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
+        @Nonnull RealmContext realmContext,
         @Nonnull PolarisDiagnostics diagnostics,
         @Nonnull PolarisStorageConfigurationInfo storageConfig,
         boolean allowListOperation,

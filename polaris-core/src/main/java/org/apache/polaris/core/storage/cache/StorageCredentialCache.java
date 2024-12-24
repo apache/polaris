@@ -100,12 +100,14 @@ public class StorageCredentialCache {
 
   /** How long credentials should remain in the cache. */
   private long maxCacheDurationMs() {
+    // FIXME no realm context available; in practice this means that these values are not
+    // overridable by realm-specific values
     var cacheDurationSeconds =
         configurationStore.getConfiguration(
-            PolarisConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
+            null, PolarisConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
     var credentialDurationSeconds =
         configurationStore.getConfiguration(
-            PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+            null, PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
     if (cacheDurationSeconds >= credentialDurationSeconds) {
       throw new IllegalArgumentException(
           String.format(

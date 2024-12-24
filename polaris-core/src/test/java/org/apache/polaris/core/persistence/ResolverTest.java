@@ -105,7 +105,7 @@ public class ResolverTest {
         new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS, diagServices);
     metaStoreManager =
         new PolarisMetaStoreManagerImpl(
-            diagServices, new PolarisConfigurationStore() {}, Clock.systemUTC());
+            () -> "test", diagServices, new PolarisConfigurationStore() {}, Clock.systemUTC());
 
     // bootstrap the mata store with our test schema
     tm = new PolarisTestMetaStoreManager(metaStoreManager, metaStore, diagServices);

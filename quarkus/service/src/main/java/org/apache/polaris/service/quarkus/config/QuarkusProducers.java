@@ -39,7 +39,6 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -108,16 +107,6 @@ public class QuarkusProducers {
         request.path(),
         request.headers().entries().stream()
             .collect(HashMap::new, (m, e) -> m.put(e.getKey(), e.getValue()), HashMap::putAll));
-  }
-
-  @Produces
-  @RequestScoped
-  public CallContext callContext(RealmContext realmContext) {
-    return CallContext.of(realmContext);
-  }
-
-  public void closeCallContext(@Disposes CallContext callContext) {
-    callContext.close();
   }
 
   @Produces

@@ -30,7 +30,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Given a list of registered {@link TaskHandler}s, execute tasks asynchronously with the provided
- * {@link CallContext}.
+ * {@link RealmContext}.
  */
 public class TaskExecutorImpl implements TaskExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(TaskExecutorImpl.class);
@@ -91,45 +91,37 @@ public class TaskExecutorImpl implements TaskExecutor {
   }
 
   /**
-   * Register a {@link CallContext} for a specific task id. That task will be loaded and executed
-   * asynchronously with a clone of the provided {@link CallContext}.
+   * Register a {@link RealmContext} for a specific task id. That task will be loaded and executed
+   * asynchronously with a copy of the provided {@link RealmContext} (because the realm context is a
+   * request-scoped component).
    */
   @Override
-  public void addTaskHandlerContext(long taskEntityId, CallContext callContext) {
-    // Unfortunately CallContext is a request-scoped bean and must be cloned now,
-    // because its usage inside the TaskExecutor thread pool will outlive its
-    // lifespan, so the original CallContext will eventually be closed while
-    // the task is still running.
-    // Note: PolarisCallContext has request-scoped beans as well, and must be cloned.
-    // FIXME replace with context propagation?
-    CallContext clone = CallContext.copyOf(callContext);
-    tryHandleTask(taskEntityId, clone, null, 1);
+  public void addTaskHandlerContext(long taskEntityId, RealmContext realmContext) {
+    tryHandleTask(taskEntityId, RealmContext.copyOf(realmContext), null, 1);
   }
 
   private @Nonnull CompletableFuture<Void> tryHandleTask(
-      long taskEntityId, CallContext callContext, Throwable e, int attempt) {
+      long taskEntityId, RealmContext realmContext, Throwable e, int attempt) {
     if (attempt > 3) {
       return CompletableFuture.failedFuture(e);
     }
     return CompletableFuture.runAsync(
-            () -> handleTask(taskEntityId, callContext, attempt), executor)
+            () -> handleTask(taskEntityId, realmContext, attempt), executor)
         .exceptionallyComposeAsync(
             (t) -> {
               LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
-              return tryHandleTask(taskEntityId, callContext, t, attempt + 1);
+              return tryHandleTask(taskEntityId, realmContext, t, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
                 TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executor));
   }
 
-  protected void handleTask(long taskEntityId, CallContext ctx, int attempt) {
-    // set the call context INSIDE the async task
-    CallContext.setCurrentContext(ctx);
+  protected void handleTask(long taskEntityId, RealmContext realmContext, int attempt) {
     LOGGER.info("Handling task entity id {}", taskEntityId);
     PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     PolarisMetaStoreSession metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(ctx.getRealmContext()).get();
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     PolarisBaseEntity taskEntity =
         metaStoreManager.loadEntity(metaStoreSession, 0L, taskEntityId).getEntity();
     if (!PolarisEntityType.TASK.equals(taskEntity.getType())) {
@@ -147,7 +139,7 @@ public class TaskExecutorImpl implements TaskExecutor {
       return;
     }
     TaskHandler handler = handlerOpt.get();
-    boolean success = handler.handleTask(task, ctx.getRealmContext());
+    boolean success = handler.handleTask(task, realmContext);
     if (success) {
       LOGGER
           .atInfo()

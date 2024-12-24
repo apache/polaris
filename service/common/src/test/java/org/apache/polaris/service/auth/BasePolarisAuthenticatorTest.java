@@ -24,9 +24,7 @@ import java.util.Optional;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.BaseResult;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.assertj.core.api.Assertions;
@@ -42,12 +40,8 @@ public class BasePolarisAuthenticatorTest {
 
   @BeforeEach
   public void setUp() {
-    RealmContext realmContext = () -> "test";
     metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     metaStoreSession = Mockito.mock(PolarisMetaStoreSession.class);
-    MetaStoreManagerFactory metaStoreManagerFactory = Mockito.mock(MetaStoreManagerFactory.class);
-    when(metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext))
-        .thenReturn(metaStoreManager);
     authenticator =
         new BasePolarisAuthenticator(metaStoreManager, metaStoreSession) {
           @Override

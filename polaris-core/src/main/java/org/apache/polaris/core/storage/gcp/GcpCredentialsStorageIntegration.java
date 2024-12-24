@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -73,6 +74,7 @@ public class GcpCredentialsStorageIntegration
 
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
+      @Nonnull RealmContext realmContext,
       @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull GcpStorageConfigurationInfo storageConfig,
       boolean allowListOperation,

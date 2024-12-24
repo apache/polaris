@@ -54,7 +54,6 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
@@ -165,7 +164,6 @@ public abstract class PolarisAuthzTestBase {
 
   @Inject protected MetaStoreManagerFactory managerFactory;
   @Inject protected RealmEntityManagerFactory realmEntityManagerFactory;
-  //  @Inject protected CallContextCatalogFactory callContextCatalogFactory;
   @Inject protected PolarisConfigurationStore configurationStore;
   @Inject protected PolarisDiagnostics diagServices;
 
@@ -176,7 +174,7 @@ public abstract class PolarisAuthzTestBase {
   protected PolarisMetaStoreSession metaStoreSession;
   protected PolarisBaseEntity catalogEntity;
   protected PrincipalEntity principalEntity;
-  protected CallContext callContext;
+  protected RealmContext realmContext;
   protected AuthenticatedPolarisPrincipal authenticatedRoot;
 
   @BeforeAll
@@ -191,13 +189,10 @@ public abstract class PolarisAuthzTestBase {
 
   @BeforeEach
   public void before(TestInfo testInfo) {
-    RealmContext realmContext = testInfo::getDisplayName;
+    realmContext = testInfo::getDisplayName;
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     metaStoreSession = managerFactory.getOrCreateSessionSupplier(realmContext).get();
     entityManager = realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
-
-    callContext = CallContext.of(realmContext);
-    CallContext.setCurrentContext(callContext);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -215,6 +210,7 @@ public abstract class PolarisAuthzTestBase {
 
     this.adminService =
         new PolarisAdminService(
+            realmContext,
             entityManager,
             metaStoreManager,
             metaStoreSession,
@@ -401,12 +397,12 @@ public abstract class PolarisAuthzTestBase {
             entityManager, metaStoreSession, securityContext, CATALOG_NAME);
     this.baseCatalog =
         new BasePolarisCatalog(
+            realmContext,
             entityManager,
             metaStoreManager,
             metaStoreSession,
             configurationStore,
             diagServices,
-            callContext,
             passthroughView,
             securityContext,
             Mockito.mock(),
@@ -447,7 +443,7 @@ public abstract class PolarisAuthzTestBase {
 
     @Override
     public Catalog createCallContextCatalog(
-        CallContext context,
+        RealmContext realmContext,
         AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
         SecurityContext securityContext,
         final PolarisResolutionManifest resolvedManifest) {
@@ -455,7 +451,7 @@ public abstract class PolarisAuthzTestBase {
       // to override the previous config.
       Catalog catalog =
           super.createCallContextCatalog(
-              context, authenticatedPolarisPrincipal, securityContext, resolvedManifest);
+              realmContext, authenticatedPolarisPrincipal, securityContext, resolvedManifest);
       catalog.initialize(
           CATALOG_NAME,
           ImmutableMap.of(

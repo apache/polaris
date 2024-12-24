@@ -33,7 +33,6 @@ import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -133,6 +132,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
       // TODO: handle partition statistics files
       Stream<TaskEntity> metadataFileCleanupTasks =
           getMetadataTaskStream(
+              realmContext,
               cleanupTask,
               tableMetadata,
               tableEntity,
@@ -157,7 +157,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
             .log(
                 "Successfully queued tasks to delete manifests, previous metadata, and statistics files - deleting table metadata file");
         for (PolarisBaseEntity createdTask : createdTasks) {
-          taskExecutor.addTaskHandlerContext(createdTask.getId(), CallContext.getCurrentContext());
+          taskExecutor.addTaskHandlerContext(createdTask.getId(), realmContext);
         }
 
         fileIO.deleteFile(tableEntity.getMetadataLocation());
@@ -222,6 +222,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
   }
 
   private Stream<TaskEntity> getMetadataTaskStream(
+      RealmContext realmContext,
       TaskEntity cleanupTask,
       TableMetadata tableMetadata,
       TableLikeEntity tableEntity,
@@ -229,7 +230,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
       PolarisMetaStoreSession metaStoreSession,
       PolarisConfigurationStore configurationStore,
       Clock clock) {
-    int batchSize = configurationStore.getConfiguration(BATCH_SIZE_CONFIG_KEY, 10);
+    int batchSize = configurationStore.getConfiguration(realmContext, BATCH_SIZE_CONFIG_KEY, 10);
     return getMetadataFileBatches(tableMetadata, batchSize).stream()
         .map(
             metadataBatch -> {

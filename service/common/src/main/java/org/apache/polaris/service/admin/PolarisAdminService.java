@@ -66,6 +66,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisGrantManager.LoadGrantsResult;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
@@ -106,6 +107,7 @@ import org.slf4j.LoggerFactory;
 public class PolarisAdminService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisAdminService.class);
 
+  private final RealmContext realmContext;
   private final PolarisMetaStoreSession metaStoreSession;
   private final PolarisConfigurationStore configurationStore;
   private final PolarisEntityManager entityManager;
@@ -118,6 +120,7 @@ public class PolarisAdminService {
   private PolarisResolutionManifest resolutionManifest = null;
 
   public PolarisAdminService(
+      RealmContext realmContext,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
       PolarisMetaStoreSession metaStoreSession,
@@ -125,6 +128,7 @@ public class PolarisAdminService {
       PolarisDiagnostics diagServices,
       SecurityContext securityContext,
       PolarisAuthorizer authorizer) {
+    this.realmContext = realmContext;
     this.metaStoreSession = metaStoreSession;
     this.configurationStore = configurationStore;
     this.entityManager = entityManager;
@@ -172,6 +176,7 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper rootContainerWrapper =
         resolutionManifest.getResolvedRootContainerEntityAsPath();
     authorizer.authorizeOrThrow(
+        realmContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedPrincipalRoleEntities(),
         op,
@@ -217,6 +222,7 @@ public class PolarisAdminService {
       return;
     }
     authorizer.authorizeOrThrow(
+        realmContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -237,6 +243,7 @@ public class PolarisAdminService {
       throw new NotFoundException("CatalogRole does not exist: %s", catalogRoleName);
     }
     authorizer.authorizeOrThrow(
+        realmContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -267,6 +274,7 @@ public class PolarisAdminService {
             principalRoleName, PolarisEntityType.PRINCIPAL_ROLE);
 
     authorizer.authorizeOrThrow(
+        realmContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -303,6 +311,7 @@ public class PolarisAdminService {
             principalRoleName, PolarisEntityType.PRINCIPAL_ROLE);
 
     authorizer.authorizeOrThrow(
+        realmContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -333,6 +342,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedTopLevelEntity(principalName, PolarisEntityType.PRINCIPAL);
 
     authorizer.authorizeOrThrow(
+        realmContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -371,6 +381,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
     authorizer.authorizeOrThrow(
+        realmContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -400,6 +411,7 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper catalogRoleWrapper =
         resolutionManifest.getResolvedPath(catalogRoleName, true);
     authorizer.authorizeOrThrow(
+        realmContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -439,6 +451,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
     authorizer.authorizeOrThrow(
+        realmContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -483,6 +496,7 @@ public class PolarisAdminService {
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
     authorizer.authorizeOrThrow(
+        realmContext,
         authenticatedPrincipal,
         resolutionManifest.getAllActivatedCatalogRoleAndPrincipalRoles(),
         op,
@@ -520,7 +534,8 @@ public class PolarisAdminService {
    */
   private boolean catalogOverlapsWithExistingCatalog(CatalogEntity catalogEntity) {
     boolean allowOverlappingCatalogUrls =
-        configurationStore.getConfiguration(PolarisConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS);
+        configurationStore.getConfiguration(
+            realmContext, PolarisConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS);
 
     if (allowOverlappingCatalogUrls) {
       return false;
@@ -587,7 +602,8 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("Catalog %s not found", name));
     // TODO: Handle return value in case of concurrent modification
     boolean cleanup =
-        configurationStore.getConfiguration(PolarisConfiguration.CLEANUP_ON_CATALOG_DROP);
+        configurationStore.getConfiguration(
+            realmContext, PolarisConfiguration.CLEANUP_ON_CATALOG_DROP);
     PolarisMetaStoreManager.DropEntityResult dropEntityResult =
         metaStoreManager.dropEntityIfExists(metaStoreSession, null, entity, Map.of(), cleanup);
 

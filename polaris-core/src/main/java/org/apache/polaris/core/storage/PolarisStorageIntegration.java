@@ -24,6 +24,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.RealmContext;
 
 /**
  * Abstract of Polaris Storage Integration. It holds the reference to an object that having the
@@ -46,6 +47,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
   /**
    * Subscope the creds against the allowed read and write locations.
    *
+   * @param realmContext the realm context
    * @param diagnostics the diagnostics service
    * @param storageConfig storage configuration
    * @param allowListOperation whether to allow LIST on all the provided allowed read/write
@@ -55,6 +57,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
    * @return An enum map including the scoped credentials
    */
   public abstract EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
+      @Nonnull RealmContext realmContext,
       @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull T storageConfig,
       boolean allowListOperation,
@@ -64,6 +67,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
   /**
    * Validate access for the provided operation actions and locations.
    *
+   * @param realmContext
    * @param actions a set of operation actions to validate, like LIST/READ/DELETE/WRITE/ALL
    * @param locations a set of locations to get access to
    * @return A Map of string, representing the result of validation, the key value is {@code
@@ -95,12 +99,14 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
   @Nonnull
   public abstract Map<String, Map<PolarisStorageActions, ValidationResult>>
       validateAccessToLocations(
+          RealmContext realmContext,
           @Nonnull T storageConfig,
           @Nonnull Set<PolarisStorageActions> actions,
           @Nonnull Set<String> locations);
 
   /**
-   * Result of calling {@link #validateAccessToLocations(PolarisStorageConfigurationInfo, Set, Set)}
+   * Result of calling {@link PolarisStorageIntegration#validateAccessToLocations(RealmContext,
+   * PolarisStorageConfigurationInfo, Set, Set)}
    */
   public static final class ValidationResult {
     private final boolean success;

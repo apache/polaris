@@ -41,7 +41,6 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -104,9 +103,6 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     metaStoreSession = managerFactory.getOrCreateSessionSupplier(realmContext).get();
 
-    CallContext callContext = CallContext.of(realmContext);
-    CallContext.setCurrentContext(callContext);
-
     PrincipalEntity rootEntity =
         new PrincipalEntity(
             PolarisEntity.of(
@@ -129,6 +125,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
     PolarisAdminService adminService =
         new PolarisAdminService(
+            realmContext,
             entityManager,
             metaStoreManager,
             metaStoreSession,
@@ -154,12 +151,12 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             entityManager, metaStoreSession, securityContext, CATALOG_NAME);
     this.catalog =
         new BasePolarisCatalog(
+            realmContext,
             entityManager,
             metaStoreManager,
             metaStoreSession,
             configurationStore,
             diagServices,
-            callContext,
             passthroughView,
             securityContext,
             Mockito.mock(),
