@@ -156,8 +156,8 @@ public class CatalogEntity extends PolarisEntity {
             .setS3CredentialsCatalogAccessKeyId(s3Config.getS3CredentialsCatalogAccessKeyId())
             .setS3CredentialsCatalogSecretAccessKey(
                 s3Config.getS3CredentialsCatalogSecretAccessKey())
-            .setS3CredentialsClientAccessKeyId(s3Config.getS3CredentialsClientSecretAccessKey())
-            .setS3CredentialsClientSecretAccessKey(s3Config.getS3CredentialsClientAccessKeyId())
+            .setS3CredentialsClientAccessKeyId(s3Config.getS3CredentialsClientAccessKeyId())
+            .setS3CredentialsClientSecretAccessKey(s3Config.getS3CredentialsClientSecretAccessKey())
             .setS3Region(s3Config.getS3Region())
             .setS3RoleArn(s3Config.getS3RoleArn())
             .build();
