@@ -16,27 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.dropwizard.catalog;
+package org.apache.polaris.service.it.env;
 
-import java.util.List;
-import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
-import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import java.net.URI;
 
-/** Runs PolarisRestCatalogViewIntegrationTest on the local filesystem. */
-public class PolarisRestCatalogViewFileIntegrationTest
-    extends PolarisRestCatalogViewIntegrationTest {
-  public static final String BASE_LOCATION = "file:///tmp/buckets/my-bucket";
+public interface Server extends AutoCloseable {
+  String realmId();
 
-  @Override
-  protected StorageConfigInfo getStorageConfigInfo() {
-    return FileStorageConfigInfo.builder()
-        .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
-        .setAllowedLocations(List.of(BASE_LOCATION))
-        .build();
-  }
+  URI baseUri();
 
-  @Override
-  protected boolean shouldSkip() {
-    return false;
-  }
+  ClientCredentials adminCredentials();
 }

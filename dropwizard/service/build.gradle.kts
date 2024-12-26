@@ -97,6 +97,7 @@ dependencies {
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.spotbugs.annotations)
 
+  testImplementation(project(":polaris-tests"))
   testImplementation(project(":polaris-api-management-model"))
 
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
@@ -141,6 +142,8 @@ tasks.named<Test>("test").configure {
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
+  environment("POLARIS_BOOTSTRAP_POLARIS_ROOT_CLIENT_ID", "test-admin")
+  environment("POLARIS_BOOTSTRAP_POLARIS_ROOT_CLIENT_SECRET", "test-secret")
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   useJUnitPlatform()
   maxParallelForks = 4
