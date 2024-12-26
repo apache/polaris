@@ -63,7 +63,7 @@ public final class PolarisVersion {
    * information} is available, when Polaris has been built with the Gradle {@code -Prelease}
    * project property..
    *
-   * <p>Example value: {@code 1.0.0-incubating-SNAPSHOT}
+   * <p>Example values: {@code 1.0.0-incubating-SNAPSHOT}, {@code 1.0.0-incubating}, {@code 1.0.0}
    *
    * @see #isReleaseBuild()
    */
@@ -89,7 +89,7 @@ public final class PolarisVersion {
    * #isReleaseBuild() build-time Git information} is available, when Polaris has been built with
    * the Gradle {@code -Prelease} project property.
    *
-   * <p>Example value: {@code apache-polaris-0.1.2-incubating}
+   * <p>Example value: {@code apache-polaris-0.1.2}
    *
    * @see #isReleaseBuild()
    */
@@ -115,7 +115,8 @@ public final class PolarisVersion {
    * build-time Git information} is available, when Polaris has been built with the Gradle {@code
    * -Prelease} project property.
    *
-   * <p>Example value: {@code 21.0.5}
+   * <p>Example value: {@code Linux myawesomehost 6.12.6 #81 SMP PREEMPT_DYNAMIC Fri Dec 20 09:22:38
+   * CET 2024 x86_64 x86_64 x86_64 GNU/Linux}
    *
    * @see #isReleaseBuild()
    */
@@ -174,7 +175,7 @@ public final class PolarisVersion {
     try (InputStream in = resourceUrl.openConnection().getInputStream()) {
       return new String(in.readAllBytes(), UTF_8);
     } catch (IOException e) {
-      throw new RuntimeException("Failed to load resource " + fullResource + " resource", e);
+      throw new RuntimeException("Failed to load resource " + fullResource, e);
     }
   }
 
