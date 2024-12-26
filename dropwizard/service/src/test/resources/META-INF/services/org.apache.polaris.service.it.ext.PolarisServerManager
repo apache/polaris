@@ -16,16 +16,5 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-#
 
-polaris-core=polaris-core
-polaris-api-iceberg-service=api/iceberg-service
-polaris-api-management-model=api/management-model
-polaris-api-management-service=api/management-service
-polaris-service-common=service/common
-polaris-dropwizard-service=dropwizard/service
-polaris-eclipselink=extension/persistence/eclipselink
-polaris-jpa-model=extension/persistence/jpa-model
-polaris-tests=integration-tests
-aggregated-license-report=aggregated-license-report
-polaris-version=tools/version
+org.apache.polaris.service.dropwizard.it.DropwizardServerManager
