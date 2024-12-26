@@ -939,7 +939,8 @@ public class PolarisServiceImplIntegrationTest {
           .startsWith("Cannot modify");
     }
 
-    // Allow update of fields that are support (e.g. new default-base-location and role ARN when AWS
+    // Allow update of fields that are supported (e.g. new default-base-location and role ARN when
+    // AWS
     // account IDs are same)
     StorageConfigInfo validModifiedStorageConfig =
         new AwsStorageConfigInfo(

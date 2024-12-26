@@ -82,7 +82,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     return "org.apache.iceberg.aws.s3.S3FileIO";
   }
 
-  public void validateArn(String arn) {
+  public static void validateArn(String arn) {
     if (arn == null || arn.isEmpty()) {
       throw new IllegalArgumentException("ARN cannot be null or empty");
     }
@@ -123,11 +123,12 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     this.region = region;
   }
 
+  @JsonIgnore
   public String getAwsAccountId() {
     return parseAwsAccountId(roleARN);
   }
 
-  private String parseAwsAccountId(String arn) {
+  private static String parseAwsAccountId(String arn) {
     validateArn(arn);
     Pattern pattern = Pattern.compile(ROLE_ARN_PATTERN);
     Matcher matcher = pattern.matcher(arn);
