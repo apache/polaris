@@ -44,8 +44,6 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
-import org.apache.polaris.service.context.CallContextCatalogFactory;
-import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.catalog.io.TestFileIOFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -98,28 +96,19 @@ public record TestServices(
     PolarisEntityManager entityManager =
         realmEntityManagerFactory.getOrCreateEntityManager(testRealm);
 
-    CallContextCatalogFactory callContextFactory =
-        new PolarisCallContextCatalogFactory(
-            entityManager,
-            metaStoreManager,
-            session,
-            configurationStore,
-            polarisDiagnostics,
-            Mockito.mock(TaskExecutor.class),
-            ioFactory);
-
     PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
 
     IcebergRestCatalogApiService service =
         new IcebergCatalogAdapter(
             testRealm,
-            callContextFactory,
             entityManager,
             metaStoreManager,
             session,
             configurationStore,
             polarisDiagnostics,
-            authorizer);
+            authorizer,
+            Mockito.mock(TaskExecutor.class),
+            ioFactory);
 
     IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
 
