@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -441,15 +442,18 @@ class ManifestFileCleanupTaskHandlerTest {
               .setName(UUID.randomUUID().toString())
               .build();
 
-      CompletableFuture<Void> future =
-          CompletableFuture.runAsync(
-              () -> {
-                assertThatPredicate(handler::canHandleTask).accepts(task);
-                handler.handleTask(task); // this will schedule the batch deletion
-              });
-
-      // Wait for all async tasks to finish
-      future.join();
+      try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
+        CompletableFuture<Void> future;
+        future =
+            CompletableFuture.runAsync(
+                () -> {
+                  assertThatPredicate(handler::canHandleTask).accepts(task);
+                  handler.handleTask(task); // this will schedule the batch deletion
+                },
+                executor);
+        // Wait for all async tasks to finish
+        future.join();
+      }
 
       // Check if the file was successfully deleted after retries
       assertThat(TaskUtils.exists(statisticsFile.path(), fileIO)).isFalse();
