@@ -31,9 +31,9 @@ github:
     - apache
 
   enabled_merge_buttons:
-    merge: true
+    merge: false
     squash: true
-    rebase: true
+    rebase: false
 
   protected_branches:
     main:
