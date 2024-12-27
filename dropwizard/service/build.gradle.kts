@@ -168,26 +168,31 @@ tasks.register<Jar>("testJar") {
 val shadowJar =
   tasks.named<ShadowJar>("shadowJar") {
     append("META-INF/hk2-locator/default")
-    finalizedBy("startScripts")
+    finalizedBy("startShadowScripts")
   }
 
 val startScripts =
-  tasks.named<CreateStartScripts>("startScripts") {
-    classpath = files(provider { shadowJar.get().archiveFileName })
-    applicationName = "polaris-service"
-  }
+  tasks.named<CreateStartScripts>("startScripts") { applicationName = "polaris-service" }
+
+tasks.named<CreateStartScripts>("startShadowScripts") { applicationName = "polaris-service" }
 
 tasks.register<Sync>("prepareDockerDist") {
   into(project.layout.buildDirectory.dir("docker-dist"))
   from(startScripts) { into("bin") }
-  from(shadowJar) { into("lib") }
-  doFirst { delete(project.layout.buildDirectory.dir("regtest-dist")) }
+  from(configurations.runtimeClasspath) { into("lib") }
+  from(tasks.named<Jar>("jar")) { into("lib") }
 }
 
 tasks.named("build").configure { dependsOn("prepareDockerDist") }
 
 distributions {
   main {
+    contents {
+      from("../../NOTICE")
+      from("../../LICENSE-BINARY-DIST").rename("LICENSE-BINARY-DIST", "LICENSE")
+    }
+  }
+  named("shadow") {
     contents {
       from("../../NOTICE")
       from("../../LICENSE-BINARY-DIST").rename("LICENSE-BINARY-DIST", "LICENSE")
