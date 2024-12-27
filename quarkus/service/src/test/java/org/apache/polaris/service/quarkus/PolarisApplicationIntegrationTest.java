@@ -19,7 +19,7 @@
 package org.apache.polaris.service.quarkus;
 
 import static org.apache.polaris.service.auth.BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL;
-import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
+import static org.apache.polaris.service.context.TestRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;

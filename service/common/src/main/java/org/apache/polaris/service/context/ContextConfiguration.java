@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.service.context;
 
+import jakarta.validation.constraints.Size;
+import java.util.Set;
+
 public interface ContextConfiguration {
 
   /** The configuration for the realm context resolver. */
@@ -25,7 +28,18 @@ public interface ContextConfiguration {
 
   interface RealmContextResolverConfiguration {
 
-    /** The default realm to use when no realm is specified. */
-    String defaultRealm();
+    /**
+     * The set of realms that are supported by the realm context resolver. The first realm is
+     * considered the default realm.
+     */
+    @Size(min = 1)
+    Set<String> realms();
+
+    /** The header name that contains the realm identifier. */
+    String headerName();
+
+    default String defaultRealm() {
+      return realms().iterator().next();
+    }
   }
 }

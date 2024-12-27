@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.quarkus.ratelimiter;
 
-import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
+import static org.apache.polaris.service.context.TestRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.ws.rs.core.Response;
