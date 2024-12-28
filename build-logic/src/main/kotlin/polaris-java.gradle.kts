@@ -66,6 +66,19 @@ tasks.named<Test>("test").configure {
   jvmArgs("-Duser.language=en")
 }
 
+tasks.withType(Jar::class).configureEach {
+  manifest {
+    attributes(
+      // Do not add any (more or less) dynamic information to jars, because that makes Gradle's
+      // caching way less efficient. Note that version and Git information are already added to jar
+      // manifests for release(-like) builds.
+      "Implementation-Title" to "Apache Polaris(TM) (incubating)",
+      "Implementation-Vendor" to "Apache Software Foundation",
+      "Implementation-URL" to "https://polaris.apache.org/"
+    )
+  }
+}
+
 spotless {
   val disallowWildcardImports = { text: String ->
     val regex = "~/import .*\\.\\*;/".toRegex()

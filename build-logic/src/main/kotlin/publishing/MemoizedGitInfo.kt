@@ -70,9 +70,11 @@ internal class MemoizedGitInfo {
         val system = execProc(rootProject, "uname", "-a")
         val javaVersion = System.getProperty("java.version")
 
+        val version = rootProject.version.toString()
         val info =
           mapOf(
-            "Apache-Polaris-Version" to rootProject.version.toString(),
+            "Implementation-Version" to version,
+            "Apache-Polaris-Version" to version,
             "Apache-Polaris-Is-Release" to isRelease.toString(),
             "Apache-Polaris-Build-Git-Head" to gitHead,
             "Apache-Polaris-Build-Git-Describe" to gitDescribe,
