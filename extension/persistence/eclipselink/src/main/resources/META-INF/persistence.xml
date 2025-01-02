@@ -35,7 +35,7 @@
     <shared-cache-mode>NONE</shared-cache-mode>
     <properties>
       <property name="jakarta.persistence.jdbc.url"
-        value="jdbc:postgresql://localhost:5432/polaris"/>
+        value="jdbc:h2:file:./build/test_data/polaris/{realm}/db"/>
       <property name="jakarta.persistence.jdbc.user" value="sa"/>
       <property name="jakarta.persistence.jdbc.password" value=""/>
       <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
