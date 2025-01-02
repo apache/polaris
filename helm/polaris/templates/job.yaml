@@ -99,7 +99,7 @@ spec:
           emptyDir: {}
         - name: secret-volume
           secret:
-            secretName: {{ .Values.persistenceConfigSecret }}
+            secretName: {{ tpl .Values.persistenceConfigSecret . }}
         {{- end }}
       {{- if .Values.nodeSelector }}
       nodeSelector:
