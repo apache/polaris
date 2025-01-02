@@ -54,9 +54,9 @@ public class PolarisEntityManager {
    * @param entityCache the entity cache
    */
   public PolarisEntityManager(
-      PolarisMetaStoreManager metaStoreManager,
-      StorageCredentialCache credentialCache,
-      EntityCache entityCache) {
+      @Nonnull PolarisMetaStoreManager metaStoreManager,
+      @Nonnull StorageCredentialCache credentialCache,
+      @Nonnull EntityCache entityCache) {
     this.metaStoreManager = metaStoreManager;
     this.entityCache = entityCache;
     this.credentialCache = credentialCache;
