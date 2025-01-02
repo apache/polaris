@@ -19,7 +19,9 @@
 package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import static org.eclipse.persistence.config.PersistenceUnitProperties.ECLIPSELINK_PERSISTENCE_XML;
+import static org.eclipse.persistence.config.PersistenceUnitProperties.JDBC_PASSWORD;
 import static org.eclipse.persistence.config.PersistenceUnitProperties.JDBC_URL;
+import static org.eclipse.persistence.config.PersistenceUnitProperties.JDBC_USER;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicates;
@@ -179,6 +181,13 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       // Replace database name in JDBC URL with realm
       if (properties.containsKey(JDBC_URL)) {
         properties.put(JDBC_URL, properties.get(JDBC_URL).replace("{realm}", realm));
+      }
+      if (System.getenv()
+          .containsKey("POLARIS_DB_USER")) { // To avoid Polaris regression tests fetching from the
+        // environment
+        properties.put(JDBC_USER, System.getenv("POLARIS_DB_USER"));
+        properties.put(JDBC_PASSWORD, System.getenv("POLARIS_DB_PASSWORD"));
+        properties.put(JDBC_URL, System.getenv("POLARIS_JDBC_URL"));
       }
       properties.put(ECLIPSELINK_PERSISTENCE_XML, confFile);
 
