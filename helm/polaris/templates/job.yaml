@@ -77,6 +77,10 @@ spec:
           imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}
           command: ["/app/bin/polaris-service"]
           args: ["bootstrap", "/app/config/polaris-server.yml"]
+          {{- if .Values.bootstrapExtraEnv }}
+          env:
+            {{- tpl (toYaml .Values.bootstrapExtraEnv) . | nindent 12 }}
+          {{- end }}
           volumeMounts:
             - name: config-volume
               mountPath: /app/config/polaris-server.yml

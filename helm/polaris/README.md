@@ -74,6 +74,7 @@ $ helm uninstall --namespace polaris polaris
 | autoscaling.minReplicas | int | `1` | The minimum number of replicas to maintain. |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Optional; set to zero or empty to disable. |
 | autoscaling.targetMemoryUtilizationPercentage | string | `nil` | Optional; set to zero or empty to disable. |
+| bootstrapExtraEnv | list | `[]` | Extra environment variables to add to the bootstrap metastore manager job (see `extraEnv` for an example) |
 | bootstrapMetastoreManager | bool | `false` | Configures whether to enable the bootstrap metastore manager job |
 | configMapLabels | object | `{}` | Additional Labels to apply to polaris configmap. |
 | extraEnv | list | `[]` | Advanced configuration via Environment Variables. Extra environment variables to add to the Polaris server container. You can pass here any valid EnvVar object: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.27/#envvar-v1-core This can be useful to get configuration values from Kubernetes secrets or config maps. |
