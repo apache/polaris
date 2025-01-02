@@ -55,10 +55,10 @@ ENV UID=10000
 ENV HOME=/home/polaris
 
 # We make four distinct layers so if there are application changes the library layers can be re-used
-COPY --from=build --chown=polaris:polaris /app/dropwizard/service/build/quarkus-app/lib/ /deployments/lib/
-COPY --from=build --chown=polaris:polaris /app/dropwizard/service/build/quarkus-app/*.jar /deployments/
-COPY --from=build --chown=polaris:polaris /app/dropwizard/service/build/quarkus-app/app/ /deployments/app/
-COPY --from=build --chown=polaris:polaris /app/dropwizard/service/build/quarkus-app/quarkus/ /deployments/quarkus/
+COPY --from=build --chown=polaris:polaris /app/quarkus/service/build/quarkus-app/lib/ /deployments/lib/
+COPY --from=build --chown=polaris:polaris /app/quarkus/service/build/quarkus-app/*.jar /deployments/
+COPY --from=build --chown=polaris:polaris /app/quarkus/service/build/quarkus-app/app/ /deployments/app/
+COPY --from=build --chown=polaris:polaris /app/quarkus/service/build/quarkus-app/quarkus/ /deployments/quarkus/
 
 EXPOSE 8181
 EXPOSE 8182
