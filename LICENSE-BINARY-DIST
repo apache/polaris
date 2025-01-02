@@ -280,6 +280,7 @@ commons-io:commons-io
 commons-logging:commons-logging
 commons-net:commons-net
 dev.failsafe:failsafe
+info.picocli:picocli
 io.airlift:aircompressor
 io.grpc:grpc-alts
 io.grpc:grpc-api
@@ -400,6 +401,7 @@ io.quarkus:quarkus-micrometer-registry-prometheus
 io.quarkus:quarkus-mutiny
 io.quarkus:quarkus-netty
 io.quarkus:quarkus-opentelemetry
+io.quarkus:quarkus-picocli
 io.quarkus:quarkus-reactive-routes
 io.quarkus:quarkus-rest
 io.quarkus:quarkus-rest-common
