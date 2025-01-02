@@ -260,17 +260,4 @@ public abstract class PolarisStorageConfigurationInfo {
       return prefixes;
     }
   }
-
-  /** Enum property for describe storage integration for config purpose. */
-  public enum DescribeProperty {
-    STORAGE_PROVIDER,
-    STORAGE_ALLOWED_LOCATIONS,
-    STORAGE_AWS_ROLE_ARN,
-    STORAGE_AWS_IAM_USER_ARN,
-    STORAGE_AWS_EXTERNAL_ID,
-    STORAGE_GCP_SERVICE_ACCOUNT,
-    AZURE_TENANT_ID,
-    AZURE_CONSENT_URL,
-    AZURE_MULTI_TENANT_APP_NAME,
-  }
 }
