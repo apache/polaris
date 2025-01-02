@@ -20,6 +20,8 @@ package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import static org.eclipse.persistence.config.PersistenceUnitProperties.ECLIPSELINK_PERSISTENCE_XML;
 import static org.eclipse.persistence.config.PersistenceUnitProperties.JDBC_URL;
+import static org.eclipse.persistence.config.PersistenceUnitProperties.JDBC_PASSWORD;
+import static org.eclipse.persistence.config.PersistenceUnitProperties.JDBC_USER;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicates;
