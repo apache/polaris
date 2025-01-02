@@ -132,8 +132,8 @@ logging:
 
   # Logger-specific levels.
   loggers:
-    org.apache.iceberg.rest: DEBUG
-    org.apache.polaris: DEBUG
+    org.apache.iceberg.rest: INFO
+    org.apache.polaris: INFO
 
   appenders:
 
@@ -143,7 +143,10 @@ logging:
       # Do not display log statements below this threshold to stdout.
       threshold: ALL
       # Custom Logback PatternLayout with threadname.
-      logFormat: "%-5p [%d{ISO8601} - %-6r] [%t] [%X{aid}%X{sid}%X{tid}%X{wid}%X{oid}%X{srv}%X{job}%X{rid}] %c{30}: %m %kvp%n%ex"
+      layout:
+        type: polaris
+        flattenKeyValues: false
+        includeKeyValues: true
 
     # Settings for logging to a file.
     - type: file
