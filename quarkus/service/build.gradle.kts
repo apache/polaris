@@ -20,6 +20,7 @@
 plugins {
   alias(libs.plugins.quarkus)
   alias(libs.plugins.openapi.generator)
+  alias(libs.plugins.jandex)
   id("polaris-server")
   id("polaris-license-report")
   id("application")
@@ -176,6 +177,10 @@ fun JavaForkOptions.addSparkJvmOptions() {
 tasks.named("compileJava") { dependsOn("compileQuarkusGeneratedSourcesJava") }
 
 tasks.named("sourcesJar") { dependsOn("compileQuarkusGeneratedSourcesJava") }
+
+tasks.named("javadoc") { dependsOn("jandex") }
+
+tasks.named("quarkusDependenciesBuild") { dependsOn("jandex") }
 
 distributions {
   main {
