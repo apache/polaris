@@ -30,8 +30,11 @@ cascade:
 {{% blocks/feature icon="fa-solid fa-graduation-cap" title="Learn, Connect and Collaborate" %}}
 [cols="2,3"]
 |===
+| link:https://join.slack.com/t/apache-polaris/shared_invite/zt-2w1fddyh3-zqCeeJwn7wNvhn3mVT5njQ[Slack]
+| Public chat, open to everybody
+
 | link:https://polaris-catalog.zulipchat.com/[Zulip]
-| Our public chat, open to everybody
+| Public chat, open to everybody
 
 | link:{{% ref "meetings" %}}[Community Meetings]
 | Upcoming, live and recorded Community Meetings
@@ -75,6 +78,7 @@ cascade:
 [cols="4,1,3"]
 |===
 
+| https://github.com/adutra[Alex Dutra] | Committer | link:https://www.dremio.com/[Dremio]
 | https://github.com/annafil[Anna Filippova] | Committer | link:https://www.snowflake.com/[Snowflake]
 | Anoop Johnson | PPMC | link:https://www.google.com/[Google]
 | https://github.com/ashvina[Ashvin Agrawal] | PPMC | link:https://www.microsoft.com/[Microsoft]
@@ -89,7 +93,8 @@ cascade:
 | https://github.com/snazy[Robert Stupp] | PPMC | link:https://www.dremio.com/[Dremio]
 | https://github.com/russellspitzer[Russell Spitzer] | PPMC | link:https://www.snowflake.com/[Snowflake]
 | Ryan Blue | Mentor |
-| https://github.com/takidau:[Tyler Akidau] | PPMC | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/takidau[Tyler Akidau] | PPMC | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/MonkeyCanCode[Yong Zheng] | Committer |
 | https://github.com/flyrain[Yufei Gu] | Committer | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/ebyhr[Yuya Ebihara] | Committer | link:https://www.starburst.io/[Starburst]
 |===

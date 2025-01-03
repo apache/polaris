@@ -23,23 +23,25 @@ import org.gradle.api.GradleException
 import org.gradle.api.Project
 import org.gradle.api.java.archives.Attributes
 import org.gradle.kotlin.dsl.extra
-import java.io.ByteArrayOutputStream
-import java.nio.charset.StandardCharsets
 
 /**
- * Container to memoize Git information retrieved via `git` command executions across all Gradle projects.
- * Jar release artifacts get some attributes added to the jar manifest, which can be quite useful for released jars.
+ * Container to memoize Git information retrieved via `git` command executions across all Gradle
+ * projects. Jar release artifacts get some attributes added to the jar manifest, which can be quite
+ * useful for released jars.
  */
 internal class MemoizedGitInfo {
   companion object {
     private fun execProc(rootProject: Project, cmd: String, vararg args: Any): String {
-      val buf = ByteArrayOutputStream()
-      rootProject.exec {
-        executable = cmd
-        args(args.toList())
-        standardOutput = buf
-      }
-      return buf.toString(StandardCharsets.UTF_8).trim()
+      var out =
+        rootProject.providers
+          .exec {
+            executable = cmd
+            args(args.toList())
+          }
+          .standardOutput
+          .asText
+          .get()
+      return out.trim()
     }
 
     fun gitInfo(rootProject: Project, attribs: Attributes) {
@@ -54,22 +56,25 @@ internal class MemoizedGitInfo {
       } else {
         val isRelease = rootProject.hasProperty("release")
         val gitHead = execProc(rootProject, "git", "rev-parse", "HEAD")
-        val gitDescribe = if (isRelease) {
+        val gitDescribe =
+          if (isRelease) {
             try {
               execProc(rootProject, "git", "describe", "--tags")
             } catch (e: Exception) {
               throw GradleException("'git describe --tags' failed - no Git tag?", e)
             }
-        } else {
+          } else {
             execProc(rootProject, "git", "describe", "--always", "--dirty")
-        }
+          }
         val timestamp = execProc(rootProject, "date", "+%Y-%m-%d-%H:%M:%S%:z")
         val system = execProc(rootProject, "uname", "-a")
         val javaVersion = System.getProperty("java.version")
 
+        val version = rootProject.version.toString()
         val info =
           mapOf(
-            "Apache-Polaris-Version" to rootProject.version.toString(),
+            "Implementation-Version" to version,
+            "Apache-Polaris-Version" to version,
             "Apache-Polaris-Is-Release" to isRelease.toString(),
             "Apache-Polaris-Build-Git-Head" to gitHead,
             "Apache-Polaris-Build-Git-Describe" to gitDescribe,

@@ -1,0 +1,93 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+[org.apache.polaris.service.auth.DefaultPolarisAuthenticator]S
+contract={org.apache.polaris.service.auth.Authenticator}
+name=default
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator]S
+contract={org.apache.polaris.service.auth.Authenticator}
+name=test
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory]S
+contract={org.apache.polaris.core.persistence.MetaStoreManagerFactory}
+name=in-memory
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.service.auth.DefaultOAuth2ApiService]S
+contract={org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService}
+name=default
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.service.auth.TestOAuth2ApiService]S
+contract={org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService}
+name=test
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.service.auth.JWTSymmetricKeyFactory]S
+contract={org.apache.polaris.service.auth.TokenBrokerFactory}
+name=symmetric-key
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.service.auth.JWTRSAKeyPairFactory]S
+contract={org.apache.polaris.service.auth.TokenBrokerFactory}
+name=rsa-key-pair
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.service.context.DefaultRealmContextResolver]S
+contract={org.apache.polaris.service.context.RealmContextResolver}
+name=default
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.service.context.DefaultCallContextResolver]S
+contract={org.apache.polaris.service.context.CallContextResolver}
+name=default
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.core.storage.PolarisStorageIntegrationProvider]S
+contract={org.apache.polaris.core.storage.PolarisStorageIntegrationProvider}
+name=default
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.service.catalog.io.DefaultFileIOFactory]S
+contract={org.apache.polaris.service.catalog.io.FileIOFactory}
+name=default
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.service.catalog.io.WasbTranslatingFileIOFactory]S
+contract={org.apache.polaris.service.catalog.io.FileIOFactory}
+name=wasb
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.service.ratelimiter.NoOpRateLimiter]S
+contract={org.apache.polaris.service.ratelimiter.RateLimiter}
+name=no-op
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.service.ratelimiter.RealmTokenBucketRateLimiter]S
+contract={org.apache.polaris.service.ratelimiter.RateLimiter}
+name=realm-token-bucket
+qualifier={io.smallrye.common.annotation.Identifier}
+
+[org.apache.polaris.service.ratelimiter.DefaultTokenBucketFactory]S
+contract={org.apache.polaris.service.ratelimiter.TokenBucketFactory}
+name=default
+qualifier={io.smallrye.common.annotation.Identifier}
+

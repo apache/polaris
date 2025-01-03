@@ -197,6 +197,80 @@ def test_quickstart_flow():
         sys.path.pop(0)
     pass
 
+
+def test_catalog_storage_config():
+    """
+    Tests specific to storage configs of catalogs across different cloud object stores
+    """
+
+    SALT = get_salt()
+    sys.path.insert(0, CLI_PYTHONPATH)
+    try:
+        # Create S3 catalog
+        check_output(root_cli(
+            'catalogs',
+            'create',
+            '--storage-type',
+            's3',
+            '--role-arn',
+            ROLE_ARN,
+            '--default-base-location',
+            f's3://fake-location-{SALT}',
+            '--external-id',
+            'custom-external-id-123',
+            f'test_cli_catalog_aws_{SALT}'), checker=lambda s: s == '')
+        check_output(root_cli('catalogs', 'get', f'test_cli_catalog_aws_{SALT}'),
+                     checker=lambda s: 's3://fake-location' in s and
+                         'custom-external-id-123' in s)
+
+        # Create Azure catalog
+        check_output(root_cli(
+            'catalogs',
+            'create',
+            '--storage-type',
+            'azure',
+            '--default-base-location',
+            f'abfss://fake-container-{SALT}@acct1.dfs.core.windows.net',
+            '--tenant-id',
+            'tenant123.onmicrosoft.com',
+            '--multi-tenant-app-name',
+            'mtapp123',
+            '--consent-url',
+            'https://fake-consent-url',
+            f'test_cli_catalog_azure_{SALT}'), checker=lambda s: s == '')
+        check_output(root_cli('catalogs', 'get', f'test_cli_catalog_azure_{SALT}'),
+                     checker=lambda s: 'abfss://fake-container' in s and
+                         'tenant123.onmicrosoft.com' in s and
+                         'mtapp123' in s and
+                         'https://fake-consent-url' in s)
+
+        # Create GCS catalog
+        # TODO: Once catalog capabilities are formalized in an API, condition this
+        # GCP scenario on whether the catalog under test has GCP root credentials available.
+        # In the meantime, since the credentials aren't actually used, just initialized,
+        # the following lines can be uncommented if running locally while using
+        # DEVSHELL_CLIENT_PORT to create a nonfunctional fake GCP credential supplier:
+        #
+        # DEVSHELL_CLIENT_PORT=0 ./gradlew runApp
+        # check_output(root_cli(
+        #     'catalogs',
+        #     'create',
+        #     '--storage-type',
+        #     'gcs',
+        #     '--default-base-location',
+        #     f'gs://fake-location-{SALT}',
+        #     '--service-account',
+        #     'service-acct-123',
+        #     f'test_cli_catalog_gcp_{SALT}'), checker=lambda s: s == '')
+        # check_output(root_cli('catalogs', 'get', f'test_cli_catalog_gcp_{SALT}'),
+        #              checker=lambda s: 'gs://fake-location' in s and
+        #                  'service-acct-123' in s)
+
+    finally:
+        sys.path.pop(0)
+    pass
+
+
 def test_update_catalog():
     """
     Test updating properties on a catalog

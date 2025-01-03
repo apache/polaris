@@ -17,10 +17,9 @@
   under the License.
 */}}
 
-# {{- $kubeVersion := .Capabilities.KubeVersion.Version -}}
-{{- if .Values.ingress.enabled -}}
-{{- $fullName := include "polaris.fullname" . -}}
-{{- $svcPort := index .Values.service.ports "polaris-service" -}}
+{{- if .Values.ingress.enabled }}
+{{- $fullName := include "polaris.fullname" . }}
+{{- $svcPort := index .Values.service.ports "polaris-service" }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -28,10 +27,10 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "polaris.labels" . | nindent 4 }}
+  {{- if .Values.ingress.annotations }}
   annotations:
-    {{- if .Values.ingress.annotations }}
-      {{- tpl (toYaml .Values.ingress.annotations) . | nindent 4 }}
-    {{- end }}
+    {{- tpl (toYaml .Values.ingress.annotations) . | nindent 4 }}
+  {{- end }}
 spec:
   {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className | quote }}

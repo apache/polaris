@@ -20,8 +20,8 @@ package org.apache.polaris.core.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 /** List of privileges */
 public enum PolarisPrivilege {
@@ -114,9 +114,9 @@ public enum PolarisPrivilege {
    */
   PolarisPrivilege(
       int code,
-      @NotNull PolarisEntityType securableType,
-      @NotNull PolarisEntitySubType securableSubType,
-      @NotNull PolarisEntityType granteeType) {
+      @Nonnull PolarisEntityType securableType,
+      @Nonnull PolarisEntitySubType securableSubType,
+      @Nonnull PolarisEntityType granteeType) {
     this.code = code;
     this.securableType = securableType;
     this.securableSubType = securableSubType;
@@ -129,7 +129,7 @@ public enum PolarisPrivilege {
    * @param code internal code associated to this privilege
    * @param securableType securable type
    */
-  PolarisPrivilege(int code, @NotNull PolarisEntityType securableType) {
+  PolarisPrivilege(int code, @Nonnull PolarisEntityType securableType) {
     this.code = code;
     this.securableType = securableType;
     this.securableSubType = PolarisEntitySubType.NULL_SUBTYPE;
@@ -145,8 +145,8 @@ public enum PolarisPrivilege {
    */
   PolarisPrivilege(
       int code,
-      @NotNull PolarisEntityType securableType,
-      @NotNull PolarisEntitySubType securableSubType) {
+      @Nonnull PolarisEntityType securableType,
+      @Nonnull PolarisEntitySubType securableSubType) {
     this.code = code;
     this.securableType = securableType;
     this.securableSubType = securableSubType;

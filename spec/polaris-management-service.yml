@@ -898,6 +898,10 @@ components:
           type: string
           description: the aws user arn used to assume the aws role
           example: "arn:aws:iam::123456789001:user/abc1-b-self1234"
+        region:
+          type: string
+          description: the aws region where data is stored
+          example: "us-east-2"
       required:
         - roleArn
 
@@ -936,7 +940,8 @@ components:
         - $ref: '#/components/schemas/StorageConfigInfo'
 
     UpdateCatalogRequest:
-      description: Updates to apply to a Catalog
+      description: Updates to apply to a Catalog. Any fields which are required in the Catalog
+        will remain unaltered if omitted from the contents of this Update request.
       type: object
       properties:
         currentEntityVersion:

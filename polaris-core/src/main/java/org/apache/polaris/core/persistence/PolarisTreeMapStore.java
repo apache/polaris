@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence;
 
+import jakarta.annotation.Nonnull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
@@ -30,7 +31,6 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.jetbrains.annotations.NotNull;
 
 /** Implements a simple in-memory store for Polaris, using tree-map */
 public class PolarisTreeMapStore {
@@ -223,7 +223,7 @@ public class PolarisTreeMapStore {
    *
    * @param diagnostics diagnostic services
    */
-  public PolarisTreeMapStore(@NotNull PolarisDiagnostics diagnostics) {
+  public PolarisTreeMapStore(@Nonnull PolarisDiagnostics diagnostics) {
 
     // the entities slice
     this.sliceEntities =
@@ -409,7 +409,7 @@ public class PolarisTreeMapStore {
    * @return the result of the execution
    */
   public <T> T runInTransaction(
-      @NotNull PolarisCallContext callCtx, @NotNull Supplier<T> transactionCode) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
 
     synchronized (lock) {
       // execute transaction
@@ -435,7 +435,7 @@ public class PolarisTreeMapStore {
    * @param transactionCode transaction code
    */
   public void runActionInTransaction(
-      @NotNull PolarisCallContext callCtx, @NotNull Runnable transactionCode) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
 
     synchronized (lock) {
 
@@ -463,7 +463,7 @@ public class PolarisTreeMapStore {
    * @return the result of the execution
    */
   public <T> T runInReadTransaction(
-      @NotNull PolarisCallContext callCtx, @NotNull Supplier<T> transactionCode) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
     synchronized (lock) {
 
       // execute transaction
@@ -486,7 +486,7 @@ public class PolarisTreeMapStore {
    * @param transactionCode transaction code
    */
   public void runActionInReadTransaction(
-      @NotNull PolarisCallContext callCtx, @NotNull Runnable transactionCode) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
     synchronized (lock) {
 
       // execute transaction

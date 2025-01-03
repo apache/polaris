@@ -36,8 +36,8 @@ RUN ./gradlew --no-daemon --info ${ECLIPSELINK_DEPS+"-PeclipseLinkDeps=$ECLIPSEL
 
 FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.20-2.1729089285
 WORKDIR /app
-COPY --from=build /app/polaris-service/build/docker-dist/bin /app/bin
-COPY --from=build /app/polaris-service/build/docker-dist/lib /app/lib
+COPY --from=build /app/dropwizard/service/build/docker-dist/bin /app/bin
+COPY --from=build /app/dropwizard/service/build/docker-dist/lib /app/lib
 COPY --from=build /app/polaris-server.yml /app
 
 EXPOSE 8181

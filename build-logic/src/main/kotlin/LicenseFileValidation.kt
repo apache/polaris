@@ -24,8 +24,8 @@ import java.io.File
 import org.gradle.api.GradleException
 
 /**
- * Validates that all dependencies with MIT/BSD/Go/UPL/ISC licenses, and Apache
- * license, are mentioned in the `LICENSE` file.
+ * Validates that all dependencies with MIT/BSD/Go/UPL/ISC licenses, and Apache license, are
+ * mentioned in the `LICENSE` file.
  */
 class LicenseFileValidation : DependencyFilter {
   val needsApacheLicenseMention = setOf("Apache")
@@ -58,7 +58,7 @@ class LicenseFileValidation : DependencyFilter {
   override fun filter(data: ProjectData?): ProjectData {
     data!!
 
-    val rootLicenseFile = data.project.rootProject.file("LICENSE").readText()
+    val rootLicenseFile = data.project.rootProject.file("LICENSE-BINARY-DIST").readText()
 
     val licenseReport = data.project.extensions.getByType(LicenseReportExtension::class.java)
 
@@ -78,7 +78,8 @@ class LicenseFileValidation : DependencyFilter {
         if (doesNeedApacheMention(licenses)) {
           missingApacheMentions.add(groupModule)
         } else if (doesNeedFullMention(licenses)) {
-            missingFullMentions[groupModule] = """
+          missingFullMentions[groupModule] =
+            """
             ---
             $groupModule
 
@@ -88,7 +89,8 @@ class LicenseFileValidation : DependencyFilter {
               .map { "\n\n$it\n" }
               .joinToString("\n")
             }
-            """.trimIndent()
+            """
+              .trimIndent()
         }
       }
     }
@@ -97,16 +99,12 @@ class LicenseFileValidation : DependencyFilter {
     if (!missingApacheMentions.isEmpty()) {
       missingError.append("\n\nMissing Apache License mentions:")
       missingError.append("\n--------------------------------\n")
-      missingApacheMentions.sorted().forEach {
-        missingError.append("\n$it")
-      }
+      missingApacheMentions.sorted().forEach { missingError.append("\n$it") }
     }
     if (!missingFullMentions.isEmpty()) {
       missingError.append("\n\nMissing full license mentions:")
       missingError.append("\n------------------------------\n")
-      missingFullMentions.toSortedMap().values.forEach {
-        missingError.append("\n$it")
-      }
+      missingFullMentions.toSortedMap().values.forEach { missingError.append("\n$it") }
     }
     if (!missingApacheMentions.isEmpty() || !missingFullMentions.isEmpty()) {
 

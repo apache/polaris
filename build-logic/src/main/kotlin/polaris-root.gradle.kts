@@ -34,7 +34,7 @@ spotless {
   kotlinGradle {
     ktfmt().googleStyle()
     licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
-    target("*.gradle.kts", "build-logic/*.gradle.kts", "build-logic/src/**/*.kts")
+    target("*.gradle.kts", "build-logic/*.gradle.kts", "build-logic/src/**/*.kt*")
   }
 }
 
@@ -63,20 +63,5 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
 }
 
 extensions.getByType<PublishingHelperExtension>().apply {
-  asfProjectName = "polaris"
-
   mailingLists.addAll("dev", "issues", "commits")
-
-  podlingPpmcAsfIds.addAll(
-    "anoop",
-    "ashvin",
-    "jackye",
-    "jbonofre",
-    "russellspitzer",
-    "snazy",
-    "takidau",
-    "vvcephei"
-  )
-  podlingMentorsAsfIds.addAll("bdelacretaz", "blue", "holden", "jbonofre", "yao")
-  podlingCommitterAsfIds.addAll()
 }
