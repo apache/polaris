@@ -386,6 +386,20 @@ tests:
           content:
             name: eclipselink-config-volume
             mountPath: /eclipselink-config
+  - it: should evaluate template expressions in persistence secret name
+    set:
+      bootstrapMetastoreManager: true
+      persistenceConfigSecret: '{{ .Release.Name }}-persistence-secret'
+      polarisServerConfig:
+        metaStoreManager:
+          conf-file: /eclipselink-config/conf.jar!/persistence.xml
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: secret-volume
+            secret:
+              secretName: polaris-release-persistence-secret
 
   # spec.template.spec.containers[0].resources (with bootstrapMetastoreManager enabled)
   - it: should not set container resources by default
