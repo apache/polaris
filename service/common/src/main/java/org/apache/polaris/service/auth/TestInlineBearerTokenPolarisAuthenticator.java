@@ -20,15 +20,17 @@ package org.apache.polaris.service.auth;
 
 import com.google.common.base.Splitter;
 import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,18 +47,27 @@ import org.slf4j.LoggerFactory;
  * This class does not expect a client to be either present or correct. Lookup is delegated to the
  * {@link PolarisMetaStoreManager} for the current realm.
  */
+@RequestScoped
 @Identifier("test")
 public class TestInlineBearerTokenPolarisAuthenticator extends BasePolarisAuthenticator {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(TestInlineBearerTokenPolarisAuthenticator.class);
 
+  public TestInlineBearerTokenPolarisAuthenticator() {
+    this(null, null);
+  }
+
+  @Inject
+  public TestInlineBearerTokenPolarisAuthenticator(
+      MetaStoreManagerFactory metaStoreManagerFactory, CallContext callContext) {
+    super(metaStoreManagerFactory, callContext);
+  }
+
   @Override
   public Optional<AuthenticatedPolarisPrincipal> authenticate(String credentials) {
     Map<String, String> properties = extractPrincipal(credentials);
     PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(
-            CallContext.getCurrentContext().getRealmContext());
-    PolarisCallContext callContext = CallContext.getCurrentContext().getPolarisCallContext();
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext());
     String principal = properties.get("principal");
 
     LOGGER.info("Checking for existence of principal {} in map {}", principal, properties);
@@ -71,7 +82,9 @@ public class TestInlineBearerTokenPolarisAuthenticator extends BasePolarisAuthen
     }
 
     PolarisPrincipalSecrets secrets =
-        metaStoreManager.loadPrincipalSecrets(callContext, principal).getPrincipalSecrets();
+        metaStoreManager
+            .loadPrincipalSecrets(callContext.getPolarisCallContext(), principal)
+            .getPrincipalSecrets();
     if (secrets == null) {
       // For test scenarios, if we're allowing short-circuiting into the bearer flow, there may
       // not be a clientId/clientSecret, and instead we'll let the BasePolarisAuthenticator

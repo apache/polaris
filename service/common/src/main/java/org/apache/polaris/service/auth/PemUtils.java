@@ -20,11 +20,14 @@ package org.apache.polaris.service.auth;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-import java.io.File;
+import java.io.BufferedWriter;
 import java.io.FileNotFoundException;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyFactory;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.PublicKey;
@@ -32,64 +35,81 @@ import java.security.spec.EncodedKeySpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Base64;
 import org.bouncycastle.util.io.pem.PemObject;
 import org.bouncycastle.util.io.pem.PemReader;
 
 public class PemUtils {
 
-  private static byte[] parsePEMFile(File pemFile) throws IOException {
-    if (!pemFile.isFile() || !pemFile.exists()) {
+  private static byte[] parsePEMFile(Path pemPath) throws IOException {
+    if (!Files.isRegularFile(pemPath) || !Files.exists(pemPath)) {
       throw new FileNotFoundException(
-          String.format("The file '%s' doesn't exist.", pemFile.getAbsolutePath()));
+          String.format("The file '%s' doesn't exist.", pemPath.toAbsolutePath()));
     }
-    PemReader reader = new PemReader(new FileReader(pemFile, UTF_8));
-    PemObject pemObject = reader.readPemObject();
-    byte[] content = pemObject.getContent();
-    reader.close();
-    return content;
+    try (PemReader reader = new PemReader(Files.newBufferedReader(pemPath, UTF_8))) {
+      PemObject pemObject = reader.readPemObject();
+      return pemObject.getContent();
+    }
   }
 
   private static PublicKey getPublicKey(byte[] keyBytes, String algorithm) {
-    PublicKey publicKey = null;
     try {
       KeyFactory kf = KeyFactory.getInstance(algorithm);
       EncodedKeySpec keySpec = new X509EncodedKeySpec(keyBytes);
-      publicKey = kf.generatePublic(keySpec);
+      return kf.generatePublic(keySpec);
     } catch (NoSuchAlgorithmException e) {
-      System.out.println(
-          "Could not reconstruct the public key, the given algorithm could not be found.");
+      throw new RuntimeException(
+          "Could not reconstruct the public key, the given algorithm could not be found", e);
     } catch (InvalidKeySpecException e) {
-      System.out.println("Could not reconstruct the public key");
+      throw new RuntimeException("Could not reconstruct the public key", e);
     }
-
-    return publicKey;
   }
 
   private static PrivateKey getPrivateKey(byte[] keyBytes, String algorithm) {
-    PrivateKey privateKey = null;
     try {
       KeyFactory kf = KeyFactory.getInstance(algorithm);
       EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
-      privateKey = kf.generatePrivate(keySpec);
+      return kf.generatePrivate(keySpec);
     } catch (NoSuchAlgorithmException e) {
-      System.out.println(
-          "Could not reconstruct the private key, the given algorithm could not be found.");
+      throw new RuntimeException(
+          "Could not reconstruct the private key, the given algorithm could not be found", e);
     } catch (InvalidKeySpecException e) {
-      System.out.println("Could not reconstruct the private key");
+      throw new RuntimeException("Could not reconstruct the private key", e);
     }
-
-    return privateKey;
   }
 
-  public static PublicKey readPublicKeyFromFile(String filepath, String algorithm)
+  public static PublicKey readPublicKeyFromFile(Path filepath, String algorithm)
       throws IOException {
-    byte[] bytes = PemUtils.parsePEMFile(new File(filepath));
+    byte[] bytes = PemUtils.parsePEMFile(filepath);
     return PemUtils.getPublicKey(bytes, algorithm);
   }
 
-  public static PrivateKey readPrivateKeyFromFile(String filepath, String algorithm)
+  public static PrivateKey readPrivateKeyFromFile(Path filepath, String algorithm)
       throws IOException {
-    byte[] bytes = PemUtils.parsePEMFile(new File(filepath));
+    byte[] bytes = PemUtils.parsePEMFile(filepath);
     return PemUtils.getPrivateKey(bytes, algorithm);
+  }
+
+  public static void generateKeyPair(Path privateFileLocation, Path publicFileLocation)
+      throws NoSuchAlgorithmException, IOException {
+    KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+    kpg.initialize(2048);
+    KeyPair kp = kpg.generateKeyPair();
+    try (BufferedWriter writer = Files.newBufferedWriter(privateFileLocation, UTF_8)) {
+      writer.write("-----BEGIN PRIVATE KEY-----");
+      writer.newLine();
+      writer.write(Base64.getMimeEncoder().encodeToString(kp.getPrivate().getEncoded()));
+      writer.newLine();
+      writer.write("-----END PRIVATE KEY-----");
+      writer.newLine();
+    }
+    try (BufferedWriter writer = Files.newBufferedWriter(publicFileLocation, UTF_8)) {
+      writer.write("-----BEGIN PUBLIC KEY-----");
+      writer.newLine();
+      writer.write(Base64.getMimeEncoder().encodeToString(kp.getPublic().getEncoded()));
+      writer.newLine();
+      writer.write("-----END PUBLIC KEY-----");
+      writer.newLine();
+    }
   }
 }
