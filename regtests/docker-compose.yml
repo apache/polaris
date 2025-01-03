@@ -18,8 +18,9 @@
 #
 
 services:
+
   polaris:
-    image: apache/polaris:helm-ci-1735909087
+    image: apache/polaris:latest
     ports:
       - "8181"
       - "8182"
@@ -31,17 +32,17 @@ services:
       AZURE_TENANT_ID: $AZURE_TENANT_ID
       AZURE_CLIENT_ID: $AZURE_CLIENT_ID
       AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET
-      POLARIS_AUTHENTICATION_TYPE: test
-      POLARIS_AUTHENTICATION_OAUTH2_SERVICE_TYPE: test
-      QUARKUS_OTEL_SDK_DISABLED: "true"
+      polaris.authentication.type: test
+      polaris.authentication.oauth2-service.type: test
+      quarkus.otel.sdk.disabled: "true"
     volumes:
       - ./credentials:/tmp/credentials/
-
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
       interval: 10s
       timeout: 10s
       retries: 5
+
   regtest:
     build:
       context: .
