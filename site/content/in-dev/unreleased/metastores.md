@@ -76,7 +76,7 @@ A single `persistence.xml` can describe multiple [persistence units](https://ecl
 To build Polaris with the necessary H2 dependency and start the Polaris service, run the following:
 ```bash
 polaris> ./gradlew --no-daemon --info -PeclipseLink=true -PeclipseLinkDeps=com.h2database:h2:2.3.232 clean shadowJar
-polaris> java -jar dropwizard/service/build/libs/polaris-dropwizard-service-*.jar server ./polaris-server.yml
+polaris> java -jar quarkus/service/build/quarkus-app/quarkus-run.jar
 ```
 
 ### Postgres
@@ -108,5 +108,5 @@ The following shows a sample configuration for integrating Polaris with Postgres
 To build Polaris with the necessary Postgres dependency and start the Polaris service, run the following:
 ```bash
 polaris> ./gradlew --no-daemon --info -PeclipseLink=true -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 clean shadowJar
-polaris> java -jar dropwizard/service/build/libs/polaris-dropwizard-service-*.jar server ./polaris-server.yml
+polaris> java -jar quarkus/service/build/quarkus-app/quarkus-run.jar
 ```

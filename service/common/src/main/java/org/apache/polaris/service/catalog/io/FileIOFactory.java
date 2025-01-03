@@ -18,15 +18,10 @@
  */
 package org.apache.polaris.service.catalog.io;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import java.util.Map;
 import org.apache.iceberg.io.FileIO;
 
 /** Interface for providing a way to construct FileIO objects, such as for reading/writing S3. */
-@JsonTypeInfo(
-    use = JsonTypeInfo.Id.NAME,
-    include = JsonTypeInfo.As.PROPERTY,
-    property = "factoryType")
 public interface FileIOFactory {
   FileIO loadFileIO(String impl, Map<String, String> properties);
 }
