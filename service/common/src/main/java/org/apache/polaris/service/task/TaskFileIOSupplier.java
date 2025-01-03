@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.task;
 
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -33,11 +35,13 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 
+@ApplicationScoped
 public class TaskFileIOSupplier implements Function<TaskEntity, FileIO> {
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final FileIOFactory fileIOFactory;
   private final PolarisConfigurationStore configurationStore;
 
+  @Inject
   public TaskFileIOSupplier(
       MetaStoreManagerFactory metaStoreManagerFactory,
       FileIOFactory fileIOFactory,
