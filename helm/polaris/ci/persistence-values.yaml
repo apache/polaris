@@ -22,8 +22,6 @@ image:
   tag: latest
   pullPolicy: Never
 
-bootstrapMetastoreManager: true
-
 persistenceConfigSecret: polaris-persistence
 
 polarisServerConfig:

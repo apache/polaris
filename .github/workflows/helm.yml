@@ -86,19 +86,19 @@ jobs:
         run: ct lint --target-branch ${{ github.event.repository.default_branch }} --debug --charts ./helm/polaris
 
       - name: Set up Minikube
-        #if: steps.list-changed.outputs.changed == 'true'
+        if: steps.list-changed.outputs.changed == 'true'
         uses: medyagh/setup-minikube@v0.0.18
 
       - name: Print Docker info
-        #if: steps.list-changed.outputs.changed == 'true'
+        if: steps.list-changed.outputs.changed == 'true'
         run: |
           docker -v
           minikube docker-env
 
       - name: Image build
-        #if: steps.list-changed.outputs.changed == 'true'
+        if: steps.list-changed.outputs.changed == 'true'
         run: |
-          BUILD_TAG=helm-ci-$(date +%s)
+          export BUILD_TAG=helm-ci-$(date +%s)
           echo BUILD_TAG=${BUILD_TAG} >> ${GITHUB_ENV}
           eval $(minikube -p minikube docker-env)
           ./gradlew :polaris-quarkus-service:build -x check \
@@ -107,13 +107,13 @@ jobs:
             -Dquarkus.container-image.tag=${BUILD_TAG}
 
       - name: Install fixtures
-        #if: steps.list-changed.outputs.changed == 'true'
+        if: steps.list-changed.outputs.changed == 'true'
         run: |
           kubectl create namespace polaris-ns
           kubectl apply --namespace polaris-ns $(find helm/polaris/ci/fixtures -name "*.yaml" -exec echo -n "-f {} " \;) 
 
       - name: Run chart-testing (install)
-        #if: steps.list-changed.outputs.changed == 'true'
+        if: steps.list-changed.outputs.changed == 'true'
         run: |
           ct install --target-branch ${{ github.event.repository.default_branch }} \
             --namespace polaris-ns \

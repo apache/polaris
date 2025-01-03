@@ -101,7 +101,7 @@ spec:
             {{- end }}
           livenessProbe:
             httpGet:
-              path: /healthcheck
+              path: /q/health/live
               port: "polaris-metrics"
               scheme: HTTP
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
@@ -112,7 +112,7 @@ spec:
             terminationGracePeriodSeconds: {{ .Values.livenessProbe.terminationGracePeriodSeconds }}
           readinessProbe:
             httpGet:
-              path: /healthcheck
+              path: /q/health/ready
               port: "polaris-metrics"
               scheme: HTTP
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}

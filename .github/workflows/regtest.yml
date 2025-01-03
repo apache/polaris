@@ -45,7 +45,7 @@ jobs:
 
       - name: Image build
         run: |
-          BUILD_TAG=regtests-ci-$(date +%s)
+          export BUILD_TAG=regtests-ci-$(date +%s)
           echo BUILD_TAG=${BUILD_TAG} >> ${GITHUB_ENV}
           ./gradlew :polaris-quarkus-service:build -x check \
             -Dquarkus.container-image.build=true \
