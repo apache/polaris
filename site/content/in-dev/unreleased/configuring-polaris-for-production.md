@@ -111,7 +111,7 @@ which should return:
 
 Note that if you used non-default realm name, for example, `iceberg` instead of `default-realm` in your `polaris-server.yml`, then you should add an appropriate request header:
 ```bash
-curl -X POST -H 'realm: polaris' http://localhost:8181/api/catalog/v1/oauth/tokens -d "grant_type=client_credentials&client_id=my-client-id&client_secret=my-client-secret&scope=PRINCIPAL_ROLE:ALL"
+curl -X POST -H 'realm: iceberg' http://localhost:8181/api/catalog/v1/oauth/tokens -d "grant_type=client_credentials&client_id=my-client-id&client_secret=my-client-secret&scope=PRINCIPAL_ROLE:ALL"
 ```
 
 ## Other Configurations
