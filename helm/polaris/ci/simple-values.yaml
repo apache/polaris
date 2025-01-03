@@ -18,6 +18,4 @@
 #
 
 image:
-  repository: polaris
-  tag: latest
   pullPolicy: Never
