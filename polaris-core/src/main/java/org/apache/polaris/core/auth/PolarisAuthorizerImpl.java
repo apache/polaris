@@ -94,20 +94,22 @@ import com.google.common.collect.SetMultimap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.inject.Inject;
+import jakarta.inject.Provider;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.exceptions.ForbiddenException;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -460,10 +462,13 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   }
 
   private final PolarisConfigurationStore featureConfig;
+  private final Provider<PolarisGrantManager> grantManagerFactory;
 
   @Inject
-  public PolarisAuthorizerImpl(PolarisConfigurationStore featureConfig) {
+  public PolarisAuthorizerImpl(
+      PolarisConfigurationStore featureConfig, Provider<PolarisGrantManager> grantManagerFactory) {
     this.featureConfig = featureConfig;
+    this.grantManagerFactory = grantManagerFactory;
   }
 
   /**
@@ -604,15 +609,23 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
       Set<Long> activatedGranteeIds,
       PolarisPrivilege desiredPrivilege,
       PolarisResolvedPathWrapper resolvedPath) {
+    PolarisGrantManager grantManager = grantManagerFactory.get();
+    PolarisCallContext callContext = CallContext.getCurrentContext().getPolarisCallContext();
 
     // Iterate starting at the parent, since the most common case should be to manage grants as
     // high up in the resource hierarchy as possible, so we expect earlier termination.
-    for (ResolvedPolarisEntity resolvedSecurableEntity : resolvedPath.getResolvedFullPath()) {
-      Preconditions.checkState(
-          resolvedSecurableEntity.getGrantRecordsAsSecurable() != null,
-          "Got null grantRecordsAsSecurable for resolvedSecurableEntity %s",
-          resolvedSecurableEntity);
-      for (PolarisGrantRecord grantRecord : resolvedSecurableEntity.getGrantRecordsAsSecurable()) {
+    for (PolarisEntity resolvedSecurableEntity : resolvedPath.getRawFullPath()) {
+      PolarisGrantManager.LoadGrantsResult grantsResult =
+          grantManager.loadGrantsOnSecurable(
+              callContext, resolvedSecurableEntity.getCatalogId(), resolvedSecurableEntity.getId());
+      callContext
+          .getDiagServices()
+          .check(
+              grantsResult.isSuccess(),
+              "no_grants_for_securable",
+              "unable to load grants for securable %s",
+              resolvedSecurableEntity.getId());
+      for (PolarisGrantRecord grantRecord : grantsResult.getGrantRecords()) {
         if (matchesOrIsSubsumedBy(
             desiredPrivilege, PolarisPrivilege.fromCode(grantRecord.getPrivilegeCode()))) {
           // Found a potential candidate for satisfying our authz goal.
