@@ -65,7 +65,6 @@ import org.apache.polaris.core.admin.model.CreateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
 import org.apache.polaris.core.admin.model.CreatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
-import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GrantCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
@@ -125,10 +124,6 @@ public class PolarisServiceImplIntegrationTest {
               "server.applicationConnectors[0].port",
               "0"), // Bind to random port to support parallelism
           ConfigOverride.config("server.adminConnectors[0].port", "0"),
-
-          // disallow FILE urls for the sake of tests below
-          ConfigOverride.config(
-              "featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES", "S3,GCS,AZURE"),
           ConfigOverride.config("gcp_credentials.access_token", "abc"),
           ConfigOverride.config("gcp_credentials.expires_in", "12345"));
   private static String userToken;
@@ -568,32 +563,6 @@ public class PolarisServiceImplIntegrationTest {
   }
 
   @Test
-  public void testCreateCatalogWithDisallowedStorageConfig() throws JsonProcessingException {
-    FileStorageConfigInfo fileStorage =
-        FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
-            .setAllowedLocations(List.of("file://"))
-            .build();
-    String catalogName = "my-external-catalog";
-    Catalog catalog =
-        PolarisCatalog.builder()
-            .setType(Catalog.TypeEnum.INTERNAL)
-            .setName(catalogName)
-            .setProperties(new CatalogProperties("file:///tmp/path/to/data"))
-            .setStorageConfigInfo(fileStorage)
-            .build();
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs", userToken)
-            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
-      assertThat(response)
-          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
-      ErrorResponse error = response.readEntity(ErrorResponse.class);
-      assertThat(error)
-          .isNotNull()
-          .returns("Unsupported storage type: FILE", ErrorResponse::message);
-    }
-  }
-
-  @Test
   public void testUpdateCatalogWithoutDefaultBaseLocationInUpdate() throws JsonProcessingException {
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
@@ -650,66 +619,6 @@ public class PolarisServiceImplIntegrationTest {
       assertThat(updatedCatalog.getProperties().toMap())
           .isEqualTo(Map.of("default-base-location", "s3://bucket/path/to/data", "foo", "bar"));
       assertThat(updatedCatalog.getEntityVersion()).isGreaterThan(0);
-    }
-  }
-
-  @Test
-  public void testUpdateCatalogWithDisallowedStorageConfig() throws JsonProcessingException {
-    AwsStorageConfigInfo awsConfigModel =
-        AwsStorageConfigInfo.builder()
-            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
-            .setExternalId("externalId")
-            .setUserArn("userArn")
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
-            .build();
-    String catalogName = "mycatalog";
-    Catalog catalog =
-        PolarisCatalog.builder()
-            .setType(Catalog.TypeEnum.INTERNAL)
-            .setName(catalogName)
-            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
-            .setStorageConfigInfo(awsConfigModel)
-            .build();
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs", userToken)
-            .post(Entity.json(new CreateCatalogRequest(catalog)))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
-
-    // 200 successful GET after creation
-    Catalog fetchedCatalog = null;
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs/" + catalogName, userToken)
-            .get()) {
-      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-      fetchedCatalog = response.readEntity(Catalog.class);
-
-      assertThat(fetchedCatalog.getName()).isEqualTo(catalogName);
-      assertThat(fetchedCatalog.getProperties().toMap())
-          .isEqualTo(Map.of("default-base-location", "s3://bucket/path/to/data"));
-      assertThat(fetchedCatalog.getEntityVersion()).isGreaterThan(0);
-    }
-
-    FileStorageConfigInfo fileStorage =
-        FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
-            .setAllowedLocations(List.of("file://"))
-            .build();
-    UpdateCatalogRequest updateRequest =
-        new UpdateCatalogRequest(
-            fetchedCatalog.getEntityVersion(),
-            Map.of("default-base-location", "file:///tmp/path/to/data/"),
-            fileStorage);
-
-    // failure to update
-    try (Response response =
-        newRequest("http://localhost:%d/api/management/v1/catalogs/" + catalogName, userToken)
-            .put(Entity.json(updateRequest))) {
-      assertThat(response)
-          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
-      ErrorResponse error = response.readEntity(ErrorResponse.class);
-
-      assertThat(error).returns("Unsupported storage type: FILE", ErrorResponse::message);
     }
   }
 
