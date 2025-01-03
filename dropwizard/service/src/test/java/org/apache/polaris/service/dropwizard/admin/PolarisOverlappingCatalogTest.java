@@ -18,75 +18,34 @@
  */
 package org.apache.polaris.service.dropwizard.admin;
 
-import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
-import jakarta.ws.rs.client.Entity;
-import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.service.dropwizard.PolarisApplication;
-import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
-import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
-import org.apache.polaris.service.dropwizard.test.PolarisRealm;
-import org.apache.polaris.service.dropwizard.test.TestEnvironmentExtension;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.apache.polaris.service.dropwizard.TestServices;
+import org.apache.polaris.service.dropwizard.catalog.io.TestFileIOFactory;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-@ExtendWith({
-  DropwizardExtensionsSupport.class,
-  TestEnvironmentExtension.class,
-  PolarisConnectionExtension.class
-})
 public class PolarisOverlappingCatalogTest {
-  private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          // Bind to random port to support parallelism
-          ConfigOverride.config("server.applicationConnectors[0].port", "0"),
-          ConfigOverride.config("server.adminConnectors[0].port", "0"),
-          // Block overlapping catalog paths:
-          ConfigOverride.config("featureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS", "false"));
-  private static String userToken;
-  private static String realm;
 
-  @BeforeAll
-  public static void setup(
-      PolarisConnectionExtension.PolarisToken adminToken, @PolarisRealm String polarisRealm)
-      throws IOException {
-    userToken = adminToken.token();
-    realm = polarisRealm;
-
-    // Set up the database location
-    PolarisConnectionExtension.createTestDir(realm);
-  }
+  static TestServices services =
+      TestServices.inMemory(
+          new TestFileIOFactory(), Map.of("ALLOW_OVERLAPPING_CATALOG_URLS", "false"));
 
   private Response createCatalog(String prefix, String defaultBaseLocation, boolean isExternal) {
     return createCatalog(prefix, defaultBaseLocation, isExternal, new ArrayList<String>());
-  }
-
-  private static Invocation.Builder request() {
-    return EXT.client()
-        .target(String.format("http://localhost:%d/api/management/v1/catalogs", EXT.getLocalPort()))
-        .request("application/json")
-        .header("Authorization", "Bearer " + userToken)
-        .header(REALM_PROPERTY_KEY, realm);
   }
 
   private Response createCatalog(
@@ -118,9 +77,10 @@ public class PolarisOverlappingCatalogTest {
             System.currentTimeMillis(),
             1,
             config);
-    try (Response response = request().post(Entity.json(new CreateCatalogRequest(catalog)))) {
-      return response;
-    }
+    return services
+        .catalogsApi()
+        .createCatalog(
+            new CreateCatalogRequest(catalog), services.realmContext(), services.securityContext());
   }
 
   @ParameterizedTest
@@ -144,12 +104,14 @@ public class PolarisOverlappingCatalogTest {
         .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
 
     // inside `root`
-    assertThat(createCatalog(prefix, "root/child", laterExternal))
-        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    assertThatThrownBy(() -> createCatalog(prefix, "root/child", laterExternal))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
 
     // `root` is inside this
-    assertThat(createCatalog(prefix, "", laterExternal))
-        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    assertThatThrownBy(() -> createCatalog(prefix, "", laterExternal))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
   }
 
   @ParameterizedTest
@@ -166,17 +128,24 @@ public class PolarisOverlappingCatalogTest {
         .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
 
     // This DBL overlaps with initial AL
-    assertThat(createCatalog(prefix, "dogs", initiallyExternal, Arrays.asList("huskies", "labs")))
-        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    assertThatThrownBy(
+            () ->
+                createCatalog(prefix, "dogs", initiallyExternal, Arrays.asList("huskies", "labs")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
 
     // This AL overlaps with initial DBL
-    assertThat(
-            createCatalog(
-                prefix, "kingdoms", initiallyExternal, Arrays.asList("plants", "animals")))
-        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    assertThatThrownBy(
+            () ->
+                createCatalog(
+                    prefix, "kingdoms", initiallyExternal, Arrays.asList("plants", "animals")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
 
     // This AL overlaps with an initial AL
-    assertThat(createCatalog(prefix, "plays", initiallyExternal, Arrays.asList("rent", "cats")))
-        .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
+    assertThatThrownBy(
+            () -> createCatalog(prefix, "plays", initiallyExternal, Arrays.asList("rent", "cats")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageContaining("One or more of its locations overlaps with an existing catalog");
   }
 }
