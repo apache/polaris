@@ -29,7 +29,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -53,30 +52,25 @@ import org.mockito.Mockito;
 
 public class StorageCredentialCacheTest {
 
-  // polaris call context
-  private final PolarisCallContext callCtx;
-
-  // the meta store manager
+  private final PolarisDiagnostics diagServices;
+  private final PolarisMetaStoreSession metaStoreSession;
   private final PolarisMetaStoreManager metaStoreManager;
-
-  StorageCredentialCache storageCredentialCache;
+  private final StorageCredentialCache storageCredentialCache;
 
   public StorageCredentialCacheTest() {
     // diag services
-    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
+    diagServices = new PolarisDefaultDiagServiceImpl();
     // the entity store, use treemap implementation
     PolarisTreeMapStore store = new PolarisTreeMapStore(diagServices);
     // to interact with the metastore
-    PolarisMetaStoreSession metaStore =
-        new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
-    callCtx = new PolarisCallContext(metaStore, diagServices);
+    metaStoreSession =
+        new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS, diagServices);
     metaStoreManager = Mockito.mock(PolarisMetaStoreManagerImpl.class);
-    storageCredentialCache = new StorageCredentialCache();
+    storageCredentialCache = new StorageCredentialCache(diagServices);
   }
 
   @Test
   public void testBadResult() {
-    storageCredentialCache = new StorageCredentialCache();
     ScopedCredentialsResult badResult =
         new ScopedCredentialsResult(
             BaseResult.ReturnStatus.SUBSCOPE_CREDS_ERROR, "extra_error_info");
@@ -97,7 +91,7 @@ public class StorageCredentialCacheTest {
             () ->
                 storageCredentialCache.getOrGenerateSubScopeCreds(
                     metaStoreManager,
-                    callCtx,
+                    metaStoreSession,
                     polarisEntity,
                     true,
                     new HashSet<>(Arrays.asList("s3://bucket1/path")),
@@ -108,7 +102,6 @@ public class StorageCredentialCacheTest {
 
   @Test
   public void testCacheHit() {
-    storageCredentialCache = new StorageCredentialCache();
     List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
     Mockito.when(
@@ -130,7 +123,7 @@ public class StorageCredentialCacheTest {
     // add an item to the cache
     storageCredentialCache.getOrGenerateSubScopeCreds(
         metaStoreManager,
-        callCtx,
+        metaStoreSession,
         polarisEntity,
         true,
         new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
@@ -140,7 +133,7 @@ public class StorageCredentialCacheTest {
     // subscope for the same entity and same allowed locations, will hit the cache
     storageCredentialCache.getOrGenerateSubScopeCreds(
         metaStoreManager,
-        callCtx,
+        metaStoreSession,
         polarisEntity,
         true,
         new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
@@ -150,7 +143,6 @@ public class StorageCredentialCacheTest {
 
   @RepeatedTest(10)
   public void testCacheEvict() throws InterruptedException {
-    storageCredentialCache = new StorageCredentialCache();
     List<ScopedCredentialsResult> mockedScopedCreds = getFakeScopedCreds(3, /* expireSoon= */ true);
 
     Mockito.when(
@@ -173,13 +165,12 @@ public class StorageCredentialCacheTest {
             polarisEntity,
             true,
             new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
-            new HashSet<>(Arrays.asList("s3://bucket/path")),
-            callCtx);
+            new HashSet<>(Arrays.asList("s3://bucket/path")));
 
     // the entry will be evicted immediately because the token is expired
     storageCredentialCache.getOrGenerateSubScopeCreds(
         metaStoreManager,
-        callCtx,
+        metaStoreSession,
         polarisEntity,
         true,
         new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
@@ -188,7 +179,7 @@ public class StorageCredentialCacheTest {
 
     storageCredentialCache.getOrGenerateSubScopeCreds(
         metaStoreManager,
-        callCtx,
+        metaStoreSession,
         polarisEntity,
         true,
         new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
@@ -197,7 +188,7 @@ public class StorageCredentialCacheTest {
 
     storageCredentialCache.getOrGenerateSubScopeCreds(
         metaStoreManager,
-        callCtx,
+        metaStoreSession,
         polarisEntity,
         true,
         new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
@@ -207,7 +198,6 @@ public class StorageCredentialCacheTest {
 
   @Test
   public void testCacheGenerateNewEntries() {
-    storageCredentialCache = new StorageCredentialCache();
     List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
     Mockito.when(
@@ -227,7 +217,7 @@ public class StorageCredentialCacheTest {
     for (PolarisEntity entity : entityList) {
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
-          callCtx,
+          metaStoreSession,
           entity,
           true,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
@@ -241,10 +231,10 @@ public class StorageCredentialCacheTest {
       internalMap.put(
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       entity.setInternalProperties(
-          PolarisObjectMapperUtil.serializeProperties(callCtx, internalMap));
+          PolarisObjectMapperUtil.serializeProperties(diagServices, internalMap));
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
-          callCtx,
+          metaStoreSession,
           entity,
           /* allowedListAction= */ true,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
@@ -255,7 +245,7 @@ public class StorageCredentialCacheTest {
     for (PolarisEntity entity : entityList) {
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
-          callCtx,
+          metaStoreSession,
           entity,
           /* allowedListAction= */ false,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
@@ -266,7 +256,7 @@ public class StorageCredentialCacheTest {
     for (PolarisEntity entity : entityList) {
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
-          callCtx,
+          metaStoreSession,
           entity,
           /* allowedListAction= */ false,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
@@ -279,10 +269,10 @@ public class StorageCredentialCacheTest {
       internalMap.put(
           PolarisEntityConstants.getStorageConfigInfoPropertyName(), "newStorageConfig");
       entity.setInternalProperties(
-          PolarisObjectMapperUtil.serializeProperties(callCtx, internalMap));
+          PolarisObjectMapperUtil.serializeProperties(diagServices, internalMap));
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
-          callCtx,
+          metaStoreSession,
           entity,
           /* allowedListAction= */ false,
           new HashSet<>(Arrays.asList("s3://differentbucket/path", "s3://bucket2/path")),
@@ -293,7 +283,6 @@ public class StorageCredentialCacheTest {
 
   @Test
   public void testCacheNotAffectedBy() {
-    storageCredentialCache = new StorageCredentialCache();
     List<ScopedCredentialsResult> mockedScopedCreds =
         getFakeScopedCreds(3, /* expireSoon= */ false);
 
@@ -312,7 +301,7 @@ public class StorageCredentialCacheTest {
     for (PolarisEntity entity : entityList) {
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
-          callCtx,
+          metaStoreSession,
           entity,
           true,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
@@ -325,7 +314,7 @@ public class StorageCredentialCacheTest {
       entity.setId(1234);
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
-          callCtx,
+          metaStoreSession,
           entity,
           true,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
@@ -338,7 +327,7 @@ public class StorageCredentialCacheTest {
       entity.setEntityVersion(5);
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
-          callCtx,
+          metaStoreSession,
           entity,
           true,
           new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
@@ -350,7 +339,7 @@ public class StorageCredentialCacheTest {
       entity.setEntityVersion(5);
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
-          callCtx,
+          metaStoreSession,
           entity,
           true,
           new HashSet<>(Arrays.asList("s3://bucket2/path", "s3://bucket1/path")),
@@ -363,7 +352,7 @@ public class StorageCredentialCacheTest {
       entity.setEntityVersion(5);
       storageCredentialCache.getOrGenerateSubScopeCreds(
           metaStoreManager,
-          callCtx,
+          metaStoreSession,
           entity,
           true,
           new HashSet<>(Arrays.asList("s3://bucket2/path", "s3://bucket1/path")),

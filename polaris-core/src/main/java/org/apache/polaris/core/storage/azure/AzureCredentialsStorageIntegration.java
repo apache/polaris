@@ -45,6 +45,7 @@ import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
@@ -61,8 +62,8 @@ public class AzureCredentialsStorageIntegration
 
   final DefaultAzureCredential defaultAzureCredential;
 
-  public AzureCredentialsStorageIntegration() {
-    super(AzureCredentialsStorageIntegration.class.getName());
+  public AzureCredentialsStorageIntegration(PolarisConfigurationStore configurationStore) {
+    super(configurationStore, AzureCredentialsStorageIntegration.class.getName());
     // The DefaultAzureCredential will by default load the environment variables for client id,
     // client secret, tenant id
     defaultAzureCredential = new DefaultAzureCredentialBuilder().build();

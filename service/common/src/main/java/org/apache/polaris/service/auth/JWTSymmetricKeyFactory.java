@@ -19,56 +19,61 @@
 package org.apache.polaris.service.auth;
 
 import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
+import java.time.Duration;
 import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.service.auth.AuthenticatorConfiguration.TokenBrokerFactoryConfiguration.SymmetricKeyConfiguration;
 
+@ApplicationScoped
 @Identifier("symmetric-key")
 public class JWTSymmetricKeyFactory implements TokenBrokerFactory {
-  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
-  private int maxTokenGenerationInSeconds = 3600;
-  private String file;
-  private String secret;
+
+  private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final Duration maxTokenGeneration;
+  private final Path file;
+  private final String secret;
+
+  @Inject
+  public JWTSymmetricKeyFactory(
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      AuthenticatorConfiguration authenticatorConfiguration) {
+    this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.maxTokenGeneration = authenticatorConfiguration.tokenBrokerFactory().maxTokenGeneration();
+    SymmetricKeyConfiguration symmetricKeyConfiguration =
+        authenticatorConfiguration
+            .tokenBrokerFactory()
+            .symmetricKey()
+            .orElseThrow(() -> new IllegalStateException("Symmetric key configuration is missing"));
+    this.secret = symmetricKeyConfiguration.secret().orElse(null);
+    this.file = symmetricKeyConfiguration.file().orElse(null);
+    if (this.file == null && this.secret == null) {
+      throw new IllegalStateException("Either file or secret must be set");
+    }
+  }
 
   @Override
   public TokenBroker apply(RealmContext realmContext) {
-    if (file == null && secret == null) {
-      throw new IllegalStateException("Either file or secret must be set");
-    }
     Supplier<String> secretSupplier = secret != null ? () -> secret : readSecretFromDisk();
     return new JWTSymmetricKeyBroker(
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
-        maxTokenGenerationInSeconds,
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+        (int) maxTokenGeneration.toSeconds(),
         secretSupplier);
   }
 
   private Supplier<String> readSecretFromDisk() {
     return () -> {
       try {
-        return Files.readString(Paths.get(file));
+        return Files.readString(file);
       } catch (IOException e) {
         throw new RuntimeException("Failed to read secret from file: " + file, e);
       }
     };
-  }
-
-  public void setMaxTokenGenerationInSeconds(int maxTokenGenerationInSeconds) {
-    this.maxTokenGenerationInSeconds = maxTokenGenerationInSeconds;
-  }
-
-  public void setFile(String file) {
-    this.file = file;
-  }
-
-  public void setSecret(String secret) {
-    this.secret = secret;
-  }
-
-  public void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
   }
 }

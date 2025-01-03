@@ -24,6 +24,7 @@ buildscript {
   repositories { maven { url = java.net.URI("https://plugins.gradle.org/m2/") } }
   dependencies {
     classpath("com.diffplug.spotless:spotless-plugin-gradle:${libs.plugins.spotless.get().version}")
+    classpath("org.kordamp.gradle:jandex-gradle-plugin:${libs.plugins.jandex.get().version}")
   }
 }
 
@@ -32,6 +33,8 @@ plugins {
   id("eclipse")
   id("polaris-root")
   alias(libs.plugins.rat)
+  // workaround for https://github.com/kordamp/jandex-gradle-plugin/issues/25
+  alias(libs.plugins.jandex) apply false
 }
 
 val projectName = rootProject.file("ide-name.txt").readText().trim()
@@ -88,7 +91,7 @@ tasks.named<RatTask>("rat").configure {
 
   excludes.add("logs/**")
   excludes.add("service/common/src/**/banner.txt")
-  excludes.add("dropwizard/service/logs")
+  excludes.add("quarkus/service/logs")
 
   excludes.add("site/node_modules/**")
   excludes.add("site/layouts/robots.txt")

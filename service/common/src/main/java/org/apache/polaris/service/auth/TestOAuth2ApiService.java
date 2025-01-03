@@ -19,6 +19,7 @@
 package org.apache.polaris.service.auth;
 
 import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -26,24 +27,24 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@RequestScoped
 @Identifier("test")
 public class TestOAuth2ApiService implements IcebergRestOAuth2ApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(TestOAuth2ApiService.class);
 
-  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject PolarisMetaStoreManager metaStoreManager;
+  @Inject PolarisMetaStoreSession metaStoreSession;
 
   @Override
   public Response getToken(
@@ -60,7 +61,7 @@ public class TestOAuth2ApiService implements IcebergRestOAuth2ApiService {
       RealmContext realmContext,
       SecurityContext securityContext) {
     Map<String, Object> response = new HashMap<>();
-    String principalName = getPrincipalName(clientId, realmContext);
+    String principalName = getPrincipalName(clientId);
     response.put(
         "access_token",
         "principal:"
@@ -77,18 +78,14 @@ public class TestOAuth2ApiService implements IcebergRestOAuth2ApiService {
     return Response.ok(response).build();
   }
 
-  private String getPrincipalName(String clientId, RealmContext realmContext) {
-    PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    // FIXME remove call to CallContext.getCurrentContext()
-    PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
+  private String getPrincipalName(String clientId) {
     PrincipalSecretsResult secretsResult =
-        metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
+        metaStoreManager.loadPrincipalSecrets(metaStoreSession, clientId);
     if (secretsResult.isSuccess()) {
       LOGGER.debug("Found principal secrets for client id {}", clientId);
       PolarisMetaStoreManager.EntityResult principalResult =
           metaStoreManager.loadEntity(
-              polarisCallContext, 0L, secretsResult.getPrincipalSecrets().getPrincipalId());
+              metaStoreSession, 0L, secretsResult.getPrincipalSecrets().getPrincipalId());
       if (!principalResult.isSuccess()) {
         throw new NotAuthorizedException("Failed to load principal entity");
       }
@@ -98,7 +95,7 @@ public class TestOAuth2ApiService implements IcebergRestOAuth2ApiService {
           "Unable to find principal secrets for client id {} - trying as principal name", clientId);
       PolarisMetaStoreManager.EntityResult principalResult =
           metaStoreManager.readEntityByName(
-              polarisCallContext,
+              metaStoreSession,
               null,
               PolarisEntityType.PRINCIPAL,
               PolarisEntitySubType.NULL_SUBTYPE,

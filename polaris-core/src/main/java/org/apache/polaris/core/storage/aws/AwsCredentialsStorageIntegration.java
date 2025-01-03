@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
@@ -43,8 +44,9 @@ public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
   private final StsClient stsClient;
 
-  public AwsCredentialsStorageIntegration(StsClient stsClient) {
-    super(AwsCredentialsStorageIntegration.class.getName());
+  public AwsCredentialsStorageIntegration(
+      PolarisConfigurationStore configurationStore, StsClient stsClient) {
+    super(configurationStore, AwsCredentialsStorageIntegration.class.getName());
     this.stsClient = stsClient;
   }
 
