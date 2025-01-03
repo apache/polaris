@@ -160,6 +160,7 @@ public class QuarkusProducers {
   }
 
   @Produces
+  @RequestScoped
   public FileIOFactory fileIOFactory(
       QuarkusFileIOConfiguration config, @Any Instance<FileIOFactory> fileIOFactories) {
     return fileIOFactories.select(Identifier.Literal.of(config.type())).get();

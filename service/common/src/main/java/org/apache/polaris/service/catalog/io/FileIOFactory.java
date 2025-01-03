@@ -19,9 +19,19 @@
 package org.apache.polaris.service.catalog.io;
 
 import java.util.Map;
+import java.util.Set;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 
 /** Interface for providing a way to construct FileIO objects, such as for reading/writing S3. */
 public interface FileIOFactory {
-  FileIO loadFileIO(String impl, Map<String, String> properties);
+  FileIO loadFileIO(
+      String ioImplClassName,
+      Map<String, String> properties,
+      TableIdentifier identifier,
+      Set<String> tableLocations,
+      Set<PolarisStorageActions> storageActions,
+      PolarisResolvedPathWrapper resolvedStorageEntity);
 }

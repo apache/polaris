@@ -54,6 +54,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.junit.jupiter.api.AfterEach;
@@ -148,6 +149,9 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             entityManager, metaStoreSession, securityContext, CATALOG_NAME);
+    FileIOFactory fileIOFactory =
+        new DefaultFileIOFactory(
+            realmId, entityManager, metaStoreManager, metaStoreSession, configurationStore);
     this.catalog =
         new BasePolarisCatalog(
             realmId,
@@ -159,7 +163,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             passthroughView,
             securityContext,
             Mockito.mock(),
-            new DefaultFileIOFactory());
+            fileIOFactory);
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

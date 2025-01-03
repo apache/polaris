@@ -19,14 +19,18 @@
 package org.apache.polaris.service.quarkus.catalog.io;
 
 import jakarta.enterprise.inject.Vetoed;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import jakarta.inject.Inject;
+import java.util.*;
 import java.util.function.Supplier;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 
 /**
@@ -43,10 +47,28 @@ public class TestFileIOFactory extends DefaultFileIOFactory {
   public Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier = Optional.empty();
   public Optional<Supplier<RuntimeException>> getLengthExceptionSupplier = Optional.empty();
 
-  public TestFileIOFactory() {}
+  public TestFileIOFactory() {
+    super(null, null, null, null, null);
+  }
+
+  @Inject
+  public TestFileIOFactory(
+      RealmId realmId,
+      PolarisEntityManager entityManager,
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisMetaStoreSession metaStoreSession,
+      PolarisConfigurationStore polarisConfigurationStore) {
+    super(realmId, entityManager, metaStoreManager, metaStoreSession, polarisConfigurationStore);
+  }
 
   @Override
-  public FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
+  public FileIO loadFileIO(
+      String ioImplClassName,
+      Map<String, String> properties,
+      TableIdentifier identifier,
+      Set<String> tableLocations,
+      Set<PolarisStorageActions> storageActions,
+      PolarisResolvedPathWrapper resolvedStorageEntity) {
     loadFileIOExceptionSupplier.ifPresent(
         s -> {
           throw s.get();
@@ -54,7 +76,13 @@ public class TestFileIOFactory extends DefaultFileIOFactory {
 
     TestFileIO wrapped =
         new TestFileIO(
-            CatalogUtil.loadFileIO(ioImpl, properties, new Configuration()),
+            super.loadFileIO(
+                ioImplClassName,
+                properties,
+                identifier,
+                tableLocations,
+                storageActions,
+                resolvedStorageEntity),
             newInputFileExceptionSupplier,
             newOutputFileExceptionSupplier,
             getLengthExceptionSupplier);

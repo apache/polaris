@@ -324,7 +324,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
     }
     FileIO fileIO =
-        refreshIOWithCredentials(
+        refreshIOForTableLike(
             identifier,
             Set.of(locationDir),
             resolvedParent,
@@ -1243,7 +1243,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               // then we should use the actual current table properties for IO refresh here
               // instead of the general tableDefaultProperties.
               FileIO fileIO =
-                  refreshIOWithCredentials(
+                  refreshIOForTableLike(
                       tableIdentifier,
                       Set.of(latestLocationDir),
                       resolvedEntities,
@@ -1279,7 +1279,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
       // refresh credentials because we need to read the metadata file to validate its location
       tableFileIO =
-          refreshIOWithCredentials(
+          refreshIOForTableLike(
               tableIdentifier,
               getLocationsAllowedToBeAccessed(metadata),
               resolvedStorageEntity,
@@ -1475,7 +1475,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               // then we should use the actual current table properties for IO refresh here
               // instead of the general tableDefaultProperties.
               FileIO fileIO =
-                  refreshIOWithCredentials(
+                  refreshIOForTableLike(
                       identifier,
                       Set.of(latestLocationDir),
                       resolvedEntities,
@@ -1529,7 +1529,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       Map<String, String> tableProperties = new HashMap<>(metadata.properties());
 
       viewFileIO =
-          refreshIOWithCredentials(
+          refreshIOForTableLike(
               identifier,
               getLocationsAllowedToBeAccessed(metadata),
               resolvedStorageEntity,
@@ -1586,27 +1586,21 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private FileIO refreshIOWithCredentials(
+  private FileIO refreshIOForTableLike(
       TableIdentifier identifier,
       Set<String> readLocations,
       PolarisResolvedPathWrapper resolvedStorageEntity,
       Map<String, String> tableProperties,
       Set<PolarisStorageActions> storageActions) {
-    Optional<PolarisEntity> storageInfoEntity = findStorageInfoFromHierarchy(resolvedStorageEntity);
-    Map<String, String> credentialsMap =
-        storageInfoEntity
-            .map(
-                storageInfo ->
-                    refreshCredentials(identifier, storageActions, readLocations, storageInfo))
-            .orElse(Map.of());
-
-    // Update the FileIO before we write the new metadata file
-    // update with table properties in case there are table-level overrides
-    // the credentials should always override table-level properties, since
-    // storage configuration will be found at whatever entity defines it
-    tableProperties.putAll(credentialsMap);
-    FileIO fileIO = null;
-    fileIO = loadFileIO(ioImplClassName, tableProperties);
+    // Reload fileIO based on table specific context
+    FileIO fileIO =
+        fileIOFactory.loadFileIO(
+            ioImplClassName,
+            tableProperties,
+            identifier,
+            readLocations,
+            storageActions,
+            resolvedStorageEntity);
     // ensure the new fileIO is closed when the catalog is closed
     closeableGroup.addCloseable(fileIO);
     return fileIO;
@@ -1905,7 +1899,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
       // Validate that we can construct a FileIO
       String locationDir = metadataLocation.substring(0, metadataLocation.lastIndexOf("/"));
-      refreshIOWithCredentials(
+      refreshIOForTableLike(
           tableIdentifier,
           Set.of(locationDir),
           resolvedStorageEntity,
@@ -1960,7 +1954,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       String locationDir = newLocation.substring(0, newLocation.lastIndexOf("/"));
 
       FileIO fileIO =
-          refreshIOWithCredentials(
+          refreshIOForTableLike(
               tableIdentifier,
               Set.of(locationDir),
               resolvedParent,
@@ -2040,7 +2034,13 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    */
   private FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
     Map<String, String> propertiesWithS3CustomizedClientFactory = new HashMap<>(properties);
-    return fileIOFactory.loadFileIO(ioImpl, propertiesWithS3CustomizedClientFactory);
+    return fileIOFactory.loadFileIO(
+        ioImpl,
+        propertiesWithS3CustomizedClientFactory,
+        null /*tableIdentifier*/,
+        null /*tableLocations*/,
+        null /*storageActions*/,
+        null /*resolvedStorageEntity*/);
   }
 
   private void blockedUserSpecifiedWriteLocation(Map<String, String> properties) {

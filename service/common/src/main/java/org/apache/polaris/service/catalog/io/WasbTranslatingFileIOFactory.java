@@ -19,19 +19,54 @@
 package org.apache.polaris.service.catalog.io;
 
 import io.smallrye.common.annotation.Identifier;
-import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.inject.Inject;
 import java.util.Map;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.iceberg.CatalogUtil;
+import java.util.Set;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.storage.PolarisCredentialVendor;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 
 /** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
-@ApplicationScoped
+@RequestScoped
 @Identifier("wasb")
 public class WasbTranslatingFileIOFactory implements FileIOFactory {
+
+  private final FileIOFactory defaultFileIOFactory;
+
+  @Inject
+  public WasbTranslatingFileIOFactory(
+      RealmId realmId,
+      PolarisEntityManager entityManager,
+      PolarisCredentialVendor credentialVendor,
+      PolarisMetaStoreSession metaStoreSession,
+      PolarisConfigurationStore configurationStore) {
+    defaultFileIOFactory =
+        new DefaultFileIOFactory(
+            realmId, entityManager, credentialVendor, metaStoreSession, configurationStore);
+  }
+
   @Override
-  public FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
+  public FileIO loadFileIO(
+      String ioImplClassName,
+      Map<String, String> properties,
+      TableIdentifier identifier,
+      Set<String> tableLocations,
+      Set<PolarisStorageActions> storageActions,
+      PolarisResolvedPathWrapper resolvedStorageEntity) {
     return new WasbTranslatingFileIO(
-        CatalogUtil.loadFileIO(ioImpl, properties, new Configuration()));
+        defaultFileIOFactory.loadFileIO(
+            ioImplClassName,
+            properties,
+            identifier,
+            tableLocations,
+            storageActions,
+            resolvedStorageEntity));
   }
 }
