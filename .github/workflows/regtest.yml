@@ -33,10 +33,35 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: fix permissions
+
+      - name: Fix permissions
         run: mkdir -p regtests/output && chmod 777 regtests/output && chmod 777 regtests/t_*/ref/*
+
+      - name: Print Podman info
+        run: |
+          podman -v
+          podman machine info
+          minikube podman-env
+
+      - name: Image build
+        run: |
+          BUILD_TAG=helm-ci-$(date +%s)
+          echo BUILD_TAG=${BUILD_TAG} >> ${GITHUB_ENV}
+          ./gradlew :polaris-quarkus-service:build -x check \
+            -Dquarkus.container-image.build=true \
+            -Dquarkus.container-image.tag=${BUILD_TAG} \
+            -PeclipseLinkDeps=com.h2database:h2:2.3.232
+
       - name: Regression Test
         env:
           AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
           AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
-        run: docker compose up --build --exit-code-from regtest
+        run: |
+          cd regtests
+          # create compose override file and set image tag
+          cat <<EOF > docker-compose.override.yml
+          services:
+            polaris:
+              image: apache/polaris:${BUILD_TAG}
+          EOF
+          podman compose up --build --exit-code-from regtest

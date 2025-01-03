@@ -49,7 +49,7 @@ dependencies {
   implementation("io.quarkus:quarkus-micrometer")
   implementation("io.quarkus:quarkus-micrometer-registry-prometheus")
   implementation("io.quarkus:quarkus-opentelemetry")
-  implementation("io.quarkus:quarkus-container-image-docker")
+  implementation("io.quarkus:quarkus-container-image-podman")
   implementation("io.quarkus:quarkus-smallrye-context-propagation")
 
   implementation(libs.jakarta.enterprise.cdi.api)

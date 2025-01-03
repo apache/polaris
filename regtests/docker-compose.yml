@@ -19,10 +19,9 @@
 
 services:
   polaris:
-    build:
-      context: .
+    image: apache/polaris:helm-ci-1735909087
     ports:
-      - "8181:8181"
+      - "8181"
       - "8182"
     environment:
       AWS_REGION: us-west-2
@@ -36,7 +35,7 @@ services:
       POLARIS_AUTHENTICATION_OAUTH2_SERVICE_TYPE: test
       QUARKUS_OTEL_SDK_DISABLED: "true"
     volumes:
-      - ./regtests/credentials:/tmp/credentials/
+      - ./credentials:/tmp/credentials/
 
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
@@ -45,7 +44,7 @@ services:
       retries: 5
   regtest:
     build:
-      context: regtests
+      context: .
       args:
         POLARIS_HOST: polaris
     depends_on:
@@ -69,5 +68,5 @@ services:
       AWS_CROSS_REGION_BUCKET: $AWS_CROSS_REGION_BUCKET
       AWS_ROLE_FOR_CROSS_REGION_BUCKET: $AWS_ROLE_FOR_CROSS_REGION_BUCKET
     volumes:
-      - ./regtests/output:/tmp/polaris-regtests/
-      - ./regtests/credentials:/tmp/credentials/
+      - ./output:/tmp/polaris-regtests/
+      - ./credentials:/tmp/credentials/

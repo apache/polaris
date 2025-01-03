@@ -382,7 +382,7 @@ io.quarkus:quarkus-arc
 io.quarkus:quarkus-bootstrap-runner
 io.quarkus:quarkus-classloader-commons
 io.quarkus:quarkus-container-image
-io.quarkus:quarkus-container-image-docker
+io.quarkus:quarkus-container-image-podman
 io.quarkus:quarkus-container-image-docker-common
 io.quarkus:quarkus-core
 io.quarkus:quarkus-credentials
