@@ -29,8 +29,4 @@ public interface RealmContextResolver {
       String path,
       Map<String, String> queryParams,
       Map<String, String> headers);
-
-  void setDefaultRealm(String defaultRealm);
-
-  String getDefaultRealm();
 }
