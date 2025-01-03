@@ -296,6 +296,32 @@ tests:
           content:
             runAsUser: 1000
 
+  # spec.template.spec.containers[0].securityContext (with bootstrapMetastoreManager enabled)
+  - it: should not set initContainer securityContext by default
+    set:
+      bootstrapMetastoreManager: true
+      persistenceConfigSecret: polaris-persistence-secret
+      polarisServerConfig:
+        metaStoreManager:
+          conf-file: /eclipselink-config/conf.jar!/persistence.xml
+    asserts:
+      - notExists:
+          path: spec.template.spec.initContainers[0].securityContext
+  - it: should set initContainer securityContext
+    set:
+      bootstrapMetastoreManager: true
+      persistenceConfigSecret: polaris-persistence-secret
+      polarisServerConfig:
+        metaStoreManager:
+          conf-file: /eclipselink-config/conf.jar!/persistence.xml
+      securityContext:
+        runAsUser: 1000
+    asserts:
+      - isSubset:
+          path: spec.template.spec.initContainers[0].securityContext
+          content:
+            runAsUser: 1000
+
   # spec.template.spec.containers[0].image (with bootstrapMetastoreManager enabled)
   - it: should set container image
     set:
