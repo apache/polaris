@@ -862,6 +862,7 @@ components:
           type: string
           enum:
             - S3
+            - S3_COMPATIBLE
             - GCS
             - AZURE
             - FILE
@@ -877,6 +878,7 @@ components:
         propertyName: storageType
         mapping:
           S3: "#/components/schemas/AwsStorageConfigInfo"
+          S3_COMPATIBLE: "#/components/schemas/S3CompatibleStorageConfigInfo"
           AZURE: "#/components/schemas/AzureStorageConfigInfo"
           GCS: "#/components/schemas/GcpStorageConfigInfo"
           FILE: "#/components/schemas/FileStorageConfigInfo"
@@ -904,6 +906,51 @@ components:
           example: "us-east-2"
       required:
         - roleArn
+
+    S3CompatibleStorageConfigInfo:
+      type: object
+      description: S3 compatible storage configuration info (MinIO, Ceph, Dell ECS, Netapp StorageGRID, ...)
+      allOf:
+        - $ref: '#/components/schemas/StorageConfigInfo'
+      properties:
+        s3.endpoint:
+          type: string
+          description: the S3 endpoint, will also be used as STS endpoint
+          example: "http[s]://host:port"
+        s3.credentials.catalog.accessKeyId:
+          type: string
+          description: Default to AWS credentials, otherwise set the environement variable name for the 'ACCESS_KEY_ID' used by the catalog to communicate with S3
+          example: "CATALOG_1_ACCESS_KEY_ENV_VARIABLE_NAME or AWS_ACCESS_KEY_ID"
+        s3.credentials.catalog.secretAccessKey:
+          type: string
+          description: Default to AWS credentials, otherwise set the environement variable name for the 'SECRET_ACCESS_KEY' used by the catalog to communicate with S3
+          example: "CATALOG_1_SECRET_KEY_ENV_VARIABLE_NAME or AWS_SECRET_ACCESS_KEY"
+        s3.pathStyleAccess:
+          type: boolean
+          description: if true use path style
+          default: false
+        skipCredentialSubscopingIndirection:
+          type: boolean
+          default: false
+          description: By default, the catalog sends to the client a temporary token (STS) limited to the requested resource. If set to true (when STS is not available) the catalog will skip subscoping, allowing technical access to all the catalog content
+        s3.credentials.client.accessKeyId:
+          type: string
+          description: Optional - if not empty, it will be used when 'skip-credential-subscoping-indirection' is true
+          example: "CLIENT_OF_CATALOG_1_ACCESS_KEY_ENV_VARIABLE_NAME"
+        s3.credentials.client.secretAccessKey:
+          type: string
+          description: Optional - if not empty, it will be used when 'skip-credential-subscoping-indirection' is true
+          example: "CLIENT_OF_CATALOG_1_SECRET_KEY_ENV_VARIABLE_NAME"
+        s3.region:
+          type: string
+          description: Optional - the s3 region where data is stored
+          example: "rack-1 or us-east-1"
+        s3.roleArn:
+          type: string
+          description: Optional - a s3 role arn
+          example: "arn:aws:iam::123456789001:principal/abc1-b-self1234"        
+      required:
+        - s3.endpoint
 
     AzureStorageConfigInfo:
       type: object

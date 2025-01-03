@@ -38,12 +38,14 @@ import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
+import org.apache.polaris.core.admin.model.S3CompatibleStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
+import org.apache.polaris.core.storage.s3compatible.S3CompatibleStorageConfigurationInfo;
 
 /**
  * Catalog specific subclass of the {@link PolarisEntity} that handles conversion from the {@link
@@ -139,6 +141,25 @@ public class CatalogEntity extends PolarisEntity {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(awsConfig.getAllowedLocations())
             .setRegion(awsConfig.getRegion())
+            .build();
+      }
+      if (configInfo instanceof S3CompatibleStorageConfigurationInfo) {
+        S3CompatibleStorageConfigurationInfo s3Config =
+            (S3CompatibleStorageConfigurationInfo) configInfo;
+        return S3CompatibleStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3_COMPATIBLE)
+            .setS3Endpoint(s3Config.getS3Endpoint())
+            .setS3PathStyleAccess(s3Config.getS3PathStyleAccess())
+            .setSkipCredentialSubscopingIndirection(
+                s3Config.getSkipCredentialSubscopingIndirection())
+            .setAllowedLocations(s3Config.getAllowedLocations())
+            .setS3CredentialsCatalogAccessKeyId(s3Config.getS3CredentialsCatalogAccessKeyId())
+            .setS3CredentialsCatalogSecretAccessKey(
+                s3Config.getS3CredentialsCatalogSecretAccessKey())
+            .setS3CredentialsClientAccessKeyId(s3Config.getS3CredentialsClientAccessKeyId())
+            .setS3CredentialsClientSecretAccessKey(s3Config.getS3CredentialsClientSecretAccessKey())
+            .setS3Region(s3Config.getS3Region())
+            .setS3RoleArn(s3Config.getS3RoleArn())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {
@@ -249,6 +270,24 @@ public class CatalogEntity extends PolarisEntity {
                     awsConfigModel.getRegion());
             awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
+            break;
+
+          case S3_COMPATIBLE:
+            S3CompatibleStorageConfigInfo s3ConfigModel =
+                (S3CompatibleStorageConfigInfo) storageConfigModel;
+            config =
+                new S3CompatibleStorageConfigurationInfo(
+                    PolarisStorageConfigurationInfo.StorageType.S3_COMPATIBLE,
+                    s3ConfigModel.getS3Endpoint(),
+                    s3ConfigModel.getS3CredentialsCatalogAccessKeyId(),
+                    s3ConfigModel.getS3CredentialsCatalogSecretAccessKey(),
+                    s3ConfigModel.getSkipCredentialSubscopingIndirection(),
+                    s3ConfigModel.getS3CredentialsClientAccessKeyId(),
+                    s3ConfigModel.getS3CredentialsClientSecretAccessKey(),
+                    s3ConfigModel.getS3PathStyleAccess(),
+                    s3ConfigModel.getS3Region(),
+                    s3ConfigModel.getS3RoleArn(),
+                    new ArrayList<>(allowedLocations));
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
