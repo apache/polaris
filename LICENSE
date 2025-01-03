@@ -387,6 +387,7 @@ net.java.dev.jna:jna
 net.java.dev.jna:jna-platform
 net.minidev:accessors-smart
 net.minidev:json-smart
+org.postgresql:postgresql
 org.apache.avro:avro
 org.apache.commons:commons-compress
 org.apache.commons:commons-configuration2
