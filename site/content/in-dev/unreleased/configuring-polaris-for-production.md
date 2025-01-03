@@ -72,16 +72,46 @@ To use EclipseLink for metastore management, specify the configuration `metaStor
 
 Before using Polaris when using a metastore manager other than `in-memory`, you must **bootstrap** the metastore manager. This is a manual operation that must be performed **only once** in order to prepare the metastore manager to integrate with Polaris. When the metastore manager is bootstrapped, any existing Polaris entities in the metastore manager may be **purged**.
 
-To bootstrap Polaris, run:
+By default, Polaris will create randomised `CLIENT_ID` and `CLIENT_SECRET` for the `root` principal and store their hashes in the metastore backend. In order to provide your own credentials for `root` principal (so you can request tokens via `api/catalog/v1/oauth/tokens`), set the following envrionment variables:
+
+```
+export POLARIS_BOOTSTRAP_POLARIS_ROOT_CLIENT_ID=my-client-id
+export POLARIS_BOOTSTRAP_POLARIS_ROOT_CLIENT_SECRET=my-client-secret
+```
+
+Now, to bootstrap Polaris, run:
 
 ```bash
 java -jar /path/to/jar/polaris-service-all.jar bootstrap polaris-server.yml
+```
+
+or in a container:
+
+```bash
+bin/polaris-service bootstrap config/polaris-server.yml
 ```
 
 Afterward, Polaris can be launched normally:
 
 ```bash
 java -jar /path/to/jar/polaris-service-all.jar server polaris-server.yml
+```
+
+You can verify the setup by attempting a token issue for the `root` principal:
+
+```bash
+curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens -d "grant_type=client_credentials&client_id=my-client-id&client_secret=my-client-secret&scope=PRINCIPAL_ROLE:ALL"
+```
+
+which should return:
+
+```json
+{"access_token":"...","token_type":"bearer","issued_token_type":"urn:ietf:params:oauth:token-type:access_token","expires_in":3600}
+```
+
+Note that if you used non-default realm name, for example, `iceberg` instead of `default-realm` in your `polaris-server.yml`, then you should add an appropriate request header:
+```bash
+curl -X POST -H 'realm: polaris' http://localhost:8181/api/catalog/v1/oauth/tokens -d "grant_type=client_credentials&client_id=my-client-id&client_secret=my-client-secret&scope=PRINCIPAL_ROLE:ALL"
 ```
 
 ## Other Configurations
