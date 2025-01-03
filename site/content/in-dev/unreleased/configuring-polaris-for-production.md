@@ -79,6 +79,12 @@ export POLARIS_BOOTSTRAP_POLARIS_ROOT_CLIENT_ID=my-client-id
 export POLARIS_BOOTSTRAP_POLARIS_ROOT_CLIENT_SECRET=my-client-secret
 ```
 
+**IMPORTANT**: In case you use `default-realm` for metastore backend database, you won't be able to use `export` command. Use this instead:
+
+```bash
+env POLARIS_BOOTSTRAP_DEFAULT-REALM_ROOT_CLIENT_ID=my-client-id POLARIS_BOOTSTRAP_DEFAULT-REALM_ROOT_CLIENT_SECRET=my-client-secret <bootstrap command> 
+```
+
 Now, to bootstrap Polaris, run:
 
 ```bash
