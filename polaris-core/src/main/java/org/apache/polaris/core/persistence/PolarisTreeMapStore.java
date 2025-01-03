@@ -25,7 +25,6 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
@@ -189,7 +188,7 @@ public class PolarisTreeMapStore {
   private Transaction tr;
 
   // diagnostic services
-  private PolarisDiagnostics diagnosticServices;
+  private final PolarisDiagnostics diagnosticServices;
 
   // all entities
   private final Slice<PolarisBaseEntity> sliceEntities;
@@ -404,18 +403,15 @@ public class PolarisTreeMapStore {
   /**
    * Run inside a read/write transaction
    *
-   * @param callCtx call context to use
    * @param transactionCode transaction code
    * @return the result of the execution
    */
-  public <T> T runInTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
+  public <T> T runInTransaction(@Nonnull Supplier<T> transactionCode) {
 
     synchronized (lock) {
       // execute transaction
       try {
         // init diagnostic services
-        this.diagnosticServices = callCtx.getDiagServices();
         this.startWriteTransaction();
         return transactionCode.get();
       } catch (Throwable e) {
@@ -423,7 +419,6 @@ public class PolarisTreeMapStore {
         throw e;
       } finally {
         this.tr = null;
-        this.diagnosticServices = null;
       }
     }
   }
@@ -431,18 +426,15 @@ public class PolarisTreeMapStore {
   /**
    * Run inside a read/write transaction
    *
-   * @param callCtx call context to use
    * @param transactionCode transaction code
    */
-  public void runActionInTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
+  public void runActionInTransaction(@Nonnull Runnable transactionCode) {
 
     synchronized (lock) {
 
       // execute transaction
       try {
         // init diagnostic services
-        this.diagnosticServices = callCtx.getDiagServices();
         this.startWriteTransaction();
         transactionCode.run();
       } catch (Throwable e) {
@@ -450,7 +442,6 @@ public class PolarisTreeMapStore {
         throw e;
       } finally {
         this.tr = null;
-        this.diagnosticServices = null;
       }
     }
   }
@@ -458,23 +449,19 @@ public class PolarisTreeMapStore {
   /**
    * Run inside a read only transaction
    *
-   * @param callCtx call context to use
    * @param transactionCode transaction code
    * @return the result of the execution
    */
-  public <T> T runInReadTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
+  public <T> T runInReadTransaction(@Nonnull Supplier<T> transactionCode) {
     synchronized (lock) {
 
       // execute transaction
       try {
         // init diagnostic services
-        this.diagnosticServices = callCtx.getDiagServices();
         this.startReadTransaction();
         return transactionCode.get();
       } finally {
         this.tr = null;
-        this.diagnosticServices = null;
       }
     }
   }
@@ -482,22 +469,18 @@ public class PolarisTreeMapStore {
   /**
    * Run inside a read only transaction
    *
-   * @param callCtx call context to use
    * @param transactionCode transaction code
    */
-  public void runActionInReadTransaction(
-      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
+  public void runActionInReadTransaction(@Nonnull Runnable transactionCode) {
     synchronized (lock) {
 
       // execute transaction
       try {
         // init diagnostic services
-        this.diagnosticServices = callCtx.getDiagServices();
         this.startReadTransaction();
         transactionCode.run();
       } finally {
         this.tr = null;
-        this.diagnosticServices = null;
       }
     }
   }

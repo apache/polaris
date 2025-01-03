@@ -20,6 +20,8 @@ package org.apache.polaris.service.context;
 
 import com.google.common.base.Splitter;
 import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
@@ -32,13 +34,19 @@ import org.slf4j.LoggerFactory;
  *
  * <p>Example: principal:data-engineer;password:test;realm:acct123
  */
+@ApplicationScoped
 @Identifier("default")
 public class DefaultRealmContextResolver implements RealmContextResolver {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultRealmContextResolver.class);
 
   public static final String REALM_PROPERTY_KEY = "realm";
 
-  private String defaultRealm = "default-realm";
+  private final ContextConfiguration configuration;
+
+  @Inject
+  public DefaultRealmContextResolver(ContextConfiguration configuration) {
+    this.configuration = configuration;
+  }
 
   @Override
   public RealmContext resolveRealmContext(
@@ -56,7 +64,7 @@ public class DefaultRealmContextResolver implements RealmContextResolver {
         path,
         queryParams,
         headers);
-    final Map<String, String> parsedProperties = parseBearerTokenAsKvPairs(headers);
+    Map<String, String> parsedProperties = parseBearerTokenAsKvPairs(headers);
 
     if (!parsedProperties.containsKey(REALM_PROPERTY_KEY)
         && headers.containsKey(REALM_PROPERTY_KEY)) {
@@ -65,20 +73,13 @@ public class DefaultRealmContextResolver implements RealmContextResolver {
 
     if (!parsedProperties.containsKey(REALM_PROPERTY_KEY)) {
       LOGGER.warn(
-          "Failed to parse {} from headers; using {}", REALM_PROPERTY_KEY, getDefaultRealm());
-      parsedProperties.put(REALM_PROPERTY_KEY, getDefaultRealm());
+          "Failed to parse {} from headers; using {}",
+          REALM_PROPERTY_KEY,
+          configuration.realmContextResolver().defaultRealm());
+      parsedProperties.put(REALM_PROPERTY_KEY, configuration.realmContextResolver().defaultRealm());
     }
-    return () -> parsedProperties.get(REALM_PROPERTY_KEY);
-  }
-
-  @Override
-  public void setDefaultRealm(String defaultRealm) {
-    this.defaultRealm = defaultRealm;
-  }
-
-  @Override
-  public String getDefaultRealm() {
-    return this.defaultRealm;
+    String realmId = parsedProperties.get(REALM_PROPERTY_KEY);
+    return () -> realmId;
   }
 
   /**

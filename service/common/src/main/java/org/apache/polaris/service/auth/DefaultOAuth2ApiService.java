@@ -21,6 +21,7 @@ package org.apache.polaris.service.auth;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -38,13 +39,17 @@ import org.slf4j.LoggerFactory;
  * Default implementation of the {@link IcebergRestOAuth2ApiService} that generates a JWT token for
  * the client if the client secret matches.
  */
+@RequestScoped
 @Identifier("default")
 public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultOAuth2ApiService.class);
 
-  @Inject private TokenBrokerFactory tokenBrokerFactory;
+  private final TokenBrokerFactory tokenBrokerFactory;
 
-  public DefaultOAuth2ApiService() {}
+  @Inject
+  public DefaultOAuth2ApiService(TokenBrokerFactory tokenBrokerFactory) {
+    this.tokenBrokerFactory = tokenBrokerFactory;
+  }
 
   @Override
   public Response getToken(

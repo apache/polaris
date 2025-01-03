@@ -29,10 +29,10 @@ import java.util.Optional;
 import java.util.UUID;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,10 +48,15 @@ public abstract class JWTBroker implements TokenBroker {
   private static final String CLAIM_KEY_SCOPE = "scope";
 
   private final PolarisMetaStoreManager metaStoreManager;
+  private final PolarisMetaStoreSession metaStoreSession;
   private final int maxTokenGenerationInSeconds;
 
-  JWTBroker(PolarisMetaStoreManager metaStoreManager, int maxTokenGenerationInSeconds) {
+  JWTBroker(
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisMetaStoreSession metaStoreSession,
+      int maxTokenGenerationInSeconds) {
     this.metaStoreManager = metaStoreManager;
+    this.metaStoreSession = metaStoreSession;
     this.maxTokenGenerationInSeconds = maxTokenGenerationInSeconds;
   }
 
@@ -102,10 +107,7 @@ public abstract class JWTBroker implements TokenBroker {
     }
     DecodedToken decodedToken = verify(subjectToken);
     PolarisMetaStoreManager.EntityResult principalLookup =
-        metaStoreManager.loadEntity(
-            CallContext.getCurrentContext().getPolarisCallContext(),
-            0L,
-            decodedToken.getPrincipalId());
+        metaStoreManager.loadEntity(metaStoreSession, 0L, decodedToken.getPrincipalId());
     if (!principalLookup.isSuccess()
         || principalLookup.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.unauthorized_client);
@@ -129,7 +131,7 @@ public abstract class JWTBroker implements TokenBroker {
     }
 
     Optional<PrincipalEntity> principal =
-        TokenBroker.findPrincipalEntity(metaStoreManager, clientId, clientSecret);
+        TokenBroker.findPrincipalEntity(metaStoreManager, metaStoreSession, clientId, clientSecret);
     if (principal.isEmpty()) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.unauthorized_client);
     }

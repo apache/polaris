@@ -18,15 +18,17 @@
  */
 package org.apache.polaris.service.persistence;
 
-import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.time.Clock;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Supplier;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
@@ -37,12 +39,28 @@ import org.apache.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
 import org.apache.polaris.core.persistence.PolarisTreeMapStore;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
+@ApplicationScoped
 @Identifier("in-memory")
 public class InMemoryPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
-  @Inject protected PolarisStorageIntegrationProvider storageIntegration;
 
-  final Set<String> bootstrappedRealms = new HashSet<>();
+  private final PolarisStorageIntegrationProvider storageIntegration;
+
+  private final Set<String> bootstrappedRealms = new CopyOnWriteArraySet<>();
+
+  public InMemoryPolarisMetaStoreManagerFactory() {
+    this(null, null, null, null);
+  }
+
+  @Inject
+  public InMemoryPolarisMetaStoreManagerFactory(
+      PolarisStorageIntegrationProvider storageIntegration,
+      PolarisConfigurationStore configurationStore,
+      PolarisDiagnostics diagnostics,
+      Clock clock) {
+    super(configurationStore, diagnostics, clock);
+    this.storageIntegration = storageIntegration;
+  }
 
   @Override
   protected PolarisTreeMapStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
@@ -51,9 +69,11 @@ public class InMemoryPolarisMetaStoreManagerFactory
 
   @Override
   protected PolarisMetaStoreSession createMetaStoreSession(
-      @Nonnull PolarisTreeMapStore store, @Nonnull RealmContext realmContext) {
+      @Nonnull PolarisTreeMapStore store,
+      @Nonnull RealmContext realmContext,
+      @Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisTreeMapMetaStoreSessionImpl(
-        store, storageIntegration, secretsGenerator(realmContext));
+        store, storageIntegration, secretsGenerator(realmContext), diagnostics);
   }
 
   @Override
@@ -90,11 +110,5 @@ public class InMemoryPolarisMetaStoreManagerFactory
             principalSecrets.getPrincipalSecrets().getPrincipalClientId(),
             principalSecrets.getPrincipalSecrets().getMainSecret());
     System.out.println(msg);
-  }
-
-  @VisibleForTesting
-  public void setStorageIntegrationProvider(
-      PolarisStorageIntegrationProvider storageIntegrationProvider) {
-    this.storageIntegration = storageIntegrationProvider;
   }
 }

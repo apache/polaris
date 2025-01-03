@@ -19,24 +19,63 @@
 package org.apache.polaris.service.auth;
 
 import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.NoSuchAlgorithmException;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.service.auth.AuthenticatorConfiguration.TokenBrokerFactoryConfiguration;
+import org.apache.polaris.service.auth.AuthenticatorConfiguration.TokenBrokerFactoryConfiguration.RSAKeyPairConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+@ApplicationScoped
 @Identifier("rsa-key-pair")
 public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
-  private int maxTokenGenerationInSeconds = 3600;
 
-  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
+  private static final Logger LOGGER = LoggerFactory.getLogger(JWTRSAKeyPairFactory.class);
 
-  public void setMaxTokenGenerationInSeconds(int maxTokenGenerationInSeconds) {
-    this.maxTokenGenerationInSeconds = maxTokenGenerationInSeconds;
+  private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final TokenBrokerFactoryConfiguration tokenBrokerFactoryConfiguration;
+  private final RSAKeyPairConfiguration keyPairConfiguration;
+
+  @Inject
+  public JWTRSAKeyPairFactory(
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      AuthenticatorConfiguration authenticatorConfiguration) {
+    this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.tokenBrokerFactoryConfiguration = authenticatorConfiguration.tokenBrokerFactory();
+    this.keyPairConfiguration =
+        tokenBrokerFactoryConfiguration.rsaKeyPair().orElseGet(this::generateKeyPair);
   }
 
   @Override
   public TokenBroker apply(RealmContext realmContext) {
     return new JWTRSAKeyPair(
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
-        maxTokenGenerationInSeconds);
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
+        (int) tokenBrokerFactoryConfiguration.maxTokenGeneration().toSeconds(),
+        keyPairConfiguration.publicKeyFile(),
+        keyPairConfiguration.privateKeyFile());
   }
+
+  private RSAKeyPairConfiguration generateKeyPair() {
+    LOGGER.warn(
+        "No public and private key files were provided; these will be generated. "
+            + "This should not be done in production!");
+    try {
+      Path privateFileLocation = Files.createTempFile("polaris-private", ".pem");
+      Path publicFileLocation = Files.createTempFile("polaris-public", ".pem");
+      PemUtils.generateKeyPair(privateFileLocation, publicFileLocation);
+      return new GeneratedKeyPair(privateFileLocation, publicFileLocation);
+    } catch (IOException | NoSuchAlgorithmException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  private record GeneratedKeyPair(Path privateKeyFile, Path publicKeyFile)
+      implements RSAKeyPairConfiguration {}
 }
