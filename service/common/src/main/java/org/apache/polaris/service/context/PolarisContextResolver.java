@@ -24,20 +24,9 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.annotation.JsonTypeName;
-import java.time.Clock;
-import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
-import org.apache.polaris.service.config.ConfigurationStoreAware;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -48,32 +37,17 @@ import org.slf4j.LoggerFactory;
  * <p>Example: principal:data-engineer;password:test;realm:acct123
  */
 @JsonTypeName("polaris")
-public class PolarisContextResolver
-    implements RealmContextResolver, CallContextResolver, ConfigurationStoreAware {
+public class PolarisContextResolver implements RealmContextResolver {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisContextResolver.class);
 
   public static final String REALM_PROPERTY_KEY = "realm";
 
   public static final String PRINCIPAL_PROPERTY_KEY = "principalId";
-  public static final String PRINCIPAL_PROPERTY_DEFAULT_VALUE = "default-principal";
 
   public static final String ISS_PROPERTY_KEY = "iss";
   public static final String ISS_PROPERTY_DEFAULT_VALUE = "polaris";
 
-  private RealmEntityManagerFactory entityManagerFactory;
-  private PolarisConfigurationStore configurationStore;
-
   private String defaultRealm = "polaris";
-
-  /**
-   * During CallContext resolution that might depend on RealmContext, the {@code
-   * entityManagerFactory} will be used to resolve elements of the CallContext which require
-   * additional information from an underlying entity store.
-   */
-  @Override
-  public void setEntityManagerFactory(RealmEntityManagerFactory entityManagerFactory) {
-    this.entityManagerFactory = entityManagerFactory;
-  }
 
   @Override
   public RealmContext resolveRealmContext(
@@ -116,45 +90,6 @@ public class PolarisContextResolver
     return this.defaultRealm;
   }
 
-  @Override
-  public CallContext resolveCallContext(
-      final RealmContext realmContext,
-      String method,
-      String path,
-      Map<String, String> queryParams,
-      Map<String, String> headers) {
-    LOGGER
-        .atDebug()
-        .addKeyValue("realmContext", realmContext.getRealmIdentifier())
-        .addKeyValue("method", method)
-        .addKeyValue("path", path)
-        .addKeyValue("queryParams", queryParams)
-        .addKeyValue("headers", headers)
-        .log("Resolving CallContext");
-    final Map<String, String> parsedProperties = extractPropsFromBearerToken(headers);
-
-    if (!parsedProperties.containsKey(PRINCIPAL_PROPERTY_KEY)) {
-      LOGGER.warn(
-          "Failed to parse {} from headers ({}); using {}",
-          PRINCIPAL_PROPERTY_KEY,
-          headers,
-          PRINCIPAL_PROPERTY_DEFAULT_VALUE);
-      parsedProperties.put(PRINCIPAL_PROPERTY_KEY, PRINCIPAL_PROPERTY_DEFAULT_VALUE);
-    }
-
-    PolarisEntityManager entityManager =
-        entityManagerFactory.getOrCreateEntityManager(realmContext);
-    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-    PolarisMetaStoreSession metaStoreSession = entityManager.newMetaStoreSession();
-    PolarisCallContext polarisContext =
-        new PolarisCallContext(
-            metaStoreSession,
-            diagServices,
-            configurationStore,
-            Clock.system(ZoneId.systemDefault()));
-    return CallContext.of(realmContext, polarisContext);
-  }
-
   private static Map<String, String> extractPropsFromBearerToken(Map<String, String> headers) {
     Map<String, String> parsedProperties = new HashMap<>();
     if (headers != null) {
@@ -186,10 +121,5 @@ public class PolarisContextResolver
       }
     }
     return parsedProperties;
-  }
-
-  @Override
-  public void setConfigurationStore(PolarisConfigurationStore configurationStore) {
-    this.configurationStore = configurationStore;
   }
 }
