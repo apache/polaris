@@ -415,6 +415,26 @@ tests:
               cpu: 200m
               memory: 256Mi
 
+  # spec.template.spec.containers[0].env (with bootstrapMetastoreManager enabled)
+  - it: should not set container env by default
+    set:
+      bootstrapMetastoreManager: true
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].env
+  - it: should set container env
+    set:
+      bootstrapMetastoreManager: true
+      bootstrapExtraEnv:
+        - name: foo
+          value: bar
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: foo
+            value: bar
+
   # spec.template.spec.nodeSelector (with bootstrapMetastoreManager enabled)
   - it: should not set nodeSelector by default
     set:
