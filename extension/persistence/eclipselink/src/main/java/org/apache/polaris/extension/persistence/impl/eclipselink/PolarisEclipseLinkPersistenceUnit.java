@@ -47,6 +47,7 @@ import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkPersistenceUnit.ClasspathResourcePolarisEclipseLinkPersistenceUnit;
 import org.apache.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkPersistenceUnit.FileSystemPolarisEclipseLinkPersistenceUnit;
 import org.apache.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkPersistenceUnit.JarFilePolarisEclipseLinkPersistenceUnit;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.NodeList;
@@ -200,7 +201,14 @@ sealed interface PolarisEclipseLinkPersistenceUnit
       }
       // Replace database name in JDBC URL with realm
       if (properties.containsKey(JDBC_URL)) {
-        properties.put(JDBC_URL, properties.get(JDBC_URL).replace("{realm}", realmId.id()));
+        String jdbcUrl = properties.get(JDBC_URL).replace("{realm}", realmId.id());
+        properties.put(JDBC_URL, jdbcUrl);
+        if (jdbcUrl.startsWith("jdbc:h2")) {
+          LoggerFactory.getLogger(PolarisEclipseLinkPersistenceUnit.class)
+              .warn(
+                  "Polaris is configured with EclipseLink and an in-memory H2 database; "
+                      + "this is not recommended for production use!");
+        }
       }
       return properties;
     } catch (XPathExpressionException

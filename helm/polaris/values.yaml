@@ -23,7 +23,7 @@ replicaCount: 1
 
 image:
   # -- The image repository to pull from.
-  repository: localhost:5001/polaris
+  repository: apache/polaris
   # -- The image pull policy.
   pullPolicy: IfNotPresent
   # -- The image tag.
