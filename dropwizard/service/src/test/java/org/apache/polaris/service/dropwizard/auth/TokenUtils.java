@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.dropwizard.auth;
 
+import static org.apache.polaris.service.auth.BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL;
 import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,6 +27,7 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.Response;
+import java.net.URI;
 import java.util.Map;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 
@@ -33,13 +35,7 @@ public class TokenUtils {
 
   /** Get token against specified realm */
   public static String getTokenFromSecrets(
-      Client client, int port, String clientId, String clientSecret, String realm) {
-    return getTokenFromSecrets(
-        client, String.format("http://localhost:%d", port), clientId, clientSecret, realm);
-  }
-
-  public static String getTokenFromSecrets(
-      Client client, String baseUrl, String clientId, String clientSecret, String realm) {
+      Client client, URI baseUrl, String clientId, String clientSecret, String realm) {
     String token;
 
     Invocation.Builder builder =
@@ -58,7 +54,7 @@ public class TokenUtils {
                         "grant_type",
                         "client_credentials",
                         "scope",
-                        "PRINCIPAL_ROLE:ALL",
+                        PRINCIPAL_ROLE_ALL,
                         "client_id",
                         clientId,
                         "client_secret",

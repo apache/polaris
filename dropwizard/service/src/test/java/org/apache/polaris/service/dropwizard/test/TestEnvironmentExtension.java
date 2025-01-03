@@ -21,6 +21,7 @@ package org.apache.polaris.service.dropwizard.test;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Optional;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
@@ -43,7 +44,7 @@ public class TestEnvironmentExtension implements ParameterResolver {
       throws IllegalAccessException {
     // This must be cached because the TestEnvironment has a randomly generated ID
     return extensionContext
-        .getStore(ExtensionContext.Namespace.create(extensionContext.getRequiredTestClass()))
+        .getStore(Namespace.create(extensionContext.getRequiredTestClass()))
         .getOrComputeIfAbsent(
             ENV_PROPERTY_KEY,
             (k) -> getTestEnvironmentResolver().resolveTestEnvironment(extensionContext),
@@ -71,7 +72,7 @@ public class TestEnvironmentExtension implements ParameterResolver {
   private static TestEnvironmentResolver getTestEnvironmentResolver() {
     String impl =
         Optional.ofNullable(System.getenv(ENV_TEST_ENVIRONMENT_RESOLVER_IMPL))
-            .orElse(DropwizardTestEnvironmentResolver.class.getName());
+            .orElse(DefaultTestEnvironmentResolver.class.getName());
 
     try {
       return (TestEnvironmentResolver) (Class.forName(impl).getDeclaredConstructor().newInstance());
