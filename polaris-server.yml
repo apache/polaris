@@ -99,11 +99,11 @@ oauth2:
     secret: polaris
 
 authenticator:
-  class: org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator
-#  class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator # - uncomment to support Auth0 JWT tokens
-#  tokenBroker:
-#    type: symmetric-key
-#    secret: polaris
+#  class: org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator
+  class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator # - uncomment to support Auth0 JWT tokens
+  tokenBroker:
+    type: symmetric-key
+    secret: polaris
 
 cors:
   allowed-origins:
