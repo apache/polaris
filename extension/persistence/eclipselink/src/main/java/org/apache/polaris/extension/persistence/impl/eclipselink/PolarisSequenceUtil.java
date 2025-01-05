@@ -92,8 +92,7 @@ class PolarisSequenceUtil {
               modelSequenceId.setId(r);
               EntityTransaction transaction = session.getTransaction();
               // Persist the new ID:
-              session.persist(modelSequenceId);
-              session.flush();
+
 
               try {
                 transaction.begin();
