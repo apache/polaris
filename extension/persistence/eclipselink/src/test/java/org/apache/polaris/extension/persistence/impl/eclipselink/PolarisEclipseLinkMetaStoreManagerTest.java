@@ -25,7 +25,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.ZoneId;
+import java.util.Objects;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
@@ -204,11 +208,39 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
 
   private static class CreateStoreSessionArgs implements ArgumentsProvider {
     @Override
-    public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
+    public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext)
+        throws URISyntaxException {
+      Path persistenceXml =
+          Paths.get(
+              Objects.requireNonNull(getClass().getResource("/META-INF/persistence.xml")).toURI());
+      Path confJar =
+          Paths.get(
+              Objects.requireNonNull(
+                      getClass()
+                          .getResource(
+                              "/org/apache/polaris/extension/persistence/impl/eclipselink/test-conf.jar"))
+                  .toURI());
       return Stream.of(
+          // conf file not provided
+          Arguments.of(null, true),
+          // classpath resource
           Arguments.of("META-INF/persistence.xml", true),
-          Arguments.of("./build/conf/conf.jar!/persistence.xml", true),
-          Arguments.of("/dummy_path/conf.jar!/persistence.xml", false));
+          Arguments.of("META-INF/dummy.xml", false),
+          // classpath resource, embedded
+          Arguments.of(
+              "org/apache/polaris/extension/persistence/impl/eclipselink/test-conf.jar!/persistence.xml",
+              true),
+          Arguments.of(
+              "org/apache/polaris/extension/persistence/impl/eclipselink/test-conf.jar!/dummy.xml",
+              false),
+          Arguments.of("dummy/test-conf.jar!/persistence.xml", false),
+          // filesystem path
+          Arguments.of(persistenceXml.toString(), true),
+          Arguments.of("/dummy_path/conf/persistence.xml", false),
+          // filesystem path, embedded
+          Arguments.of(confJar + "!/persistence.xml", true),
+          Arguments.of(confJar + "!/dummy.xml", false),
+          Arguments.of("/dummy_path/test-conf.jar!/persistence.xml", false));
     }
   }
 }

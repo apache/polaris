@@ -59,12 +59,3 @@ dependencies {
   testImplementation(libs.mockito.core)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
-
-tasks.register<Jar>("archiveConf") {
-  archiveFileName = "conf.jar"
-  destinationDirectory = layout.buildDirectory.dir("conf")
-
-  from("src/main/resources/META-INF/") { include("persistence.xml") }
-}
-
-tasks.named("test") { dependsOn("archiveConf") }
