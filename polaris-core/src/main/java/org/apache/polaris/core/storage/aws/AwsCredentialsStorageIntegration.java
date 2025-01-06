@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.core.storage.aws;
 
+import static org.apache.polaris.core.PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+import static org.apache.polaris.core.PolarisConfiguration.loadConfig;
+
 import java.net.URI;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -25,7 +28,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
@@ -39,9 +41,6 @@ import software.amazon.awssdk.policybuilder.iam.IamStatement;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
-
-import static org.apache.polaris.core.PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
-import static org.apache.polaris.core.PolarisConfiguration.loadConfig;
 
 /** Credential vendor that supports generating */
 public class AwsCredentialsStorageIntegration
