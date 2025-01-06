@@ -215,11 +215,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
               Objects.requireNonNull(getClass().getResource("/META-INF/persistence.xml")).toURI());
       Path confJar =
           Paths.get(
-              Objects.requireNonNull(
-                      getClass()
-                          .getResource(
-                              "/org/apache/polaris/extension/persistence/impl/eclipselink/test-conf.jar"))
-                  .toURI());
+              Objects.requireNonNull(getClass().getResource("/eclipselink/test-conf.jar")).toURI());
       return Stream.of(
           // conf file not provided
           Arguments.of(null, true),
@@ -227,12 +223,8 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
           Arguments.of("META-INF/persistence.xml", true),
           Arguments.of("META-INF/dummy.xml", false),
           // classpath resource, embedded
-          Arguments.of(
-              "org/apache/polaris/extension/persistence/impl/eclipselink/test-conf.jar!/persistence.xml",
-              true),
-          Arguments.of(
-              "org/apache/polaris/extension/persistence/impl/eclipselink/test-conf.jar!/dummy.xml",
-              false),
+          Arguments.of("eclipselink/test-conf.jar!/persistence.xml", true),
+          Arguments.of("eclipselink/test-conf.jar!/dummy.xml", false),
           Arguments.of("dummy/test-conf.jar!/persistence.xml", false),
           // filesystem path
           Arguments.of(persistenceXml.toString(), true),

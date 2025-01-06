@@ -59,3 +59,13 @@ dependencies {
   testImplementation(libs.mockito.core)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
+
+tasks.register<Jar>("createTestConfJar") {
+  archiveFileName = "test-conf.jar"
+  destinationDirectory = layout.buildDirectory.dir("conf/eclipselink")
+  from("src/main/resources/META-INF/") { include("persistence.xml") }
+}
+
+sourceSets { test { resources.srcDir(layout.buildDirectory.dir("conf")) } }
+
+tasks.named("processTestResources") { dependsOn("createTestConfJar") }
