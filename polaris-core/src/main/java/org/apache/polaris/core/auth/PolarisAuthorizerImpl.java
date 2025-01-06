@@ -91,6 +91,9 @@ import static org.apache.polaris.core.entity.PolarisPrivilege.VIEW_WRITE_PROPERT
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.SetMultimap;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import jakarta.inject.Inject;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -105,8 +108,6 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -460,6 +461,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   private final PolarisConfigurationStore featureConfig;
 
+  @Inject
   public PolarisAuthorizerImpl(PolarisConfigurationStore featureConfig) {
     this.featureConfig = featureConfig;
   }
@@ -485,9 +487,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   @Override
   public void authorizeOrThrow(
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      @NotNull Set<PolarisBaseEntity> activatedEntities,
-      @NotNull PolarisAuthorizableOperation authzOp,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable PolarisResolvedPathWrapper target,
       @Nullable PolarisResolvedPathWrapper secondary) {
     authorizeOrThrow(
@@ -500,9 +502,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
 
   @Override
   public void authorizeOrThrow(
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      @NotNull Set<PolarisBaseEntity> activatedEntities,
-      @NotNull PolarisAuthorizableOperation authzOp,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
     boolean enforceCredentialRotationRequiredState =
@@ -535,9 +537,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
    * the operation.
    */
   public boolean isAuthorized(
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
-      @NotNull Set<PolarisBaseEntity> activatedEntities,
-      @NotNull PolarisAuthorizableOperation authzOp,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable PolarisResolvedPathWrapper target,
       @Nullable PolarisResolvedPathWrapper secondary) {
     return isAuthorized(
@@ -549,9 +551,9 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
   }
 
   public boolean isAuthorized(
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
-      @NotNull Set<PolarisBaseEntity> activatedEntities,
-      @NotNull PolarisAuthorizableOperation authzOp,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+      @Nonnull Set<PolarisBaseEntity> activatedEntities,
+      @Nonnull PolarisAuthorizableOperation authzOp,
       @Nullable List<PolarisResolvedPathWrapper> targets,
       @Nullable List<PolarisResolvedPathWrapper> secondaries) {
     Set<Long> entityIdSet =
@@ -598,7 +600,7 @@ public class PolarisAuthorizerImpl implements PolarisAuthorizer {
    * errors/exceptions.
    */
   public boolean hasTransitivePrivilege(
-      @NotNull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+      @Nonnull AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
       Set<Long> activatedGranteeIds,
       PolarisPrivilege desiredPrivilege,
       PolarisResolvedPathWrapper resolvedPath) {

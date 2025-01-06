@@ -17,26 +17,21 @@
  * under the License.
  */
 
-import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
-
 plugins {
-  alias(libs.plugins.openapi.generator)
   id("polaris-client")
   id("java-library")
   id("java-test-fixtures")
 }
 
 dependencies {
+  implementation(project(":polaris-api-management-model"))
+
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
   constraints {
     implementation("io.airlift:aircompressor:0.27") { because("Vulnerability detected in 0.25") }
   }
-  // TODO - this is only here for the Discoverable interface
-  // We should use a different mechanism to discover the plugin implementations
-  implementation(platform(libs.dropwizard.bom))
-  implementation("io.dropwizard:dropwizard-jackson")
 
   implementation(platform(libs.jackson.bom))
   implementation("com.fasterxml.jackson.core:jackson-annotations")
@@ -68,10 +63,11 @@ dependencies {
     }
   }
 
-  implementation(libs.javax.inject)
   implementation(libs.swagger.annotations)
   implementation(libs.swagger.jaxrs)
+  implementation(libs.jakarta.inject.api)
   implementation(libs.jakarta.validation.api)
+  implementation(libs.smallrye.common.annotation)
 
   implementation("org.apache.iceberg:iceberg-aws")
   implementation(platform(libs.awssdk.bom))
@@ -98,9 +94,6 @@ dependencies {
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
 
-  implementation(platform(libs.micrometer.bom))
-  implementation("io.micrometer:micrometer-core")
-
   testFixturesApi(platform(libs.junit.bom))
   testFixturesApi("org.junit.jupiter:junit-jupiter")
   testFixturesApi(libs.assertj.core)
@@ -109,44 +102,9 @@ dependencies {
   testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
   testFixturesApi(libs.commons.lang3)
   testFixturesApi(libs.threeten.extra)
-  testFixturesApi(libs.jetbrains.annotations)
   testFixturesApi(platform(libs.jackson.bom))
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+  testFixturesApi(libs.jakarta.annotation.api)
 
   compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.persistence.api)
-}
-
-openApiValidate { inputSpec = "$rootDir/spec/polaris-management-service.yml" }
-
-val generatePolarisService by
-  tasks.registering(GenerateTask::class) {
-    inputSpec = "$rootDir/spec/polaris-management-service.yml"
-    generatorName = "jaxrs-resteasy"
-    outputDir = "$projectDir/build/generated"
-    modelPackage = "org.apache.polaris.core.admin.model"
-    ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
-    removeOperationIdPrefix = true
-    templateDir = "$rootDir/server-templates"
-    globalProperties.put("apis", "false")
-    globalProperties.put("models", "")
-    globalProperties.put("apiDocs", "false")
-    globalProperties.put("modelTests", "false")
-    configOptions.put("useBeanValidation", "true")
-    configOptions.put("sourceFolder", "src/main/java")
-    configOptions.put("useJakartaEe", "true")
-    configOptions.put("generateBuilders", "true")
-    configOptions.put("generateConstructorWithAllArgs", "true")
-    additionalProperties.put("apiNamePrefix", "Polaris")
-    additionalProperties.put("apiNameSuffix", "Api")
-    additionalProperties.put("metricsPrefix", "polaris")
-    serverVariables = mapOf("basePath" to "api/v1")
-  }
-
-listOf("sourcesJar", "compileJava").forEach { task ->
-  tasks.named(task) { dependsOn(generatePolarisService) }
-}
-
-sourceSets {
-  main { java { srcDir(project.layout.buildDirectory.dir("generated/src/main/java")) } }
 }

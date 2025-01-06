@@ -21,6 +21,7 @@ package org.apache.polaris.core.entity;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +30,6 @@ import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.jetbrains.annotations.NotNull;
 
 public class PolarisEntity extends PolarisBaseEntity {
 
@@ -171,7 +171,7 @@ public class PolarisEntity extends PolarisBaseEntity {
         .orElse(null);
   }
 
-  public PolarisEntity(@NotNull PolarisBaseEntity sourceEntity) {
+  public PolarisEntity(@Nonnull PolarisBaseEntity sourceEntity) {
     super(
         sourceEntity.getCatalogId(),
         sourceEntity.getId(),

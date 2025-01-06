@@ -19,20 +19,22 @@
 package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonTypeName;
+import io.smallrye.common.annotation.Identifier;
+import jakarta.annotation.Nonnull;
+import jakarta.inject.Inject;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
-import org.jetbrains.annotations.NotNull;
+import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
 /**
  * The implementation of Configuration interface for configuring the {@link PolarisMetaStoreManager}
  * using an EclipseLink based meta store to store and retrieve all Polaris metadata. It can be
  * configured through persistence.xml to use supported RDBMS as the meta store.
  */
-@JsonTypeName("eclipse-link")
+@Identifier("eclipse-link")
 public class EclipseLinkPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisEclipseLinkStore> {
   @JsonProperty("conf-file")
@@ -41,15 +43,22 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
   @JsonProperty("persistence-unit")
   private String persistenceUnitName;
 
+  @Inject protected PolarisStorageIntegrationProvider storageIntegration;
+
   @Override
-  protected PolarisEclipseLinkStore createBackingStore(@NotNull PolarisDiagnostics diagnostics) {
+  protected PolarisEclipseLinkStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisEclipseLinkStore(diagnostics);
   }
 
   @Override
   protected PolarisMetaStoreSession createMetaStoreSession(
-      @NotNull PolarisEclipseLinkStore store, @NotNull RealmContext realmContext) {
+      @Nonnull PolarisEclipseLinkStore store, @Nonnull RealmContext realmContext) {
     return new PolarisEclipseLinkMetaStoreSessionImpl(
-        store, storageIntegration, realmContext, confFile, persistenceUnitName);
+        store,
+        storageIntegration,
+        realmContext,
+        confFile,
+        persistenceUnitName,
+        secretsGenerator(realmContext));
   }
 }

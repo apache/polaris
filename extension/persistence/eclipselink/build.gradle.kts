@@ -29,8 +29,11 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
+  implementation(project(":polaris-jpa-model"))
   implementation(libs.eclipselink)
   implementation(platform(libs.dropwizard.bom))
+  implementation(libs.jakarta.inject.api)
+  implementation(libs.smallrye.common.annotation)
   implementation("io.dropwizard:dropwizard-jackson")
   val eclipseLinkDeps: String? = project.findProperty("eclipseLinkDeps") as String?
   eclipseLinkDeps?.let {
@@ -45,7 +48,7 @@ dependencies {
     }
   }
 
-  compileOnly(libs.jetbrains.annotations)
+  compileOnly(libs.jakarta.annotation.api)
 
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
@@ -56,12 +59,3 @@ dependencies {
   testImplementation(libs.mockito.core)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
-
-tasks.register<Jar>("archiveConf") {
-  archiveFileName = "conf.jar"
-  destinationDirectory = layout.buildDirectory.dir("conf")
-
-  from("src/main/resources/META-INF/") { include("persistence.xml") }
-}
-
-tasks.named("test") { dependsOn("archiveConf") }

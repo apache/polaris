@@ -19,12 +19,17 @@
 package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import static jakarta.persistence.Persistence.createEntityManagerFactory;
+import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.ZoneId;
-import java.util.UUID;
+import java.util.Objects;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
@@ -34,7 +39,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
-import org.apache.polaris.core.persistence.models.ModelPrincipalSecrets;
+import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -57,7 +62,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
     PolarisEclipseLinkMetaStoreSessionImpl session =
         new PolarisEclipseLinkMetaStoreSessionImpl(
-            store, Mockito.mock(), () -> "realm", null, "polaris");
+            store, Mockito.mock(), () -> "realm", null, "polaris", RANDOM_SECRETS);
     return new PolarisTestMetaStoreManager(
         new PolarisMetaStoreManagerImpl(),
         new PolarisCallContext(
@@ -78,7 +83,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     try {
       var session =
           new PolarisEclipseLinkMetaStoreSessionImpl(
-              store, Mockito.mock(), () -> "realm", confFile, "polaris");
+              store, Mockito.mock(), () -> "realm", confFile, "polaris", RANDOM_SECRETS);
       assertNotNull(session);
       assertTrue(success);
     } catch (Exception e) {
@@ -90,17 +95,41 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
   void testRotateLegacyPrincipalSecret() {
 
     PolarisEclipseLinkMetaStoreSessionImpl.clearEntityManagerFactories();
-    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
 
-    var key = "client-id-" + UUID.randomUUID();
-    ModelPrincipalSecrets model =
-        ModelPrincipalSecrets.builder()
-            .principalId(Math.abs(key.hashCode()))
-            .principalClientId(key)
-            .mainSecret("secret!")
-            .build();
-    Assertions.assertNotNull(model.getMainSecret());
-    Assertions.assertNull(model.getMainSecretHash());
+    var newSecrets = new PolarisPrincipalSecrets(42L);
+    assertThat(newSecrets)
+        .extracting(
+            PolarisPrincipalSecrets::getMainSecret,
+            PolarisPrincipalSecrets::getSecondarySecret,
+            PolarisPrincipalSecrets::getMainSecretHash,
+            PolarisPrincipalSecrets::getSecondarySecretHash,
+            PolarisPrincipalSecrets::getSecretSalt)
+        .doesNotContainNull()
+        .allMatch(x -> !x.toString().isEmpty());
+
+    ModelPrincipalSecrets model = ModelPrincipalSecrets.fromPrincipalSecrets(newSecrets);
+    var key = model.getPrincipalClientId();
+
+    var fromModel = ModelPrincipalSecrets.toPrincipalSecrets(model);
+
+    assertThat(fromModel)
+        .extracting(
+            PolarisPrincipalSecrets::getMainSecret, PolarisPrincipalSecrets::getSecondarySecret)
+        .containsOnlyNulls();
+
+    assertThat(model)
+        .extracting(
+            ModelPrincipalSecrets::getPrincipalId,
+            ModelPrincipalSecrets::getPrincipalClientId,
+            ModelPrincipalSecrets::getSecretSalt,
+            ModelPrincipalSecrets::getMainSecretHash,
+            ModelPrincipalSecrets::getSecondarySecretHash)
+        .containsExactly(
+            newSecrets.getPrincipalId(),
+            newSecrets.getPrincipalClientId(),
+            newSecrets.getSecretSalt(),
+            newSecrets.getMainSecretHash(),
+            newSecrets.getSecondarySecretHash());
 
     try (var emf = createEntityManagerFactory("polaris")) {
       var entityManager = emf.createEntityManager();
@@ -114,31 +143,54 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
       entityManager.clear();
       ModelPrincipalSecrets retrievedModel = entityManager.find(ModelPrincipalSecrets.class, key);
 
-      // Verify the retrieved entity still has no hash
-      Assertions.assertNotNull(retrievedModel);
-      Assertions.assertNotNull(retrievedModel.getMainSecret());
-      Assertions.assertNull(retrievedModel.getMainSecretHash());
+      assertThat(retrievedModel)
+          .extracting(
+              ModelPrincipalSecrets::getPrincipalId,
+              ModelPrincipalSecrets::getPrincipalClientId,
+              ModelPrincipalSecrets::getSecretSalt,
+              ModelPrincipalSecrets::getMainSecretHash,
+              ModelPrincipalSecrets::getSecondarySecretHash)
+          .containsExactly(
+              model.getPrincipalId(),
+              model.getPrincipalClientId(),
+              model.getSecretSalt(),
+              model.getMainSecretHash(),
+              model.getSecondarySecretHash());
 
       // Now read using PolarisEclipseLinkStore
-      PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
+      var store = new PolarisEclipseLinkStore(new PolarisDefaultDiagServiceImpl());
       store.initialize(entityManager);
       PolarisPrincipalSecrets principalSecrets =
           ModelPrincipalSecrets.toPrincipalSecrets(
               store.lookupPrincipalSecrets(entityManager, key));
 
-      // The principalSecrets should have both a main secret and a hashed secret
-      Assertions.assertNotNull(principalSecrets);
-      Assertions.assertNotNull(principalSecrets.getMainSecret());
-      Assertions.assertNotNull(principalSecrets.getMainSecretHash());
-      Assertions.assertNull(principalSecrets.getSecondarySecret());
+      assertThat(principalSecrets)
+          .extracting(
+              PolarisPrincipalSecrets::getPrincipalId,
+              PolarisPrincipalSecrets::getPrincipalClientId,
+              PolarisPrincipalSecrets::getSecretSalt,
+              PolarisPrincipalSecrets::getMainSecret,
+              PolarisPrincipalSecrets::getMainSecretHash,
+              PolarisPrincipalSecrets::getSecondarySecret,
+              PolarisPrincipalSecrets::getSecondarySecretHash)
+          .containsExactly(
+              fromModel.getPrincipalId(),
+              fromModel.getPrincipalClientId(),
+              fromModel.getSecretSalt(),
+              null,
+              fromModel.getMainSecretHash(),
+              null,
+              fromModel.getSecondarySecretHash());
 
       // Rotate:
-      String originalSecret = principalSecrets.getMainSecret();
-      String originalHash = principalSecrets.getMainSecretHash();
       principalSecrets.rotateSecrets(principalSecrets.getMainSecretHash());
-      Assertions.assertNotEquals(originalHash, principalSecrets.getMainSecretHash());
-      Assertions.assertEquals(originalHash, principalSecrets.getSecondarySecretHash());
-      Assertions.assertEquals(null, principalSecrets.getSecondarySecret());
+      assertThat(principalSecrets.getMainSecret()).isNotEqualTo(newSecrets.getMainSecret());
+      assertThat(principalSecrets.getMainSecretHash()).isNotEqualTo(newSecrets.getMainSecretHash());
+      assertThat(principalSecrets)
+          .extracting(
+              PolarisPrincipalSecrets::getSecondarySecret,
+              PolarisPrincipalSecrets::getSecondarySecretHash)
+          .containsExactly(null, newSecrets.getMainSecretHash());
 
       // Persist the rotated credential:
       store.deletePrincipalSecrets(entityManager, key);
@@ -147,23 +199,48 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
       // Reload the model:
       var reloadedModel = store.lookupPrincipalSecrets(entityManager, key);
 
-      // The old plaintext secret is gone:
-      Assertions.assertNull(reloadedModel.getMainSecret());
-      Assertions.assertNull(reloadedModel.getSecondarySecret());
-
       // Confirm the old secret still works via hash:
       var reloadedSecrets = ModelPrincipalSecrets.toPrincipalSecrets(reloadedModel);
-      Assertions.assertTrue(reloadedSecrets.matchesSecret(originalSecret));
+      Assertions.assertTrue(reloadedSecrets.matchesSecret(newSecrets.getMainSecret()));
+      Assertions.assertFalse(reloadedSecrets.matchesSecret(newSecrets.getSecondarySecret()));
     }
   }
 
   private static class CreateStoreSessionArgs implements ArgumentsProvider {
     @Override
-    public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
+    public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext)
+        throws URISyntaxException {
+      Path persistenceXml =
+          Paths.get(
+              Objects.requireNonNull(getClass().getResource("/META-INF/persistence.xml")).toURI());
+      Path confJar =
+          Paths.get(
+              Objects.requireNonNull(
+                      getClass()
+                          .getResource(
+                              "/org/apache/polaris/extension/persistence/impl/eclipselink/test-conf.jar"))
+                  .toURI());
       return Stream.of(
+          // conf file not provided
+          Arguments.of(null, true),
+          // classpath resource
           Arguments.of("META-INF/persistence.xml", true),
-          Arguments.of("./build/conf/conf.jar!/persistence.xml", true),
-          Arguments.of("/dummy_path/conf.jar!/persistence.xml", false));
+          Arguments.of("META-INF/dummy.xml", false),
+          // classpath resource, embedded
+          Arguments.of(
+              "org/apache/polaris/extension/persistence/impl/eclipselink/test-conf.jar!/persistence.xml",
+              true),
+          Arguments.of(
+              "org/apache/polaris/extension/persistence/impl/eclipselink/test-conf.jar!/dummy.xml",
+              false),
+          Arguments.of("dummy/test-conf.jar!/persistence.xml", false),
+          // filesystem path
+          Arguments.of(persistenceXml.toString(), true),
+          Arguments.of("/dummy_path/conf/persistence.xml", false),
+          // filesystem path, embedded
+          Arguments.of(confJar + "!/persistence.xml", true),
+          Arguments.of(confJar + "!/dummy.xml", false),
+          Arguments.of("/dummy_path/test-conf.jar!/persistence.xml", false));
     }
   }
 }

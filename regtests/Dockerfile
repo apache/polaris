@@ -54,4 +54,4 @@ USER root
 RUN chmod -R go+rwx /home/spark/regtests
 USER spark
 
-CMD ["./run.sh"]
+ENTRYPOINT ["./run.sh"]

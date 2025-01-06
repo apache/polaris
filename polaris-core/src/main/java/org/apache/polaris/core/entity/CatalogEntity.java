@@ -20,6 +20,8 @@ package org.apache.polaris.core.entity;
 
 import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum.AZURE;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,8 +44,6 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Catalog specific subclass of the {@link PolarisEntity} that handles conversion from the {@link
@@ -138,6 +138,7 @@ public class CatalogEntity extends PolarisEntity {
             .setUserArn(awsConfig.getUserARN())
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(awsConfig.getAllowedLocations())
+            .setRegion(awsConfig.getRegion())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {
@@ -244,18 +245,19 @@ public class CatalogEntity extends PolarisEntity {
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     new ArrayList<>(allowedLocations),
                     awsConfigModel.getRoleArn(),
-                    awsConfigModel.getExternalId());
+                    awsConfigModel.getExternalId(),
+                    awsConfigModel.getRegion());
             awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
-            AzureStorageConfigurationInfo azureconfigInfo =
+            AzureStorageConfigurationInfo azureConfigInfo =
                 new AzureStorageConfigurationInfo(
                     new ArrayList<>(allowedLocations), azureConfigModel.getTenantId());
-            azureconfigInfo.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
-            azureconfigInfo.setConsentUrl(azureConfigModel.getConsentUrl());
-            config = azureconfigInfo;
+            azureConfigInfo.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
+            azureConfigInfo.setConsentUrl(azureConfigModel.getConsentUrl());
+            config = azureConfigInfo;
             break;
           case GCS:
             GcpStorageConfigurationInfo gcpConfig =
@@ -283,7 +285,7 @@ public class CatalogEntity extends PolarisEntity {
     }
   }
 
-  protected static @NotNull String getDefaultBaseLocation(Catalog catalog) {
+  protected static @Nonnull String getDefaultBaseLocation(Catalog catalog) {
     return catalog.getProperties().getDefaultBaseLocation();
   }
 }

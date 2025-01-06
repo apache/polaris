@@ -30,8 +30,11 @@ cascade:
 {{% blocks/feature icon="fa-solid fa-graduation-cap" title="Learn, Connect and Collaborate" %}}
 [cols="2,3"]
 |===
+| link:https://join.slack.com/t/apache-polaris/shared_invite/zt-2w1fddyh3-zqCeeJwn7wNvhn3mVT5njQ[Slack]
+| Public chat, open to everybody
+
 | link:https://polaris-catalog.zulipchat.com/[Zulip]
-| Our public chat, open to everybody
+| Public chat, open to everybody
 
 | link:{{% ref "meetings" %}}[Community Meetings]
 | Upcoming, live and recorded Community Meetings
