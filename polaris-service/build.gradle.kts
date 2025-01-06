@@ -122,9 +122,9 @@ dependencies {
   testImplementation(project(":polaris-eclipselink"))
 }
 
-//if (project.properties.get("eclipseLink") == "true") {
+// if (project.properties.get("eclipseLink") == "true") {
 //  dependencies { implementation(project(":polaris-eclipselink")) }
-//}
+// }
 
 openApiGenerate {
   inputSpec = "$rootDir/spec/rest-catalog-open-api.yaml"

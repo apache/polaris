@@ -82,7 +82,7 @@ class PolarisSequenceUtil {
           long queryResult =
               (long) session.createNativeQuery("SELECT NEXTVAL('POLARIS_SEQ')").getSingleResult();
           result = Optional.of(queryResult);
-          LOGGER.info("query result "+queryResult);
+          LOGGER.info("query result " + queryResult);
         } else {
           LOGGER.info("POLARIS_SEQ does not exist, skipping NEXTVAL");
         }
@@ -92,7 +92,6 @@ class PolarisSequenceUtil {
               modelSequenceId.setId(r);
               EntityTransaction transaction = session.getTransaction();
               // Persist the new ID:
-
 
               try {
                 transaction.begin();
