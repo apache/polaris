@@ -37,7 +37,6 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -51,7 +50,6 @@ import org.mockito.Mockito;
  *
  * @author aixu
  */
-@Disabled
 public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStoreManagerTest {
 
   @Override
