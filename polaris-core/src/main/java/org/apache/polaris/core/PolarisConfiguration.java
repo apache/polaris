@@ -236,7 +236,8 @@ public class PolarisConfiguration<T> {
           .key("STORAGE_CREDENTIAL_DURATION_SECONDS")
           .description(
               "The duration of time that vended storage credentials are valid for. Support for"
-                  + " longer (or shorter) durations is dependent on the storage provider.")
+                  + " longer (or shorter) durations is dependent on the storage provider. GCS"
+                  + " current does not respect this value.")
           .defaultValue(60 * 60) // 1 hour
           .build();
 
