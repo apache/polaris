@@ -72,11 +72,11 @@ To use EclipseLink for metastore management, specify the configuration `metaStor
 
 Before using Polaris when using a metastore manager other than `in-memory`, you must **bootstrap** the metastore manager. This is a manual operation that must be performed **only once** in order to prepare the metastore manager to integrate with Polaris. When the metastore manager is bootstrapped, any existing Polaris entities in the metastore manager may be **purged**.
 
-By default, Polaris will create randomised `CLIENT_ID` and `CLIENT_SECRET` for the `root` principal and store their hashes in the metastore backend. In order to provide your own credentials for `root` principal (so you can request tokens via `api/catalog/v1/oauth/tokens`), set the following envrionment variables for realm name `polaris`:
+By default, Polaris will create randomised `CLIENT_ID` and `CLIENT_SECRET` for the `root` principal and store their hashes in the metastore backend. In order to provide your own credentials for `root` principal (so you can request tokens via `api/catalog/v1/oauth/tokens`), set the following envrionment variables for realm name `my_realm`:
 
 ```
-export POLARIS_BOOTSTRAP_POLARIS_ROOT_CLIENT_ID=my-client-id
-export POLARIS_BOOTSTRAP_POLARIS_ROOT_CLIENT_SECRET=my-client-secret
+export POLARIS_BOOTSTRAP_MY_REALM_ROOT_CLIENT_ID=my-client-id
+export POLARIS_BOOTSTRAP_MY_REALM_ROOT_CLIENT_SECRET=my-client-secret
 ```
 
 **IMPORTANT**: In case you use `default-realm` for metastore backend database, you won't be able to use `export` command. Use this instead:
