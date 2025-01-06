@@ -48,7 +48,7 @@ dependencies {
   implementation("io.dropwizard:dropwizard-core")
   implementation("io.dropwizard:dropwizard-auth")
   implementation("io.dropwizard:dropwizard-json-logging")
-//  implementation(project(":polaris-eclipselink"))
+  implementation(project(":polaris-eclipselink"))
 
   implementation(platform(libs.jackson.bom))
   implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
@@ -122,9 +122,9 @@ dependencies {
   testImplementation(project(":polaris-eclipselink"))
 }
 
- if (project.properties.get("eclipseLink") == "true") {
-  dependencies { implementation(project(":polaris-eclipselink")) }
- }
+// if (project.properties.get("eclipseLink") == "true") {
+//  dependencies { implementation(project(":polaris-eclipselink")) }
+// }
 
 openApiGenerate {
   inputSpec = "$rootDir/spec/rest-catalog-open-api.yaml"
