@@ -75,6 +75,7 @@ cascade:
 [cols="4,1,3"]
 |===
 
+| https://github.com/adutra[Alex Dutra] | Committer | link:https://www.dremio.com/[Dremio]
 | https://github.com/annafil[Anna Filippova] | Committer | link:https://www.snowflake.com/[Snowflake]
 | Anoop Johnson | PPMC | link:https://www.google.com/[Google]
 | https://github.com/ashvina[Ashvin Agrawal] | PPMC | link:https://www.microsoft.com/[Microsoft]
@@ -89,7 +90,8 @@ cascade:
 | https://github.com/snazy[Robert Stupp] | PPMC | link:https://www.dremio.com/[Dremio]
 | https://github.com/russellspitzer[Russell Spitzer] | PPMC | link:https://www.snowflake.com/[Snowflake]
 | Ryan Blue | Mentor |
-| https://github.com/takidau:[Tyler Akidau] | PPMC | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/takidau[Tyler Akidau] | PPMC | link:https://www.snowflake.com/[Snowflake]
+| https://github.com/MonkeyCanCode[Yong Zheng] | Committer |
 | https://github.com/flyrain[Yufei Gu] | Committer | link:https://www.snowflake.com/[Snowflake]
 | https://github.com/ebyhr[Yuya Ebihara] | Committer | link:https://www.starburst.io/[Starburst]
 |===

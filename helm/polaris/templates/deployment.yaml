@@ -31,6 +31,9 @@ spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
+  {{- if not (has (quote .Values.revisionHistoryLimit) (list "" (quote ""))) }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "polaris.selectorLabels" . | nindent 6 }}
@@ -38,7 +41,7 @@ spec:
     metadata:
       {{- if .Values.podAnnotations }}
       annotations:
-          {{- tpl (toYaml .Values.podAnnotations) . | nindent 8 }}
+        {{- tpl (toYaml .Values.podAnnotations) . | nindent 8 }}
       {{- end }}
       labels:
         {{- include "polaris.selectorLabels" . | nindent 8 }}

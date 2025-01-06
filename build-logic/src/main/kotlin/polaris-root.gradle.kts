@@ -34,7 +34,7 @@ spotless {
   kotlinGradle {
     ktfmt().googleStyle()
     licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
-    target("*.gradle.kts", "build-logic/*.gradle.kts", "build-logic/src/**/*.kts")
+    target("*.gradle.kts", "build-logic/*.gradle.kts", "build-logic/src/**/*.kt*")
   }
 }
 
@@ -78,5 +78,5 @@ extensions.getByType<PublishingHelperExtension>().apply {
     "vvcephei"
   )
   podlingMentorsAsfIds.addAll("bdelacretaz", "blue", "holden", "jbonofre", "yao")
-  podlingCommitterAsfIds.addAll()
+  podlingCommitterAsfIds.addAll("adutra", "annafil", "emaynard", "collado", "yufei", "ebyhr")
 }

@@ -156,8 +156,8 @@ public class PolarisApplicationIntegrationTest {
         EXT.client()
             .target(
                 String.format(
-                    "http://localhost:%d/api/management/v1/principals/snowman/principal-roles",
-                    EXT.getLocalPort()))
+                    "http://localhost:%d/api/management/v1/principals/%s/principal-roles",
+                    EXT.getLocalPort(), snowmanCredentials.identifier().principalName()))
             .request("application/json")
             .header("Authorization", "Bearer " + PolarisApplicationIntegrationTest.userToken)
             .header(REALM_PROPERTY_KEY, realm)
