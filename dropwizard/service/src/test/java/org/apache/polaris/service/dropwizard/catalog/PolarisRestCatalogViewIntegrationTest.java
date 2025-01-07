@@ -20,8 +20,6 @@ package org.apache.polaris.service.dropwizard.catalog;
 
 import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
 
-import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.core.Response;
@@ -34,7 +32,6 @@ import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.service.dropwizard.PolarisApplication;
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
 import org.apache.polaris.service.dropwizard.test.PolarisApplicationUtils;
 import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;

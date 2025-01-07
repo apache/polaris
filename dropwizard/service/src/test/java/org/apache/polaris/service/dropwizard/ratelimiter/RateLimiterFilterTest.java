@@ -25,7 +25,6 @@ import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistr
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import io.micrometer.core.instrument.Tag;
@@ -33,7 +32,6 @@ import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.List;
 import java.util.function.Consumer;
-import org.apache.polaris.service.dropwizard.PolarisApplication;
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
 import org.apache.polaris.service.dropwizard.test.PolarisApplicationUtils;
 import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
@@ -59,34 +57,11 @@ public class RateLimiterFilterTest {
   private static final long REQUESTS_PER_SECOND = 5;
   private static final long WINDOW_SECONDS = 10;
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-<<<<<<< HEAD:dropwizard/service/src/test/java/org/apache/polaris/service/dropwizard/ratelimiter/RateLimiterFilterTest.java
-<<<<<<< HEAD:dropwizard/service/src/test/java/org/apache/polaris/service/dropwizard/ratelimiter/RateLimiterFilterTest.java
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config("server.adminConnectors[0].port", "0"),
-          ConfigOverride.config("tokenBucketFactory.type", "mock"),
-          ConfigOverride.config(
-              "tokenBucketFactory.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
-          ConfigOverride.config(
-              "tokenBucketFactory.windowSeconds", String.valueOf(WINDOW_SECONDS)));
-=======
-          PolarisApplicationUtils.createTestPolarisApplication(
-                  ConfigOverride.config("rateLimiter.type", "mock-realm-token-bucket"),
-                  ConfigOverride.config(
-                          "rateLimiter.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
-                  ConfigOverride.config("rateLimiter.windowSeconds", String.valueOf(WINDOW_SECONDS)));
->>>>>>> b2dbbee (refactor test):polaris-service/src/test/java/org/apache/polaris/service/ratelimiter/RateLimiterFilterTest.java
-=======
       PolarisApplicationUtils.createTestPolarisApplication(
-          ConfigOverride.config("rateLimiter.type", "mock-realm-token-bucket"),
+          ConfigOverride.config("rateLimiter.type", "mock"),
           ConfigOverride.config(
               "rateLimiter.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
           ConfigOverride.config("rateLimiter.windowSeconds", String.valueOf(WINDOW_SECONDS)));
->>>>>>> f7e34d9 (refactor test):polaris-service/src/test/java/org/apache/polaris/service/ratelimiter/RateLimiterFilterTest.java
 
   private static String userToken;
   private static String realm;

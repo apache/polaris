@@ -29,8 +29,6 @@ import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistr
 import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.TAG_RESP_CODE;
 import static org.apache.polaris.service.dropwizard.monitor.PolarisMetricRegistry.TAG_RESP_CODE_DEPRECATED;
 
-import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import io.micrometer.core.annotation.Timed;

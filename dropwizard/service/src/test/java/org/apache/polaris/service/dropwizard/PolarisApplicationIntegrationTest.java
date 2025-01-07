@@ -26,7 +26,6 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
 import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
 import jakarta.ws.rs.ProcessingException;
