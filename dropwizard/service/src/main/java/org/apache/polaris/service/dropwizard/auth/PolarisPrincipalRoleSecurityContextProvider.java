@@ -27,21 +27,9 @@ import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.security.Principal;
-import java.util.List;
 import java.util.Set;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.auth.PolarisGrantManager;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PrincipalRoleEntity;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.service.auth.BasePolarisAuthenticator;
+import org.apache.polaris.service.auth.ActiveRolesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,8 +38,7 @@ public class PolarisPrincipalRoleSecurityContextProvider implements ContainerReq
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisPrincipalRoleSecurityContextProvider.class);
   @Inject Provider<SecurityContext> securityContextProvider;
-  @Inject MetaStoreManagerFactory metaStoreManager;
-  @Inject Provider<PolarisGrantManager> polarisGrantManagerProvider;
+  @Inject ActiveRolesProvider activeRolesProvider;
 
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
@@ -67,14 +54,7 @@ public class PolarisPrincipalRoleSecurityContextProvider implements ContainerReq
 
   public SecurityContext createSecurityContext(
       SecurityContext ctx, AuthenticatedPolarisPrincipal principal) {
-    RealmContext realmContext = CallContext.getCurrentContext().getRealmContext();
-    List<PrincipalRoleEntity> activeRoles =
-        loadActivePrincipalRoles(
-            principal.getActivatedPrincipalRoleNames(),
-            principal.getPrincipalEntity(),
-            metaStoreManager.getOrCreateMetaStoreManager(realmContext));
-    Set<String> validRoleNames =
-        activeRoles.stream().map(PrincipalRoleEntity::getName).collect(Collectors.toSet());
+    Set<String> validRoleNames = activeRolesProvider.getActiveRoles(principal);
     return new SecurityContext() {
       @Override
       public Principal getUserPrincipal() {
@@ -96,49 +76,5 @@ public class PolarisPrincipalRoleSecurityContextProvider implements ContainerReq
         return ctx.getAuthenticationScheme();
       }
     };
-  }
-
-  protected List<PrincipalRoleEntity> loadActivePrincipalRoles(
-      Set<String> tokenRoles, PolarisEntity principal, PolarisMetaStoreManager metaStoreManager) {
-    PolarisCallContext polarisContext = CallContext.getCurrentContext().getPolarisCallContext();
-    PolarisGrantManager.LoadGrantsResult principalGrantResults =
-        polarisGrantManagerProvider.get().loadGrantsToGrantee(polarisContext, principal);
-    polarisContext
-        .getDiagServices()
-        .check(
-            principalGrantResults.isSuccess(),
-            "Failed to resolve principal roles for principal name={} id={}",
-            principal.getName(),
-            principal.getId());
-    if (!principalGrantResults.isSuccess()) {
-      LOGGER.warn(
-          "Failed to resolve principal roles for principal name={} id={}",
-          principal.getName(),
-          principal.getId());
-      throw new NotAuthorizedException("Unable to authenticate");
-    }
-    boolean allRoles = tokenRoles.contains(BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL);
-    Predicate<PrincipalRoleEntity> includeRoleFilter =
-        allRoles ? r -> true : r -> tokenRoles.contains(r.getName());
-    List<PrincipalRoleEntity> activeRoles =
-        principalGrantResults.getGrantRecords().stream()
-            .map(
-                gr ->
-                    metaStoreManager.loadEntity(
-                        polarisContext, gr.getSecurableCatalogId(), gr.getSecurableId()))
-            .filter(PolarisMetaStoreManager.EntityResult::isSuccess)
-            .map(PolarisMetaStoreManager.EntityResult::getEntity)
-            .map(PrincipalRoleEntity::of)
-            .filter(includeRoleFilter)
-            .toList();
-    if (activeRoles.size() != principalGrantResults.getGrantRecords().size()) {
-      LOGGER
-          .atWarn()
-          .addKeyValue("principal", principal.getName())
-          .addKeyValue("scopes", tokenRoles)
-          .addKeyValue("roles", activeRoles)
-          .log("Some principal roles were not found in the principal's grants");
-    }
-    return activeRoles;
   }
 }

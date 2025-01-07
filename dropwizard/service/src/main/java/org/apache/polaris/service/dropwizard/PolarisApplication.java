@@ -107,7 +107,9 @@ import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
+import org.apache.polaris.service.auth.ActiveRolesProvider;
 import org.apache.polaris.service.auth.Authenticator;
+import org.apache.polaris.service.auth.DefaultActiveRolesProvider;
 import org.apache.polaris.service.catalog.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -314,6 +316,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                     PolarisCatalogsApi.class,
                     PolarisPrincipalsApi.class,
                     PolarisPrincipalRolesApi.class);
+                bind(DefaultActiveRolesProvider.class).to(ActiveRolesProvider.class);
                 bindAsContract(RealmEntityManagerFactory.class).in(Singleton.class);
                 bind(PolarisCallContextCatalogFactory.class)
                     .to(CallContextCatalogFactory.class)
