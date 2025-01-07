@@ -49,23 +49,6 @@ spec:
         {{- tpl (toYaml .Values.podLabels) . | nindent 8 }}
         {{- end }}
     spec:
-      {{- if and .Values.persistenceConfigSecret (index .Values.polarisServerConfig.metaStoreManager "conf-file") }}
-      initContainers:
-        - name: init-config
-          image: "{{ tpl .Values.toolsImage.repository . }}:{{ tpl .Values.toolsImage.tag . }}"
-          imagePullPolicy: {{ tpl .Values.toolsImage.pullPolicy . }}
-          command: ["jar"]
-          args: ["-cf", "/eclipselink-config/conf.jar", "-C", "/secret", "persistence.xml"]
-          {{- if .Values.securityContext}}
-          securityContext:
-            {{- tpl (toYaml .Values.securityContext) . | nindent 12 }}
-          {{- end }}
-          volumeMounts:
-            - name: eclipselink-config-volume
-              mountPath: /eclipselink-config
-            - name: secret-volume
-              mountPath: /secret
-      {{- end }}
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
       {{- range .Values.imagePullSecrets }}
@@ -77,11 +60,15 @@ spec:
       securityContext:
         {{- tpl (toYaml .Values.podSecurityContext) . | nindent 8 }}
       {{- end }}
+      {{- if .Values.extraInitContainers }}
+      initContainers:
+        {{- tpl (toYaml .Values.extraInitContainers) . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          {{- if .Values.securityContext}}
+          {{- if .Values.containerSecurityContext }}
           securityContext:
-            {{- tpl (toYaml .Values.securityContext) . | nindent 12 }}
+            {{- tpl (toYaml .Values.containerSecurityContext) . | nindent 12 }}
           {{- end }}
           image: "{{ tpl .Values.image.repository . }}:{{ tpl .Values.image.tag . | default .Chart.Version }}"
           imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}
@@ -91,22 +78,24 @@ spec:
           {{- end }}
           volumeMounts:
             - name: config-volume
-              mountPath: /app/config/polaris-server.yml
-              subPath: polaris-server.yml
-            {{- if and .Values.persistenceConfigSecret (index .Values.polarisServerConfig.metaStoreManager "conf-file") }}
-            - name: eclipselink-config-volume
-              mountPath: /eclipselink-config
+              mountPath: {{ trimSuffix "/" .Values.image.configDir }}
+              readOnly: true
+            {{- if .Values.logging.file.enabled }}
+            - name: logs-storage
+              mountPath: {{ .Values.logging.file.logsDir }}
+              readOnly: false
             {{- end }}
-          ports:
-            {{- range $portName, $portNumber := .Values.service.ports }}
-            - name: {{ $portName }}
-              containerPort: {{ $portNumber }}
-              protocol: TCP
+            - name: temp-dir
+              mountPath: /tmp
+              readOnly: false
+            {{- if .Values.extraVolumeMounts }}
+            {{- tpl (toYaml .Values.extraVolumeMounts) . | nindent 12 }}
             {{- end }}
+          {{- include "polaris.containerPorts" . | trim | nindent 10 }}
           livenessProbe:
             httpGet:
               path: /q/health/live
-              port: "polaris-metrics"
+              port: {{ get (first .Values.managementService.ports) "name" }}
               scheme: HTTP
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
@@ -117,7 +106,7 @@ spec:
           readinessProbe:
             httpGet:
               path: /q/health/ready
-              port: "polaris-metrics"
+              port: {{ get (first .Values.managementService.ports) "name" }}
               scheme: HTTP
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
@@ -129,15 +118,16 @@ spec:
             {{- tpl (toYaml .Values.resources) . | nindent 12 }}
           {{- end }}
       volumes:
-        - name: config-volume
-          configMap:
-            name: {{ include "polaris.fullname" . }}
-        {{- if and .Values.persistenceConfigSecret (index .Values.polarisServerConfig.metaStoreManager "conf-file") }}
-        - name: eclipselink-config-volume
+        {{- include "polaris.configVolume" . | nindent 8 }}
+        {{- if .Values.logging.file.enabled }}
+        - name: logs-storage
+          persistentVolumeClaim:
+            claimName: {{ include "polaris.fullnameWithSuffix" (list . "logs") }}
+        {{- end }}
+        - name: temp-dir
           emptyDir: {}
-        - name: secret-volume
-          secret:
-            secretName: {{ tpl .Values.persistenceConfigSecret . }}
+        {{- if .Values.extraVolumes }}
+        {{- tpl (toYaml .Values.extraVolumes) . | nindent 8 }}
         {{- end }}
       {{- if .Values.nodeSelector }}
       nodeSelector:

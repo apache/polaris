@@ -20,10 +20,26 @@
 image:
   pullPolicy: Never
 
-persistenceConfigSecret: polaris-persistence
+authentication:
+  tokenBroker:
+    secret:
+      name: polaris-token-broker
 
-polarisServerConfig:
-  metaStoreManager:
-    type: eclipse-link
-    persistence-unit: polaris
-    conf-file: /eclipselink-config/conf.jar!/persistence.xml
+logging:
+  file:
+    enabled: true
+    json: true
+    storage:
+      size: 50Mi
+
+persistence:
+  type: eclipse-link
+  eclipseLink:
+    secret:
+      name: polaris-persistence
+
+bootstrap:
+  enabled: true
+  realms: ["realm1", "realm2"]
+  image:
+    pullPolicy: Never

@@ -101,9 +101,8 @@ jobs:
           export BUILD_TAG=helm-ci-$(date +%s)
           echo BUILD_TAG=${BUILD_TAG} >> ${GITHUB_ENV}
           eval $(minikube -p minikube docker-env)
-          ./gradlew :polaris-quarkus-server:assemble \
+          ./gradlew assemble \
             -Dquarkus.container-image.build=true \
-            -Dquarkus.container-image.name=polaris-testing \
             -Dquarkus.container-image.tag=${BUILD_TAG}
           minikube image ls 
 
@@ -116,7 +115,8 @@ jobs:
       - name: Run chart-testing (install)
         if: steps.list-changed.outputs.changed == 'true'
         run: |
-          ct install --target-branch ${{ github.event.repository.default_branch }} \
+          ct install --debug \
             --namespace polaris-ns \
-            --helm-extra-set-args "--set=image.repository=apache/polaris-testing --set=image.tag=${BUILD_TAG}" \
-            --debug --charts ./helm/polaris
+            --target-branch ${{ github.event.repository.default_branch }} \
+            --helm-extra-set-args "--set=image.tag=${BUILD_TAG} --set=bootstrap.image.tag=${BUILD_TAG}" \
+            --charts ./helm/polaris

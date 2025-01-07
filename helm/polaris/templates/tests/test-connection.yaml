@@ -35,5 +35,7 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args: ['{{ include "polaris.fullname" . }}:{{ index .Values.service.ports "polaris-metrics" }}/q/health']
+      args:
+        - --spider
+        - '{{ include "polaris.fullnameWithSuffix" (list . "mgmt") }}:{{ get (first .Values.managementService.ports) "port" }}/q/health/ready'
   restartPolicy: Never

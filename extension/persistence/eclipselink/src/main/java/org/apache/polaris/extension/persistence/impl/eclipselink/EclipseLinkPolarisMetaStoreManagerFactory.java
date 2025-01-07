@@ -44,8 +44,8 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 public class EclipseLinkPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisEclipseLinkStore> {
 
-  private final EclipseLinkConfiguration eclipseLinkConfiguration;
-  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
+  @Inject EclipseLinkConfiguration eclipseLinkConfiguration;
+  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
 
   public EclipseLinkPolarisMetaStoreManagerFactory() {
     this(null, null, null, null, null);
