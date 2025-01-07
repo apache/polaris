@@ -24,11 +24,7 @@ import org.apache.polaris.core.context.RealmContext;
 public interface RealmContextResolver {
 
   RealmContext resolveRealmContext(
-      String requestURL,
-      String method,
-      String path,
-      Map<String, String> queryParams,
-      Map<String, String> headers);
+      String requestURL, String method, String path, Map<String, String> headers);
 
   void setDefaultRealm(String defaultRealm);
 

@@ -99,12 +99,11 @@ public class PolarisConnectionExtension
                   String.format("%s://%s", testEnvUri.getScheme(), testEnvUri.getHost()),
                   "GET",
                   path,
-                  Map.of(),
                   Map.of(REALM_PROPERTY_KEY, realm));
       CallContext ctx =
           config
               .findService(CallContextResolver.class)
-              .resolveCallContext(realmContext, "GET", path, Map.of(), Map.of());
+              .resolveCallContext(realmContext, "GET", path, Map.of());
       CallContext.setCurrentContext(ctx);
       PolarisMetaStoreManager metaStoreManager =
           metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());

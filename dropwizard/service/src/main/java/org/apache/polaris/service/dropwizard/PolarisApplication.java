@@ -502,18 +502,12 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
               httpRequest.getRequestURL().toString(),
               httpRequest.getMethod(),
               httpRequest.getRequestURI().substring(1),
-              request.getParameterMap().entrySet().stream()
-                  .collect(
-                      Collectors.toMap(Map.Entry::getKey, (e) -> ((String[]) e.getValue())[0])),
               headers);
       CallContext currentCallContext =
           callContextResolver.resolveCallContext(
               currentRealmContext,
               httpRequest.getMethod(),
               httpRequest.getRequestURI().substring(1),
-              request.getParameterMap().entrySet().stream()
-                  .collect(
-                      Collectors.toMap(Map.Entry::getKey, (e) -> ((String[]) e.getValue())[0])),
               headers);
       CallContext.setCurrentContext(currentCallContext);
       try (MDC.MDCCloseable ignored1 =
