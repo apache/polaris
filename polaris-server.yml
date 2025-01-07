@@ -76,6 +76,8 @@ featureConfiguration:
 callContextResolver:
   type: default
 
+defaultRealm: default-realm
+
 realmContextResolver:
   type: default
 
