@@ -60,11 +60,12 @@ dependencies {
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
-tasks.register<Jar>("archiveConf") {
-  archiveFileName = "conf.jar"
-  destinationDirectory = layout.buildDirectory.dir("conf")
-
+tasks.register<Jar>("createTestConfJar") {
+  archiveFileName = "test-conf.jar"
+  destinationDirectory = layout.buildDirectory.dir("conf/eclipselink")
   from("src/main/resources/META-INF/") { include("persistence.xml") }
 }
 
-tasks.named("test") { dependsOn("archiveConf") }
+sourceSets { test { resources.srcDir(layout.buildDirectory.dir("conf")) } }
+
+tasks.named("processTestResources") { dependsOn("createTestConfJar") }
