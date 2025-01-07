@@ -49,17 +49,12 @@ public class DefaultCallContextResolver implements CallContextResolver {
 
   @Override
   public CallContext resolveCallContext(
-      final RealmContext realmContext,
-      String method,
-      String path,
-      Map<String, String> queryParams,
-      Map<String, String> headers) {
+      final RealmContext realmContext, String method, String path, Map<String, String> headers) {
     LOGGER
         .atDebug()
         .addKeyValue("realmContext", realmContext.getRealmIdentifier())
         .addKeyValue("method", method)
         .addKeyValue("path", path)
-        .addKeyValue("queryParams", queryParams)
         .addKeyValue("headers", headers)
         .log("Resolving CallContext");
 

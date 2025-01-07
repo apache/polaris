@@ -25,9 +25,5 @@ import org.apache.polaris.core.context.RealmContext;
 /** Uses the resolved RealmContext to further resolve elements of the CallContext. */
 public interface CallContextResolver {
   CallContext resolveCallContext(
-      RealmContext realmContext,
-      String method,
-      String path,
-      Map<String, String> queryParams,
-      Map<String, String> headers);
+      RealmContext realmContext, String method, String path, Map<String, String> headers);
 }
