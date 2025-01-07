@@ -20,12 +20,28 @@
 image:
   pullPolicy: Never
 
-storage:
-  secret:
-    name: polaris-storage
-    awsAccessKeyId: access-key
-    awsSecretAccessKey: secret-key
+service:
+  type: ClusterIP
+  sessionAffinity: ClientIP
+  internalTrafficPolicy: Cluster
+  externalTrafficPolicy: Cluster
+  ports:
+    - name: polaris-http
+      port: 18181
+      targetPort: 8181
+      protocol: TCP
+    - name: polaris-http2
+      port: 28181
+      targetPort: 8181
+      protocol: TCP
 
-extraEnv:
-  - name: POLARIS_BOOTSTRAP_CREDENTIALS
-    value: root,root,secret
+extraServices:
+  - nameSuffix: "ext"
+    type: ClusterIP
+    sessionAffinity: None
+    internalTrafficPolicy: Local
+    externalTrafficPolicy: Local
+    ports:
+    - name: polaris-http2
+      port: 38181
+      targetPort: 8181

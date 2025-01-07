@@ -17,15 +17,11 @@
 # under the License.
 #
 
-image:
-  pullPolicy: Never
-
-storage:
-  secret:
-    name: polaris-storage
-    awsAccessKeyId: access-key
-    awsSecretAccessKey: secret-key
-
-extraEnv:
-  - name: POLARIS_BOOTSTRAP_CREDENTIALS
-    value: root,root,secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: polaris-storage
+type: Opaque
+stringData:
+  access-key: "my-key"
+  secret-key: "my-secret"

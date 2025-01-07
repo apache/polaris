@@ -17,11 +17,11 @@
   under the License.
 */}}
 
-{{- if .Values.bootstrapMetastoreManager }}
+{{- if .Values.bootstrap.enabled }}
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "polaris.fullname" . }}
+  name: {{ include "polaris.fullnameWithSuffix" (list . "bootstrap") }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "polaris.labels" . | nindent 4 }}
@@ -43,23 +43,6 @@ spec:
         {{- tpl (toYaml .Values.podLabels) . | nindent 8 }}
         {{- end }}
     spec:
-      {{- if and .Values.persistenceConfigSecret (index .Values.polarisServerConfig.metaStoreManager "conf-file") }}
-      initContainers:
-        - name: init-config
-          image: "{{ tpl .Values.toolsImage.repository . }}:{{ tpl .Values.toolsImage.tag . }}"
-          imagePullPolicy: {{ tpl .Values.toolsImage.pullPolicy . }}
-          command: ["jar"]
-          args: ["-cf", "/eclipselink-config/conf.jar", "-C", "/secret", "persistence.xml"]
-          {{- if .Values.securityContext}}
-          securityContext:
-            {{- tpl (toYaml .Values.securityContext) . | nindent 12 }}
-          {{- end }}
-          volumeMounts:
-            - name: eclipselink-config-volume
-              mountPath: /eclipselink-config
-            - name: secret-volume
-              mountPath: /secret
-      {{- end }}
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
       {{- range .Values.imagePullSecrets }}
@@ -67,47 +50,50 @@ spec:
       {{- end }}
       {{- end }}
       serviceAccountName: {{ include "polaris.serviceAccountName" . }}
-      {{- if .Values.podSecurityContext}}
+      {{- if .Values.podSecurityContext }}
       securityContext:
         {{- tpl (toYaml .Values.podSecurityContext) . | nindent 8 }}
       {{- end }}
       containers:
-        - name: {{ .Chart.Name }}
-          {{- if .Values.securityContext}}
+        - name: "polaris-bootstrap"
+          {{- if .Values.containerSecurityContext }}
           securityContext:
-            {{- tpl (toYaml .Values.securityContext) . | nindent 12 }}
+            {{- tpl (toYaml .Values.containerSecurityContext) . | nindent 12 }}
           {{- end }}
-          image: "{{ tpl .Values.image.repository . }}:{{ tpl .Values.image.tag . | default .Chart.Version }}"
-          imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}
-          command: ["/app/bin/polaris-service"]
-          args: ["bootstrap", "/app/config/polaris-server.yml"]
-          {{- if .Values.bootstrapExtraEnv }}
+          image: "{{ tpl .Values.bootstrap.image.repository . }}:{{ tpl .Values.bootstrap.image.tag . | default .Chart.Version }}"
+          imagePullPolicy: {{ tpl .Values.bootstrap.image.pullPolicy . }}
+          args:
+            - "bootstrap"
+            {{- range $realm := .Values.bootstrap.realms }}
+            - --realm={{ tpl $realm $ }}
+            {{- end }}
+            {{- range $credential := .Values.bootstrap.credentials }}
+            - --credential={{ tpl $credential $ }}
+            {{- end }}
           env:
-            {{- tpl (toYaml .Values.bootstrapExtraEnv) . | nindent 12 }}
-          {{- end }}
+            {{- if .Values.bootstrap.extraEnv }}
+            {{- tpl (toYaml .Values.bootstrap.extraEnv) . | nindent 12 }}
+            {{- end }}
+            - name: "quarkus.log.file.enable"
+              value: "false"
           volumeMounts:
             - name: config-volume
-              mountPath: /app/config/polaris-server.yml
-              subPath: polaris-server.yml
-            {{- if and .Values.persistenceConfigSecret (index .Values.polarisServerConfig.metaStoreManager "conf-file") }}
-            - name: eclipselink-config-volume
-              mountPath: /eclipselink-config
-            {{- end }}
+              mountPath: {{ trimSuffix "/" .Values.bootstrap.image.configDir }}
+              readOnly: true
+            - name: temp-dir
+              mountPath: /tmp
+              readOnly: false
           {{- if .Values.resources }}
           resources:
             {{- tpl (toYaml .Values.resources) . | nindent 12 }}
           {{- end }}
       restartPolicy: Never
       volumes:
-        - name: config-volume
-          configMap:
-            name: {{ include "polaris.fullname" . }}
-        {{- if and .Values.persistenceConfigSecret (index .Values.polarisServerConfig.metaStoreManager "conf-file") }}
-        - name: eclipselink-config-volume
+        {{- include "polaris.configVolume" . | nindent 8 }}
+        - name: temp-dir
           emptyDir: {}
-        - name: secret-volume
-          secret:
-            secretName: {{ tpl .Values.persistenceConfigSecret . }}
+        {{- if .Values.extraVolumes }}
+        {{- tpl (toYaml .Values.extraVolumes) . | nindent 8 }}
         {{- end }}
       {{- if .Values.nodeSelector }}
       nodeSelector:
