@@ -58,10 +58,11 @@ public class RateLimiterFilterTest {
   private static final long WINDOW_SECONDS = 10;
   private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
       PolarisApplicationUtils.createTestPolarisApplication(
-          ConfigOverride.config("rateLimiter.type", "mock"),
+          ConfigOverride.config("tokenBucketFactory.type", "mock"),
           ConfigOverride.config(
-              "rateLimiter.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
-          ConfigOverride.config("rateLimiter.windowSeconds", String.valueOf(WINDOW_SECONDS)));
+              "tokenBucketFactory.requestsPerSecond", String.valueOf(REQUESTS_PER_SECOND)),
+          ConfigOverride.config(
+              "tokenBucketFactory.windowSeconds", String.valueOf(WINDOW_SECONDS)));
 
   private static String userToken;
   private static String realm;
