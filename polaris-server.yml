@@ -77,13 +77,13 @@ featureConfiguration:
 callContextResolver:
   type: default
 
+defaultRealm: polaris
+
 realmContextResolver:
   type: polaris
 
 defaultRealms:
   - polaris
-
-defaultRealm: polaris
 
 metaStoreManager:
 #  type: in-memory
