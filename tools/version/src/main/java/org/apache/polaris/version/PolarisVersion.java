@@ -63,7 +63,7 @@ public final class PolarisVersion {
    * information} is available, when Polaris has been built with the Gradle {@code -Prelease}
    * project property..
    *
-   * <p>Example values: {@code 1.0.0-incubating-SNAPSHOT}, {@code 1.0.0-incubating}, {@code 1.0.0}
+   * <p>Example values: {@code 0.9.0-incubating-SNAPSHOT}, {@code 0.9.0-incubating}, {@code 0.9.0}
    *
    * @see #isReleaseBuild()
    */
