@@ -22,8 +22,6 @@ import static org.apache.polaris.service.context.DefaultRealmContextResolver.REA
 import static org.apache.polaris.service.dropwizard.throttling.RequestThrottlingErrorResponse.RequestThrottlingErrorType.REQUEST_TOO_LARGE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.when;
 
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
@@ -65,7 +63,6 @@ import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.RESTSessionCatalog;
 import org.apache.iceberg.rest.auth.AuthConfig;
-import org.apache.iceberg.rest.auth.ImmutableAuthConfig;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.types.Types;
@@ -746,24 +743,20 @@ public class PolarisApplicationIntegrationTest {
       String credentialString =
           snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret();
       var authConfig =
-          AuthConfig.builder().credential(credentialString).scope("PRINCIPAL_ROLE:ALL").build();
-      ImmutableAuthConfig configSpy = spy(authConfig);
-      when(configSpy.expiresAtMillis()).thenReturn(0L);
-      assertThat(configSpy.expiresAtMillis()).isEqualTo(0L);
-      when(configSpy.oauth2ServerUri()).thenReturn(path);
+          AuthConfig.builder()
+              .credential(credentialString)
+              .scope("PRINCIPAL_ROLE:ALL")
+              .oauth2ServerUri(path)
+              .build();
 
-      var parentSession = new OAuth2Util.AuthSession(Map.of(), configSpy);
+      var parentSession = new OAuth2Util.AuthSession(Map.of(), authConfig);
       var session =
           OAuth2Util.AuthSession.fromAccessToken(client, null, userToken, 0L, parentSession);
 
-      OAuth2Util.AuthSession sessionSpy = spy(session);
-      when(sessionSpy.expiresAtMillis()).thenReturn(0L);
-      assertThat(sessionSpy.expiresAtMillis()).isEqualTo(0L);
-      assertThat(sessionSpy.token()).isEqualTo(userToken);
+      assertThat(session.token()).isEqualTo(userToken);
 
-      sessionSpy.refresh(client);
-      assertThat(sessionSpy.credential()).isNotNull();
-      assertThat(sessionSpy.credential()).isNotEqualTo(userToken);
+      session.refresh(client);
+      assertThat(session.token()).isNotEqualTo(userToken);
     }
   }
 }
