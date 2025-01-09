@@ -57,6 +57,7 @@ dependencies {
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
     exclude("org.apache.logging.log4j", "log4j-api")
     exclude("org.apache.logging.log4j", "log4j-1.2-api")
+    exclude("org.slf4j", "jul-to-slf4j")
   }
 
   implementation(platform(libs.junit.bom))
