@@ -61,6 +61,11 @@ contract={org.apache.polaris.service.context.RealmContextResolver}
 name=default
 qualifier={io.smallrye.common.annotation.Identifier}
 
+[org.apache.polaris.service.context.PolarisContextResolver]S
+contract={org.apache.polaris.service.context.RealmContextResolver}
+name=polaris
+qualifier={io.smallrye.common.annotation.Identifier}
+
 [org.apache.polaris.service.context.DefaultCallContextResolver]S
 contract={org.apache.polaris.service.context.CallContextResolver}
 name=default
