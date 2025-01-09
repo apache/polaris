@@ -85,7 +85,7 @@ defaultRealms:
 metaStoreManager:
 #  type: in-memory
    type: eclipse-link # uncomment to use eclipse-link as metastore
-   persistence-unit: polaris
+   persistence-unit: polaris-staging
 
 io:
   factoryType: wasb
