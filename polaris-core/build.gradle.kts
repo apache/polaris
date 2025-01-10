@@ -30,7 +30,7 @@ dependencies {
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
   constraints {
-    implementation("io.airlift:aircompressor:0.27") { because("Vulnerability detected in 0.25") }
+    implementation("io.airlift:aircompressor:2.0.2") { because("Vulnerability detected in 0.25") }
   }
 
   implementation(platform(libs.jackson.bom))
