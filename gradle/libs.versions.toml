@@ -42,7 +42,7 @@ commons-codec1 = { module = "commons-codec:commons-codec", version = "1.17.2" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
 dropwizard-bom = { module = "io.dropwizard:dropwizard-bom", version.ref = "dropwizard" }
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.5" }
-errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.29.2" }
+errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.36.0" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.47.0" }
 guava = { module = "com.google.guava:guava", version = "33.4.0-jre" }
 h2 = { module = "com.h2database:h2", version = "2.3.232" }
