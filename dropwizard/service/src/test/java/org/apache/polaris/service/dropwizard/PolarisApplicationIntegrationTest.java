@@ -19,10 +19,11 @@
 package org.apache.polaris.service.dropwizard;
 
 import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
-import static org.apache.polaris.service.dropwizard.throttling.RequestThrottlingErrorResponse.RequestThrottlingErrorType.REQUEST_TOO_LARGE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.ResourceHelpers;
 import io.dropwizard.testing.junit5.DropwizardAppExtension;
@@ -35,6 +36,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -84,7 +86,6 @@ import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
 import org.apache.polaris.service.dropwizard.test.PolarisRealm;
 import org.apache.polaris.service.dropwizard.test.SnowmanCredentialsExtension;
 import org.apache.polaris.service.dropwizard.test.TestEnvironmentExtension;
-import org.apache.polaris.service.dropwizard.throttling.RequestThrottlingErrorResponse;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
@@ -709,7 +710,10 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testRequestBodyTooLarge() {
-    // The size is set to be higher than the limit in polaris-server-integrationtest.yml
+    // The behaviour in case of large requests depends on the specific server configuration.
+    // This test assumes that the server under test is configured to deny requests larger than
+    // 1000000 bytes. The test payload below assumes UTF8 encoding of ASCII charts plus a bit of
+    // JSON overhead.
     Entity<PrincipalRole> largeRequest = Entity.json(new PrincipalRole("r".repeat(1000001)));
 
     try (Response response =
@@ -721,13 +725,16 @@ public class PolarisApplicationIntegrationTest {
             .header("Authorization", "Bearer " + userToken)
             .header(REALM_PROPERTY_KEY, realm)
             .post(largeRequest)) {
-      assertThat(response)
-          .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus)
-          .matches(
-              r ->
-                  r.readEntity(RequestThrottlingErrorResponse.class)
-                      .errorType()
-                      .equals(REQUEST_TOO_LARGE));
+      // Note we only validate the status code here because per RFC 9110, the server MAY not provide
+      // a response body. The HTTP status line is still expected to be provided.
+      assertThat(response.getStatus())
+          .isEqualTo(Response.Status.REQUEST_ENTITY_TOO_LARGE.getStatusCode());
+    } catch (ProcessingException e) {
+      // Per RFC 9110 servers MAY close the connection in case of 413 responses, which
+      // might cause the client to fail to read the status code (cf. RFC 9112, section 9.6).
+      // TODO: servers are expected to close connections gracefully. It might be worth investigating
+      // whether "connection closed" exceptions are a client-side bug.
+      assertThat(e).hasMessageContaining("Connection was closed");
     }
   }
 
@@ -742,21 +749,22 @@ public class PolarisApplicationIntegrationTest {
             .build()) {
       String credentialString =
           snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret();
+      String expiredToken =
+          JWT.create().withExpiresAt(Instant.EPOCH).sign(Algorithm.HMAC256("irrelevant-secret"));
       var authConfig =
           AuthConfig.builder()
               .credential(credentialString)
               .scope("PRINCIPAL_ROLE:ALL")
               .oauth2ServerUri(path)
+              .token(expiredToken)
               .build();
 
       var parentSession = new OAuth2Util.AuthSession(Map.of(), authConfig);
       var session =
-          OAuth2Util.AuthSession.fromAccessToken(client, null, userToken, 0L, parentSession);
+          OAuth2Util.AuthSession.fromAccessToken(client, null, expiredToken, 0L, parentSession);
 
-      assertThat(session.token()).isEqualTo(userToken);
-
-      session.refresh(client);
-      assertThat(session.token()).isNotEqualTo(userToken);
+      assertThat(session.token()).isNotEqualTo(expiredToken); // implicit refresh
+      assertThat(JWT.decode(session.token()).getExpiresAtAsInstant()).isAfter(Instant.EPOCH);
     }
   }
 }
