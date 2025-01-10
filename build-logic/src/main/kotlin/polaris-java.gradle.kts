@@ -76,7 +76,7 @@ tasks.withType(Jar::class).configureEach {
       // manifests for release(-like) builds.
       "Implementation-Title" to "Apache Polaris(TM) (incubating)",
       "Implementation-Vendor" to "Apache Software Foundation",
-      "Implementation-URL" to "https://polaris.apache.org/"
+      "Implementation-URL" to "https://polaris.apache.org/",
     )
   }
 }

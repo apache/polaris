@@ -1735,16 +1735,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
           throw new NotFoundException("Cannot rename %s to %s. %s does not exist", from, to, from);
 
-          // this is temporary. Should throw a special error that will be caught and retried
+        // this is temporary. Should throw a special error that will be caught and retried
         case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
         case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED:
           throw new RuntimeException("concurrent update detected, please retry");
 
-          // some entities cannot be renamed
+        // some entities cannot be renamed
         case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RENAMED:
           throw new BadRequestException("Cannot rename built-in object %s", leafEntity.getName());
 
-          // some entities cannot be renamed
+        // some entities cannot be renamed
         default:
           throw new IllegalStateException(
               "Unknown error status " + returnedEntityResult.getReturnStatus());

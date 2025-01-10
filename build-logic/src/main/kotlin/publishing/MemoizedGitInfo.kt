@@ -80,7 +80,7 @@ internal class MemoizedGitInfo {
             "Apache-Polaris-Build-Git-Describe" to gitDescribe,
             "Apache-Polaris-Build-Timestamp" to timestamp,
             "Apache-Polaris-Build-System" to system,
-            "Apache-Polaris-Build-Java-Version" to javaVersion
+            "Apache-Polaris-Build-Java-Version" to javaVersion,
           )
         rootProject.extra["gitReleaseInfo"] = info
         return info

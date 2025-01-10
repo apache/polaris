@@ -56,7 +56,7 @@ internal fun configureOnRootProject(project: Project) =
         "--prefix=${e.baseName.get()}/",
         "--format=tar.gz",
         "--output=${e.sourceTarball.get().asFile.relativeTo(projectDir)}",
-        "HEAD"
+        "HEAD",
       )
       workingDir(project.projectDir)
     }
