@@ -46,7 +46,7 @@ dependencies {
   compileOnly(libs.spotbugs.annotations)
 
   constraints {
-    implementation("org.xerial.snappy:snappy-java:1.1.10.4") {
+    implementation("org.xerial.snappy:snappy-java:1.1.10.7") {
       because("Vulnerability detected in 1.1.8.2")
     }
     implementation("org.codehaus.jettison:jettison:1.5.4") {
