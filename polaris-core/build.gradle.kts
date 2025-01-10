@@ -55,7 +55,7 @@ dependencies {
     implementation("org.apache.commons:commons-configuration2:2.10.1") {
       because("Vulnerability detected in 2.8.0")
     }
-    implementation("org.apache.commons:commons-compress:1.26.0") {
+    implementation("org.apache.commons:commons-compress:1.27.1") {
       because("Vulnerability detected in 1.21")
     }
     implementation("com.nimbusds:nimbus-jose-jwt:9.48") {
