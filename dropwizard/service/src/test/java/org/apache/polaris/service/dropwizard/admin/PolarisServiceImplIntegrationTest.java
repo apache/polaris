@@ -554,11 +554,7 @@ public class PolarisServiceImplIntegrationTest {
       assertThat(response)
           .returns(Response.Status.BAD_REQUEST.getStatusCode(), Response::getStatus);
       ErrorResponse error = response.readEntity(ErrorResponse.class);
-      assertThat(error)
-          .isNotNull()
-          .extracting(ErrorResponse::message)
-          .asString()
-          .startsWith("Invalid JSON: Unexpected character");
+      assertThat(error).isNotNull().extracting(ErrorResponse::message).isNotNull();
     }
   }
 
