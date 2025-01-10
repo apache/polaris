@@ -63,7 +63,7 @@ javax-annotation-api = { module = "javax.annotation:javax.annotation-api", versi
 jetbrains-annotations = { module = "org.jetbrains:annotations", version = "24.1.0" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.10.3" }
 logback-core = { module = "ch.qos.logback:logback-core", version = "1.4.14" }
-micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.13.6" }
+micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.14.2" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.11.0" }
 opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.38.0" }
 opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.25.0-alpha" }
