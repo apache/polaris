@@ -44,7 +44,7 @@ dropwizard-bom = { module = "io.dropwizard:dropwizard-bom", version.ref = "dropw
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.5" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.29.2" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.47.0" }
-guava = { module = "com.google.guava:guava", version = "33.3.0-jre" }
+guava = { module = "com.google.guava:guava", version = "33.4.0-jre" }
 h2 = { module = "com.h2database:h2", version = "2.3.232" }
 # Strict dnsjava downgrade due to https://github.com/dnsjava/dnsjava/issues/329
 dnsjava = { module = "dnsjava:dnsjava", version = "3.5.3!!" }
