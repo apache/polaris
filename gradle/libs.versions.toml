@@ -65,7 +65,7 @@ junit-bom = { module = "org.junit:junit-bom", version = "5.10.3" }
 logback-core = { module = "ch.qos.logback:logback-core", version = "1.4.14" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.13.6" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.11.0" }
-opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.38.0" }
+opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.45.0" }
 opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.25.0-alpha" }
 prometheus-metrics-exporter-servlet-jakarta = { module = "io.prometheus:prometheus-metrics-exporter-servlet-jakarta", version = "1.3.5" }
 s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "3.11.0" }
