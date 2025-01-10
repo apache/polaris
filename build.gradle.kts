@@ -124,7 +124,7 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("**/go.sum")
 
   excludes.add("**/kotlin-compiler*")
-  excludes.add("**/build-logic/.kotlin/errors/*")
+  excludes.add("**/build-logic/.kotlin/**")
 }
 
 // Pass environment variables:
