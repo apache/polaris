@@ -22,7 +22,7 @@
 export SPARK_VERSION=spark-3.5.3
 export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3
 
-if [ -z "${SPARK_HOME}"]; then
+if [ -z "${SPARK_HOME}" ]; then
   export SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
 fi
 export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
@@ -91,7 +91,7 @@ for TEST_FILE in ${TEST_LIST}; do
       fi
   fi
   if [[ "${TEST_SHORTNAME}" =~ .*.s3_cross_region.*.sh ]]; then
-      if  [ -z "$AWS_CROSS_REGION_TEST_ENABLED" ] || [ "$AWS_CROSS_REGION_TEST_ENABLED" != "true" ] ] ; then
+      if  [ -z "$AWS_CROSS_REGION_TEST_ENABLED" ] || [ "$AWS_CROSS_REGION_TEST_ENABLED" != "true" ] ; then
           loginfo "AWS cross region tests not enabled, skip running test ${TEST_FILE}"
           continue
       fi
