@@ -144,8 +144,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     managementApi = client.managementApi(credentials);
-    String principalName = "snowman-rest-" + UUID.randomUUID();
-    principalRoleName = "rest-admin-" + UUID.randomUUID();
+    String principalName = client.newEntityName("snowman-rest");
+    principalRoleName = client.newEntityName("rest-admin");
     principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
     catalogApi = client.catalogApi(principalCredentials);
   }

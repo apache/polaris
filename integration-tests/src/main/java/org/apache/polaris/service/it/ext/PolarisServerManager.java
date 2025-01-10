@@ -18,6 +18,12 @@
  */
 package org.apache.polaris.service.it.ext;
 
+import static java.util.concurrent.TimeUnit.MINUTES;
+import static org.apache.polaris.service.it.env.PolarisClient.buildObjectMapper;
+
+import com.fasterxml.jackson.jakarta.rs.json.JacksonJsonProvider;
+import jakarta.ws.rs.client.Client;
+import jakarta.ws.rs.client.ClientBuilder;
 import org.apache.polaris.service.it.env.Server;
 import org.junit.jupiter.api.extension.ExtensionContext;
 
@@ -31,4 +37,26 @@ public interface PolarisServerManager {
    * the argument to this call is closed.
    */
   Server serverForContext(ExtensionContext context);
+
+  /** Create a new HTTP client for accessing the server targeted by tests. */
+  default Client createClient() {
+    return ClientBuilder.newBuilder()
+        .readTimeout(5, MINUTES)
+        .connectTimeout(1, MINUTES)
+        .register(new JacksonJsonProvider(buildObjectMapper()))
+        .build();
+  }
+
+  /**
+   * Transforms the name of an entity that tests need to create. Implementations may prepend of
+   * append text to the original name, but they should not alter the original name text or add any
+   * characters that have special meaning in Spark SQL, HTTP or Iceberg REST specifications.
+   *
+   * <p>This method will be called for all top-level entities (catalogs, principal, principal
+   * roles), but may not be called for secondary entities (such as catalog roles, namespaces,
+   * tables, etc.).
+   */
+  default String transformEntityName(String name) {
+    return name;
+  }
 }

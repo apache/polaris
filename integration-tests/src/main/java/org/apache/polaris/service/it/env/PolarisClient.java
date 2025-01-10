@@ -18,42 +18,47 @@
  */
 package org.apache.polaris.service.it.env;
 
-import static java.util.concurrent.TimeUnit.MINUTES;
+import static org.apache.polaris.service.it.ext.PolarisServerManagerLoader.polarisServerManager;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.jakarta.rs.json.JacksonJsonProvider;
 import jakarta.ws.rs.client.Client;
-import jakarta.ws.rs.client.ClientBuilder;
+import java.util.Random;
 import org.apache.iceberg.rest.RESTSerializers;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 
 public final class PolarisClient implements AutoCloseable {
   private final PolarisApiEndpoints endpoints;
   private final Client client;
+  // Use an alphanumeric ID for widest compatibility in HTTP and SQL.
+  // Use MAX_RADIX for shorter output.
+  private final String clientId =
+      Long.toString(Math.abs(new Random().nextLong()), Character.MAX_RADIX);
 
   private PolarisClient(PolarisApiEndpoints endpoints) {
     this.endpoints = endpoints;
 
+    this.client = polarisServerManager().createClient();
+  }
+
+  public static PolarisClient polarisClient(PolarisApiEndpoints endpoints) {
+    return new PolarisClient(endpoints);
+  }
+
+  public static ObjectMapper buildObjectMapper() {
     ObjectMapper mapper = new ObjectMapper();
     mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     mapper.setPropertyNamingStrategy(new PropertyNamingStrategies.KebabCaseStrategy());
     RESTSerializers.registerAll(mapper);
-
-    this.client =
-        ClientBuilder.newBuilder()
-            .readTimeout(5, MINUTES)
-            .connectTimeout(1, MINUTES)
-            .register(new JacksonJsonProvider(mapper))
-            .build();
+    return mapper;
   }
 
-  public static PolarisClient polarisClient(PolarisApiEndpoints endpoints) {
-    return new PolarisClient(endpoints);
+  public String newEntityName(String hint) {
+    return polarisServerManager().transformEntityName(hint + "_" + clientId);
   }
 
   public ManagementApi managementApi(String authToken) {

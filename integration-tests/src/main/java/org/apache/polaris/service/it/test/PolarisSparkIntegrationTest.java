@@ -59,8 +59,6 @@ import org.slf4j.LoggerFactory;
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisSparkIntegrationTest {
 
-  public static final String CATALOG_NAME = "mycatalog";
-  public static final String EXTERNAL_CATALOG_NAME = "external_catalog";
   private static final S3MockContainer s3Container =
       new S3MockContainer("3.11.0").withInitialBuckets("my-bucket,my-old-bucket");
   private static SparkSession spark;
@@ -69,6 +67,8 @@ public class PolarisSparkIntegrationTest {
   private ManagementApi managementApi;
   private CatalogApi catalogApi;
   private String sparkToken;
+  private String catalogName;
+  private String externalCatalogName;
 
   @BeforeAll
   public static void setup() throws IOException {
@@ -87,6 +87,9 @@ public class PolarisSparkIntegrationTest {
     sparkToken = client.obtainToken(credentials);
     managementApi = client.managementApi(credentials);
     catalogApi = client.catalogApi(credentials);
+
+    catalogName = client.newEntityName("spark_catalog");
+    externalCatalogName = client.newEntityName("spark_ext_catalog");
 
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
@@ -118,7 +121,7 @@ public class PolarisSparkIntegrationTest {
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
-            .setName(CATALOG_NAME)
+            .setName(catalogName)
             .setProperties(props)
             .setStorageConfigInfo(awsConfigModel)
             .build();
@@ -147,7 +150,7 @@ public class PolarisSparkIntegrationTest {
     Catalog externalCatalog =
         ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
-            .setName(EXTERNAL_CATALOG_NAME)
+            .setName(externalCatalogName)
             .setProperties(externalProps)
             .setStorageConfigInfo(awsConfigModel)
             .setRemoteUrl("http://dummy_url")
@@ -170,9 +173,9 @@ public class PolarisSparkIntegrationTest {
             .config("spark.ui.showConsoleProgress", false)
             .config("spark.ui.enabled", "false");
     spark =
-        withCatalog(withCatalog(sessionBuilder, CATALOG_NAME), EXTERNAL_CATALOG_NAME).getOrCreate();
+        withCatalog(withCatalog(sessionBuilder, catalogName), externalCatalogName).getOrCreate();
 
-    onSpark("USE " + CATALOG_NAME);
+    onSpark("USE " + catalogName);
   }
 
   private SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
@@ -196,8 +199,8 @@ public class PolarisSparkIntegrationTest {
 
   @AfterEach
   public void after() throws Exception {
-    cleanupCatalog(CATALOG_NAME);
-    cleanupCatalog(EXTERNAL_CATALOG_NAME);
+    cleanupCatalog(catalogName);
+    cleanupCatalog(externalCatalogName);
     try {
       SparkSession.clearDefaultSession();
       SparkSession.clearActiveSession();
@@ -252,7 +255,7 @@ public class PolarisSparkIntegrationTest {
     long recordCount = onSpark("SELECT * FROM tb1").count();
     assertThat(recordCount).isEqualTo(3);
 
-    onSpark("USE " + EXTERNAL_CATALOG_NAME);
+    onSpark("USE " + externalCatalogName);
     List<Row> existingNamespaces = onSpark("SHOW NAMESPACES").collectAsList();
     assertThat(existingNamespaces).isEmpty();
 
@@ -261,11 +264,10 @@ public class PolarisSparkIntegrationTest {
     List<Row> existingTables = onSpark("SHOW TABLES").collectAsList();
     assertThat(existingTables).isEmpty();
 
-    LoadTableResponse tableResponse = loadTable(CATALOG_NAME, "ns1", "tb1");
+    LoadTableResponse tableResponse = loadTable(catalogName, "ns1", "tb1");
     try (Response registerResponse =
         catalogApi
-            .request(
-                "v1/{cat}/namespaces/externalns1/register", Map.of("cat", EXTERNAL_CATALOG_NAME))
+            .request("v1/{cat}/namespaces/externalns1/register", Map.of("cat", externalCatalogName))
             .post(
                 Entity.json(
                     ImmutableRegisterTableRequest.builder()
@@ -284,8 +286,8 @@ public class PolarisSparkIntegrationTest {
     assertThatThrownBy(() -> onSpark("INSERT INTO mytb1 VALUES (20, 'new_text')"))
         .isInstanceOf(Exception.class);
 
-    onSpark("INSERT INTO " + CATALOG_NAME + ".ns1.tb1 VALUES (20, 'new_text')");
-    tableResponse = loadTable(CATALOG_NAME, "ns1", "tb1");
+    onSpark("INSERT INTO " + catalogName + ".ns1.tb1 VALUES (20, 'new_text')");
+    tableResponse = loadTable(catalogName, "ns1", "tb1");
     Map<String, Object> updateNotification =
         ImmutableMap.<String, Object>builder()
             .put("table-name", "mytb1")
@@ -303,7 +305,7 @@ public class PolarisSparkIntegrationTest {
         catalogApi
             .request(
                 "v1/{cat}/namespaces/externalns1/tables/mytb1/notifications",
-                Map.of("cat", EXTERNAL_CATALOG_NAME))
+                Map.of("cat", externalCatalogName))
             .post(Entity.json(notificationRequest))) {
       assertThat(notifyResponse)
           .extracting(Response::getStatus)

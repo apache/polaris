@@ -18,7 +18,8 @@
  */
 package org.apache.polaris.service.it.ext;
 
-import java.util.ServiceLoader;
+import static org.apache.polaris.service.it.ext.PolarisServerManagerLoader.polarisServerManager;
+
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.Server;
@@ -33,11 +34,6 @@ import org.junit.platform.engine.UniqueId;
 public class PolarisIntegrationTestExtension implements ParameterResolver {
   private static final Namespace NAMESPACE =
       Namespace.create(PolarisIntegrationTestExtension.class);
-
-  private static final PolarisServerManager manager =
-      ServiceLoader.load(PolarisServerManager.class)
-          .findFirst()
-          .orElseThrow(() -> new IllegalStateException("PolarisServerManager not found"));
 
   @Override
   public boolean supportsParameter(
@@ -66,7 +62,7 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
     ExtensionContext classCtx = classContext(context);
     ExtensionContext.Store store = classCtx.getStore(NAMESPACE);
     return store.getOrComputeIfAbsent(
-        Env.class, (key) -> new Env(manager.serverForContext(classCtx)), Env.class);
+        Env.class, (key) -> new Env(polarisServerManager().serverForContext(classCtx)), Env.class);
   }
 
   private ExtensionContext classContext(ExtensionContext context) {
