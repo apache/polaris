@@ -38,7 +38,7 @@ awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.28.15" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.30" }
 bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version = "1.78.1" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.1.8" }
-commons-codec1 = { module = "commons-codec:commons-codec", version = "1.17.1" }
+commons-codec1 = { module = "commons-codec:commons-codec", version = "1.17.2" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
 dropwizard-bom = { module = "io.dropwizard:dropwizard-bom", version.ref = "dropwizard" }
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.5" }
