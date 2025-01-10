@@ -74,7 +74,7 @@ smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-anno
 spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version = "4.8.6" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
-testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.20.3" }
+testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.20.4" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 
 [plugins]
