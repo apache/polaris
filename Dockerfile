@@ -34,7 +34,7 @@ RUN rm -rf build
 # Build the rest catalog
 RUN ./gradlew --no-daemon --info ${ECLIPSELINK_DEPS+"-PeclipseLinkDeps=$ECLIPSELINK_DEPS"} -PeclipseLink=$ECLIPSELINK clean prepareDockerDist
 
-FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.20-2.1729089285
+FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.21-1.1733995527
 WORKDIR /app
 COPY --from=build /app/dropwizard/service/build/docker-dist/bin /app/bin
 COPY --from=build /app/dropwizard/service/build/docker-dist/lib /app/lib
