@@ -142,8 +142,8 @@ tasks.named<Test>("test").configure {
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
-  environment("POLARIS_BOOTSTRAP_POLARIS_ROOT_CLIENT_ID", "test-admin")
-  environment("POLARIS_BOOTSTRAP_POLARIS_ROOT_CLIENT_SECRET", "test-secret")
+  // Note: the test secrets are referenced in DropwizardServerManager
+  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,root,test-admin,test-secret")
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   useJUnitPlatform()
   maxParallelForks = 4
