@@ -96,6 +96,7 @@ dependencies {
 
   testFixturesApi(platform(libs.junit.bom))
   testFixturesApi("org.junit.jupiter:junit-jupiter")
+  testFixturesApi("org.junit.jupiter:junit-jupiter-params")
   testFixturesApi(libs.assertj.core)
   testFixturesApi(libs.mockito.core)
   testFixturesApi("com.fasterxml.jackson.core:jackson-core")
