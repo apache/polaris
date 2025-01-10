@@ -19,7 +19,7 @@
 
 package publishing
 
-import com.github.jengelman.gradle.plugins.shadow.ShadowExtension
+import com.github.jengelman.gradle.plugins.shadow.ShadowPlugin
 import javax.inject.Inject
 import org.gradle.api.*
 import org.gradle.api.component.SoftwareComponentFactory
@@ -124,7 +124,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
               afterEvaluate {
                 // This MUST happen in an 'afterEvaluate' to ensure that the Shadow*Plugin has
                 // been applied.
-                if (project.extensions.findByType(ShadowExtension::class.java) != null) {
+                if (project.plugins.hasPlugin(ShadowPlugin::class.java)) {
                   configureShadowPublishing(project, mavenPublication, softwareComponentFactory)
                 } else {
                   from(components.firstOrNull { c -> c.name == "javaPlatform" || c.name == "java" })
