@@ -51,18 +51,12 @@ public class PolarisContextResolver implements RealmContextResolver {
 
   @Override
   public RealmContext resolveRealmContext(
-      String requestURL,
-      String method,
-      String path,
-      Map<String, String> headers) {
+      String requestURL, String method, String path, Map<String, String> headers) {
     // Since this default resolver is strictly for use in test/dev environments, we'll consider
     // it safe to log all contents. Any "real" resolver used in a prod environment should make
     // sure to only log non-sensitive contents.
     LOGGER.debug(
-        "Resolving RealmContext for method: {}, path: {}, headers: {}",
-        method,
-        path,
-        headers);
+        "Resolving RealmContext for method: {}, path: {}, headers: {}", method, path, headers);
     final Map<String, String> parsedProperties = extractPropsFromBearerToken(headers);
 
     if (!parsedProperties.containsKey(REALM_PROPERTY_KEY)

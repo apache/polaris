@@ -33,25 +33,35 @@
     <class>org.apache.polaris.jpa.models.ModelPrincipalSecrets</class>
     <class>org.apache.polaris.jpa.models.ModelSequenceId</class>
     <shared-cache-mode>NONE</shared-cache-mode>
-<!--    <properties>-->
-<!--      <property name="jakarta.persistence.jdbc.url"-->
-<!--        value="jdbc:h2:file:./build/test_data/polaris/{realm}/db"/>-->
-<!--      <property name="jakarta.persistence.jdbc.user" value="sa"/>-->
-<!--      <property name="jakarta.persistence.jdbc.password" value=""/>-->
-<!--      <property name="jakarta.persistence.schema-generation.database.action" value="create"/>-->
-<!--      <property name="eclipselink.logging.level.sql" value="FINE"/>-->
-<!--      <property name="eclipselink.logging.parameters" value="true"/>-->
-<!--      <property name="eclipselink.persistence-context.flush-mode" value="auto"/>-->
-<!--    </properties>-->
+    <properties>
+      <property name="jakarta.persistence.jdbc.url"
+        value="jdbc:h2:file:./build/test_data/polaris/{realm}/db"/>
+      <property name="jakarta.persistence.jdbc.user" value="sa"/>
+      <property name="jakarta.persistence.jdbc.password" value=""/>
+      <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
+      <property name="eclipselink.logging.level.sql" value="FINE"/>
+      <property name="eclipselink.logging.parameters" value="true"/>
+      <property name="eclipselink.persistence-context.flush-mode" value="auto"/>
+    </properties>
+  </persistence-unit>
+  <persistence-unit name="polaris-postgresql" transaction-type="RESOURCE_LOCAL">
+    <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
+    <class>org.apache.polaris.jpa.models.ModelEntity</class>
+    <class>org.apache.polaris.jpa.models.ModelEntityActive</class>
+    <class>org.apache.polaris.jpa.models.ModelEntityChangeTracking</class>
+    <class>org.apache.polaris.jpa.models.ModelEntityDropped</class>
+    <class>org.apache.polaris.jpa.models.ModelGrantRecord</class>
+    <class>org.apache.polaris.jpa.models.ModelPrincipalSecrets</class>
+    <class>org.apache.polaris.jpa.models.ModelSequenceId</class>
+    <shared-cache-mode>NONE</shared-cache-mode>
     <properties>
       <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver"/>
       <property name="jakarta.persistence.jdbc.url"
         value="jdbc:postgresql://localhost:5432/metastore_db"/>
-<!--        value="jdbc:postgresql://polaris-postgres-rw:5432/catalog_db"/>-->
+      <!--        value="jdbc:postgresql://polaris-postgres-rw:5432/catalog_db"/>-->
       <property name="jakarta.persistence.jdbc.user" value="admin"/>
       <property name="jakarta.persistence.jdbc.password" value="admin"/>
       <property name="eclipselink.ddl-generation" value="create-or-extend-tables"/>
-<!--      <property name="jakarta.persistence.schema-generation.database.action" value="create"/>-->
       <property name="eclipselink.logging.level.sql" value="FINE"/>
       <property name="eclipselink.logging.parameters" value="true"/>
       <property name="eclipselink.persistence-context.flush-mode" value="auto"/>
