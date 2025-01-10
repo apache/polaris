@@ -22,17 +22,19 @@ import static org.apache.polaris.service.it.env.PolarisApiEndpoints.REALM_HEADER
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.io.FileUtils;
@@ -594,47 +596,57 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testRequestHeaderTooLarge() {
-    Invocation.Builder request = managementApi.request("v1/principal-roles");
+  public void testRequestHeaderTooLarge() throws Exception {
+    // Use a dedicated client with retries due to non-deterministic behaviour of reading the
+    // response code and possible abrupt connection resets
+    try (PolarisClient localClient = polarisClient(endpoints)) {
+      await()
+          .atMost(Duration.of(1, ChronoUnit.MINUTES))
+          .untilAsserted(
+              () -> {
+                Invocation.Builder request =
+                    localClient.managementApi(clientCredentials).request("v1/principal-roles");
+                // The default limit is 8KiB and each of these headers is at least 8 bytes, so 1500
+                // definitely exceeds the limit
+                for (int i = 0; i < 1500; i++) {
+                  request = request.header("header" + i, "" + i);
+                }
 
-    // The default limit is 8KiB and each of these headers is at least 8 bytes, so 1500 definitely
-    // exceeds the limit
-    for (int i = 0; i < 1500; i++) {
-      request = request.header("header" + i, "" + i);
-    }
-
-    try {
-      try (Response response = request.post(Entity.json(new PrincipalRole("r")))) {
-        assertThat(response)
-            .returns(
-                Response.Status.REQUEST_HEADER_FIELDS_TOO_LARGE.getStatusCode(),
-                Response::getStatus);
-      }
-    } catch (ProcessingException e) {
-      // In some runtime environments the request above will return a 431 but in others it'll result
-      // in a ProcessingException from the socket being closed. The test asserts that one of those
-      // things happens.
+                try (Response response = request.post(Entity.json(new PrincipalRole("r")))) {
+                  assertThat(response.getStatus())
+                      .isEqualTo(Response.Status.REQUEST_HEADER_FIELDS_TOO_LARGE.getStatusCode());
+                }
+              });
     }
   }
 
   @Test
-  public void testRequestBodyTooLarge() {
-    // The behaviour in case of large requests depends on the specific server configuration.
-    // This test assumes that the server under test is configured to deny requests larger than
-    // 1000000 bytes. The test payload below assumes UTF8 encoding of ASCII charts plus a bit of
-    // JSON overhead.
-    Entity<PrincipalRole> largeRequest = Entity.json(new PrincipalRole("r".repeat(1000001)));
-    try (Response response = managementApi.request("v1/principal-roles").post(largeRequest)) {
-      // Note we only validate the status code here because per RFC 9110, the server MAY not provide
-      // a response body. The HTTP status line is still expected to be provided.
-      assertThat(response.getStatus())
-          .isEqualTo(Response.Status.REQUEST_ENTITY_TOO_LARGE.getStatusCode());
-    } catch (ProcessingException e) {
-      // Per RFC 9110 servers MAY close the connection in case of 413 responses, which
-      // might cause the client to fail to read the status code (cf. RFC 9112, section 9.6).
-      // TODO: servers are expected to close connections gracefully. It might be worth investigating
-      // whether "connection closed" exceptions are a client-side bug.
-      assertThat(e).hasMessageContaining("Connection was closed");
+  public void testRequestBodyTooLarge() throws Exception {
+    // Use a dedicated client with retries due to non-deterministic behaviour of reading the
+    // response code and possible abrupt connection resets
+    try (PolarisClient localClient = polarisClient(endpoints)) {
+      await()
+          .atMost(Duration.of(1, ChronoUnit.MINUTES))
+          .untilAsserted(
+              () -> {
+                // The behaviour in case of large requests depends on the specific server
+                // configuration. This test assumes that the server under test is configured to deny
+                // requests larger than 1000000 bytes. The test payload below assumes UTF8 encoding
+                // of ASCII charts plus a bit of JSON overhead.
+                Entity<PrincipalRole> largeRequest =
+                    Entity.json(new PrincipalRole("r".repeat(1000001)));
+                try (Response response =
+                    localClient
+                        .managementApi(clientCredentials)
+                        .request("v1/principal-roles")
+                        .post(largeRequest)) {
+                  // Note we only validate the status code here because per RFC 9110, the server MAY
+                  // not provide a response body. The HTTP status line is still expected to be
+                  // provided most of the time.
+                  assertThat(response.getStatus())
+                      .isEqualTo(Response.Status.REQUEST_ENTITY_TOO_LARGE.getStatusCode());
+                }
+              });
     }
   }
 
