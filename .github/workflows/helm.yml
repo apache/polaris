@@ -81,7 +81,10 @@ jobs:
 
       - name: Set up Minikube
         if: steps.list-changed.outputs.changed == 'true'
-        uses: medyagh/setup-minikube@v0.0.18
+        run:
+          curl -LO https://github.com/kubernetes/minikube/releases/latest/download/minikube_latest_amd64.deb
+          sudo dpkg -i minikube_latest_amd64.deb
+          minikube start
 
       - name: Docker build
         if: steps.list-changed.outputs.changed == 'true'

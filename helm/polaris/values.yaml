@@ -20,6 +20,7 @@
 # -- The number of replicas to deploy (horizontal scaling).
 # Beware that replicas are stateless; don't set this number > 1 when using in-memory meta store manager.
 replicaCount: 1
+dummy: "dummy"
 
 image:
   # -- The image repository to pull from.
