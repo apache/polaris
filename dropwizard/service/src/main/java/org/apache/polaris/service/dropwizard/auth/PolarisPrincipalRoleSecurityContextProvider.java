@@ -20,7 +20,6 @@ package org.apache.polaris.service.dropwizard.auth;
 
 import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
-import jakarta.inject.Provider;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
@@ -37,13 +36,12 @@ import org.slf4j.LoggerFactory;
 public class PolarisPrincipalRoleSecurityContextProvider implements ContainerRequestFilter {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisPrincipalRoleSecurityContextProvider.class);
-  @Inject Provider<SecurityContext> securityContextProvider;
   @Inject ActiveRolesProvider activeRolesProvider;
 
   @Override
   public void filter(ContainerRequestContext requestContext) throws IOException {
     AuthenticatedPolarisPrincipal polarisPrincipal =
-        (AuthenticatedPolarisPrincipal) securityContextProvider.get().getUserPrincipal();
+        (AuthenticatedPolarisPrincipal) requestContext.getSecurityContext().getUserPrincipal();
     if (polarisPrincipal == null) {
       return;
     }
