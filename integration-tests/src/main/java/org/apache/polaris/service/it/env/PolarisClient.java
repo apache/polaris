@@ -96,6 +96,30 @@ public final class PolarisClient implements AutoCloseable {
     return anon.obtainToken(credentials);
   }
 
+  private boolean ownedName(String name) {
+    return name != null && name.contains(clientId);
+  }
+
+  public void cleanUp(ClientCredentials credentials) {
+    ManagementApi managementApi = managementApi(credentials);
+    CatalogApi catalogApi = catalogApi(credentials);
+
+    managementApi.listCatalogs().stream()
+        .filter(c -> ownedName(c.getName()))
+        .forEach(
+            c -> {
+              catalogApi.purge(c.getName());
+              managementApi.dropCatalog(c.getName());
+            });
+
+    managementApi.listPrincipalRoles().stream()
+        .filter(r -> ownedName(r.getName()))
+        .forEach(managementApi::deletePrincipalRole);
+    managementApi.listPrincipals().stream()
+        .filter(p -> ownedName(p.getName()))
+        .forEach(p -> managementApi.deletePrincipal(p.getName()));
+  }
+
   @Override
   public void close() throws Exception {
     client.close();

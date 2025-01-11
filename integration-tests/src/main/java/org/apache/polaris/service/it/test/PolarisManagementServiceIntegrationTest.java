@@ -115,36 +115,7 @@ public class PolarisManagementServiceIntegrationTest {
 
   @AfterEach
   public void tearDown() {
-    managementApi
-        .listCatalogs()
-        .forEach(
-            catalog -> {
-              // clean up the catalog before we try to drop it
-              // delete all the namespaces
-              catalogApi
-                  .listNamespaces(catalog.getName())
-                  .forEach(namespace -> catalogApi.deleteNamespaces(catalog.getName(), namespace));
-
-              // delete all the catalog roles except catalog_admin
-              managementApi.listCatalogRoles(catalog.getName()).stream()
-                  .filter(cr -> !cr.getName().equals("catalog_admin"))
-                  .forEach(role -> managementApi.deleteCatalogRole(catalog.getName(), role));
-
-              managementApi.deleteCatalog(catalog.getName());
-            });
-
-    managementApi.listPrincipals().stream()
-        .filter(
-            principal -> !principal.getName().equals(PolarisEntityConstants.getRootPrincipalName()))
-        .forEach(principal -> managementApi.deletePrincipal(principal));
-
-    managementApi.listPrincipalRoles().stream()
-        .filter(
-            principalRole ->
-                !principalRole
-                    .getName()
-                    .equals(PolarisEntityConstants.getNameOfPrincipalServiceAdminRole()))
-        .forEach(principalRole -> managementApi.deletePrincipalRole(principalRole));
+    client.cleanUp(rootCredentials);
   }
 
   @Test
@@ -312,15 +283,15 @@ public class PolarisManagementServiceIntegrationTest {
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
-            .setName("my-catalog")
+            .setName(client.newEntityName("my-catalog"))
             .setProperties(new CatalogProperties("gs://my-bucket/path/to/data"))
             .setStorageConfigInfo(gcpConfigModel)
             .build();
+
+    managementApi.createCatalog(catalog);
+
     try (Response response =
-        managementApi.request("v1/catalogs").post(Entity.json(new CreateCatalogRequest(catalog)))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
-    try (Response response = managementApi.request("v1/catalogs/my-catalog").get()) {
+        managementApi.request("v1/catalogs/{cat}", Map.of("cat", catalog.getName())).get()) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       Catalog catResponse = response.readEntity(Catalog.class);
       assertThat(catResponse.getStorageConfigInfo())
@@ -508,10 +479,7 @@ public class PolarisManagementServiceIntegrationTest {
           .returns("arn:aws:iam::123456789012:role/my-role", AwsStorageConfigInfo::getRoleArn);
     }
 
-    // 204 Successful delete
-    try (Response response = managementApi.request("v1/catalogs/" + catalogName).delete()) {
-      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
-    }
+    managementApi.deleteCatalog(catalogName);
   }
 
   @Test
@@ -835,25 +803,21 @@ public class PolarisManagementServiceIntegrationTest {
   public void testCreatePrincipalAndRotateCredentials() {
     Principal principal =
         Principal.builder()
-            .setName("myprincipal")
+            .setName(client.newEntityName("myprincipal"))
             .setProperties(Map.of("custom-tag", "foo"))
             .build();
 
-    PrincipalWithCredentials creds;
-    try (Response response =
-        managementApi
-            .request("v1/principals")
-            .post(Entity.json(new CreatePrincipalRequest(principal, true)))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-      creds = response.readEntity(PrincipalWithCredentials.class);
-    }
+    PrincipalWithCredentials creds =
+        managementApi.createPrincipal(new CreatePrincipalRequest(principal, true));
     assertThat(creds.getCredentials().getClientId()).isEqualTo(creds.getPrincipal().getClientId());
 
     // Now rotate the credentials. First, if we try to just use the adminToken to rotate the
     // newly created principal's credentials, we should fail; rotateCredentials is only
     // a "self" privilege that even admins can't inherit.
     try (Response response =
-        managementApi.request("v1/principals/myprincipal/rotate").post(Entity.json(""))) {
+        managementApi
+            .request("v1/principals/{p}/rotate", Map.of("p", principal.getName()))
+            .post(Entity.json(""))) {
       assertThat(response).returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
     }
 
@@ -861,7 +825,10 @@ public class PolarisManagementServiceIntegrationTest {
 
     // Any call should initially fail with error indicating that rotation is needed.
     try (Response response =
-        client.managementApi(oldUserToken).request("v1/principals/myprincipal").get()) {
+        client
+            .managementApi(oldUserToken)
+            .request("v1/principals/{p}", Map.of("p", principal.getName()))
+            .get()) {
       assertThat(response).returns(Response.Status.FORBIDDEN.getStatusCode(), Response::getStatus);
       ErrorResponse error = response.readEntity(ErrorResponse.class);
       assertThat(error)
@@ -876,7 +843,7 @@ public class PolarisManagementServiceIntegrationTest {
     try (Response response =
         client
             .managementApi(oldUserToken)
-            .request("v1/principals/myprincipal/rotate")
+            .request("v1/principals/{p}/rotate", Map.of("p", principal.getName()))
             .post(Entity.json(""))) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       newCreds = response.readEntity(PrincipalWithCredentials.class);
@@ -898,15 +865,10 @@ public class PolarisManagementServiceIntegrationTest {
   public void testCreateListUpdateAndDeletePrincipal() {
     Principal principal =
         Principal.builder()
-            .setName("myprincipal")
+            .setName(client.newEntityName("myprincipal"))
             .setProperties(Map.of("custom-tag", "foo"))
             .build();
-    try (Response response =
-        managementApi
-            .request("v1/principals")
-            .post(Entity.json(new CreatePrincipalRequest(principal, null)))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    managementApi.createPrincipal(new CreatePrincipalRequest(principal, null));
 
     // Second attempt to create the same entity should fail with CONFLICT.
     try (Response response =
@@ -918,11 +880,12 @@ public class PolarisManagementServiceIntegrationTest {
 
     // 200 successful GET after creation
     Principal fetchedPrincipal;
-    try (Response response = managementApi.request("v1/principals/myprincipal").get()) {
+    try (Response response =
+        managementApi.request("v1/principals/{p}", Map.of("p", principal.getName())).get()) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipal = response.readEntity(Principal.class);
 
-      assertThat(fetchedPrincipal.getName()).isEqualTo("myprincipal");
+      assertThat(fetchedPrincipal.getName()).isEqualTo(principal.getName());
       assertThat(fetchedPrincipal.getProperties()).isEqualTo(Map.of("custom-tag", "foo"));
       assertThat(fetchedPrincipal.getEntityVersion()).isGreaterThan(0);
     }
@@ -934,7 +897,7 @@ public class PolarisManagementServiceIntegrationTest {
           .extracting(r -> r.readEntity(Principals.class))
           .extracting(Principals::getPrincipals)
           .asInstanceOf(InstanceOfAssertFactories.list(Principal.class))
-          .anySatisfy(pr -> assertThat(pr).returns("myprincipal", Principal::getName));
+          .anySatisfy(pr -> assertThat(pr).returns(principal.getName(), Principal::getName));
     }
 
     UpdatePrincipalRequest updateRequest =
@@ -943,7 +906,9 @@ public class PolarisManagementServiceIntegrationTest {
 
     // 200 successful update
     try (Response response =
-        managementApi.request("v1/principals/myprincipal").put(Entity.json(updateRequest))) {
+        managementApi
+            .request("v1/principals/{p}", Map.of("p", principal.getName()))
+            .put(Entity.json(updateRequest))) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipal = response.readEntity(Principal.class);
 
@@ -951,20 +916,21 @@ public class PolarisManagementServiceIntegrationTest {
     }
 
     // 200 GET after update should show new properties
-    try (Response response = managementApi.request("v1/principals/myprincipal").get()) {
+    try (Response response =
+        managementApi.request("v1/principals/{p}", Map.of("p", principal.getName())).get()) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipal = response.readEntity(Principal.class);
 
       assertThat(fetchedPrincipal.getProperties()).isEqualTo(Map.of("custom-tag", "updated"));
     }
 
-    // 204 Successful delete
-    try (Response response = managementApi.request("v1/principals/myprincipal").delete()) {
-      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
-    }
+    managementApi.deletePrincipal(principal);
 
     // NOT_FOUND after deletion
-    try (Response response = managementApi.request("v1/principals/myprincipal").get()) {
+    try (Response response =
+        managementApi
+            .request("v1/principals/{prince}", Map.of("prince", principal.getName()))
+            .get()) {
       assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
     }
 
@@ -975,7 +941,7 @@ public class PolarisManagementServiceIntegrationTest {
           .extracting(r -> r.readEntity(Principals.class))
           .extracting(Principals::getPrincipals)
           .asInstanceOf(InstanceOfAssertFactories.list(Principal.class))
-          .noneSatisfy(pr -> assertThat(pr).returns("myprincipal", Principal::getName));
+          .noneSatisfy(pr -> assertThat(pr).returns(principal.getName(), Principal::getName));
     }
   }
 
@@ -987,12 +953,7 @@ public class PolarisManagementServiceIntegrationTest {
             .setName(goodName)
             .setProperties(Map.of("custom-tag", "good_principal"))
             .build();
-    try (Response response =
-        managementApi
-            .request("v1/principals")
-            .post(Entity.json(new CreatePrincipalRequest(principal, null)))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    managementApi.createPrincipal(new CreatePrincipalRequest(principal, null));
 
     String longInvalidName = RandomStringUtils.random(MAX_IDENTIFIER_LENGTH + 1, true, true);
     List<String> invalidPrincipalNames =
@@ -1050,7 +1011,8 @@ public class PolarisManagementServiceIntegrationTest {
   @Test
   public void testCreateListUpdateAndDeletePrincipalRole() {
     PrincipalRole principalRole =
-        new PrincipalRole("myprincipalrole", Map.of("custom-tag", "foo"), 0L, 0L, 1);
+        new PrincipalRole(
+            client.newEntityName("myprincipalrole"), Map.of("custom-tag", "foo"), 0L, 0L, 1);
     managementApi.createPrincipalRole(principalRole);
 
     // Second attempt to create the same entity should fail with CONFLICT.
@@ -1064,12 +1026,15 @@ public class PolarisManagementServiceIntegrationTest {
 
     // 200 successful GET after creation
     PrincipalRole fetchedPrincipalRole;
-    try (Response response = managementApi.request("v1/principal-roles/myprincipalrole").get()) {
+    try (Response response =
+        managementApi
+            .request("v1/principal-roles/{pr}", Map.of("pr", principalRole.getName()))
+            .get()) {
 
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipalRole = response.readEntity(PrincipalRole.class);
 
-      assertThat(fetchedPrincipalRole.getName()).isEqualTo("myprincipalrole");
+      assertThat(fetchedPrincipalRole.getName()).isEqualTo(principalRole.getName());
       assertThat(fetchedPrincipalRole.getProperties()).isEqualTo(Map.of("custom-tag", "foo"));
       assertThat(fetchedPrincipalRole.getEntityVersion()).isGreaterThan(0);
     }
@@ -1082,7 +1047,8 @@ public class PolarisManagementServiceIntegrationTest {
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .extracting(PrincipalRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(PrincipalRole.class))
-          .anySatisfy(pr -> assertThat(pr).returns("myprincipalrole", PrincipalRole::getName));
+          .anySatisfy(
+              pr -> assertThat(pr).returns(principalRole.getName(), PrincipalRole::getName));
     }
 
     UpdatePrincipalRoleRequest updateRequest =
@@ -1092,7 +1058,7 @@ public class PolarisManagementServiceIntegrationTest {
     // 200 successful update
     try (Response response =
         managementApi
-            .request("v1/principal-roles/myprincipalrole")
+            .request("v1/principal-roles/{pr}", Map.of("pr", principalRole.getName()))
             .put(Entity.json(updateRequest))) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipalRole = response.readEntity(PrincipalRole.class);
@@ -1101,22 +1067,23 @@ public class PolarisManagementServiceIntegrationTest {
     }
 
     // 200 GET after update should show new properties
-    try (Response response = managementApi.request("v1/principal-roles/myprincipalrole").get()) {
+    try (Response response =
+        managementApi
+            .request("v1/principal-roles/{pr}", Map.of("pr", principalRole.getName()))
+            .get()) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedPrincipalRole = response.readEntity(PrincipalRole.class);
 
       assertThat(fetchedPrincipalRole.getProperties()).isEqualTo(Map.of("custom-tag", "updated"));
     }
 
-    // 204 Successful delete
-    try (Response response = managementApi.request("v1/principal-roles/myprincipalrole").delete()) {
-
-      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
-    }
+    managementApi.deletePrincipalRole(principalRole);
 
     // NOT_FOUND after deletion
-    try (Response response = managementApi.request("v1/principal-roles/myprincipalrole").get()) {
-
+    try (Response response =
+        managementApi
+            .request("v1/principal-roles/{pr}", Map.of("pr", principalRole.getName()))
+            .get()) {
       assertThat(response).returns(Response.Status.NOT_FOUND.getStatusCode(), Response::getStatus);
     }
 
@@ -1128,7 +1095,8 @@ public class PolarisManagementServiceIntegrationTest {
           .extracting(r -> r.readEntity(PrincipalRoles.class))
           .extracting(PrincipalRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(PrincipalRole.class))
-          .noneSatisfy(pr -> assertThat(pr).returns("myprincipalrole", PrincipalRole::getName));
+          .noneSatisfy(
+              pr -> assertThat(pr).returns(principalRole.getName(), PrincipalRole::getName));
     }
   }
 
@@ -1495,17 +1463,17 @@ public class PolarisManagementServiceIntegrationTest {
   @Test
   public void testAssignListAndRevokeCatalogRoles() {
     // Create two PrincipalRoles
-    PrincipalRole principalRole1 = new PrincipalRole("mypr1");
+    PrincipalRole principalRole1 = new PrincipalRole(client.newEntityName("mypr1"));
     managementApi.createPrincipalRole(principalRole1);
 
-    PrincipalRole principalRole2 = new PrincipalRole("mypr2");
+    PrincipalRole principalRole2 = new PrincipalRole(client.newEntityName("mypr2"));
     managementApi.createPrincipalRole(principalRole2);
 
     // One CatalogRole
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
-            .setName("mycatalog")
+            .setName(client.newEntityName("mycatalog"))
             .setStorageConfigInfo(
                 new AwsStorageConfigInfo(
                     "arn:aws:iam::012345678901:role/jdoe", StorageConfigInfo.StorageTypeEnum.S3))
@@ -1516,7 +1484,7 @@ public class PolarisManagementServiceIntegrationTest {
     CatalogRole catalogRole = new CatalogRole("mycr");
     try (Response response =
         managementApi
-            .request("v1/catalogs/mycatalog/catalog-roles")
+            .request("v1/catalogs/{cat}/catalog-roles", Map.of("cat", catalog.getName()))
             .post(Entity.json(new CreateCatalogRoleRequest(catalogRole)))) {
 
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
@@ -1526,7 +1494,7 @@ public class PolarisManagementServiceIntegrationTest {
     Catalog otherCatalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
-            .setName("othercatalog")
+            .setName(client.newEntityName("othercatalog"))
             .setProperties(new CatalogProperties("s3://path/to/data"))
             .setStorageConfigInfo(
                 new AwsStorageConfigInfo(
@@ -1537,7 +1505,7 @@ public class PolarisManagementServiceIntegrationTest {
     CatalogRole otherCatalogRole = new CatalogRole("myothercr");
     try (Response response =
         managementApi
-            .request("v1/catalogs/othercatalog/catalog-roles")
+            .request("v1/catalogs/{cat}/catalog-roles", Map.of("cat", otherCatalog.getName()))
             .post(Entity.json(new CreateCatalogRoleRequest(otherCatalogRole)))) {
 
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
@@ -1546,14 +1514,18 @@ public class PolarisManagementServiceIntegrationTest {
     // Assign both the roles to mypr1
     try (Response response =
         managementApi
-            .request("v1/principal-roles/mypr1/catalog-roles/mycatalog")
+            .request(
+                "v1/principal-roles/{pr}/catalog-roles/{cat}",
+                Map.of("pr", principalRole1.getName(), "cat", catalog.getName()))
             .put(Entity.json(new GrantCatalogRoleRequest(catalogRole)))) {
 
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
     try (Response response =
         managementApi
-            .request("v1/principal-roles/mypr1/catalog-roles/othercatalog")
+            .request(
+                "v1/principal-roles/{pr}/catalog-roles/{cat}",
+                Map.of("pr", principalRole1.getName(), "cat", otherCatalog.getName()))
             .put(Entity.json(new GrantCatalogRoleRequest(otherCatalogRole)))) {
 
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
@@ -1561,7 +1533,11 @@ public class PolarisManagementServiceIntegrationTest {
 
     // Should list only mycr
     try (Response response =
-        managementApi.request("v1/principal-roles/mypr1/catalog-roles/mycatalog").get()) {
+        managementApi
+            .request(
+                "v1/principal-roles/{pr}/catalog-roles/{cat}",
+                Map.of("pr", principalRole1.getName(), "cat", catalog.getName()))
+            .get()) {
 
       assertThat(response)
           .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
@@ -1574,7 +1550,11 @@ public class PolarisManagementServiceIntegrationTest {
 
     // Should list mypr1 if listing assignees of mycr
     try (Response response =
-        managementApi.request("v1/catalogs/mycatalog/catalog-roles/mycr/principal-roles").get()) {
+        managementApi
+            .request(
+                "v1/catalogs/{cat}/catalog-roles/mycr/principal-roles",
+                Map.of("cat", catalog.getName()))
+            .get()) {
 
       assertThat(response)
           .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
@@ -1582,12 +1562,17 @@ public class PolarisManagementServiceIntegrationTest {
           .extracting(PrincipalRoles::getRoles)
           .asInstanceOf(InstanceOfAssertFactories.list(PrincipalRole.class))
           .hasSize(1)
-          .satisfiesExactly(pr -> assertThat(pr).returns("mypr1", PrincipalRole::getName));
+          .satisfiesExactly(
+              pr -> assertThat(pr).returns(principalRole1.getName(), PrincipalRole::getName));
     }
 
     // Empty list if listing in principalRole2
     try (Response response =
-        managementApi.request("v1/principal-roles/mypr2/catalog-roles/mycatalog").get()) {
+        managementApi
+            .request(
+                "v1/principal-roles/{pr}/catalog-roles/{cat}",
+                Map.of("pr", principalRole2.getName(), "cat", catalog.getName()))
+            .get()) {
 
       assertThat(response)
           .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
@@ -1597,14 +1582,22 @@ public class PolarisManagementServiceIntegrationTest {
 
     // 204 Successful revoke
     try (Response response =
-        managementApi.request("v1/principal-roles/mypr1/catalog-roles/mycatalog/mycr").delete()) {
+        managementApi
+            .request(
+                "v1/principal-roles/{pr}/catalog-roles/{cat}/mycr",
+                Map.of("pr", principalRole1.getName(), "cat", catalog.getName()))
+            .delete()) {
 
       assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
 
     // Empty list
     try (Response response =
-        managementApi.request("v1/principal-roles/mypr1/catalog-roles/mycatalog").get()) {
+        managementApi
+            .request(
+                "v1/principal-roles/{pr}/catalog-roles/{cat}",
+                Map.of("pr", principalRole1.getName(), "cat", catalog.getName()))
+            .get()) {
 
       assertThat(response)
           .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
@@ -1612,7 +1605,11 @@ public class PolarisManagementServiceIntegrationTest {
           .returns(List.of(), CatalogRoles::getRoles);
     }
     try (Response response =
-        managementApi.request("v1/catalogs/mycatalog/catalog-roles/mycr/principal-roles").get()) {
+        managementApi
+            .request(
+                "v1/catalogs/{cat}/catalog-roles/mycr/principal-roles",
+                Map.of("cat", catalog.getName()))
+            .get()) {
 
       assertThat(response)
           .returns(Response.Status.OK.getStatusCode(), Response::getStatus)
@@ -1620,43 +1617,14 @@ public class PolarisManagementServiceIntegrationTest {
           .returns(List.of(), PrincipalRoles::getRoles);
     }
 
-    // 204 Successful delete mypr1
-    try (Response response = managementApi.request("v1/principal-roles/mypr1").delete()) {
+    managementApi.deletePrincipalRole(principalRole1);
+    managementApi.deletePrincipalRole(principalRole2);
 
-      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
-    }
+    managementApi.deleteCatalogRole(catalog.getName(), "mycr");
+    managementApi.deleteCatalog(catalog.getName());
 
-    // 204 Successful delete mypr2
-    try (Response response = managementApi.request("v1/principal-roles/mypr2").delete()) {
-
-      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
-    }
-
-    // 204 Successful delete mycr
-    try (Response response =
-        managementApi.request("v1/catalogs/mycatalog/catalog-roles/mycr").delete()) {
-
-      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
-    }
-
-    // 204 Successful delete mycatalog
-    try (Response response = managementApi.request("v1/catalogs/mycatalog").delete()) {
-
-      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
-    }
-
-    // 204 Successful delete myothercr
-    try (Response response =
-        managementApi.request("v1/catalogs/othercatalog/catalog-roles/myothercr").delete()) {
-
-      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
-    }
-
-    // 204 Successful delete othercatalog
-    try (Response response = managementApi.request("v1/catalogs/othercatalog").delete()) {
-
-      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
-    }
+    managementApi.deleteCatalogRole(otherCatalog.getName(), otherCatalogRole.getName());
+    managementApi.deleteCatalog(otherCatalog.getName());
   }
 
   @Test
@@ -1749,11 +1717,11 @@ public class PolarisManagementServiceIntegrationTest {
   public void testServiceAdminCanTransferCatalogAdmin() {
     // Create a PrincipalRole and a new catalog. Grant the catalog_admin role to the new principal
     // role
-    String principalRoleName = "mypr33";
+    String principalRoleName = client.newEntityName("mypr33");
     PrincipalRole principalRole1 = new PrincipalRole(principalRoleName);
     managementApi.createPrincipalRole(principalRole1);
 
-    String catalogName = "myothertestcatalog";
+    String catalogName = client.newEntityName("myothertestcatalog");
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -1815,7 +1783,7 @@ public class PolarisManagementServiceIntegrationTest {
   public void testCatalogAdminGrantAndRevokeCatalogRolesFromWrongCatalog() {
     // Create a PrincipalRole and a new catalog. Grant the catalog_admin role to the new principal
     // role
-    String principalRoleName = "mypr33";
+    String principalRoleName = client.newEntityName("mypr33");
     PrincipalRole principalRole1 = new PrincipalRole(principalRoleName);
     managementApi.createPrincipalRole(principalRole1);
 
@@ -1833,7 +1801,7 @@ public class PolarisManagementServiceIntegrationTest {
     managementApi.createCatalog(catalog);
 
     // create a second catalog
-    String catalogName2 = "anothercatalog";
+    String catalogName2 = client.newEntityName("anothercatalog");
     Catalog catalog2 =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
@@ -1862,7 +1830,7 @@ public class PolarisManagementServiceIntegrationTest {
     String catalogAdminToken = client.obtainToken(catalogAdminPrincipal);
 
     // Create a second principal role.
-    String principalRoleName2 = "mypr2";
+    String principalRoleName2 = client.newEntityName("mypr2");
     PrincipalRole principalRole2 = new PrincipalRole(principalRoleName2);
     managementApi.createPrincipalRole(principalRole2);
 
@@ -1880,7 +1848,7 @@ public class PolarisManagementServiceIntegrationTest {
   @Test
   public void testTableManageAccessCanGrantAndRevokeFromCatalogRoles() {
     // Create a PrincipalRole and a new catalog.
-    String principalRoleName = "mypr33";
+    String principalRoleName = client.newEntityName("mypr33");
     PrincipalRole principalRole1 = new PrincipalRole(principalRoleName);
     managementApi.createPrincipalRole(principalRole1);
 
@@ -1901,7 +1869,7 @@ public class PolarisManagementServiceIntegrationTest {
     managementApi.createCatalogRole(catalogName, "target_catalog_role");
 
     // create a second catalog
-    String catalogName2 = "anothertablemanagecatalog";
+    String catalogName2 = client.newEntityName("anothertablemanagecatalog");
     Catalog catalog2 =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)

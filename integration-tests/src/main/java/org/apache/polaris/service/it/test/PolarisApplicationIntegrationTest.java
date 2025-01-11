@@ -84,6 +84,7 @@ import org.apache.polaris.service.it.env.RestApi;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -93,10 +94,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisApplicationIntegrationTest {
 
-  public static final String PRINCIPAL_ROLE_NAME = "admin";
   public static final String PRINCIPAL_ROLE_ALL = "PRINCIPAL_ROLE:ALL";
 
-  private static String userToken;
   private static Path testDir;
   private static String realm;
 
@@ -104,6 +103,9 @@ public class PolarisApplicationIntegrationTest {
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ClientCredentials clientCredentials;
+
+  private String principalRoleName;
+  private String internalCatalogName;
 
   @BeforeAll
   public static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials)
@@ -116,33 +118,12 @@ public class PolarisApplicationIntegrationTest {
     testDir = Path.of("build/test_data/iceberg/" + realm);
     FileUtils.deleteQuietly(testDir.toFile());
     Files.createDirectories(testDir);
-    userToken = client.obtainToken(credentials);
 
     managementApi = client.managementApi(credentials);
-    PrincipalRole principalRole = new PrincipalRole(PRINCIPAL_ROLE_NAME);
-    try (Response createPrResponse =
-        managementApi.request("v1/principal-roles").post(Entity.json(principalRole))) {
-      assertThat(createPrResponse)
-          .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
-
-    try (Response assignPrResponse =
-        managementApi
-            .request(
-                "v1/principals/{name}/principal-roles", Map.of("name", credentials.principalName()))
-            .put(Entity.json(principalRole))) {
-      assertThat(assignPrResponse)
-          .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
   }
 
   @AfterAll
-  public static void deletePrincipalRole() throws Exception {
-    managementApi
-        .request("v1/principal-roles/{role}", Map.of("role", PRINCIPAL_ROLE_NAME))
-        .delete()
-        .close();
-
+  public static void close() throws Exception {
     client.close();
   }
 
@@ -152,14 +133,31 @@ public class PolarisApplicationIntegrationTest {
    */
   @BeforeEach
   public void before(TestInfo testInfo) {
-    testInfo
-        .getTestMethod()
-        .ifPresent(
-            method -> {
-              String catalogName = method.getName();
-              Catalog.TypeEnum catalogType = Catalog.TypeEnum.INTERNAL;
-              createCatalog(catalogName, catalogType, PRINCIPAL_ROLE_NAME);
-            });
+    principalRoleName = client.newEntityName("admin");
+    PrincipalRole principalRole = new PrincipalRole(principalRoleName);
+    try (Response createPrResponse =
+        managementApi.request("v1/principal-roles").post(Entity.json(principalRole))) {
+      assertThat(createPrResponse)
+          .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    try (Response assignPrResponse =
+        managementApi
+            .request(
+                "v1/principals/{name}/principal-roles",
+                Map.of("name", clientCredentials.principalName()))
+            .put(Entity.json(principalRole))) {
+      assertThat(assignPrResponse)
+          .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    internalCatalogName = client.newEntityName(testInfo.getTestMethod().orElseThrow().getName());
+    createCatalog(internalCatalogName, Catalog.TypeEnum.INTERNAL, principalRoleName);
+  }
+
+  @AfterEach
+  public void cleanUp() throws Exception {
+    client.cleanUp(clientCredentials);
   }
 
   private static void createCatalog(
@@ -248,7 +246,7 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testIcebergListNamespaces() throws IOException {
-    try (RESTSessionCatalog sessionCatalog = newSessionCatalog("testIcebergListNamespaces")) {
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(internalCatalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       List<Namespace> namespaces = sessionCatalog.listNamespaces(sessionContext);
       assertThat(namespaces).isNotNull().isEmpty();
@@ -265,8 +263,7 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testIcebergListNamespacesNotFound() throws IOException {
-    try (RESTSessionCatalog sessionCatalog =
-        newSessionCatalog("testIcebergListNamespacesNotFound")) {
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(internalCatalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       assertThatThrownBy(
               () -> sessionCatalog.listNamespaces(sessionContext, Namespace.of("whoops")))
@@ -277,8 +274,7 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testIcebergListNamespacesNestedNotFound() throws IOException {
-    try (RESTSessionCatalog sessionCatalog =
-        newSessionCatalog("testIcebergListNamespacesNestedNotFound")) {
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(internalCatalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace topLevelNamespace = Namespace.of("top_level");
       sessionCatalog.createNamespace(sessionContext, topLevelNamespace);
@@ -294,8 +290,7 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testIcebergListTablesNamespaceNotFound() throws IOException {
-    try (RESTSessionCatalog sessionCatalog =
-        newSessionCatalog("testIcebergListTablesNamespaceNotFound")) {
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(internalCatalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       assertThatThrownBy(() -> sessionCatalog.listTables(sessionContext, Namespace.of("whoops")))
           .isInstanceOf(NoSuchNamespaceException.class)
@@ -305,7 +300,7 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testIcebergCreateNamespace() throws IOException {
-    try (RESTSessionCatalog sessionCatalog = newSessionCatalog("testIcebergCreateNamespace")) {
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(internalCatalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace topLevelNamespace = Namespace.of("top_level");
       sessionCatalog.createNamespace(sessionContext, topLevelNamespace);
@@ -319,9 +314,10 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testIcebergCreateNamespaceInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "External";
-    createCatalog(catalogName, Catalog.TypeEnum.EXTERNAL, PRINCIPAL_ROLE_NAME);
+  public void testIcebergCreateNamespaceInExternalCatalog() throws IOException {
+    String catalogName =
+        client.newEntityName("testIcebergCreateNamespaceInExternalCatalogExternal");
+    createCatalog(catalogName, Catalog.TypeEnum.EXTERNAL, principalRoleName);
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
@@ -338,9 +334,9 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testIcebergDropNamespaceInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "External";
-    createCatalog(catalogName, Catalog.TypeEnum.EXTERNAL, PRINCIPAL_ROLE_NAME);
+  public void testIcebergDropNamespaceInExternalCatalog() throws IOException {
+    String catalogName = client.newEntityName("testIcebergDropNamespaceInExternalCatalogExternal");
+    createCatalog(catalogName, Catalog.TypeEnum.EXTERNAL, principalRoleName);
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
@@ -357,7 +353,7 @@ public class PolarisApplicationIntegrationTest {
   @Test
   public void testIcebergCreateTablesInExternalCatalog(TestInfo testInfo) throws IOException {
     String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "External";
-    createCatalog(catalogName, Catalog.TypeEnum.EXTERNAL, PRINCIPAL_ROLE_NAME);
+    createCatalog(catalogName, Catalog.TypeEnum.EXTERNAL, principalRoleName);
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
@@ -384,7 +380,7 @@ public class PolarisApplicationIntegrationTest {
   @Test
   public void testIcebergCreateTablesWithWritePathBlocked(TestInfo testInfo) throws IOException {
     String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "Internal";
-    createCatalog(catalogName, Catalog.TypeEnum.INTERNAL, PRINCIPAL_ROLE_NAME);
+    createCatalog(catalogName, Catalog.TypeEnum.INTERNAL, principalRoleName);
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
@@ -431,7 +427,7 @@ public class PolarisApplicationIntegrationTest {
     createCatalog(
         catalogName,
         Catalog.TypeEnum.EXTERNAL,
-        PRINCIPAL_ROLE_NAME,
+        principalRoleName,
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
             .setAllowedLocations(List.of("file://" + testDir.toFile().getAbsolutePath()))
             .build(),
@@ -478,7 +474,7 @@ public class PolarisApplicationIntegrationTest {
     createCatalog(
         catalogName,
         Catalog.TypeEnum.EXTERNAL,
-        PRINCIPAL_ROLE_NAME,
+        principalRoleName,
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
             .setAllowedLocations(List.of("file://" + testDir.toFile().getAbsolutePath()))
             .build(),
@@ -526,12 +522,12 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testIcebergDropTableInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "External";
+  public void testIcebergDropTableInExternalCatalog() throws IOException {
+    String catalogName = client.newEntityName("testIcebergDropTableInExternalCatalogExternal");
     createCatalog(
         catalogName,
         Catalog.TypeEnum.EXTERNAL,
-        PRINCIPAL_ROLE_NAME,
+        principalRoleName,
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
             .setAllowedLocations(List.of("file://" + testDir.toFile().getAbsolutePath()))
             .build(),
@@ -546,7 +542,7 @@ public class PolarisApplicationIntegrationTest {
           "file://"
               + testDir.toFile().getAbsolutePath()
               + "/"
-              + testInfo.getTestMethod().get().getName();
+              + "testIcebergDropTableInExternalCatalog";
       String metadataLocation = location + "/metadata/000001-494949494949494949.metadata.json";
 
       TableMetadata tableMetadata =

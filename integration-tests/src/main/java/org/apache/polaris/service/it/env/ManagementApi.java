@@ -35,6 +35,7 @@ import org.apache.polaris.core.admin.model.CatalogPrivilege;
 import org.apache.polaris.core.admin.model.CatalogRole;
 import org.apache.polaris.core.admin.model.CatalogRoles;
 import org.apache.polaris.core.admin.model.Catalogs;
+import org.apache.polaris.core.admin.model.CreatePrincipalRequest;
 import org.apache.polaris.core.admin.model.GrantCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.GrantResource;
@@ -61,6 +62,13 @@ public class ManagementApi extends RestApi {
   public PrincipalWithCredentials createPrincipal(String name) {
     try (Response createPResponse =
         request("v1/principals").post(Entity.json(new Principal(name)))) {
+      assertThat(createPResponse).returns(CREATED.getStatusCode(), Response::getStatus);
+      return createPResponse.readEntity(PrincipalWithCredentials.class);
+    }
+  }
+
+  public PrincipalWithCredentials createPrincipal(CreatePrincipalRequest request) {
+    try (Response createPResponse = request("v1/principals").post(Entity.json(request))) {
       assertThat(createPResponse).returns(CREATED.getStatusCode(), Response::getStatus);
       return createPResponse.readEntity(PrincipalWithCredentials.class);
     }
@@ -231,18 +239,26 @@ public class ManagementApi extends RestApi {
   }
 
   public void deleteCatalogRole(String catalogName, CatalogRole role) {
+    deleteCatalogRole(catalogName, role.getName());
+  }
+
+  public void deleteCatalogRole(String catalogName, String roleName) {
     try (Response response =
         request(
                 "v1/catalogs/{cat}/catalog-roles/{role}",
-                Map.of("cat", catalogName, "role", role.getName()))
+                Map.of("cat", catalogName, "role", roleName))
             .delete()) {
       assertThat(response.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
     }
   }
 
   public void deletePrincipal(Principal principal) {
+    deletePrincipal(principal.getName());
+  }
+
+  public void deletePrincipal(String principalName) {
     try (Response response =
-        request("v1/principals/{name}", Map.of("name", principal.getName())).delete()) {
+        request("v1/principals/{name}", Map.of("name", principalName)).delete()) {
       assertThat(response.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
     }
   }
@@ -252,5 +268,13 @@ public class ManagementApi extends RestApi {
         request("v1/principal-roles/{name}", Map.of("name", role.getName())).delete()) {
       assertThat(response.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
     }
+  }
+
+  public void dropCatalog(String catalogName) {
+    listCatalogRoles(catalogName).stream()
+        .filter(cr -> !cr.getName().equals("catalog_admin"))
+        .forEach(role -> deleteCatalogRole(catalogName, role));
+
+    deleteCatalog(catalogName);
   }
 }

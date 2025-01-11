@@ -86,6 +86,7 @@ import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -107,6 +108,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
   private static String principalRoleName;
+  private static ClientCredentials adminCredentials;
   private static PrincipalWithCredentials principalCredentials;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
@@ -141,6 +143,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   @BeforeAll
   static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
+    adminCredentials = credentials;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     managementApi = client.managementApi(credentials);
@@ -157,8 +160,15 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   @BeforeEach
   public void before(TestInfo testInfo) {
+    String principalName = "snowman-rest-" + UUID.randomUUID();
+    principalRoleName = "rest-admin-" + UUID.randomUUID();
+    PrincipalWithCredentials principalCredentials =
+        managementApi.createPrincipalWithRole(principalName, principalRoleName);
+
+    catalogApi = client.catalogApi(principalCredentials);
+
     Method method = testInfo.getTestMethod().orElseThrow();
-    currentCatalogName = method.getName() + UUID.randomUUID();
+    currentCatalogName = client.newEntityName(method.getName());
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn(TEST_ROLE_ARN)
@@ -213,6 +223,11 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     restCatalog =
         IcebergHelper.restCatalog(
             endpoints, principalCredentials, currentCatalogName, extraPropertiesBuilder.build());
+  }
+
+  @AfterEach
+  public void cleanUp() {
+    client.cleanUp(adminCredentials);
   }
 
   @Override

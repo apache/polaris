@@ -22,7 +22,6 @@ import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 
 import java.lang.reflect.Method;
 import java.util.Map;
-import java.util.UUID;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.core.PolarisConfiguration;
@@ -39,6 +38,7 @@ import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -52,8 +52,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogTests<RESTCatalog> {
 
-  private static String principalRoleName;
-  private static PrincipalWithCredentials principalCredentials;
+  private static ClientCredentials adminCredentials;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
@@ -62,12 +61,10 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
   @BeforeAll
   static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
+    adminCredentials = credentials;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     managementApi = client.managementApi(credentials);
-    String principalName = client.newEntityName("snowman-rest");
-    principalRoleName = client.newEntityName("rest-admin");
-    principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
   }
 
   @AfterAll
@@ -77,11 +74,15 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
   @BeforeEach
   public void before(TestInfo testInfo) {
-
     Assumptions.assumeFalse(shouldSkip());
 
+    String principalName = client.newEntityName("snowman-rest");
+    String principalRoleName = client.newEntityName("rest-admin");
+    PrincipalWithCredentials principalCredentials =
+        managementApi.createPrincipalWithRole(principalName, principalRoleName);
+
     Method method = testInfo.getTestMethod().orElseThrow();
-    String catalogName = method.getName() + UUID.randomUUID();
+    String catalogName = client.newEntityName(method.getName());
 
     StorageConfigInfo storageConfig = getStorageConfigInfo();
     String defaultBaseLocation =
@@ -108,6 +109,11 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     managementApi.createCatalog(principalRoleName, catalog);
 
     restCatalog = IcebergHelper.restCatalog(endpoints, principalCredentials, catalogName, Map.of());
+  }
+
+  @AfterEach
+  public void cleanUp() {
+    client.cleanUp(adminCredentials);
   }
 
   /**

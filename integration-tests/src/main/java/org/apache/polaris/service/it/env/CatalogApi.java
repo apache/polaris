@@ -27,12 +27,16 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.Response;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.responses.ListNamespacesResponse;
+import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 
 public class CatalogApi extends RestApi {
@@ -72,21 +76,88 @@ public class CatalogApi extends RestApi {
     }
   }
 
-  public List<Namespace> listNamespaces(String catalog) {
-    try (Response response = request("v1/{cat}/namespaces", Map.of("cat", catalog)).get()) {
+  public List<Namespace> listNamespaces(String catalog, Namespace parent) {
+    Map<String, String> queryParams = new HashMap<>();
+    if (!parent.isEmpty()) {
+      queryParams.put("parent", RESTUtil.encodeNamespace(parent));
+    }
+    try (Response response =
+        request("v1/{cat}/namespaces", Map.of("cat", catalog), queryParams).get()) {
       assertThat(response.getStatus()).isEqualTo(OK.getStatusCode());
       ListNamespacesResponse res = response.readEntity(ListNamespacesResponse.class);
       return res.namespaces();
     }
   }
 
-  public void deleteNamespaces(String catalog, Namespace namespace) {
+  public List<Namespace> listAllNamespacesChildFirst(String catalog) {
+    List<Namespace> result = new ArrayList<>();
+    for (int idx = -1; idx < result.size(); idx++) {
+      Namespace parent = Namespace.empty();
+      if (idx >= 0) {
+        parent = result.get(idx);
+      }
+
+      result.addAll(listNamespaces(catalog, parent));
+    }
+
+    return result.reversed();
+  }
+
+  public void deleteNamespace(String catalog, Namespace namespace) {
+    String ns = RESTUtil.encodeNamespace(namespace);
     try (Response response =
-        request(
-                "v1/{cat}/namespaces/{ns}",
-                Map.of("cat", catalog, "ns", RESTUtil.encodeNamespace(namespace)))
-            .delete()) {
+        request("v1/{cat}/namespaces/" + ns, Map.of("cat", catalog)).delete()) {
       assertThat(response.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
+    }
+  }
+
+  public void purge(String catalog) {
+    listAllNamespacesChildFirst(catalog).forEach(ns -> purge(catalog, ns));
+  }
+
+  public void purge(String catalog, Namespace ns) {
+    listTables(catalog, ns).forEach(t -> dropTable(catalog, t));
+    listViews(catalog, ns).forEach(t -> dropView(catalog, t));
+    deleteNamespace(catalog, ns);
+  }
+
+  public List<TableIdentifier> listTables(String catalog, Namespace namespace) {
+    String ns = RESTUtil.encodeNamespace(namespace);
+    try (Response res =
+        request("v1/{cat}/namespaces/" + ns + "/tables", Map.of("cat", catalog)).get()) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return res.readEntity(ListTablesResponse.class).identifiers();
+    }
+  }
+
+  public void dropTable(String catalog, TableIdentifier id) {
+    String ns = RESTUtil.encodeNamespace(id.namespace());
+    try (Response res =
+        request(
+                "v1/{cat}/namespaces/" + ns + "/tables/{table}",
+                Map.of("cat", catalog, "table", id.name()))
+            .delete()) {
+      assertThat(res.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
+    }
+  }
+
+  public List<TableIdentifier> listViews(String catalog, Namespace namespace) {
+    String ns = RESTUtil.encodeNamespace(namespace);
+    try (Response res =
+        request("v1/{cat}/namespaces/" + ns + "/views", Map.of("cat", catalog)).get()) {
+      assertThat(res.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
+      return res.readEntity(ListTablesResponse.class).identifiers();
+    }
+  }
+
+  public void dropView(String catalog, TableIdentifier id) {
+    String ns = RESTUtil.encodeNamespace(id.namespace());
+    try (Response res =
+        request(
+                "v1/{cat}/namespaces/" + ns + "/views/{view}",
+                Map.of("cat", catalog, "view", id.name()))
+            .delete()) {
+      assertThat(res.getStatus()).isEqualTo(NO_CONTENT.getStatusCode());
     }
   }
 }

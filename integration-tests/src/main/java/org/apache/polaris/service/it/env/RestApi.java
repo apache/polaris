@@ -42,9 +42,17 @@ public class RestApi {
   }
 
   public Invocation.Builder request(String path, Map<String, String> templateValues) {
+    return request(path, templateValues, Map.of());
+  }
+
+  public Invocation.Builder request(
+      String path, Map<String, String> templateValues, Map<String, String> queryParams) {
     WebTarget target = client.target(uri).path(path);
     for (Map.Entry<String, String> entry : templateValues.entrySet()) {
       target = target.resolveTemplate(entry.getKey(), entry.getValue());
+    }
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
     }
     Invocation.Builder request = target.request("application/json");
     request = request.header(PolarisApiEndpoints.REALM_HEADER, endpoints.realm());
