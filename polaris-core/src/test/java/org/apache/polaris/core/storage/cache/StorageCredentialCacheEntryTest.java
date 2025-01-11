@@ -61,7 +61,6 @@ public class StorageCredentialCacheEntryTest {
     StorageCredentialCacheEntry cacheEntry = new StorageCredentialCacheEntry(goodResult);
     Map<String, String> properties = cacheEntry.convertToMapOfString();
     Assertions.assertThat(properties).isEqualTo(expected);
-    System.out.println(properties);
   }
 
   private static Stream<Arguments> testConvertToMapOfStringParams() {
