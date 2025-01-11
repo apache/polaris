@@ -37,6 +37,7 @@ dependencies {
   implementation("io.dropwizard:dropwizard-core")
   implementation("io.dropwizard:dropwizard-auth")
   implementation("io.dropwizard:dropwizard-json-logging")
+  implementation("org.glassfish.jersey.inject:jersey-hk2:3.0.16")
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")

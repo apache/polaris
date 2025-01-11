@@ -19,6 +19,7 @@
 package org.apache.polaris.service.dropwizard.catalog;
 
 import com.google.common.collect.ImmutableMap;
+import jakarta.ws.rs.core.SecurityContext;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -92,7 +93,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         callContext,
         entityManager,
         metaStoreManager,
-        authenticatedPrincipal,
+        securityContext(authenticatedPrincipal, activatedPrincipalRoles),
         factory,
         catalogName,
         polarisAuthorizer);
@@ -223,13 +224,14 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
 
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
         new AuthenticatedPolarisPrincipal(
-            PrincipalEntity.of(newPrincipal.getPrincipal()), Set.of());
+            PrincipalEntity.of(newPrincipal.getPrincipal()),
+            Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
     PolarisCatalogHandlerWrapper wrapper =
         new PolarisCatalogHandlerWrapper(
             callContext,
             entityManager,
             metaStoreManager,
-            authenticatedPrincipal,
+            securityContext(authenticatedPrincipal, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2)),
             new TestPolarisCallContextCatalogFactory(),
             CATALOG_NAME,
             polarisAuthorizer);
@@ -254,13 +256,14 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         rotateAndRefreshPrincipal(
             metaStoreManager, principalName, credentials, callContext.getPolarisCallContext());
     final AuthenticatedPolarisPrincipal authenticatedPrincipal1 =
-        new AuthenticatedPolarisPrincipal(PrincipalEntity.of(refreshPrincipal), Set.of());
+        new AuthenticatedPolarisPrincipal(
+            PrincipalEntity.of(refreshPrincipal), Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
     PolarisCatalogHandlerWrapper refreshedWrapper =
         new PolarisCatalogHandlerWrapper(
             callContext,
             entityManager,
             metaStoreManager,
-            authenticatedPrincipal1,
+            securityContext(authenticatedPrincipal1, Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2)),
             new TestPolarisCallContextCatalogFactory(),
             CATALOG_NAME,
             polarisAuthorizer);
@@ -1689,10 +1692,11 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
           public Catalog createCallContextCatalog(
               CallContext context,
               AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+              SecurityContext securityContext,
               PolarisResolutionManifest resolvedManifest) {
             Catalog catalog =
                 super.createCallContextCatalog(
-                    context, authenticatedPolarisPrincipal, resolvedManifest);
+                    context, authenticatedPolarisPrincipal, securityContext, resolvedManifest);
             String fileIoImpl = "org.apache.iceberg.inmemory.InMemoryFileIO";
             catalog.initialize(
                 externalCatalog, ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, fileIoImpl));

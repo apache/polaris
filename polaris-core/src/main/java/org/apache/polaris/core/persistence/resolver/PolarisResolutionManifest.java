@@ -20,6 +20,7 @@ package org.apache.polaris.core.persistence.resolver;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -55,6 +56,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
   private final PolarisEntityManager entityManager;
   private final CallContext callContext;
+  private final SecurityContext securityContext;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final String catalogName;
   private final Resolver primaryResolver;
@@ -81,15 +83,22 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   public PolarisResolutionManifest(
       CallContext callContext,
       PolarisEntityManager entityManager,
-      AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      SecurityContext securityContext,
       String catalogName) {
     this.entityManager = entityManager;
     this.callContext = callContext;
-    this.authenticatedPrincipal = authenticatedPrincipal;
     this.catalogName = catalogName;
-    this.primaryResolver =
-        entityManager.prepareResolver(callContext, authenticatedPrincipal, catalogName);
+    this.primaryResolver = entityManager.prepareResolver(callContext, securityContext, catalogName);
     this.diagnostics = callContext.getPolarisCallContext().getDiagServices();
+    this.diagnostics.checkNotNull(securityContext, "null_security_context_for_resolution_manifest");
+    this.securityContext = securityContext;
+    diagnostics.check(
+        securityContext.getUserPrincipal() instanceof AuthenticatedPolarisPrincipal,
+        "invalid_principal_type_for_resolution_manifest",
+        "principal={}",
+        securityContext.getUserPrincipal());
+    this.authenticatedPrincipal =
+        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
 
     // TODO: Make the rootContainer lookup no longer optional in the persistence store.
     // For now, we'll try to resolve the rootContainer as "optional", and only if we fail to find
@@ -193,7 +202,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
     // Run a single-use Resolver for this path.
     Resolver passthroughResolver =
-        entityManager.prepareResolver(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolver(callContext, securityContext, catalogName);
     passthroughResolver.addPath(requestedPath);
     ResolverStatus status = passthroughResolver.resolveAll();
 

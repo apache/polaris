@@ -37,8 +37,6 @@ import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.module.SimpleValueInstantiators;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import io.dropwizard.auth.AuthDynamicFeature;
-import io.dropwizard.auth.AuthFilter;
-import io.dropwizard.auth.oauth.OAuthCredentialAuthFilter;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
@@ -83,7 +81,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.iceberg.rest.RESTSerializers;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisGrantManager;
@@ -101,7 +98,8 @@ import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
-import org.apache.polaris.service.auth.Authenticator;
+import org.apache.polaris.service.auth.ActiveRolesProvider;
+import org.apache.polaris.service.auth.DefaultActiveRolesProvider;
 import org.apache.polaris.service.catalog.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -116,6 +114,8 @@ import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.CallContextResolver;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.context.RealmContextResolver;
+import org.apache.polaris.service.dropwizard.auth.PolarisPrincipalAuthenticator;
+import org.apache.polaris.service.dropwizard.auth.PolarisPrincipalRoleSecurityContextProvider;
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
 import org.apache.polaris.service.dropwizard.context.RealmScopeContext;
 import org.apache.polaris.service.dropwizard.exception.JerseyViolationExceptionMapper;
@@ -297,12 +297,9 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                     .in(RealmScoped.class)
                     .to(PolarisRemoteCache.class);
 
-                // factory to use a cache delegating grant cache
                 // currently depends explicitly on the metaStoreManager as the delegate grant
                 // manager
-                bindFactory(PolarisMetaStoreManagerFactory.class)
-                    .in(RealmScoped.class)
-                    .to(PolarisGrantManager.class);
+                bindFactory(PolarisMetaStoreManagerFactory.class).to(PolarisGrantManager.class);
                 polarisMetricRegistry.init(
                     IcebergRestCatalogApi.class,
                     IcebergRestConfigurationApi.class,
@@ -310,6 +307,7 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                     PolarisCatalogsApi.class,
                     PolarisPrincipalsApi.class,
                     PolarisPrincipalRolesApi.class);
+                bind(DefaultActiveRolesProvider.class).to(ActiveRolesProvider.class);
                 bindAsContract(RealmEntityManagerFactory.class).in(Singleton.class);
                 bind(PolarisCallContextCatalogFactory.class)
                     .to(CallContextCatalogFactory.class)
@@ -396,14 +394,8 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
     if (configuration.hasRateLimiter()) {
       environment.jersey().register(RateLimiterFilter.class);
     }
-    Authenticator<String, AuthenticatedPolarisPrincipal> authenticator =
-        configuration.findService(new TypeLiteral<>() {});
-    AuthFilter<String, AuthenticatedPolarisPrincipal> oauthCredentialAuthFilter =
-        new OAuthCredentialAuthFilter.Builder<AuthenticatedPolarisPrincipal>()
-            .setAuthenticator(authenticator::authenticate)
-            .setPrefix("Bearer")
-            .buildAuthFilter();
-    environment.jersey().register(new AuthDynamicFeature(oauthCredentialAuthFilter));
+    environment.jersey().register(new AuthDynamicFeature(PolarisPrincipalAuthenticator.class));
+    environment.jersey().register(PolarisPrincipalRoleSecurityContextProvider.class);
     environment.healthChecks().register("polaris", new PolarisHealthCheck());
 
     environment.jersey().register(IcebergRestOAuth2Api.class);

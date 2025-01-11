@@ -18,10 +18,13 @@
  */
 package org.apache.polaris.service.dropwizard.catalog;
 
+import static org.mockito.Mockito.when;
+
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nullable;
+import jakarta.ws.rs.core.SecurityContext;
 import java.time.Clock;
 import java.util.Date;
 import java.util.HashMap;
@@ -111,12 +114,15 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     AuthenticatedPolarisPrincipal authenticatedRoot =
         new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
 
+    SecurityContext securityContext = Mockito.mock(SecurityContext.class);
+    when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
+    when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
     PolarisAdminService adminService =
         new PolarisAdminService(
             callContext,
             entityManager,
             metaStoreManager,
-            authenticatedRoot,
+            securityContext,
             new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
     adminService.createCatalog(
         new CatalogEntity.Builder()
@@ -133,13 +139,14 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, entityManager, authenticatedRoot, CATALOG_NAME);
+            callContext, entityManager, securityContext, CATALOG_NAME);
     this.catalog =
         new BasePolarisCatalog(
             entityManager,
             metaStoreManager,
             callContext,
             passthroughView,
+            securityContext,
             authenticatedRoot,
             Mockito.mock(),
             new DefaultFileIOFactory());

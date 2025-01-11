@@ -16,18 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.context;
+package org.apache.polaris.service.auth;
 
-import jakarta.ws.rs.core.SecurityContext;
-import org.apache.iceberg.catalog.Catalog;
+import java.util.Set;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
-public interface CallContextCatalogFactory {
-  Catalog createCallContextCatalog(
-      CallContext context,
-      AuthenticatedPolarisPrincipal authenticatedPrincipal,
-      SecurityContext securityContext,
-      PolarisResolutionManifest resolvedManifest);
+/**
+ * Provides the active roles for a given principal. Implementations may rely on the active request
+ * or SecurityContext to determine the active roles.
+ */
+public interface ActiveRolesProvider {
+  /**
+   * Returns the active roles for the given principal.
+   *
+   * @param principal the currently authenticated principal
+   * @return the active roles
+   */
+  Set<String> getActiveRoles(AuthenticatedPolarisPrincipal principal);
 }

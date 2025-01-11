@@ -142,7 +142,7 @@ public class IcebergCatalogAdapter
         CallContext.getCurrentContext(),
         entityManager,
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
-        authenticatedPrincipal,
+        securityContext,
         catalogFactory,
         catalogName,
         polarisAuthorizer);
@@ -542,8 +542,7 @@ public class IcebergCatalogAdapter
     }
     // FIXME remove call to CallContext.getCurrentContext()
     CallContext callContext = CallContext.getCurrentContext();
-    Resolver resolver =
-        entityManager.prepareResolver(callContext, authenticatedPrincipal, warehouse);
+    Resolver resolver = entityManager.prepareResolver(callContext, securityContext, warehouse);
     ResolverStatus resolverStatus = resolver.resolveAll();
     if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
       throw new NotFoundException("Unable to find warehouse %s", warehouse);

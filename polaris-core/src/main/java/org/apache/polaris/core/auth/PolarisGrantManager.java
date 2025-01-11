@@ -119,6 +119,20 @@ public interface PolarisGrantManager {
    * This method should be used by the Polaris app to cache all grant records on a securable.
    *
    * @param callCtx call context
+   * @param securable the securable entity
+   * @return the list of grants and the version of the grant records. We will return
+   *     ENTITY_NOT_FOUND if the securable cannot be found
+   */
+  @Nonnull
+  default LoadGrantsResult loadGrantsOnSecurable(
+      @Nonnull PolarisCallContext callCtx, PolarisBaseEntity securable) {
+    return loadGrantsOnSecurable(callCtx, securable.getCatalogId(), securable.getId());
+  }
+
+  /**
+   * This method should be used by the Polaris app to cache all grant records on a securable.
+   *
+   * @param callCtx call context
    * @param securableCatalogId id of the catalog this securable belongs to
    * @param securableId id of the securable
    * @return the list of grants and the version of the grant records. We will return
@@ -127,6 +141,21 @@ public interface PolarisGrantManager {
   @Nonnull
   LoadGrantsResult loadGrantsOnSecurable(
       @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId);
+
+  /**
+   * This method should be used by the Polaris app to load all grants made to a grantee, either a
+   * role or a principal.
+   *
+   * @param callCtx call context
+   * @param grantee the grantee entity
+   * @return the list of grants and the version of the grant records. We will return NULL if the
+   *     grantee does not exist
+   */
+  @Nonnull
+  default LoadGrantsResult loadGrantsToGrantee(
+      @Nonnull PolarisCallContext callCtx, PolarisBaseEntity grantee) {
+    return loadGrantsToGrantee(callCtx, grantee.getCatalogId(), grantee.getId());
+  }
 
   /**
    * This method should be used by the Polaris app to load all grants made to a grantee, either a
