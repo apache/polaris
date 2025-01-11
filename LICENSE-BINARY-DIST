@@ -372,6 +372,7 @@ io.prometheus:prometheus-metrics-core
 io.prometheus:prometheus-metrics-exporter-common
 io.prometheus:prometheus-metrics-exporter-servlet-jakarta
 io.prometheus:prometheus-metrics-exposition-formats
+io.prometheus:prometheus-metrics-exposition-textformats
 io.prometheus:prometheus-metrics-model
 io.prometheus:prometheus-metrics-shaded-protobuf
 io.prometheus:prometheus-metrics-tracer-common

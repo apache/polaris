@@ -34,7 +34,7 @@ import org.gradle.api.artifacts.result.DependencyResult
 internal fun findDependency(
   config: Configuration?,
   depGroup: String,
-  depName: String
+  depName: String,
 ): DependencyResult? {
   if (config != null) {
     val depResult =
@@ -78,7 +78,8 @@ internal fun generateDigest(input: File, output: File, algorithm: String) {
 }
 
 internal fun <T : Any> unsafeCast(o: Any?): T {
-  @Suppress("UNCHECKED_CAST") return o as T
+  @Suppress("UNCHECKED_CAST")
+  return o as T
 }
 
 internal fun <T : Any> parseJson(url: String): T {
@@ -206,7 +207,7 @@ internal fun fetchProjectPeople(apacheId: String): ProjectPeople {
     licenseUrl,
     bugDatabase,
     inceptionYear,
-    peopleList
+    peopleList,
   )
 }
 
@@ -219,7 +220,7 @@ internal class ProjectPeople(
   val licenseUrl: String,
   val bugDatabase: String,
   val inceptionYear: Int,
-  val people: List<ProjectMember>
+  val people: List<ProjectMember>,
 )
 
 internal class ProjectMember(val apacheId: String, val name: String, val roles: List<String>)

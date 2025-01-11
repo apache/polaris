@@ -19,8 +19,8 @@
 package org.apache.polaris.core.persistence;
 
 import jakarta.annotation.Nonnull;
-import java.util.Locale;
-import java.util.function.Function;
+import jakarta.annotation.Nullable;
+import java.util.Optional;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 
 /**
@@ -28,18 +28,11 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
  * from services that actually manage principal objects (create, remove, rotate secrets, etc.)
  *
  * <p>The implementation statically available from {@link #bootstrap(String)} allows one-time client
- * ID and secret overrides via environment variables, which can be useful for bootstrapping new
- * realms.
+ * ID and secret overrides via system properties or environment variables, which can be useful for
+ * bootstrapping new realms.
  *
- * <p>The environment variable name follow this pattern:
- *
- * <ul>
- *   <li>{@code POLARIS_BOOTSTRAP_<REALM-NAME>_<PRINCIPAL-NAME>_CLIENT_ID}
- *   <li>{@code POLARIS_BOOTSTRAP_<REALM-NAME>_<PRINCIPAL-NAME>_CLIENT_SECRET}
- * </ul>
- *
- * For example: {@code POLARIS_BOOTSTRAP_DEFAULT-REALM_ROOT_CLIENT_ID} and {@code
- * POLARIS_BOOTSTRAP_DEFAULT-REALM_ROOT_CLIENT_SECRET}.
+ * <p>See {@link PolarisCredentialsBootstrap} for more information on the expected environment
+ * variable name, and the format of the bootstrap credentials.
  */
 @FunctionalInterface
 public interface PrincipalSecretsGenerator {
@@ -63,23 +56,14 @@ public interface PrincipalSecretsGenerator {
   PolarisPrincipalSecrets produceSecrets(@Nonnull String principalName, long principalId);
 
   static PrincipalSecretsGenerator bootstrap(String realmName) {
-    return bootstrap(realmName, System.getenv()::get);
+    return bootstrap(realmName, PolarisCredentialsBootstrap.fromEnvironment());
   }
 
-  static PrincipalSecretsGenerator bootstrap(String realmName, Function<String, String> config) {
-    return (principalName, principalId) -> {
-      String propId = String.format("POLARIS_BOOTSTRAP_%s_%s_CLIENT_ID", realmName, principalName);
-      String propSecret =
-          String.format("POLARIS_BOOTSTRAP_%s_%s_CLIENT_SECRET", realmName, principalName);
-
-      String clientId = config.apply(propId.toUpperCase(Locale.ROOT));
-      String secret = config.apply(propSecret.toUpperCase(Locale.ROOT));
-      // use config values at most once (do not interfere with secret rotation)
-      if (clientId != null && secret != null) {
-        return new PolarisPrincipalSecrets(principalId, clientId, secret, secret);
-      } else {
-        return RANDOM_SECRETS.produceSecrets(principalName, principalId);
-      }
-    };
+  static PrincipalSecretsGenerator bootstrap(
+      String realmName, @Nullable PolarisCredentialsBootstrap credentialsSupplier) {
+    return (principalName, principalId) ->
+        Optional.ofNullable(credentialsSupplier)
+            .flatMap(credentials -> credentials.getSecrets(realmName, principalId, principalName))
+            .orElseGet(() -> RANDOM_SECRETS.produceSecrets(principalName, principalId));
   }
 }

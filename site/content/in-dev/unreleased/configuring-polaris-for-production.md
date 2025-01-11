@@ -72,17 +72,24 @@ To use EclipseLink for metastore management, specify the configuration `metaStor
 
 Before using Polaris when using a metastore manager other than `in-memory`, you must **bootstrap** the metastore manager. This is a manual operation that must be performed **only once** in order to prepare the metastore manager to integrate with Polaris. When the metastore manager is bootstrapped, any existing Polaris entities in the metastore manager may be **purged**.
 
-By default, Polaris will create randomised `CLIENT_ID` and `CLIENT_SECRET` for the `root` principal and store their hashes in the metastore backend. In order to provide your own credentials for `root` principal (so you can request tokens via `api/catalog/v1/oauth/tokens`), set the following envrionment variables for realm name `my_realm`:
+By default, Polaris will create randomised `CLIENT_ID` and `CLIENT_SECRET` for the `root` principal and store their hashes in the metastore backend. In order to provide your own credentials for `root` principal (so you can request tokens via `api/catalog/v1/oauth/tokens`), set the `POLARIS_BOOTSTRAP_CREDENTIALS` environment variable as follows:
 
 ```
-export POLARIS_BOOTSTRAP_MY_REALM_ROOT_CLIENT_ID=my-client-id
-export POLARIS_BOOTSTRAP_MY_REALM_ROOT_CLIENT_SECRET=my-client-secret
+export POLARIS_BOOTSTRAP_CREDENTIALS=my_realm,root,my-client-id,my-client-secret
 ```
 
-**IMPORTANT**: In case you use `default-realm` for metastore backend database, you won't be able to use `export` command. Use this instead:
+The format of the environment variable is `realm,principal,client_id,client_secret`. You can provide multiple credentials separated by `;`. For example, to provide credentials for two realms `my_realm` and `my_realm2`:
 
-```bash
-env POLARIS_BOOTSTRAP_DEFAULT-REALM_ROOT_CLIENT_ID=my-client-id POLARIS_BOOTSTRAP_DEFAULT-REALM_ROOT_CLIENT_SECRET=my-client-secret <bootstrap command> 
+```
+export POLARIS_BOOTSTRAP_CREDENTIALS=my_realm,root,my-client-id,my-client-secret;my_realm2,root,my-client-id2,my-client-secret2
+```
+
+You can also provide credentials for other users too. 
+
+It is also possible to use system properties to provide the credentials:
+
+```
+java -Dpolaris.bootstrap.credentials=my_realm,root,my-client-id,my-client-secret -jar /path/to/jar/polaris-service-all.jar bootstrap polaris-server.yml
 ```
 
 Now, to bootstrap Polaris, run:

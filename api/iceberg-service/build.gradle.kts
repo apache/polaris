@@ -100,7 +100,7 @@ openApiGenerate {
       "CommitTableRequest" to "org.apache.polaris.service.types.CommitTableRequest",
       "NotificationRequest" to "org.apache.polaris.service.types.NotificationRequest",
       "TableUpdateNotification" to "org.apache.polaris.service.types.TableUpdateNotification",
-      "NotificationType" to "org.apache.polaris.service.types.NotificationType"
+      "NotificationType" to "org.apache.polaris.service.types.NotificationType",
     )
 }
 

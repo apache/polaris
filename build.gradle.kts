@@ -20,12 +20,7 @@
 import java.net.URI
 import org.nosphere.apache.rat.RatTask
 
-buildscript {
-  repositories { maven { url = java.net.URI("https://plugins.gradle.org/m2/") } }
-  dependencies {
-    classpath("com.diffplug.spotless:spotless-plugin-gradle:${libs.plugins.spotless.get().version}")
-  }
-}
+buildscript { repositories { maven { url = java.net.URI("https://plugins.gradle.org/m2/") } } }
 
 plugins {
   id("idea")
@@ -124,7 +119,7 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("**/go.sum")
 
   excludes.add("**/kotlin-compiler*")
-  excludes.add("**/build-logic/.kotlin/errors/*")
+  excludes.add("**/build-logic/.kotlin/**")
 }
 
 // Pass environment variables:

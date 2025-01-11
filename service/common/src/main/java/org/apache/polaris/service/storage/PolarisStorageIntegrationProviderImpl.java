@@ -54,8 +54,8 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
 
   @Override
   @SuppressWarnings("unchecked")
-  public <T extends PolarisStorageConfigurationInfo> @Nullable
-      PolarisStorageIntegration<T> getStorageIntegrationForConfig(
+  public <T extends PolarisStorageConfigurationInfo>
+      @Nullable PolarisStorageIntegration<T> getStorageIntegrationForConfig(
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
     if (polarisStorageConfigurationInfo == null) {
       return null;
