@@ -519,8 +519,8 @@ public class PolarisServiceImpl
         catalogName);
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     switch (grantRequest.getGrant()) {
-        // The per-securable-type Privilege enums must be exact String match for a subset of all
-        // PolarisPrivilege values.
+      // The per-securable-type Privilege enums must be exact String match for a subset of all
+      // PolarisPrivilege values.
       case ViewGrant viewGrant:
         {
           PolarisPrivilege privilege =
@@ -595,8 +595,8 @@ public class PolarisServiceImpl
 
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     switch (grantRequest.getGrant()) {
-        // The per-securable-type Privilege enums must be exact String match for a subset of all
-        // PolarisPrivilege values.
+      // The per-securable-type Privilege enums must be exact String match for a subset of all
+      // PolarisPrivilege values.
       case ViewGrant viewGrant:
         {
           PolarisPrivilege privilege =

@@ -17,6 +17,8 @@
  * under the License.
  */
 
+import com.diffplug.spotless.FormatterFunc
+import java.io.Serializable
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
@@ -74,25 +76,29 @@ tasks.withType(Jar::class).configureEach {
       // manifests for release(-like) builds.
       "Implementation-Title" to "Apache Polaris(TM) (incubating)",
       "Implementation-Vendor" to "Apache Software Foundation",
-      "Implementation-URL" to "https://polaris.apache.org/"
+      "Implementation-URL" to "https://polaris.apache.org/",
     )
   }
 }
 
 spotless {
-  val disallowWildcardImports = { text: String ->
-    val regex = "~/import .*\\.\\*;/".toRegex()
-    if (regex.matches(text)) {
-      throw GradleException("Wildcard imports disallowed - ${regex.findAll(text)}")
-    }
-    text
-  }
   java {
     target("src/main/java/**/*.java", "src/testFixtures/java/**/*.java", "src/test/java/**/*.java")
     googleJavaFormat()
     licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
     endWithNewline()
-    custom("disallowWildcardImports", disallowWildcardImports)
+    custom(
+      "disallowWildcardImports",
+      object : Serializable, FormatterFunc {
+        override fun apply(text: String): String {
+          val regex = "~/import .*\\.\\*;/".toRegex()
+          if (regex.matches(text)) {
+            throw GradleException("Wildcard imports disallowed - ${regex.findAll(text)}")
+          }
+          return text
+        }
+      },
+    )
     toggleOffOn()
   }
   kotlinGradle {
