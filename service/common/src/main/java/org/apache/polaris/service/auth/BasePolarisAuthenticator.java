@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.auth;
 
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.inject.Inject;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -25,6 +26,7 @@ import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
+import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
@@ -82,7 +84,7 @@ public abstract class BasePolarisAuthenticator
           .addKeyValue("errMsg", e.getMessage())
           .addKeyValue("stackTrace", ExceptionUtils.getStackTrace(e))
           .log("Unable to authenticate user with token");
-      throw new NotAuthorizedException("Unable to authenticate");
+      throw new ServiceFailureException("Unable to fetch principal entity");
     }
     if (principal == null) {
       LOGGER.warn(
@@ -112,5 +114,10 @@ public abstract class BasePolarisAuthenticator
         .contextVariables()
         .put(CallContext.AUTHENTICATED_PRINCIPAL, authenticatedPrincipal);
     return Optional.of(authenticatedPrincipal);
+  }
+
+  @VisibleForTesting
+  void setMetaStoreManagerFactory(MetaStoreManagerFactory metaStoreManagerFactory) {
+    this.metaStoreManagerFactory = metaStoreManagerFactory;
   }
 }
