@@ -57,7 +57,6 @@ import io.opentelemetry.sdk.trace.SdkTracerProvider;
 import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.semconv.ServiceAttributes;
 import io.prometheus.metrics.exporter.servlet.jakarta.PrometheusMetricsServlet;
-import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
@@ -69,27 +68,19 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.ws.rs.Priorities;
-import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
-import java.security.Principal;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.rest.RESTSerializers;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisGrantManager;
@@ -108,7 +99,6 @@ import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApi;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
 import org.apache.polaris.service.auth.ActiveRolesProvider;
-import org.apache.polaris.service.auth.Authenticator;
 import org.apache.polaris.service.auth.DefaultActiveRolesProvider;
 import org.apache.polaris.service.catalog.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
@@ -124,6 +114,7 @@ import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.CallContextResolver;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.context.RealmContextResolver;
+import org.apache.polaris.service.dropwizard.auth.PolarisPrincipalAuthenticator;
 import org.apache.polaris.service.dropwizard.auth.PolarisPrincipalRoleSecurityContextProvider;
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
 import org.apache.polaris.service.dropwizard.context.RealmScopeContext;
@@ -477,52 +468,6 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                 TextMapPropagator.composite(
                     W3CTraceContextPropagator.getInstance(), W3CBaggagePropagator.getInstance())))
         .build();
-  }
-
-  @jakarta.ws.rs.ext.Provider
-  @Priority(Priorities.AUTHENTICATION)
-  private static class PolarisPrincipalAuthenticator implements ContainerRequestFilter {
-    @Inject private Authenticator<String, AuthenticatedPolarisPrincipal> authenticator;
-
-    @Override
-    public void filter(ContainerRequestContext requestContext) throws IOException {
-      String authHeader = requestContext.getHeaderString("Authorization");
-      if (authHeader == null) {
-        throw new IOException("Authorization header is missing");
-      }
-      int spaceIdx = authHeader.indexOf(' ');
-      if (spaceIdx <= 0 || !authHeader.substring(0, spaceIdx).equalsIgnoreCase("Bearer")) {
-        throw new IOException("Authorization header is not a Bearer token");
-      }
-      String credential = authHeader.substring(spaceIdx + 1);
-      Optional<AuthenticatedPolarisPrincipal> principal = authenticator.authenticate(credential);
-      if (principal.isEmpty()) {
-        throw new NotAuthorizedException("Unable to authenticate");
-      }
-      SecurityContext securityContext = requestContext.getSecurityContext();
-      requestContext.setSecurityContext(
-          new SecurityContext() {
-            @Override
-            public Principal getUserPrincipal() {
-              return principal.get();
-            }
-
-            @Override
-            public boolean isUserInRole(String role) {
-              return securityContext.isUserInRole(role);
-            }
-
-            @Override
-            public boolean isSecure() {
-              return securityContext.isSecure();
-            }
-
-            @Override
-            public String getAuthenticationScheme() {
-              return securityContext.getAuthenticationScheme();
-            }
-          });
-    }
   }
 
   /** Resolves and sets ThreadLocal CallContext/RealmContext based on the request contents. */

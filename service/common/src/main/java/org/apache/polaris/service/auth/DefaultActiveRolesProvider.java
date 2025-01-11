@@ -46,7 +46,7 @@ import org.slf4j.LoggerFactory;
 public class DefaultActiveRolesProvider implements ActiveRolesProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultActiveRolesProvider.class);
   @Inject Provider<RealmContext> realmContextProvider;
-  @Inject MetaStoreManagerFactory metaStoreManager;
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject Provider<PolarisGrantManager> polarisGrantManagerProvider;
 
   @Override
@@ -55,7 +55,7 @@ public class DefaultActiveRolesProvider implements ActiveRolesProvider {
         loadActivePrincipalRoles(
             principal.getActivatedPrincipalRoleNames(),
             principal.getPrincipalEntity(),
-            metaStoreManager.getOrCreateMetaStoreManager(realmContextProvider.get()));
+            metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContextProvider.get()));
     return activeRoles.stream().map(PrincipalRoleEntity::getName).collect(Collectors.toSet());
   }
 
