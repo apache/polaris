@@ -81,7 +81,7 @@ jobs:
 
       - name: Set up Minikube
         if: steps.list-changed.outputs.changed == 'true'
-        run:
+        run: |
           curl -LO https://github.com/kubernetes/minikube/releases/download/v1.34.0/minikube_1.34.0-0_amd64.deb
           sudo dpkg -i minikube_1.34.0-0_amd64.deb
           minikube start
