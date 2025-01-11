@@ -20,15 +20,10 @@ package org.apache.polaris.core.persistence;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.List;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisGrantRecord;
-import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -45,8 +40,18 @@ public class PolarisEntityManager {
 
   private final StorageCredentialCache credentialCache;
 
-  // Lazily instantiated only a single time per entity manager.
-  private ResolvedPolarisEntity implicitResolvedRootContainerEntity = null;
+  // For now, the root container is only implicit and doesn't exist in the entity store, and only
+  // the service_admin PrincipalRole has the SERVICE_MANAGE_ACCESS grant on this entity. If it
+  // becomes possible to grant other PrincipalRoles with SERVICE_MANAGE_ACCESS or other privileges
+  // on this root entity, then we must actually create a representation of this root entity in the
+  // entity store itself.
+  private final PolarisEntity implicitResolvedRootContainerEntity =
+      new PolarisEntity.Builder()
+          .setId(0L)
+          .setCatalogId(0L)
+          .setType(PolarisEntityType.ROOT)
+          .setName("root")
+          .build();
 
   /**
    * @param metaStoreManager the metastore manager for the current realm
@@ -85,58 +90,8 @@ public class PolarisEntityManager {
     PolarisResolutionManifest manifest =
         new PolarisResolutionManifest(
             callContext, this, authenticatedPrincipal, referenceCatalogName);
-    manifest.setSimulatedResolvedRootContainerEntity(
-        getSimulatedResolvedRootContainerEntity(callContext));
+    manifest.setSimulatedResolvedRootContainerEntity(implicitResolvedRootContainerEntity);
     return manifest;
-  }
-
-  /**
-   * Returns a ResolvedPolarisEntity representing the realm-level "root" entity that is the implicit
-   * parent container of all things in this realm.
-   */
-  private synchronized ResolvedPolarisEntity getSimulatedResolvedRootContainerEntity(
-      CallContext callContext) {
-    if (implicitResolvedRootContainerEntity == null) {
-      // For now, the root container is only implicit and doesn't exist in the entity store, and
-      // only
-      // the service_admin PrincipalRole has the SERVICE_MANAGE_ACCESS grant on this entity. If it
-      // becomes
-      // possible to grant other PrincipalRoles with SERVICE_MANAGE_ACCESS or other privileges on
-      // this
-      // root entity, then we must actually create a representation of this root entity in the
-      // entity store itself.
-      PolarisEntity serviceAdminPrincipalRole =
-          PolarisEntity.of(
-              metaStoreManager
-                  .readEntityByName(
-                      callContext.getPolarisCallContext(),
-                      null,
-                      PolarisEntityType.PRINCIPAL_ROLE,
-                      PolarisEntitySubType.NULL_SUBTYPE,
-                      PolarisEntityConstants.getNameOfPrincipalServiceAdminRole())
-                  .getEntity());
-      if (serviceAdminPrincipalRole == null) {
-        throw new IllegalStateException("Failed to resolve service_admin PrincipalRole");
-      }
-      PolarisEntity rootContainerEntity =
-          new PolarisEntity.Builder()
-              .setId(0L)
-              .setCatalogId(0L)
-              .setType(PolarisEntityType.ROOT)
-              .setName("root")
-              .build();
-      PolarisGrantRecord serviceAdminGrant =
-          new PolarisGrantRecord(
-              0L,
-              0L,
-              serviceAdminPrincipalRole.getCatalogId(),
-              serviceAdminPrincipalRole.getId(),
-              PolarisPrivilege.SERVICE_MANAGE_ACCESS.getCode());
-
-      implicitResolvedRootContainerEntity =
-          new ResolvedPolarisEntity(rootContainerEntity, null, List.of(serviceAdminGrant));
-    }
-    return implicitResolvedRootContainerEntity;
   }
 
   public StorageCredentialCache getCredentialCache() {

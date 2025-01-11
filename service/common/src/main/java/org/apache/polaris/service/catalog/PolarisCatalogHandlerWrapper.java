@@ -565,11 +565,7 @@ public class PolarisCatalogHandlerWrapper {
         op, TableIdentifier.of(namespace, request.name()));
 
     CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+        CatalogEntity.of(resolutionManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity());
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot create table on external catalogs.");
     }
@@ -584,11 +580,7 @@ public class PolarisCatalogHandlerWrapper {
         op, TableIdentifier.of(namespace, request.name()));
 
     CatalogEntity catalog =
-        CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+        CatalogEntity.of(resolutionManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity());
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot create table on external catalogs.");
     }
@@ -694,10 +686,7 @@ public class PolarisCatalogHandlerWrapper {
 
     CatalogEntity catalog =
         CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+            resolutionManifest.getResolvedReferenceCatalogEntity().getResolvedLeafEntity());
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot create table on external catalogs.");
     }
@@ -717,10 +706,7 @@ public class PolarisCatalogHandlerWrapper {
 
     CatalogEntity catalog =
         CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+            resolutionManifest.getResolvedReferenceCatalogEntity().getResolvedLeafEntity());
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot create table on external catalogs.");
     }
@@ -774,10 +760,7 @@ public class PolarisCatalogHandlerWrapper {
 
     CatalogEntity catalog =
         CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+            resolutionManifest.getResolvedReferenceCatalogEntity().getResolvedLeafEntity());
     if (catalog
         .getCatalogType()
         .equals(org.apache.polaris.core.admin.model.Catalog.TypeEnum.INTERNAL)) {
@@ -904,10 +887,7 @@ public class PolarisCatalogHandlerWrapper {
 
     CatalogEntity catalog =
         CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+            resolutionManifest.getResolvedReferenceCatalogEntity().getResolvedLeafEntity());
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot update table on external catalogs.");
     }
@@ -923,10 +903,7 @@ public class PolarisCatalogHandlerWrapper {
 
     CatalogEntity catalog =
         CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+            resolutionManifest.getResolvedReferenceCatalogEntity().getResolvedLeafEntity());
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot update table on external catalogs.");
     }
@@ -948,10 +925,7 @@ public class PolarisCatalogHandlerWrapper {
 
     CatalogEntity catalog =
         CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+            resolutionManifest.getResolvedReferenceCatalogEntity().getResolvedLeafEntity());
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot drop table on external catalogs.");
     }
@@ -973,10 +947,7 @@ public class PolarisCatalogHandlerWrapper {
 
     CatalogEntity catalog =
         CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+            resolutionManifest.getResolvedReferenceCatalogEntity().getResolvedLeafEntity());
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot rename table on external catalogs.");
     }
@@ -997,10 +968,7 @@ public class PolarisCatalogHandlerWrapper {
             .toList());
     CatalogEntity catalog =
         CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+            resolutionManifest.getResolvedReferenceCatalogEntity().getResolvedLeafEntity());
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot update table on external catalogs.");
     }
@@ -1104,10 +1072,7 @@ public class PolarisCatalogHandlerWrapper {
 
     CatalogEntity catalog =
         CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+            resolutionManifest.getResolvedReferenceCatalogEntity().getResolvedLeafEntity());
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot create view on external catalogs.");
     }
@@ -1127,10 +1092,7 @@ public class PolarisCatalogHandlerWrapper {
 
     CatalogEntity catalog =
         CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+            resolutionManifest.getResolvedReferenceCatalogEntity().getResolvedLeafEntity());
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot replace view on external catalogs.");
     }
@@ -1160,10 +1122,7 @@ public class PolarisCatalogHandlerWrapper {
 
     CatalogEntity catalog =
         CatalogEntity.of(
-            resolutionManifest
-                .getResolvedReferenceCatalogEntity()
-                .getResolvedLeafEntity()
-                .getEntity());
+            resolutionManifest.getResolvedReferenceCatalogEntity().getResolvedLeafEntity());
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot rename view on external catalogs.");
     }

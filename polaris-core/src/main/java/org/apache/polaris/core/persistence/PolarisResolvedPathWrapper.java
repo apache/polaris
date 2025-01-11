@@ -19,7 +19,6 @@
 package org.apache.polaris.core.persistence;
 
 import java.util.List;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.entity.PolarisEntity;
 
 /**
@@ -27,15 +26,15 @@ import org.apache.polaris.core.entity.PolarisEntity;
  * and grant records.
  */
 public class PolarisResolvedPathWrapper {
-  private final List<ResolvedPolarisEntity> resolvedPath;
+  private final List<PolarisEntity> resolvedPath;
 
   // TODO: Distinguish between whether parentPath had a null in the chain or whether only
   // the leaf element was null.
-  public PolarisResolvedPathWrapper(List<ResolvedPolarisEntity> resolvedPath) {
+  public PolarisResolvedPathWrapper(List<PolarisEntity> resolvedPath) {
     this.resolvedPath = resolvedPath;
   }
 
-  public ResolvedPolarisEntity getResolvedLeafEntity() {
+  public PolarisEntity getResolvedLeafEntity() {
     if (resolvedPath == null || resolvedPath.isEmpty()) {
       return null;
     }
@@ -43,38 +42,18 @@ public class PolarisResolvedPathWrapper {
   }
 
   public PolarisEntity getRawLeafEntity() {
-    ResolvedPolarisEntity resolvedEntity = getResolvedLeafEntity();
-    if (resolvedEntity != null) {
-      return resolvedEntity.getEntity();
-    }
-    return null;
-  }
-
-  public List<ResolvedPolarisEntity> getResolvedFullPath() {
-    return resolvedPath;
+    return getResolvedLeafEntity();
   }
 
   public List<PolarisEntity> getRawFullPath() {
-    if (resolvedPath == null) {
-      return null;
-    }
-    return resolvedPath.stream().map(ResolvedPolarisEntity::getEntity).collect(Collectors.toList());
-  }
-
-  public List<ResolvedPolarisEntity> getResolvedParentPath() {
-    if (resolvedPath == null) {
-      return null;
-    }
-    return resolvedPath.subList(0, resolvedPath.size() - 1);
+    return resolvedPath;
   }
 
   public List<PolarisEntity> getRawParentPath() {
     if (resolvedPath == null) {
       return null;
     }
-    return getResolvedParentPath().stream()
-        .map(ResolvedPolarisEntity::getEntity)
-        .collect(Collectors.toList());
+    return resolvedPath.subList(0, resolvedPath.size() - 1);
   }
 
   @Override

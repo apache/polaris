@@ -60,6 +60,7 @@ import io.opentelemetry.sdk.trace.export.SimpleSpanProcessor;
 import io.opentelemetry.semconv.ServiceAttributes;
 import io.prometheus.metrics.exporter.servlet.jakarta.PrometheusMetricsServlet;
 import jakarta.inject.Inject;
+import jakarta.inject.Named;
 import jakarta.inject.Provider;
 import jakarta.inject.Singleton;
 import jakarta.servlet.DispatcherType;
@@ -93,6 +94,7 @@ import org.apache.polaris.core.context.RealmScoped;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.EntityCacheGrantManager;
 import org.apache.polaris.core.persistence.cache.PolarisRemoteCache;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
@@ -302,7 +304,12 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
                 // manager
                 bindFactory(PolarisMetaStoreManagerFactory.class)
                     .in(RealmScoped.class)
+                    .named("delegateGrantManager")
                     .to(PolarisGrantManager.class);
+                bindFactory(EntityCacheGrantManagerFactory.class)
+                    .in(RealmScoped.class)
+                    .to(PolarisGrantManager.class)
+                    .ranked(100);
                 polarisMetricRegistry.init(
                     IcebergRestCatalogApi.class,
                     IcebergRestConfigurationApi.class,
@@ -519,6 +526,23 @@ public class PolarisApplication extends Application<PolarisApplicationConfig> {
         currentCallContext.close();
       }
     }
+  }
+
+  private static class EntityCacheGrantManagerFactory implements Factory<PolarisGrantManager> {
+    @Inject
+    @Named("delegateGrantManager")
+    PolarisGrantManager grantManager;
+
+    @Inject EntityCache entityCache;
+
+    @RealmScoped
+    @Override
+    public PolarisGrantManager provide() {
+      return new EntityCacheGrantManager(grantManager, entityCache);
+    }
+
+    @Override
+    public void dispose(PolarisGrantManager instance) {}
   }
 
   /** Factory to create a CallContext based on the request contents. */

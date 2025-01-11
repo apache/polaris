@@ -65,6 +65,7 @@ import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.cache.EntityCacheGrantManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
@@ -132,12 +133,7 @@ public abstract class PolarisAuthzTestBase {
       new Schema(
           required(3, "id", Types.IntegerType.get(), "unique ID 🤪"),
           required(4, "data", Types.StringType.get()));
-  protected final PolarisAuthorizer polarisAuthorizer =
-      new PolarisAuthorizerImpl(
-          new DefaultConfigurationStore(
-              Map.of(
-                  PolarisConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING.key,
-                  true)));
+  protected PolarisAuthorizer polarisAuthorizer;
 
   protected BasePolarisCatalog baseCatalog;
   protected PolarisAdminService adminService;
@@ -164,6 +160,7 @@ public abstract class PolarisAuthzTestBase {
     Map<String, Object> configMap =
         Map.of(
             "ALLOW_SPECIFYING_FILE_IO_IMPL", true, "ALLOW_EXTERNAL_METADATA_FILE_LOCATION", true);
+
     PolarisCallContext polarisContext =
         new PolarisCallContext(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -182,6 +179,19 @@ public abstract class PolarisAuthzTestBase {
 
     callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
+
+    EntityCache entityCache = new EntityCache(metaStoreManager);
+    polarisAuthorizer =
+        new PolarisAuthorizerImpl(
+            new DefaultConfigurationStore(
+                Map.of(
+                    PolarisConfiguration.ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING
+                        .key,
+                    true)),
+            () -> new EntityCacheGrantManager(metaStoreManager, entityCache));
+    this.entityManager =
+        new PolarisEntityManager(metaStoreManager, new StorageCredentialCache(), entityCache);
+    this.metaStoreManager = metaStoreManager;
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
