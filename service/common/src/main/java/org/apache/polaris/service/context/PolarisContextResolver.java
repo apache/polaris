@@ -30,12 +30,6 @@ import org.apache.polaris.core.context.RealmContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * For local/dev testing, this resolver simply expects a custom bearer-token format that is a
- * semicolon-separated list of colon-separated key/value pairs that constitute the realm properties.
- *
- * <p>Example: principal:data-engineer;password:test;realm:acct123
- */
 @JsonTypeName("polaris")
 public class PolarisContextResolver implements RealmContextResolver {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisContextResolver.class);
@@ -52,11 +46,6 @@ public class PolarisContextResolver implements RealmContextResolver {
   @Override
   public RealmContext resolveRealmContext(
       String requestURL, String method, String path, Map<String, String> headers) {
-    // Since this default resolver is strictly for use in test/dev environments, we'll consider
-    // it safe to log all contents. Any "real" resolver used in a prod environment should make
-    // sure to only log non-sensitive contents.
-    LOGGER.debug(
-        "Resolving RealmContext for method: {}, path: {}, headers: {}", method, path, headers);
     final Map<String, String> parsedProperties = extractPropsFromBearerToken(headers);
 
     if (!parsedProperties.containsKey(REALM_PROPERTY_KEY)
