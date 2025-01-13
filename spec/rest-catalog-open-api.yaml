@@ -1744,7 +1744,7 @@ paths:
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
 
-  /v1/{prefix}/policies/{policy}/mappings/{entity-id}:
+  /v1/{prefix}/policies/{policy}/mappings/{entityId}:
     parameters:
       - $ref: '#/components/parameters/prefix'
       - $ref: '#/components/parameters/policy'
@@ -1774,7 +1774,7 @@ paths:
           $ref: '#/components/responses/ForbiddenResponse'
         404:
           description:
-            Not Found - NoSuchPolicyException, policy to get does not exist
+            Not Found - NoSuchPolicyException, NoSuchEntityException
           content:
             application/json:
               schema:
@@ -1784,6 +1784,15 @@ paths:
                   $ref: '#/components/examples/NoSuchPolicyError'
                 EntityToSetDoesNotExist:
                   $ref: '#/components/examples/NoSuchEntityError'
+        409:
+          description: Conflict - The mapping already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                MappingAlreadyExistsError:
+                  $ref: '#/components/examples/MappingAlreadyExistsError'
         419:
           $ref: '#/components/responses/AuthenticationTimeoutResponse'
         503:
@@ -1808,7 +1817,7 @@ paths:
           $ref: '#/components/responses/ForbiddenResponse'
         404:
           description:
-            Not Found - NoSuchPolicyException, policy to get does not exist
+            Not Found - NoSuchPolicyException, NoSuchEntityException, NoSuchMappingException
           content:
             application/json:
               schema:
@@ -4760,6 +4769,16 @@ components:
           "message": "The given mapping between policy and entity does not exist",
           "type": "NoSuchMappingException",
           "code": 404
+        }
+      }
+
+    MappingAlreadyExistsError:
+      summary: The mapping between the given policy and entity already exists
+      value: {
+        "error": {
+          "message": "The mapping between the given policy and entity does not exist",
+          "type": "MappingAlreadyExistsError",
+          "code": 409
         }
       }
 
