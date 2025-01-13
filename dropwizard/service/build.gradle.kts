@@ -125,12 +125,6 @@ dependencies {
 
   testCompileOnly(libs.smallrye.common.annotation)
 
-  testImplementation(platform(libs.junit.bom))
-  testImplementation("org.junit.jupiter:junit-jupiter")
-  testImplementation(libs.assertj.core)
-  testImplementation(libs.mockito.core)
-  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-
   testImplementation(project(":polaris-eclipselink"))
 }
 

@@ -17,11 +17,7 @@
  * under the License.
  */
 
-plugins {
-  id("polaris-server")
-  `java-library`
-  `java-test-fixtures`
-}
+plugins { id("polaris-server") }
 
 description = "Generates Polaris reference docs"
 
@@ -35,12 +31,6 @@ dependencies {
   implementation(libs.smallrye.config.core)
   implementation(libs.picocli)
   annotationProcessor(libs.picocli.codegen)
-
-  testFixturesApi(platform(libs.junit.bom))
-  testFixturesApi("org.junit.jupiter:junit-jupiter")
-  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-  testFixturesApi(libs.assertj.core)
-  testFixturesApi(libs.mockito.core)
 
   genTesting(project(":polaris-config-docs-annotations"))
   genTesting(libs.smallrye.config.core)

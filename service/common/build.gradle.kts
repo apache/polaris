@@ -68,7 +68,6 @@ dependencies {
 
   implementation(libs.auth0.jwt)
 
-  implementation(libs.logback.core)
   implementation(libs.bouncycastle.bcprov)
 
   implementation(platform(libs.google.cloud.storage.bom))

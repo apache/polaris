@@ -22,10 +22,7 @@ fun isValidDep(dep: String): Boolean {
   return dep.matches(depRegex)
 }
 
-plugins {
-  id("polaris-server")
-  `java-library`
-}
+plugins { id("polaris-server") }
 
 dependencies {
   implementation(project(":polaris-core"))
@@ -52,12 +49,6 @@ dependencies {
 
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
-
-  testImplementation(platform(libs.junit.bom))
-  testImplementation("org.junit.jupiter:junit-jupiter")
-  testImplementation(libs.assertj.core)
-  testImplementation(libs.mockito.core)
-  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.register<Jar>("createTestConfJar") {
