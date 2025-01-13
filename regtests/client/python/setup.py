@@ -42,7 +42,7 @@ NAME = "polaris.management"
 VERSION = "1.0.0"
 PYTHON_REQUIRES = ">=3.7"
 REQUIRES = [
-    "urllib3 >= 1.25.3, < 2.1.0",
+    "urllib3 >=2.3.0, <3.0.0",
     "python-dateutil",
     "pydantic >= 2",
     "typing-extensions >= 4.7.1",
