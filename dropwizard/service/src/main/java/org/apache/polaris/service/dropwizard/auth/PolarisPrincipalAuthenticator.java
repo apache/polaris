@@ -40,11 +40,11 @@ public class PolarisPrincipalAuthenticator implements ContainerRequestFilter {
   public void filter(ContainerRequestContext requestContext) throws IOException {
     String authHeader = requestContext.getHeaderString("Authorization");
     if (authHeader == null) {
-      throw new IOException("Authorization header is missing");
+      throw new NotAuthorizedException("Authorization header is missing");
     }
     int spaceIdx = authHeader.indexOf(' ');
     if (spaceIdx <= 0 || !authHeader.substring(0, spaceIdx).equalsIgnoreCase("Bearer")) {
-      throw new IOException("Authorization header is not a Bearer token");
+      throw new NotAuthorizedException("Authorization header is not a Bearer token");
     }
     String credential = authHeader.substring(spaceIdx + 1);
     Optional<AuthenticatedPolarisPrincipal> principal = authenticator.authenticate(credential);

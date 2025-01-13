@@ -20,6 +20,7 @@ package org.apache.polaris.service.dropwizard.auth;
 
 import jakarta.annotation.Priority;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
@@ -53,6 +54,10 @@ public class PolarisPrincipalRoleSecurityContextProvider implements ContainerReq
   public SecurityContext createSecurityContext(
       SecurityContext ctx, AuthenticatedPolarisPrincipal principal) {
     Set<String> validRoleNames = activeRolesProvider.getActiveRoles(principal);
+    if (validRoleNames.isEmpty()) {
+      LOGGER.warn("Principal {} has no active roles. Request will be denied.", principal.getName());
+      throw new ForbiddenException("Principal has no active roles");
+    }
     return new SecurityContext() {
       @Override
       public Principal getUserPrincipal() {
