@@ -18,12 +18,4 @@
  */
 package org.apache.polaris.service.it.env;
 
-import java.net.URI;
-
-public interface Server extends AutoCloseable {
-  String realmId();
-
-  URI baseUri();
-
-  ClientPrincipal adminCredentials();
-}
+public record ClientPrincipal(String principalName, ClientCredentials credentials) {}

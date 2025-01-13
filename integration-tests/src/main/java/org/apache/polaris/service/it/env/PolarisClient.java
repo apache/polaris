@@ -87,8 +87,7 @@ public final class PolarisClient implements AutoCloseable {
     return obtainToken(
         new ClientCredentials(
             principal.getCredentials().getClientId(),
-            principal.getCredentials().getClientSecret(),
-            "dummy-principal"));
+            principal.getCredentials().getClientSecret()));
   }
 
   public String obtainToken(ClientCredentials credentials) {

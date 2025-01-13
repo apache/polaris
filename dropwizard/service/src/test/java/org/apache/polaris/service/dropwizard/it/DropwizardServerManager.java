@@ -33,6 +33,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.polaris.service.dropwizard.PolarisApplication;
 import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
 import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.Server;
 import org.apache.polaris.service.it.ext.PolarisServerManager;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -102,10 +103,10 @@ public class DropwizardServerManager implements PolarisServerManager {
     }
 
     @Override
-    public ClientCredentials adminCredentials() {
+    public ClientPrincipal adminCredentials() {
       // These credentials are injected via env. variables from build scripts.
       // Cf. POLARIS_BOOTSTRAP_POLARIS_ROOT_CLIENT_ID
-      return new ClientCredentials("test-admin", "test-secret", "root");
+      return new ClientPrincipal("root", new ClientCredentials("test-admin", "test-secret"));
     }
 
     @Override

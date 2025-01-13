@@ -78,6 +78,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.RestApi;
@@ -103,23 +104,25 @@ public class PolarisApplicationIntegrationTest {
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ClientCredentials clientCredentials;
+  private static ClientPrincipal admin;
 
   private String principalRoleName;
   private String internalCatalogName;
 
   @BeforeAll
-  public static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials)
+  public static void setup(PolarisApiEndpoints apiEndpoints, ClientPrincipal adminCredentials)
       throws IOException {
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     realm = endpoints.realm();
-    clientCredentials = credentials;
+    admin = adminCredentials;
+    clientCredentials = adminCredentials.credentials();
 
     testDir = Path.of("build/test_data/iceberg/" + realm);
     FileUtils.deleteQuietly(testDir.toFile());
     Files.createDirectories(testDir);
 
-    managementApi = client.managementApi(credentials);
+    managementApi = client.managementApi(clientCredentials);
   }
 
   @AfterAll
@@ -143,9 +146,7 @@ public class PolarisApplicationIntegrationTest {
 
     try (Response assignPrResponse =
         managementApi
-            .request(
-                "v1/principals/{name}/principal-roles",
-                Map.of("name", clientCredentials.principalName()))
+            .request("v1/principals/{name}/principal-roles", Map.of("name", admin.principalName()))
             .put(Entity.json(principalRole))) {
       assertThat(assignPrResponse)
           .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);

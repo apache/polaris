@@ -18,4 +18,4 @@
  */
 package org.apache.polaris.service.it.env;
 
-public record ClientCredentials(String clientId, String clientSecret, String principalName) {}
+public record ClientCredentials(String clientId, String clientSecret) {}

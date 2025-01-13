@@ -21,6 +21,7 @@ package org.apache.polaris.service.it.ext;
 import static org.apache.polaris.service.it.ext.PolarisServerManagerLoader.polarisServerManager;
 
 import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.ClientPrincipal;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.Server;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -41,6 +42,7 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
       throws ParameterResolutionException {
     Class<?> type = parameterContext.getParameter().getType();
     return type.isAssignableFrom(PolarisApiEndpoints.class)
+        || type.isAssignableFrom(ClientPrincipal.class)
         || type.isAssignableFrom(ClientCredentials.class);
   }
 
@@ -52,8 +54,10 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
     Class<?> type = parameterContext.getParameter().getType();
     if (type.isAssignableFrom(PolarisApiEndpoints.class)) {
       return env.endpoints();
-    } else if (type.isAssignableFrom(ClientCredentials.class)) {
+    } else if (type.isAssignableFrom(ClientPrincipal.class)) {
       return env.server.adminCredentials();
+    } else if (type.isAssignableFrom(ClientCredentials.class)) {
+      return env.server.adminCredentials().credentials();
     }
     throw new IllegalStateException("Unable to resolve parameter: " + parameterContext);
   }
