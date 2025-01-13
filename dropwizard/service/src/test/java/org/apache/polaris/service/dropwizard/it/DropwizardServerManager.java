@@ -70,7 +70,7 @@ public class DropwizardServerManager implements PolarisServerManager {
           config.entrySet().stream()
               .map((e) -> ConfigOverride.config(e.getKey(), e.getValue()))
               .toList()
-              .toArray(new ConfigOverride[0]);
+              .toArray(ConfigOverride[]::new);
       ext =
           new DropwizardAppExtension<>(
               PolarisApplication.class,
