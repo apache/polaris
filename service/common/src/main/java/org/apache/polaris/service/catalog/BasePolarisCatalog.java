@@ -1605,6 +1605,12 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // the credentials should always override table-level properties, since
     // storage configuration will be found at whatever entity defines it
     tableProperties.putAll(credentialsMap);
+
+    // Populate the internal properties to FileIO in case the FileIO implementation needs them
+    Map<String, String> internalProperties =
+        storageInfoEntity.map(PolarisEntity::getInternalPropertiesAsMap).orElse(Map.of());
+    tableProperties.putAll(internalProperties);
+
     FileIO fileIO = null;
     fileIO = loadFileIO(ioImplClassName, tableProperties);
     // ensure the new fileIO is closed when the catalog is closed
