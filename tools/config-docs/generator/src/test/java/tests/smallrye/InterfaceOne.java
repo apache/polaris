@@ -18,9 +18,9 @@
  */
 package tests.smallrye;
 
-import java.util.OptionalInt;
+import java.time.Duration;
 
-public interface IntThree {
-  /** Something int-ish. */
-  OptionalInt someIntThing();
+public interface InterfaceOne extends InterfaceTwo {
+  /** A duration of something. */
+  Duration someDuration();
 }

@@ -30,11 +30,11 @@ val genSources by configurations.creating
 val doclet by configurations.creating
 
 dependencies {
-  doclet(project(":polaris-ref-config-annotations"))
-  doclet(project(":polaris-ref-config-generator"))
+  doclet(project(":polaris-config-docs-annotations"))
+  doclet(project(":polaris-config-docs-generator"))
   doclet(libs.smallrye.config.core)
 
-  genProjects(project(":polaris-ref-config-annotations"))
+  genProjects(project(":polaris-config-docs-annotations"))
 
   genProjectPaths.forEach { p ->
     genProjects(project(p))

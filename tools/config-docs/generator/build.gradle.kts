@@ -28,7 +28,7 @@ description = "Generates Polaris reference docs"
 val genTesting by configurations.creating
 
 dependencies {
-  implementation(project(":polaris-ref-config-annotations"))
+  implementation(project(":polaris-config-docs-annotations"))
 
   implementation(libs.commons.text)
 
@@ -42,7 +42,7 @@ dependencies {
   testFixturesApi(libs.assertj.core)
   testFixturesApi(libs.mockito.core)
 
-  genTesting(project(":polaris-ref-config-annotations"))
+  genTesting(project(":polaris-config-docs-annotations"))
   genTesting(libs.smallrye.config.core)
 }
 

@@ -35,7 +35,7 @@ import org.apache.polaris.docs.ConfigDocs.ConfigPropertyName;
 
 /** Documentation for {@code my.types}. */
 @ConfigMapping(prefix = "my.types")
-public interface AllTypes extends IntOne {
+public interface AllTypes extends InterfaceOne {
   String string();
 
   Optional<String> optionalString();

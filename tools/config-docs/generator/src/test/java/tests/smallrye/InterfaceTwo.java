@@ -18,7 +18,7 @@
  */
 package tests.smallrye;
 
-public interface IntTwo extends IntThree {
+public interface InterfaceTwo extends InterfaceThree {
   /** Something that configures something. */
   String configOptionFoo();
 }

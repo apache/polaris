@@ -42,7 +42,7 @@ import java.util.List;
  * </ol>
  */
 @ConfigMapping(prefix = "my.prefix")
-public interface MappedA extends IntOne {
+public interface MappedA extends InterfaceOne {
   @WithName("some-weird-name")
   @WithDefault("some-default")
   @Override
