@@ -1595,6 +1595,239 @@ paths:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
+  
+  /v1/{prefix}/policies:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+
+    post:
+      tags:
+        - Catalog API
+      summary: 'Create a policy'
+      operationId: createPolicy
+      description:
+        Create a Policy
+
+        # TODO: add description of policy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePolicyRequest'
+      responses:
+        200:
+          $ref: '#/components/responses/CreatePolicyResponse'
+        400:
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/ForbiddenResponse'
+        419:
+          $ref: '#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+
+  /v1/{prefix}/policies/{policy}:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/policy'
+
+    get:
+      tags:
+        - Catalog API
+      summary: 'Get a policy'
+      operationId: getPolicy
+      description:
+        Get a policy from the catalog
+
+      responses:
+        200:
+          $ref: '#/components/responses/LoadPolicyResponse'
+        400:
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchPolicyException, policy to get does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                PolicyToGetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchPolicyError'
+        419:
+          $ref: '#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+
+    post:
+      tags:
+        - Catalog API
+      summary: Update a policy
+      operationId: updatePolicy
+      description:
+        Update a policy
+
+        The owner_id, policy_id, and policy_type cannot be updated
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePolicyRequest'
+      
+      responses:
+        200:
+          $ref: '#/components/responses/UpdatePolicyResponse'
+        400:
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchPolicyException, policy to get does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                PolicyToUpdateDoesNotExist:
+                  $ref: '#/components/examples/NoSuchPolicyError'
+        419:
+          $ref: '#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+
+    delete:
+      tags:
+        - Catalog API
+      summary: Delete a policy from the catalog
+      operationId: deletePolicy
+      description: Remove a policy from the catalog
+      responses:
+        204:
+          description: Success, no content
+        400:
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchPolicyException, policy to get does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                PolicyToDeleteDoesNotExist:
+                  $ref: '#/components/examples/NoSuchPolicyError'
+        419:
+          $ref: '#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+
+  /v1/{prefix}/policies/{policy}/mappings/{entity-id}:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/policy'
+      - $ref: '#/components/parameters/entity-id'
+
+    post:
+      tags:
+        - Catalog API
+      summary: Create a mapping between a policy and a resource entity
+      operationId: setPolicy
+      description: Create a mapping between a policy and a resource entity
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPolicyRequest'
+
+      responses:
+        204:
+          description: Success, no content
+        400:
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchPolicyException, policy to get does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                PolicyToSetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchPolicyError'
+                EntityToSetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchEntityError'
+        419:
+          $ref: '#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+
+    delete:
+      tags: 
+        - Catalog API
+      summary: Remove a mapping between a policy and an entity
+      operationId: unsetPolicy
+      description: Remove a mapping between a policy and an entity
+      responses:
+        204:
+          description: Success, no content
+        400:
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchPolicyException, policy to get does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                PolicyToUnsetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchPolicyError'
+                EntityToUnsetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchEntityError'
+                MappingToUnsetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchMappingError'
+        419:
+          $ref: '#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+
+
 
 
 components:
@@ -1687,6 +1920,24 @@ components:
       schema:
         type: integer
         minimum: 1
+
+    policy:
+      name: policy
+      in: path
+      description: id of a policy
+      required: true
+      schema:
+        type: string
+      example: 'b792559c-c4c2-45aa-bff0-831eba3c2126'
+
+    entity-id:
+      name: entityId
+      in: path
+      description: id of an entity in Polaris
+      required: true
+      schema:
+        type: string
+      example: '7e7230c8-bcc3-49ea-87f3-e943ddd48e73'
 
   ##############################
   # Application Schema Objects #
@@ -3977,6 +4228,90 @@ components:
           items:
             type: integer
           description: "List of equality field IDs"
+    
+    Policy:
+      type: object
+      required:
+        - policy-id
+        - policy-type
+        - policy-type-schema-version
+        - name
+        - content
+        - version
+      properties:
+        policy-id:
+          type: string
+        policy-type:
+          type: string
+        policy-type-schema-version:
+          type: integer
+        name:
+          type: string
+        description: 
+          type: string
+        content:
+          $ref: '#/components/schemas/PolicyContent'
+        version:
+          type: integer
+        created-at-ms:
+          type: integer
+          format: int64
+        updated-at-ms: 
+          type: integer
+          format: int64
+
+    PolicyContent:
+      anyOf:
+        - type: object
+        - type: string
+
+    CreatePolicyRequest:
+      type: object
+      required:
+        - name
+        - type
+        - description
+        - content
+      properties:
+        name: 
+          type: string
+        type:
+          type: string
+        description:
+          type: string
+        content:
+          $ref: '#/components/schemas/PolicyContent'
+        subjects:
+          type: array
+          uniqueItems: true
+          items:
+            type: string # subject id
+
+    LoadPolicyResult:
+      type: object
+      properties:
+        policy:
+          $ref: '#/components/schemas/Policy'
+
+    UpdatePolicyRequest:
+      type: object
+      properties:
+        name: 
+          type: string
+        description:
+          type: string
+        content:
+          $ref: '#/components/schemas/PolicyContent'
+
+    SetPolicyRequest:
+      type: object
+      properties:
+        parameters:
+          type: object
+          additionalProperties:
+            type: string
+
+
 
   #############################
   # Reusable Response Objects #
@@ -4225,6 +4560,30 @@ components:
           schema:
             $ref: '#/components/schemas/LoadCredentialsResponse'
 
+    CreatePolicyResponse:
+      description: Policy object result after creating a policy
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadPolicyResult'
+
+    LoadPolicyResponse:
+      description: Policy object result when getting a policy
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadPolicyResult'
+
+    UpdatePolicyResponse:
+      description:
+        Response used when a policy is successfully updated
+
+        The updated policy JSON is returned in the policy field
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadPolicyResult'
+
   #######################################
   # Common examples of different values #
   #######################################
@@ -4371,6 +4730,36 @@ components:
           "message": "A notification with a newer timestamp has been admitted for table",
           "type": "AlreadyExistsException",
           "code": 409
+        }
+      }
+    
+    NoSuchPolicyError:
+      summary: The requested policy does not exist
+      value: {
+        "error": {
+          "message": "The given policy does not exist",
+          "type": "NoSuchPolicyException",
+          "code": 404
+        }
+      }
+
+    NoSuchEntityError:
+      summary: The requested entity does not exist
+      value: {
+        "error": {
+          "message": "The given entity does not exist",
+          "type": "NoSuchEntityException",
+          "code": 404
+        }
+      }
+
+    NoSuchMappingError:
+      summary: The requested mapping between policy and entity does not exist
+      value: {
+        "error": {
+          "message": "The given mapping between policy and entity does not exist",
+          "type": "NoSuchMappingException",
+          "code": 404
         }
       }
 
