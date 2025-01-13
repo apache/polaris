@@ -162,3 +162,8 @@ tokenBucketFactory:
   type: default
   requestsPerSecond: 9999
   windowSeconds: 10
+
+# Fake GCP credentials for tests that do not need access to storage
+gcp_credentials:
+  access_token: "abc"
+  expires_in: 12345

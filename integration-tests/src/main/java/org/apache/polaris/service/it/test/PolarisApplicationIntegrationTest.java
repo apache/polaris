@@ -16,30 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.dropwizard;
+package org.apache.polaris.service.it.test;
 
-import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
+import static org.apache.polaris.service.it.env.PolarisApiEndpoints.REALM_HEADER;
+import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
-import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
-import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
@@ -80,145 +77,88 @@ import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.service.auth.BasePolarisAuthenticator;
-import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
-import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
-import org.apache.polaris.service.dropwizard.test.PolarisRealm;
-import org.apache.polaris.service.dropwizard.test.SnowmanCredentialsExtension;
-import org.apache.polaris.service.dropwizard.test.TestEnvironmentExtension;
-import org.assertj.core.api.Assertions;
+import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.ClientPrincipal;
+import org.apache.polaris.service.it.env.PolarisApiEndpoints;
+import org.apache.polaris.service.it.env.PolarisClient;
+import org.apache.polaris.service.it.env.RestApi;
+import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.io.TempDir;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
-@ExtendWith({
-  DropwizardExtensionsSupport.class,
-  TestEnvironmentExtension.class,
-  PolarisConnectionExtension.class,
-  SnowmanCredentialsExtension.class
-})
+@ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisApplicationIntegrationTest {
-  @TempDir private static Path tempDir;
-  private static final Supplier<String> CURRENT_LOG =
-      () -> tempDir.resolve("application.log").toString();
 
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(PolarisApplicationIntegrationTest.class);
+  public static final String PRINCIPAL_ROLE_ALL = "PRINCIPAL_ROLE:ALL";
 
-  public static final String PRINCIPAL_ROLE_NAME = "admin";
-  private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config(
-              "server.adminConnectors[0].port", "0"), // Bind to random port to support parallelism
-          ConfigOverride.config("logging.appenders[1].type", "file"),
-          ConfigOverride.config("logging.appenders[1].currentLogFilename", CURRENT_LOG));
-
-  private static String userToken;
-  private static SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials;
   private static Path testDir;
   private static String realm;
 
-  @BeforeAll
-  public static void setup(
-      PolarisConnectionExtension.PolarisToken userToken,
-      SnowmanCredentialsExtension.SnowmanCredentials snowmanCredentials,
-      @PolarisRealm String polarisRealm)
-      throws IOException {
-    realm = polarisRealm;
+  private static RestApi managementApi;
+  private static PolarisApiEndpoints endpoints;
+  private static PolarisClient client;
+  private static ClientCredentials clientCredentials;
+  private static ClientPrincipal admin;
 
-    assertThat(new File(CURRENT_LOG.get()))
-        .exists()
-        .content()
-        .contains("PolarisApplication: Server started successfully");
+  private String principalRoleName;
+  private String internalCatalogName;
+
+  @BeforeAll
+  public static void setup(PolarisApiEndpoints apiEndpoints, ClientPrincipal adminCredentials)
+      throws IOException {
+    endpoints = apiEndpoints;
+    client = polarisClient(endpoints);
+    realm = endpoints.realm();
+    admin = adminCredentials;
+    clientCredentials = adminCredentials.credentials();
 
     testDir = Path.of("build/test_data/iceberg/" + realm);
     FileUtils.deleteQuietly(testDir.toFile());
     Files.createDirectories(testDir);
-    PolarisApplicationIntegrationTest.userToken = userToken.token();
-    PolarisApplicationIntegrationTest.snowmanCredentials = snowmanCredentials;
 
-    PrincipalRole principalRole = new PrincipalRole(PRINCIPAL_ROLE_NAME);
-    try (Response createPrResponse =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
-            .post(Entity.json(principalRole))) {
-      assertThat(createPrResponse)
-          .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
-
-    try (Response assignPrResponse =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principals/%s/principal-roles",
-                    EXT.getLocalPort(), snowmanCredentials.identifier().principalName()))
-            .request("application/json")
-            .header("Authorization", "Bearer " + PolarisApplicationIntegrationTest.userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .put(Entity.json(principalRole))) {
-      assertThat(assignPrResponse)
-          .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
-
-    assertZeroErrorsInApplicationLog();
+    managementApi = client.managementApi(clientCredentials);
   }
 
   @AfterAll
-  public static void deletePrincipalRole() {
-    EXT.client()
-        .target(
-            String.format(
-                "http://localhost:%d/api/management/v1/principal-roles/%s",
-                EXT.getLocalPort(), PRINCIPAL_ROLE_NAME))
-        .request("application/json")
-        .header("Authorization", "Bearer " + userToken)
-        .header(REALM_PROPERTY_KEY, realm)
-        .delete()
-        .close();
-  }
-
-  private static void assertZeroErrorsInApplicationLog() {
-    assertThat(new File(CURRENT_LOG.get()))
-        .exists()
-        .content()
-        .hasSizeGreaterThan(0)
-        .doesNotContain("ERROR", "FATAL");
+  public static void close() throws Exception {
+    client.close();
   }
 
   /**
    * Create a new catalog for each test case. Assign the snowman catalog-admin principal role the
    * admin role of the new catalog.
-   *
-   * @param testInfo
    */
   @BeforeEach
   public void before(TestInfo testInfo) {
-    testInfo
-        .getTestMethod()
-        .ifPresent(
-            method -> {
-              String catalogName = method.getName();
-              Catalog.TypeEnum catalogType = Catalog.TypeEnum.INTERNAL;
-              createCatalog(catalogName, catalogType, PRINCIPAL_ROLE_NAME);
-            });
+    principalRoleName = client.newEntityName("admin");
+    PrincipalRole principalRole = new PrincipalRole(principalRoleName);
+    try (Response createPrResponse =
+        managementApi.request("v1/principal-roles").post(Entity.json(principalRole))) {
+      assertThat(createPrResponse)
+          .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    try (Response assignPrResponse =
+        managementApi
+            .request("v1/principals/{name}/principal-roles", Map.of("name", admin.principalName()))
+            .put(Entity.json(principalRole))) {
+      assertThat(assignPrResponse)
+          .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
+    }
+
+    internalCatalogName = client.newEntityName(testInfo.getTestMethod().orElseThrow().getName());
+    createCatalog(internalCatalogName, Catalog.TypeEnum.INTERNAL, principalRoleName);
+  }
+
+  @AfterEach
+  public void cleanUp() throws Exception {
+    client.cleanUp(clientCredentials);
   }
 
   private static void createCatalog(
@@ -262,40 +202,24 @@ public class PolarisApplicationIntegrationTest {
                 .setProperties(props)
                 .setStorageConfigInfo(storageConfig)
                 .build();
-    try (Response response =
-        EXT.client()
-            .target(
-                String.format("http://localhost:%d/api/management/v1/catalogs", EXT.getLocalPort()))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .post(Entity.json(catalog))) {
+    try (Response response = managementApi.request("v1/catalogs").post(Entity.json(catalog))) {
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
     try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/catalogs/%s/catalog-roles/%s",
-                    EXT.getLocalPort(),
-                    catalogName,
-                    PolarisEntityConstants.getNameOfCatalogAdminRole()))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
+        managementApi
+            .request(
+                "v1/catalogs/{cat}/catalog-roles/{role}",
+                Map.of(
+                    "cat", catalogName, "role", PolarisEntityConstants.getNameOfCatalogAdminRole()))
             .get()) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       CatalogRole catalogRole = response.readEntity(CatalogRole.class);
 
       try (Response assignResponse =
-          EXT.client()
-              .target(
-                  String.format(
-                      "http://localhost:%d/api/management/v1/principal-roles/%s/catalog-roles/%s",
-                      EXT.getLocalPort(), principalRoleName, catalogName))
-              .request("application/json")
-              .header("Authorization", "Bearer " + userToken)
-              .header(REALM_PROPERTY_KEY, realm)
+          managementApi
+              .request(
+                  "v1/principal-roles/{prin-role}/catalog-roles/{cat}",
+                  Map.of("cat", catalogName, "prin-role", principalRoleName))
               .put(Entity.json(catalogRole))) {
         assertThat(assignResponse)
             .returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
@@ -309,21 +233,21 @@ public class PolarisApplicationIntegrationTest {
         "polaris_catalog_test",
         Map.of(
             "uri",
-            "http://localhost:" + EXT.getLocalPort() + "/api/catalog",
+            endpoints.catalogApiEndpoint().toString(),
             OAuth2Properties.CREDENTIAL,
-            snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret(),
+            clientCredentials.clientId() + ":" + clientCredentials.clientSecret(),
             OAuth2Properties.SCOPE,
-            BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL,
+            PRINCIPAL_ROLE_ALL,
             "warehouse",
             catalog,
-            "header." + REALM_PROPERTY_KEY,
+            "header." + REALM_HEADER,
             realm));
     return sessionCatalog;
   }
 
   @Test
   public void testIcebergListNamespaces() throws IOException {
-    try (RESTSessionCatalog sessionCatalog = newSessionCatalog("testIcebergListNamespaces")) {
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(internalCatalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       List<Namespace> namespaces = sessionCatalog.listNamespaces(sessionContext);
       assertThat(namespaces).isNotNull().isEmpty();
@@ -331,7 +255,7 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testConfigureCatalogCaseSensitive() throws IOException {
+  public void testConfigureCatalogCaseSensitive() {
     assertThatThrownBy(() -> newSessionCatalog("TESTCONFIGURECATALOGCASESENSITIVE"))
         .isInstanceOf(RESTException.class)
         .hasMessage(
@@ -340,8 +264,7 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testIcebergListNamespacesNotFound() throws IOException {
-    try (RESTSessionCatalog sessionCatalog =
-        newSessionCatalog("testIcebergListNamespacesNotFound")) {
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(internalCatalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       assertThatThrownBy(
               () -> sessionCatalog.listNamespaces(sessionContext, Namespace.of("whoops")))
@@ -352,8 +275,7 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testIcebergListNamespacesNestedNotFound() throws IOException {
-    try (RESTSessionCatalog sessionCatalog =
-        newSessionCatalog("testIcebergListNamespacesNestedNotFound")) {
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(internalCatalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace topLevelNamespace = Namespace.of("top_level");
       sessionCatalog.createNamespace(sessionContext, topLevelNamespace);
@@ -369,8 +291,7 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testIcebergListTablesNamespaceNotFound() throws IOException {
-    try (RESTSessionCatalog sessionCatalog =
-        newSessionCatalog("testIcebergListTablesNamespaceNotFound")) {
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(internalCatalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       assertThatThrownBy(() -> sessionCatalog.listTables(sessionContext, Namespace.of("whoops")))
           .isInstanceOf(NoSuchNamespaceException.class)
@@ -380,7 +301,7 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testIcebergCreateNamespace() throws IOException {
-    try (RESTSessionCatalog sessionCatalog = newSessionCatalog("testIcebergCreateNamespace")) {
+    try (RESTSessionCatalog sessionCatalog = newSessionCatalog(internalCatalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace topLevelNamespace = Namespace.of("top_level");
       sessionCatalog.createNamespace(sessionContext, topLevelNamespace);
@@ -394,9 +315,10 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testIcebergCreateNamespaceInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().get().getName() + "External";
-    createCatalog(catalogName, Catalog.TypeEnum.EXTERNAL, PRINCIPAL_ROLE_NAME);
+  public void testIcebergCreateNamespaceInExternalCatalog() throws IOException {
+    String catalogName =
+        client.newEntityName("testIcebergCreateNamespaceInExternalCatalogExternal");
+    createCatalog(catalogName, Catalog.TypeEnum.EXTERNAL, principalRoleName);
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
@@ -413,9 +335,9 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testIcebergDropNamespaceInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().get().getName() + "External";
-    createCatalog(catalogName, Catalog.TypeEnum.EXTERNAL, PRINCIPAL_ROLE_NAME);
+  public void testIcebergDropNamespaceInExternalCatalog() throws IOException {
+    String catalogName = client.newEntityName("testIcebergDropNamespaceInExternalCatalogExternal");
+    createCatalog(catalogName, Catalog.TypeEnum.EXTERNAL, principalRoleName);
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
@@ -431,8 +353,8 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testIcebergCreateTablesInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().get().getName() + "External";
-    createCatalog(catalogName, Catalog.TypeEnum.EXTERNAL, PRINCIPAL_ROLE_NAME);
+    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "External";
+    createCatalog(catalogName, Catalog.TypeEnum.EXTERNAL, principalRoleName);
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
@@ -458,66 +380,61 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testIcebergCreateTablesWithWritePathBlocked(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().get().getName() + "Internal";
-    createCatalog(catalogName, Catalog.TypeEnum.INTERNAL, PRINCIPAL_ROLE_NAME);
+    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "Internal";
+    createCatalog(catalogName, Catalog.TypeEnum.INTERNAL, principalRoleName);
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
       sessionCatalog.createNamespace(sessionContext, ns);
-      try {
-        Assertions.assertThatThrownBy(
-                () ->
-                    sessionCatalog
-                        .buildTable(
-                            sessionContext,
-                            TableIdentifier.of(ns, "the_table"),
-                            new Schema(
-                                List.of(
-                                    Types.NestedField.of(
-                                        1, false, "theField", Types.StringType.get()))))
-                        .withSortOrder(SortOrder.unsorted())
-                        .withPartitionSpec(PartitionSpec.unpartitioned())
-                        .withProperties(Map.of("write.data.path", "s3://my-bucket/path/to/data"))
-                        .create())
-            .isInstanceOf(ForbiddenException.class)
-            .hasMessageContaining("Forbidden: Invalid locations");
+      assertThatThrownBy(
+              () ->
+                  sessionCatalog
+                      .buildTable(
+                          sessionContext,
+                          TableIdentifier.of(ns, "the_table"),
+                          new Schema(
+                              List.of(
+                                  Types.NestedField.of(
+                                      1, false, "theField", Types.StringType.get()))))
+                      .withSortOrder(SortOrder.unsorted())
+                      .withPartitionSpec(PartitionSpec.unpartitioned())
+                      .withProperties(Map.of("write.data.path", "s3://my-bucket/path/to/data"))
+                      .create())
+          .isInstanceOf(ForbiddenException.class)
+          .hasMessageContaining("Forbidden: Invalid locations");
 
-        Assertions.assertThatThrownBy(
-                () ->
-                    sessionCatalog
-                        .buildTable(
-                            sessionContext,
-                            TableIdentifier.of(ns, "the_table"),
-                            new Schema(
-                                List.of(
-                                    Types.NestedField.of(
-                                        1, false, "theField", Types.StringType.get()))))
-                        .withSortOrder(SortOrder.unsorted())
-                        .withPartitionSpec(PartitionSpec.unpartitioned())
-                        .withProperties(
-                            Map.of("write.metadata.path", "s3://my-bucket/path/to/data"))
-                        .create())
-            .isInstanceOf(ForbiddenException.class)
-            .hasMessageContaining("Forbidden: Invalid locations");
-      } catch (BadRequestException e) {
-        LOGGER.info("Received expected exception {}", e.getMessage());
-      }
+      assertThatThrownBy(
+              () ->
+                  sessionCatalog
+                      .buildTable(
+                          sessionContext,
+                          TableIdentifier.of(ns, "the_table"),
+                          new Schema(
+                              List.of(
+                                  Types.NestedField.of(
+                                      1, false, "theField", Types.StringType.get()))))
+                      .withSortOrder(SortOrder.unsorted())
+                      .withPartitionSpec(PartitionSpec.unpartitioned())
+                      .withProperties(Map.of("write.metadata.path", "s3://my-bucket/path/to/data"))
+                      .create())
+          .isInstanceOf(ForbiddenException.class)
+          .hasMessageContaining("Forbidden: Invalid locations");
     }
   }
 
   @Test
   public void testIcebergRegisterTableInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().get().getName() + "External";
+    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "External";
     createCatalog(
         catalogName,
         Catalog.TypeEnum.EXTERNAL,
-        PRINCIPAL_ROLE_NAME,
+        principalRoleName,
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
             .setAllowedLocations(List.of("file://" + testDir.toFile().getAbsolutePath()))
             .build(),
         "file://" + testDir.toFile().getAbsolutePath());
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName);
-        HadoopFileIO fileIo = new HadoopFileIO(new Configuration()); ) {
+        HadoopFileIO fileIo = new HadoopFileIO(new Configuration())) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
       sessionCatalog.createNamespace(sessionContext, ns);
@@ -554,17 +471,17 @@ public class PolarisApplicationIntegrationTest {
 
   @Test
   public void testIcebergUpdateTableInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().get().getName() + "External";
+    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "External";
     createCatalog(
         catalogName,
         Catalog.TypeEnum.EXTERNAL,
-        PRINCIPAL_ROLE_NAME,
+        principalRoleName,
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
             .setAllowedLocations(List.of("file://" + testDir.toFile().getAbsolutePath()))
             .build(),
         "file://" + testDir.toFile().getAbsolutePath());
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName);
-        HadoopFileIO fileIo = new HadoopFileIO(new Configuration()); ) {
+        HadoopFileIO fileIo = new HadoopFileIO(new Configuration())) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
       sessionCatalog.createNamespace(sessionContext, ns);
@@ -606,18 +523,18 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testIcebergDropTableInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().get().getName() + "External";
+  public void testIcebergDropTableInExternalCatalog() throws IOException {
+    String catalogName = client.newEntityName("testIcebergDropTableInExternalCatalogExternal");
     createCatalog(
         catalogName,
         Catalog.TypeEnum.EXTERNAL,
-        PRINCIPAL_ROLE_NAME,
+        principalRoleName,
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
             .setAllowedLocations(List.of("file://" + testDir.toFile().getAbsolutePath()))
             .build(),
         "file://" + testDir.toFile().getAbsolutePath());
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName);
-        HadoopFileIO fileIo = new HadoopFileIO(new Configuration()); ) {
+        HadoopFileIO fileIo = new HadoopFileIO(new Configuration())) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
       sessionCatalog.createNamespace(sessionContext, ns);
@@ -626,7 +543,7 @@ public class PolarisApplicationIntegrationTest {
           "file://"
               + testDir.toFile().getAbsolutePath()
               + "/"
-              + testInfo.getTestMethod().get().getName();
+              + "testIcebergDropTableInExternalCatalog";
       String metadataLocation = location + "/metadata/000001-494949494949494949.metadata.json";
 
       TableMetadata tableMetadata =
@@ -661,14 +578,14 @@ public class PolarisApplicationIntegrationTest {
                       "polaris_catalog_test",
                       Map.of(
                           "uri",
-                          "http://localhost:" + EXT.getLocalPort() + "/api/catalog",
+                          endpoints.catalogApiEndpoint().toString(),
                           OAuth2Properties.CREDENTIAL,
-                          snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret(),
+                          clientCredentials.clientId() + ":" + clientCredentials.clientSecret(),
                           OAuth2Properties.SCOPE,
-                          BasePolarisAuthenticator.PRINCIPAL_ROLE_ALL,
+                          PRINCIPAL_ROLE_ALL,
                           "warehouse",
                           emptyEnvironmentVariable,
-                          "header." + REALM_PROPERTY_KEY,
+                          "header." + REALM_HEADER,
                           realm)))
           .isInstanceOf(BadRequestException.class)
           .hasMessage("Malformed request: Please specify a warehouse");
@@ -676,79 +593,67 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testRequestHeaderTooLarge() {
-    Invocation.Builder request =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
-            .request("application/json");
+  public void testRequestHeaderTooLarge() throws Exception {
+    // Use a dedicated client with retries due to non-deterministic behaviour of reading the
+    // response code and possible abrupt connection resets
+    try (PolarisClient localClient = polarisClient(endpoints)) {
+      await()
+          .atMost(Duration.of(1, ChronoUnit.MINUTES))
+          .untilAsserted(
+              () -> {
+                Invocation.Builder request =
+                    localClient.managementApi(clientCredentials).request("v1/principal-roles");
+                // The default limit is 8KiB and each of these headers is at least 8 bytes, so 1500
+                // definitely exceeds the limit
+                for (int i = 0; i < 1500; i++) {
+                  request = request.header("header" + i, "" + i);
+                }
 
-    // The default limit is 8KiB and each of these headers is at least 8 bytes, so 1500 definitely
-    // exceeds the limit
-    for (int i = 0; i < 1500; i++) {
-      request = request.header("header" + i, "" + i);
-    }
-
-    try {
-      try (Response response =
-          request
-              .header("Authorization", "Bearer " + userToken)
-              .header(REALM_PROPERTY_KEY, realm)
-              .post(Entity.json(new PrincipalRole("r")))) {
-        assertThat(response)
-            .returns(
-                Response.Status.REQUEST_HEADER_FIELDS_TOO_LARGE.getStatusCode(),
-                Response::getStatus);
-      }
-    } catch (ProcessingException e) {
-      // In some runtime environments the request above will return a 431 but in others it'll result
-      // in a ProcessingException from the socket being closed. The test asserts that one of those
-      // things happens.
+                try (Response response = request.post(Entity.json(new PrincipalRole("r")))) {
+                  assertThat(response.getStatus())
+                      .isEqualTo(Response.Status.REQUEST_HEADER_FIELDS_TOO_LARGE.getStatusCode());
+                }
+              });
     }
   }
 
   @Test
-  public void testRequestBodyTooLarge() {
-    // The behaviour in case of large requests depends on the specific server configuration.
-    // This test assumes that the server under test is configured to deny requests larger than
-    // 1000000 bytes. The test payload below assumes UTF8 encoding of ASCII charts plus a bit of
-    // JSON overhead.
-    Entity<PrincipalRole> largeRequest = Entity.json(new PrincipalRole("r".repeat(1000001)));
-
-    try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/principal-roles", EXT.getLocalPort()))
-            .request("application/json")
-            .header("Authorization", "Bearer " + userToken)
-            .header(REALM_PROPERTY_KEY, realm)
-            .post(largeRequest)) {
-      // Note we only validate the status code here because per RFC 9110, the server MAY not provide
-      // a response body. The HTTP status line is still expected to be provided.
-      assertThat(response.getStatus())
-          .isEqualTo(Response.Status.REQUEST_ENTITY_TOO_LARGE.getStatusCode());
-    } catch (ProcessingException e) {
-      // Per RFC 9110 servers MAY close the connection in case of 413 responses, which
-      // might cause the client to fail to read the status code (cf. RFC 9112, section 9.6).
-      // TODO: servers are expected to close connections gracefully. It might be worth investigating
-      // whether "connection closed" exceptions are a client-side bug.
-      assertThat(e).hasMessageContaining("Connection was closed");
+  public void testRequestBodyTooLarge() throws Exception {
+    // Use a dedicated client with retries due to non-deterministic behaviour of reading the
+    // response code and possible abrupt connection resets
+    try (PolarisClient localClient = polarisClient(endpoints)) {
+      await()
+          .atMost(Duration.of(1, ChronoUnit.MINUTES))
+          .untilAsserted(
+              () -> {
+                // The behaviour in case of large requests depends on the specific server
+                // configuration. This test assumes that the server under test is configured to deny
+                // requests larger than 1000000 bytes. The test payload below assumes UTF8 encoding
+                // of ASCII charts plus a bit of JSON overhead.
+                Entity<PrincipalRole> largeRequest =
+                    Entity.json(new PrincipalRole("r".repeat(1000001)));
+                try (Response response =
+                    localClient
+                        .managementApi(clientCredentials)
+                        .request("v1/principal-roles")
+                        .post(largeRequest)) {
+                  // Note we only validate the status code here because per RFC 9110, the server MAY
+                  // not provide a response body. The HTTP status line is still expected to be
+                  // provided most of the time.
+                  assertThat(response.getStatus())
+                      .isEqualTo(Response.Status.REQUEST_ENTITY_TOO_LARGE.getStatusCode());
+                }
+              });
     }
   }
 
   @Test
   public void testRefreshToken() throws IOException {
-    String path =
-        String.format("http://localhost:%d/api/catalog/v1/oauth/tokens", EXT.getLocalPort());
+    String path = endpoints.catalogApiEndpoint() + "/v1/oauth/tokens";
     try (RESTClient client =
-        HTTPClient.builder(ImmutableMap.of())
-            .withHeader(REALM_PROPERTY_KEY, realm)
-            .uri(path)
-            .build()) {
+        HTTPClient.builder(Map.of()).withHeader(REALM_HEADER, realm).uri(path).build()) {
       String credentialString =
-          snowmanCredentials.clientId() + ":" + snowmanCredentials.clientSecret();
+          clientCredentials.clientId() + ":" + clientCredentials.clientSecret();
       String expiredToken =
           JWT.create().withExpiresAt(Instant.EPOCH).sign(Algorithm.HMAC256("irrelevant-secret"));
       var authConfig =

@@ -16,17 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.dropwizard.catalog;
+package org.apache.polaris.service.it.test;
 
-import static org.apache.polaris.service.context.DefaultRealmContextResolver.REALM_PROPERTY_KEY;
+import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.adobe.testing.s3mock.testcontainers.S3MockContainer;
-import io.dropwizard.testing.ConfigOverride;
-import io.dropwizard.testing.ResourceHelpers;
-import io.dropwizard.testing.junit5.DropwizardAppExtension;
-import io.dropwizard.testing.junit5.DropwizardExtensionsSupport;
+import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -41,14 +38,12 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.service.dropwizard.PolarisApplication;
-import org.apache.polaris.service.dropwizard.config.PolarisApplicationConfig;
-import org.apache.polaris.service.dropwizard.test.PolarisConnectionExtension;
-import org.apache.polaris.service.dropwizard.test.PolarisRealm;
-import org.apache.polaris.service.dropwizard.test.TestEnvironmentExtension;
-import org.apache.polaris.service.types.NotificationRequest;
-import org.apache.polaris.service.types.NotificationType;
-import org.apache.polaris.service.types.TableUpdateNotification;
+import org.apache.polaris.service.it.env.CatalogApi;
+import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.ManagementApi;
+import org.apache.polaris.service.it.env.PolarisApiEndpoints;
+import org.apache.polaris.service.it.env.PolarisClient;
+import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -61,39 +56,23 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
 
-@ExtendWith({
-  DropwizardExtensionsSupport.class,
-  TestEnvironmentExtension.class,
-  PolarisConnectionExtension.class
-})
+@ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisSparkIntegrationTest {
-  private static final DropwizardAppExtension<PolarisApplicationConfig> EXT =
-      new DropwizardAppExtension<>(
-          PolarisApplication.class,
-          ResourceHelpers.resourceFilePath("polaris-server-integrationtest.yml"),
-          ConfigOverride.config(
-              "server.applicationConnectors[0].port",
-              "0"), // Bind to random port to support parallelism
-          ConfigOverride.config(
-              "server.adminConnectors[0].port", "0")); // Bind to random port to support parallelism
 
-  public static final String CATALOG_NAME = "mycatalog";
-  public static final String EXTERNAL_CATALOG_NAME = "external_catalog";
   private static final S3MockContainer s3Container =
       new S3MockContainer("3.11.0").withInitialBuckets("my-bucket,my-old-bucket");
-  private static PolarisConnectionExtension.PolarisToken polarisToken;
   private static SparkSession spark;
-  private String realm;
+  private PolarisApiEndpoints endpoints;
+  private PolarisClient client;
+  private ManagementApi managementApi;
+  private CatalogApi catalogApi;
+  private String sparkToken;
+  private String catalogName;
+  private String externalCatalogName;
 
   @BeforeAll
-  public static void setup(
-      PolarisConnectionExtension.PolarisToken polarisToken, @PolarisRealm String realm)
-      throws IOException {
+  public static void setup() throws IOException {
     s3Container.start();
-    PolarisSparkIntegrationTest.polarisToken = polarisToken;
-
-    // Set up test location
-    PolarisConnectionExtension.createTestDir(realm);
   }
 
   @AfterAll
@@ -102,8 +81,16 @@ public class PolarisSparkIntegrationTest {
   }
 
   @BeforeEach
-  public void before(@PolarisRealm String realm) {
-    this.realm = realm;
+  public void before(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
+    endpoints = apiEndpoints;
+    client = polarisClient(endpoints);
+    sparkToken = client.obtainToken(credentials);
+    managementApi = client.managementApi(credentials);
+    catalogApi = client.catalogApi(credentials);
+
+    catalogName = client.newEntityName("spark_catalog");
+    externalCatalogName = client.newEntityName("spark_ext_catalog");
+
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::123456789012:role/my-role")
@@ -134,21 +121,12 @@ public class PolarisSparkIntegrationTest {
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
-            .setName(CATALOG_NAME)
+            .setName(catalogName)
             .setProperties(props)
             .setStorageConfigInfo(awsConfigModel)
             .build();
 
-    try (Response response =
-        EXT.client()
-            .target(
-                String.format("http://localhost:%d/api/management/v1/catalogs", EXT.getLocalPort()))
-            .request("application/json")
-            .header("Authorization", "BEARER " + polarisToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
-            .post(Entity.json(catalog))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+    managementApi.createCatalog(catalog);
 
     CatalogProperties externalProps = new CatalogProperties("s3://my-bucket/path/to/data");
     externalProps.putAll(
@@ -172,21 +150,14 @@ public class PolarisSparkIntegrationTest {
     Catalog externalCatalog =
         ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
-            .setName(EXTERNAL_CATALOG_NAME)
+            .setName(externalCatalogName)
             .setProperties(externalProps)
             .setStorageConfigInfo(awsConfigModel)
             .setRemoteUrl("http://dummy_url")
             .build();
-    try (Response response =
-        EXT.client()
-            .target(
-                String.format("http://localhost:%d/api/management/v1/catalogs", EXT.getLocalPort()))
-            .request("application/json")
-            .header("Authorization", "BEARER " + polarisToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
-            .post(Entity.json(externalCatalog))) {
-      assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
-    }
+
+    managementApi.createCatalog(externalCatalog);
+
     SparkSession.Builder sessionBuilder =
         SparkSession.builder()
             .master("local[1]")
@@ -202,9 +173,9 @@ public class PolarisSparkIntegrationTest {
             .config("spark.ui.showConsoleProgress", false)
             .config("spark.ui.enabled", "false");
     spark =
-        withCatalog(withCatalog(sessionBuilder, CATALOG_NAME), EXTERNAL_CATALOG_NAME).getOrCreate();
+        withCatalog(withCatalog(sessionBuilder, catalogName), externalCatalogName).getOrCreate();
 
-    onSpark("USE " + CATALOG_NAME);
+    onSpark("USE " + catalogName);
   }
 
   private SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
@@ -215,11 +186,11 @@ public class PolarisSparkIntegrationTest {
         .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
         .config(
             String.format("spark.sql.catalog.%s.uri", catalogName),
-            "http://localhost:" + EXT.getLocalPort() + "/api/catalog")
+            endpoints.catalogApiEndpoint().toString())
         .config(String.format("spark.sql.catalog.%s.warehouse", catalogName), catalogName)
         .config(String.format("spark.sql.catalog.%s.scope", catalogName), "PRINCIPAL_ROLE:ALL")
-        .config(String.format("spark.sql.catalog.%s.header.realm", catalogName), realm)
-        .config(String.format("spark.sql.catalog.%s.token", catalogName), polarisToken.token())
+        .config(String.format("spark.sql.catalog.%s.header.realm", catalogName), endpoints.realm())
+        .config(String.format("spark.sql.catalog.%s.token", catalogName), sparkToken)
         .config(String.format("spark.sql.catalog.%s.s3.access-key-id", catalogName), "fakekey")
         .config(
             String.format("spark.sql.catalog.%s.s3.secret-access-key", catalogName), "fakesecret")
@@ -227,9 +198,9 @@ public class PolarisSparkIntegrationTest {
   }
 
   @AfterEach
-  public void after() {
-    cleanupCatalog(CATALOG_NAME);
-    cleanupCatalog(EXTERNAL_CATALOG_NAME);
+  public void after() throws Exception {
+    cleanupCatalog(catalogName);
+    cleanupCatalog(externalCatalogName);
     try {
       SparkSession.clearDefaultSession();
       SparkSession.clearActiveSession();
@@ -237,6 +208,8 @@ public class PolarisSparkIntegrationTest {
     } catch (Exception e) {
       LoggerFactory.getLogger(getClass()).error("Unable to close spark session", e);
     }
+
+    client.close();
   }
 
   private void cleanupCatalog(String catalogName) {
@@ -253,18 +226,8 @@ public class PolarisSparkIntegrationTest {
       }
       onSpark("DROP NAMESPACE " + namespace.getString(0));
     }
-    try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/management/v1/catalogs/" + catalogName,
-                    EXT.getLocalPort()))
-            .request("application/json")
-            .header("Authorization", "BEARER " + polarisToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
-            .delete()) {
-      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
-    }
+
+    managementApi.deleteCatalog(catalogName);
   }
 
   @Test
@@ -292,7 +255,7 @@ public class PolarisSparkIntegrationTest {
     long recordCount = onSpark("SELECT * FROM tb1").count();
     assertThat(recordCount).isEqualTo(3);
 
-    onSpark("USE " + EXTERNAL_CATALOG_NAME);
+    onSpark("USE " + externalCatalogName);
     List<Row> existingNamespaces = onSpark("SHOW NAMESPACES").collectAsList();
     assertThat(existingNamespaces).isEmpty();
 
@@ -301,18 +264,10 @@ public class PolarisSparkIntegrationTest {
     List<Row> existingTables = onSpark("SHOW TABLES").collectAsList();
     assertThat(existingTables).isEmpty();
 
-    LoadTableResponse tableResponse = loadTable(CATALOG_NAME, "ns1", "tb1");
+    LoadTableResponse tableResponse = loadTable(catalogName, "ns1", "tb1");
     try (Response registerResponse =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/catalog/v1/"
-                        + EXTERNAL_CATALOG_NAME
-                        + "/namespaces/externalns1/register",
-                    EXT.getLocalPort()))
-            .request("application/json")
-            .header("Authorization", "BEARER " + polarisToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
+        catalogApi
+            .request("v1/{cat}/namespaces/externalns1/register", Map.of("cat", externalCatalogName))
             .post(
                 Entity.json(
                     ImmutableRegisterTableRequest.builder()
@@ -331,30 +286,30 @@ public class PolarisSparkIntegrationTest {
     assertThatThrownBy(() -> onSpark("INSERT INTO mytb1 VALUES (20, 'new_text')"))
         .isInstanceOf(Exception.class);
 
-    onSpark("INSERT INTO " + CATALOG_NAME + ".ns1.tb1 VALUES (20, 'new_text')");
-    tableResponse = loadTable(CATALOG_NAME, "ns1", "tb1");
-    TableUpdateNotification updateNotification =
-        new TableUpdateNotification(
-            "mytb1",
-            Instant.now().toEpochMilli(),
-            tableResponse.tableMetadata().uuid(),
-            tableResponse.metadataLocation(),
-            tableResponse.tableMetadata());
-    NotificationRequest notificationRequest = new NotificationRequest();
-    notificationRequest.setPayload(updateNotification);
-    notificationRequest.setNotificationType(NotificationType.UPDATE);
+    onSpark("INSERT INTO " + catalogName + ".ns1.tb1 VALUES (20, 'new_text')");
+    tableResponse = loadTable(catalogName, "ns1", "tb1");
+    Map<String, Object> updateNotification =
+        ImmutableMap.<String, Object>builder()
+            .put("table-name", "mytb1")
+            .put("timestamp", "" + Instant.now().toEpochMilli())
+            .put("table-uuid", tableResponse.tableMetadata().uuid())
+            .put("metadata-location", tableResponse.metadataLocation())
+            .put("metadata", tableResponse.tableMetadata())
+            .build();
+    Map<String, Object> notificationRequest =
+        ImmutableMap.<String, Object>builder()
+            .put("payload", updateNotification)
+            .put("notification-type", "UPDATE")
+            .build();
     try (Response notifyResponse =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/catalog/v1/%s/namespaces/externalns1/tables/mytb1/notifications",
-                    EXT.getLocalPort(), EXTERNAL_CATALOG_NAME))
-            .request("application/json")
-            .header("Authorization", "BEARER " + polarisToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
+        catalogApi
+            .request(
+                "v1/{cat}/namespaces/externalns1/tables/mytb1/notifications",
+                Map.of("cat", externalCatalogName))
             .post(Entity.json(notificationRequest))) {
       assertThat(notifyResponse)
-          .returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+          .extracting(Response::getStatus)
+          .isEqualTo(Response.Status.NO_CONTENT.getStatusCode());
     }
     // refresh the table so it queries for the latest metadata.json
     onSpark("REFRESH TABLE mytb1");
@@ -378,14 +333,10 @@ public class PolarisSparkIntegrationTest {
 
   private LoadTableResponse loadTable(String catalog, String namespace, String table) {
     try (Response response =
-        EXT.client()
-            .target(
-                String.format(
-                    "http://localhost:%d/api/catalog/v1/%s/namespaces/%s/tables/%s",
-                    EXT.getLocalPort(), catalog, namespace, table))
-            .request("application/json")
-            .header("Authorization", "BEARER " + polarisToken.token())
-            .header(REALM_PROPERTY_KEY, realm)
+        catalogApi
+            .request(
+                "v1/{cat}/namespaces/{ns}/tables/{table}",
+                Map.of("cat", catalog, "ns", namespace, "table", table))
             .get()) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       return response.readEntity(LoadTableResponse.class);

@@ -16,34 +16,27 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.dropwizard.catalog;
+package org.apache.polaris.service.it.test;
 
 import java.util.List;
-import java.util.Optional;
-import java.util.stream.Stream;
-import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
+import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.assertj.core.util.Strings;
 
-/** Runs PolarisRestCatalogViewIntegrationTest on AWS. */
-public class PolarisRestCatalogViewAwsIntegrationTest
-    extends PolarisRestCatalogViewIntegrationTest {
-  public static final String ROLE_ARN =
-      Optional.ofNullable(System.getenv("INTEGRATION_TEST_ROLE_ARN")) // Backward compatibility
-          .orElse(System.getenv("INTEGRATION_TEST_S3_ROLE_ARN"));
-  public static final String BASE_LOCATION = System.getenv("INTEGRATION_TEST_S3_PATH");
+/** Runs PolarisRestCatalogViewIntegrationTest on the local filesystem. */
+public class PolarisRestCatalogViewFileIntegrationTest
+    extends PolarisRestCatalogViewIntegrationBase {
+  public static final String BASE_LOCATION = "file:///tmp/buckets/my-bucket";
 
   @Override
   protected StorageConfigInfo getStorageConfigInfo() {
-    return AwsStorageConfigInfo.builder()
-        .setRoleArn(ROLE_ARN)
-        .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+    return FileStorageConfigInfo.builder()
+        .setStorageType(StorageConfigInfo.StorageTypeEnum.FILE)
         .setAllowedLocations(List.of(BASE_LOCATION))
         .build();
   }
 
   @Override
   protected boolean shouldSkip() {
-    return Stream.of(BASE_LOCATION, ROLE_ARN).anyMatch(Strings::isNullOrEmpty);
+    return false;
   }
 }

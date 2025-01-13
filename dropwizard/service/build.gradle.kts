@@ -97,6 +97,7 @@ dependencies {
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.spotbugs.annotations)
 
+  testImplementation(project(":polaris-tests"))
   testImplementation(project(":polaris-api-management-model"))
 
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
@@ -141,6 +142,8 @@ tasks.named<Test>("test").configure {
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
+  // Note: the test secrets are referenced in DropwizardServerManager
+  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,root,test-admin,test-secret")
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   useJUnitPlatform()
   maxParallelForks = 4
