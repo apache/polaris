@@ -29,7 +29,13 @@ import jakarta.ws.rs.client.Client;
 import java.util.Random;
 import org.apache.iceberg.rest.RESTSerializers;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
+import org.apache.polaris.service.it.ext.PolarisServerManager;
 
+/**
+ * This is a holder for the heavy-weight HTTP client for accessing Polaris APIs. This class provides
+ * method for constructing light-weight API wrappers for Iceberg REST and Polaris Management API
+ * that reuse the same shared HTTP client.
+ */
 public final class PolarisClient implements AutoCloseable {
   private final PolarisApiEndpoints endpoints;
   private final Client client;
@@ -48,6 +54,13 @@ public final class PolarisClient implements AutoCloseable {
     return new PolarisClient(endpoints);
   }
 
+  /**
+   * Utility method that creates an {@link ObjectMapper} sufficient for (de-)serializing client-side
+   * payloads for Iceberg REST and Polaris Management APIs.
+   *
+   * <p>It is recommended for {@link PolarisServerManager} implementations to use this {@link
+   * ObjectMapper} if the make custom {@link PolarisServerManager#createClient() clients}.
+   */
   public static ObjectMapper buildObjectMapper() {
     ObjectMapper mapper = new ObjectMapper();
     mapper.setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
@@ -57,6 +70,12 @@ public final class PolarisClient implements AutoCloseable {
     return mapper;
   }
 
+  /**
+   * This method should be used by test code to make top-level entity names. The purpose of this
+   * method is two-fold:
+   * <li>Identify top-level entities for latger clean-up by {@link #cleanUp(ClientCredentials)}.
+   * <li>Allow {@link PolarisServerManager}s to customize top-level entities per environment.
+   */
   public String newEntityName(String hint) {
     return polarisServerManager().transformEntityName(hint + "_" + clientId);
   }
@@ -83,6 +102,10 @@ public final class PolarisClient implements AutoCloseable {
         client, endpoints, obtainToken(credentials), endpoints.catalogApiEndpoint());
   }
 
+  /**
+   * Requests an access token from the Polaris server for the client ID/secret pair that is part of
+   * the given principal data object.
+   */
   public String obtainToken(PrincipalWithCredentials principal) {
     return obtainToken(
         new ClientCredentials(
@@ -90,6 +113,7 @@ public final class PolarisClient implements AutoCloseable {
             principal.getCredentials().getClientSecret()));
   }
 
+  /** Requests an access token from the Polaris server for the given {@link ClientCredentials}. */
   public String obtainToken(ClientCredentials credentials) {
     CatalogApi anon = new CatalogApi(client, endpoints, null, endpoints.catalogApiEndpoint());
     return anon.obtainToken(credentials);

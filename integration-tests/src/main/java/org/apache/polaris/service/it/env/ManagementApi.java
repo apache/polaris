@@ -47,6 +47,11 @@ import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.Principals;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 
+/**
+ * A simple, non-exhaustive set of helper methods for accessing the Polaris Management API.
+ *
+ * @see PolarisClient#managementApi(ClientCredentials)
+ */
 public class ManagementApi extends RestApi {
   ManagementApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
     super(client, endpoints, authToken, uri);

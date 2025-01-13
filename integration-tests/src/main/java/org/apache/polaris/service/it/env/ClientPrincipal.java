@@ -18,4 +18,13 @@
  */
 package org.apache.polaris.service.it.env;
 
+import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+
+/**
+ * This class holds principal name and credentials for accessing the test Polaris Server. An
+ * instance of this class representing an admin user is injected into test parameters by {@link
+ * PolarisIntegrationTestExtension}.
+ *
+ * @see Server#adminCredentials()
+ */
 public record ClientPrincipal(String principalName, ClientCredentials credentials) {}

@@ -20,9 +20,19 @@ package org.apache.polaris.service.it.env;
 
 import java.net.URI;
 
+/**
+ * This is a holder for access information to a particular Polaris Server. Test cases may use only
+ * the provided admin credentials or create new principals.
+ */
 public interface Server extends AutoCloseable {
   String realmId();
 
+  /**
+   * The base URI to all Polaris APIs (e.g. the common base of the Iceberg REST API endpoints and
+   * Polaris Management API endpoints).
+   *
+   * @see PolarisApiEndpoints
+   */
   URI baseUri();
 
   ClientPrincipal adminCredentials();

@@ -39,6 +39,11 @@ import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 
+/**
+ * A simple, non-exhaustive set of helper methods for accessing the Iceberg REST API.
+ *
+ * @see PolarisClient#catalogApi(ClientCredentials)
+ */
 public class CatalogApi extends RestApi {
   CatalogApi(Client client, PolarisApiEndpoints endpoints, String authToken, URI uri) {
     super(client, endpoints, authToken, uri);

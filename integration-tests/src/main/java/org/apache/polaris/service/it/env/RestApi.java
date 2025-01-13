@@ -24,6 +24,7 @@ import jakarta.ws.rs.client.WebTarget;
 import java.net.URI;
 import java.util.Map;
 
+/** Base class for API helper classes. */
 public class RestApi {
   private final Client client;
   private final PolarisApiEndpoints endpoints;
