@@ -56,6 +56,22 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-databind")
 }
 
+val policyManagementModels =
+  listOf(
+      "CatalogIdentifier",
+      "CreatePolicyRequest",
+      "LoadPolicyResponse",
+      "PolicyIdentifier",
+      "Policy",
+      "PolicyAttachmentTarget",
+      "AttachPolicyRequest",
+      "DetachPolicyRequest",
+      "UpdatePolicyRequest",
+      "GetApplicablePoliciesResponse",
+      "ListPoliciesResponse",
+    )
+    .joinToString(",")
+
 openApiGenerate {
   inputSpec = "$rootDir/spec/polaris-catalog-service.yaml"
   generatorName = "jaxrs-resteasy"
@@ -65,7 +81,7 @@ openApiGenerate {
   ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
-  globalProperties.put("apis", "GenericTableApi")
+  globalProperties.put("apis", "GenericTableApi,PolicyApi")
   globalProperties.put("models", genericTableModels)
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")
