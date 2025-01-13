@@ -35,7 +35,7 @@ import org.gradle.api.publish.maven.MavenPublication
 /**
  * "Proper" publication of shadow-jar instead of the "main" jar, with "the right" Gradle's module
  * metadata that refers to the shadow-jar instead of the "main" jar, which is not published by
- * Nessie.
+ * Polaris.
  *
  * Pieces of this function are taken from the `Java(Base)Plugin` and `ShadowExtension`.
  */
