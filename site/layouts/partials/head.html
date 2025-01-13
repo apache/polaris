@@ -1,0 +1,98 @@
+<!--
+  ~ Licensed to the Apache Software Foundation (ASF) under one
+  ~ or more contributor license agreements.  See the NOTICE file
+  ~ distributed with this work for additional information
+  ~ regarding copyright ownership.  The ASF licenses this file
+  ~ to you under the Apache License, Version 2.0 (the
+  ~ "License"); you may not use this file except in compliance
+  ~ with the License.  You may obtain a copy of the License at
+  ~
+  ~   http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing,
+  ~ software distributed under the License is distributed on an
+  ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+  ~ KIND, either express or implied.  See the License for the
+  ~ specific language governing permissions and limitations
+  ~ under the License.
+  -->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+{{ range .AlternativeOutputFormats -}}
+<link rel="{{ .Rel }}" type="{{ .MediaType.Type }}" href="{{ .Permalink | safeURL }}">
+{{ end -}}
+
+{{ $outputFormat := partial "outputformat.html" . -}}
+{{ if and hugo.IsProduction (ne $outputFormat "print") -}}
+<meta name="robots" content="index, follow">
+{{ else -}}
+<meta name="robots" content="noindex, nofollow">
+{{ end -}}
+
+{{ partialCached "favicons.html" . }}
+<title>
+  {{- if .IsHome -}}
+    {{ .Site.Title -}}
+  {{ else -}}
+    {{ with .Title }}{{ . }} | {{ end -}}
+    {{ .Site.Title -}}
+  {{ end -}}
+</title>
+<meta name="description" content="{{ template "partials/page-description.html" . }}">
+{{ template "_internal/opengraph.html" . -}}
+{{ template "_internal/schema.html" . -}}
+{{ template "_internal/twitter_cards.html" . -}}
+{{ partialCached "head-css.html" . "asdf" -}}
+
+<!--
+Customization to host jQuery + Lunr JS files on ASF site
+-->
+{{ $jqueryUrl := "https://code.jquery.com/jquery-3.7.1.min.js" -}}
+{{ with resources.GetRemote $jqueryUrl }}
+<script
+  src="{{ .RelPermalink }}"
+  integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+  crossorigin="anonymous"></script>
+{{ end -}}
+{{ if .Site.Params.offlineSearch -}}
+{{ $lunrUrl := "https://unpkg.com/lunr@2.3.9/lunr.min.js" -}}
+{{ with resources.GetRemote $lunrUrl }}
+<script defer
+  src="{{ .RelPermalink }}"
+  integrity="sha384-203J0SNzyqHby3iU6hzvzltrWi/M41wOP5Gu+BiJMz5nwKykbkUx8Kp7iti0Lpli"
+  crossorigin="anonymous"></script>
+{{ end -}}
+{{ end -}}
+
+{{ if .Site.Params.prism_syntax_highlighting -}}
+<link rel="stylesheet" href="{{ "css/prism.css" | relURL }}"/>
+{{ end -}}
+
+{{ template "algolia/head" . -}}
+
+{{ partial "hooks/head-end.html" . -}}
+
+{{/* To comply with GDPR, cookie consent scripts places in head-end must execute before Google Analytics is enabled */ -}}
+{{ if hugo.IsProduction -}}
+  {{ $enableGtagForUniversalAnalytics := not .Site.Params.disableGtagForUniversalAnalytics -}}
+  {{ if (or $enableGtagForUniversalAnalytics (hasPrefix .Site.Config.Services.GoogleAnalytics.ID "G-")) -}}
+    {{ template "_internal/google_analytics_gtag.html" . -}}
+  {{ else -}}
+    {{ template "_internal/google_analytics.html" . -}}
+  {{ end -}}
+{{ end -}}
+
+{{ define "algolia/head" -}}
+
+{{ if and .Site.Params.search (isset .Site.Params.search "algolia") -}}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@docsearch/css@3.6.0"
+  integrity="sha512-AyDFDkYyALC5qoao077IqAOV7UC4oKCBTp+mJfjIt306AIRoBxoEZYDo0kAx/R7RbT+3EYEky1po/F1w1eQt7g=="
+  crossorigin="anonymous" />
+{{ end -}}
+
+{{ if ne .Site.Params.algolia_docsearch nil -}}
+{{ warnf `Config 'params.algolia_docsearch' is deprecated: use 'params.search.algolia'
+      For details, see https://www.docsy.dev/docs/adding-content/search/#algolia-docsearch.` -}}
+{{ end -}}
+
+{{ end -}}

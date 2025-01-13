@@ -299,6 +299,30 @@ tests:
           content:
             runAsUser: 1000
 
+  # spec.template.spec.containers[0].securityContext
+  - it: should not set initContainer securityContext by default
+    set:
+      persistenceConfigSecret: polaris-persistence-secret
+      polarisServerConfig:
+        metaStoreManager:
+          conf-file: /eclipselink-config/conf.jar!/persistence.xml
+    asserts:
+      - notExists:
+          path: spec.template.spec.initContainers[0].securityContext
+  - it: should set initContainer securityContext
+    set:
+      persistenceConfigSecret: polaris-persistence-secret
+      polarisServerConfig:
+        metaStoreManager:
+          conf-file: /eclipselink-config/conf.jar!/persistence.xml
+      securityContext:
+        runAsUser: 1000
+    asserts:
+      - isSubset:
+          path: spec.template.spec.initContainers[0].securityContext
+          content:
+            runAsUser: 1000
+
   # spec.template.spec.containers[0].image
   - it: should set container image
     set:
@@ -399,6 +423,19 @@ tests:
           content:
             name: eclipselink-config-volume
             mountPath: /eclipselink-config
+  - it: should evaluate template expressions in persistence secret name
+    set:
+      persistenceConfigSecret: '{{ .Release.Name }}-persistence-secret'
+      polarisServerConfig:
+        metaStoreManager:
+          conf-file: /eclipselink-config/conf.jar!/persistence.xml
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: secret-volume
+            secret:
+              secretName: polaris-release-persistence-secret
 
   # spec.template.spec.containers[0].ports
   - it: should set container ports by default

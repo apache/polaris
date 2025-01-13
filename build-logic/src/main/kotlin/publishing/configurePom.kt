@@ -169,7 +169,7 @@ fun addMissingMandatoryDependencyVersions(project: Project, projectNode: Node) {
           findDependency(
             project.configurations.findByName("testRuntimeClasspath"),
             depGroup,
-            depName
+            depName,
           )
       }
 

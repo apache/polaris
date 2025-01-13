@@ -17,6 +17,8 @@
  * under the License.
  */
 
+import com.diffplug.spotless.FormatterFunc
+import java.io.Serializable
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
@@ -66,20 +68,37 @@ tasks.named<Test>("test").configure {
   jvmArgs("-Duser.language=en")
 }
 
-spotless {
-  val disallowWildcardImports = { text: String ->
-    val regex = "~/import .*\\.\\*;/".toRegex()
-    if (regex.matches(text)) {
-      throw GradleException("Wildcard imports disallowed - ${regex.findAll(text)}")
-    }
-    text
+tasks.withType(Jar::class).configureEach {
+  manifest {
+    attributes(
+      // Do not add any (more or less) dynamic information to jars, because that makes Gradle's
+      // caching way less efficient. Note that version and Git information are already added to jar
+      // manifests for release(-like) builds.
+      "Implementation-Title" to "Apache Polaris(TM) (incubating)",
+      "Implementation-Vendor" to "Apache Software Foundation",
+      "Implementation-URL" to "https://polaris.apache.org/",
+    )
   }
+}
+
+spotless {
   java {
     target("src/main/java/**/*.java", "src/testFixtures/java/**/*.java", "src/test/java/**/*.java")
     googleJavaFormat()
     licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
     endWithNewline()
-    custom("disallowWildcardImports", disallowWildcardImports)
+    custom(
+      "disallowWildcardImports",
+      object : Serializable, FormatterFunc {
+        override fun apply(text: String): String {
+          val regex = "~/import .*\\.\\*;/".toRegex()
+          if (regex.matches(text)) {
+            throw GradleException("Wildcard imports disallowed - ${regex.findAll(text)}")
+          }
+          return text
+        }
+      },
+    )
     toggleOffOn()
   }
   kotlinGradle {
@@ -108,4 +127,35 @@ tasks.withType<Javadoc>().configureEach {
   val opt = options as CoreJavadocOptions
   // don't spam log w/ "warning: no @param/@return"
   opt.addStringOption("Xdoclint:-reference", "-quiet")
+}
+
+tasks.register("printRuntimeClasspath").configure {
+  group = "help"
+  description = "Print the classpath as a path string to be used when running tools like 'jol'"
+  inputs.files(configurations.named("runtimeClasspath"))
+  doLast {
+    val cp = configurations.getByName("runtimeClasspath")
+    val def = configurations.getByName("runtimeElements")
+    logger.lifecycle("${def.outgoing.artifacts.files.asPath}:${cp.asPath}")
+  }
+}
+
+configurations.all {
+  rootProject
+    .file("gradle/banned-dependencies.txt")
+    .readText(Charsets.UTF_8)
+    .trim()
+    .lines()
+    .map { it.trim() }
+    .filterNot { it.isBlank() || it.startsWith("#") }
+    .forEach { line ->
+      val idx = line.indexOf(':')
+      if (idx == -1) {
+        exclude(group = line)
+      } else {
+        val group = line.substring(0, idx)
+        val module = line.substring(idx + 1)
+        exclude(group = group, module = module)
+      }
+    }
 }

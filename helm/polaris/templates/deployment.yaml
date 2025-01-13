@@ -56,6 +56,10 @@ spec:
           imagePullPolicy: {{ tpl .Values.toolsImage.pullPolicy . }}
           command: ["jar"]
           args: ["-cf", "/eclipselink-config/conf.jar", "-C", "/secret", "persistence.xml"]
+          {{- if .Values.securityContext}}
+          securityContext:
+            {{- tpl (toYaml .Values.securityContext) . | nindent 12 }}
+          {{- end }}
           volumeMounts:
             - name: eclipselink-config-volume
               mountPath: /eclipselink-config
@@ -135,7 +139,7 @@ spec:
           emptyDir: {}
         - name: secret-volume
           secret:
-            secretName: {{ .Values.persistenceConfigSecret }}
+            secretName: {{ tpl .Values.persistenceConfigSecret . }}
         {{- end }}
       {{- if .Values.nodeSelector }}
       nodeSelector:

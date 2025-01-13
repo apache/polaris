@@ -24,6 +24,8 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
@@ -121,18 +123,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   static final String ALLOW_SPECIFYING_FILE_IO_IMPL = "ALLOW_SPECIFYING_FILE_IO_IMPL";
   static final boolean ALLOW_SPECIFYING_FILE_IO_IMPL_DEFAULT = false;
 
-  // Config key for whether to skip credential-subscoping indirection entirely whenever trying
-  // to obtain storage credentials for instantiating a FileIO. If 'true', no attempt is made
-  // to use StorageConfigs to generate table-specific storage credentials, but instead the default
-  // fallthrough of table-level credential properties or else provider-specific APPLICATION_DEFAULT
-  // credential-loading will be used for the FileIO.
-  // Typically this setting is used in single-tenant server deployments that don't rely on
-  // "credential-vending" and can use server-default environment variables or credential config
-  // files for all storage access, or in test/dev scenarios.
-  static final String SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION =
-      "SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION";
-  static final boolean SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION_DEFAULT = false;
-
   // Config key for initializing a default "catalogFileIO" that is available either via getIo()
   // or for any TableOperations/ViewOperations instantiated, via ops.io() before entity-specific
   // FileIO initialization is triggered for any such operations.
@@ -145,7 +135,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   private static final int MAX_RETRIES = 12;
 
-  static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
+  public static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
       ex -> {
         // Default arguments from BaseMetastoreTableOperation only stop retries on
         // NotFoundException. We should more carefully identify the set of retriable
@@ -163,6 +153,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
   private final TaskExecutor taskExecutor;
+  private final SecurityContext securityContext;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private String ioImplClassName;
   private FileIO catalogFileIO;
@@ -188,6 +179,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView,
+      SecurityContext securityContext,
       AuthenticatedPolarisPrincipal authenticatedPrincipal,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory) {
@@ -196,6 +188,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     this.resolvedEntityView = resolvedEntityView;
     this.catalogEntity =
         CatalogEntity.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
+    this.securityContext = securityContext;
     this.authenticatedPrincipal = authenticatedPrincipal;
     this.taskExecutor = taskExecutor;
     this.catalogId = catalogEntity.getId();
@@ -210,7 +203,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   @VisibleForTesting
-  FileIO getIo() {
+  public FileIO getIo() {
     return catalogFileIO;
   }
 
@@ -263,7 +256,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             CatalogProperties.FILE_IO_IMPL);
       }
     }
-    CallContext.getCurrentContext().closeables().addCloseable(this);
+    callContext.closeables().addCloseable(this);
     this.closeableGroup = new CloseableGroup();
     closeableGroup.addCloseable(metricsReporter());
     closeableGroup.setSuppressCloseFailure(true);
@@ -363,7 +356,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             "Namespace does not exist: %s", tableIdentifier.namespace());
       }
       List<PolarisEntity> namespacePath = resolvedNamespace.getRawFullPath();
-      String namespaceLocation = resolveLocationForPath(namespacePath);
+      String namespaceLocation = resolveLocationForPath(callContext, namespacePath);
       return SLASH.join(namespaceLocation, tableIdentifier.name());
     }
   }
@@ -447,8 +440,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           "Scheduled cleanup task {} for table {}",
           dropEntityResult.getCleanupTaskId(),
           tableIdentifier);
-      taskExecutor.addTaskHandlerContext(
-          dropEntityResult.getCleanupTaskId(), CallContext.getCurrentContext());
+      taskExecutor.addTaskHandlerContext(dropEntityResult.getCleanupTaskId(), callContext);
     }
 
     return true;
@@ -545,13 +537,14 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               ? getResolvedParentNamespace(namespace).getRawFullPath()
               : List.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
 
-      String parentLocation = resolveLocationForPath(parentPath);
+      String parentLocation = resolveLocationForPath(callContext, parentPath);
 
       return parentLocation + "/" + namespace.level(namespace.length() - 1);
     }
   }
 
-  private static @Nonnull String resolveLocationForPath(List<PolarisEntity> parentPath) {
+  private static @Nonnull String resolveLocationForPath(
+      @Nonnull CallContext callContext, List<PolarisEntity> parentPath) {
     // always take the first object. If it has the base-location, stop there
     AtomicBoolean foundBaseLocation = new AtomicBoolean(false);
     return parentPath.reversed().stream()
@@ -564,22 +557,43 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .toList()
         .reversed()
         .stream()
-        .map(
-            entity -> {
-              if (entity.getType().equals(PolarisEntityType.CATALOG)) {
-                return CatalogEntity.of(entity).getDefaultBaseLocation();
-              } else {
-                String baseLocation =
-                    entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
-                if (baseLocation != null) {
-                  return baseLocation;
-                } else {
-                  return entity.getName();
-                }
-              }
-            })
+        .map(entity -> baseLocation(callContext, entity))
         .map(BasePolarisCatalog::stripLeadingTrailingSlash)
         .collect(Collectors.joining("/"));
+  }
+
+  private static @Nullable String baseLocation(
+      @Nonnull CallContext callContext, PolarisEntity entity) {
+    if (entity.getType().equals(PolarisEntityType.CATALOG)) {
+      CatalogEntity catEntity = CatalogEntity.of(entity);
+      String catalogDefaultBaseLocation = catEntity.getDefaultBaseLocation();
+      callContext
+          .getPolarisCallContext()
+          .getDiagServices()
+          .checkNotNull(
+              catalogDefaultBaseLocation,
+              "Tried to resolve location with catalog with null default base location",
+              "catalog = {}",
+              catEntity);
+      return catalogDefaultBaseLocation;
+    } else {
+      String baseLocation =
+          entity.getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
+      if (baseLocation != null) {
+        return baseLocation;
+      } else {
+        String entityName = entity.getName();
+        callContext
+            .getPolarisCallContext()
+            .getDiagServices()
+            .checkNotNull(
+                entityName,
+                "Tried to resolve location with entity without base location or name",
+                "entity = {}",
+                entity);
+        return entityName;
+      }
+    }
   }
 
   private static String stripLeadingTrailingSlash(String location) {
@@ -874,7 +888,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       PolarisEntity entity) {
     Boolean skipCredentialSubscopingIndirection =
         getBooleanContextConfiguration(
-            SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION, SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION_DEFAULT);
+            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
+            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
     if (Boolean.TRUE.equals(skipCredentialSubscopingIndirection)) {
       LOGGER
           .atInfo()
@@ -1115,7 +1130,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         siblingTables.size() + siblingNamespaces.size());
     PolarisResolutionManifest resolutionManifest =
         new PolarisResolutionManifest(
-            callContext, entityManager, authenticatedPrincipal, parentPath.getFirst().getName());
+            callContext, entityManager, securityContext, parentPath.getFirst().getName());
     siblingTables.forEach(
         tbl ->
             resolutionManifest.addPath(
@@ -1632,7 +1647,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   }
 
   @VisibleForTesting
-  void setFileIOFactory(FileIOFactory newFactory) {
+  public void setFileIOFactory(FileIOFactory newFactory) {
     this.fileIOFactory = newFactory;
   }
 
@@ -1724,16 +1739,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         case BaseResult.ReturnStatus.ENTITY_NOT_FOUND:
           throw new NotFoundException("Cannot rename %s to %s. %s does not exist", from, to, from);
 
-          // this is temporary. Should throw a special error that will be caught and retried
+        // this is temporary. Should throw a special error that will be caught and retried
         case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
         case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED:
           throw new RuntimeException("concurrent update detected, please retry");
 
-          // some entities cannot be renamed
+        // some entities cannot be renamed
         case BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RENAMED:
           throw new BadRequestException("Cannot rename built-in object %s", leafEntity.getName());
 
-          // some entities cannot be renamed
+        // some entities cannot be renamed
         default:
           throw new IllegalStateException(
               "Unknown error status " + returnedEntityResult.getReturnStatus());

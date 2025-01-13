@@ -34,7 +34,7 @@ public class StreamReadConstraintsExceptionMapper
 
   @Override
   public Response toResponse(StreamConstraintsException exception) {
-    return Response.status(Response.Status.BAD_REQUEST)
+    return Response.status(Response.Status.REQUEST_ENTITY_TOO_LARGE)
         .type(MediaType.APPLICATION_JSON_TYPE)
         .entity(new RequestThrottlingErrorResponse(REQUEST_TOO_LARGE))
         .build();

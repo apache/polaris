@@ -252,12 +252,12 @@ public class CatalogEntity extends PolarisEntity {
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
-            AzureStorageConfigurationInfo azureconfigInfo =
+            AzureStorageConfigurationInfo azureConfigInfo =
                 new AzureStorageConfigurationInfo(
                     new ArrayList<>(allowedLocations), azureConfigModel.getTenantId());
-            azureconfigInfo.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
-            azureconfigInfo.setConsentUrl(azureConfigModel.getConsentUrl());
-            config = azureconfigInfo;
+            azureConfigInfo.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
+            azureConfigInfo.setConsentUrl(azureConfigModel.getConsentUrl());
+            config = azureConfigInfo;
             break;
           case GCS:
             GcpStorageConfigurationInfo gcpConfig =

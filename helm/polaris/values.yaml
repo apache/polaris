@@ -236,6 +236,9 @@ extraEnv:
 # -- Configures whether to enable the bootstrap metastore manager job
 bootstrapMetastoreManager: false
 
+# -- Extra environment variables to add to the bootstrap metastore manager job (see `extraEnv` for an example)
+bootstrapExtraEnv: []
+
 # -- The secret name to pull persistence.xml from (ensure the key name is 'persistence.xml')
 persistenceConfigSecret: ~
 

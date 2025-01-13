@@ -37,11 +37,15 @@ dependencies {
   implementation("io.dropwizard:dropwizard-core")
   implementation("io.dropwizard:dropwizard-auth")
   implementation("io.dropwizard:dropwizard-json-logging")
+  implementation("org.glassfish.jersey.inject:jersey-hk2:3.1.10")
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
   implementation("org.apache.iceberg:iceberg-aws")
+
+  // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
+  implementation(platform(libs.dnsjava))
 
   implementation(libs.hadoop.common) {
     exclude("org.slf4j", "slf4j-reload4j")
@@ -104,7 +108,7 @@ dependencies {
 
   testImplementation("org.apache.iceberg:iceberg-spark-3.5_2.12")
   testImplementation("org.apache.iceberg:iceberg-spark-extensions-3.5_2.12")
-  testImplementation("org.apache.spark:spark-sql_2.12:3.5.1") {
+  testImplementation("org.apache.spark:spark-sql_2.12:3.5.4") {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
     exclude("org.apache.logging.log4j", "log4j-api")
@@ -165,22 +169,36 @@ tasks.register<Jar>("testJar") {
 val shadowJar =
   tasks.named<ShadowJar>("shadowJar") {
     append("META-INF/hk2-locator/default")
-    finalizedBy("startScripts")
+    finalizedBy("startShadowScripts")
   }
 
 val startScripts =
-  tasks.named<CreateStartScripts>("startScripts") {
-    classpath = files(provider { shadowJar.get().archiveFileName })
-    applicationName = "polaris-service"
-  }
+  tasks.named<CreateStartScripts>("startScripts") { applicationName = "polaris-service" }
+
+tasks.named<CreateStartScripts>("startShadowScripts") { applicationName = "polaris-service" }
 
 tasks.register<Sync>("prepareDockerDist") {
   into(project.layout.buildDirectory.dir("docker-dist"))
   from(startScripts) { into("bin") }
-  from(shadowJar) { into("lib") }
-  doFirst { delete(project.layout.buildDirectory.dir("regtest-dist")) }
+  from(configurations.runtimeClasspath) { into("lib") }
+  from(tasks.named<Jar>("jar")) { into("lib") }
 }
 
 tasks.named("build").configure { dependsOn("prepareDockerDist") }
+
+distributions {
+  main {
+    contents {
+      from("../../NOTICE")
+      from("../../LICENSE-BINARY-DIST").rename("LICENSE-BINARY-DIST", "LICENSE")
+    }
+  }
+  named("shadow") {
+    contents {
+      from("../../NOTICE")
+      from("../../LICENSE-BINARY-DIST").rename("LICENSE-BINARY-DIST", "LICENSE")
+    }
+  }
+}
 
 tasks.named("assemble").configure { dependsOn("testJar") }

@@ -81,6 +81,33 @@ for TEST_FILE in ${TEST_LIST}; do
     fi
     continue
   fi
+  if [[ "${TEST_SHORTNAME}" =~ .*.azure.*.sh ]]; then
+      if  [ -z "${AZURE_CLIENT_ID}" ] || [ -z "${AZURE_CLIENT_SECRET}" ] || [ -z "${AZURE_TENANT_ID}" ] ; then
+          loginfo "Azure tests not enabled, skip running test ${TEST_FILE}"
+          continue
+      fi
+  fi
+  if [[ "${TEST_SHORTNAME}" =~ .*.s3_cross_region.*.sh ]]; then
+      if  [ -z "$AWS_CROSS_REGION_TEST_ENABLED" ] || [ "$AWS_CROSS_REGION_TEST_ENABLED" != "true" ] ; then
+          loginfo "AWS cross region tests not enabled, skip running test ${TEST_FILE}"
+          continue
+      fi
+  fi
+  if [[ "${TEST_SHORTNAME}" =~ .*.s3.*.sh ]]; then
+      if  [ -z "$AWS_TEST_ENABLED" ] || [ "$AWS_TEST_ENABLED" != "true" ] || [ -z "$AWS_TEST_BASE" ] ; then
+          loginfo "AWS tests not enabled, skip running test ${TEST_FILE}"
+          continue
+      fi
+  fi
+  if [[ "${TEST_SHORTNAME}" =~ .*.gcp.sh ]]; then
+      # this variable should be the location of your gcp service account key in json
+      # it is required by running polaris against local + gcp
+      # example: export GOOGLE_APPLICATION_CREDENTIALS="/home/schen/google_account/google_service_account.json"
+      if [ -z "$GCS_TEST_ENABLED" ] || [ "$GCS_TEST_ENABLED" != "true" ] || [ -z "${GOOGLE_APPLICATION_CREDENTIALS}" ] ; then
+          loginfo "GCS tests not enabled, skip running test ${TEST_FILE}"
+          continue
+      fi
+  fi
   loginfo "Starting test ${TEST_SUITE}:${TEST_SHORTNAME}"
 
   TEST_TMPDIR="/tmp/polaris-regtests/${TEST_SUITE}"

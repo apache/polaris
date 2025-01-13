@@ -23,5 +23,5 @@ import java.util.Optional;
 
 public interface Authenticator<C, P extends Principal> {
 
-  Optional<P> authenticate(String credentials);
+  Optional<P> authenticate(C credentials);
 }

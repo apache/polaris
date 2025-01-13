@@ -28,16 +28,24 @@ permalinks:
 
 params:
   author.name: 'Apache Polaris contributors'
-  offlineSearch: true
+
   github_repo: https://github.com/apache/polaris
   github_project_repo: https://github.com/apache/polaris
   github_branch: main
   github_subdir: site
   privacy_policy: https://privacy.apache.org/policies/privacy-policy-public.html
 
+  # Offline search from Docsy theme, uses "Lunr", see https://www.docsy.dev/docs/adding-content/search/#local-search-with-lunr
+  # The file layouts/partials/head.html has been adopted to embed the JS
+  offlineSearch: true
+
   links:
     # End user relevant links. These will show up on left side of footer and in the community page if you have one.
     user:
+      - name: Slack
+        url: https://apache-polaris.slack.com/
+        icon: fa-regular fa-comment-dots
+        desc: Chat with other project developers
       - name: Zulip
         url: https://polaris-catalog.zulipchat.com/
         icon: fa-regular fa-comment-dots
@@ -74,9 +82,13 @@ params:
     sidebar_search_disable: true
 
   plantuml:
-    enable: true
+    # Disabled for now, loads external JS, see ASF data policy
+    # https://privacy.apache.org/policies/website-policy.html
+    enable: false
   markmap:
-    enable: true
+    # Disabled for now, loads external JS, see ASF data policy
+    # https://privacy.apache.org/policies/website-policy.html
+    enable: false
 
 imaging:
   resampleFilter: "CatmullRom"
@@ -228,7 +240,7 @@ security:
 
 privacy:
   googleAnalytics:
-    respectDoNotTrack: true
+    disable: true
   instagram:
     simple: true
   twitter:

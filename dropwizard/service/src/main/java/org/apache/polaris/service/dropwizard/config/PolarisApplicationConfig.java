@@ -25,26 +25,23 @@ import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.base.Preconditions;
 import io.dropwizard.core.Configuration;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.annotation.PostConstruct;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Supplier;
-import javax.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.service.auth.Authenticator;
-import org.apache.polaris.service.auth.DecodedToken;
-import org.apache.polaris.service.auth.TokenBroker;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
-import org.apache.polaris.service.auth.TokenResponse;
+import org.apache.polaris.service.auth.TokenBrokerFactoryConfig;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
@@ -52,8 +49,8 @@ import org.apache.polaris.service.config.TaskHandlerConfiguration;
 import org.apache.polaris.service.context.CallContextResolver;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
+import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
-import org.apache.polaris.service.types.TokenType;
 import org.glassfish.hk2.api.Factory;
 import org.glassfish.hk2.api.ServiceLocator;
 import org.glassfish.hk2.api.TypeLiteral;
@@ -74,7 +71,7 @@ public class PolarisApplicationConfig extends Configuration {
   /**
    * Override the default binding of registered services so that the configured instances are used.
    */
-  private static final int OVERRIDE_BINDING_RANK = 10;
+  private static final int OVERRIDE_BINDING_RANK = 20;
 
   private MetaStoreManagerFactory metaStoreManagerFactory;
   private String defaultRealm = "default-realm";
@@ -90,7 +87,8 @@ public class PolarisApplicationConfig extends Configuration {
   private String awsSecretKey;
   private FileIOFactory fileIOFactory;
   private RateLimiter rateLimiter;
-  private TokenBrokerFactory tokenBrokerFactory;
+  private TokenBucketFactory tokenBucketFactory;
+  private TokenBrokerConfig tokenBroker = new TokenBrokerConfig();
 
   private AccessToken gcpAccessToken;
 
@@ -127,9 +125,15 @@ public class PolarisApplicationConfig extends Configuration {
             .to(FileIOFactory.class)
             .ranked(OVERRIDE_BINDING_RANK);
         bindFactory(SupplierFactory.create(serviceLocator, config::getPolarisAuthenticator))
-            .to(Authenticator.class)
+            .to(new TypeLiteral<Authenticator<String, AuthenticatedPolarisPrincipal>>() {})
             .ranked(OVERRIDE_BINDING_RANK);
-        bindFactory(SupplierFactory.create(serviceLocator, config::getTokenBrokerFactory))
+        bindFactory(SupplierFactory.create(serviceLocator, () -> tokenBroker))
+            .to(TokenBrokerFactoryConfig.class);
+        bindFactory(
+                SupplierFactory.create(
+                    serviceLocator,
+                    () ->
+                        serviceLocator.getService(TokenBrokerFactory.class, tokenBroker.getType())))
             .to(TokenBrokerFactory.class)
             .ranked(OVERRIDE_BINDING_RANK);
         bindFactory(SupplierFactory.create(serviceLocator, config::getOauth2Service))
@@ -143,6 +147,9 @@ public class PolarisApplicationConfig extends Configuration {
             .ranked(OVERRIDE_BINDING_RANK);
         bindFactory(SupplierFactory.create(serviceLocator, config::getRateLimiter))
             .to(RateLimiter.class)
+            .ranked(OVERRIDE_BINDING_RANK);
+        bindFactory(SupplierFactory.create(serviceLocator, config::getTokenBucketFactory))
+            .to(TokenBucketFactory.class)
             .ranked(OVERRIDE_BINDING_RANK);
       }
     };
@@ -223,45 +230,8 @@ public class PolarisApplicationConfig extends Configuration {
   }
 
   @JsonProperty("tokenBroker")
-  @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
-  public void setTokenBrokerFactory(TokenBrokerFactory tokenBrokerFactory) {
-    this.tokenBrokerFactory = tokenBrokerFactory;
-  }
-
-  private TokenBrokerFactory getTokenBrokerFactory() {
-    // return a no-op implementation if none is specified
-    return Objects.requireNonNullElseGet(
-        tokenBrokerFactory,
-        () ->
-            (rc) ->
-                new TokenBroker() {
-                  @Override
-                  public boolean supportsGrantType(String grantType) {
-                    return false;
-                  }
-
-                  @Override
-                  public boolean supportsRequestedTokenType(TokenType tokenType) {
-                    return false;
-                  }
-
-                  @Override
-                  public TokenResponse generateFromClientSecrets(
-                      String clientId, String clientSecret, String grantType, String scope) {
-                    return null;
-                  }
-
-                  @Override
-                  public TokenResponse generateFromToken(
-                      TokenType tokenType, String subjectToken, String grantType, String scope) {
-                    return null;
-                  }
-
-                  @Override
-                  public DecodedToken verify(String token) {
-                    return null;
-                  }
-                });
+  public void setTokenBroker(TokenBrokerConfig tokenBroker) {
+    this.tokenBroker = tokenBroker;
   }
 
   private RealmContextResolver getRealmContextResolver() {
@@ -304,7 +274,6 @@ public class PolarisApplicationConfig extends Configuration {
   @JsonProperty("defaultRealm")
   public void setDefaultRealm(String defaultRealm) {
     this.defaultRealm = defaultRealm;
-    realmContextResolver.setDefaultRealm(defaultRealm);
   }
 
   @JsonProperty("cors")
@@ -330,6 +299,17 @@ public class PolarisApplicationConfig extends Configuration {
   @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
   public void setRateLimiter(@Nullable RateLimiter rateLimiter) {
     this.rateLimiter = rateLimiter;
+  }
+
+  @JsonProperty("tokenBucketFactory")
+  private TokenBucketFactory getTokenBucketFactory() {
+    return tokenBucketFactory;
+  }
+
+  @JsonProperty("tokenBucketFactory")
+  @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "type")
+  public void setTokenBucketFactory(@Nullable TokenBucketFactory tokenBucketFactory) {
+    this.tokenBucketFactory = tokenBucketFactory;
   }
 
   public void setTaskHandler(TaskHandlerConfiguration taskHandler) {

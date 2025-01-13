@@ -18,9 +18,6 @@
  */
 package org.apache.polaris.extension.persistence.impl.eclipselink;
 
-import static org.eclipse.persistence.config.PersistenceUnitProperties.ECLIPSELINK_PERSISTENCE_XML;
-import static org.eclipse.persistence.config.PersistenceUnitProperties.JDBC_URL;
-
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Predicates;
 import jakarta.annotation.Nonnull;
@@ -29,14 +26,9 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.EntityTransaction;
 import jakarta.persistence.OptimisticLockException;
-import jakarta.persistence.Persistence;
 import jakarta.persistence.PersistenceException;
-import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.net.URLClassLoader;
-import java.util.HashMap;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -45,13 +37,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathExpressionException;
-import javax.xml.xpath.XPathFactory;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -78,10 +63,6 @@ import org.apache.polaris.jpa.models.ModelGrantRecord;
 import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
 
 /**
  * EclipseLink implementation of a Polaris metadata store supporting persisting and retrieving all
@@ -141,97 +122,23 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       @Nullable String confFile,
       @Nullable String persistenceUnitName) {
     String realm = realmContext.getRealmIdentifier();
-    EntityManagerFactory factory = realmFactories.getOrDefault(realm, null);
-    if (factory != null) {
-      return factory;
-    }
-
-    ClassLoader prevClassLoader = Thread.currentThread().getContextClassLoader();
-    try {
-      persistenceUnitName = persistenceUnitName == null ? "polaris" : persistenceUnitName;
-      confFile = confFile == null ? "META-INF/persistence.xml" : confFile;
-
-      // Currently eclipseLink can only support configuration as a resource inside a jar. To support
-      // external configuration, persistence.xml needs be placed inside a jar and here is to add the
-      // jar to the classpath.
-      // Supported configuration file: META-INF/persistence.xml, /tmp/conf.jar!/persistence.xml
-      int splitPosition = confFile.indexOf("!/");
-      if (splitPosition != -1) {
-        String jarPrefixPath = confFile.substring(0, splitPosition);
-        confFile = confFile.substring(splitPosition + 2);
-        URL prefixUrl = this.getClass().getClassLoader().getResource(jarPrefixPath);
-        if (prefixUrl == null) {
-          prefixUrl = new File(jarPrefixPath).toURI().toURL();
-        }
-
-        LOGGER.debug(
-            "Creating a new ClassLoader with the jar {} in classpath to load the config file",
-            prefixUrl);
-
-        URLClassLoader currentClassLoader =
-            new URLClassLoader(new URL[] {prefixUrl}, this.getClass().getClassLoader());
-
-        LOGGER.debug("Update ClassLoader in current thread temporarily");
-        Thread.currentThread().setContextClassLoader(currentClassLoader);
-      }
-
-      Map<String, String> properties = loadProperties(confFile, persistenceUnitName);
-      // Replace database name in JDBC URL with realm
-      if (properties.containsKey(JDBC_URL)) {
-        properties.put(JDBC_URL, properties.get(JDBC_URL).replace("{realm}", realm));
-      }
-      properties.put(ECLIPSELINK_PERSISTENCE_XML, confFile);
-
-      factory = Persistence.createEntityManagerFactory(persistenceUnitName, properties);
-      realmFactories.putIfAbsent(realm, factory);
-
-      return factory;
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    } finally {
-      Thread.currentThread().setContextClassLoader(prevClassLoader);
-    }
+    return realmFactories.computeIfAbsent(
+        realm,
+        key -> {
+          try {
+            PolarisEclipseLinkPersistenceUnit persistenceUnit =
+                PolarisEclipseLinkPersistenceUnit.locatePersistenceUnit(
+                    confFile, persistenceUnitName);
+            return persistenceUnit.createEntityManagerFactory(realmContext);
+          } catch (IOException e) {
+            throw new UncheckedIOException(e);
+          }
+        });
   }
 
   @VisibleForTesting
   static void clearEntityManagerFactories() {
     realmFactories.clear();
-  }
-
-  /** Load the persistence unit properties from a given configuration file */
-  private Map<String, String> loadProperties(
-      @Nonnull String confFile, @Nonnull String persistenceUnitName) throws IOException {
-    try {
-      InputStream input =
-          Thread.currentThread().getContextClassLoader().getResourceAsStream(confFile);
-      DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-      DocumentBuilder builder = factory.newDocumentBuilder();
-      Document doc = builder.parse(input);
-      XPath xPath = XPathFactory.newInstance().newXPath();
-      String expression =
-          "/persistence/persistence-unit[@name='" + persistenceUnitName + "']/properties/property";
-      NodeList nodeList =
-          (NodeList) xPath.compile(expression).evaluate(doc, XPathConstants.NODESET);
-      Map<String, String> properties = new HashMap<>();
-      for (int i = 0; i < nodeList.getLength(); i++) {
-        NamedNodeMap nodeMap = nodeList.item(i).getAttributes();
-        properties.put(
-            nodeMap.getNamedItem("name").getNodeValue(),
-            nodeMap.getNamedItem("value").getNodeValue());
-      }
-
-      return properties;
-    } catch (XPathExpressionException
-        | ParserConfigurationException
-        | SAXException
-        | IOException e) {
-      String str =
-          String.format(
-              "Cannot find or parse the configuration file %s for persistence-unit %s",
-              confFile, persistenceUnitName);
-      LOGGER.error(str, e);
-      throw new IOException(str);
-    }
   }
 
   /** {@inheritDoc} */

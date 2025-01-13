@@ -431,7 +431,6 @@ public class StorageCredentialCacheTest {
             new PolarisBaseEntity(
                 3, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.TABLE, 0, "name"));
 
-    List<PolarisEntity> entityList = Arrays.asList(polarisEntity1, polarisEntity2, polarisEntity3);
-    return entityList;
+    return Arrays.asList(polarisEntity1, polarisEntity2, polarisEntity3);
   }
 }

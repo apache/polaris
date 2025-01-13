@@ -271,7 +271,8 @@ bin/spark-shell \
 --conf spark.sql.catalog.quickstart_catalog.uri=http://localhost:8181/api/catalog \
 --conf spark.sql.catalog.quickstart_catalog.credential='XXXX:YYYY' \
 --conf spark.sql.catalog.quickstart_catalog.scope='PRINCIPAL_ROLE:ALL' \
---conf spark.sql.catalog.quickstart_catalog.token-refresh-enabled=true
+--conf spark.sql.catalog.quickstart_catalog.token-refresh-enabled=true \
+--conf spark.sql.catalog.quickstart_catalog.client.region=us-west-2
 ```
 
 

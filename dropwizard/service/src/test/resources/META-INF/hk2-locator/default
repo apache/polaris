@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-[org.apache.polaris.service.catalog.io.TestFileIOFactory]S
+[org.apache.polaris.service.dropwizard.catalog.io.TestFileIOFactory]S
 contract={org.apache.polaris.service.catalog.io.FileIOFactory}
 name=test
 qualifier={io.smallrye.common.annotation.Identifier}
 
-[org.apache.polaris.service.ratelimiter.MockRealmTokenBucketRateLimiter]S
-contract={org.apache.polaris.service.ratelimiter.RateLimiter}
-name=mock-realm-token-bucket
+[org.apache.polaris.service.dropwizard.ratelimiter.MockTokenBucketFactory]S
+contract={org.apache.polaris.service.ratelimiter.TokenBucketFactory}
+name=mock
 qualifier={io.smallrye.common.annotation.Identifier}

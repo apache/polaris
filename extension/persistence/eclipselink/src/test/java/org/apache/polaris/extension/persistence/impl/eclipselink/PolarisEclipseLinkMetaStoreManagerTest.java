@@ -25,7 +25,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.ZoneId;
+import java.util.Comparator;
+import java.util.Objects;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
@@ -36,13 +44,13 @@ import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.ArgumentsProvider;
-import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
 /**
@@ -51,6 +59,42 @@ import org.mockito.Mockito;
  * @author aixu
  */
 public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStoreManagerTest {
+
+  private static Path rootDir;
+  private static Path persistenceXml;
+  private static Path confJar;
+
+  @BeforeAll
+  static void prepareConfFiles() throws IOException {
+    URL persistenceXmlSource =
+        Objects.requireNonNull(
+            PolarisEclipseLinkMetaStoreManagerTest.class.getResource("/META-INF/persistence.xml"));
+    rootDir = Files.createTempDirectory("root");
+    Path archiveDir = rootDir.resolve("archive");
+    Files.createDirectory(archiveDir);
+    persistenceXml = archiveDir.resolve("persistence.xml");
+    try (InputStream is = persistenceXmlSource.openStream()) {
+      Files.copy(is, persistenceXml);
+    }
+    URL confJarSource =
+        Objects.requireNonNull(
+            PolarisEclipseLinkMetaStoreManagerTest.class.getResource("/eclipselink/test-conf.jar"));
+    confJar = archiveDir.resolve("test-conf.jar");
+    try (InputStream is = confJarSource.openStream()) {
+      Files.copy(is, confJar);
+    }
+  }
+
+  @AfterAll
+  static void deleteConfFiles() throws IOException {
+    if (rootDir != null) {
+      try (Stream<Path> paths = Files.walk(rootDir)) {
+        boolean allDeleted =
+            paths.sorted(Comparator.reverseOrder()).map(Path::toFile).allMatch(File::delete);
+        assertTrue(allDeleted);
+      }
+    }
+  }
 
   @Override
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
@@ -68,8 +112,8 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
             timeSource.withZone(ZoneId.systemDefault())));
   }
 
-  @ParameterizedTest()
-  @ArgumentsSource(CreateStoreSessionArgs.class)
+  @ParameterizedTest
+  @MethodSource
   void testCreateStoreSession(String confFile, boolean success) {
     // Clear cache to prevent reuse EntityManagerFactory
     PolarisEclipseLinkMetaStoreSessionImpl.clearEntityManagerFactories();
@@ -85,6 +129,26 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     } catch (Exception e) {
       assertFalse(success);
     }
+  }
+
+  public static Stream<Arguments> testCreateStoreSession() {
+    return Stream.of(
+        // conf file not provided
+        Arguments.of(null, true),
+        // classpath resource
+        Arguments.of("META-INF/persistence.xml", true),
+        Arguments.of("META-INF/dummy.xml", false),
+        // classpath resource, embedded
+        Arguments.of("eclipselink/test-conf.jar!/persistence.xml", true),
+        Arguments.of("eclipselink/test-conf.jar!/dummy.xml", false),
+        Arguments.of("dummy/test-conf.jar!/persistence.xml", false),
+        // filesystem path
+        Arguments.of(persistenceXml.toString(), true),
+        Arguments.of("/dummy_path/conf/persistence.xml", false),
+        // filesystem path, embedded
+        Arguments.of(confJar + "!/persistence.xml", true),
+        Arguments.of(confJar + "!/dummy.xml", false),
+        Arguments.of("/dummy_path/test-conf.jar!/persistence.xml", false));
   }
 
   @Test
@@ -199,16 +263,6 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
       var reloadedSecrets = ModelPrincipalSecrets.toPrincipalSecrets(reloadedModel);
       Assertions.assertTrue(reloadedSecrets.matchesSecret(newSecrets.getMainSecret()));
       Assertions.assertFalse(reloadedSecrets.matchesSecret(newSecrets.getSecondarySecret()));
-    }
-  }
-
-  private static class CreateStoreSessionArgs implements ArgumentsProvider {
-    @Override
-    public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
-      return Stream.of(
-          Arguments.of("META-INF/persistence.xml", true),
-          Arguments.of("./build/conf/conf.jar!/persistence.xml", true),
-          Arguments.of("/dummy_path/conf.jar!/persistence.xml", false));
     }
   }
 }

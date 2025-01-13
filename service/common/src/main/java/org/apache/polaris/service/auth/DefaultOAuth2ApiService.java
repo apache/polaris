@@ -25,10 +25,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.hadoop.hdfs.web.oauth2.OAuth2Constants;
-import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
@@ -40,7 +38,11 @@ import org.slf4j.LoggerFactory;
  */
 @Identifier("default")
 public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
+
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultOAuth2ApiService.class);
+
+  private static final String CLIENT_CREDENTIALS = "client_credentials";
+  private static final String BEARER = "bearer";
 
   @Inject private TokenBrokerFactory tokenBrokerFactory;
 
@@ -58,10 +60,10 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
       TokenType subjectTokenType,
       String actorToken,
       TokenType actorTokenType,
+      RealmContext realmContext,
       SecurityContext securityContext) {
 
-    TokenBroker tokenBroker =
-        tokenBrokerFactory.apply(CallContext.getCurrentContext().getRealmContext());
+    TokenBroker tokenBroker = tokenBrokerFactory.apply(realmContext);
     if (!tokenBroker.supportsGrantType(grantType)) {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.unsupported_grant_type);
     }
@@ -97,7 +99,7 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
             // secret and treat it as a new token request
             if (clientId != null && clientSecret != null) {
               yield tokenBroker.generateFromClientSecrets(
-                  clientId, clientSecret, OAuth2Constants.CLIENT_CREDENTIALS, scope);
+                  clientId, clientSecret, CLIENT_CREDENTIALS, scope);
             } else {
               yield tokenBroker.generateFromToken(subjectTokenType, subjectToken, grantType, scope);
             }
@@ -114,8 +116,8 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
     return Response.ok(
             OAuthTokenResponse.builder()
                 .withToken(tokenResponse.getAccessToken())
-                .withTokenType(OAuth2Constants.BEARER)
-                .withIssuedTokenType(OAuth2Properties.ACCESS_TOKEN_TYPE)
+                .withTokenType(BEARER)
+                .withIssuedTokenType(tokenResponse.getTokenType())
                 .setExpirationInSeconds(tokenResponse.getExpiresIn())
                 .build())
         .build();
