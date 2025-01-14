@@ -78,7 +78,9 @@ publishing {
 
 tasks.named("compileJava") { dependsOn("compileQuarkusGeneratedSourcesJava") }
 
-tasks.named("sourcesJar") { dependsOn("compileQuarkusGeneratedSourcesJava") }
+tasks.named("sourcesJar") {
+  dependsOn("compileQuarkusGeneratedSourcesJava")
+}
 
 // Add when there's code built in this module
 // tasks.named("javadoc") { dependsOn("jandex") }
