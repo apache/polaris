@@ -41,7 +41,12 @@ public enum PolarisCredentialProperty {
       "the azure storage account host",
       "the azure account name + endpoint that will append to the ADLS_SAS_TOKEN_PREFIX"),
   EXPIRATION_TIME(
-      Long.class, "expiration-time", "the expiration time for the access token, in milliseconds");
+      Long.class, "expiration-time", "the expiration time for the access token, in milliseconds"),
+  ADDITIONAL_STORAGE_CONFIG(
+      String.class,
+      "additional-storage-config",
+      "the additional storage config for the cloud storage"),
+  ;
 
   private final Class valueType;
   private final String propertyName;
