@@ -53,6 +53,7 @@ import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
+import org.apache.iceberg.aws.s3.S3FileIOProperties;
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
@@ -75,6 +76,7 @@ import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -1457,6 +1459,29 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     Assertions.assertThatThrownBy(() -> noPurgeCatalog.dropTable(TABLE, true))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining(PolarisConfiguration.DROP_WITH_PURGE_ENABLED.key);
+  }
+
+  @Test
+  public void testRefreshIOWithCredentialsAndInternalProperties() {
+    BasePolarisCatalog catalog = catalog();
+    catalog.setFileIOFactory(
+        new FileIOFactory() {
+          @Override
+          public FileIO loadFileIO(String impl, Map<String, String> properties) {
+            // properties should contain credentials and internal properties
+            Assertions.assertThat(properties)
+                .containsEntry(S3FileIOProperties.ACCESS_KEY_ID, TEST_ACCESS_KEY)
+                .containsEntry(S3FileIOProperties.SECRET_ACCESS_KEY, SECRET_ACCESS_KEY)
+                .containsEntry(S3FileIOProperties.SESSION_TOKEN, SESSION_TOKEN)
+                .containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+            return new DefaultFileIOFactory().loadFileIO(impl, properties);
+          }
+        });
+
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+    Table table = catalog.loadTable(TABLE);
+    System.out.println(table.properties());
   }
 
   private TableMetadata createSampleTableMetadata(String tableLocation) {
