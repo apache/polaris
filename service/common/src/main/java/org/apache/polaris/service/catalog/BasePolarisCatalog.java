@@ -1606,7 +1606,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // storage configuration will be found at whatever entity defines it
     tableProperties.putAll(credentialsMap);
 
-    // Populate the internal properties to FileIO in case the FileIO implementation needs them
+    // Propagate the internal properties to FileIO in case the FileIO implementation needs them
     Map<String, String> internalProperties =
         storageInfoEntity.map(PolarisEntity::getInternalPropertiesAsMap).orElse(Map.of());
     tableProperties.putAll(internalProperties);

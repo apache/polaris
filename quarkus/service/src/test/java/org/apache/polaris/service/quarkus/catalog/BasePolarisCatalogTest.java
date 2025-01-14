@@ -98,6 +98,7 @@ import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.quarkus.catalog.io.TestFileIOFactory;
@@ -1463,8 +1464,10 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
   @Test
   public void testRefreshIOWithCredentialsAndInternalProperties() {
-    BasePolarisCatalog catalog = catalog();
-    catalog.setFileIOFactory(
+    // Enable ALLOW_SPECIFYING_FILE_IO_IMPL and disable SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION
+    PolarisConfigurationStore configurationStore =
+        new DefaultConfigurationStore(Map.of("ALLOW_SPECIFYING_FILE_IO_IMPL", true));
+    FileIOFactory fileIOFactory =
         new FileIOFactory() {
           @Override
           public FileIO loadFileIO(String impl, Map<String, String> properties) {
@@ -1476,7 +1479,23 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 .containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName());
             return new DefaultFileIOFactory().loadFileIO(impl, properties);
           }
-        });
+        };
+    BasePolarisCatalog catalog =
+        new BasePolarisCatalog(
+            realmContext,
+            entityManager,
+            metaStoreManager,
+            metaStoreSession,
+            configurationStore,
+            diagServices,
+            passthroughView,
+            securityContext,
+            Mockito.mock(),
+            fileIOFactory);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
 
     catalog.createNamespace(NS);
     catalog.buildTable(TABLE, SCHEMA).create();
