@@ -124,7 +124,7 @@ dependencies {
   testImplementation(libs.s3mock.testcontainers)
 
   // required for PolarisSparkIntegrationTest
-  testImplementation(enforcedPlatform("org.scala-lang:scala-library:2.12.18"))
+  testImplementation(enforcedPlatform("org.scala-lang:scala-library:2.13.16"))
   testImplementation(enforcedPlatform("org.scala-lang:scala-reflect:2.12.18"))
   testImplementation(libs.javax.servlet.api)
   testImplementation(
