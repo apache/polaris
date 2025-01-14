@@ -20,6 +20,7 @@ package org.apache.polaris.service.persistence;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
@@ -33,6 +34,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisCredentialsBootstrap;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
@@ -75,9 +77,13 @@ public class InMemoryPolarisMetaStoreManagerFactory
   protected PolarisMetaStoreSession createMetaStoreSession(
       @Nonnull PolarisTreeMapStore store,
       @Nonnull RealmContext realmContext,
+      @Nullable PolarisCredentialsBootstrap credentialsBootstrap,
       @Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisTreeMapMetaStoreSessionImpl(
-        store, storageIntegration, secretsGenerator(realmContext), diagnostics);
+        store,
+        storageIntegration,
+        secretsGenerator(realmContext, credentialsBootstrap),
+        diagnostics);
   }
 
   @Override
@@ -102,7 +108,8 @@ public class InMemoryPolarisMetaStoreManagerFactory
 
   private void bootstrapRealmAndPrintCredentials(String realmId) {
     Map<String, PrincipalSecretsResult> results =
-        this.bootstrapRealms(Collections.singletonList(realmId));
+        this.bootstrapRealms(
+            Collections.singletonList(realmId), PolarisCredentialsBootstrap.fromEnvironment());
     bootstrappedRealms.add(realmId);
 
     PrincipalSecretsResult principalSecrets = results.get(realmId);

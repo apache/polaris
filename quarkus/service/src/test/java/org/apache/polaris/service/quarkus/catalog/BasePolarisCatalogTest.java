@@ -81,6 +81,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisCredentialsBootstrap;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
@@ -310,7 +311,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
       }
 
       @Override
-      public Map<String, PrincipalSecretsResult> bootstrapRealms(List<String> realms) {
+      public Map<String, PrincipalSecretsResult> bootstrapRealms(
+          List<String> realms, PolarisCredentialsBootstrap credentialsBootstrap) {
         throw new NotImplementedException("Bootstrapping realms is not supported");
       }
 

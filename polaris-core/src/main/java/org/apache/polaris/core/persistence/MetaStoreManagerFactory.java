@@ -37,7 +37,8 @@ public interface MetaStoreManagerFactory {
 
   EntityCache getOrCreateEntityCache(RealmContext realmContext);
 
-  Map<String, PrincipalSecretsResult> bootstrapRealms(List<String> realms);
+  Map<String, PrincipalSecretsResult> bootstrapRealms(
+      List<String> realms, PolarisCredentialsBootstrap credentialsBootstrap);
 
   /** Purge all metadata for the realms provided */
   void purgeRealms(List<String> realms);

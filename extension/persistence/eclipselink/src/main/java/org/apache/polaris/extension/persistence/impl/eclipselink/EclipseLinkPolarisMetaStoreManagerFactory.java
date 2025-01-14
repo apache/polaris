@@ -20,6 +20,7 @@ package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
@@ -28,6 +29,7 @@ import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisCredentialsBootstrap;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -70,6 +72,7 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
   protected PolarisMetaStoreSession createMetaStoreSession(
       @Nonnull PolarisEclipseLinkStore store,
       @Nonnull RealmContext realmContext,
+      @Nullable PolarisCredentialsBootstrap credentialsBootstrap,
       @Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisEclipseLinkMetaStoreSessionImpl(
         store,
@@ -77,7 +80,7 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
         realmContext,
         configurationFile(),
         persistenceUnitName(),
-        secretsGenerator(realmContext),
+        secretsGenerator(realmContext, credentialsBootstrap),
         diagnostics);
   }
 
