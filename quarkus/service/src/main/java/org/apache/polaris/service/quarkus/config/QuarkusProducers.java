@@ -68,7 +68,7 @@ public class QuarkusProducers {
   @Produces
   @ApplicationScoped // cannot be singleton because it is mocked in tests
   public Clock clock() {
-    return Clock.systemDefaultZone();
+    return Clock.systemUTC();
   }
 
   // Polaris core beans - application scope
