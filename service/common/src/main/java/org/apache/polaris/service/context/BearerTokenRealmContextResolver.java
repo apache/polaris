@@ -22,7 +22,6 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import java.util.HashMap;
 import java.util.Map;
@@ -37,9 +36,6 @@ public class BearerTokenRealmContextResolver implements RealmContextResolver {
 
   public static final String REALM_PROPERTY_KEY = "realm";
 
-  public static final String PRINCIPAL_PROPERTY_KEY = "principalId";
-
-  public static final String ISS_PROPERTY_KEY = "iss";
   public static final String ISS_PROPERTY_DEFAULT_VALUE = "polaris";
 
   private String defaultRealm = "polaris";
@@ -88,12 +84,7 @@ public class BearerTokenRealmContextResolver implements RealmContextResolver {
                   .withIssuer(ISS_PROPERTY_DEFAULT_VALUE)
                   .build();
           try {
-            DecodedJWT decodedJWT = verifier.verify(token);
-            String realm = decodedJWT.getClaim(ISS_PROPERTY_KEY).asString();
-            String principalId = decodedJWT.getClaim(PRINCIPAL_PROPERTY_KEY).asString();
-
-            parsedProperties.put(REALM_PROPERTY_KEY, realm);
-            parsedProperties.put(PRINCIPAL_PROPERTY_KEY, principalId);
+            verifier.verify(token);
           } catch (Throwable t) {
             throw new JWTVerificationException(t.getMessage(), t);
           }
