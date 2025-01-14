@@ -23,5 +23,5 @@ java -jar polaris-quarkus-admin-<version>-runner.jar --help
 Using the Docker image, you can run the admin tool with the following command:
 
 ```shell
-docker run --rm -it polaris-admin-tool:<version> --help
+docker run --rm -it apache/polaris-admin-tool:<version> --help
 ```
