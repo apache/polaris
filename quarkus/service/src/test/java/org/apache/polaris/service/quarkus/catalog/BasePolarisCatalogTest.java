@@ -1481,7 +1481,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     catalog.createNamespace(NS);
     catalog.buildTable(TABLE, SCHEMA).create();
     Table table = catalog.loadTable(TABLE);
-    System.out.println(table.properties());
   }
 
   private TableMetadata createSampleTableMetadata(String tableLocation) {
