@@ -25,13 +25,15 @@ import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Iterators;
-import jakarta.annotation.Nullable;
+import io.quarkus.test.junit.QuarkusMock;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.time.Clock;
 import java.util.Arrays;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -61,7 +63,6 @@ import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
@@ -94,25 +95,27 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.dropwizard.catalog.io.TestFileIOFactory;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
-import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
-import org.assertj.core.api.AbstractBooleanAssert;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
+@QuarkusTest
 public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   protected static final Namespace NS = Namespace.of("newdb");
   protected static final TableIdentifier TABLE = TableIdentifier.of(NS, "table");
@@ -125,9 +128,15 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
   public static final String SESSION_TOKEN = "session_token";
 
+  @Inject MetaStoreManagerFactory managerFactory;
+  @Inject PolarisConfigurationStore configurationStore;
+  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
+  @Inject PolarisDiagnostics diagServices;
+
   private BasePolarisCatalog catalog;
   private AwsStorageConfigInfo storageConfigModel;
   private StsClient stsClient;
+  private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
   private PolarisCallContext polarisContext;
   private PolarisAdminService adminService;
@@ -136,29 +145,27 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
 
+  @BeforeAll
+  public static void setUpMocks() {
+    PolarisStorageIntegrationProviderImpl mock =
+        Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
+    QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
+  }
+
   @BeforeEach
   @SuppressWarnings("unchecked")
-  public void before() {
-    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-    RealmContext realmContext = () -> "realm";
-    PolarisStorageIntegrationProvider storageIntegrationProvider = Mockito.mock();
-    InMemoryPolarisMetaStoreManagerFactory managerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory();
-    managerFactory.setStorageIntegrationProvider(storageIntegrationProvider);
+  public void before(TestInfo testInfo) {
+    realmName =
+        "realm_%s_%s"
+            .formatted(
+                testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
+    RealmContext realmContext = () -> realmName;
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
-    Map<String, Object> configMap = new HashMap<>();
-    configMap.put("ALLOW_SPECIFYING_FILE_IO_IMPL", true);
-    configMap.put("INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST", true);
     polarisContext =
         new PolarisCallContext(
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
-            new PolarisConfigurationStore() {
-              @Override
-              public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
-                return (T) configMap.get(configName);
-              }
-            },
+            configurationStore,
             Clock.systemDefaultZone());
     entityManager =
         new PolarisEntityManager(
@@ -253,6 +260,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   @AfterEach
   public void after() throws IOException {
     catalog().close();
+    metaStoreManager.purge(polarisContext);
   }
 
   @Override
@@ -295,6 +303,11 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
       @Override
       public StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext) {
         return new StorageCredentialCache();
+      }
+
+      @Override
+      public EntityCache getOrCreateEntityCache(RealmContext realmContext) {
+        return new EntityCache(metaStoreManager);
       }
 
       @Override
@@ -1339,8 +1352,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     TableMetadata tableMetadata = ((BaseTable) table).operations().current();
 
     boolean dropped = catalog.dropTable(TABLE, true);
-    ((AbstractBooleanAssert)
-            Assertions.assertThat(dropped).as("Should drop a table that does exist", new Object[0]))
+    Assertions.assertThat(dropped)
+        .as("Should drop a table that does exist", new Object[0])
         .isTrue();
     Assertions.assertThatPredicate(catalog::tableExists)
         .as("Table should not exist after drop")

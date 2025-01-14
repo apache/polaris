@@ -18,27 +18,19 @@
  */
 package org.apache.polaris.service.dropwizard.auth;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import java.util.Base64;
 import java.util.HashMap;
-import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -46,6 +38,7 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.auth.JWTRSAKeyPair;
 import org.apache.polaris.service.auth.LocalRSAKeyProvider;
+import org.apache.polaris.service.auth.PemUtils;
 import org.apache.polaris.service.auth.TokenBroker;
 import org.apache.polaris.service.auth.TokenRequestValidator;
 import org.apache.polaris.service.auth.TokenResponse;
@@ -55,70 +48,17 @@ import org.mockito.Mockito;
 
 public class JWTRSAKeyPairTest {
 
-  private void writePemToTmpFile(String privateFileLocation, String publicFileLocation)
-      throws Exception {
-    new File(privateFileLocation).delete();
-    new File(publicFileLocation).delete();
-    KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-    kpg.initialize(2048);
-    KeyPair kp = kpg.generateKeyPair();
-    try (BufferedWriter writer =
-        new BufferedWriter(new FileWriter(privateFileLocation, UTF_8, true))) {
-      writer.write("-----BEGIN PRIVATE KEY-----"); // pragma: allowlist secret
-      writer.newLine();
-      writer.write(Base64.getMimeEncoder().encodeToString(kp.getPrivate().getEncoded()));
-      writer.newLine();
-      writer.write("-----END PRIVATE KEY-----");
-      writer.newLine();
-    }
-    try (BufferedWriter writer =
-        new BufferedWriter(new FileWriter(publicFileLocation, UTF_8, true))) {
-      writer.write("-----BEGIN PUBLIC KEY-----");
-      writer.newLine();
-      writer.write(Base64.getMimeEncoder().encodeToString(kp.getPublic().getEncoded()));
-      writer.newLine();
-      writer.write("-----END PUBLIC KEY-----");
-      writer.newLine();
-    }
-  }
-
-  public CallContext getTestCallContext(PolarisCallContext polarisCallContext) {
-    return CallContext.setCurrentContext(
-        new CallContext() {
-          @Override
-          public RealmContext getRealmContext() {
-            return () -> "realm";
-          }
-
-          @Override
-          public PolarisCallContext getPolarisCallContext() {
-            return polarisCallContext;
-          }
-
-          @Override
-          public Map<String, Object> contextVariables() {
-            return Map.of("token", "me");
-          }
-        });
-  }
-
   @Test
   public void testSuccessfulTokenGeneration() throws Exception {
-    String privateFileLocation = "/tmp/test-private.pem";
-    String publicFileLocation = "/tmp/test-public.pem";
-    writePemToTmpFile(privateFileLocation, publicFileLocation);
+    Path privateFileLocation = Files.createTempFile("test-private", ".pem");
+    Path publicFileLocation = Files.createTempFile("test-public", ".pem");
+    PemUtils.generateKeyPair(privateFileLocation, publicFileLocation);
 
     final String clientId = "test-client-id";
     final String scope = "PRINCIPAL_ROLE:TEST";
 
-    Map<String, Object> config = new HashMap<>();
-
-    config.put("LOCAL_PRIVATE_KEY_LOCATION_KEY", privateFileLocation);
-    config.put("LOCAL_PUBLIC_LOCATION_KEY", publicFileLocation);
-
-    DefaultConfigurationStore store = new DefaultConfigurationStore(config);
+    DefaultConfigurationStore store = new DefaultConfigurationStore(new HashMap<>());
     PolarisCallContext polarisCallContext = new PolarisCallContext(null, null, store, null);
-    CallContext.setCurrentContext(getTestCallContext(polarisCallContext));
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     String mainSecret = "client-secret";
     PolarisPrincipalSecrets principalSecrets =
@@ -135,14 +75,19 @@ public class JWTRSAKeyPairTest {
             "principal");
     Mockito.when(metastoreManager.loadEntity(polarisCallContext, 0L, 1L))
         .thenReturn(new PolarisMetaStoreManager.EntityResult(principal));
-    TokenBroker tokenBroker = new JWTRSAKeyPair(metastoreManager, 420);
+    TokenBroker tokenBroker =
+        new JWTRSAKeyPair(metastoreManager, 420, publicFileLocation, privateFileLocation);
     TokenResponse token =
         tokenBroker.generateFromClientSecrets(
-            clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, scope);
+            clientId,
+            mainSecret,
+            TokenRequestValidator.CLIENT_CREDENTIALS,
+            scope,
+            polarisCallContext);
     assertThat(token).isNotNull();
     assertThat(token.getExpiresIn()).isEqualTo(420);
 
-    LocalRSAKeyProvider provider = new LocalRSAKeyProvider();
+    LocalRSAKeyProvider provider = new LocalRSAKeyProvider(publicFileLocation, privateFileLocation);
     assertThat(provider.getPrivateKey()).isNotNull();
     assertThat(provider.getPublicKey()).isNotNull();
     JWTVerifier verifier =

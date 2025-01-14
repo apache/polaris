@@ -17,7 +17,10 @@
  * under the License.
  */
 
-plugins { id("polaris-server") }
+plugins {
+  id("polaris-server")
+  alias(libs.plugins.jandex)
+}
 
 dependencies {
   implementation(project(":polaris-core"))
@@ -41,19 +44,21 @@ dependencies {
     exclude("com.sun.jersey", "jersey-core")
     exclude("com.sun.jersey", "jersey-server")
     exclude("com.sun.jersey", "jersey-servlet")
+    exclude("com.sun.jersey", "jersey-servlet")
+    exclude("io.dropwizard.metrics", "metrics-core")
   }
   implementation(libs.hadoop.hdfs.client)
 
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.inject.api)
-  compileOnly(libs.jakarta.servlet.api)
-  compileOnly(libs.jakarta.validation.api)
-  compileOnly(libs.jakarta.ws.rs.api)
+  implementation(libs.jakarta.annotation.api)
+  implementation(libs.jakarta.enterprise.cdi.api)
+  implementation(libs.jakarta.inject.api)
+  implementation(libs.jakarta.servlet.api)
+  implementation(libs.jakarta.validation.api)
+  implementation(libs.jakarta.ws.rs.api)
 
-  compileOnly(libs.smallrye.common.annotation)
+  implementation(libs.smallrye.common.annotation)
 
   implementation(platform(libs.jackson.bom))
-  implementation("com.fasterxml.jackson.dataformat:jackson-dataformat-xml")
   implementation("com.fasterxml.jackson.core:jackson-annotations")
 
   implementation(libs.caffeine)
@@ -87,3 +92,5 @@ dependencies {
   testImplementation(libs.mockito.core)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
+
+tasks.named("javadoc") { dependsOn("jandex") }

@@ -19,41 +19,52 @@
 package org.apache.polaris.service.auth;
 
 import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.types.TokenType;
 
 /** Default {@link TokenBrokerFactory} that produces token brokers that do not do anything. */
+@ApplicationScoped
 @Identifier("none")
 public class NoneTokenBrokerFactory implements TokenBrokerFactory {
+
+  public static final TokenBroker NONE_TOKEN_BROKER =
+      new TokenBroker() {
+        @Override
+        public boolean supportsGrantType(String grantType) {
+          return false;
+        }
+
+        @Override
+        public boolean supportsRequestedTokenType(TokenType tokenType) {
+          return false;
+        }
+
+        @Override
+        public TokenResponse generateFromClientSecrets(
+            String clientId,
+            String clientSecret,
+            String grantType,
+            String scope,
+            PolarisCallContext polarisCallContext) {
+          return null;
+        }
+
+        @Override
+        public TokenResponse generateFromToken(
+            TokenType tokenType, String subjectToken, String grantType, String scope) {
+          return null;
+        }
+
+        @Override
+        public DecodedToken verify(String token) {
+          return null;
+        }
+      };
+
   @Override
   public TokenBroker apply(RealmContext realmContext) {
-    return new TokenBroker() {
-      @Override
-      public boolean supportsGrantType(String grantType) {
-        return false;
-      }
-
-      @Override
-      public boolean supportsRequestedTokenType(TokenType tokenType) {
-        return false;
-      }
-
-      @Override
-      public TokenResponse generateFromClientSecrets(
-          String clientId, String clientSecret, String grantType, String scope) {
-        return null;
-      }
-
-      @Override
-      public TokenResponse generateFromToken(
-          TokenType tokenType, String subjectToken, String grantType, String scope) {
-        return null;
-      }
-
-      @Override
-      public DecodedToken verify(String token) {
-        return null;
-      }
-    };
+    return NONE_TOKEN_BROKER;
   }
 }

@@ -54,8 +54,12 @@ public enum TokenType {
     return String.valueOf(value);
   }
 
+  // This method MUST be called 'fromString'; according to JAX-RS specs
+  // https://docs.oracle.com/javaee/7/api/javax/ws/rs/FormParam.html:
+  // "The type T of the annotated parameter must either [...]
+  // have a static method named valueOf or fromString".
   @JsonCreator
-  public static TokenType fromValue(String value) {
+  public static TokenType fromString(String value) {
     for (TokenType b : TokenType.values()) {
       if (b.value.equals(value)) {
         return b;

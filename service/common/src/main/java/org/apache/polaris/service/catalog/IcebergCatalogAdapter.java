@@ -24,6 +24,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -74,6 +75,7 @@ import org.apache.polaris.service.types.NotificationRequest;
  * org.apache.iceberg.rest.CatalogHandlers} after finding the appropriate {@link Catalog} for the
  * current {@link RealmContext}.
  */
+@RequestScoped
 public class IcebergCatalogAdapter
     implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService {
 
@@ -109,6 +111,7 @@ public class IcebergCatalogAdapter
           .add(Endpoint.create("POST", ResourcePaths.V1_TRANSACTIONS_COMMIT))
           .build();
 
+  private final CallContext callContext;
   private final CallContextCatalogFactory catalogFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final RealmEntityManagerFactory entityManagerFactory;
@@ -116,14 +119,18 @@ public class IcebergCatalogAdapter
 
   @Inject
   public IcebergCatalogAdapter(
+      CallContext callContext,
       CallContextCatalogFactory catalogFactory,
       RealmEntityManagerFactory entityManagerFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
       PolarisAuthorizer polarisAuthorizer) {
+    this.callContext = callContext;
     this.catalogFactory = catalogFactory;
     this.entityManagerFactory = entityManagerFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.polarisAuthorizer = polarisAuthorizer;
+    // FIXME: This is a hack to set the current context for downstream calls.
+    CallContext.setCurrentContext(callContext);
   }
 
   private PolarisCatalogHandlerWrapper newHandlerWrapper(
@@ -138,8 +145,7 @@ public class IcebergCatalogAdapter
         entityManagerFactory.getOrCreateEntityManager(realmContext);
 
     return new PolarisCatalogHandlerWrapper(
-        // FIXME remove call to CallContext.getCurrentContext()
-        CallContext.getCurrentContext(),
+        callContext,
         entityManager,
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
         securityContext,
@@ -540,8 +546,6 @@ public class IcebergCatalogAdapter
     if (warehouse == null) {
       throw new BadRequestException("Please specify a warehouse");
     }
-    // FIXME remove call to CallContext.getCurrentContext()
-    CallContext callContext = CallContext.getCurrentContext();
     Resolver resolver = entityManager.prepareResolver(callContext, securityContext, warehouse);
     ResolverStatus resolverStatus = resolver.resolveAll();
     if (!resolverStatus.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {

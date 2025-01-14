@@ -18,20 +18,47 @@
  */
 package org.apache.polaris.service.dropwizard.test;
 
-import jakarta.ws.rs.client.Client;
 import java.net.URI;
 import java.util.UUID;
 
-/**
- * Defines the test environment that a test should run in.
- *
- * @param apiClient The HTTP client to use when making requests
- * @param baseUri The base URL that requests should target, for example http://localhost:1234
- * @param testId An ID unique to this test. This can be used to prefix resource names, such as
- *     catalog names, to prevent collision.
- */
-public record TestEnvironment(Client apiClient, URI baseUri, String testId) {
-  public TestEnvironment(Client apiClient, String baseUri) {
-    this(apiClient, URI.create(baseUri), UUID.randomUUID().toString().replace("-", ""));
+/** Defines the test environment that a test should run in. */
+public class TestEnvironment {
+
+  private final URI baseUri;
+  private final URI baseManagementUri;
+  private final String testId;
+
+  public TestEnvironment(String baseUri, String baseManagementUri) {
+    this(
+        URI.create(baseUri),
+        URI.create(baseManagementUri),
+        UUID.randomUUID().toString().replace("-", ""));
+  }
+
+  public TestEnvironment(URI baseUri, URI baseManagementUri, String testId) {
+    this.baseUri = baseUri;
+    this.baseManagementUri = baseManagementUri;
+    this.testId = testId;
+  }
+
+  /** The base URL that requests should target, for example {@code http://localhost:8181} */
+  public URI baseUri() {
+    return baseUri;
+  }
+
+  /**
+   * The base URL that requests should target for the management interface, for example {@code
+   * http://localhost:8182}
+   */
+  public URI baseManagementUri() {
+    return baseManagementUri;
+  }
+
+  /**
+   * An ID unique to this test. This can be used to prefix resource names, such as catalog names, to
+   * prevent collision.
+   */
+  public String testId() {
+    return testId;
   }
 }

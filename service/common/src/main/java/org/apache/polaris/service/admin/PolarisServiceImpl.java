@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.admin;
 
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -75,6 +76,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Concrete implementation of the Polaris API services */
+@RequestScoped
 public class PolarisServiceImpl
     implements PolarisCatalogsApiService,
         PolarisPrincipalsApiService,
@@ -83,15 +85,20 @@ public class PolarisServiceImpl
   private final RealmEntityManagerFactory entityManagerFactory;
   private final PolarisAuthorizer polarisAuthorizer;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final CallContext callContext;
 
   @Inject
   public PolarisServiceImpl(
       RealmEntityManagerFactory entityManagerFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
-      PolarisAuthorizer polarisAuthorizer) {
+      PolarisAuthorizer polarisAuthorizer,
+      CallContext callContext) {
     this.entityManagerFactory = entityManagerFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.polarisAuthorizer = polarisAuthorizer;
+    this.callContext = callContext;
+    // FIXME: This is a hack to set the current context for downstream calls.
+    CallContext.setCurrentContext(callContext);
   }
 
   private PolarisAdminService newAdminService(
@@ -107,12 +114,7 @@ public class PolarisServiceImpl
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     return new PolarisAdminService(
-        // FIXME remove call to CallContext.getCurrentContext()
-        CallContext.getCurrentContext(),
-        entityManager,
-        metaStoreManager,
-        securityContext,
-        polarisAuthorizer);
+        callContext, entityManager, metaStoreManager, securityContext, polarisAuthorizer);
   }
 
   /** From PolarisCatalogsApiService */
@@ -130,7 +132,7 @@ public class PolarisServiceImpl
   }
 
   private void validateStorageConfig(StorageConfigInfo storageConfigInfo) {
-    PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
     List<String> allowedStorageTypes =
         polarisCallContext
             .getConfigurationStore()

@@ -20,16 +20,17 @@ package org.apache.polaris.service.dropwizard.catalog;
 
 import static org.mockito.Mockito.when;
 
-import com.google.auth.oauth2.AccessToken;
-import com.google.auth.oauth2.GoogleCredentials;
 import com.google.common.collect.ImmutableMap;
-import jakarta.annotation.Nullable;
+import io.quarkus.test.junit.QuarkusMock;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.nio.file.Path;
 import java.time.Clock;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
@@ -37,7 +38,6 @@ import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
@@ -50,6 +50,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
@@ -57,47 +58,64 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
-import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
+@QuarkusTest
 public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCatalog> {
   public static final String CATALOG_NAME = "polaris-catalog";
+
+  @Inject MetaStoreManagerFactory managerFactory;
+  @Inject PolarisConfigurationStore configurationStore;
+  @Inject PolarisDiagnostics diagServices;
+
   private BasePolarisCatalog catalog;
 
+  private String realmName;
+  private PolarisMetaStoreManager metaStoreManager;
+  private PolarisCallContext polarisContext;
+
+  @BeforeAll
+  public static void setUpMocks() {
+    PolarisStorageIntegrationProviderImpl mock =
+        Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
+    QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
+  }
+
   @BeforeEach
-  @SuppressWarnings("unchecked")
-  public void before() {
-    PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
-    RealmContext realmContext = () -> "realm";
-    InMemoryPolarisMetaStoreManagerFactory managerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory();
-    managerFactory.setStorageIntegrationProvider(
-        new PolarisStorageIntegrationProviderImpl(
-            Mockito::mock, () -> GoogleCredentials.create(new AccessToken("abc", new Date()))));
-    PolarisMetaStoreManager metaStoreManager =
-        managerFactory.getOrCreateMetaStoreManager(realmContext);
-    Map<String, Object> configMap = new HashMap<>();
-    configMap.put("ALLOW_WILDCARD_LOCATION", true);
-    configMap.put("ALLOW_SPECIFYING_FILE_IO_IMPL", true);
-    PolarisCallContext polarisContext =
+  public void setUpTempDir(@TempDir Path tempDir) throws Exception {
+    // see https://github.com/quarkusio/quarkus/issues/13261
+    Field field = ViewCatalogTests.class.getDeclaredField("tempDir");
+    field.setAccessible(true);
+    field.set(this, tempDir);
+  }
+
+  @BeforeEach
+  public void before(TestInfo testInfo) {
+    realmName =
+        "realm_%s_%s"
+            .formatted(
+                testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
+    RealmContext realmContext = () -> realmName;
+
+    metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
+    polarisContext =
         new PolarisCallContext(
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
             diagServices,
-            new PolarisConfigurationStore() {
-              @Override
-              public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
-                return (T) configMap.get(configName);
-              }
-            },
+            configurationStore,
             Clock.systemDefaultZone());
 
     PolarisEntityManager entityManager =
         new PolarisEntityManager(
             metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
 
-    CallContext callContext = CallContext.of(null, polarisContext);
+    CallContext callContext = CallContext.of(realmContext, polarisContext);
     CallContext.setCurrentContext(callContext);
 
     PrincipalEntity rootEntity =
@@ -154,6 +172,12 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
         CATALOG_NAME,
         ImmutableMap.of(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+  }
+
+  @AfterEach
+  public void after() throws IOException {
+    catalog().close();
+    metaStoreManager.purge(polarisContext);
   }
 
   @Override

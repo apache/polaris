@@ -18,23 +18,27 @@
  */
 package org.apache.polaris.service.dropwizard.ratelimiter;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Alternative;
+import jakarta.inject.Inject;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.apache.polaris.service.ratelimiter.DefaultTokenBucketFactory;
+import org.apache.polaris.service.ratelimiter.RateLimiterConfiguration;
 import org.threeten.extra.MutableClock;
 
 /** TokenBucketFactory with a mock clock */
-@Identifier("mock")
+@Alternative
+@ApplicationScoped
 public class MockTokenBucketFactory extends DefaultTokenBucketFactory {
   public static MutableClock CLOCK = MutableClock.of(Instant.now(), ZoneOffset.UTC);
 
-  @JsonCreator
-  public MockTokenBucketFactory(
-      @JsonProperty("requestsPerSecond") long requestsPerSecond,
-      @JsonProperty("windowSeconds") long windowSeconds) {
-    super(requestsPerSecond, windowSeconds, CLOCK);
+  public MockTokenBucketFactory() {
+    super(0, null, CLOCK);
+  }
+
+  @Inject
+  public MockTokenBucketFactory(RateLimiterConfiguration configuration) {
+    super(configuration, CLOCK);
   }
 }
