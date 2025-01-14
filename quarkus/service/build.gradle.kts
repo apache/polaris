@@ -19,10 +19,8 @@
 
 plugins {
   alias(libs.plugins.quarkus)
-  alias(libs.plugins.openapi.generator)
+  alias(libs.plugins.jandex)
   id("polaris-server")
-  id("polaris-license-report")
-  id("application")
 }
 
 dependencies {
@@ -185,11 +183,6 @@ tasks.named("compileJava") { dependsOn("compileQuarkusGeneratedSourcesJava") }
 
 tasks.named("sourcesJar") { dependsOn("compileQuarkusGeneratedSourcesJava") }
 
-distributions {
-  main {
-    contents {
-      from("../../NOTICE")
-      from("../../LICENSE-BINARY-DIST").rename("LICENSE-BINARY-DIST", "LICENSE")
-    }
-  }
-}
+tasks.named("javadoc") { dependsOn("jandex") }
+
+tasks.named("quarkusDependenciesBuild") { dependsOn("jandex") }
