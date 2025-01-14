@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.admin;
+package org.apache.polaris.admintool;
 
 import io.quarkus.picocli.runtime.annotations.TopCommand;
 import java.io.PrintWriter;

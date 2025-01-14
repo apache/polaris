@@ -16,15 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.admin;
+package org.apache.polaris.admintool;
 
-import org.apache.polaris.version.PolarisVersion;
-import picocli.CommandLine.IVersionProvider;
+import java.util.List;
+import picocli.CommandLine;
 
-public class PolarisVersionProvider implements IVersionProvider {
+@CommandLine.Command(
+    name = "purge",
+    mixinStandardHelpOptions = true,
+    description = "Purge principal credentials.")
+public class PurgeCommand extends BaseCommand {
+
+  @CommandLine.Option(
+      names = {"-r", "--realm"},
+      required = true,
+      description = "The name of a realm to purge.")
+  List<String> realms;
 
   @Override
-  public String[] getVersion() {
-    return new String[] {PolarisVersion.polarisVersionString()};
+  public Integer call() {
+    warnOnInMemory();
+
+    try {
+      metaStoreManagerFactory.purgeRealms(realms);
+      spec.commandLine().getOut().println("Purge completed successfully.");
+      return 0;
+    } catch (Exception e) {
+      spec.commandLine().getErr().println("Purge encountered errors during operation.");
+      return EXIT_CODE_PURGE_ERROR;
+    }
   }
 }

@@ -16,34 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.admin;
+package org.apache.polaris.admintool;
 
-import java.util.List;
-import picocli.CommandLine;
+import static org.assertj.core.api.Assertions.assertThat;
 
-@CommandLine.Command(
-    name = "purge",
-    mixinStandardHelpOptions = true,
-    description = "Purge principal credentials.")
-public class PurgeCommand extends BaseCommand {
+import io.quarkus.test.junit.main.Launch;
+import io.quarkus.test.junit.main.LaunchResult;
+import io.quarkus.test.junit.main.QuarkusMainTest;
+import org.junit.jupiter.api.Test;
 
-  @CommandLine.Option(
-      names = {"-r", "--realm"},
-      required = true,
-      description = "The name of a realm to purge.")
-  List<String> realms;
+@QuarkusMainTest
+class BootstrapCommandTest {
 
-  @Override
-  public Integer call() {
-    warnOnInMemory();
-
-    try {
-      metaStoreManagerFactory.purgeRealms(realms);
-      spec.commandLine().getOut().println("Purge completed successfully.");
-      return 0;
-    } catch (Exception e) {
-      spec.commandLine().getErr().println("Purge encountered errors during operation.");
-      return EXIT_CODE_PURGE_ERROR;
-    }
+  @Test
+  @Launch(
+      value = {
+        "bootstrap",
+        "-r",
+        "realm1",
+        "-r",
+        "realm2",
+        "-c",
+        "realm1,root,root,s3cr3t",
+        "-c",
+        "realm2,root,root,s3cr3t"
+      })
+  public void testBootstrap(LaunchResult result) {
+    assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
   }
 }
