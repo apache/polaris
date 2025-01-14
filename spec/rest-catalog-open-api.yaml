@@ -1670,7 +1670,7 @@ paths:
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
 
-    post:
+    put:
       tags:
         - Catalog API
       summary: Update a policy
@@ -1744,11 +1744,10 @@ paths:
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
 
-  /v1/{prefix}/policies/{policy}/mappings/{entityId}:
+  /v1/{prefix}/policies/{policy}/mappings:
     parameters:
       - $ref: '#/components/parameters/prefix'
       - $ref: '#/components/parameters/policy'
-      - $ref: '#/components/parameters/entity-id'
 
     post:
       tags:
@@ -1757,7 +1756,7 @@ paths:
       operationId: setPolicy
       description: Create a mapping between a policy and a resource entity
       requestBody:
-        required: false
+        required: true
         content:
           application/json:
             schema:
@@ -1806,6 +1805,13 @@ paths:
       summary: Remove a mapping between a policy and an entity
       operationId: unsetPolicy
       description: Remove a mapping between a policy and an entity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnsetPolicyRequest'
+
       responses:
         204:
           description: Success, no content
@@ -1933,11 +1939,11 @@ components:
     policy:
       name: policy
       in: path
-      description: id of a policy
+      description: a policy name
       required: true
       schema:
         type: string
-      example: 'b792559c-c4c2-45aa-bff0-831eba3c2126'
+      example: 'compaction-policy'
 
     entity-id:
       name: entityId
@@ -4241,19 +4247,19 @@ components:
     Policy:
       type: object
       required:
+        - owner_id
         - policy-id
         - policy-type
-        - policy-type-schema-version
         - name
         - content
         - version
       properties:
+        owner-id:
+          type: string
         policy-id:
           type: string
         policy-type:
           type: string
-        policy-type-schema-version:
-          type: integer
         name:
           type: string
         description: 
@@ -4279,7 +4285,6 @@ components:
       required:
         - name
         - type
-        - description
         - content
       properties:
         name: 
@@ -4290,11 +4295,6 @@ components:
           type: string
         content:
           $ref: '#/components/schemas/PolicyContent'
-        subjects:
-          type: array
-          uniqueItems: true
-          items:
-            type: string # subject id
 
     LoadPolicyResult:
       type: object
@@ -4314,11 +4314,65 @@ components:
 
     SetPolicyRequest:
       type: object
+      required:
+        - entity
       properties:
+        entity:
+          $ref: '#/components/schemas/EntityIdentifier'
         parameters:
           type: object
           additionalProperties:
             type: string
+
+    UnsetPolicyRequest:
+      type: object
+      required:
+        - entity
+      properties:
+        entity:
+          $ref: '#/components/schemas/EntityIdentifier'
+
+    CatalogIdentifier:
+      type: object
+      required:
+        - catalog
+      properties:
+        catalog:
+          type: string
+    
+    NamespaceIdentifier:
+      type: object
+      required:
+          - catalog
+          - namespace
+      properties:
+        catalog:
+          type: string
+          nullable: false
+        namespace:
+          $ref: '#/components/schemas/Namespace'
+
+    TableLikeIdentifier:
+      type: object
+      required:
+        - catalog
+        - namespace
+        - name
+      properties:
+        catalog:
+          type: string
+          nullable: false
+        namespace:
+          $ref: '#/components/schemas/Namespace'
+        name:
+          type: string
+          nullable: false
+    
+    EntityIdentifier:
+      oneOf:
+        - $ref: '#/components/schemas/CatalogIdentifier'
+        - $ref: '#/components/schemas/NamespaceIdentifier'
+        - $ref: '#/components/schemas/TableLikeIdentifier'
 
 
 
