@@ -87,3 +87,7 @@ tasks.named("processTestResources") { dependsOn("createTestConfJar") }
 tasks.named("javadoc") { dependsOn("jandex") }
 
 tasks.named("quarkusDependenciesBuild") { dependsOn("jandex") }
+
+tasks.named("compileJava") { dependsOn("compileQuarkusGeneratedSourcesJava") }
+
+tasks.named("sourcesJar") { dependsOn("compileQuarkusGeneratedSourcesJava") }
