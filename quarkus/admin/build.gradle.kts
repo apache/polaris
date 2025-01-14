@@ -21,6 +21,7 @@ import io.quarkus.gradle.tasks.QuarkusBuild
 
 plugins {
   alias(libs.plugins.quarkus)
+  alias(libs.plugins.jandex)
   alias(libs.plugins.openapi.generator)
   id("polaris-server")
   id("polaris-license-report")
@@ -82,6 +83,6 @@ tasks.named("sourcesJar") {
   dependsOn("compileQuarkusGeneratedSourcesJava")
 }
 
-// Add when there's code built in this module
-// tasks.named("javadoc") { dependsOn("jandex") }
-// tasks.named("quarkusDependenciesBuild") { dependsOn("jandex") }
+tasks.named("javadoc") { dependsOn("jandex") }
+
+tasks.named("quarkusDependenciesBuild") { dependsOn("jandex") }
