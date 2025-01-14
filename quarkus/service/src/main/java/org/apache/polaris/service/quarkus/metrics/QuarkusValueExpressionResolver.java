@@ -30,7 +30,7 @@ public class QuarkusValueExpressionResolver implements ValueExpressionResolver {
   @Override
   public String resolve(@Nonnull String expression, @Nullable Object parameter) {
     // TODO maybe replace with CEL of some expression engine and make this more generic
-    if (parameter instanceof RealmId realmId && expression.equals("realmIdentifier")) {
+    if (parameter instanceof RealmId realmId && expression.equals("realm.id")) {
       return realmId.id();
     }
     return null;
