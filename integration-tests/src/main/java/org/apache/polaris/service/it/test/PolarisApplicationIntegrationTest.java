@@ -26,6 +26,7 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
@@ -612,6 +613,10 @@ public class PolarisApplicationIntegrationTest {
                 try (Response response = request.post(Entity.json(new PrincipalRole("r")))) {
                   assertThat(response.getStatus())
                       .isEqualTo(Response.Status.REQUEST_HEADER_FIELDS_TOO_LARGE.getStatusCode());
+                } catch (ProcessingException e) {
+                  // In some runtime environments the request above will return a 431 but in others
+                  // it'll result in a ProcessingException from the socket being closed. The test
+                  // asserts that one of those things happens.
                 }
               });
     }
@@ -642,6 +647,10 @@ public class PolarisApplicationIntegrationTest {
                   // provided most of the time.
                   assertThat(response.getStatus())
                       .isEqualTo(Response.Status.REQUEST_ENTITY_TOO_LARGE.getStatusCode());
+                } catch (ProcessingException e) {
+                  // In some runtime environments the request above will return a 431 but in others
+                  // it'll result in a ProcessingException from the socket being closed. The test
+                  // asserts that one of those things happens.
                 }
               });
     }
