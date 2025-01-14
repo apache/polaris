@@ -27,7 +27,6 @@ slf4j = "2.0.16"
 swagger = "1.6.14"
 
 [bundles]
-junit-testing = ["assertj-core", "mockito-core", "mockito-junit-jupiter", "junit-jupiter-api", "junit-jupiter-params", "junit-platform-reporting"]
 
 
 [libraries]

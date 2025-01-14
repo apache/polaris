@@ -67,11 +67,6 @@ dependencies {
 
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
-
-  testImplementation(platform(libs.junit.bom))
-  testImplementation(libs.bundles.junit.testing)
-  testRuntimeOnly("org.junit.jupiter:junit-jupiter")
-  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.register<Jar>("createTestConfJar") {
