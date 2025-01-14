@@ -20,21 +20,26 @@ package org.apache.polaris.service.catalog;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
+import jakarta.annotation.Nonnull;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
+import java.nio.file.Paths;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
+import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.MetadataUpdate;
 import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.SortOrder;
@@ -79,6 +84,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -90,7 +96,8 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.service.context.CallContextCatalogFactory;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,7 +130,8 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final SecurityContext securityContext;
   private final PolarisAuthorizer authorizer;
-  private final CallContextCatalogFactory catalogFactory;
+  private final TaskExecutor taskExecutor;
+  private final FileIOFactory fileIOFactory;
 
   // Initialized in the authorize methods.
   private PolarisResolutionManifest resolutionManifest = null;
@@ -142,9 +150,10 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
       SecurityContext securityContext,
-      CallContextCatalogFactory catalogFactory,
       String catalogName,
-      PolarisAuthorizer authorizer) {
+      PolarisAuthorizer authorizer,
+      TaskExecutor taskExecutor,
+      FileIOFactory fileIOFactory) {
     this.realmContext = realmContext;
     this.session = session;
     this.entityManager = entityManager;
@@ -162,7 +171,8 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     this.authenticatedPrincipal =
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     this.authorizer = authorizer;
-    this.catalogFactory = catalogFactory;
+    this.taskExecutor = taskExecutor;
+    this.fileIOFactory = fileIOFactory;
   }
 
   /**
@@ -194,12 +204,51 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   }
 
   private void initializeCatalog() {
-    this.baseCatalog =
-        catalogFactory.createCallContextCatalog(
-            realmContext, authenticatedPrincipal, securityContext, resolutionManifest);
+    PolarisBaseEntity baseCatalogEntity =
+        resolutionManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity();
+    CatalogEntity catalog = CatalogEntity.of(baseCatalogEntity);
+
+    String realm = realmContext.getRealmIdentifier();
+    String catalogKey = realm + "/" + catalogName;
+    LOGGER.info("Initializing new BasePolarisCatalog for key: {}", catalogKey);
+
+    Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());
+    String defaultBaseLocation = catalog.getDefaultBaseLocation();
+    LOGGER.info("Looked up defaultBaseLocation {} for catalog {}", defaultBaseLocation, catalogKey);
+    catalogProperties.put(
+        CatalogProperties.WAREHOUSE_LOCATION,
+        Objects.requireNonNullElseGet(
+            defaultBaseLocation,
+            () -> Paths.get(WAREHOUSE_LOCATION_BASEDIR, catalogKey).toString()));
+
+    this.baseCatalog = createBasePolarisCatalog(catalogProperties);
     this.namespaceCatalog =
         (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
     this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
+  }
+
+  private static final String WAREHOUSE_LOCATION_BASEDIR =
+      "/tmp/iceberg_rest_server_warehouse_data/";
+
+  @Nonnull
+  protected Catalog createBasePolarisCatalog(Map<String, String> catalogProperties) {
+
+    BasePolarisCatalog catalogInstance =
+        new BasePolarisCatalog(
+            realmContext,
+            entityManager,
+            metaStoreManager,
+            session,
+            configurationStore,
+            diagnostics,
+            resolutionManifest,
+            securityContext,
+            taskExecutor,
+            fileIOFactory);
+
+    // TODO: The initialize properties might need to take more from the CatalogEntity.
+    catalogInstance.initialize(catalogName, catalogProperties);
+    return catalogInstance;
   }
 
   private void authorizeBasicNamespaceOperationOrThrow(

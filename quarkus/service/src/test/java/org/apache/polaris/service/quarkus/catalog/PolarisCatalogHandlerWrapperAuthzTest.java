@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.quarkus.catalog;
 
-import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.ws.rs.core.SecurityContext;
@@ -34,7 +33,6 @@ import org.apache.iceberg.PartitionSpec;
 import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
-import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
@@ -54,17 +52,13 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentialsCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.catalog.PolarisCatalogHandlerWrapper;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
-import org.apache.polaris.service.context.CallContextCatalogFactory;
-import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -90,27 +84,24 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
   }
 
   private PolarisCatalogHandlerWrapper newWrapper(Set<String> activatedPrincipalRoles) {
-    return newWrapper(activatedPrincipalRoles, CATALOG_NAME, newCatalogFactory());
+    return newWrapper(activatedPrincipalRoles, CATALOG_NAME);
   }
 
   private PolarisCatalogHandlerWrapper newWrapper(
-      Set<String> activatedPrincipalRoles, String catalogName, CallContextCatalogFactory factory) {
+      Set<String> activatedPrincipalRoles, String catalogName) {
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
         new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
-    return new PolarisCatalogHandlerWrapper(
-        realmContext,
-        metaStoreSession,
-        configurationStore,
-        diagServices,
-        entityManager,
-        metaStoreManager,
-        securityContext(authenticatedPrincipal, activatedPrincipalRoles),
-        factory,
-        catalogName,
-        polarisAuthorizer);
+    SecurityContext securityContext =
+        securityContext(authenticatedPrincipal, activatedPrincipalRoles);
+    return newWrapper(securityContext, catalogName);
   }
 
   private PolarisCatalogHandlerWrapper newWrapper(SecurityContext securityContext) {
+    return newWrapper(securityContext, CATALOG_NAME);
+  }
+
+  private PolarisCatalogHandlerWrapper newWrapper(
+      SecurityContext securityContext, String catalogName) {
     return new PolarisCatalogHandlerWrapper(
         realmContext,
         metaStoreSession,
@@ -119,18 +110,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         entityManager,
         metaStoreManager,
         securityContext,
-        newCatalogFactory(),
-        CATALOG_NAME,
-        polarisAuthorizer);
-  }
-
-  private CallContextCatalogFactory newCatalogFactory() {
-    return new TestPolarisCallContextCatalogFactory(
-        entityManager,
-        metaStoreManager,
-        metaStoreSession,
-        configurationStore,
-        diagServices,
+        catalogName,
+        polarisAuthorizer,
         Mockito.mock(),
         new DefaultFileIOFactory());
   }
@@ -1637,6 +1618,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             .setName(externalCatalog)
             .setDefaultBaseLocation(storageLocation)
             .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+            .addProperty(
+                CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
             .setCatalogType("EXTERNAL")
             .build());
     adminService.createCatalogRole(
@@ -1699,48 +1682,23 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     validatePayload.setTimestamp(530950845L);
     validateRequest.setPayload(validatePayload);
 
-    PolarisCallContextCatalogFactory factory =
-        new PolarisCallContextCatalogFactory(
-            entityManager,
-            metaStoreManager,
-            metaStoreSession,
-            configurationStore,
-            diagServices,
-            Mockito.mock(),
-            new DefaultFileIOFactory()) {
-          @Override
-          public Catalog createCallContextCatalog(
-              RealmContext realmContext,
-              AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
-              SecurityContext securityContext,
-              PolarisResolutionManifest resolvedManifest) {
-            Catalog catalog =
-                super.createCallContextCatalog(
-                    realmContext, authenticatedPolarisPrincipal, securityContext, resolvedManifest);
-            String fileIoImpl = "org.apache.iceberg.inmemory.InMemoryFileIO";
-            catalog.initialize(
-                externalCatalog, ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, fileIoImpl));
-
-            try (FileIO fileIO =
-                CatalogUtil.loadFileIO(fileIoImpl, Map.of(), new Configuration())) {
-              TableMetadata tableMetadata =
-                  TableMetadata.buildFromEmpty()
-                      .addSchema(SCHEMA, SCHEMA.highestFieldId())
-                      .setLocation(
-                          String.format(
-                              "%s/bucket/table/metadata/v1.metadata.json", storageLocation))
-                      .addPartitionSpec(PartitionSpec.unpartitioned())
-                      .addSortOrder(SortOrder.unsorted())
-                      .assignUUID()
-                      .build();
-              TableMetadataParser.overwrite(
-                  tableMetadata, fileIO.newOutputFile(createPayload.getMetadataLocation()));
-              TableMetadataParser.overwrite(
-                  tableMetadata, fileIO.newOutputFile(updatePayload.getMetadataLocation()));
-            }
-            return catalog;
-          }
-        };
+    try (FileIO fileIO =
+        CatalogUtil.loadFileIO(
+            "org.apache.iceberg.inmemory.InMemoryFileIO", Map.of(), new Configuration())) {
+      TableMetadata tableMetadata =
+          TableMetadata.buildFromEmpty()
+              .addSchema(SCHEMA, SCHEMA.highestFieldId())
+              .setLocation(
+                  String.format("%s/bucket/table/metadata/v1.metadata.json", storageLocation))
+              .addPartitionSpec(PartitionSpec.unpartitioned())
+              .addSortOrder(SortOrder.unsorted())
+              .assignUUID()
+              .build();
+      TableMetadataParser.overwrite(
+          tableMetadata, fileIO.newOutputFile(createPayload.getMetadataLocation()));
+      TableMetadataParser.overwrite(
+          tableMetadata, fileIO.newOutputFile(updatePayload.getMetadataLocation()));
+    }
 
     List<Set<PolarisPrivilege>> sufficientPrivilegeSets =
         List.of(
@@ -1764,19 +1722,18 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     doTestSufficientPrivilegeSets(
         sufficientPrivilegeSets,
         () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
+          newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog)
               .sendNotification(table, createRequest);
-          newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
+          newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog)
               .sendNotification(table, updateRequest);
-          newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
-              .sendNotification(table, dropRequest);
-          newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
+          newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog).sendNotification(table, dropRequest);
+          newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog)
               .sendNotification(table, validateRequest);
         },
         () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE2), externalCatalog, factory)
+          newWrapper(Set.of(PRINCIPAL_ROLE2), externalCatalog)
               .dropNamespace(Namespace.of("extns1", "extns2"));
-          newWrapper(Set.of(PRINCIPAL_ROLE2), externalCatalog, factory)
+          newWrapper(Set.of(PRINCIPAL_ROLE2), externalCatalog)
               .dropNamespace(Namespace.of("extns1"));
         },
         PRINCIPAL_NAME,
@@ -1786,7 +1743,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     doTestSufficientPrivilegeSets(
         sufficientPrivilegeSets,
         () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog, factory)
+          newWrapper(Set.of(PRINCIPAL_ROLE1), externalCatalog)
               .sendNotification(table, validateRequest);
         },
         null /* cleanupAction */,
