@@ -18,28 +18,15 @@
  */
 package org.apache.polaris.service.context;
 
-import com.google.common.base.Splitter;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/**
- * For local/dev testing, this resolver simply expects a custom bearer-token format that is a
- * semicolon-separated list of colon-separated key/value pairs that constitute the realm properties.
- *
- * <p>Example: principal:data-engineer;password:test;realm:acct123
- */
 @ApplicationScoped
 @Identifier("default")
 public class DefaultRealmContextResolver implements RealmContextResolver {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DefaultRealmContextResolver.class);
-
-  public static final String REALM_PROPERTY_KEY = "realm";
 
   private final RealmContextConfiguration configuration;
 
@@ -51,47 +38,18 @@ public class DefaultRealmContextResolver implements RealmContextResolver {
   @Override
   public RealmContext resolveRealmContext(
       String requestURL, String method, String path, Map<String, String> headers) {
-    // Since this default resolver is strictly for use in test/dev environments, we'll consider
-    // it safe to log all contents. Any "real" resolver used in a prod environment should make
-    // sure to only log non-sensitive contents.
-    LOGGER.debug(
-        "Resolving RealmContext for method: {}, path: {}, headers: {}", method, path, headers);
-    Map<String, String> parsedProperties = parseBearerTokenAsKvPairs(headers);
 
-    if (!parsedProperties.containsKey(REALM_PROPERTY_KEY)
-        && headers.containsKey(REALM_PROPERTY_KEY)) {
-      parsedProperties.put(REALM_PROPERTY_KEY, headers.get(REALM_PROPERTY_KEY));
-    }
+    String realm;
 
-    if (!parsedProperties.containsKey(REALM_PROPERTY_KEY)) {
-      LOGGER.warn(
-          "Failed to parse {} from headers; using {}",
-          REALM_PROPERTY_KEY,
-          configuration.defaultRealm());
-      parsedProperties.put(REALM_PROPERTY_KEY, configuration.defaultRealm());
-    }
-    String realmId = parsedProperties.get(REALM_PROPERTY_KEY);
-    return () -> realmId;
-  }
-
-  /**
-   * Returns kv pairs parsed from the "Authorization: Bearer k1:v1;k2:v2;k3:v3" header if it exists;
-   * if missing, returns empty map.
-   */
-  static Map<String, String> parseBearerTokenAsKvPairs(Map<String, String> headers) {
-    Map<String, String> parsedProperties = new HashMap<>();
-    if (headers != null) {
-      String authHeader = headers.get("Authorization");
-      if (authHeader != null) {
-        String[] parts = authHeader.split(" ");
-        if (parts.length == 2 && "Bearer".equalsIgnoreCase(parts[0])) {
-          if (parts[1].matches("[\\w\\d=_+-]+:[\\w\\d=+_-]+(?:;[\\w\\d=+_-]+:[\\w\\d=+_-]+)*")) {
-            parsedProperties.putAll(
-                Splitter.on(';').trimResults().withKeyValueSeparator(':').split(parts[1]));
-          }
-        }
+    if (headers.containsKey(configuration.headerName())) {
+      realm = headers.get(configuration.headerName());
+      if (!configuration.realms().contains(realm)) {
+        throw new IllegalArgumentException("Unknown realm: " + realm);
       }
+    } else {
+      realm = configuration.defaultRealm();
     }
-    return parsedProperties;
+
+    return () -> realm;
   }
 }
