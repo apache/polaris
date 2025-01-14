@@ -16,20 +16,5 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-#
 
-polaris-core=polaris-core
-polaris-api-iceberg-service=api/iceberg-service
-polaris-api-management-model=api/management-model
-polaris-api-management-service=api/management-service
-polaris-service-common=service/common
-polaris-quarkus-service=quarkus/service
-polaris-eclipselink=extension/persistence/eclipselink
-polaris-jpa-model=extension/persistence/jpa-model
-polaris-tests=integration-tests
-aggregated-license-report=aggregated-license-report
-polaris-version=tools/version
-
-polaris-config-docs-annotations=tools/config-docs/annotations
-polaris-config-docs-generator=tools/config-docs/generator
-polaris-config-docs-site=tools/config-docs/site
+org.apache.polaris.service.quarkus.it.QuarkusServerManager
