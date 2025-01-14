@@ -95,7 +95,7 @@ dependencies {
 
   testImplementation("org.apache.iceberg:iceberg-spark-3.5_2.12")
   testImplementation("org.apache.iceberg:iceberg-spark-extensions-3.5_2.12")
-  testImplementation("org.apache.spark:spark-sql_2.12:3.5.4") {
+  testImplementation(libs.spark35.sql.scala212) {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
     exclude("org.apache.logging.log4j", "log4j-api")
@@ -119,14 +119,12 @@ dependencies {
   testImplementation(libs.s3mock.testcontainers)
 
   // required for PolarisSparkIntegrationTest
-  testImplementation(enforcedPlatform("org.scala-lang:scala-library:2.12.18"))
-  testImplementation(enforcedPlatform("org.scala-lang:scala-reflect:2.12.18"))
+  testImplementation(enforcedPlatform(libs.scala212.lang.library))
+  testImplementation(enforcedPlatform(libs.scala212.lang.reflect))
   testImplementation(libs.javax.servlet.api)
-  testImplementation(
-    enforcedPlatform("org.antlr:antlr4-runtime:4.9.3")
-  ) // cannot be higher than 4.9.3
+  testImplementation(libs.antlr4.runtime)
 
-  testImplementation("org.hawkular.agent:prometheus-scraper:0.23.0.Final")
+  testImplementation(libs.hawkular.agent.prometheus.scraper)
 }
 
 tasks.withType(Test::class.java).configureEach {
