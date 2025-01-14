@@ -16,19 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.context;
+package org.apache.polaris.service.context;
 
-/**
- * Represents the elements of a REST request associated with routing to independent and isolated
- * "universes". This may include properties such as region, deployment environment (e.g. dev, qa,
- * prod), and/or account.
- */
-public interface RealmContext {
+import java.util.Map;
+import org.apache.polaris.core.context.RealmId;
 
-  static RealmContext copyOf(RealmContext original) {
-    String realmIdentifier = original.getRealmIdentifier();
-    return () -> realmIdentifier;
-  }
+public interface RealmIdResolver {
 
-  String getRealmIdentifier();
+  RealmId resolveRealmContext(
+      String requestURL, String method, String path, Map<String, String> headers);
 }

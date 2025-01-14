@@ -18,10 +18,10 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmId;
 
 /** Factory for creating token buckets per realm. */
 public interface TokenBucketFactory {
 
-  TokenBucket getOrCreateTokenBucket(RealmContext realmContext);
+  TokenBucket getOrCreateTokenBucket(RealmId realmId);
 }

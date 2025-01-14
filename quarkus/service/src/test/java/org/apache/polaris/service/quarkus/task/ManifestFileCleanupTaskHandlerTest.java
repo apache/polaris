@@ -46,7 +46,7 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.io.OutputFile;
 import org.apache.iceberg.io.PositionOutputStream;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
@@ -58,7 +58,7 @@ class ManifestFileCleanupTaskHandlerTest {
 
   @Inject PolarisDiagnostics diagnostics;
 
-  private final RealmContext realmContext = () -> "realmName";
+  private final RealmId realmId = RealmId.newRealmId("realmName");
 
   @Test
   public void testCleanupFileNotExists() throws IOException {
@@ -81,7 +81,7 @@ class ManifestFileCleanupTaskHandlerTest {
             .setName(UUID.randomUUID().toString())
             .build();
     assertThat(handler.canHandleTask(task)).isTrue();
-    assertThat(handler.handleTask(task, realmContext)).isTrue();
+    assertThat(handler.handleTask(task, realmId)).isTrue();
   }
 
   @Test
@@ -104,7 +104,7 @@ class ManifestFileCleanupTaskHandlerTest {
             .setName(UUID.randomUUID().toString())
             .build();
     assertThat(handler.canHandleTask(task)).isTrue();
-    assertThat(handler.handleTask(task, realmContext)).isTrue();
+    assertThat(handler.handleTask(task, realmId)).isTrue();
   }
 
   @Test
@@ -142,7 +142,7 @@ class ManifestFileCleanupTaskHandlerTest {
             .setName(UUID.randomUUID().toString())
             .build();
     assertThat(handler.canHandleTask(task)).isTrue();
-    assertThat(handler.handleTask(task, realmContext)).isTrue();
+    assertThat(handler.handleTask(task, realmId)).isTrue();
     assertThat(TaskUtils.exists(dataFile1Path, fileIO)).isFalse();
     assertThat(TaskUtils.exists(dataFile2Path, fileIO)).isFalse();
   }
@@ -196,7 +196,7 @@ class ManifestFileCleanupTaskHandlerTest {
             .setName(UUID.randomUUID().toString())
             .build();
     assertThat(handler.canHandleTask(task)).isTrue();
-    assertThat(handler.handleTask(task, realmContext)).isTrue();
+    assertThat(handler.handleTask(task, realmId)).isTrue();
     assertThat(TaskUtils.exists(dataFile1Path, fileIO)).isFalse();
     assertThat(TaskUtils.exists(dataFile2Path, fileIO)).isFalse();
   }
@@ -288,7 +288,7 @@ class ManifestFileCleanupTaskHandlerTest {
             .build();
 
     assertThat(handler.canHandleTask(task)).isTrue();
-    assertThat(handler.handleTask(task, realmContext)).isTrue();
+    assertThat(handler.handleTask(task, realmId)).isTrue();
 
     assertThat(TaskUtils.exists(firstMetadataFile, fileIO)).isFalse();
     assertThat(TaskUtils.exists(statisticsFile1.path(), fileIO)).isFalse();
@@ -330,7 +330,7 @@ class ManifestFileCleanupTaskHandlerTest {
             .setName(UUID.randomUUID().toString())
             .build();
     assertThat(handler.canHandleTask(task)).isTrue();
-    assertThat(handler.handleTask(task, realmContext)).isTrue();
+    assertThat(handler.handleTask(task, realmId)).isTrue();
   }
 
   @Test
@@ -390,7 +390,7 @@ class ManifestFileCleanupTaskHandlerTest {
           CompletableFuture.runAsync(
               () -> {
                 assertThat(handler.canHandleTask(task)).isTrue();
-                handler.handleTask(task, realmContext); // this will schedule the batch deletion
+                handler.handleTask(task, realmId); // this will schedule the batch deletion
               },
               executor);
       // Wait for all async tasks to finish

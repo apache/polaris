@@ -30,7 +30,7 @@ import java.time.Clock;
 import java.util.concurrent.ExecutorService;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.tracing.QuarkusTracingFilter;
 import org.apache.polaris.service.task.TaskExecutorImpl;
@@ -71,18 +71,17 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
   }
 
   @Override
-  protected void handleTask(long taskEntityId, RealmContext realmContext, int attempt) {
+  protected void handleTask(long taskEntityId, RealmId realmId, int attempt) {
     Span span =
         tracer
             .spanBuilder("polaris.task")
             .setParent(Context.current())
-            .setAttribute(
-                QuarkusTracingFilter.REALM_ID_ATTRIBUTE, realmContext.getRealmIdentifier())
+            .setAttribute(QuarkusTracingFilter.REALM_ID_ATTRIBUTE, realmId.id())
             .setAttribute("polaris.task.entity.id", taskEntityId)
             .setAttribute("polaris.task.attempt", attempt)
             .startSpan();
     try (Scope ignored = span.makeCurrent()) {
-      super.handleTask(taskEntityId, realmContext, attempt);
+      super.handleTask(taskEntityId, realmId, attempt);
     } finally {
       span.end();
     }
