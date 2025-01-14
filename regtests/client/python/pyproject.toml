@@ -27,6 +27,7 @@ readme = "README.md"
 repository = "https://github.com/GIT_USER_ID/GIT_REPO_ID"
 keywords = ["OpenAPI", "OpenAPI-Generator", "Polaris Management Service"]
 include = ["polaris.management/py.typed"]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.8"
