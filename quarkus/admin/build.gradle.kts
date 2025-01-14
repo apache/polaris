@@ -28,6 +28,7 @@ plugins {
 
 dependencies {
   implementation(project(":polaris-core"))
+  implementation(project(":polaris-version"))
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-service-common"))
@@ -44,13 +45,6 @@ dependencies {
 
   testImplementation(enforcedPlatform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
-}
-
-tasks.withType<ProcessResources>().configureEach {
-  from("src/main/resources") {
-    expand("polarisVersion" to version)
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
-  }
 }
 
 quarkus {

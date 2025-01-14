@@ -18,22 +18,13 @@
  */
 package org.apache.polaris.service.quarkus.admin;
 
-import java.io.InputStream;
-import java.net.URL;
-import java.util.Objects;
-import java.util.Properties;
+import org.apache.polaris.version.PolarisVersion;
 import picocli.CommandLine.IVersionProvider;
 
 public class PolarisVersionProvider implements IVersionProvider {
 
   @Override
-  public String[] getVersion() throws Exception {
-    URL resource =
-        Objects.requireNonNull(PolarisVersionProvider.class.getResource("version.properties"));
-    try (InputStream input = resource.openConnection().getInputStream()) {
-      Properties props = new Properties();
-      props.load(input);
-      return new String[] {props.getProperty("polaris.version")};
-    }
+  public String[] getVersion() {
+    return new String[] {PolarisVersion.polarisVersionString()};
   }
 }

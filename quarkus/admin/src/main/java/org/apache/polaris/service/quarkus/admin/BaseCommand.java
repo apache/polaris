@@ -27,8 +27,8 @@ import picocli.CommandLine.Spec;
 
 public abstract class BaseCommand implements Callable<Integer> {
 
-  public static final Integer EXIT_CODE_BOOTSTRAP_ERROR = 2;
-  public static final Integer EXIT_CODE_PURGE_ERROR = 3;
+  public static final Integer EXIT_CODE_BOOTSTRAP_ERROR = 3;
+  public static final Integer EXIT_CODE_PURGE_ERROR = 4;
 
   @Inject QuarkusPersistenceConfiguration persistenceConfiguration;
 
