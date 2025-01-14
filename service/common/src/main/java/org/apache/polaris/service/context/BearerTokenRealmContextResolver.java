@@ -31,8 +31,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @JsonTypeName("polaris")
-public class PolarisContextResolver implements RealmContextResolver {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisContextResolver.class);
+public class BearerTokenRealmContextResolver implements RealmContextResolver {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(BearerTokenRealmContextResolver.class);
 
   public static final String REALM_PROPERTY_KEY = "realm";
 
