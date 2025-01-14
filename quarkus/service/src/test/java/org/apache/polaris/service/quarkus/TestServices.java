@@ -27,14 +27,13 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
@@ -70,10 +69,22 @@ public record TestServices(
   }
 
   public static TestServices inMemory(FileIOFactory ioFactory, Map<String, Object> config) {
+
+    DefaultConfigurationStore configurationStore = new DefaultConfigurationStore(config);
+    PolarisDiagnostics polarisDiagnostics = Mockito.mock(PolarisDiagnostics.class);
+
+    PolarisStorageIntegrationProviderImpl storageIntegrationProvider =
+        new PolarisStorageIntegrationProviderImpl(
+            Mockito::mock,
+            () -> GoogleCredentials.create(new AccessToken("abc", new Date())),
+            configurationStore);
+
     InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
         new InMemoryPolarisMetaStoreManagerFactory(
-            new PolarisStorageIntegrationProviderImpl(
-                Mockito::mock, () -> GoogleCredentials.create(new AccessToken("abc", new Date()))));
+            storageIntegrationProvider,
+            configurationStore,
+            polarisDiagnostics,
+            Clock.systemDefaultZone());
 
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(testRealm);
@@ -81,36 +92,40 @@ public record TestServices(
     PolarisMetaStoreSession session =
         metaStoreManagerFactory.getOrCreateSessionSupplier(testRealm).get();
 
-    PolarisCallContext context =
-        new PolarisCallContext(
-            session,
-            Mockito.mock(PolarisDiagnostics.class),
-            new DefaultConfigurationStore(config),
-            Clock.systemDefaultZone());
-
-    CallContext callContext = CallContext.of(testRealm, context);
-
     RealmEntityManagerFactory realmEntityManagerFactory =
-        new RealmEntityManagerFactory(metaStoreManagerFactory) {};
+        new RealmEntityManagerFactory(metaStoreManagerFactory, polarisDiagnostics) {};
+
+    PolarisEntityManager entityManager =
+        realmEntityManagerFactory.getOrCreateEntityManager(testRealm);
+
     CallContextCatalogFactory callContextFactory =
         new PolarisCallContextCatalogFactory(
-            realmEntityManagerFactory,
-            metaStoreManagerFactory,
+            entityManager,
+            metaStoreManager,
+            session,
+            configurationStore,
+            polarisDiagnostics,
             Mockito.mock(TaskExecutor.class),
             ioFactory);
+
     PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
+
     IcebergRestCatalogApiService service =
         new IcebergCatalogAdapter(
-            callContext,
+            testRealm,
             callContextFactory,
-            realmEntityManagerFactory,
-            metaStoreManagerFactory,
+            entityManager,
+            metaStoreManager,
+            session,
+            configurationStore,
+            polarisDiagnostics,
             authorizer);
+
     IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
 
     PolarisMetaStoreManager.CreatePrincipalResult createdPrincipal =
         metaStoreManager.createPrincipal(
-            context,
+            session,
             new PrincipalEntity.Builder()
                 .setName("test-principal")
                 .setCreateTimestamp(Instant.now().toEpochMilli())
@@ -147,9 +162,13 @@ public record TestServices(
     PolarisCatalogsApi catalogsApi =
         new PolarisCatalogsApi(
             new PolarisServiceImpl(
-                realmEntityManagerFactory, metaStoreManagerFactory, authorizer, callContext));
+                entityManager,
+                metaStoreManager,
+                session,
+                configurationStore,
+                authorizer,
+                polarisDiagnostics));
 
-    CallContext.setCurrentContext(CallContext.of(testRealm, context));
     return new TestServices(restApi, catalogsApi, testRealm, securityContext);
   }
 }

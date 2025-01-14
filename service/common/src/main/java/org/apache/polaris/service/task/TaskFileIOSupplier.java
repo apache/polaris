@@ -23,20 +23,21 @@ import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 
 @ApplicationScoped
-public class TaskFileIOSupplier implements Function<TaskEntity, FileIO> {
+public class TaskFileIOSupplier implements BiFunction<TaskEntity, RealmContext, FileIO> {
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final FileIOFactory fileIOFactory;
   private final PolarisConfigurationStore configurationStore;
@@ -52,27 +53,28 @@ public class TaskFileIOSupplier implements Function<TaskEntity, FileIO> {
   }
 
   @Override
-  public FileIO apply(TaskEntity task) {
+  public FileIO apply(TaskEntity task, RealmContext realmContext) {
     Map<String, String> internalProperties = task.getInternalPropertiesAsMap();
     String location = internalProperties.get(PolarisTaskConstants.STORAGE_LOCATION);
     PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(
-            CallContext.getCurrentContext().getRealmContext());
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+    PolarisMetaStoreSession metaStoreSession =
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     Map<String, String> properties = new HashMap<>(internalProperties);
 
     Boolean skipCredentialSubscopingIndirection =
         configurationStore.getConfiguration(
-            null,
+            realmContext,
             PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
             PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
 
     if (!skipCredentialSubscopingIndirection) {
       properties.putAll(
           metaStoreManagerFactory
-              .getOrCreateStorageCredentialCache(CallContext.getCurrentContext().getRealmContext())
+              .getOrCreateStorageCredentialCache(realmContext)
               .getOrGenerateSubScopeCreds(
                   metaStoreManager,
-                  CallContext.getCurrentContext().getPolarisCallContext(),
+                  metaStoreSession,
                   task,
                   true,
                   Set.of(location),

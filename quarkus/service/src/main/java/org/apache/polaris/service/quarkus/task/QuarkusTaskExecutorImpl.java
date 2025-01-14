@@ -26,8 +26,11 @@ import io.quarkus.runtime.Startup;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.time.Clock;
 import java.util.concurrent.ExecutorService;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.tracing.QuarkusTracingFilter;
 import org.apache.polaris.service.task.TaskExecutorImpl;
@@ -39,16 +42,25 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
   private final Tracer tracer;
 
   public QuarkusTaskExecutorImpl() {
-    this(null, null, null, null);
+    this(null, null, null, null, null, null, null);
   }
 
   @Inject
   public QuarkusTaskExecutorImpl(
       @Identifier("task-executor") ExecutorService executorService,
       MetaStoreManagerFactory metaStoreManagerFactory,
+      PolarisConfigurationStore configurationStore,
+      PolarisDiagnostics diagnostics,
       TaskFileIOSupplier fileIOSupplier,
+      Clock clock,
       Tracer tracer) {
-    super(executorService, metaStoreManagerFactory, fileIOSupplier);
+    super(
+        executorService,
+        metaStoreManagerFactory,
+        configurationStore,
+        diagnostics,
+        fileIOSupplier,
+        clock);
     this.tracer = tracer;
   }
 
@@ -59,19 +71,18 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
   }
 
   @Override
-  protected void handleTask(long taskEntityId, CallContext callContext, int attempt) {
+  protected void handleTask(long taskEntityId, RealmContext realmContext, int attempt) {
     Span span =
         tracer
             .spanBuilder("polaris.task")
             .setParent(Context.current())
             .setAttribute(
-                QuarkusTracingFilter.REALM_ID_ATTRIBUTE,
-                callContext.getRealmContext().getRealmIdentifier())
+                QuarkusTracingFilter.REALM_ID_ATTRIBUTE, realmContext.getRealmIdentifier())
             .setAttribute("polaris.task.entity.id", taskEntityId)
             .setAttribute("polaris.task.attempt", attempt)
             .startSpan();
     try (Scope ignored = span.makeCurrent()) {
-      super.handleTask(taskEntityId, callContext, attempt);
+      super.handleTask(taskEntityId, realmContext, attempt);
     } finally {
       span.end();
     }

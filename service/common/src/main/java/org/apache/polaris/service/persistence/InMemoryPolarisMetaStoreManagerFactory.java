@@ -22,11 +22,13 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.time.Clock;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Supplier;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
@@ -44,15 +46,19 @@ public class InMemoryPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
 
   private final PolarisStorageIntegrationProvider storageIntegration;
-  private final Set<String> bootstrappedRealms = new HashSet<>();
+  private final Set<String> bootstrappedRealms = new CopyOnWriteArraySet<>();
 
   public InMemoryPolarisMetaStoreManagerFactory() {
-    this(null);
+    this(null, null, null, null);
   }
 
   @Inject
   public InMemoryPolarisMetaStoreManagerFactory(
-      PolarisStorageIntegrationProvider storageIntegration) {
+      PolarisStorageIntegrationProvider storageIntegration,
+      PolarisConfigurationStore configurationStore,
+      PolarisDiagnostics diagnostics,
+      Clock clock) {
+    super(configurationStore, diagnostics, clock);
     this.storageIntegration = storageIntegration;
   }
 
@@ -67,9 +73,11 @@ public class InMemoryPolarisMetaStoreManagerFactory
 
   @Override
   protected PolarisMetaStoreSession createMetaStoreSession(
-      @Nonnull PolarisTreeMapStore store, @Nonnull RealmContext realmContext) {
+      @Nonnull PolarisTreeMapStore store,
+      @Nonnull RealmContext realmContext,
+      @Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisTreeMapMetaStoreSessionImpl(
-        store, storageIntegration, secretsGenerator(realmContext));
+        store, storageIntegration, secretsGenerator(realmContext), diagnostics);
   }
 
   @Override
