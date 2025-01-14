@@ -146,7 +146,9 @@ tasks.named<Test>("test").configure {
   // Note: the test secrets are referenced in DropwizardServerManager
   environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,root,test-admin,test-secret")
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
-  useJUnitPlatform()
+  // Need to allow a java security manager after Java 21, for Subject.getSubject to work
+  // "getSubject is supported only if a security manager is allowed".
+  systemProperty("java.security.manager", "allow")
   maxParallelForks = 4
 }
 
