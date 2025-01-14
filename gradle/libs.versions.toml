@@ -22,6 +22,7 @@ hadoop = "3.4.1"
 iceberg = "1.7.1"
 junit = "5.11.4"
 quarkus = "3.17.6"
+immutables = "2.10.1"
 picocli = "4.7.6"
 slf4j = "2.0.16"
 swagger = "1.6.14"
@@ -54,6 +55,9 @@ hadoop-client-api = { module = "org.apache.hadoop:hadoop-client-api", version.re
 hadoop-client-runtime = { module = "org.apache.hadoop:hadoop-client-runtime", version.ref = "hadoop" }
 hadoop-common = { module = "org.apache.hadoop:hadoop-common", version.ref = "hadoop" }
 hadoop-hdfs-client = { module = "org.apache.hadoop:hadoop-hdfs-client", version.ref = "hadoop" }
+immutables-builder = { module = "org.immutables:builder", version.ref = "immutables" }
+immutables-value-annotations = { module = "org.immutables:value-annotations", version.ref = "immutables" }
+immutables-value-processor = { module = "org.immutables:value-processor", version.ref = "immutables" }
 iceberg-bom = { module = "org.apache.iceberg:iceberg-bom", version.ref = "iceberg" }
 jackson-bom = { module = "com.fasterxml.jackson:jackson-bom", version = "2.18.2" }
 jakarta-annotation-api = { module = "jakarta.annotation:jakarta.annotation-api", version = "3.0.0" }
