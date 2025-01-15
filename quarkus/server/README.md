@@ -2,7 +2,26 @@
 
 This module contains the Quarkus-based Polaris server main artifact.
 
+## Archive distribution
+
 Building this module will create a zip/tar distribution with the Polaris server.
+
+To build the distribution, you can use the following command:
+
+```shell
+./gradlew :polaris-quarkus-server:build
+```
+
+You can manually unpack and run the distribution archives:
+
+```shell
+cd quarkus/server/build/distributions
+unzip polaris-quarkus-server-<version>.zip
+cd polaris-quarkus-server-<version>
+java -jar quarkus-run.jar
+```
+
+## Docker image
 
 To also build the Docker image, you can use the following command (a running Docker daemon is
 required):
