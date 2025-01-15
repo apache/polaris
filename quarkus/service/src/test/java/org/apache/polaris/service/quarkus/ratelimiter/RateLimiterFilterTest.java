@@ -66,7 +66,7 @@ public class RateLimiterFilterTest {
     @Override
     public Map<String, String> getConfigOverrides() {
       return Map.of(
-          "polaris.rate-limiter.type",
+          "polaris.rate-limiter.filter.type",
           "default",
           "polaris.rate-limiter.token-bucket.type",
           "default",

@@ -59,7 +59,8 @@ import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguratio
 import org.apache.polaris.service.quarkus.catalog.io.QuarkusFileIOConfiguration;
 import org.apache.polaris.service.quarkus.context.QuarkusRealmContextConfiguration;
 import org.apache.polaris.service.quarkus.persistence.QuarkusPersistenceConfiguration;
-import org.apache.polaris.service.quarkus.ratelimiter.QuarkusRateLimiterConfiguration;
+import org.apache.polaris.service.quarkus.ratelimiter.QuarkusRateLimiterFilterConfiguration;
+import org.apache.polaris.service.quarkus.ratelimiter.QuarkusTokenBucketConfiguration;
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
 import org.apache.polaris.service.task.TaskHandlerConfiguration;
@@ -186,15 +187,15 @@ public class QuarkusProducers {
 
   @Produces
   public RateLimiter rateLimiter(
-      QuarkusRateLimiterConfiguration config, @Any Instance<RateLimiter> rateLimiters) {
+      QuarkusRateLimiterFilterConfiguration config, @Any Instance<RateLimiter> rateLimiters) {
     return rateLimiters.select(Identifier.Literal.of(config.type())).get();
   }
 
   @Produces
   public TokenBucketFactory tokenBucketFactory(
-      QuarkusRateLimiterConfiguration config,
+      QuarkusTokenBucketConfiguration config,
       @Any Instance<TokenBucketFactory> tokenBucketFactories) {
-    return tokenBucketFactories.select(Identifier.Literal.of(config.tokenBucket().type())).get();
+    return tokenBucketFactories.select(Identifier.Literal.of(config.type())).get();
   }
 
   @Produces

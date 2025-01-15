@@ -18,27 +18,16 @@
  */
 package org.apache.polaris.service.quarkus.ratelimiter;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.inject.Alternative;
-import jakarta.inject.Inject;
-import java.time.Instant;
-import java.time.ZoneOffset;
-import org.apache.polaris.service.ratelimiter.DefaultTokenBucketFactory;
-import org.apache.polaris.service.ratelimiter.TokenBucketConfiguration;
-import org.threeten.extra.MutableClock;
+import io.quarkus.runtime.annotations.StaticInitSafe;
+import io.smallrye.config.ConfigMapping;
 
-/** TokenBucketFactory with a mock clock */
-@Alternative
-@ApplicationScoped
-public class MockTokenBucketFactory extends DefaultTokenBucketFactory {
-  public static MutableClock CLOCK = MutableClock.of(Instant.now(), ZoneOffset.UTC);
+@StaticInitSafe
+@ConfigMapping(prefix = "polaris.rate-limiter.filter")
+public interface QuarkusRateLimiterFilterConfiguration {
 
-  public MockTokenBucketFactory() {
-    super(0, null, CLOCK);
-  }
-
-  @Inject
-  public MockTokenBucketFactory(TokenBucketConfiguration configuration) {
-    super(configuration, CLOCK);
-  }
+  /**
+   * The type of the rate limiter. Must be a registered {@link
+   * org.apache.polaris.service.ratelimiter.RateLimiter} identifier.
+   */
+  String type();
 }
