@@ -21,6 +21,8 @@ import java.util.Properties
 
 includeBuild("build-logic") { name = "polaris-build-logic" }
 
+includeBuild("tools/apprunner") { name = "polaris-apprunner" }
+
 if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
   throw GradleException(
     """

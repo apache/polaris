@@ -125,6 +125,11 @@ tasks.named<RatTask>("rat").configure {
 
   excludes.add("**/kotlin-compiler*")
   excludes.add("**/build-logic/.kotlin/**")
+
+  excludes.add(
+    "tools/apprunner/gradle-plugin/src/main/resources/META-INF/gradle-plugins/org.apache.polaris.apprunner"
+  )
+  excludes.add("tools/apprunner/maven-plugin/target/**")
 }
 
 // Pass environment variables:
