@@ -105,6 +105,49 @@ testing {
         }
       }
     }
+
+    register<JvmTestSuite>("intTest") {
+      val libs = versionCatalogs.named("libs")
+      useJUnitJupiter(
+        libs
+          .findLibrary("junit-bom")
+          .orElseThrow { GradleException("junit-bom not declared in libs.versions.toml") }
+          .map { it.version!! }
+      )
+
+      testType = TestSuiteType.INTEGRATION_TEST
+
+      dependencies { implementation.add(project()) }
+
+      val hasQuarkus = plugins.hasPlugin("io.quarkus")
+
+      targets.all {
+        testTask.configure {
+          shouldRunAfter("test")
+
+          // For Quarkus...
+          //
+          // io.quarkus.test.junit.IntegrationTestUtil.determineBuildOutputDirectory(java.net.URL)
+          // is not smart enough :(
+          if (hasQuarkus) {
+            systemProperty("build.output.directory", layout.buildDirectory.asFile.get())
+            dependsOn(tasks.named("quarkusBuild"))
+          }
+        }
+
+        if (hasQuarkus) {
+          tasks.named("compileIntTestJava").configure {
+            dependsOn(tasks.named("compileQuarkusTestGeneratedSourcesJava"))
+          }
+        }
+
+        tasks.named("check").configure { dependsOn(testTask) }
+      }
+
+      if (hasQuarkus) {
+        sources { java.srcDirs(tasks.named("quarkusGenerateCodeTests")) }
+      }
+    }
   }
 }
 
@@ -220,4 +263,16 @@ configurations.all {
         exclude(group = group, module = module)
       }
     }
+}
+
+// Let the test's implementation config extend testImplementation, so it also inherits the
+// project's "main" implementation dependencies (not just the "api" configuration)
+configurations.named("intTestImplementation").configure {
+  extendsFrom(configurations.getByName("testImplementation"))
+}
+
+dependencies { add("intTestImplementation", java.sourceSets.getByName("test").output.dirs) }
+
+configurations.named("intTestRuntimeOnly").configure {
+  extendsFrom(configurations.getByName("testRuntimeOnly"))
 }

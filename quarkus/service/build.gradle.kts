@@ -89,7 +89,8 @@ dependencies {
 
   implementation(libs.jakarta.servlet.api)
 
-  testImplementation(project(":polaris-tests"))
+  testFixturesApi(project(":polaris-tests"))
+
   testImplementation(project(":polaris-api-management-model"))
 
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
@@ -120,13 +121,26 @@ dependencies {
   testImplementation("org.testcontainers:testcontainers")
   testImplementation(libs.s3mock.testcontainers)
 
-  // required for PolarisSparkIntegrationTest
-  testImplementation(enforcedPlatform(libs.scala212.lang.library))
-  testImplementation(enforcedPlatform(libs.scala212.lang.reflect))
-  testImplementation(libs.javax.servlet.api)
-  testImplementation(libs.antlr4.runtime)
-
   testImplementation(libs.hawkular.agent.prometheus.scraper)
+
+  intTestImplementation(project(":polaris-api-management-model"))
+
+  intTestImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}")
+  intTestImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}")
+  intTestImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
+  intTestImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")
+
+  intTestImplementation(platform(libs.quarkus.bom))
+  intTestImplementation("io.quarkus:quarkus-junit5")
+
+  // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
+  intTestImplementation(platform(libs.dnsjava))
+
+  // required for QuarkusSparkIT
+  intTestImplementation(enforcedPlatform(libs.scala212.lang.library))
+  intTestImplementation(enforcedPlatform(libs.scala212.lang.reflect))
+  intTestImplementation(libs.javax.servlet.api)
+  intTestImplementation(libs.antlr4.runtime)
 }
 
 tasks.withType(Test::class.java).configureEach {
@@ -145,6 +159,19 @@ tasks.named<Test>("test").configure {
   // "getSubject is supported only if a security manager is allowed".
   systemProperty("java.security.manager", "allow")
   maxParallelForks = 4
+}
+
+tasks.named<Test>("intTest").configure {
+  if (System.getenv("AWS_REGION") == null) {
+    environment("AWS_REGION", "us-west-2")
+  }
+  // Note: the test secrets are referenced in DropwizardServerManager
+  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,root,test-admin,test-secret")
+  jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
+  // Need to allow a java security manager after Java 21, for Subject.getSubject to work
+  // "getSubject is supported only if a security manager is allowed".
+  systemProperty("java.security.manager", "allow")
+  maxParallelForks = 1
 }
 
 /**

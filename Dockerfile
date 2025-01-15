@@ -32,7 +32,7 @@ WORKDIR /app
 RUN rm -rf build
 
 # Build the rest catalog
-RUN ./gradlew --no-daemon --info ${ECLIPSELINK_DEPS+"-PeclipseLinkDeps=$ECLIPSELINK_DEPS"} -PeclipseLink=$ECLIPSELINK clean :polaris-quarkus-service:build -x test
+RUN ./gradlew --no-daemon --info ${ECLIPSELINK_DEPS+"-PeclipseLinkDeps=$ECLIPSELINK_DEPS"} -PeclipseLink=$ECLIPSELINK clean :polaris-quarkus-service:build -x test -x intTest
 
 FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.21-1.1733995527
 
