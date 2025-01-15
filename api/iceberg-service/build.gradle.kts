@@ -20,6 +20,7 @@
 plugins {
   alias(libs.plugins.openapi.generator)
   id("polaris-client")
+  alias(libs.plugins.jandex)
 }
 
 dependencies {
@@ -29,19 +30,21 @@ dependencies {
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
 
-  compileOnly(libs.jakarta.annotation.api)
-  compileOnly(libs.jakarta.inject.api)
-  compileOnly(libs.jakarta.validation.api)
-  compileOnly(libs.swagger.annotations)
+  implementation(libs.jakarta.annotation.api)
+  implementation(libs.jakarta.inject.api)
+  implementation(libs.jakarta.validation.api)
+  implementation(libs.swagger.annotations)
 
   implementation(libs.jakarta.servlet.api)
   implementation(libs.jakarta.ws.rs.api)
 
-  compileOnly(platform(libs.micrometer.bom))
-  compileOnly("io.micrometer:micrometer-core")
+  implementation(platform(libs.micrometer.bom))
+  implementation("io.micrometer:micrometer-core")
 
-  compileOnly(platform(libs.jackson.bom))
-  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
+  implementation(platform(libs.jackson.bom))
+  implementation("com.fasterxml.jackson.core:jackson-annotations")
+  implementation("com.fasterxml.jackson.core:jackson-core")
+  implementation("com.fasterxml.jackson.core:jackson-databind")
 }
 
 openApiGenerate {
@@ -111,3 +114,5 @@ listOf("sourcesJar", "compileJava").forEach { task ->
 sourceSets {
   main { java { srcDir(project.layout.buildDirectory.dir("generated/src/main/java")) } }
 }
+
+tasks.named("javadoc") { dependsOn("jandex") }

@@ -32,16 +32,36 @@ WORKDIR /app
 RUN rm -rf build
 
 # Build the rest catalog
-RUN ./gradlew --no-daemon --info ${ECLIPSELINK_DEPS+"-PeclipseLinkDeps=$ECLIPSELINK_DEPS"} -PeclipseLink=$ECLIPSELINK clean prepareDockerDist
+RUN ./gradlew --no-daemon --info ${ECLIPSELINK_DEPS+"-PeclipseLinkDeps=$ECLIPSELINK_DEPS"} -PeclipseLink=$ECLIPSELINK clean :polaris-quarkus-service:build -x test
 
 FROM registry.access.redhat.com/ubi9/openjdk-21-runtime:1.21-1.1733995527
-WORKDIR /app
-COPY --from=build /app/dropwizard/service/build/docker-dist/bin /app/bin
-COPY --from=build /app/dropwizard/service/build/docker-dist/lib /app/lib
-COPY --from=build /app/polaris-server.yml /app
+
+LABEL org.opencontainers.image.source=https://github.com/apache/polaris
+LABEL org.opencontainers.image.description="Apache Polaris (incubating)"
+LABEL org.opencontainers.image.licenses=Apache-2.0
+
+ENV LANGUAGE='en_US:en'
+
+USER root
+RUN groupadd --gid 10001 polaris \
+      && useradd --uid 10000 --gid polaris polaris \
+      && chown -R polaris:polaris /opt/jboss/container \
+      && chown -R polaris:polaris /deployments
+
+USER polaris
+WORKDIR /home/polaris
+ENV USER=polaris
+ENV UID=10000
+ENV HOME=/home/polaris
+
+# We make four distinct layers so if there are application changes the library layers can be re-used
+COPY --from=build --chown=polaris:polaris /app/quarkus/service/build/quarkus-app/lib/ /deployments/lib/
+COPY --from=build --chown=polaris:polaris /app/quarkus/service/build/quarkus-app/*.jar /deployments/
+COPY --from=build --chown=polaris:polaris /app/quarkus/service/build/quarkus-app/app/ /deployments/app/
+COPY --from=build --chown=polaris:polaris /app/quarkus/service/build/quarkus-app/quarkus/ /deployments/quarkus/
 
 EXPOSE 8181
+EXPOSE 8182
 
-# Run the resulting java binary
-ENTRYPOINT ["/app/bin/polaris-service"]
-CMD ["server", "polaris-server.yml"]
+ENV AB_JOLOKIA_OFF=""
+ENV JAVA_APP_JAR="/deployments/quarkus-run.jar"

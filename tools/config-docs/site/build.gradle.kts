@@ -23,7 +23,10 @@ plugins {
 
 description = "Polaris site - reference docs"
 
-val genProjectPaths = listOf<String>()
+val genProjectPaths = listOf(
+  ":polaris-quarkus-service",
+  ":polaris-eclipselink",
+)
 
 val genProjects by configurations.creating
 val genSources by configurations.creating

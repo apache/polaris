@@ -19,8 +19,7 @@
 
 plugins {
   id("polaris-client")
-  id("java-library")
-  id("java-test-fixtures")
+  alias(libs.plugins.jandex)
 }
 
 dependencies {
@@ -83,7 +82,7 @@ dependencies {
   implementation("com.azure:azure-identity")
   implementation("com.azure:azure-storage-file-datalake")
   constraints {
-    implementation("io.netty:netty-codec-http2:4.1.116.Final") {
+    implementation("io.netty:netty-codec-http2:4.1.117.Final") {
       because("Vulnerability detected in 4.1.72")
     }
     implementation("io.projectreactor.netty:reactor-netty-http:1.2.1") {
@@ -95,10 +94,6 @@ dependencies {
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
 
-  testFixturesApi(platform(libs.junit.bom))
-  testFixturesApi("org.junit.jupiter:junit-jupiter")
-  testFixturesApi(libs.assertj.core)
-  testFixturesApi(libs.mockito.core)
   testFixturesApi("com.fasterxml.jackson.core:jackson-core")
   testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
   testFixturesApi(libs.commons.lang3)
@@ -109,3 +104,5 @@ dependencies {
 
   compileOnly(libs.jakarta.annotation.api)
 }
+
+tasks.named("javadoc") { dependsOn("jandex") }

@@ -19,6 +19,7 @@
 package org.apache.polaris.docs.generator;
 
 import static java.util.Arrays.asList;
+import static java.util.Objects.requireNonNull;
 
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.ConfigMappingInterface;
@@ -70,17 +71,21 @@ public class SmallRyeConfigs {
     return sb.toString();
   }
 
+  TypeElement getTypeElement(String typeName) {
+    var elem = env.getElementUtils().getTypeElement(typeName);
+    if (elem == null) {
+      elem = env.getElementUtils().getTypeElement(typeName.replace('$', '.'));
+    }
+    return requireNonNull(elem, "Could not find type '" + typeName + "'");
+  }
+
   public SmallRyeConfigMappingInfo getConfigMappingInfo(Class<?> type) {
     var typeName = type.getName();
     var info = configMappingByType.get(typeName);
     if (info == null) {
       info = new SmallRyeConfigMappingInfo("");
       configMappingByType.put(typeName, info);
-      TypeElement elem = env.getElementUtils().getTypeElement(typeName);
-      if (elem == null) {
-        throw new NullPointerException("Type " + typeName + " not found");
-      }
-      elem.accept(visitor(), null);
+      getTypeElement(typeName).accept(visitor(), null);
     }
     return info;
   }
@@ -144,8 +149,7 @@ public class SmallRyeConfigs {
 
               remaining.addAll(asList(superType.getSuperTypes()));
 
-              var superTypeElement =
-                  env.getElementUtils().getTypeElement(superType.getInterfaceType().getName());
+              var superTypeElement = getTypeElement(superType.getInterfaceType().getName());
               mappingInfo.processType(env, superType, superTypeElement);
             }
 
@@ -164,7 +168,7 @@ public class SmallRyeConfigs {
                 continue;
               }
 
-              var superTypeElement = env.getElementUtils().getTypeElement(c.getName());
+              var superTypeElement = getTypeElement(c.getName());
               mappingInfo.processType(env, configMappingInterface, superTypeElement);
 
               if (c.getSuperclass() != null) {

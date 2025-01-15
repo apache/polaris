@@ -17,9 +17,6 @@
  * under the License.
  */
 
-plugins {
-  id("polaris-client")
-  `java-library`
-}
+plugins { id("polaris-client") }
 
 description = "Polaris reference docs annotations"

@@ -23,12 +23,10 @@ import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
-/**
- * Configuration interface for configuring the {@link PolarisMetaStoreManager} via Dropwizard
- * configuration
- */
+/** Configuration interface for configuring the {@link PolarisMetaStoreManager}. */
 public interface MetaStoreManagerFactory {
 
   PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext);
@@ -37,7 +35,10 @@ public interface MetaStoreManagerFactory {
 
   StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext);
 
-  Map<String, PrincipalSecretsResult> bootstrapRealms(List<String> realms);
+  EntityCache getOrCreateEntityCache(RealmContext realmContext);
+
+  Map<String, PrincipalSecretsResult> bootstrapRealms(
+      List<String> realms, PolarisCredentialsBootstrap credentialsBootstrap);
 
   /** Purge all metadata for the realms provided */
   void purgeRealms(List<String> realms);

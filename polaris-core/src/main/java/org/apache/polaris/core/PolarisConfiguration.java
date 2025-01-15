@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.context.CallContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,25 +98,6 @@ public class PolarisConfiguration<T> {
       }
       return new PolarisConfiguration<>(key, description, defaultValue, catalogConfig);
     }
-  }
-
-  /**
-   * Returns the value of a `PolarisConfiguration`, or the default if it cannot be loaded. This
-   * method does not need to be used when a `CallContext` is already available
-   */
-  public static <T> T loadConfig(PolarisConfiguration<T> configuration) {
-    var callContext = CallContext.getCurrentContext();
-    if (callContext == null) {
-      LOGGER.warn(
-          String.format(
-              "Unable to load current call context; using %s = %s",
-              configuration.key, configuration.defaultValue));
-      return configuration.defaultValue;
-    }
-    return callContext
-        .getPolarisCallContext()
-        .getConfigurationStore()
-        .getConfiguration(callContext.getPolarisCallContext(), configuration);
   }
 
   public static <T> Builder<T> builder() {

@@ -22,14 +22,17 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.auth.http.HttpTransportFactory;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.ServiceOptions;
-import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -40,16 +43,29 @@ import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import software.amazon.awssdk.services.sts.StsClient;
 
-@Identifier("default")
+@ApplicationScoped
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
 
   private final Supplier<StsClient> stsClientSupplier;
   private final Supplier<GoogleCredentials> gcpCredsProvider;
+  private final PolarisConfigurationStore configurationStore;
+
+  @Inject
+  public PolarisStorageIntegrationProviderImpl(
+      StorageConfiguration storageConfiguration, PolarisConfigurationStore configurationStore) {
+    this(
+        storageConfiguration.stsClientSupplier(),
+        storageConfiguration.gcpCredentialsSupplier(),
+        configurationStore);
+  }
 
   public PolarisStorageIntegrationProviderImpl(
-      Supplier<StsClient> stsClientSupplier, Supplier<GoogleCredentials> gcpCredsProvider) {
+      Supplier<StsClient> stsClientSupplier,
+      Supplier<GoogleCredentials> gcpCredsProvider,
+      PolarisConfigurationStore configurationStore) {
     this.stsClientSupplier = stsClientSupplier;
     this.gcpCredsProvider = gcpCredsProvider;
+    this.configurationStore = configurationStore;
   }
 
   @Override
@@ -65,25 +81,28 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       case S3:
         storageIntegration =
             (PolarisStorageIntegration<T>)
-                new AwsCredentialsStorageIntegration(stsClientSupplier.get());
+                new AwsCredentialsStorageIntegration(configurationStore, stsClientSupplier.get());
         break;
       case GCS:
         storageIntegration =
             (PolarisStorageIntegration<T>)
                 new GcpCredentialsStorageIntegration(
+                    configurationStore,
                     gcpCredsProvider.get(),
                     ServiceOptions.getFromServiceLoader(
                         HttpTransportFactory.class, NetHttpTransport::new));
         break;
       case AZURE:
         storageIntegration =
-            (PolarisStorageIntegration<T>) new AzureCredentialsStorageIntegration();
+            (PolarisStorageIntegration<T>)
+                new AzureCredentialsStorageIntegration(configurationStore);
         break;
       case FILE:
         storageIntegration =
             new PolarisStorageIntegration<>("file") {
               @Override
               public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
+                  @Nonnull RealmContext realmContext,
                   @Nonnull PolarisDiagnostics diagnostics,
                   @Nonnull T storageConfig,
                   boolean allowListOperation,
@@ -95,6 +114,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
               @Override
               public @Nonnull Map<String, Map<PolarisStorageActions, ValidationResult>>
                   validateAccessToLocations(
+                      @Nonnull RealmContext realmContext,
                       @Nonnull T storageConfig,
                       @Nonnull Set<PolarisStorageActions> actions,
                       @Nonnull Set<String> locations) {

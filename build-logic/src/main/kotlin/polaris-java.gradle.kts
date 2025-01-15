@@ -26,8 +26,10 @@ import org.gradle.kotlin.dsl.named
 import publishing.PublishingHelperPlugin
 
 plugins {
-  id("jacoco")
-  id("java")
+  jacoco
+  `java-library`
+  `java-test-fixtures`
+  `jvm-test-suite`
   id("com.diffplug.spotless")
   id("jacoco-report-aggregation")
   id("net.ltgt.errorprone")
@@ -63,9 +65,69 @@ tasks.register("format").configure {
   dependsOn("spotlessApply")
 }
 
-tasks.named<Test>("test").configure {
-  useJUnitPlatform()
-  jvmArgs("-Duser.language=en")
+tasks.named<Test>("test").configure { jvmArgs("-Duser.language=en") }
+
+testing {
+  suites {
+    withType<JvmTestSuite> {
+      val libs = versionCatalogs.named("libs")
+
+      useJUnitJupiter(
+        libs
+          .findLibrary("junit-bom")
+          .orElseThrow { GradleException("junit-bom not declared in libs.versions.toml") }
+          .map { it.version!! }
+      )
+
+      dependencies {
+        implementation(project())
+        implementation(testFixtures(project()))
+        runtimeOnly(
+          libs.findLibrary("logback-classic").orElseThrow {
+            GradleException("logback-classic not declared in libs.versions.toml")
+          }
+        )
+        implementation(
+          libs.findLibrary("assertj-core").orElseThrow {
+            GradleException("assertj-core not declared in libs.versions.toml")
+          }
+        )
+        implementation(
+          libs.findLibrary("mockito-core").orElseThrow {
+            GradleException("mockito-core not declared in libs.versions.toml")
+          }
+        )
+      }
+
+      targets.all {
+        if (testTask.name != "test") {
+          testTask.configure { shouldRunAfter("test") }
+        }
+      }
+    }
+  }
+}
+
+dependencies {
+  val libs = versionCatalogs.named("libs")
+  testFixturesImplementation(
+    platform(
+      libs.findLibrary("junit-bom").orElseThrow {
+        GradleException("junit-bom not declared in libs.versions.toml")
+      }
+    )
+  )
+  testFixturesImplementation("org.junit.jupiter:junit-jupiter")
+  testFixturesImplementation(
+    libs.findLibrary("assertj-core").orElseThrow {
+      GradleException("assertj-core not declared in libs.versions.toml")
+    }
+  )
+  testFixturesImplementation(
+    libs.findLibrary("mockito-core").orElseThrow {
+      GradleException("mockito-core not declared in libs.versions.toml")
+    }
+  )
 }
 
 tasks.withType(Jar::class).configureEach {

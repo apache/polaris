@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Comparator;
+import java.util.List;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.junit.jupiter.api.Test;
 
@@ -74,6 +75,27 @@ class PolarisCredentialsBootstrapTest {
     PolarisCredentialsBootstrap credentials =
         PolarisCredentialsBootstrap.fromString(
             " ; realm1 , user1a , client1a , secret1a ; realm1 , user1b , client1b , secret1b ; realm2 , user2a , client2a , secret2a ; ");
+    assertThat(credentials.getSecrets("realm1", 123, "nonexistent")).isEmpty();
+    assertThat(credentials.getSecrets("nonexistent", 123, "user1a")).isEmpty();
+    assertThat(credentials.getSecrets("realm1", 123, "user1a"))
+        .usingValueComparator(comparator)
+        .contains(new PolarisPrincipalSecrets(123, "client1a", "secret1a", "secret1a"));
+    assertThat(credentials.getSecrets("realm1", 123, "user1b"))
+        .usingValueComparator(comparator)
+        .contains(new PolarisPrincipalSecrets(123, "client1b", "secret1b", "secret1b"));
+    assertThat(credentials.getSecrets("realm2", 123, "user2a"))
+        .usingValueComparator(comparator)
+        .contains(new PolarisPrincipalSecrets(123, "client2a", "secret2a", "secret2a"));
+  }
+
+  @Test
+  void getSecretsValidList() {
+    PolarisCredentialsBootstrap credentials =
+        PolarisCredentialsBootstrap.fromList(
+            List.of(
+                "realm1,user1a,client1a,secret1a",
+                "realm1,user1b,client1b,secret1b",
+                "realm2,user2a,client2a,secret2a"));
     assertThat(credentials.getSecrets("realm1", 123, "nonexistent")).isEmpty();
     assertThat(credentials.getSecrets("nonexistent", 123, "user1a")).isEmpty();
     assertThat(credentials.getSecrets("realm1", 123, "user1a"))
