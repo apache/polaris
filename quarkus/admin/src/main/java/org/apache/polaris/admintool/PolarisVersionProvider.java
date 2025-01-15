@@ -16,32 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.admin;
+package org.apache.polaris.admintool;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import org.apache.polaris.version.PolarisVersion;
+import picocli.CommandLine.IVersionProvider;
 
-import io.quarkus.test.junit.main.Launch;
-import io.quarkus.test.junit.main.LaunchResult;
-import io.quarkus.test.junit.main.QuarkusMainTest;
-import org.junit.jupiter.api.Test;
+public class PolarisVersionProvider implements IVersionProvider {
 
-@QuarkusMainTest
-class BootstrapCommandTest {
-
-  @Test
-  @Launch(
-      value = {
-        "bootstrap",
-        "-r",
-        "realm1",
-        "-r",
-        "realm2",
-        "-c",
-        "realm1,root,root,s3cr3t",
-        "-c",
-        "realm2,root,root,s3cr3t"
-      })
-  public void testBootstrap(LaunchResult result) {
-    assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
+  @Override
+  public String[] getVersion() {
+    return new String[] {PolarisVersion.polarisVersionString()};
   }
 }
