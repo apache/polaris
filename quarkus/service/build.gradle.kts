@@ -37,6 +37,8 @@ dependencies {
   // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
   implementation(platform(libs.dnsjava))
 
+  implementation(platform(libs.opentelemetry.bom))
+
   implementation(platform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-logging-json")
   implementation("io.quarkus:quarkus-rest-jackson")
