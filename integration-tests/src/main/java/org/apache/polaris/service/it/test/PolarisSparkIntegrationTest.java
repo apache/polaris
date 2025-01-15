@@ -58,6 +58,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.LoggerFactory;
 
+/**
+ * @implSpec This test expects the server to be configured with the following features enabled:
+ *     <ul>
+ *       <li>{@link
+ *           org.apache.polaris.core.PolarisConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:
+ *           {@code true}
+ *       <li>{@link org.apache.polaris.core.PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
+ *           {@code true}
+ *     </ul>
+ */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisSparkIntegrationTest {
 

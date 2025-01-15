@@ -86,6 +86,18 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+/**
+ * @implSpec This test expects the server to be configured with the following features configured:
+ *     <ul>
+ *       <li>{@link org.apache.polaris.core.PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
+ *           {@code true}
+ *       <li>{@link
+ *           org.apache.polaris.core.PolarisConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:
+ *           {@code true}
+ *     </ul>
+ *     The server must also be configured to reject request body sizes larger than 1MB (1000000
+ *     bytes).
+ */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisApplicationIntegrationTest {
 

@@ -19,7 +19,21 @@
 package org.apache.polaris.service.quarkus.it;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
+import java.util.Map;
 import org.apache.polaris.service.it.test.PolarisRestCatalogIntegrationTest;
 
 @QuarkusTest
-public class QuarkusRestCatalogIntegrationTest extends PolarisRestCatalogIntegrationTest {}
+@TestProfile(QuarkusRestCatalogIntegrationTest.Profile.class)
+public class QuarkusRestCatalogIntegrationTest extends PolarisRestCatalogIntegrationTest {
+
+  public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.features.defaults.\"ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING\"", "false");
+    }
+  }
+}
