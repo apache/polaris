@@ -21,6 +21,7 @@ package org.apache.polaris.service.quarkus.admin;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
+import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.PolarisCredentialsBootstrap;
 import picocli.CommandLine;
 
@@ -41,6 +42,12 @@ public class BootstrapCommand extends BaseCommand {
       description =
           "Principal credentials to bootstrap. Must be of the form 'realm,userName,clientId,clientSecret'.")
   List<String> credentials;
+
+  @CommandLine.Option(
+      names = {"-p", "--print-credentials"},
+      description =
+          "Print root credentials to stdout")
+  boolean printCredentials;
 
   @Override
   public Integer call() {
@@ -70,6 +77,18 @@ public class BootstrapCommand extends BaseCommand {
     }
 
     if (success) {
+      if (printCredentials) {
+        for (Map.Entry<String, PrincipalSecretsResult> entry : results.entrySet()) {
+          String msg =
+              String.format(
+                  "realm: %1s root principal credentials: %2s:%3s",
+                  entry.getKey(),
+                  entry.getValue().getPrincipalSecrets().getPrincipalClientId(),
+                  entry.getValue().getPrincipalSecrets().getMainSecret());
+          spec.commandLine().getOut().println(msg);
+        }
+      }
+
       spec.commandLine().getOut().println("Bootstrap completed successfully.");
       return 0;
     } else {
