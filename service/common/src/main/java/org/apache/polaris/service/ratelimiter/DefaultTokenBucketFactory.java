@@ -37,11 +37,8 @@ public class DefaultTokenBucketFactory implements TokenBucketFactory {
   private final Map<String, TokenBucket> perRealmBuckets = new ConcurrentHashMap<>();
 
   @Inject
-  public DefaultTokenBucketFactory(RateLimiterConfiguration configuration, Clock clock) {
-    this(
-        configuration.tokenBucket().requestsPerSecond(),
-        configuration.tokenBucket().window(),
-        clock);
+  public DefaultTokenBucketFactory(TokenBucketConfiguration configuration, Clock clock) {
+    this(configuration.requestsPerSecond(), configuration.window(), clock);
   }
 
   public DefaultTokenBucketFactory(long requestsPerSecond, Duration window, Clock clock) {

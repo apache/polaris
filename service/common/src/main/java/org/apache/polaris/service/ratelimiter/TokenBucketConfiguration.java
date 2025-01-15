@@ -20,14 +20,9 @@ package org.apache.polaris.service.ratelimiter;
 
 import java.time.Duration;
 
-public interface RateLimiterConfiguration {
+public interface TokenBucketConfiguration {
 
-  TokenBucketConfiguration tokenBucket();
+  long requestsPerSecond();
 
-  interface TokenBucketConfiguration {
-
-    long requestsPerSecond();
-
-    Duration window();
-  }
+  Duration window();
 }
