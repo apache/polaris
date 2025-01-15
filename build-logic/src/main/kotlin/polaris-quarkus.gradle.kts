@@ -64,3 +64,11 @@ dependencies { add("intTestImplementation", java.sourceSets.getByName("test").ou
 configurations.named("intTestRuntimeOnly").configure {
   extendsFrom(configurations.getByName("testRuntimeOnly"))
 }
+
+tasks.named("compileJava") { dependsOn("compileQuarkusGeneratedSourcesJava") }
+
+tasks.named("sourcesJar") { dependsOn("compileQuarkusGeneratedSourcesJava") }
+
+tasks.named("javadoc") { dependsOn("jandex") }
+
+tasks.named("quarkusDependenciesBuild") { dependsOn("jandex") }

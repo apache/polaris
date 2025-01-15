@@ -78,14 +78,6 @@ publishing {
   }
 }
 
-tasks.named("compileJava") { dependsOn("compileQuarkusGeneratedSourcesJava") }
-
-tasks.named("sourcesJar") { dependsOn("compileQuarkusGeneratedSourcesJava") }
-
-tasks.named("javadoc") { dependsOn("jandex") }
-
-tasks.named("quarkusDependenciesBuild") { dependsOn("jandex") }
-
 tasks.named("distZip") { dependsOn("quarkusBuild") }
 
 tasks.named("distTar") { dependsOn("quarkusBuild") }
