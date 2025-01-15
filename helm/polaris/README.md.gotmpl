@@ -49,23 +49,56 @@
 
 ### Optional
 
-When using a custom `persistence.xml`, a Kubernetes Secret must be created for `.persistenceConfigSecret`. Below is a sample command:
+When using a custom `persistence.xml`, a Kubernetes Secret must be created for it. Below is a sample command:
 ```bash
 kubectl create secret generic polaris-secret -n polaris --from-file=persistence.xml
 ```
 
 ### From local directory (for development purposes)
 
-From Polaris repo root:
+The below instructions assume Minikube is running and Helm is installed.
+
+If necessary, load the Docker images into Minikube:
 
 ```bash
-$ helm install polaris helm/polaris --namespace polaris --create-namespace
+eval $(minikube -p minikube docker-env)
+
+./gradlew clean assemble \
+    -Dquarkus.container-image.build=true \
+    -Dquarkus.container-image.tag=unstable
+```
+
+Then create and populate the namespace:
+
+```bash
+kubectl create namespace polaris
+kubectl apply --namespace polaris -f helm/polaris/fixtures/
+```
+
+Finally, install the chart. From Polaris repo root:
+
+```bash
+helm upgrade --install --namespace polaris polaris helm/polaris \
+  --set image.tag=unstable \
+  --set bootstrap.image.tag=unstable \
+  --debug \
+  --values helm/polaris/ci/simple-values.yaml
+```
+
+You can also run `ct` (chart-testing):
+
+```bash
+ct lint --charts helm/polaris
+ct install --helm-extra-set-args "--set=image.tag=unstable --set bootstrap.image.tag=unstable" \
+  --debug \
+  --namespace polaris \
+  --charts ./helm/polaris
 ```
 
 ### Uninstalling the chart
 
 ```bash
-$ helm uninstall --namespace polaris polaris
+helm uninstall --namespace polaris polaris
 ```
 
 {{ template "chart.valuesSection" . }}

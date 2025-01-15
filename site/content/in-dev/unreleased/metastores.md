@@ -26,32 +26,40 @@ weight: 700
 This page documents important configurations for connecting to production database through [EclipseLink](https://eclipse.dev/eclipselink/).
 
 ## Polaris Server Configuration
-Configure the `metaStoreManager` section in the Polaris configuration (`polaris-server.yml` by default) as follows:
+
+Configure the `polaris.persistence` section in the Polaris configuration (`application.properties`) as follows:
+
 ```
-metaStoreManager:
-  type: eclipse-link
-  conf-file: META-INF/persistence.xml
-  persistence-unit: polaris
+polaris.persistence.eclipselink.configuration-file=/path/to/persistence.xml
+polaris.persistence.eclipselink.persistence-unit=polaris
 ```
 
-`conf-file` must point to an [EclipseLink configuration file](https://eclipse.dev/eclipselink/documentation/2.5/solutions/testingjpa002.htm)
-
-By default, `conf-file` points to the embedded resource file `META-INF/persistence.xml` in the `polaris-eclipselink` module.
-
-In order to specify a configuration file outside the classpath, follow these steps.
-1) Place `persistence.xml` into a jar file: `jar cvf /tmp/conf.jar persistence.xml`
-2) Use `conf-file: /tmp/conf.jar!/persistence.xml`
+`configuration-file` must point to an [EclipseLink configuration file](https://eclipse.dev/eclipselink/documentation/2.5/solutions/testingjpa002.htm).
 
 ## EclipseLink Configuration - persistence.xml
-The configuration file `persistence.xml` is used to set up the database connection properties, which can differ depending on the type of database and its configuration.
 
-Check out the default [persistence.xml](https://github.com/apache/polaris/blob/main/extension/persistence/eclipselink/src/main/resources/META-INF/persistence.xml) for a complete sample for connecting to the file-based H2 database. 
+The configuration file `persistence.xml` is used to set up the database connection properties, which
+can differ depending on the type of database and its configuration.
 
-Polaris creates and connects to a separate database for each realm. Specifically, the `{realm}` placeholder in `jakarta.persistence.jdbc.url` is substituted with the actual realm name, allowing the Polaris server to connect to different databases based on the realm.
+The path to the `persistence.xml` file and the persistence unit name must be set in the Polaris 
+configuration:
 
-> Note: some database systems such as Postgres don't create databases automatically. Database admins need to create them manually before running Polaris server.
+```properties
+polaris.persistence.eclipselink.configuration-file=/path/to/persistence.xml
+polaris.persistence.eclipselink.persistence-unit=polaris
+```
+
+Check out the default [persistence.xml] for a complete sample below. An in-memory H2 database is
+used by default, but you can easily switch to a different database.
+
+[persistence.xml]: https://github.com/apache/polaris/blob/main/extension/persistence/eclipselink/src/main/resources/META-INF/persistence.xml
+
 ```xml
-<persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
+<persistence version="2.0" xmlns="http://java.sun.com/xml/ns/persistence"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd">
+
+  <persistence-unit name="polaris" transaction-type="RESOURCE_LOCAL">
     <provider>org.eclipse.persistence.jpa.PersistenceProvider</provider>
     <class>org.apache.polaris.jpa.models.ModelEntity</class>
     <class>org.apache.polaris.jpa.models.ModelEntityActive</class>
@@ -62,22 +70,23 @@ Polaris creates and connects to a separate database for each realm. Specifically
     <class>org.apache.polaris.jpa.models.ModelSequenceId</class>
     <shared-cache-mode>NONE</shared-cache-mode>
     <properties>
-      <property name="jakarta.persistence.jdbc.url"
-        value="jdbc:h2:file:tmp/polaris_test/filedb_{realm}"/>
+      <property name="jakarta.persistence.jdbc.url" value="jdbc:h2:mem:polaris_{realm}"/>
       <property name="jakarta.persistence.jdbc.user" value="sa"/>
       <property name="jakarta.persistence.jdbc.password" value=""/>
       <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
+      <property name="eclipselink.logging.level.sql" value="FINE"/>
+      <property name="eclipselink.logging.parameters" value="true"/>
+      <property name="eclipselink.persistence-context.flush-mode" value="auto"/>
     </properties>
-</persistence-unit>
+  </persistence-unit>
+</persistence>
 ```
 
-A single `persistence.xml` can describe multiple [persistence units](https://eclipse.dev/eclipselink/documentation/2.6/concepts/app_dev001.htm). For example, with both a `polaris-dev` and `polaris` persistence unit defined, you could use a single `persistence.xml` to easily switch between development and production databases. Use `persistence-unit` in the Polaris server configuration to easily switch between persistence units.
+Polaris creates and connects to a separate database for each realm. Specifically, the `{realm}` placeholder in `jakarta.persistence.jdbc.url` is substituted with the actual realm name, allowing the Polaris server to connect to different databases based on the realm.
 
-To build Polaris with the necessary H2 dependency and start the Polaris service, run the following:
-```bash
-polaris> ./gradlew --no-daemon --info -PeclipseLink=true -PeclipseLinkDeps=com.h2database:h2:2.3.232 clean shadowJar
-polaris> java -jar quarkus/service/build/quarkus-app/quarkus-run.jar
-```
+> Note: some database systems such as Postgres don't create databases automatically. Database admins need to create them manually before running Polaris server.
+
+A single `persistence.xml` can describe multiple [persistence units](https://eclipse.dev/eclipselink/documentation/2.6/concepts/app_dev001.htm). For example, with both a `polaris-dev` and `polaris` persistence unit defined, you could use a single `persistence.xml` to easily switch between development and production databases. Use `polaris.persistence.eclipselink.persistence-unit` in the Polaris server configuration to easily switch between persistence units.
 
 ### Postgres
 
@@ -103,10 +112,4 @@ The following shows a sample configuration for integrating Polaris with Postgres
     <property name="eclipselink.persistence-context.flush-mode" value="auto"/>
   </properties>
 </persistence-unit>
-```
-
-To build Polaris with the necessary Postgres dependency and start the Polaris service, run the following:
-```bash
-polaris> ./gradlew --no-daemon --info -PeclipseLink=true -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 clean shadowJar
-polaris> java -jar quarkus/service/build/quarkus-app/quarkus-run.jar
 ```

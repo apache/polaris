@@ -97,42 +97,52 @@ To start using Polaris in Docker, launch Polaris while Docker is running:
 
 ```shell
 cd ~/polaris
-docker compose -f docker-compose.yml up --build
-```
-
-Once the `polaris-polaris` container is up, you can continue to [Defining a Catalog](#defining-a-catalog).
-
-### Building Polaris
-
-Run Polaris locally with:
-
-```shell
-cd ~/polaris
-./gradlew runApp
+./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true
+docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest
 ```
 
 You should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:
 
 ```
-INFO  [...] [main] [] o.e.j.s.handler.ContextHandler: Started i.d.j.MutableServletContextHandler@...
-INFO  [...] [main] [] o.e.j.server.AbstractConnector: Started application@...
-INFO  [...] [main] [] o.e.j.server.AbstractConnector: Started admin@...
-INFO  [...] [main] [] o.eclipse.jetty.server.Server: Started Server@...
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Apache Polaris Server <version> on JVM  (powered by Quarkus <version>) started in 2.656s. Listening on: http://localhost:8181. Management interface listening on http://0.0.0.0:8182.
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Profile prod activated.
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
 ```
 
-At this point, Polaris is running.
+Once the container is up, you can continue to [Defining a Catalog](#defining-a-catalog).
+
+### Building Polaris
+
+Run Polaris locally in [Dev mode](https://quarkus.io/guides/dev-mode-differences) with:
+
+```shell
+cd ~/polaris
+./gradlew polarisServerDev
+```
+
+You should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:
+
+```
+realm: POLARIS root principal credentials: <client-id>:<client-secret>
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) polaris-quarkus-service 1.0.0-incubating-SNAPSHOT on JVM (powered by Quarkus 3.17.6) started in 2.656s. Listening on: http://localhost:8181. Management interface listening on http://0.0.0.0:8182.
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Profile dev activated. Live Coding activated.
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
+```
+
+At this point, Polaris is running. Take note of the root principal credentials provided in the logs, as we'll use them in the next section.
 
 ## Bootstrapping Polaris
 
 For this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. It also means that Polaris will automatically bootstrap itself with root credentials. For more information on how to configure Polaris for production usage, see the [docs]({{% ref "configuring-polaris-for-production" %}}).
 
-When Polaris is launched using in-memory mode the root principal credentials can be found in stdout on initial startup. For example:
+When Polaris is launched using an in-memory metastore, such as when Dev mode is used, the root
+principal credentials can be found in stdout on initial startup. For example:
 
 ```
-realm: default-realm root principal credentials: <client-id>:<client-secret>
+realm: POLARIS root principal credentials: <client-id>:<client-secret>
 ```
 
-Be sure to note of these credentials as we'll be using them below. You can also set these credentials as environment variables for use with the Polaris CLI:
+Be sure to take note of these credentials as we'll be using them below. You can also set these credentials as environment variables for use with the Polaris CLI:
 
 ```shell
 export CLIENT_ID=<client-id>

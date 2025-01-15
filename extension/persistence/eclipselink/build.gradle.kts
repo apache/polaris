@@ -65,6 +65,10 @@ dependencies {
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
   compileOnly("com.fasterxml.jackson.core:jackson-core")
 
+  // JDBC Drivers
+  runtimeOnly(libs.h2)
+  runtimeOnly(libs.postgresql)
+
   testImplementation(libs.h2)
   testImplementation(testFixtures(project(":polaris-core")))
 }

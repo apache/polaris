@@ -65,6 +65,7 @@ import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
 import org.apache.polaris.service.task.TaskHandlerConfiguration;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
+import org.slf4j.LoggerFactory;
 
 public class QuarkusProducers {
 
@@ -180,6 +181,10 @@ public class QuarkusProducers {
       MetaStoreManagerFactory factory,
       RealmContextConfiguration realmContextConfiguration) {
     if (factory instanceof InMemoryPolarisMetaStoreManagerFactory) {
+      LoggerFactory.getLogger(QuarkusProducers.class)
+          .warn(
+              "Polaris is configured with an in-memory metastore; "
+                  + "this is not recommended for production use!");
       ((InMemoryPolarisMetaStoreManagerFactory) factory).onStartup(realmContextConfiguration);
     }
   }
