@@ -61,6 +61,10 @@ tasks.named("distZip") { dependsOn("quarkusBuild") }
 
 tasks.named("distTar") { dependsOn("quarkusBuild") }
 
+tasks.withType<Javadoc> { isFailOnError = false }
+
+tasks.register("polarisServerRun") { dependsOn("quarkusRun") }
+
 distributions {
   main {
     contents {
