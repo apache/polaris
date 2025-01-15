@@ -56,7 +56,8 @@ public class TimedApplicationEventListenerTest {
 
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of("polaris.metrics.tags.environment", "prod");
+      return Map.of(
+          "polaris.metrics.tags.environment", "prod", "polaris.realm-context.type", "test");
     }
   }
 
