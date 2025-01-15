@@ -144,7 +144,7 @@ public class RateLimiterFilterTest {
     // polaris_principal_roles_listPrincipalRoles_seconds_count{application="Polaris",class="org.apache.polaris.service.admin.api.PolarisPrincipalRolesApi",environment="prod",exception="none",method="listPrincipalRoles"} 50.0
 
     Map<String, MetricFamily> metrics =
-        TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri());
+        TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri(), "%s/q/metrics");
 
     assertThat(metrics)
         .isNotEmpty()

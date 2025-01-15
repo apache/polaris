@@ -22,6 +22,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.net.URI;
@@ -35,9 +36,13 @@ import org.hawkular.agent.prometheus.walkers.CollectorPrometheusMetricsWalker;
 /** Utils for working with metrics in tests */
 public class TestMetricsUtil {
 
-  public static Map<String, MetricFamily> fetchMetrics(Client client, URI baseManagementUri) {
+  public static Map<String, MetricFamily> fetchMetrics(
+      Client client, URI baseManagementUri, String endpointPath) {
     Response response =
-        client.target(String.format("%s/q/metrics", baseManagementUri)).request().get();
+        client.target(String.format(endpointPath, baseManagementUri)).request().get();
+    if (response.getStatus() == Status.MOVED_PERMANENTLY.getStatusCode()) {
+      response = client.target(response.getLocation()).request().get();
+    }
     assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
     String body = response.readEntity(String.class);
     InputStream inputStream = new ByteArrayInputStream(body.getBytes(StandardCharsets.UTF_8));
