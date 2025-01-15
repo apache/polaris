@@ -21,12 +21,15 @@ package org.apache.polaris.service.quarkus.legacy;
 import io.quarkus.vertx.http.ManagementInterface;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @ApplicationScoped
 public class LegacyManagementEndpoints {
 
-  public void registerLegacyManagementRoutes(@Observes ManagementInterface mi) {
-    mi.router().get("/metrics").handler(rc -> rc.reroute("/q/metrics"));
-    mi.router().get("/healthcheck").handler(rc -> rc.reroute("/q/health"));
+  public void registerLegacyManagementRoutes(
+      @Observes ManagementInterface mi,
+      @ConfigProperty(name = "quarkus.management.root-path") String rootPath) {
+    mi.router().get("/metrics").handler(rc -> rc.reroute(rootPath + "/metrics"));
+    mi.router().get("/healthcheck").handler(rc -> rc.reroute(rootPath + "/health"));
   }
 }
