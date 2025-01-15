@@ -25,7 +25,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmId;
 
 @ApplicationScoped
 @Identifier("default")
@@ -51,10 +51,9 @@ public class DefaultTokenBucketFactory implements TokenBucketFactory {
   }
 
   @Override
-  public TokenBucket getOrCreateTokenBucket(RealmContext realmContext) {
-    String realmId = realmContext.getRealmIdentifier();
+  public TokenBucket getOrCreateTokenBucket(RealmId realmId) {
     return perRealmBuckets.computeIfAbsent(
-        realmId,
+        realmId.id(),
         k ->
             new TokenBucket(
                 requestsPerSecond,

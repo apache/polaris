@@ -27,7 +27,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
@@ -65,10 +65,10 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
       TokenType subjectTokenType,
       String actorToken,
       TokenType actorTokenType,
-      RealmContext realmContext,
+      RealmId realmId,
       SecurityContext securityContext) {
 
-    TokenBroker tokenBroker = tokenBrokerFactory.apply(realmContext);
+    TokenBroker tokenBroker = tokenBrokerFactory.apply(realmId);
     if (!tokenBroker.supportsGrantType(grantType)) {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.unsupported_grant_type);
     }

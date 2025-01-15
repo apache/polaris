@@ -24,26 +24,26 @@ import io.vertx.core.http.HttpServerRequest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.HashMap;
-import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.service.context.RealmContextResolver;
+import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.service.context.RealmIdResolver;
 
 @ApplicationScoped
 public class RealmIdTagContributor implements HttpServerMetricsTagsContributor {
 
   public static final String TAG_REALM = "realm_id";
 
-  @Inject RealmContextResolver realmContextResolver;
+  @Inject RealmIdResolver realmIdResolver;
 
   @Override
   public Tags contribute(Context context) {
     // FIXME request scope does not work here, so we have to resolve the realm context manually
     HttpServerRequest request = context.request();
-    RealmContext realmContext = resolveRealmContext(request);
-    return Tags.of(TAG_REALM, realmContext.getRealmIdentifier());
+    RealmId realmId = resolveRealmContext(request);
+    return Tags.of(TAG_REALM, realmId.id());
   }
 
-  private RealmContext resolveRealmContext(HttpServerRequest request) {
-    return realmContextResolver.resolveRealmContext(
+  private RealmId resolveRealmContext(HttpServerRequest request) {
+    return realmIdResolver.resolveRealmContext(
         request.absoluteURI(),
         request.method().name(),
         request.path(),

@@ -22,21 +22,21 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmId;
 
 @ApplicationScoped
 @Identifier("default")
-public class DefaultRealmContextResolver implements RealmContextResolver {
+public class DefaultRealmIdResolver implements RealmIdResolver {
 
   private final RealmContextConfiguration configuration;
 
   @Inject
-  public DefaultRealmContextResolver(RealmContextConfiguration configuration) {
+  public DefaultRealmIdResolver(RealmContextConfiguration configuration) {
     this.configuration = configuration;
   }
 
   @Override
-  public RealmContext resolveRealmContext(
+  public RealmId resolveRealmContext(
       String requestURL, String method, String path, Map<String, String> headers) {
 
     String realm;
@@ -50,6 +50,6 @@ public class DefaultRealmContextResolver implements RealmContextResolver {
       realm = configuration.defaultRealm();
     }
 
-    return () -> realm;
+    return RealmId.newRealmId(realm);
   }
 }
