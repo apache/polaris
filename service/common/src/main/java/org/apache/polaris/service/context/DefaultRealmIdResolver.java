@@ -22,6 +22,7 @@ import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
+import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.context.RealmId;
 
 @ApplicationScoped
@@ -44,7 +45,7 @@ public class DefaultRealmIdResolver implements RealmIdResolver {
     if (headers.containsKey(configuration.headerName())) {
       realm = headers.get(configuration.headerName());
       if (!configuration.realms().contains(realm)) {
-        throw new IllegalArgumentException("Unknown realm: " + realm);
+        throw new NotAuthorizedException("Unknown realm: " + realm);
       }
     } else {
       realm = configuration.defaultRealm();
