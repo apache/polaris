@@ -37,7 +37,11 @@ public class QuarkusManagementServiceIntegrationTest
           "polaris.features.defaults.\"ALLOW_OVERLAPPING_CATALOG_URLS\"",
           "true",
           "polaris.features.defaults.\"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING\"",
-          "true");
+          "true",
+          "polaris.storage.gcp.token",
+          "token",
+          "polaris.storage.gcp.lifespan",
+          "PT1H");
     }
   }
 }
