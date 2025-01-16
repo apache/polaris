@@ -68,9 +68,7 @@ jobs:
         with:
           name: upload-test-artifacts
           path: |
-            polaris-core/build/test-results/test
-            quarkus/service/build/test-results/test
-            quarkus/service/build/test-results/intTest
+            **/build/test-results/**
 
     # NOTE: The Gradle Wrapper is the default and recommended way to run Gradle (https://docs.gradle.org/current/userguide/gradle_wrapper.html).
     # If your project does not have the Gradle Wrapper configured, you can use the following configuration to run Gradle with a specified version.
