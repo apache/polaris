@@ -68,6 +68,10 @@ import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
+import org.apache.polaris.service.types.policy.CreatePolicyRequest;
+import org.apache.polaris.service.types.policy.SetPolicyRequest;
+import org.apache.polaris.service.types.policy.UnsetPolicyRequest;
+import org.apache.polaris.service.types.policy.UpdatePolicyRequest;
 
 /**
  * {@link IcebergRestCatalogApiService} implementation that delegates operations to {@link
@@ -512,6 +516,43 @@ public class IcebergCatalogAdapter
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
     newHandlerWrapper(realmContext, securityContext, prefix)
         .sendNotification(tableIdentifier, notificationRequest);
+    return Response.status(Response.Status.NO_CONTENT).build();
+  }
+
+  @Override
+  public Response createPolicy(
+          String prefix, CreatePolicyRequest createPolicyRequest, RealmContext realmContext, SecurityContext securityContext
+  ) {
+
+    return Response.ok(newHandlerWrapper(realmContext, securityContext, prefix).createPolicy(createPolicyRequest)).build();
+  }
+
+  @Override
+  public Response getPolicy(String prefix,String policy,RealmContext realmContext,SecurityContext securityContext)
+  {
+    return Response.ok(newHandlerWrapper(realmContext, securityContext, prefix).getPolicy(policy)).build();
+  }
+
+  @Override
+  public Response updatePolicy (String prefix, String policy, UpdatePolicyRequest updatePolicyRequest, RealmContext realmContext, SecurityContext securityContext) {
+    return Response.ok(newHandlerWrapper(realmContext, securityContext, prefix).updatePolicy(policy, updatePolicyRequest)).build();
+  }
+
+  @Override
+  public Response deletePolicy(String prefix,String policy,RealmContext realmContext,SecurityContext securityContext) {
+    newHandlerWrapper(realmContext, securityContext, prefix).deletePolicy(policy);
+    return Response.status(Response.Status.NO_CONTENT).build();
+  }
+
+  @Override
+  public Response setPolicy(String prefix, String policy, SetPolicyRequest setPolicyRequest, RealmContext realmContext, SecurityContext securityContext) {
+    newHandlerWrapper(realmContext, securityContext, prefix).setPolicy(policy, setPolicyRequest);
+    return Response.status(Response.Status.NO_CONTENT).build();
+  }
+
+  @Override
+  public Response unsetPolicy(String prefix, String policy, UnsetPolicyRequest unsetPolicyRequest, RealmContext realmContext, SecurityContext securityContext) {
+    newHandlerWrapper(realmContext, securityContext, prefix).unsetPolicy(policy, unsetPolicyRequest);
     return Response.status(Response.Status.NO_CONTENT).build();
   }
 

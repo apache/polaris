@@ -92,6 +92,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.NotificationRequest;
+import org.apache.polaris.service.types.policy.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1180,5 +1181,61 @@ public class PolarisCatalogHandlerWrapper {
       throw new BadRequestException("Cannot rename view on external catalogs.");
     }
     doCatalogOperation(() -> CatalogHandlers.renameView(viewCatalog, request));
+  }
+
+  public LoadPolicyResult createPolicy(CreatePolicyRequest request) {
+    Policy examplePolicy = Policy.builder().setPolicyId("example-policy-id")
+            .setOwnerId("owner-id")
+            .setPolicyType(request.getType())
+            .setName(request.getName())
+            .setDescription(request.getDescription())
+            .setContent(request.getContent())
+            .setVersion(0)
+            .setCreatedAtMs(System.currentTimeMillis())
+            .setUpdatedAtMs(System.currentTimeMillis())
+            .build();
+    return LoadPolicyResult.builder().setPolicy(examplePolicy).build();
+  }
+
+  public LoadPolicyResult getPolicy(String policy) {
+    Policy examplePolicy = Policy.builder().setPolicyId("example-policy-id")
+            .setOwnerId("owner-id")
+            .setPolicyType("example-policy-type")
+            .setName("example-policy-name")
+            .setDescription("example-description")
+            .setContent("example-content")
+            .setVersion(0)
+            .setCreatedAtMs(System.currentTimeMillis())
+            .setUpdatedAtMs(System.currentTimeMillis())
+            .build();
+
+    return LoadPolicyResult.builder().setPolicy(examplePolicy).build();
+  }
+
+  public LoadPolicyResult updatePolicy(String policy, UpdatePolicyRequest request) {
+    Policy examplePolicy = Policy.builder().setPolicyId("example-policy-id")
+            .setOwnerId("owner-id")
+            .setPolicyType("example-policy-type")
+            .setName(policy)
+            .setDescription(request.getDescription())
+            .setContent(request.getContent())
+            .setVersion(0)
+            .setCreatedAtMs(System.currentTimeMillis())
+            .setUpdatedAtMs(System.currentTimeMillis())
+            .build();
+
+    return LoadPolicyResult.builder().setPolicy(examplePolicy).build();
+  }
+
+  public void deletePolicy(String policy) {
+    return;
+  }
+
+  public void setPolicy(String policy, SetPolicyRequest setPolicyRequest) {
+    return;
+  }
+
+  public void unsetPolicy(String policy, UnsetPolicyRequest unsetPolicyRequest) {
+    return;
   }
 }
