@@ -18,12 +18,12 @@
  */
 package org.apache.polaris.service.task;
 
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmId;
 
 /**
  * Execute a task asynchronously with a provided context. The context must be cloned so that callers
  * can close their own context and closables
  */
 public interface TaskExecutor {
-  void addTaskHandlerContext(long taskEntityId, CallContext callContext);
+  void addTaskHandlerContext(long taskEntityId, RealmId realmId);
 }

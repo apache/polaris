@@ -19,38 +19,66 @@
 package org.apache.polaris.service.task;
 
 import jakarta.annotation.Nonnull;
-import java.util.ArrayList;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Given a list of registered {@link TaskHandler}s, execute tasks asynchronously with the provided
- * {@link CallContext}.
+ * {@link RealmId}.
  */
 public class TaskExecutorImpl implements TaskExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(TaskExecutorImpl.class);
-  public static final long TASK_RETRY_DELAY = 1000;
-  private final ExecutorService executorService;
+  private static final long TASK_RETRY_DELAY = 1000;
+
+  private final Executor executor;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
-  private final List<TaskHandler> taskHandlers = new ArrayList<>();
+  private final PolarisConfigurationStore configurationStore;
+  private final PolarisDiagnostics diagnostics;
+  private final TaskFileIOSupplier fileIOSupplier;
+  private final Clock clock;
+  private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
 
   public TaskExecutorImpl(
-      ExecutorService executorService, MetaStoreManagerFactory metaStoreManagerFactory) {
-    this.executorService = executorService;
+      Executor executor,
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      PolarisConfigurationStore configurationStore,
+      PolarisDiagnostics diagnostics,
+      TaskFileIOSupplier fileIOSupplier,
+      Clock clock) {
+    this.executor = executor;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.configurationStore = configurationStore;
+    this.diagnostics = diagnostics;
+    this.fileIOSupplier = fileIOSupplier;
+    this.clock = clock;
+  }
+
+  public void init() {
+    addTaskHandler(
+        new TableCleanupTaskHandler(
+            this, metaStoreManagerFactory, configurationStore, diagnostics, fileIOSupplier, clock));
+    addTaskHandler(
+        new ManifestFileCleanupTaskHandler(
+            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor(), diagnostics));
   }
 
   /**
@@ -63,74 +91,68 @@ public class TaskExecutorImpl implements TaskExecutor {
   }
 
   /**
-   * Register a {@link CallContext} for a specific task id. That task will be loaded and executed
-   * asynchronously with a clone of the provided {@link CallContext}.
+   * Register a {@link RealmId} for a specific task id. That task will be loaded and executed
+   * asynchronously with a copy of the provided {@link RealmId} (because the realm context is a
+   * request-scoped component).
    */
   @Override
-  public void addTaskHandlerContext(long taskEntityId, CallContext callContext) {
-    CallContext clone = CallContext.copyOf(callContext);
-    tryHandleTask(taskEntityId, clone, null, 1);
+  public void addTaskHandlerContext(long taskEntityId, RealmId realmId) {
+    tryHandleTask(taskEntityId, realmId, null, 1);
   }
 
   private @Nonnull CompletableFuture<Void> tryHandleTask(
-      long taskEntityId, CallContext clone, Throwable e, int attempt) {
+      long taskEntityId, RealmId realmId, Throwable e, int attempt) {
     if (attempt > 3) {
       return CompletableFuture.failedFuture(e);
     }
-    return CompletableFuture.runAsync(
-            () -> {
-              // set the call context INSIDE the async task
-              try (CallContext ctx = CallContext.setCurrentContext(CallContext.copyOf(clone))) {
-                PolarisMetaStoreManager metaStoreManager =
-                    metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
-                PolarisBaseEntity taskEntity =
-                    metaStoreManager
-                        .loadEntity(ctx.getPolarisCallContext(), 0L, taskEntityId)
-                        .getEntity();
-                if (!PolarisEntityType.TASK.equals(taskEntity.getType())) {
-                  throw new IllegalArgumentException("Provided taskId must be a task entity type");
-                }
-                TaskEntity task = TaskEntity.of(taskEntity);
-                Optional<TaskHandler> handlerOpt =
-                    taskHandlers.stream().filter(th -> th.canHandleTask(task)).findFirst();
-                if (handlerOpt.isEmpty()) {
-                  LOGGER
-                      .atWarn()
-                      .addKeyValue("taskEntityId", taskEntityId)
-                      .addKeyValue("taskType", task.getTaskType())
-                      .log("Unable to find handler for task type");
-                  return;
-                }
-                TaskHandler handler = handlerOpt.get();
-                boolean success = handler.handleTask(task);
-                if (success) {
-                  LOGGER
-                      .atInfo()
-                      .addKeyValue("taskEntityId", taskEntityId)
-                      .addKeyValue("handlerClass", handler.getClass())
-                      .log("Task successfully handled");
-                  metaStoreManager.dropEntityIfExists(
-                      ctx.getPolarisCallContext(),
-                      null,
-                      PolarisEntity.toCore(taskEntity),
-                      Map.of(),
-                      false);
-                } else {
-                  LOGGER
-                      .atWarn()
-                      .addKeyValue("taskEntityId", taskEntityId)
-                      .addKeyValue("taskEntityName", taskEntity.getName())
-                      .log("Unable to execute async task");
-                }
-              }
-            },
-            executorService)
+    return CompletableFuture.runAsync(() -> handleTask(taskEntityId, realmId, attempt), executor)
         .exceptionallyComposeAsync(
             (t) -> {
               LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
-              return tryHandleTask(taskEntityId, clone, t, attempt + 1);
+              return tryHandleTask(taskEntityId, realmId, t, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
-                TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executorService));
+                TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executor));
+  }
+
+  protected void handleTask(long taskEntityId, RealmId realmId, int attempt) {
+    LOGGER.info("Handling task entity id {}", taskEntityId);
+    PolarisMetaStoreManager metaStoreManager =
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmId);
+    PolarisMetaStoreSession metaStoreSession =
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
+    PolarisBaseEntity taskEntity =
+        metaStoreManager.loadEntity(metaStoreSession, 0L, taskEntityId).getEntity();
+    if (!PolarisEntityType.TASK.equals(taskEntity.getType())) {
+      throw new IllegalArgumentException("Provided taskId must be a task entity type");
+    }
+    TaskEntity task = TaskEntity.of(taskEntity);
+    Optional<TaskHandler> handlerOpt =
+        taskHandlers.stream().filter(th -> th.canHandleTask(task)).findFirst();
+    if (handlerOpt.isEmpty()) {
+      LOGGER
+          .atWarn()
+          .addKeyValue("taskEntityId", taskEntityId)
+          .addKeyValue("taskType", task.getTaskType(diagnostics))
+          .log("Unable to find handler for task type");
+      return;
+    }
+    TaskHandler handler = handlerOpt.get();
+    boolean success = handler.handleTask(task, realmId);
+    if (success) {
+      LOGGER
+          .atInfo()
+          .addKeyValue("taskEntityId", taskEntityId)
+          .addKeyValue("handlerClass", handler.getClass())
+          .log("Task successfully handled");
+      metaStoreManager.dropEntityIfExists(
+          metaStoreSession, null, PolarisEntity.toCore(taskEntity), Map.of(), false);
+    } else {
+      LOGGER
+          .atWarn()
+          .addKeyValue("taskEntityId", taskEntityId)
+          .addKeyValue("taskEntityName", taskEntity.getName())
+          .log("Unable to execute async task");
+    }
   }
 }

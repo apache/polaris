@@ -19,12 +19,7 @@
 
 import org.apache.tools.ant.filters.ReplaceTokens
 
-plugins {
-  id("polaris-client")
-  `java-library`
-  `java-test-fixtures`
-  `jvm-test-suite`
-}
+plugins { id("polaris-client") }
 
 dependencies { testFixturesApi(libs.assertj.core) }
 
@@ -81,14 +76,8 @@ val jarTestJar by
 // need to test the `jar:` scheme/protocol resolution.
 testing {
   suites {
-    withType<JvmTestSuite> { useJUnitJupiter(libs.junit.bom.map { it.version!! }) }
-
     register<JvmTestSuite>("jarTest") {
-      dependencies {
-        compileOnly(project())
-        runtimeOnly(files(jarTestJar.get().archiveFile.get().asFile))
-        implementation(libs.assertj.core)
-      }
+      dependencies { runtimeOnly(files(jarTestJar.get().archiveFile.get().asFile)) }
 
       targets.all {
         testTask.configure {

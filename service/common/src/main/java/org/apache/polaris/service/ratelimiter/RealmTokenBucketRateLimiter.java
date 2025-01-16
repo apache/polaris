@@ -18,19 +18,27 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmId;
 
 /**
  * Rate limiter that maps the request's realm identifier to its own TokenBucket, with its own
  * capacity.
  */
-@Identifier("realm-token-bucket")
+@Identifier("default")
+@RequestScoped
 public class RealmTokenBucketRateLimiter implements RateLimiter {
 
-  @Inject protected TokenBucketFactory tokenBucketFactory;
+  private final TokenBucketFactory tokenBucketFactory;
+  private final RealmId realmId;
+
+  @Inject
+  public RealmTokenBucketRateLimiter(TokenBucketFactory tokenBucketFactory, RealmId realmId) {
+    this.tokenBucketFactory = tokenBucketFactory;
+    this.realmId = realmId;
+  }
 
   /**
    * This signifies that a request is being made. That is, the rate limiter should count the request
@@ -40,13 +48,6 @@ public class RealmTokenBucketRateLimiter implements RateLimiter {
    */
   @Override
   public boolean canProceed() {
-    return tokenBucketFactory
-        .getOrCreateTokenBucket(CallContext.getCurrentContext().getRealmContext())
-        .tryAcquire();
-  }
-
-  @VisibleForTesting
-  public void setTokenBucketFactory(TokenBucketFactory tokenBucketFactory) {
-    this.tokenBucketFactory = tokenBucketFactory;
+    return tokenBucketFactory.getOrCreateTokenBucket(realmId).tryAcquire();
   }
 }

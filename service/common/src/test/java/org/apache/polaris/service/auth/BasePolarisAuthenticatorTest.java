@@ -20,14 +20,13 @@ package org.apache.polaris.service.auth;
 
 import static org.mockito.Mockito.when;
 
+import java.util.Optional;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.persistence.BaseResult;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,20 +36,19 @@ public class BasePolarisAuthenticatorTest {
 
   private BasePolarisAuthenticator authenticator;
   private PolarisMetaStoreManager metaStoreManager;
-  private PolarisCallContext polarisCallContext;
-  private CallContext callContext;
+  private PolarisMetaStoreSession metaStoreSession;
 
   @BeforeEach
   public void setUp() {
-    authenticator = Mockito.spy(BasePolarisAuthenticator.class);
-    MetaStoreManagerFactory metaStoreManagerFactory = Mockito.mock(MetaStoreManagerFactory.class);
-    authenticator.setMetaStoreManagerFactory(metaStoreManagerFactory);
-    RealmContext realmContext = Mockito.mock(RealmContext.class);
     metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
-    when(metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext))
-        .thenReturn(metaStoreManager);
-    polarisCallContext = Mockito.mock(PolarisCallContext.class);
-    callContext = CallContext.of(realmContext, polarisCallContext);
+    metaStoreSession = Mockito.mock(PolarisMetaStoreSession.class);
+    authenticator =
+        new BasePolarisAuthenticator(metaStoreManager, metaStoreSession) {
+          @Override
+          public Optional<AuthenticatedPolarisPrincipal> authenticate(String credentials) {
+            return Optional.empty();
+          }
+        };
   }
 
   @Test
@@ -58,14 +56,12 @@ public class BasePolarisAuthenticatorTest {
     DecodedToken token = Mockito.mock(DecodedToken.class);
     long principalId = 100L;
     when(token.getPrincipalId()).thenReturn(principalId);
-    when(metaStoreManager.loadEntity(polarisCallContext, 0L, principalId))
+    when(metaStoreManager.loadEntity(metaStoreSession, 0L, principalId))
         .thenThrow(new RuntimeException("Metastore exception"));
 
-    try (CallContext ctx = CallContext.setCurrentContext(callContext)) {
-      Assertions.assertThatThrownBy(() -> authenticator.getPrincipal(token))
-          .isInstanceOf(ServiceFailureException.class)
-          .hasMessage("Unable to fetch principal entity");
-    }
+    Assertions.assertThatThrownBy(() -> authenticator.getPrincipal(token))
+        .isInstanceOf(ServiceFailureException.class)
+        .hasMessage("Unable to fetch principal entity");
   }
 
   @Test
@@ -74,14 +70,12 @@ public class BasePolarisAuthenticatorTest {
     long principalId = 100L;
     when(token.getPrincipalId()).thenReturn(principalId);
     when(token.getClientId()).thenReturn("abc");
-    when(metaStoreManager.loadEntity(polarisCallContext, 0L, principalId))
+    when(metaStoreManager.loadEntity(metaStoreSession, 0L, principalId))
         .thenReturn(
             new PolarisMetaStoreManager.EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, ""));
 
-    try (CallContext ctx = CallContext.setCurrentContext(callContext)) {
-      Assertions.assertThatThrownBy(() -> authenticator.getPrincipal(token))
-          .isInstanceOf(NotAuthorizedException.class)
-          .hasMessage("Unable to authenticate");
-    }
+    Assertions.assertThatThrownBy(() -> authenticator.getPrincipal(token))
+        .isInstanceOf(NotAuthorizedException.class)
+        .hasMessage("Unable to authenticate");
   }
 }

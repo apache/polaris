@@ -18,42 +18,43 @@
  */
 package org.apache.polaris.service.ratelimiter;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmId;
 
+@ApplicationScoped
 @Identifier("default")
 public class DefaultTokenBucketFactory implements TokenBucketFactory {
 
   private final long requestsPerSecond;
-  private final long windowSeconds;
+  private final Duration window;
   private final Clock clock;
   private final Map<String, TokenBucket> perRealmBuckets = new ConcurrentHashMap<>();
 
-  @JsonCreator
-  public DefaultTokenBucketFactory(
-      @JsonProperty("requestsPerSecond") long requestsPerSecond,
-      @JsonProperty("windowSeconds") long windowSeconds) {
-    this(requestsPerSecond, windowSeconds, Clock.systemUTC());
+  @Inject
+  public DefaultTokenBucketFactory(TokenBucketConfiguration configuration, Clock clock) {
+    this(configuration.requestsPerSecond(), configuration.window(), clock);
   }
 
-  public DefaultTokenBucketFactory(long requestsPerSecond, long windowSeconds, Clock clock) {
+  public DefaultTokenBucketFactory(long requestsPerSecond, Duration window, Clock clock) {
     this.requestsPerSecond = requestsPerSecond;
-    this.windowSeconds = windowSeconds;
+    this.window = window;
     this.clock = clock;
   }
 
   @Override
-  public TokenBucket getOrCreateTokenBucket(RealmContext realmContext) {
-    String realmId = realmContext.getRealmIdentifier();
+  public TokenBucket getOrCreateTokenBucket(RealmId realmId) {
     return perRealmBuckets.computeIfAbsent(
-        realmId,
+        realmId.id(),
         k ->
             new TokenBucket(
-                requestsPerSecond, Math.multiplyExact(requestsPerSecond, windowSeconds), clock));
+                requestsPerSecond,
+                Math.multiplyExact(requestsPerSecond, window.toSeconds()),
+                clock));
   }
 }

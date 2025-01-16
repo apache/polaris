@@ -21,12 +21,13 @@ package org.apache.polaris.service.auth;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import io.smallrye.common.annotation.Identifier;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
@@ -36,6 +37,7 @@ import org.slf4j.LoggerFactory;
  * Default implementation of the {@link IcebergRestOAuth2ApiService} that generates a JWT token for
  * the client if the client secret matches.
  */
+@RequestScoped
 @Identifier("default")
 public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
 
@@ -44,9 +46,12 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
   private static final String CLIENT_CREDENTIALS = "client_credentials";
   private static final String BEARER = "bearer";
 
-  @Inject private TokenBrokerFactory tokenBrokerFactory;
+  private final TokenBrokerFactory tokenBrokerFactory;
 
-  public DefaultOAuth2ApiService() {}
+  @Inject
+  public DefaultOAuth2ApiService(TokenBrokerFactory tokenBrokerFactory) {
+    this.tokenBrokerFactory = tokenBrokerFactory;
+  }
 
   @Override
   public Response getToken(
@@ -60,10 +65,10 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
       TokenType subjectTokenType,
       String actorToken,
       TokenType actorTokenType,
-      RealmContext realmContext,
+      RealmId realmId,
       SecurityContext securityContext) {
 
-    TokenBroker tokenBroker = tokenBrokerFactory.apply(realmContext);
+    TokenBroker tokenBroker = tokenBrokerFactory.apply(realmId);
     if (!tokenBroker.supportsGrantType(grantType)) {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.unsupported_grant_type);
     }

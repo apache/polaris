@@ -74,7 +74,7 @@ for TEST_FILE in ${TEST_LIST}; do
       continue
     fi
     loginfo "Starting pytest ${TEST_SUITE}:${TEST_SHORTNAME}"
-    python3 -m pytest $TESTFILE
+    python3 -m pytest $TEST_FILE
     CODE=$?
     if [[ $CODE -ne 0 ]]; then
       logred "Test FAILED: ${TEST_SUITE}:${TEST_SHORTNAME}"

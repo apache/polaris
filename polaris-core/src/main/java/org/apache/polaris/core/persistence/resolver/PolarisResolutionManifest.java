@@ -30,13 +30,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
@@ -54,8 +54,8 @@ import org.slf4j.LoggerFactory;
 public class PolarisResolutionManifest implements PolarisResolutionManifestCatalogView {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisResolutionManifest.class);
 
+  private final PolarisMetaStoreSession metaStoreSession;
   private final PolarisEntityManager entityManager;
-  private final CallContext callContext;
   private final SecurityContext securityContext;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final String catalogName;
@@ -81,15 +81,17 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   private ResolverStatus primaryResolverStatus = null;
 
   public PolarisResolutionManifest(
-      CallContext callContext,
+      PolarisMetaStoreSession metaStoreSession,
+      PolarisDiagnostics diagnostics,
       PolarisEntityManager entityManager,
       SecurityContext securityContext,
       String catalogName) {
+    this.metaStoreSession = metaStoreSession;
+    this.diagnostics = diagnostics;
     this.entityManager = entityManager;
-    this.callContext = callContext;
     this.catalogName = catalogName;
-    this.primaryResolver = entityManager.prepareResolver(callContext, securityContext, catalogName);
-    this.diagnostics = callContext.getPolarisCallContext().getDiagServices();
+    this.primaryResolver =
+        entityManager.prepareResolver(metaStoreSession, securityContext, catalogName);
     this.diagnostics.checkNotNull(securityContext, "null_security_context_for_resolution_manifest");
     this.securityContext = securityContext;
     diagnostics.check(
@@ -202,7 +204,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
     // Run a single-use Resolver for this path.
     Resolver passthroughResolver =
-        entityManager.prepareResolver(callContext, securityContext, catalogName);
+        entityManager.prepareResolver(metaStoreSession, securityContext, catalogName);
     passthroughResolver.addPath(requestedPath);
     ResolverStatus status = passthroughResolver.resolveAll();
 
