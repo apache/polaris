@@ -1197,7 +1197,9 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   }
 
   public LoadPolicyResult createPolicy(CreatePolicyRequest request) {
-    Policy examplePolicy = Policy.builder().setPolicyId("example-policy-id")
+    Policy examplePolicy =
+        Policy.builder()
+            .setPolicyId("example-policy-id")
             .setOwnerId("owner-id")
             .setPolicyType(request.getType())
             .setName(request.getName())
@@ -1211,7 +1213,9 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   }
 
   public LoadPolicyResult getPolicy(String policy) {
-    Policy examplePolicy = Policy.builder().setPolicyId("example-policy-id")
+    Policy examplePolicy =
+        Policy.builder()
+            .setPolicyId("example-policy-id")
             .setOwnerId("owner-id")
             .setPolicyType("example-policy-type")
             .setName("example-policy-name")
@@ -1226,7 +1230,9 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   }
 
   public LoadPolicyResult updatePolicy(String policy, UpdatePolicyRequest request) {
-    Policy examplePolicy = Policy.builder().setPolicyId("example-policy-id")
+    Policy examplePolicy =
+        Policy.builder()
+            .setPolicyId("example-policy-id")
             .setOwnerId("owner-id")
             .setPolicyType("example-policy-type")
             .setName(policy)
