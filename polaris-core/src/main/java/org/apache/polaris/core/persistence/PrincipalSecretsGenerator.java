@@ -63,7 +63,7 @@ public interface PrincipalSecretsGenerator {
       String realmName, @Nullable PolarisCredentialsBootstrap credentialsSupplier) {
     return (principalName, principalId) ->
         Optional.ofNullable(credentialsSupplier)
-            .flatMap(credentials -> credentials.getSecrets(realmName, principalId))
+            .flatMap(credentials -> credentials.getSecrets(realmName, principalId, principalName))
             .orElseGet(() -> RANDOM_SECRETS.produceSecrets(principalName, principalId));
   }
 }

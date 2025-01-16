@@ -21,21 +21,10 @@ package org.apache.polaris.core.persistence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.util.Comparator;
 import java.util.List;
-import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.junit.jupiter.api.Test;
 
 class PolarisCredentialsBootstrapTest {
-
-  private final Comparator<PolarisPrincipalSecrets> comparator =
-      (a, b) ->
-          a.getPrincipalId() == b.getPrincipalId()
-                  && a.getPrincipalClientId().equals(b.getPrincipalClientId())
-                  && a.getMainSecret().equals(b.getMainSecret())
-                  && a.getSecondarySecret().equals(b.getSecondarySecret())
-              ? 0
-              : 1;
 
   @Test
   void nullString() {
@@ -101,13 +90,24 @@ class PolarisCredentialsBootstrapTest {
   }
 
   private void assertCredentials(PolarisCredentialsBootstrap credentials) {
-    assertThat(credentials.getSecrets("realm3", 123)).isEmpty();
-    assertThat(credentials.getSecrets("nonexistent", 123)).isEmpty();
-    assertThat(credentials.getSecrets("realm1", 123))
-        .usingValueComparator(comparator)
-        .contains(new PolarisPrincipalSecrets(123, "client1", "secret1", "secret1"));
-    assertThat(credentials.getSecrets("realm2", 123))
-        .usingValueComparator(comparator)
-        .contains(new PolarisPrincipalSecrets(123, "client2", "secret2", "secret2"));
+    assertThat(credentials.getSecrets("realm3", 123, "root")).isEmpty();
+    assertThat(credentials.getSecrets("nonexistent", 123, "root")).isEmpty();
+    assertThat(credentials.getSecrets("realm1", 123, "non-root")).isEmpty();
+    assertThat(credentials.getSecrets("realm1", 123, "root"))
+        .hasValueSatisfying(
+            secrets -> {
+              assertThat(secrets.getPrincipalId()).isEqualTo(123);
+              assertThat(secrets.getPrincipalClientId()).isEqualTo("client1");
+              assertThat(secrets.getMainSecret()).isEqualTo("secret1");
+              assertThat(secrets.getSecondarySecret()).isEqualTo("secret1");
+            });
+    assertThat(credentials.getSecrets("realm2", 123, "root"))
+        .hasValueSatisfying(
+            secrets -> {
+              assertThat(secrets.getPrincipalId()).isEqualTo(123);
+              assertThat(secrets.getPrincipalClientId()).isEqualTo("client2");
+              assertThat(secrets.getMainSecret()).isEqualTo("secret2");
+              assertThat(secrets.getSecondarySecret()).isEqualTo("secret2");
+            });
   }
 }

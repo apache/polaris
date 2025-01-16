@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 
 /**
@@ -95,15 +96,20 @@ public class PolarisCredentialsBootstrap {
 
   /**
    * Get the secrets for the specified principal in the specified realm, if available among the
-   * credentials that were supplied for bootstrap.
+   * credentials that were supplied for bootstrap. Only credentials for the root principal are
+   * supported.
    */
-  public Optional<PolarisPrincipalSecrets> getSecrets(String realmName, long principalId) {
-    return Optional.ofNullable(credentials.get(realmName))
-        .map(
-            credentials -> {
-              String clientId = credentials.getKey();
-              String secret = credentials.getValue();
-              return new PolarisPrincipalSecrets(principalId, clientId, secret, secret);
-            });
+  public Optional<PolarisPrincipalSecrets> getSecrets(
+      String realmName, long principalId, String principalName) {
+    if (principalName.equals(PolarisEntityConstants.getRootPrincipalName())) {
+      return Optional.ofNullable(credentials.get(realmName))
+          .map(
+              credentials -> {
+                String clientId = credentials.getKey();
+                String secret = credentials.getValue();
+                return new PolarisPrincipalSecrets(principalId, clientId, secret, secret);
+              });
+    }
+    return Optional.empty();
   }
 }
