@@ -146,9 +146,6 @@ dependencies {
 tasks.withType(Test::class.java).configureEach {
   systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
   addSparkJvmOptions()
-}
-
-tasks.named<Test>("test").configure {
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
@@ -158,21 +155,11 @@ tasks.named<Test>("test").configure {
   // Need to allow a java security manager after Java 21, for Subject.getSubject to work
   // "getSubject is supported only if a security manager is allowed".
   systemProperty("java.security.manager", "allow")
-  maxParallelForks = 4
 }
 
-tasks.named<Test>("intTest").configure {
-  if (System.getenv("AWS_REGION") == null) {
-    environment("AWS_REGION", "us-west-2")
-  }
-  // Note: the test secrets are referenced in DropwizardServerManager
-  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,root,test-admin,test-secret")
-  jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
-  // Need to allow a java security manager after Java 21, for Subject.getSubject to work
-  // "getSubject is supported only if a security manager is allowed".
-  systemProperty("java.security.manager", "allow")
-  maxParallelForks = 1
-}
+tasks.named<Test>("test").configure { maxParallelForks = 4 }
+
+tasks.named<Test>("intTest").configure { maxParallelForks = 1 }
 
 /**
  * Adds the JPMS options required for Spark to run on Java 17, taken from the
