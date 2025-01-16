@@ -88,7 +88,7 @@ import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 /**
  * @implSpec @implSpec This test expects the server to be configured with the following features
- *     enabled:
+ *     configured:
  *     <ul>
  *       <li>{@link org.apache.polaris.core.PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
  *           {@code true}

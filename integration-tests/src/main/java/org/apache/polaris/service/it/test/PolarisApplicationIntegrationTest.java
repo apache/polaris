@@ -94,7 +94,7 @@ import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 /**
- * @implSpec This test expects the server to be configured with the following features enabled:
+ * @implSpec This test expects the server to be configured with the following features configured:
  *     <ul>
  *       <li>{@link org.apache.polaris.core.PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
  *           {@code true}

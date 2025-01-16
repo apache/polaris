@@ -98,7 +98,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * client.
  *
  * @implSpec @implSpec This test expects the server to be configured with the following features
- *     enabled:
+ *     configured:
  *     <ul>
  *       <li>{@link PolarisConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING}: {@code false}
  *     </ul>
