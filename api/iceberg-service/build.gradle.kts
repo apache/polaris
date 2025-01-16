@@ -49,6 +49,7 @@ openApiGenerate {
   generatorName = "jaxrs-resteasy"
   outputDir = "$projectDir/build/generated"
   apiPackage = "org.apache.polaris.service.catalog.api"
+  modelPackage = "org.apache.polaris.services.types"
   ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
@@ -101,6 +102,19 @@ openApiGenerate {
       "NotificationRequest" to "org.apache.polaris.service.types.NotificationRequest",
       "TableUpdateNotification" to "org.apache.polaris.service.types.TableUpdateNotification",
       "NotificationType" to "org.apache.polaris.service.types.NotificationType",
+
+      // Policy managements
+      "Policy" to "org.apache.polaris.service.types.policy.Policy",
+      "PolicyContent" to "org.apache.polaris.service.types.policy.PolicyContent",
+      "CreatePolicyRequest" to "org.apache.polaris.service.types.policy.CreatePolicyRequest",
+      "LoadPolicyResult" to "org.apache.polaris.service.types.policy.LoadPolicyResult",
+      "UpdatePolicyRequest" to "org.apache.polaris.service.types.policy.UpdatePolicyRequest",
+      "SetPolicyRequest" to "org.apache.polaris.service.types.policy.SetPolicyRequest",
+      "UnsetPolicyRequest" to "org.apache.polaris.service.types.policy.UnsetPolicyRequest",
+      "CatalogIdentifier" to "org.apache.iceberg.service.types.policy.CatalogIdentifier",
+      "NamespaceIdentifier" to "org.apache.iceberg.service.types.policy.NamespaceIdentifier",
+      "TableLikeIdentifier" to "org.apache.iceberg.service.types.policy.TableLikeIdentifier",
+      "EntityIdentifier" to "org.apache.iceberg.service.types.policy.EntityIdentifier",
     )
 }
 
