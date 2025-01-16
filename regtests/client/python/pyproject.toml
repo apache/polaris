@@ -35,7 +35,7 @@ urllib3 = "^1.25.3"
 python-dateutil = ">=2.8.2"
 pydantic = ">=2"
 typing-extensions = ">=4.7.1"
-boto3 = "==1.35.99"
+boto3 = "==1.36.0"
 
 [tool.poetry.dev-dependencies]
 pytest = ">=7.2.1"
