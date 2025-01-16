@@ -55,7 +55,7 @@ if [ -z "${SPARK_HOME}"]; then
   export SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
 fi
 
-SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN:-principal:root;realm:default-realm}"
+SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN:-principal:root;realm:POLARIS}"
 
 if [ $# -eq 0 ]; then
   # create a catalog backed by the local filesystem
