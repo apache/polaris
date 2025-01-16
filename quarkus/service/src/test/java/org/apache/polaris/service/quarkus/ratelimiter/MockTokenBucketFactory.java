@@ -24,7 +24,7 @@ import jakarta.inject.Inject;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.apache.polaris.service.ratelimiter.DefaultTokenBucketFactory;
-import org.apache.polaris.service.ratelimiter.RateLimiterConfiguration;
+import org.apache.polaris.service.ratelimiter.TokenBucketConfiguration;
 import org.threeten.extra.MutableClock;
 
 /** TokenBucketFactory with a mock clock */
@@ -38,7 +38,7 @@ public class MockTokenBucketFactory extends DefaultTokenBucketFactory {
   }
 
   @Inject
-  public MockTokenBucketFactory(RateLimiterConfiguration configuration) {
+  public MockTokenBucketFactory(TokenBucketConfiguration configuration) {
     super(configuration, CLOCK);
   }
 }

@@ -19,8 +19,9 @@
 
 plugins {
   alias(libs.plugins.quarkus)
+  alias(libs.plugins.jandex)
   alias(libs.plugins.openapi.generator)
-  id("polaris-server")
+  id("polaris-quarkus")
   id("polaris-license-report")
   id("distribution")
 }
@@ -60,6 +61,10 @@ quarkus {
 tasks.named("distZip") { dependsOn("quarkusBuild") }
 
 tasks.named("distTar") { dependsOn("quarkusBuild") }
+
+tasks.withType<Javadoc> { isFailOnError = false }
+
+tasks.register("polarisServerRun") { dependsOn("quarkusRun") }
 
 distributions {
   main {

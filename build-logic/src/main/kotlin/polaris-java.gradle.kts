@@ -98,10 +98,25 @@ testing {
           }
         )
       }
+    }
+  }
+}
 
-      targets.all {
-        if (testTask.name != "test") {
-          testTask.configure { shouldRunAfter("test") }
+// Special handling for test-suites with type `manual-test`, which are intended to be run on demand
+// rather than implicitly via `check`.
+afterEvaluate {
+  testing {
+    suites {
+      withType<JvmTestSuite> {
+        // Need to do this check in an afterEvaluate, because the `withType` above gets called
+        // before the configure() of a registered test suite runs.
+        if (testType.get() != "manual-test") {
+          targets.all {
+            if (testTask.name != "test") {
+              testTask.configure { shouldRunAfter("test") }
+              tasks.named("check").configure { dependsOn(testTask) }
+            }
+          }
         }
       }
     }

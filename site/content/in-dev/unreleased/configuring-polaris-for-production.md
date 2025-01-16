@@ -44,7 +44,7 @@ Notable configuration used to secure a Polaris deployment are outlined below.
 > [!WARNING]  
 > Ensure that the `tokenBroker` setting reflects the token broker specified in `oauth2` above.
 
-#### callContextResolver & realmContextResolver
+#### callContextResolver & realmIdResolver
 * Use these configurations to specify a service that can resolve a realm from bearer tokens.
 * The service(s) used here must implement the relevant interfaces (i.e. [CallContextResolver](https://github.com/apache/polaris/blob/8290019c10290a600e40b35ddb1e2f54bf99e120/polaris-service/src/main/java/io/polaris/service/context/CallContextResolver.java#L27) and [RealmContextResolver](https://github.com/apache/polaris/blob/7ce86f10a68a3b56aed766235c88d6027c0de038/polaris-service/src/main/java/io/polaris/service/context/RealmContextResolver.java)).
 

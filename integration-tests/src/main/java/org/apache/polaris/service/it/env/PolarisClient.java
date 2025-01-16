@@ -115,8 +115,7 @@ public final class PolarisClient implements AutoCloseable {
 
   /** Requests an access token from the Polaris server for the given {@link ClientCredentials}. */
   public String obtainToken(ClientCredentials credentials) {
-    CatalogApi anon = new CatalogApi(client, endpoints, null, endpoints.catalogApiEndpoint());
-    return anon.obtainToken(credentials);
+    return polarisServerManager().accessManager().obtainAccessToken(endpoints, credentials);
   }
 
   private boolean ownedName(String name) {

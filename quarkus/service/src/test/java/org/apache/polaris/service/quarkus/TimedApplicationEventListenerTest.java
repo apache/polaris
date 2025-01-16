@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.quarkus;
 
-import static org.apache.polaris.service.context.TestRealmContextResolver.REALM_PROPERTY_KEY;
+import static org.apache.polaris.service.context.TestRealmIdResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
@@ -40,10 +40,11 @@ import org.hawkular.agent.prometheus.types.Summary;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @QuarkusTest
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -80,11 +81,12 @@ public class TimedApplicationEventListenerTest {
     registry.clear();
   }
 
-  @Test
-  public void testMetricsEmittedOnSuccessfulRequest() {
+  @ParameterizedTest
+  @ValueSource(strings = {"%s/metrics", "%s/q/metrics"})
+  public void testMetricsEmittedOnSuccessfulRequest(String endpoint) {
     sendSuccessfulRequest();
     Map<String, MetricFamily> allMetrics =
-        TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri());
+        TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri(), endpoint);
     assertThat(allMetrics).containsKey(METRIC_NAME);
     assertThat(allMetrics.get(METRIC_NAME).getMetrics())
         .satisfiesOnlyOnce(
@@ -105,11 +107,12 @@ public class TimedApplicationEventListenerTest {
             });
   }
 
-  @Test
-  public void testMetricsEmittedOnFailedRequest() {
+  @ParameterizedTest
+  @ValueSource(strings = {"%s/metrics", "%s/q/metrics"})
+  public void testMetricsEmittedOnFailedRequest(String endpoint) {
     sendFailingRequest();
     Map<String, MetricFamily> allMetrics =
-        TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri());
+        TestMetricsUtil.fetchMetrics(fixture.client, testEnv.baseManagementUri(), endpoint);
     assertThat(allMetrics).containsKey(METRIC_NAME);
     assertThat(allMetrics.get(METRIC_NAME).getMetrics())
         .satisfiesOnlyOnce(

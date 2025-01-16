@@ -353,8 +353,8 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testIcebergCreateTablesInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "External";
+  public void testIcebergCreateTablesInExternalCatalog() throws IOException {
+    String catalogName = client.newEntityName("testIcebergCreateTablesInExternalCatalogExternal");
     createCatalog(catalogName, Catalog.TypeEnum.EXTERNAL, principalRoleName);
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
@@ -380,8 +380,9 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testIcebergCreateTablesWithWritePathBlocked(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "Internal";
+  public void testIcebergCreateTablesWithWritePathBlocked() throws IOException {
+    String catalogName =
+        client.newEntityName("testIcebergCreateTablesWithWritePathBlockedInternal");
     createCatalog(catalogName, Catalog.TypeEnum.INTERNAL, principalRoleName);
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
@@ -424,8 +425,8 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testIcebergRegisterTableInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "External";
+  public void testIcebergRegisterTableInExternalCatalog() throws IOException {
+    String catalogName = client.newEntityName("testIcebergRegisterTableInExternalCatalogExternal");
     createCatalog(
         catalogName,
         Catalog.TypeEnum.EXTERNAL,
@@ -443,8 +444,7 @@ public class PolarisApplicationIntegrationTest {
       String location =
           "file://"
               + testDir.toFile().getAbsolutePath()
-              + "/"
-              + testInfo.getTestMethod().get().getName();
+              + "/testIcebergRegisterTableInExternalCatalog";
       String metadataLocation = location + "/metadata/000001-494949494949494949.metadata.json";
 
       TableMetadata tableMetadata =
@@ -471,8 +471,8 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testIcebergUpdateTableInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "External";
+  public void testIcebergUpdateTableInExternalCatalog() throws IOException {
+    String catalogName = client.newEntityName("testIcebergUpdateTableInExternalCatalogExternal");
     createCatalog(
         catalogName,
         Catalog.TypeEnum.EXTERNAL,
@@ -490,8 +490,7 @@ public class PolarisApplicationIntegrationTest {
       String location =
           "file://"
               + testDir.toFile().getAbsolutePath()
-              + "/"
-              + testInfo.getTestMethod().get().getName();
+              + "/testIcebergUpdateTableInExternalCatalog";
       String metadataLocation = location + "/metadata/000001-494949494949494949.metadata.json";
 
       Types.NestedField col1 = Types.NestedField.of(1, false, "col1", Types.StringType.get());
