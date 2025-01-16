@@ -25,7 +25,6 @@ import java.util.AbstractMap.SimpleEntry;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Optional;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 
@@ -54,7 +53,7 @@ public class PolarisCredentialsBootstrap {
    * Parse a string of credentials in the format:
    *
    * <pre>
-   * realm1,user1a,client1a,secret1a;realm1,user1b,client1b,secret1b;realm2,user2a,client2a,secret2a;...
+   * realm1,client1,secret1;realm2,client2,secret2;...
    * </pre>
    */
   public static PolarisCredentialsBootstrap fromString(@Nullable String credentialsString) {
@@ -65,36 +64,32 @@ public class PolarisCredentialsBootstrap {
 
   /**
    * Parse a list of credentials; each element should be in the format: {@code
-   * realm,principal,clientId,clientSecret}.
+   * realm,clientId,clientSecret}.
    */
   public static PolarisCredentialsBootstrap fromList(List<String> credentialsList) {
-    Map<String, Map<String, Map.Entry<String, String>>> credentials = new HashMap<>();
-    for (String quadruple : credentialsList) {
-      if (!quadruple.isBlank()) {
-        List<String> parts = Splitter.on(',').trimResults().splitToList(quadruple);
-        if (parts.size() != 4) {
-          throw new IllegalArgumentException("Invalid credentials format: " + quadruple);
+    Map<String, Map.Entry<String, String>> credentials = new HashMap<>();
+    for (String triplet : credentialsList) {
+      if (!triplet.isBlank()) {
+        List<String> parts = Splitter.on(',').trimResults().splitToList(triplet);
+        if (parts.size() != 3) {
+          throw new IllegalArgumentException("Invalid credentials format: " + triplet);
         }
         String realmName = parts.get(0);
-        String principalName = parts.get(1);
-        String clientId = parts.get(2);
-        String clientSecret = parts.get(3);
-        credentials
-            .computeIfAbsent(realmName, k -> new HashMap<>())
-            .merge(
-                principalName,
-                new SimpleEntry<>(clientId, clientSecret),
-                (a, b) -> {
-                  throw new IllegalArgumentException("Duplicate principal: " + principalName);
-                });
+        String clientId = parts.get(1);
+        String clientSecret = parts.get(2);
+
+        if (credentials.containsKey(realmName)) {
+          throw new IllegalArgumentException("Duplicate realm: " + realmName);
+        }
+        credentials.put(realmName, new SimpleEntry<>(clientId, clientSecret));
       }
     }
     return credentials.isEmpty() ? EMPTY : new PolarisCredentialsBootstrap(credentials);
   }
 
-  @VisibleForTesting final Map<String, Map<String, Map.Entry<String, String>>> credentials;
+  @VisibleForTesting final Map<String, Map.Entry<String, String>> credentials;
 
-  private PolarisCredentialsBootstrap(Map<String, Map<String, Entry<String, String>>> credentials) {
+  private PolarisCredentialsBootstrap(Map<String, Map.Entry<String, String>> credentials) {
     this.credentials = credentials;
   }
 
@@ -102,10 +97,8 @@ public class PolarisCredentialsBootstrap {
    * Get the secrets for the specified principal in the specified realm, if available among the
    * credentials that were supplied for bootstrap.
    */
-  public Optional<PolarisPrincipalSecrets> getSecrets(
-      String realmName, long principalId, String principalName) {
+  public Optional<PolarisPrincipalSecrets> getSecrets(String realmName, long principalId) {
     return Optional.ofNullable(credentials.get(realmName))
-        .flatMap(principals -> Optional.ofNullable(principals.get(principalName)))
         .map(
             credentials -> {
               String clientId = credentials.getKey();

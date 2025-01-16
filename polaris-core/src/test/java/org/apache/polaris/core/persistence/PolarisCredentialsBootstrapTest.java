@@ -62,51 +62,28 @@ class PolarisCredentialsBootstrapTest {
   }
 
   @Test
-  void duplicatePrincipal() {
+  void duplicateRealm() {
     assertThatThrownBy(
             () ->
                 PolarisCredentialsBootstrap.fromString(
-                    "realm1,user1a,client1a,secret1a;realm1,user1a,client1b,secret1b"))
-        .hasMessage("Duplicate principal: user1a");
+                    "realm1,client1a,secret1a;realm1,client1b,secret1b"))
+        .hasMessage("Duplicate realm: realm1");
   }
 
   @Test
   void getSecretsValidString() {
     PolarisCredentialsBootstrap credentials =
         PolarisCredentialsBootstrap.fromString(
-            " ; realm1 , user1a , client1a , secret1a ; realm1 , user1b , client1b , secret1b ; realm2 , user2a , client2a , secret2a ; ");
-    assertThat(credentials.getSecrets("realm1", 123, "nonexistent")).isEmpty();
-    assertThat(credentials.getSecrets("nonexistent", 123, "user1a")).isEmpty();
-    assertThat(credentials.getSecrets("realm1", 123, "user1a"))
-        .usingValueComparator(comparator)
-        .contains(new PolarisPrincipalSecrets(123, "client1a", "secret1a", "secret1a"));
-    assertThat(credentials.getSecrets("realm1", 123, "user1b"))
-        .usingValueComparator(comparator)
-        .contains(new PolarisPrincipalSecrets(123, "client1b", "secret1b", "secret1b"));
-    assertThat(credentials.getSecrets("realm2", 123, "user2a"))
-        .usingValueComparator(comparator)
-        .contains(new PolarisPrincipalSecrets(123, "client2a", "secret2a", "secret2a"));
+            " ; realm1 , client1 , secret1 ; realm2 , client2 , secret2 ; ");
+    assertCredentials(credentials);
   }
 
   @Test
   void getSecretsValidList() {
     PolarisCredentialsBootstrap credentials =
         PolarisCredentialsBootstrap.fromList(
-            List.of(
-                "realm1,user1a,client1a,secret1a",
-                "realm1,user1b,client1b,secret1b",
-                "realm2,user2a,client2a,secret2a"));
-    assertThat(credentials.getSecrets("realm1", 123, "nonexistent")).isEmpty();
-    assertThat(credentials.getSecrets("nonexistent", 123, "user1a")).isEmpty();
-    assertThat(credentials.getSecrets("realm1", 123, "user1a"))
-        .usingValueComparator(comparator)
-        .contains(new PolarisPrincipalSecrets(123, "client1a", "secret1a", "secret1a"));
-    assertThat(credentials.getSecrets("realm1", 123, "user1b"))
-        .usingValueComparator(comparator)
-        .contains(new PolarisPrincipalSecrets(123, "client1b", "secret1b", "secret1b"));
-    assertThat(credentials.getSecrets("realm2", 123, "user2a"))
-        .usingValueComparator(comparator)
-        .contains(new PolarisPrincipalSecrets(123, "client2a", "secret2a", "secret2a"));
+            List.of("realm1,client1,secret1", "realm2,client2,secret2"));
+    assertCredentials(credentials);
   }
 
   @Test
@@ -114,15 +91,23 @@ class PolarisCredentialsBootstrapTest {
     PolarisCredentialsBootstrap credentials = PolarisCredentialsBootstrap.fromEnvironment();
     assertThat(credentials.credentials).isEmpty();
     try {
-      System.setProperty("polaris.bootstrap.credentials", "realm1,user1a,client1a,secret1a");
+      System.setProperty(
+          "polaris.bootstrap.credentials", "realm1,client1,secret1;realm2,client2,secret2");
       credentials = PolarisCredentialsBootstrap.fromEnvironment();
-      assertThat(credentials.getSecrets("realm1", 123, "nonexistent")).isEmpty();
-      assertThat(credentials.getSecrets("nonexistent", 123, "user1a")).isEmpty();
-      assertThat(credentials.getSecrets("realm1", 123, "user1a"))
-          .usingValueComparator(comparator)
-          .contains(new PolarisPrincipalSecrets(123, "client1a", "secret1a", "secret1a"));
+      assertCredentials(credentials);
     } finally {
       System.clearProperty("polaris.bootstrap.credentials");
     }
+  }
+
+  private void assertCredentials(PolarisCredentialsBootstrap credentials) {
+    assertThat(credentials.getSecrets("realm3", 123)).isEmpty();
+    assertThat(credentials.getSecrets("nonexistent", 123)).isEmpty();
+    assertThat(credentials.getSecrets("realm1", 123))
+        .usingValueComparator(comparator)
+        .contains(new PolarisPrincipalSecrets(123, "client1", "secret1", "secret1"));
+    assertThat(credentials.getSecrets("realm2", 123))
+        .usingValueComparator(comparator)
+        .contains(new PolarisPrincipalSecrets(123, "client2", "secret2", "secret2"));
   }
 }

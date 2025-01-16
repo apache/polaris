@@ -149,8 +149,9 @@ tasks.withType(Test::class.java).configureEach {
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
-  // Note: the test secrets are referenced in DropwizardServerManager
-  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,root,test-admin,test-secret")
+  // Note: the test secrets are referenced in
+  // org.apache.polaris.service.quarkus.it.QuarkusServerManager
+  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   // Need to allow a java security manager after Java 21, for Subject.getSubject to work
   // "getSubject is supported only if a security manager is allowed".

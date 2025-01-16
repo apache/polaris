@@ -40,7 +40,7 @@ class PrincipalSecretsGeneratorTest {
   void testSecretOverride() {
     PrincipalSecretsGenerator gen =
         bootstrap(
-            "test-Realm", PolarisCredentialsBootstrap.fromString("test-Realm,user1,client1,sec2"));
+            "test-Realm", PolarisCredentialsBootstrap.fromString("test-Realm,client1,sec2"));
     PolarisPrincipalSecrets s = gen.produceSecrets("user1", 123);
     assertThat(s).isNotNull();
     assertThat(s.getPrincipalId()).isEqualTo(123);
