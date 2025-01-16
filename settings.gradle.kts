@@ -72,4 +72,7 @@ dependencyResolutionManagement {
   }
 }
 
-gradle.beforeProject { version = baseVersion }
+gradle.beforeProject {
+  version = baseVersion
+  group = "org.apache.polaris"
+}
