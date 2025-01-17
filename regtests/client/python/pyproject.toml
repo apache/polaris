@@ -20,12 +20,12 @@
 [tool.poetry]
 name = "polaris"
 version = "1.0.0"
-description = "Polaris Management Service"
+description = "Apache Polaris Management Service"
 authors = ["Apache Software Foundation <dev@polaris.apache.org>"]
 license = "Apache License 2.0"
 readme = "README.md"
 repository = "https://github.com/apache/polaris/"
-keywords = ["Iceberg", "Polaris Management Service"]
+keywords = ["Polaris", "Polaris Management Service"]
 include = ["polaris.management/py.typed"]
 
 [tool.poetry.dependencies]
