@@ -1596,19 +1596,20 @@ paths:
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
   
-  /v1/{prefix}/policies:
+  /v1/{prefix}/namespaces/{namespaces}/policies:
     parameters:
       - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/namespace'
 
     post:
       tags:
         - Catalog API
-      summary: 'Create a policy'
+      summary: 'Create a policy in the given namespace'
       operationId: createPolicy
       description:
-        Create a Policy
+        Create a policy
 
-        # TODO: add description of policy
+        Policy's type will be fixed after creation
       requestBody:
         required: true
         content:
@@ -1631,9 +1632,10 @@ paths:
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
 
-  /v1/{prefix}/policies/{policy}:
+  /v1/{prefix}/namespaces/{namespaces}/policies/{policy}:
     parameters:
       - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/namespace'
       - $ref: '#/components/parameters/policy'
 
     get:
@@ -1643,7 +1645,8 @@ paths:
       operationId: getPolicy
       description:
         Get a policy from the catalog
-
+        
+        The response contains the policy's metadata and content
       responses:
         200:
           $ref: '#/components/responses/LoadPolicyResponse'
@@ -1678,7 +1681,7 @@ paths:
       description:
         Update a policy
 
-        The owner_id, policy_id, and policy_type cannot be updated
+        Only policy's description and content can be updated
       requestBody:
         required: true
         content:
@@ -1744,9 +1747,10 @@ paths:
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
 
-  /v1/{prefix}/policies/{policy}/mappings:
+  /v1/{prefix}/namespaces/{namespaces}/policies/{policy}/mappings:
     parameters:
       - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/namespace' 
       - $ref: '#/components/parameters/policy'
 
     post:
@@ -1754,7 +1758,10 @@ paths:
         - Catalog API
       summary: Create a mapping between a policy and a resource entity
       operationId: setPolicy
-      description: Create a mapping between a policy and a resource entity
+      description: 
+        Create a mapping between a policy and a resource entity
+
+        A resource entity can be a catalog, namespace, or any table-like entity
       requestBody:
         required: true
         content:
@@ -1802,9 +1809,12 @@ paths:
     delete:
       tags: 
         - Catalog API
-      summary: Remove a mapping between a policy and an entity
+      summary: Remove a mapping between a policy and a resource entity
       operationId: unsetPolicy
-      description: Remove a mapping between a policy and an entity
+      description: 
+        Remove a mapping between a policy and a resource entity
+
+        A resource entity can be a catalog, namespace, or any table-like entity
       requestBody:
         required: true
         content:
@@ -4302,8 +4312,6 @@ components:
     UpdatePolicyRequest:
       type: object
       properties:
-        name: 
-          type: string
         description:
           type: string
         content:
