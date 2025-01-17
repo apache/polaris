@@ -51,8 +51,8 @@ public interface PolarisServerManager {
    */
   Server serverForContext(ExtensionContext context);
 
-  default PolarisAccessManager accessManager() {
-    return new IcebergTokenAccessManager(createClient());
+  default PolarisAccessManager accessManager(Client client) {
+    return new IcebergTokenAccessManager(client);
   }
 
   /** Create a new HTTP client for accessing the server targeted by tests. */

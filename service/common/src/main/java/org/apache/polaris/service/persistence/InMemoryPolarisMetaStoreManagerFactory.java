@@ -24,7 +24,7 @@ import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
-import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -65,7 +65,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
   }
 
   public void onStartup(RealmContextConfiguration realmContextConfiguration) {
-    bootstrapRealmAndPrintCredentials(realmContextConfiguration.defaultRealm());
+    bootstrapRealmsAndPrintCredentials(realmContextConfiguration.realms());
   }
 
   @Override
@@ -86,7 +86,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
   @Override
   public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmId realmId) {
     if (!bootstrappedRealms.contains(realmId.id())) {
-      bootstrapRealmAndPrintCredentials(realmId.id());
+      bootstrapRealmsAndPrintCredentials(List.of(realmId.id()));
     }
     return super.getOrCreateMetaStoreManager(realmId);
   }
@@ -95,25 +95,28 @@ public class InMemoryPolarisMetaStoreManagerFactory
   public synchronized Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(
       RealmId realmId) {
     if (!bootstrappedRealms.contains(realmId.id())) {
-      bootstrapRealmAndPrintCredentials(realmId.id());
+      bootstrapRealmsAndPrintCredentials(List.of(realmId.id()));
     }
     return super.getOrCreateSessionSupplier(realmId);
   }
 
-  private void bootstrapRealmAndPrintCredentials(String realmId) {
+  private void bootstrapRealmsAndPrintCredentials(List<String> realms) {
+    PolarisCredentialsBootstrap credentialsBootstrap =
+        PolarisCredentialsBootstrap.fromEnvironment();
     Map<String, PrincipalSecretsResult> results =
-        this.bootstrapRealms(
-            Collections.singletonList(realmId), PolarisCredentialsBootstrap.fromEnvironment());
-    bootstrappedRealms.add(realmId);
+        this.bootstrapRealms(realms, credentialsBootstrap);
+    bootstrappedRealms.addAll(realms);
 
-    PrincipalSecretsResult principalSecrets = results.get(realmId);
+    for (String realmId : realms) {
+      PrincipalSecretsResult principalSecrets = results.get(realmId);
 
-    String msg =
-        String.format(
-            "realm: %1s root principal credentials: %2s:%3s",
-            realmId,
-            principalSecrets.getPrincipalSecrets().getPrincipalClientId(),
-            principalSecrets.getPrincipalSecrets().getMainSecret());
-    System.out.println(msg);
+      String msg =
+          String.format(
+              "realm: %1s root principal credentials: %2s:%3s",
+              realmId,
+              principalSecrets.getPrincipalSecrets().getPrincipalClientId(),
+              principalSecrets.getPrincipalSecrets().getMainSecret());
+      System.out.println(msg);
+    }
   }
 }

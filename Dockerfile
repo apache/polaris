@@ -20,7 +20,7 @@
 # Base Image
 # Use a non-docker-io registry, because pulling images from docker.io is
 # subject to aggressive request rate limiting and bandwidth shaping.
-FROM registry.access.redhat.com/ubi9/openjdk-21:1.21-3.1733995526 AS build
+FROM registry.access.redhat.com/ubi9/openjdk-21:1.21-3.1736923862 AS build
 ARG ECLIPSELINK=false
 ARG ECLIPSELINK_DEPS
 
