@@ -17,6 +17,6 @@
  * under the License.
  */
 
-plugins { id("polaris-java") }
+plugins { id("polaris-server") }
 
 tasks.withType<Javadoc> { isFailOnError = false }
