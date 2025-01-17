@@ -37,7 +37,7 @@ if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
   echo "Performing first-time setup for the Python client..."
   python3 -m venv ${SCRIPT_DIR}/polaris-venv
   . ${SCRIPT_DIR}/polaris-venv/bin/activate
-  pip install poetry==1.8.5
+  pip install -f requirements.txt
 
   cp ${SCRIPT_DIR}/regtests/client/python/pyproject.toml ${SCRIPT_DIR}
 
