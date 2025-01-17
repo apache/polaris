@@ -19,7 +19,23 @@
 package org.apache.polaris.service.quarkus.it;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
+import java.util.Map;
 import org.apache.polaris.service.it.test.PolarisApplicationIntegrationTest;
 
 @QuarkusTest
-public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegrationTest {}
+@TestProfile(QuarkusApplicationIntegrationTest.Profile.class)
+public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegrationTest {
+
+  public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "quarkus.http.limits.max-body-size", "1000000",
+          "polaris.features.defaults.\"ALLOW_OVERLAPPING_CATALOG_URLS\"", "true",
+          "polaris.features.defaults.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"", "true");
+    }
+  }
+}

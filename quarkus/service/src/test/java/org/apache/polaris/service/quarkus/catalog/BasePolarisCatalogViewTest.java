@@ -23,6 +23,8 @@ import static org.mockito.Mockito.when;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -30,6 +32,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
@@ -64,7 +67,27 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 @QuarkusTest
+@TestProfile(BasePolarisCatalogViewTest.Profile.class)
 public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCatalog> {
+
+  public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.features.defaults.\"ALLOW_WILDCARD_LOCATION\"",
+          "true",
+          "polaris.features.defaults.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"",
+          "true",
+          "polaris.features.defaults.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
+          "true",
+          "polaris.features.defaults.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
+          "true",
+          "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
+          "[\"FILE\"]");
+    }
+  }
+
   public static final String CATALOG_NAME = "polaris-catalog";
 
   @Inject MetaStoreManagerFactory managerFactory;
