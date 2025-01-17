@@ -25,20 +25,12 @@ import java.util.Objects;
 
 @jakarta.annotation.Generated(
     value = "org.openapitools.codegen.languages.JavaResteasyServerCodegen",
-    date = "2025-01-15T21:05:26.610355-08:00[America/Los_Angeles]",
+    date = "2025-01-17T15:18:16.353234-08:00[America/Los_Angeles]",
     comments = "Generator version: 7.10.0")
 public class UpdatePolicyRequest {
 
-  private final String name;
   private final String description;
   private final Object content;
-
-  /** */
-  @ApiModelProperty(value = "")
-  @JsonProperty(value = "name")
-  public String getName() {
-    return name;
-  }
 
   /** */
   @ApiModelProperty(value = "")
@@ -56,10 +48,7 @@ public class UpdatePolicyRequest {
 
   @JsonCreator
   public UpdatePolicyRequest(
-      @JsonProperty(value = "name") String name,
-      @JsonProperty(value = "description") String description,
-      @JsonProperty(value = "content") Object content) {
-    this.name = name;
+      @JsonProperty("description") String description, @JsonProperty("content") Object content) {
     this.description = description;
     this.content = Objects.requireNonNullElse(content, null);
   }
@@ -69,16 +58,10 @@ public class UpdatePolicyRequest {
   }
 
   public static final class Builder {
-    private String name;
     private String description;
     private Object content;
 
     private Builder() {}
-
-    public Builder setName(String name) {
-      this.name = name;
-      return this;
-    }
 
     public Builder setDescription(String description) {
       this.description = description;
@@ -91,7 +74,7 @@ public class UpdatePolicyRequest {
     }
 
     public UpdatePolicyRequest build() {
-      UpdatePolicyRequest inst = new UpdatePolicyRequest(name, description, content);
+      UpdatePolicyRequest inst = new UpdatePolicyRequest(description, content);
       return inst;
     }
   }
@@ -105,14 +88,13 @@ public class UpdatePolicyRequest {
       return false;
     }
     UpdatePolicyRequest updatePolicyRequest = (UpdatePolicyRequest) o;
-    return Objects.equals(this.name, updatePolicyRequest.name)
-        && Objects.equals(this.description, updatePolicyRequest.description)
+    return Objects.equals(this.description, updatePolicyRequest.description)
         && Objects.equals(this.content, updatePolicyRequest.content);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(name, description, content);
+    return Objects.hash(description, content);
   }
 
   @Override
@@ -120,7 +102,6 @@ public class UpdatePolicyRequest {
     StringBuilder sb = new StringBuilder();
     sb.append("class UpdatePolicyRequest {\n");
 
-    sb.append("    name: ").append(toIndentedString(name)).append("\n");
     sb.append("    description: ").append(toIndentedString(description)).append("\n");
     sb.append("    content: ").append(toIndentedString(content)).append("\n");
     sb.append("}");
