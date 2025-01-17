@@ -19,5 +19,4 @@
 
 plugins {
   id("polaris-java")
-  id("polaris-license-report")
 }
