@@ -35,6 +35,7 @@ dependencies {
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-service-common"))
   implementation(project(":polaris-quarkus-service"))
+  implementation(project(":polaris-quarkus-defaults"))
 
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-picocli")

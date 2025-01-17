@@ -28,6 +28,7 @@ dependencies {
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-service-common"))
+  implementation(project(":polaris-quarkus-defaults"))
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
