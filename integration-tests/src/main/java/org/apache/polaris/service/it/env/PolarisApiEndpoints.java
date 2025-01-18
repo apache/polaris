@@ -28,7 +28,11 @@ import java.net.URI;
  */
 public final class PolarisApiEndpoints implements Serializable {
 
-  public static String REALM_HEADER = "realm";
+  /**
+   * The header name for the realm ID. Tests must make sure that Polaris is configured with this
+   * header name.
+   */
+  public static String REALM_HEADER = "Polaris-Realm";
 
   private final URI baseUri;
   private final String realm;

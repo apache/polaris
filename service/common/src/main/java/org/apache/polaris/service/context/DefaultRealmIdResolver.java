@@ -21,6 +21,7 @@ package org.apache.polaris.service.context;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.NotAuthorizedException;
 import java.util.Map;
 import org.apache.polaris.core.context.RealmId;
 
@@ -36,7 +37,7 @@ public class DefaultRealmIdResolver implements RealmIdResolver {
   }
 
   @Override
-  public RealmId resolveRealmContext(
+  public RealmId resolveRealmId(
       String requestURL, String method, String path, Map<String, String> headers) {
 
     String realm;
@@ -44,7 +45,7 @@ public class DefaultRealmIdResolver implements RealmIdResolver {
     if (headers.containsKey(configuration.headerName())) {
       realm = headers.get(configuration.headerName());
       if (!configuration.realms().contains(realm)) {
-        throw new IllegalArgumentException("Unknown realm: " + realm);
+        throw new NotAuthorizedException("Unknown realm: " + realm);
       }
     } else {
       realm = configuration.defaultRealm();

@@ -49,7 +49,7 @@ public class TestRealmIdResolver implements RealmIdResolver {
   }
 
   @Override
-  public RealmId resolveRealmContext(
+  public RealmId resolveRealmId(
       String requestURL, String method, String path, Map<String, String> headers) {
     // Since this default resolver is strictly for use in test/dev environments, we'll consider
     // it safe to log all contents. Any "real" resolver used in a prod environment should make

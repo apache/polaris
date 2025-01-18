@@ -21,7 +21,6 @@ package org.apache.polaris.service.quarkus.config;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.context.SmallRyeManagedExecutor;
-import io.vertx.core.http.HttpServerRequest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.event.Observes;
@@ -30,9 +29,9 @@ import jakarta.enterprise.inject.Disposes;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
+import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import java.time.Clock;
-import java.util.HashMap;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -53,6 +52,7 @@ import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
+import org.apache.polaris.service.context.RealmIdFilter;
 import org.apache.polaris.service.context.RealmIdResolver;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguration;
@@ -100,13 +100,8 @@ public class QuarkusProducers {
 
   @Produces
   @RequestScoped
-  public RealmId realmId(@Context HttpServerRequest request, RealmIdResolver realmIdResolver) {
-    return realmIdResolver.resolveRealmContext(
-        request.absoluteURI(),
-        request.method().name(),
-        request.path(),
-        request.headers().entries().stream()
-            .collect(HashMap::new, (m, e) -> m.put(e.getKey(), e.getValue()), HashMap::putAll));
+  public RealmId realmId(@Context ContainerRequestContext request) {
+    return (RealmId) request.getProperty(RealmIdFilter.REALM_ID_KEY);
   }
 
   @Produces

@@ -16,19 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.context;
+package org.apache.polaris.service.quarkus.config;
 
-import java.util.Map;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.service.config.PolarisFilterPriorities;
 
-public interface RealmIdResolver {
-
-  /**
-   * Resolves the realm id for the given request.
-   *
-   * @return the resolved realm id
-   * @throws jakarta.ws.rs.NotAuthorizedException if the realm id is not valid
-   */
-  RealmId resolveRealmId(
-      String requestURL, String method, String path, Map<String, String> headers);
+public final class QuarkusFilterPriorities {
+  public static final int MDC_FILTER = PolarisFilterPriorities.REALM_ID_FILTER + 1;
+  public static final int TRACING_FILTER = PolarisFilterPriorities.REALM_ID_FILTER + 2;
 }

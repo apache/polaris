@@ -28,7 +28,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 
 public class QuarkusServerManager implements PolarisServerManager {
 
-  private static final String TEST_REALM = "POLARIS";
+  private static final String DEFAULT_REALM_ID = "POLARIS";
 
   @Override
   public Server serverForContext(ExtensionContext context) {
@@ -36,7 +36,7 @@ public class QuarkusServerManager implements PolarisServerManager {
 
       @Override
       public String realmId() {
-        return TEST_REALM;
+        return DEFAULT_REALM_ID;
       }
 
       @Override
