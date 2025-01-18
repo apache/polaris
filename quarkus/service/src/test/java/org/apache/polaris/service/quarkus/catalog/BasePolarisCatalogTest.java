@@ -53,6 +53,7 @@ import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
+import org.apache.iceberg.aws.s3.S3FileIOProperties;
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
@@ -76,6 +77,7 @@ import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
@@ -96,6 +98,7 @@ import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.quarkus.catalog.io.TestFileIOFactory;
@@ -1456,6 +1459,46 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     Assertions.assertThatThrownBy(() -> noPurgeCatalog.dropTable(TABLE, true))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining(PolarisConfiguration.DROP_WITH_PURGE_ENABLED.key);
+  }
+
+  @Test
+  public void testRefreshIOWithCredentialsAndInternalProperties() {
+    // Enable ALLOW_SPECIFYING_FILE_IO_IMPL and disable SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION
+    PolarisConfigurationStore configurationStore =
+        new DefaultConfigurationStore(Map.of("ALLOW_SPECIFYING_FILE_IO_IMPL", true));
+    FileIOFactory fileIOFactory =
+        new FileIOFactory() {
+          @Override
+          public FileIO loadFileIO(String impl, Map<String, String> properties) {
+            // properties should contain credentials and internal properties
+            Assertions.assertThat(properties)
+                .containsEntry(S3FileIOProperties.ACCESS_KEY_ID, TEST_ACCESS_KEY)
+                .containsEntry(S3FileIOProperties.SECRET_ACCESS_KEY, SECRET_ACCESS_KEY)
+                .containsEntry(S3FileIOProperties.SESSION_TOKEN, SESSION_TOKEN)
+                .containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName());
+            return new DefaultFileIOFactory().loadFileIO(impl, properties);
+          }
+        };
+    BasePolarisCatalog catalog =
+        new BasePolarisCatalog(
+            realmContext,
+            entityManager,
+            metaStoreManager,
+            metaStoreSession,
+            configurationStore,
+            diagServices,
+            passthroughView,
+            securityContext,
+            Mockito.mock(),
+            fileIOFactory);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    catalog.createNamespace(NS);
+    catalog.buildTable(TABLE, SCHEMA).create();
+    Table table = catalog.loadTable(TABLE);
   }
 
   private TableMetadata createSampleTableMetadata(String tableLocation) {
