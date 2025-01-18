@@ -20,6 +20,7 @@ package org.apache.polaris.admintool;
 
 import io.quarkus.picocli.runtime.annotations.TopCommand;
 import java.io.PrintWriter;
+import org.apache.polaris.version.PolarisVersionProvider;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.HelpCommand;
 
