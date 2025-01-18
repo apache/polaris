@@ -109,8 +109,22 @@ Where:
 - `header-name` is the name of the header used to resolve the realm; by default, it is
   `Polaris-Realm`.
 
-If a request does not contain the specified header, Polaris will use the first realm in the list as
-the default realm. In the above example, `POLARIS` is the default realm.
+If a request contains the specified header, Polaris will use the realm specified in the header. If
+the realm is not in the list of allowed realms, Polaris will return a `404 Not Found` response.
+
+If a request _does not_ contain the specified header, however, by default Polaris will use the first
+realm in the list as the default realm. In the above example, `POLARIS` is the default realm and
+would be used if the `Polaris-Realm` header is not present in the request.
+
+This is not recommended for production use, as it may lead to security vulnerabilities. To avoid
+this, set the following property to `true`:
+
+```properties
+polaris.realm-context.require-header=true
+```
+
+This will cause Polaris to also return a `404 Not Found` response if the realm header is not present
+in the request.
 
 ### Metastore Configuration
 

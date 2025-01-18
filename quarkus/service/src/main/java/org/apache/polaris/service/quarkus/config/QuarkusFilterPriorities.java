@@ -16,21 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it.env;
+package org.apache.polaris.service.quarkus.config;
 
-import java.net.URI;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.apache.polaris.service.config.PolarisFilterPriorities;
 
-/** Unit tests for PolarisApiEndpoints */
-public class PolarisApiEndpointsTest {
-  @Test
-  void testEndpointRespectsPathPrefix() {
-    PolarisApiEndpoints endpoints =
-        new PolarisApiEndpoints(URI.create("http://myserver.com/polaris"), "", "Polaris-Realm");
-    Assertions.assertEquals(
-        "http://myserver.com/polaris/api/catalog", endpoints.catalogApiEndpoint().toString());
-    Assertions.assertEquals(
-        "http://myserver.com/polaris/api/management", endpoints.managementApiEndpoint().toString());
-  }
+public final class QuarkusFilterPriorities {
+  public static final int MDC_FILTER = PolarisFilterPriorities.REALM_CONTEXT_FILTER + 1;
+  public static final int TRACING_FILTER = PolarisFilterPriorities.REALM_CONTEXT_FILTER + 2;
 }

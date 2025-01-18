@@ -16,21 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it.env;
+package org.apache.polaris.service.config;
 
-import java.net.URI;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import jakarta.ws.rs.Priorities;
 
-/** Unit tests for PolarisApiEndpoints */
-public class PolarisApiEndpointsTest {
-  @Test
-  void testEndpointRespectsPathPrefix() {
-    PolarisApiEndpoints endpoints =
-        new PolarisApiEndpoints(URI.create("http://myserver.com/polaris"), "", "Polaris-Realm");
-    Assertions.assertEquals(
-        "http://myserver.com/polaris/api/catalog", endpoints.catalogApiEndpoint().toString());
-    Assertions.assertEquals(
-        "http://myserver.com/polaris/api/management", endpoints.managementApiEndpoint().toString());
-  }
+public final class PolarisFilterPriorities {
+  public static final int REALM_CONTEXT_FILTER = Priorities.AUTHENTICATION - 100;
+  public static final int AUTHENTICATOR_FILTER = Priorities.AUTHENTICATION;
+  public static final int ROLES_PROVIDER_FILTER = Priorities.AUTHENTICATION + 1;
+  public static final int RATE_LIMITER_FILTER = Priorities.USER;
 }
