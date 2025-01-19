@@ -31,7 +31,7 @@ include = ["polaris.management/py.typed"]
 [tool.poetry.dependencies]
 python = "^3.8"
 
-urllib3 = "^1.25.3"
+urllib3 = "^2.0.0"
 python-dateutil = ">=2.8.2"
 pydantic = ">=2"
 typing-extensions = ">=4.7.1"
