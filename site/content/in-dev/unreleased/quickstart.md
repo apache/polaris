@@ -113,18 +113,26 @@ Once the container is up, you can continue to [Defining a Catalog](#defining-a-c
 
 ### Running Polaris from Sources
 
-Run Polaris locally in [Dev mode](https://quarkus.io/guides/dev-mode-differences) with:
+The easiest way to run Polaris locally is to start the Polaris service in [Dev
+mode](https://quarkus.io/guides/dev-mode-differences):
 
 ```shell
 cd ~/polaris
 ./gradlew :polaris-quarkus-service:quarkusDev
 ```
 
+It may also be convenient to run the server from the `quarkus/server/build` directory:
+
+```shell
+cd ~/polaris
+java -jar quarkus/server/build/quarkus-app/quarkus-run.jar
+```
+
 You should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:
 
 ```
 realm: <realm> root principal credentials: <client-id>:<client-secret>
-INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) polaris-quarkus-service 1.0.0-incubating-SNAPSHOT on JVM (powered by Quarkus 3.17.6) started in 2.656s. Listening on: http://localhost:8181. Management interface listening on http://0.0.0.0:8182.
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) polaris-quarkus-service <version> on JVM (powered by Quarkus <version>) started in 2.656s. Listening on: http://localhost:8181. Management interface listening on http://0.0.0.0:8182.
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Profile dev activated. Live Coding activated.
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
 ```
