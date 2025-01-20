@@ -106,6 +106,7 @@ public class PolarisApplicationIntegrationTest {
   private static PolarisClient client;
   private static ClientCredentials clientCredentials;
   private static ClientPrincipal admin;
+  private static String authToken;
 
   private String principalRoleName;
   private String internalCatalogName;
@@ -118,6 +119,7 @@ public class PolarisApplicationIntegrationTest {
     realm = endpoints.realm();
     admin = adminCredentials;
     clientCredentials = adminCredentials.credentials();
+    authToken = client.obtainToken(clientCredentials);
 
     testDir = Path.of("build/test_data/iceberg/" + realm);
     FileUtils.deleteQuietly(testDir.toFile());
@@ -158,7 +160,7 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @AfterEach
-  public void cleanUp() throws Exception {
+  public void cleanUp() {
     client.cleanUp(clientCredentials);
   }
 
@@ -235,10 +237,8 @@ public class PolarisApplicationIntegrationTest {
         Map.of(
             "uri",
             endpoints.catalogApiEndpoint().toString(),
-            OAuth2Properties.CREDENTIAL,
-            clientCredentials.clientId() + ":" + clientCredentials.clientSecret(),
-            OAuth2Properties.SCOPE,
-            PRINCIPAL_ROLE_ALL,
+            OAuth2Properties.TOKEN,
+            authToken,
             "warehouse",
             catalog,
             "header." + REALM_HEADER,
@@ -579,10 +579,8 @@ public class PolarisApplicationIntegrationTest {
                       Map.of(
                           "uri",
                           endpoints.catalogApiEndpoint().toString(),
-                          OAuth2Properties.CREDENTIAL,
-                          clientCredentials.clientId() + ":" + clientCredentials.clientSecret(),
-                          OAuth2Properties.SCOPE,
-                          PRINCIPAL_ROLE_ALL,
+                          OAuth2Properties.TOKEN,
+                          authToken,
                           "warehouse",
                           emptyEnvironmentVariable,
                           "header." + REALM_HEADER,
