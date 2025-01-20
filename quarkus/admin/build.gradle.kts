@@ -24,7 +24,7 @@ plugins {
   alias(libs.plugins.jandex)
   alias(libs.plugins.openapi.generator)
   id("polaris-quarkus")
-  id("polaris-license-report")
+  // id("polaris-license-report")
   id("distribution")
 }
 
