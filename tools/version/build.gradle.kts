@@ -21,7 +21,10 @@ import org.apache.tools.ant.filters.ReplaceTokens
 
 plugins { id("polaris-client") }
 
-dependencies { testFixturesApi(libs.assertj.core) }
+dependencies {
+  compileOnly(libs.picocli)
+  testFixturesApi(libs.assertj.core)
+}
 
 description =
   "Provides Polaris version information programmatically, includes the NOTICE/LICENSE* files"

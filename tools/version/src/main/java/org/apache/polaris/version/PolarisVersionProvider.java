@@ -16,9 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool;
+package org.apache.polaris.version;
 
-import org.apache.polaris.version.PolarisVersion;
 import picocli.CommandLine.IVersionProvider;
 
 public class PolarisVersionProvider implements IVersionProvider {
