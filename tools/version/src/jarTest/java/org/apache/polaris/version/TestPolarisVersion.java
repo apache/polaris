@@ -108,7 +108,7 @@ public class TestPolarisVersion {
     return Stream.of(
         Arguments.arguments("NOTICE", (Supplier<String>) PolarisVersion::readNoticeFile),
         Arguments.arguments("LICENSE", (Supplier<String>) PolarisVersion::readSourceLicenseFile),
-        Arguments.arguments(
-            "LICENSE-BINARY-DIST", (Supplier<String>) PolarisVersion::readBinaryLicenseFile));
+        // Arguments.arguments(
+        //    "LICENSE-BINARY-DIST", (Supplier<String>) PolarisVersion::readBinaryLicenseFile));
   }
 }

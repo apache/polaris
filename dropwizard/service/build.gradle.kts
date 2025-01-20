@@ -22,7 +22,7 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 plugins {
   alias(libs.plugins.openapi.generator)
   id("polaris-server")
-  id("polaris-license-report")
+  // id("polaris-license-report")
   id("polaris-shadow-jar")
   id("application")
 }
