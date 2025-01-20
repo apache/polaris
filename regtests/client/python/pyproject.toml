@@ -20,12 +20,12 @@
 [tool.poetry]
 name = "polaris"
 version = "1.0.0"
-description = "Polaris Management Service"
-authors = ["OpenAPI Generator Community <team@openapitools.org>"]
-license = "NoLicense"
+description = "Apache Polaris Management Service"
+authors = ["Apache Software Foundation <dev@polaris.apache.org>"]
+license = "Apache License 2.0"
 readme = "README.md"
-repository = "https://github.com/GIT_USER_ID/GIT_REPO_ID"
-keywords = ["OpenAPI", "OpenAPI-Generator", "Polaris Management Service"]
+repository = "https://github.com/apache/polaris/"
+keywords = ["Polaris", "Polaris Management Service"]
 include = ["polaris.management/py.typed"]
 
 [tool.poetry.dependencies]
