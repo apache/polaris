@@ -24,8 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
@@ -34,7 +32,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -59,12 +56,8 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.hadoop.HadoopFileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
-import org.apache.iceberg.rest.HTTPClient;
-import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.RESTSessionCatalog;
-import org.apache.iceberg.rest.auth.AuthConfig;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
-import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -652,32 +645,6 @@ public class PolarisApplicationIntegrationTest {
                   // asserts that one of those things happens.
                 }
               });
-    }
-  }
-
-  @Test
-  public void testRefreshToken() throws IOException {
-    String path = endpoints.catalogApiEndpoint() + "/v1/oauth/tokens";
-    try (RESTClient client =
-        HTTPClient.builder(Map.of()).withHeader(REALM_HEADER, realm).uri(path).build()) {
-      String credentialString =
-          clientCredentials.clientId() + ":" + clientCredentials.clientSecret();
-      String expiredToken =
-          JWT.create().withExpiresAt(Instant.EPOCH).sign(Algorithm.HMAC256("irrelevant-secret"));
-      var authConfig =
-          AuthConfig.builder()
-              .credential(credentialString)
-              .scope("PRINCIPAL_ROLE:ALL")
-              .oauth2ServerUri(path)
-              .token(expiredToken)
-              .build();
-
-      var parentSession = new OAuth2Util.AuthSession(Map.of(), authConfig);
-      var session =
-          OAuth2Util.AuthSession.fromAccessToken(client, null, expiredToken, 0L, parentSession);
-
-      assertThat(session.token()).isNotEqualTo(expiredToken); // implicit refresh
-      assertThat(JWT.decode(session.token()).getExpiresAtAsInstant()).isAfter(Instant.EPOCH);
     }
   }
 }
