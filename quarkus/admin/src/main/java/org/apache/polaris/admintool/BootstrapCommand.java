@@ -32,14 +32,16 @@ public class BootstrapCommand extends BaseCommand {
 
   @CommandLine.Option(
       names = {"-r", "--realm"},
+      paramLabel = "<realm>",
       required = true,
       description = "The name of a realm to bootstrap.")
   List<String> realms;
 
   @CommandLine.Option(
       names = {"-c", "--credential"},
+      paramLabel = "<realm,clientId,clientSecret>",
       description =
-          "Principal credentials to bootstrap. Must be of the form 'realm,userName,clientId,clientSecret'.")
+          "Principal credentials to bootstrap. Must be of the form 'realm,clientId,clientSecret'.")
   List<String> credentials;
 
   @Override

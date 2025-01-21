@@ -29,6 +29,7 @@ public class PurgeCommand extends BaseCommand {
 
   @CommandLine.Option(
       names = {"-r", "--realm"},
+      paramLabel = "<realm>",
       required = true,
       description = "The name of a realm to purge.")
   List<String> realms;

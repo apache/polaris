@@ -97,10 +97,11 @@ java -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar \
 See the [metastore documentation]({{% ref "metastores" %}}) for more information on configuring the
 database connection.
 
-## Bootstrapping Principal Credentials
+## Bootstrapping Realms and Principal Credentials
 
-The `bootstrap` command is used to bootstrap realms and create the necessary principal credentials for the Polaris
-server. This command is idempotent and can be run multiple times without causing any issues.
+The `bootstrap` command is used to bootstrap realms and create the necessary principal credentials
+for the Polaris server. This command is idempotent and can be run multiple times without causing any
+issues.
 
 ```shell
 java -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar bootstrap --help
@@ -127,10 +128,13 @@ client ID `admin` and client secret `admin`, you can run the following command:
 java -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar bootstrap -r realm1 -c realm1,admin,admin
 ```
 
-## Purging Principal Credentials
+## Purging Realms and Principal Credentials
 
-The `purge` command is used to remove realms and principal credentials from the Polaris server. This
-command is idempotent and can be run multiple times without causing any issues.
+The `purge` command is used to remove realms and principal credentials from the Polaris server.
+
+> Warning: Running the `purge` command will remove all data associated with the specified realms!
+  This includes all entities (catalogs, namespaces, tables, views, roles), all principal 
+  credentials, grants, and any other data associated with the realms.
 
 ```shell
 java -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar purge --help
