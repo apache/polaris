@@ -222,7 +222,11 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
     restCatalog =
         IcebergHelper.restCatalog(
-            endpoints, principalCredentials, currentCatalogName, extraPropertiesBuilder.build());
+            client,
+            endpoints,
+            principalCredentials,
+            currentCatalogName,
+            extraPropertiesBuilder.build());
   }
 
   @AfterEach
