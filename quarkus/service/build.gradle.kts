@@ -146,7 +146,6 @@ dependencies {
 
 tasks.withType(Test::class.java).configureEach {
   systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
-  addSparkJvmOptions()
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
@@ -160,7 +159,21 @@ tasks.withType(Test::class.java).configureEach {
 
 tasks.named<Test>("test").configure { maxParallelForks = 4 }
 
-tasks.named<Test>("intTest").configure { maxParallelForks = 1 }
+tasks.named<Test>("intTest").configure {
+  maxParallelForks = 1
+  val intTestDir = project.layout.buildDirectory.get().asFile.resolve("intTest")
+  // delete files from previous runs
+  doFirst { intTestDir.deleteRecursively() }
+  // This property is not honored in a per-profile application.properties file,
+  // so we need to set it here.
+  systemProperty(
+    "quarkus.log.file.path",
+    intTestDir.resolve("logs").resolve("polaris.log").absolutePath,
+  )
+  // For Spark integration tests
+  addSparkJvmOptions()
+  systemProperty("spark.sql.warehouse.dir", intTestDir.resolve("spark-warehouse").absolutePath)
+}
 
 /**
  * Adds the JPMS options required for Spark to run on Java 17, taken from the

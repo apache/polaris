@@ -27,6 +27,8 @@ import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -179,10 +181,16 @@ public class PolarisSparkIntegrationTest {
   }
 
   private SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
+    String warehouseLocation = System.getProperty("spark.sql.warehouse.dir");
+    Path warehouseDir =
+        warehouseLocation != null
+            ? Paths.get(warehouseLocation)
+            : Paths.get(System.getProperty("user.dir"), "build", "intTest", "spark-warehouse");
     return builder
         .config(
             String.format("spark.sql.catalog.%s", catalogName),
             "org.apache.iceberg.spark.SparkCatalog")
+        .config("spark.sql.warehouse.dir", warehouseDir.toString())
         .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
         .config(
             String.format("spark.sql.catalog.%s.uri", catalogName),
