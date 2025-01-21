@@ -163,7 +163,10 @@ tasks.named<Test>("intTest").configure {
   maxParallelForks = 1
   val intTestDir = project.layout.buildDirectory.get().asFile.resolve("intTest")
   // delete files from previous runs
-  doFirst { intTestDir.deleteRecursively() }
+  doFirst {
+    intTestDir.deleteRecursively()
+    project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
+  }
   // This property is not honored in a per-profile application.properties file,
   // so we need to set it here.
   systemProperty(
