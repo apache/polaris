@@ -110,15 +110,15 @@ java -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar bootstrap --hel
 The basic usage of the `bootstrap` command is outlined below:
 
 ```
-Usage: polaris-quarkus-admin-runner.jar bootstrap [-hV] [-c=<credentials>]...
-       -r=<realms> [-r=<realms>]...
+Usage: polaris-quarkus-admin-runner.jar bootstrap [-hV] [-c=<realm,clientId,
+       clientSecret>]... -r=<realm> [-r=<realm>]...
 Bootstraps realms and principal credentials.
-  -c, --credential=<credentials>
-                         Principal credentials to bootstrap. Must be of the
-                           form 'realm,clientId,clientSecret'.
-  -h, --help             Show this help message and exit.
-  -r, --realm=<realms>   The name of a realm to bootstrap.
-  -V, --version          Print version information and exit.
+  -c, --credential=<realm,clientId,clientSecret>
+                        Principal credentials to bootstrap. Must be of the form
+                          'realm,clientId,clientSecret'.
+  -h, --help            Show this help message and exit.
+  -r, --realm=<realm>   The name of a realm to bootstrap.
+  -V, --version         Print version information and exit.
 ```
 
 For example, to bootstrap the `realm1` realm and create its root principal credential with the
@@ -143,11 +143,11 @@ java -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar purge --help
 The basic usage of the `purge` command is outlined below:
 
 ```
-Usage: polaris-quarkus-admin-runner.jar purge [-hV] -r=<realms> [-r=<realms>]...
+Usage: polaris-quarkus-admin-runner.jar purge [-hV] -r=<realm> [-r=<realm>]...
 Purge principal credentials.
-  -h, --help             Show this help message and exit.
-  -r, --realm=<realms>   The name of a realm to purge.
-  -V, --version          Print version information and exit.
+  -h, --help            Show this help message and exit.
+  -r, --realm=<realm>   The name of a realm to purge.
+  -V, --version         Print version information and exit.
 ```
 
 For example, to purge the `realm1` realm, you can run the following command:
