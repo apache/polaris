@@ -39,7 +39,7 @@ When filing an [issue](https://github.com/apache/polaris/issues), make sure to a
 5. What did you see instead?
 
 Troubleshooting questions should be posted on: 
-* [Slack](https://join.slack.com/t/apache-polaris/shared_invite/zt-2w1fddyh3-zqCeeJwn7wNvhn3mVT5njQ)
+* [Slack](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw)
 * [Zulip](https://polaris-catalog.zulipchat.com/)
 * [dev mailing list](mailto:dev@polaris.apache.org) (you can [subscribe](mailto:dev-subscribe@polaris.apache.org)) instead of the issue tracker. 
 
