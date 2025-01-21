@@ -27,7 +27,7 @@ import picocli.CommandLine;
 @CommandLine.Command(
     name = "bootstrap",
     mixinStandardHelpOptions = true,
-    description = "Bootstraps realms and principal credentials.")
+    description = "Bootstraps realms and root principal credentials.")
 public class BootstrapCommand extends BaseCommand {
 
   @CommandLine.Option(
@@ -41,7 +41,7 @@ public class BootstrapCommand extends BaseCommand {
       names = {"-c", "--credential"},
       paramLabel = "<realm,clientId,clientSecret>",
       description =
-          "Principal credentials to bootstrap. Must be of the form 'realm,clientId,clientSecret'.")
+          "Root principal credentials to bootstrap. Must be of the form 'realm,clientId,clientSecret'.")
   List<String> credentials;
 
   @Override

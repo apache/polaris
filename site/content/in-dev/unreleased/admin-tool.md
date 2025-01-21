@@ -112,9 +112,9 @@ The basic usage of the `bootstrap` command is outlined below:
 ```
 Usage: polaris-quarkus-admin-runner.jar bootstrap [-hV] [-c=<realm,clientId,
        clientSecret>]... -r=<realm> [-r=<realm>]...
-Bootstraps realms and principal credentials.
+Bootstraps realms and root principal credentials.
   -c, --credential=<realm,clientId,clientSecret>
-                        Principal credentials to bootstrap. Must be of the form
+                        Root principal credentials to bootstrap. Must be of the form
                           'realm,clientId,clientSecret'.
   -h, --help            Show this help message and exit.
   -r, --realm=<realm>   The name of a realm to bootstrap.
@@ -144,7 +144,7 @@ The basic usage of the `purge` command is outlined below:
 
 ```
 Usage: polaris-quarkus-admin-runner.jar purge [-hV] -r=<realm> [-r=<realm>]...
-Purge principal credentials.
+Purge realms and all associated entities.
   -h, --help            Show this help message and exit.
   -r, --realm=<realm>   The name of a realm to purge.
   -V, --version         Print version information and exit.

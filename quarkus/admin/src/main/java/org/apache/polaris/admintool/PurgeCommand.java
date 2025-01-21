@@ -24,7 +24,7 @@ import picocli.CommandLine;
 @CommandLine.Command(
     name = "purge",
     mixinStandardHelpOptions = true,
-    description = "Purge principal credentials.")
+    description = "Purge realms and all associated entities.")
 public class PurgeCommand extends BaseCommand {
 
   @CommandLine.Option(
