@@ -18,8 +18,54 @@
  */
 package org.apache.polaris.service.quarkus.it;
 
+import static org.apache.polaris.service.it.env.PolarisApiEndpoints.REALM_HEADER;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import io.quarkus.test.junit.QuarkusTest;
+import java.io.IOException;
+import java.time.Instant;
+import java.util.Map;
+import org.apache.iceberg.rest.HTTPClient;
+import org.apache.iceberg.rest.RESTClient;
+import org.apache.iceberg.rest.auth.AuthConfig;
+import org.apache.iceberg.rest.auth.OAuth2Util;
+import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.test.PolarisApplicationIntegrationTest;
+import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegrationTest {}
+public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegrationTest {
+
+  @Test
+  public void testIcebergRestApiRefreshToken(
+      PolarisApiEndpoints endpoints, ClientCredentials clientCredentials) throws IOException {
+    String path = endpoints.catalogApiEndpoint() + "/v1/oauth/tokens";
+    try (RESTClient client =
+        HTTPClient.builder(Map.of())
+            .withHeader(REALM_HEADER, endpoints.realm())
+            .uri(path)
+            .build()) {
+      String credentialString =
+          clientCredentials.clientId() + ":" + clientCredentials.clientSecret();
+      String expiredToken =
+          JWT.create().withExpiresAt(Instant.EPOCH).sign(Algorithm.HMAC256("irrelevant-secret"));
+      var authConfig =
+          AuthConfig.builder()
+              .credential(credentialString)
+              .scope("PRINCIPAL_ROLE:ALL")
+              .oauth2ServerUri(path)
+              .token(expiredToken)
+              .build();
+
+      var parentSession = new OAuth2Util.AuthSession(Map.of(), authConfig);
+      var session =
+          OAuth2Util.AuthSession.fromAccessToken(client, null, expiredToken, 0L, parentSession);
+
+      assertThat(session.token()).isNotEqualTo(expiredToken); // implicit refresh
+      assertThat(JWT.decode(session.token()).getExpiresAtAsInstant()).isAfter(Instant.EPOCH);
+    }
+  }
+}
