@@ -109,22 +109,16 @@ INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Profile prod activated.
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
 ```
 
-Once the container is up, you can continue to [Defining a Catalog](#defining-a-catalog).
+### Running Polaris as a Standalone Process
 
-### Running Polaris from Sources
-
-The easiest way to run Polaris locally is to start the Polaris service in [Dev
-mode](https://quarkus.io/guides/dev-mode-differences):
+The easiest way to run Polaris locally is to start the Polaris server from the
+`quarkus/server/build` directory (after building Polaris):
 
 ```shell
 cd ~/polaris
-./gradlew :polaris-quarkus-service:quarkusDev
-```
-
-It may also be convenient to run the server from the `quarkus/server/build` directory:
-
-```shell
-cd ~/polaris
+# Build the server
+./gradlew clean :polaris-quarkus-server:assemble
+# Start the server
 java -jar quarkus/server/build/quarkus-app/quarkus-run.jar
 ```
 
@@ -133,18 +127,16 @@ You should see output for some time as Polaris builds and starts up. Eventually,
 ```
 realm: <realm> root principal credentials: <client-id>:<client-secret>
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) polaris-quarkus-service <version> on JVM (powered by Quarkus <version>) started in 2.656s. Listening on: http://localhost:8181. Management interface listening on http://0.0.0.0:8182.
-INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Profile dev activated. Live Coding activated.
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Profile prod activated. Live Coding activated.
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
 ```
 
-At this point, Polaris is running. Take note of the root principal credentials provided in the logs, as we'll use them in the next section.
-
-## Bootstrapping Polaris
+At this point, Polaris is running.
 
 For this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. It also means that Polaris will automatically bootstrap itself with root credentials. For more information on how to configure Polaris for production usage, see the [docs]({{% ref "configuring-polaris-for-production" %}}).
 
-When Polaris is launched using an in-memory metastore, such as when Dev mode is used, the root
-principal credentials can be found in stdout on initial startup. For example:
+When Polaris is launched using an in-memory metastore, the root principal credentials can be found
+in stdout on initial startup. Look for a line that resembles the following:
 
 ```
 realm: <realm> root principal credentials: <client-id>:<client-secret>
