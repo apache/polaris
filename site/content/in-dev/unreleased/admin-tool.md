@@ -23,16 +23,13 @@ type: docs
 weight: 300
 ---
 
-In order to help administrators manage their Polaris database, Polaris provides an administration
+In order to help administrators manage their Polaris metastore, Polaris provides an administration
 tool.
-
-The tool is built using [Quarkus](https://quarkus.io/).
 
 ## How to Download the Admin Tool
 
-As of January 2025, there is currently no binary release or official Docker image available for
-the tool. For now, you need to build the artifacts yourself, for example, by running the following
-command:
+Make sure the admin tool and Polaris server are with the same version. If you are using Polaris from
+the source code, you need to build the artifacts yourself by running the following command:
 
 ```shell
 ./gradlew :polaris-quarkus-admin:build -Dquarkus.container-image.build=true
@@ -52,21 +49,12 @@ To run the standalone JAR, use the following command:
 java -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar --help
 ```
 
-To unpack and run the distribution, you can use the following command:
-
-```shell
-cd quarkus/admin/build/distributions
-unzip polaris-quarkus-admin-*.zip
-cd polaris-quarkus-admin-*/
-java -jar polaris-quarkus-admin-*-runner.jar --help
-```
-
 To run the Docker image, use the following command:
 
 ```shell
 docker run apache/polaris-admin-tool:latest --help
 ```
-`
+
 The basic usage of the Polaris Admin Tool is outlined below:
 
 ```
@@ -101,7 +89,8 @@ database connection.
 
 The `bootstrap` command is used to bootstrap realms and create the necessary principal credentials
 for the Polaris server. This command is idempotent and can be run multiple times without causing any
-issues.
+issues. If a realm is already bootstrapped, running the `bootstrap` command again will not have any
+effect on that realm.
 
 ```shell
 java -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar bootstrap --help
