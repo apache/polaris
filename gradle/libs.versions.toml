@@ -71,7 +71,7 @@ jakarta-servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version 
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version = "3.1.0" }
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
-jetbrains-annotations = { module = "org.jetbrains:annotations", version = "26.0.1" }
+jetbrains-annotations = { module = "org.jetbrains:annotations", version = "26.0.2" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.11.4" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.16" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.14.3" }
