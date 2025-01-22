@@ -34,15 +34,13 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.quarkus.TestServices;
-import org.apache.polaris.service.quarkus.catalog.io.TestFileIOFactory;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 public class PolarisOverlappingCatalogTest {
 
   static TestServices services =
-      TestServices.inMemory(
-          new TestFileIOFactory(), Map.of("ALLOW_OVERLAPPING_CATALOG_URLS", "false"));
+      TestServices.inMemory(Map.of("ALLOW_OVERLAPPING_CATALOG_URLS", "false"));
 
   private Response createCatalog(String prefix, String defaultBaseLocation, boolean isExternal) {
     return createCatalog(prefix, defaultBaseLocation, isExternal, new ArrayList<String>());

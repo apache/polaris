@@ -33,13 +33,11 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.service.quarkus.TestServices;
-import org.apache.polaris.service.quarkus.catalog.io.TestFileIOFactory;
 import org.junit.jupiter.api.Test;
 
 public class ManagementServiceTest {
   static TestServices services =
       TestServices.inMemory(
-          new TestFileIOFactory(),
           Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")));
 
   @Test

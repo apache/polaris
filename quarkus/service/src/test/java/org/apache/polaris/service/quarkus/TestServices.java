@@ -41,7 +41,6 @@ import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.catalog.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
-import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
@@ -54,19 +53,16 @@ public record TestServices(
     IcebergRestCatalogApi restApi,
     PolarisCatalogsApi catalogsApi,
     RealmId realmId,
-    SecurityContext securityContext) {
+    SecurityContext securityContext,
+    TestFileIOFactory testFileIOFactory) {
 
   private static final RealmId testRealm = RealmId.newRealmId("test-realm");
 
+  public static TestServices inMemory() {
+    return inMemory(Map.of());
+  }
+
   public static TestServices inMemory(Map<String, Object> config) {
-    return inMemory(new TestFileIOFactory(), config);
-  }
-
-  public static TestServices inMemory(FileIOFactory ioFactory) {
-    return inMemory(ioFactory, Map.of());
-  }
-
-  public static TestServices inMemory(FileIOFactory ioFactory, Map<String, Object> config) {
 
     DefaultConfigurationStore configurationStore = new DefaultConfigurationStore(config);
     PolarisDiagnostics polarisDiagnostics = Mockito.mock(PolarisDiagnostics.class);
@@ -98,6 +94,10 @@ public record TestServices(
 
     PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
 
+    TestFileIOFactory testFileIOFactory =
+        new TestFileIOFactory(
+            testRealm, entityManager, metaStoreManager, session, configurationStore);
+
     IcebergRestCatalogApiService service =
         new IcebergCatalogAdapter(
             testRealm,
@@ -108,7 +108,7 @@ public record TestServices(
             polarisDiagnostics,
             authorizer,
             Mockito.mock(TaskExecutor.class),
-            ioFactory);
+            testFileIOFactory);
 
     IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
 
@@ -158,6 +158,6 @@ public record TestServices(
                 authorizer,
                 polarisDiagnostics));
 
-    return new TestServices(restApi, catalogsApi, testRealm, securityContext);
+    return new TestServices(restApi, catalogsApi, testRealm, securityContext, testFileIOFactory);
   }
 }

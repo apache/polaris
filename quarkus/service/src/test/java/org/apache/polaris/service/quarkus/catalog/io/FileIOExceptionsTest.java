@@ -53,13 +53,13 @@ public class FileIOExceptionsTest {
   private static final String catalog = "test-catalog";
   private static final String catalogBaseLocation = "file:/tmp/buckets/my-bucket/path/to/data";
 
-  private static TestFileIOFactory ioFactory;
   private static TestServices services;
+  private static TestFileIOFactory ioFactory;
 
   @BeforeAll
   public static void beforeAll() {
-    ioFactory = new TestFileIOFactory();
-    services = TestServices.inMemory(ioFactory);
+    services = TestServices.inMemory();
+    ioFactory = services.testFileIOFactory();
 
     FileStorageConfigInfo storageConfigInfo =
         FileStorageConfigInfo.builder()

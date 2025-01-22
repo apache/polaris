@@ -47,10 +47,6 @@ public class TestFileIOFactory extends DefaultFileIOFactory {
   public Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier = Optional.empty();
   public Optional<Supplier<RuntimeException>> getLengthExceptionSupplier = Optional.empty();
 
-  public TestFileIOFactory() {
-    super(null, null, null, null, null);
-  }
-
   @Inject
   public TestFileIOFactory(
       RealmId realmId,
