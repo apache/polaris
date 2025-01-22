@@ -23,114 +23,179 @@ type: docs
 weight: 600
 ---
 
-The default `polaris-server.yml` configuration is intended for development and testing. When deploying Polaris in production, there are several best practices to keep in mind.
+## Tuning Polaris for Production
 
-## Security
+The default server configuration is intended for development and testing. When deploying Polaris in
+production, there are several best practices to keep in mind.
 
-### Configurations
+Notable configuration options used to secure a Polaris deployment are outlined below.
 
-Notable configuration used to secure a Polaris deployment are outlined below.
+For more information on how to configure Polaris and what configuration options are available,
+refer to the [Configuration]({{% ref "configuration.md" %}}) page.
 
-#### oauth2
+### Security
+
+Notable configuration options used to secure a Polaris deployment are outlined below.
+
+Polaris authentication requires specifying a token broker factory type. Two types are supported:
+
+- `rsa-key-pair` uses a pair of public and private keys;
+- `symmetric-key` uses a shared secret.
+
+By default, Polaris uses `rsa-key-pair`, with randomly generated keys. 
 
 > [!WARNING]  
-> Ensure that the `tokenBroker` setting reflects the token broker specified in `authenticator` below.
+> The default `rsa-key-pair` configuration is not suitable when deploying many replicas of Polaris,
+> as each replica will have its own set of keys. This will cause token validation to fail when a
+> request is routed to a different replica than the one that issued the token.
 
-* Configure [OAuth](https://oauth.net/2/) with this setting. Remove the `TestInlineBearerTokenPolarisAuthenticator` option and uncomment the `DefaultPolarisAuthenticator` authenticator option beneath it.
-* Then, configure the token broker. You can configure the token broker to use either [asymmetric](https://github.com/apache/polaris/blob/b482617bf8cc508b37dbedf3ebc81a9408160a5e/polaris-service/src/main/java/io/polaris/service/auth/JWTRSAKeyPair.java#L24) or [symmetric](https://github.com/apache/polaris/blob/b482617bf8cc508b37dbedf3ebc81a9408160a5e/polaris-service/src/main/java/io/polaris/service/auth/JWTSymmetricKeyBroker.java#L23) keys.
+It is highly recommended to configure Polaris with previously-generated RSA keys. This can be done
+by setting the following properties:
 
-#### authenticator.tokenBroker
+```properties
+polaris.authentication.token-broker.type=rsa-key-pair
+polaris.authentication.token-broker.rsa-key-pair.public-key-file=/tmp/public.key
+polaris.authentication.token-broker.rsa-key-pair.private-key-file=/tmp/private.key
+```
 
-> [!WARNING]  
-> Ensure that the `tokenBroker` setting reflects the token broker specified in `oauth2` above.
+Alternatively, you can use a symmetric key by setting the following properties:
 
-#### callContextResolver & realmIdResolver
-* Use these configurations to specify a service that can resolve a realm from bearer tokens.
-* The service(s) used here must implement the relevant interfaces (i.e. [CallContextResolver](https://github.com/apache/polaris/blob/8290019c10290a600e40b35ddb1e2f54bf99e120/polaris-service/src/main/java/io/polaris/service/context/CallContextResolver.java#L27) and [RealmContextResolver](https://github.com/apache/polaris/blob/7ce86f10a68a3b56aed766235c88d6027c0de038/polaris-service/src/main/java/io/polaris/service/context/RealmContextResolver.java)).
+```properties
+polaris.authentication.token-broker.type=symmetric-key
+polaris.authentication.token-broker.symmetric-key.file=/tmp/symmetric.key
+```
 
-## Metastore Management
+Note: it is also possible to set the symmetric key secret directly in the configuration file, but
+that is not recommended for production use, as the secret is stored in plain text:
 
-> [!IMPORTANT]  
-> The default `in-memory` implementation for `metastoreManager` is meant for testing and not suitable for production usage. Instead, consider an implementation such as `eclipse-link` which allows you to store metadata in a remote database.
+```properties
+polaris.authentication.token-broker.symmetric-key.secret=my-secret
+```
 
-A Metastore Manger should be configured with an implementation that durably persists Polaris entities. Use the configuration `metaStoreManager` to configure a [MetastoreManager](https://github.com/apache/polaris/blob/627dc602eb15a3258dcc32babf8def34cf6de0e9/polaris-core/src/main/java/io/polaris/core/persistence/PolarisMetaStoreManager.java#L47) implementation where Polaris entities will be persisted. 
+Finally, you can also configure the token broker to use a maximum lifespan by setting the following
+property:
+
+```properties
+polaris.authentication.token-broker.max-token-generation=PT1H
+```
+
+### Realm Id Resolver
+
+By default, Polaris resolves realms based on incoming request headers. You can configure the realm
+context resolver by setting the following properties in `application.properties`:
+
+```properties
+polaris.realm-context.realms=POLARIS,MY-REALM
+polaris.realm-context.header-name=Polaris-Realm
+```
+
+Where:
+
+- `realms` is a comma-separated list of allowed realms. This setting _must_ be correctly configured.
+  At least one realm must be specified.
+- `header-name` is the name of the header used to resolve the realm; by default, it is
+  `Polaris-Realm`.
+
+If a request does not contain the specified header, Polaris will use the first realm in the list as
+the default realm. In the above example, `POLARIS` is the default realm.
+
+### Metastore Configuration
+
+A Metastore Manager should be configured with an implementation that durably persists Polaris
+entities. By default, Polaris uses an in-memory metastore.
+
+> [!WARNING]
+> The default in-memory metastore is not suitable for production use, as it will lose all data
+> when the server is restarted; it is also unusable when multiple Polaris replicas are used.
+
+To use a durable Metastore Manager, you need to switch to the EclipseLink metastore, and provide
+your own `persistence.xml` file. This file contains details of the database used for metastore
+management and the connection settings. For more information, refer to the [metastore
+documentation]({{% ref "metastores" %}}).
+
+Then, configure Polaris to use your metastore by setting the following properties:
+
+```properties
+polaris.persistence.type=eclipse-link
+polaris.persistence.eclipselink.configuration-file=/path/to/persistence.xml
+polaris.persistence.eclipselink.persistence-unit=polaris
+```
+
+Where:
+
+- `polaris.persistence.type` indicates that we are using the EclipseLink metastore.
+- `polaris.persistence.eclipselink.configuration-file` is the path to the `persistence.xml` file.
+- `polaris.persistence.eclipselink.persistence-unit` is the name of the persistence unit to use (in 
+  case the configuration file has many persistence units).
+
+Typically, in Kubernetes, you would define the `persistence.xml` file as a `ConfigMap` and set the
+`polaris.persistence.eclipselink.configuration-file` property to the path of the mounted file in
+the container.
 
 Be sure to secure your metastore backend since it will be storing credentials and catalog metadata.
 
-### Configuring EclipseLink
-
-To use EclipseLink for metastore management, specify the configuration `metaStoreManager.conf-file` to point to an EclipseLink `persistence.xml` file. This file, local to the Polaris service, contains details of the database used for metastore management and the connection settings. For more information, refer to the [metastore documentation]({{% ref "metastores" %}}).
-
-> [!IMPORTANT]
-> EclipseLink requires
-> 1. Building the JAR for the EclipseLink extension
-> 2. Setting the `eclipseLink` gradle property to `true`.
->
-> This can be achieved by setting `eclipseLink=true` in the `gradle.properties` file, or by passing the property explicitly while building all JARs, e.g.: `./gradlew -PeclipseLink=true clean assemble`
-
 ### Bootstrapping
 
-Before using Polaris when using a metastore manager other than `in-memory`, you must **bootstrap** the metastore manager. This is a manual operation that must be performed **only once** in order to prepare the metastore manager to integrate with Polaris. When the metastore manager is bootstrapped, any existing Polaris entities in the metastore manager may be **purged**.
+Before using Polaris, you must **bootstrap** the metastore manager. This is a manual operation that
+must be performed **only once** in order to prepare the metastore manager to integrate with Polaris.
 
-By default, Polaris will create randomised `CLIENT_ID` and `CLIENT_SECRET` for the `root` principal and store their hashes in the metastore backend. In order to provide your own credentials for `root` principal (so you can request tokens via `api/catalog/v1/oauth/tokens`), set the `POLARIS_BOOTSTRAP_CREDENTIALS` environment variable as follows:
+By default, when bootstrapping a new realm, Polaris will create randomised `CLIENT_ID` and
+`CLIENT_SECRET` for the `root` principal and store their hashes in the metastore backend.
+
+Depending on your database, this may not be convenient as the generated credentials are not stored
+in clear text in the database.
+
+In order to provide your own credentials for `root` principal (so you can request tokens via
+`api/catalog/v1/oauth/tokens`), there are two approaches:
+
+1. Use the [Polaris Admin Tool]({{% ref "admin-tool" %}}) to bootstrap the realm and set its `root`
+   principal credentials.
+2. Set the `root` principal credentials when deploying Polaris for the first time.
+
+The first approach is recommended as it is more flexible (you can bootstrap new realms at any time
+without incurring in a Polaris downtime). The second approach is useful for testing and development,
+but can be used in production as well.
+
+In order to bootstrap root credentials for a realm named `my-realm` when deploying Polaris, set the
+following environment variables:
 
 ```
-export POLARIS_BOOTSTRAP_CREDENTIALS=my_realm,my-client-id,my-client-secret
+export POLARIS_BOOTSTRAP_CREDENTIALS=my-realm,my-client-id,my-client-secret
 ```
 
-The format of the environment variable is `realm,client_id,client_secret`. You can provide multiple credentials separated by `;`. For example, to provide credentials for two realms `my_realm` and `my_realm2`:
-
-```
-export POLARIS_BOOTSTRAP_CREDENTIALS=my_realm,my-client-id,my-client-secret;my_realm2,my-client-id2,my-client-secret2
-```
-
-It is also possible to use system properties to provide the credentials:
-
-```
-java -Dpolaris.bootstrap.credentials=my_realm,my-client-id,my-client-secret -jar /path/to/jar/polaris-service-all.jar bootstrap polaris-server.yml
-```
-
-Now, to bootstrap Polaris, run:
-
-```bash
-java -jar /path/to/jar/polaris-service-all.jar bootstrap polaris-server.yml
-```
-
-or in a container:
-
-```bash
-bin/polaris-service bootstrap config/polaris-server.yml
-```
-
-Afterward, Polaris can be launched normally:
-
-```bash
-java -jar /path/to/jar/polaris-service-all.jar server polaris-server.yml
-```
+If the realm hasn't been bootstrapped yet, Polaris will create the realm and the `root` principal
+with the provided credentials upon first usage of that realm. If the realm already exists, Polaris
+will not attempt to update the `root` principal credentials.
 
 You can verify the setup by attempting a token issue for the `root` principal:
 
 ```bash
-curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens -d "grant_type=client_credentials&client_id=my-client-id&client_secret=my-client-secret&scope=PRINCIPAL_ROLE:ALL"
+curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
+  -d "grant_type=client_credentials" \
+  -d "client_id=my-client-id" \
+  -d "client_secret=my-client-secret" \
+  -d "scope=PRINCIPAL_ROLE:ALL"
 ```
 
-which should return:
+Which should return an access token:
 
 ```json
-{"access_token":"...","token_type":"bearer","issued_token_type":"urn:ietf:params:oauth:token-type:access_token","expires_in":3600}
+{
+  "access_token": "...",
+  "token_type": "bearer",
+  "issued_token_type": "urn:ietf:params:oauth:token-type:access_token",
+  "expires_in": 3600
+}
 ```
 
-Note that if you used non-default realm name, for example, `iceberg` instead of `default-realm` in your `polaris-server.yml`, then you should add an appropriate request header:
+Note that if you used a realm name that is not the default realm name, then you should add an
+appropriate request header to the `curl` command, for example:
+
 ```bash
-curl -X POST -H 'realm: iceberg' http://localhost:8181/api/catalog/v1/oauth/tokens -d "grant_type=client_credentials&client_id=my-client-id&client_secret=my-client-secret&scope=PRINCIPAL_ROLE:ALL"
+curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
+  -H "Polaris-Realm: my-realm" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=my-client-id" \
+  -d "client_secret=my-client-secret" \
+  -d "scope=PRINCIPAL_ROLE:ALL"
 ```
-
-## Other Configurations
-
-When deploying Polaris in production, consider adjusting the following configurations:
-
-#### featureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES
-  - By default Polaris catalogs are allowed to be located in local filesystem with the `FILE` storage type. This should be disabled for production systems.
-  - Use this configuration to additionally disable any other storage types that will not be in use.
-
-
