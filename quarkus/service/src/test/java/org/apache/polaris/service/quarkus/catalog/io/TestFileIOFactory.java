@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.quarkus.catalog.io;
 
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.inject.Vetoed;
 import jakarta.inject.Inject;
 import java.util.*;
@@ -32,13 +33,14 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
 
 /**
  * A FileIOFactory that measures the number of bytes read, files written, and files deleted. It can
  * inject exceptions at various parts of the IO construction.
  */
 @Vetoed
-public class TestFileIOFactory extends DefaultFileIOFactory {
+public class TestFileIOFactory implements FileIOFactory {
   private final List<TestFileIO> ios = new ArrayList<>();
 
   // When present, the following will be used to throw exceptions at various parts of the IO
@@ -47,6 +49,8 @@ public class TestFileIOFactory extends DefaultFileIOFactory {
   public Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier = Optional.empty();
   public Optional<Supplier<RuntimeException>> getLengthExceptionSupplier = Optional.empty();
 
+  private final FileIOFactory defaultFileIOFactory;
+
   @Inject
   public TestFileIOFactory(
       RealmId realmId,
@@ -54,17 +58,14 @@ public class TestFileIOFactory extends DefaultFileIOFactory {
       PolarisMetaStoreManager metaStoreManager,
       PolarisMetaStoreSession metaStoreSession,
       PolarisConfigurationStore polarisConfigurationStore) {
-    super(realmId, entityManager, metaStoreManager, metaStoreSession, polarisConfigurationStore);
+    defaultFileIOFactory =
+        new DefaultFileIOFactory(
+            realmId, entityManager, metaStoreManager, metaStoreSession, polarisConfigurationStore);
   }
 
   @Override
   public FileIO loadFileIO(
-      String ioImplClassName,
-      Map<String, String> properties,
-      TableIdentifier identifier,
-      Set<String> tableLocations,
-      Set<PolarisStorageActions> storageActions,
-      PolarisResolvedPathWrapper resolvedStorageEntity) {
+      @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
     loadFileIOExceptionSupplier.ifPresent(
         s -> {
           throw s.get();
@@ -72,13 +73,36 @@ public class TestFileIOFactory extends DefaultFileIOFactory {
 
     TestFileIO wrapped =
         new TestFileIO(
-            super.loadFileIO(
+            defaultFileIOFactory.loadFileIO(ioImplClassName, properties),
+            newInputFileExceptionSupplier,
+            newOutputFileExceptionSupplier,
+            getLengthExceptionSupplier);
+    ios.add(wrapped);
+    return wrapped;
+  }
+
+  @Override
+  public FileIO loadFileIO(
+      @Nonnull String ioImplClassName,
+      @Nonnull Map<String, String> properties,
+      @Nonnull TableIdentifier identifier,
+      @Nonnull Set<String> tableLocations,
+      @Nonnull Set<PolarisStorageActions> storageActions,
+      @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
+    loadFileIOExceptionSupplier.ifPresent(
+        s -> {
+          throw s.get();
+        });
+
+    TestFileIO wrapped =
+        new TestFileIO(
+            defaultFileIOFactory.loadFileIO(
                 ioImplClassName,
                 properties,
                 identifier,
                 tableLocations,
                 storageActions,
-                resolvedStorageEntity),
+                resolvedEntityPath),
             newInputFileExceptionSupplier,
             newOutputFileExceptionSupplier,
             getLengthExceptionSupplier);

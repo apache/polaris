@@ -41,16 +41,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.NotImplementedException;
-import org.apache.iceberg.BaseTable;
-import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.CatalogUtil;
-import org.apache.iceberg.PartitionSpec;
-import org.apache.iceberg.Schema;
-import org.apache.iceberg.SortOrder;
-import org.apache.iceberg.Table;
-import org.apache.iceberg.TableMetadata;
-import org.apache.iceberg.TableMetadataParser;
-import org.apache.iceberg.aws.s3.S3FileIOProperties;
+import org.apache.iceberg.*;
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
@@ -90,7 +81,6 @@ import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.quarkus.catalog.io.TestFileIOFactory;
@@ -108,7 +98,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -1461,55 +1450,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         .hasMessageContaining(PolarisConfiguration.DROP_WITH_PURGE_ENABLED.key);
   }
 
-  @Test
-  public void testRefreshIOForTableLike() {
-    // Enable ALLOW_SPECIFYING_FILE_IO_IMPL and disable SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION
-    PolarisConfigurationStore configurationStore =
-        new DefaultConfigurationStore(
-            Map.of(
-                "ALLOW_SPECIFYING_FILE_IO_IMPL",
-                true,
-                PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
-                false));
-    try (MockedStatic<CatalogUtil> catalogUtil =
-        Mockito.mockStatic(CatalogUtil.class, Mockito.CALLS_REAL_METHODS)) {
-      catalogUtil
-          .when(() -> CatalogUtil.loadFileIO(Mockito.any(), Mockito.any(), Mockito.any()))
-          .thenAnswer(
-              invocation -> {
-                Map<String, String> properties = invocation.getArgument(1);
-                // properties should contain credentials
-                Assertions.assertThat(properties)
-                    .containsEntry(S3FileIOProperties.ACCESS_KEY_ID, TEST_ACCESS_KEY)
-                    .containsEntry(S3FileIOProperties.SECRET_ACCESS_KEY, SECRET_ACCESS_KEY)
-                    .containsEntry(S3FileIOProperties.SESSION_TOKEN, SESSION_TOKEN);
-                return invocation.callRealMethod();
-              });
-      FileIOFactory fileIOFactory =
-          new DefaultFileIOFactory(
-              realmId, entityManager, metaStoreManager, metaStoreSession, configurationStore);
-      BasePolarisCatalog catalog =
-          new BasePolarisCatalog(
-              realmId,
-              entityManager,
-              metaStoreManager,
-              metaStoreSession,
-              configurationStore,
-              diagServices,
-              passthroughView,
-              securityContext,
-              Mockito.mock(),
-              fileIOFactory);
-      catalog.initialize(
-          CATALOG_NAME,
-          ImmutableMap.of(CatalogProperties.FILE_IO_IMPL, InMemoryFileIO.class.getName()));
-
-      catalog.createNamespace(NS);
-      catalog.buildTable(TABLE, SCHEMA).create();
-      Table table = catalog.loadTable(TABLE);
-    }
-  }
-
   private TableMetadata createSampleTableMetadata(String tableLocation) {
     Schema schema =
         new Schema(
@@ -1601,8 +1541,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             configurationStore,
             diagServices,
             (task, rc) ->
-                measured.loadFileIO(
-                    "org.apache.iceberg.inmemory.InMemoryFileIO", Map.of(), null, null, null, null),
+                measured.loadFileIO("org.apache.iceberg.inmemory.InMemoryFileIO", Map.of()),
             clock);
     handler.handleTask(
         TaskEntity.of(

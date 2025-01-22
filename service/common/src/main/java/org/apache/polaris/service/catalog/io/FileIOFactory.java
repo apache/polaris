@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.io;
 
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import java.util.Map;
 import java.util.Set;
@@ -32,11 +33,14 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
  * <p>Implementations are available via CDI as {@link RequestScoped @RequestScoped} beans.
  */
 public interface FileIOFactory {
+
+  FileIO loadFileIO(@Nonnull String ioImplClassName, @Nonnull Map<String, String> properties);
+
   FileIO loadFileIO(
-      String ioImplClassName,
-      Map<String, String> properties,
-      TableIdentifier identifier,
-      Set<String> tableLocations,
-      Set<PolarisStorageActions> storageActions,
-      PolarisResolvedPathWrapper resolvedStorageEntity);
+      @Nonnull String ioImplClassName,
+      @Nonnull Map<String, String> properties,
+      @Nonnull TableIdentifier identifier,
+      @Nonnull Set<String> tableLocations,
+      @Nonnull Set<PolarisStorageActions> storageActions,
+      @Nonnull PolarisResolvedPathWrapper resolvedEntityPath);
 }

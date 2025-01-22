@@ -1973,13 +1973,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    */
   private FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
     Map<String, String> propertiesWithS3CustomizedClientFactory = new HashMap<>(properties);
-    return fileIOFactory.loadFileIO(
-        ioImpl,
-        propertiesWithS3CustomizedClientFactory,
-        null /*tableIdentifier*/,
-        null /*tableLocations*/,
-        null /*storageActions*/,
-        null /*resolvedStorageEntity*/);
+    return fileIOFactory.loadFileIO(ioImpl, propertiesWithS3CustomizedClientFactory);
   }
 
   private void blockedUserSpecifiedWriteLocation(Map<String, String> properties) {

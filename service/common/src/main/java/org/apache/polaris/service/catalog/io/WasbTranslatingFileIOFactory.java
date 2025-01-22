@@ -19,6 +19,7 @@
 package org.apache.polaris.service.catalog.io;
 
 import io.smallrye.common.annotation.Identifier;
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
@@ -54,12 +55,18 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
 
   @Override
   public FileIO loadFileIO(
-      String ioImplClassName,
-      Map<String, String> properties,
-      TableIdentifier identifier,
-      Set<String> tableLocations,
-      Set<PolarisStorageActions> storageActions,
-      PolarisResolvedPathWrapper resolvedStorageEntity) {
+      @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
+    return new WasbTranslatingFileIO(defaultFileIOFactory.loadFileIO(ioImplClassName, properties));
+  }
+
+  @Override
+  public FileIO loadFileIO(
+      @Nonnull String ioImplClassName,
+      @Nonnull Map<String, String> properties,
+      @Nonnull TableIdentifier identifier,
+      @Nonnull Set<String> tableLocations,
+      @Nonnull Set<PolarisStorageActions> storageActions,
+      @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
     return new WasbTranslatingFileIO(
         defaultFileIOFactory.loadFileIO(
             ioImplClassName,
@@ -67,6 +74,6 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
             identifier,
             tableLocations,
             storageActions,
-            resolvedStorageEntity));
+            resolvedEntityPath));
   }
 }
