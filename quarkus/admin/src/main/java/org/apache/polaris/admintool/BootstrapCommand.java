@@ -39,7 +39,7 @@ public class BootstrapCommand extends BaseCommand {
   @CommandLine.Option(
       names = {"-c", "--credential"},
       description =
-          "Principal credentials to bootstrap. Must be of the form 'realm,userName,clientId,clientSecret'.")
+          "Root principal credentials to bootstrap. Must be of the form 'realm,clientId,clientSecret'.")
   List<String> credentials;
 
   @Override
