@@ -104,6 +104,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -818,10 +819,15 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           .log("Table entity has no storage configuration in its hierarchy");
       return Map.of();
     }
-    return refreshCredentials(
+    return FileIOUtil.refreshCredentials(
+        realmId,
+        entityManager,
+        getCredentialVendor(),
+        metaStoreSession,
+        configurationStore,
         tableIdentifier,
-        storageActions,
         getLocationsAllowedToBeAccessed(tableMetadata),
+        storageActions,
         storageInfo.get());
   }
 
@@ -857,62 +863,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             ? resolvedEntityView.getResolvedPath(tableIdentifier.namespace())
             : resolvedTableEntities;
 
-    return findStorageInfoFromHierarchy(resolvedStorageEntity);
-  }
-
-  private Map<String, String> refreshCredentials(
-      TableIdentifier tableIdentifier,
-      Set<PolarisStorageActions> storageActions,
-      String tableLocation,
-      PolarisEntity entity) {
-    return refreshCredentials(tableIdentifier, storageActions, Set.of(tableLocation), entity);
-  }
-
-  private Map<String, String> refreshCredentials(
-      TableIdentifier tableIdentifier,
-      Set<PolarisStorageActions> storageActions,
-      Set<String> tableLocations,
-      PolarisEntity entity) {
-    Boolean skipCredentialSubscopingIndirection =
-        getBooleanContextConfiguration(
-            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
-            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
-    if (Boolean.TRUE.equals(skipCredentialSubscopingIndirection)) {
-      LOGGER
-          .atInfo()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .log("Skipping generation of subscoped creds for table");
-      return Map.of();
-    }
-
-    boolean allowList =
-        storageActions.contains(PolarisStorageActions.LIST)
-            || storageActions.contains(PolarisStorageActions.ALL);
-    Set<String> writeLocations =
-        storageActions.contains(PolarisStorageActions.WRITE)
-                || storageActions.contains(PolarisStorageActions.DELETE)
-                || storageActions.contains(PolarisStorageActions.ALL)
-            ? tableLocations
-            : Set.of();
-    Map<String, String> credentialsMap =
-        entityManager
-            .getCredentialCache()
-            .getOrGenerateSubScopeCreds(
-                getCredentialVendor(),
-                metaStoreSession,
-                entity,
-                allowList,
-                tableLocations,
-                writeLocations);
-    LOGGER
-        .atDebug()
-        .addKeyValue("tableIdentifier", tableIdentifier)
-        .addKeyValue("credentialKeys", credentialsMap.keySet())
-        .log("Loaded scoped credentials for table");
-    if (credentialsMap.isEmpty()) {
-      LOGGER.debug("No credentials found for table");
-    }
-    return credentialsMap;
+    return FileIOUtil.findStorageInfoFromHierarchy(resolvedStorageEntity);
   }
 
   /**
@@ -1418,18 +1369,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private static @Nonnull Optional<PolarisEntity> findStorageInfoFromHierarchy(
-      PolarisResolvedPathWrapper resolvedStorageEntity) {
-    Optional<PolarisEntity> storageInfoEntity =
-        resolvedStorageEntity.getRawFullPath().reversed().stream()
-            .filter(
-                e ->
-                    e.getInternalPropertiesAsMap()
-                        .containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
-            .findFirst();
-    return storageInfoEntity;
-  }
-
   private class BasePolarisViewOperations extends BaseViewOperations {
     private final TableIdentifier identifier;
     private final String fullViewName;
@@ -1882,7 +1821,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                     .toArray(String[]::new));
         resolvedStorageEntity = resolvedEntityView.getResolvedPath(nsLevel);
         if (resolvedStorageEntity != null) {
-          storageInfoEntity = findStorageInfoFromHierarchy(resolvedStorageEntity);
+          storageInfoEntity = FileIOUtil.findStorageInfoFromHierarchy(resolvedStorageEntity);
           break;
         }
       }
