@@ -161,21 +161,19 @@ tasks.named<Test>("test").configure { maxParallelForks = 4 }
 
 tasks.named<Test>("intTest").configure {
   maxParallelForks = 1
-  val intTestDir = project.layout.buildDirectory.get().asFile.resolve("intTest")
+  val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
   // delete files from previous runs
   doFirst {
-    intTestDir.deleteRecursively()
+    // delete log files written by Polaris
+    logsDir.deleteRecursively()
+    // delete quarkus.log file (captured Polaris stdout/stderr)
     project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
   }
   // This property is not honored in a per-profile application.properties file,
   // so we need to set it here.
-  systemProperty(
-    "quarkus.log.file.path",
-    intTestDir.resolve("logs").resolve("polaris.log").absolutePath,
-  )
+  systemProperty("quarkus.log.file.path", logsDir.resolve("polaris.log").absolutePath)
   // For Spark integration tests
   addSparkJvmOptions()
-  systemProperty("spark.sql.warehouse.dir", intTestDir.resolve("spark-warehouse").absolutePath)
 }
 
 /**

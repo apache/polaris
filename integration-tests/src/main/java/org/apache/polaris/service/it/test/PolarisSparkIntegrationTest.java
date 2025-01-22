@@ -28,7 +28,6 @@ import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +55,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.LoggerFactory;
 
 @ExtendWith(PolarisIntegrationTestExtension.class)
@@ -71,6 +71,8 @@ public class PolarisSparkIntegrationTest {
   private String sparkToken;
   private String catalogName;
   private String externalCatalogName;
+
+  @TempDir public Path warehouseDir;
 
   @BeforeAll
   public static void setup() throws IOException {
@@ -181,11 +183,6 @@ public class PolarisSparkIntegrationTest {
   }
 
   private SparkSession.Builder withCatalog(SparkSession.Builder builder, String catalogName) {
-    String warehouseLocation = System.getProperty("spark.sql.warehouse.dir");
-    Path warehouseDir =
-        warehouseLocation != null
-            ? Paths.get(warehouseLocation)
-            : Paths.get(System.getProperty("user.dir"), "build", "intTest", "spark-warehouse");
     return builder
         .config(
             String.format("spark.sql.catalog.%s", catalogName),
