@@ -38,10 +38,14 @@ github:
   protected_branches:
     main:
       required_pull_request_reviews:
+        # if we want to use this, GitHub CODEOWNERS should be cleanly define, with different patterns/owners
         require_code_owner_reviews: false
         required_approving_review_count: 1
 
       required_linear_history: true
+
+      # requires all conversations to be resolved before merging
+      required_conversation_resolution: true
 
       del_branch_on_merge: true
 
