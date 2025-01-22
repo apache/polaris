@@ -97,11 +97,6 @@ testing {
             GradleException("mockito-core not declared in libs.versions.toml")
           }
         )
-        implementation(
-          libs.findLibrary("mockito-inline").orElseThrow {
-            GradleException("mockito-core not declared in libs.versions.toml")
-          }
-        )
       }
     }
   }
@@ -146,11 +141,6 @@ dependencies {
   testFixturesImplementation(
     libs.findLibrary("mockito-core").orElseThrow {
       GradleException("mockito-core not declared in libs.versions.toml")
-    }
-  )
-  testFixturesImplementation(
-    libs.findLibrary("mockito-inline").orElseThrow {
-      GradleException("mockito-inline not declared in libs.versions.toml")
     }
   )
 }

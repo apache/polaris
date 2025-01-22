@@ -76,7 +76,6 @@ junit-bom = { module = "org.junit:junit-bom", version = "5.11.4" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.16" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.14.3" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.15.2" }
-mockito-inline = { module = "org.mockito:mockito-inline", version = "5.2.0" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.15.2" }
 opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.46.0" }
 opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.25.0-alpha" }
