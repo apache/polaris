@@ -191,3 +191,11 @@ fun JavaForkOptions.addSparkJvmOptions() {
         "-Djdk.reflect.useDirectMethodHandle=false",
       )
 }
+
+tasks.register("polarisServerRun") {
+  dependsOn("quarkusRun")
+}
+
+tasks.register("polarisServerDev") {
+  dependsOn("quarkusDev")
+}
