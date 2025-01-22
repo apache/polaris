@@ -31,7 +31,7 @@ production, there are several best practices to keep in mind.
 Notable configuration options used to secure a Polaris deployment are outlined below.
 
 For more information on how to configure Polaris and what configuration options are available,
-refer to the [Configuration]({{% ref "configuration.md" %}}) page.
+refer to the Configuration Reference page.
 
 ### Security
 
@@ -148,7 +148,7 @@ in clear text in the database.
 In order to provide your own credentials for `root` principal (so you can request tokens via
 `api/catalog/v1/oauth/tokens`), there are two approaches:
 
-1. Use the [Polaris Admin Tool]({{% ref "admin-tool" %}}) to bootstrap the realm and set its `root`
+1. Use the Polaris Admin Tool to bootstrap the realm and set its `root`
    principal credentials.
 2. Set the `root` principal credentials when deploying Polaris for the first time.
 
