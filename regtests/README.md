@@ -21,31 +21,92 @@
 
 # End-to-end regression tests
 
+Regression tests are either run in Docker, using docker-compose to orchestrate the tests, or
+locally.
+
+## Prerequisites
+
+It is recommended to clean the `regtests/output` directory before running tests. This can be done by
+running:
+
+```shell
+rm -rf ./regtests/output && \
+  mkdir -p ./regtests/output && \
+  chmod -R 777 ./regtests/output
+```
+
 ## Run Tests With Docker Compose
 
-Tests can be run with docker-compose by executing
+Tests can be run with docker-compose using the provided `./regtests/docker-compose.yml` file.
 
-```bash
-docker compose up --build --exit-code-from regtest
+In this setup, a Polaris container will be started using the `apache/polaris:latest` image. If the
+`apache/polaris:latest` image is not available locally, it will be pulled from the Polaris Docker
+Hub repository.
+
+_This means that, by default, the tests will be run against the latest published version of
+Polaris._ If you want to run the tests against a locally-built Polaris image, for example to
+validate changes before pushing to GitHub, _you must build the image first_. This can be done by
+running the following command from the root of the Polaris project:
+
+```shell
+./gradlew clean assemble -Dquarkus.container-image.build=true
 ```
 
-This is the flow used in CI and should be done locally before pushing to github to ensure that no environmental
-factors contribute to the outcome of the tests.
+Important: if you are also using Minikube, for example to test the Helm chart, you may need to
+_unset_ the Docker environment that was pointing to the Minikube Docker daemon, otherwise the image
+will be built by the Minikube Docker daemon and will not be available to the local Docker daemon.
+This can be done by running, _before_ building the image:
 
-## Run all tests
-
-Polaris REST server must be running on localhost:8181 before running tests.
-
-Running test harness will automatically run idempotent setup script.
-
-```
-./run.sh
+```shell
+eval $(minikube -p minikube docker-env --unset)
 ```
 
-## Run in VERBOSE mode with test stdout printing to console
+Finally, run the tests from the root of the Polaris project:
 
+```shell
+docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
 ```
-VERBOSE=1 ./run.sh t_spark_sql/src/spark_sql_basic.sh
+
+This will start the Polaris container, then build a Docker image for the Spark container that will
+run the tests. The exit code will be the same as the exit code of the Spark container.
+
+This is the flow used in CI and should be done locally before pushing to GitHub to ensure that no
+environmental factors contribute to the outcome of the tests.
+
+## Run Tests Locally
+
+Regression tests can be run locally as well, using the test harness.
+
+In this setup, a Polaris server must be running on localhost:8181 before running tests. The simplest
+way to do this is to run the Polaris server in a separate terminal window:
+
+```shell
+./gradlew polarisServerRun \
+  '-Dpolaris.authentication.authenticator.type=test' \
+  '-Dpolaris.authentication.token-service.type=test' \
+  '-Dpolaris.features.defaults."SUPPORTED_CATALOG_STORAGE_TYPES"=["FILE","S3","GCS","AZURE"]' \
+  '-Dpolaris.realm-context.realms=default-realm,realm1' \
+  '-Dquarkus.otel.sdk.disabled=true'
+```
+
+Note: the regression tests expect Polaris to run with certain options, e.g. with support for `FILE`
+storage and with realms `default-realm,realm1`; if you run the above command, this will be the case.
+If you run Polaris in a different way, make sure that Polaris is configured appropriately.
+
+Running the test harness will automatically run the idempotent setup script. From the root of the
+project, just run:
+
+```shell
+POLARIS_HOST=localhost ./regtests/run.sh
+```
+
+To run the tests in verbose mode, with test stdout printing to console, set the `VERBOSE`
+environment variable to `1`; you can also choose to run only a subset of tests by specifying the
+test directories as arguments to `run.sh`. For example, to run only the `t_spark_sql` tests in
+verbose mode:
+
+```shell
+VERBOSE=1 POLARIS_HOST=localhost ./regtests/run.sh t_spark_sql/src/spark_sql_basic.sh
 ```
 
 ## Run with Cloud resources
@@ -78,15 +139,16 @@ into the `credentials` folder. Then specify the name of the file in your .env fi
 path, as `/tmp/credentials` is the folder on the container where the credentials file will be mounted.
 
 
-## Experiment with failed test
+## Fixing a failed test due to incorrect expected output
+
+If a test fails due to incorrect expected output, the test harness will generate a script to help
+you compare the actual output with the expected output. The script will be located in the `output`
+directory, and will have the same name as the test, with the extension `.fixdiffs.sh`.
+
+For example, if the test `t_hello_world` fails, the script to compare the actual and expected output
+will be located at `output/t_hello_world/hello_world.sh.fixdiffs.sh`:
 
 ```
-rm t_hello_world/ref/hello_world.sh.ref
-./run.sh
-```
-
-```
-Tue Apr 23 06:32:23 UTC 2024: Running all tests
 Tue Apr 23 06:32:23 UTC 2024: Starting test t_hello_world:hello_world.sh
 Tue Apr 23 06:32:23 UTC 2024: Test run concluded for t_hello_world:hello_world.sh
 Tue Apr 23 06:32:23 UTC 2024: Test FAILED: t_hello_world:hello_world.sh
@@ -96,26 +158,41 @@ Tue Apr 23 06:32:32 UTC 2024: Test run concluded for t_spark_sql:spark_sql_basic
 Tue Apr 23 06:32:32 UTC 2024: Test SUCCEEDED: t_spark_sql:spark_sql_basic.sh
 ```
 
-Simply run the specified fixdiffs file to run `meld` and fix the ref file.
+Simply execute the specified `fixdiffs.sh` file, which will in turn run `meld` and fix the ref file:
 
 ```
 /tmp/polaris-regtests/t_hello_world/hello_world.sh.fixdiffs.sh
 ```
 
+Then commit the changes to the ref file.
+
 ## Run a spark-sql interactive shell
 
-With in-memory standalong Polaris running:
+With a Polaris server running in "dev" mode (see above), you can run a spark-sql interactive shell
+to test. From the root of the project:
 
+```shell
+POLARIS_HOST=localhost ./regtests/run_spark_sql.sh
 ```
-./run_spark_sql.sh
+
+Some SQL commands that you can try:
+
+```sql
+create database db1;
+show databases;
+create table db1.table1 (id int, name string);
+insert into db1.table1 values (1, 'a');
+select * from db1.table1;
 ```
+
+Other commands are available in the `regtests/t_spark_sql/src` directory.
 
 ## Python Tests
 
 Python tests are based on `pytest`. They rely on a python Polaris client, which is generated from the openapi spec.
 The client can be generated using two commands:
 
-```bash
+```shell
 # generate the management api client
 $ docker run --rm \
   -v ${PWD}:/local openapitools/openapi-generator-cli generate \
@@ -134,13 +211,13 @@ $ docker run --rm \
 Tests rely on Python 3.8 or higher. `pyenv` can be used to install a current version and mapped to the local directory
 by using
 
-```bash
+```shell
 pyenv install 3.8
 pyenv local 3.8
 ```
 
 Once you've done that, you can run `setup.sh` to generate a python virtual environment (installed at `~/polaris-venv`)
-and download all of the test dependencies into it. From here, `run.sh` will be able to execute any pytest present.
+and download all the test dependencies into it. From here, `run.sh` will be able to execute any pytest present.
 
 To debug, setup IntelliJ to point at your virtual environment to find your test dependencies
 (see https://www.jetbrains.com/help/idea/configuring-python-sdk.html). Then run the test in your IDE.
