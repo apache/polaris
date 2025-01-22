@@ -1607,9 +1607,7 @@ paths:
       summary: 'Create a policy in the given namespace'
       operationId: createPolicy
       description:
-        Create a policy
-
-        Policy's type will be fixed after creation
+        Create a policy in the given namespace
       requestBody:
         required: true
         content:
@@ -1646,6 +1644,7 @@ paths:
       description:
         Get a policy from the catalog
         
+        
         The response contains the policy's metadata and content
       responses:
         200:
@@ -1680,8 +1679,6 @@ paths:
       operationId: updatePolicy
       description:
         Update a policy
-
-        Only policy's description and content can be updated
       requestBody:
         required: true
         content:
@@ -1953,16 +1950,7 @@ components:
       required: true
       schema:
         type: string
-      example: 'compaction-policy'
-
-    entity-id:
-      name: entityId
-      in: path
-      description: id of an entity in Polaris
-      required: true
-      schema:
-        type: string
-      example: '7e7230c8-bcc3-49ea-87f3-e943ddd48e73'
+      example: 'compaction'
 
   ##############################
   # Application Schema Objects #
