@@ -33,6 +33,10 @@ dependencies {
   implementation(project(":polaris-service-common"))
   implementation(project(":polaris-quarkus-service"))
 
+  if (project.hasProperty("eclipseLinkDeps")) {
+    runtimeOnly(project(":polaris-eclipselink"))
+  }
+
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-container-image-docker")
