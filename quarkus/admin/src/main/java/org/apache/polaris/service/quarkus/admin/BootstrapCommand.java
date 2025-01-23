@@ -38,10 +38,10 @@ public class BootstrapCommand extends BaseCommand {
   List<String> realms;
 
   @CommandLine.Option(
-      names = {"-c", "--credential"},
-      description =
-          "Principal credentials to bootstrap. Must be of the form 'realm,userName,clientId,clientSecret'.")
-  List<String> credentials;
+      names = {"-c", "--credentials"},
+      description = "Principal credentials to bootstrap. Must be a valid JSON array e.g. " +
+          "[{\"realm\": \"my-realm\", \"principal\": \"root\", \"clientId\": \"polaris\", \"clientSecret\": \"p4ssw0rd\"}]")
+  String credentials;
 
   @CommandLine.Option(
       names = {"-p", "--print-credentials"},
@@ -53,10 +53,22 @@ public class BootstrapCommand extends BaseCommand {
   public Integer call() {
     warnOnInMemory();
 
+    if (credentials == null || credentials.isEmpty()) {
+      if (!printCredentials) {
+        throw new IllegalArgumentException("Specify either `--credentials` or `--print-credentials` to ensure" +
+            " the root user is accessible after bootstrapping.");
+      }
+    }
+
+    return bootstrap();
+  }
+
+  /** Bootstraps the metastore without any preliminary checks */
+  private Integer bootstrap() {
     PolarisCredentialsBootstrap credentialsBootstrap =
         credentials == null || credentials.isEmpty()
             ? PolarisCredentialsBootstrap.EMPTY
-            : PolarisCredentialsBootstrap.fromList(credentials);
+            : PolarisCredentialsBootstrap.fromJson(credentials);
 
     // Execute the bootstrap
     Map<String, PrincipalSecretsResult> results =

@@ -21,6 +21,10 @@ package org.apache.polaris.core.entity;
 public class PolarisEntityConstants {
 
   public static final String ENTITY_BASE_LOCATION = "location";
+
+  // the name of the root principal we create at bootstrap time
+  public static final String ROOT_PRINCIPAL_NAME = "root";
+
   // the key for the client_id property associated with a principal
   private static final String CLIENT_ID_PROPERTY_NAME = "client_id";
 
@@ -36,9 +40,6 @@ public class PolarisEntityConstants {
 
   // the name of the catalog/root admin role
   private static final String ADMIN_CATALOG_ROLE_NAME = "catalog_admin";
-
-  // the name of the root principal we create at bootstrap time
-  private static final String ROOT_PRINCIPAL_NAME = "root";
 
   // the name of the principal role we create to manage the entire Polaris service
   private static final String ADMIN_PRINCIPAL_ROLE_NAME = "service_admin";
