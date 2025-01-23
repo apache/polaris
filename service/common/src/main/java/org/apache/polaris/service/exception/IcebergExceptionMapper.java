@@ -19,6 +19,7 @@
 package org.apache.polaris.service.exception;
 
 import com.azure.core.exception.AzureException;
+import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
@@ -73,40 +74,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   @Override
   public Response toResponse(RuntimeException runtimeException) {
     LOGGER.info("Handling runtimeException {}", runtimeException.getMessage());
-    int responseCode =
-        switch (runtimeException) {
-          case NoSuchNamespaceException e -> Response.Status.NOT_FOUND.getStatusCode();
-          case NoSuchIcebergTableException e -> Response.Status.NOT_FOUND.getStatusCode();
-          case NoSuchTableException e -> Response.Status.NOT_FOUND.getStatusCode();
-          case NoSuchViewException e -> Response.Status.NOT_FOUND.getStatusCode();
-          case NotFoundException e -> Response.Status.NOT_FOUND.getStatusCode();
-          case AlreadyExistsException e -> Response.Status.CONFLICT.getStatusCode();
-          case CommitFailedException e -> Response.Status.CONFLICT.getStatusCode();
-          case UnprocessableEntityException e -> 422;
-          case CherrypickAncestorCommitException e -> Response.Status.BAD_REQUEST.getStatusCode();
-          case CommitStateUnknownException e -> Response.Status.BAD_REQUEST.getStatusCode();
-          case DuplicateWAPCommitException e -> Response.Status.BAD_REQUEST.getStatusCode();
-          case ForbiddenException e -> Response.Status.FORBIDDEN.getStatusCode();
-          case jakarta.ws.rs.ForbiddenException e -> Response.Status.FORBIDDEN.getStatusCode();
-          case NotAuthorizedException e -> Response.Status.UNAUTHORIZED.getStatusCode();
-          case NamespaceNotEmptyException e -> Response.Status.BAD_REQUEST.getStatusCode();
-          case ValidationException e -> Response.Status.BAD_REQUEST.getStatusCode();
-          case ServiceUnavailableException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
-          case RuntimeIOException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
-          case ServiceFailureException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
-          case CleanableFailure e -> Response.Status.BAD_REQUEST.getStatusCode();
-          case RESTException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
-          case IllegalArgumentException e -> Response.Status.BAD_REQUEST.getStatusCode();
-          case UnsupportedOperationException e -> Response.Status.NOT_ACCEPTABLE.getStatusCode();
-          case S3Exception e when doesAnyThrowableContainAccessDeniedHint(e) ->
-              Response.Status.FORBIDDEN.getStatusCode();
-          case AzureException e when doesAnyThrowableContainAccessDeniedHint(e) ->
-              Response.Status.FORBIDDEN.getStatusCode();
-          case StorageException e when doesAnyThrowableContainAccessDeniedHint(e) ->
-              Response.Status.FORBIDDEN.getStatusCode();
-          case WebApplicationException e -> e.getResponse().getStatus();
-          default -> Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
-        };
+    int responseCode = mapExceptionToResponseCode(runtimeException);
     if (responseCode == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()) {
       LOGGER.error("Unhandled exception returning INTERNAL_SERVER_ERROR", runtimeException);
     }
@@ -143,5 +111,57 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   @VisibleForTesting
   public static Collection<String> getAccessDeniedHints() {
     return ImmutableSet.copyOf(ACCESS_DENIED_HINTS);
+  }
+
+  static int mapExceptionToResponseCode(RuntimeException rex) {
+    // Cloud exceptions
+    if (rex instanceof S3Exception
+        || rex instanceof AzureException
+        || rex instanceof StorageException) {
+      if (doesAnyThrowableContainAccessDeniedHint(rex)) {
+        return Response.Status.FORBIDDEN.getStatusCode();
+      }
+
+      int httpCode =
+          switch (rex) {
+            case S3Exception s3e -> s3e.statusCode();
+            case HttpResponseException hre -> hre.getResponse().getStatusCode();
+            case StorageException se -> se.getCode();
+            default -> -1;
+          };
+
+      if (300 <= httpCode && httpCode <= 499) {
+        return httpCode;
+      }
+    }
+
+    // Non-cloud exceptions
+    return switch (rex) {
+      case NoSuchNamespaceException e -> Response.Status.NOT_FOUND.getStatusCode();
+      case NoSuchIcebergTableException e -> Response.Status.NOT_FOUND.getStatusCode();
+      case NoSuchTableException e -> Response.Status.NOT_FOUND.getStatusCode();
+      case NoSuchViewException e -> Response.Status.NOT_FOUND.getStatusCode();
+      case NotFoundException e -> Response.Status.NOT_FOUND.getStatusCode();
+      case AlreadyExistsException e -> Response.Status.CONFLICT.getStatusCode();
+      case CommitFailedException e -> Response.Status.CONFLICT.getStatusCode();
+      case UnprocessableEntityException e -> 422;
+      case CherrypickAncestorCommitException e -> Response.Status.BAD_REQUEST.getStatusCode();
+      case CommitStateUnknownException e -> Response.Status.BAD_REQUEST.getStatusCode();
+      case DuplicateWAPCommitException e -> Response.Status.BAD_REQUEST.getStatusCode();
+      case ForbiddenException e -> Response.Status.FORBIDDEN.getStatusCode();
+      case jakarta.ws.rs.ForbiddenException e -> Response.Status.FORBIDDEN.getStatusCode();
+      case NotAuthorizedException e -> Response.Status.UNAUTHORIZED.getStatusCode();
+      case NamespaceNotEmptyException e -> Response.Status.BAD_REQUEST.getStatusCode();
+      case ValidationException e -> Response.Status.BAD_REQUEST.getStatusCode();
+      case ServiceUnavailableException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
+      case RuntimeIOException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
+      case ServiceFailureException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
+      case CleanableFailure e -> Response.Status.BAD_REQUEST.getStatusCode();
+      case RESTException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
+      case IllegalArgumentException e -> Response.Status.BAD_REQUEST.getStatusCode();
+      case UnsupportedOperationException e -> Response.Status.NOT_ACCEPTABLE.getStatusCode();
+      case WebApplicationException e -> e.getResponse().getStatus();
+      default -> Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
+    };
   }
 }

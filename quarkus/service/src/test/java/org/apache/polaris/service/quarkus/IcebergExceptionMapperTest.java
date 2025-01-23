@@ -16,11 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.dropwizard;
+package org.apache.polaris.service.quarkus;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.azure.core.exception.AzureException;
+import com.azure.core.exception.HttpResponseException;
+import com.azure.core.http.HttpResponse;
 import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.core.Response;
 import java.util.stream.Stream;
@@ -39,8 +43,20 @@ class IcebergExceptionMapperTest {
         Arguments.of(new AzureException("FORBIDDEN"), 403),
         Arguments.of(new AzureException("Not Authorized"), 403),
         Arguments.of(new AzureException("Access Denied"), 403),
+        Arguments.of(new HttpResponseException("", mockAzureResponse(401), ""), 401),
+        Arguments.of(new HttpResponseException("", mockAzureResponse(403), ""), 403),
+        Arguments.of(new HttpResponseException("", mockAzureResponse(302), ""), 302),
+        Arguments.of(new HttpResponseException("", mockAzureResponse(404), ""), 404),
         Arguments.of(S3Exception.builder().message("Access denied").build(), 403),
-        Arguments.of(new StorageException(1, "access denied"), 403));
+        Arguments.of(S3Exception.builder().message("").statusCode(401).build(), 401),
+        Arguments.of(S3Exception.builder().message("").statusCode(403).build(), 403),
+        Arguments.of(S3Exception.builder().message("").statusCode(302).build(), 302),
+        Arguments.of(S3Exception.builder().message("").statusCode(404).build(), 404),
+        Arguments.of(new StorageException(1, "access denied"), 403),
+        Arguments.of(new StorageException(401, ""), 401),
+        Arguments.of(new StorageException(403, ""), 403),
+        Arguments.of(new StorageException(302, ""), 302),
+        Arguments.of(new StorageException(404, ""), 404));
   }
 
   @ParameterizedTest
@@ -51,5 +67,18 @@ class IcebergExceptionMapperTest {
       assertThat(response.getStatus()).isEqualTo(statusCode);
       assertThat(response.getEntity()).extracting("message").isEqualTo(ex.getMessage());
     }
+  }
+
+  /**
+   * Creates a mock of the Azure-specific HttpResponse object, as it's quite difficult to construct
+   * a "real" one.
+   *
+   * @param statusCode
+   * @return
+   */
+  private static HttpResponse mockAzureResponse(int statusCode) {
+    HttpResponse res = mock(HttpResponse.class);
+    when(res.getStatusCode()).thenReturn(statusCode);
+    return res;
   }
 }
