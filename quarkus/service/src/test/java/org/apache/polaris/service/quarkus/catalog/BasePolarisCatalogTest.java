@@ -236,7 +236,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             securityContext,
             taskExecutor,
             new DefaultFileIOFactory(),
-                new DefaultPolarisEventListener());
+                null);
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -506,7 +506,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             securityContext,
             Mockito.mock(),
             fileIoFactory,
-                new DefaultPolarisEventListener());
+                null);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -835,7 +835,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             securityContext,
             taskExecutor,
             new DefaultFileIOFactory(),
-                new DefaultPolarisEventListener());
+                null);
     catalog.initialize(
         catalogWithoutStorage,
         ImmutableMap.of(
@@ -901,7 +901,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             securityContext,
             taskExecutor,
             new DefaultFileIOFactory(),
-                new DefaultPolarisEventListener());
+                null);
     catalog.initialize(
         catalogName,
         ImmutableMap.of(
@@ -1438,7 +1438,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             securityContext,
             Mockito.mock(),
             new DefaultFileIOFactory(),
-                new DefaultPolarisEventListener());
+                null);
     noPurgeCatalog.initialize(
         noPurgeCatalogName,
         ImmutableMap.of(
@@ -1523,7 +1523,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             securityContext,
             Mockito.mock(),
             measured,
-                new DefaultPolarisEventListener());
+                null);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

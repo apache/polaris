@@ -25,6 +25,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
@@ -69,7 +70,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.BeforeTableCommitEvent;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
@@ -129,7 +130,7 @@ public class IcebergCatalogAdapter
   private final PolarisAuthorizer polarisAuthorizer;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
-  private final PolarisEventListener polarisEventListener;
+  private final Event<BeforeTableCommitEvent> beforeTableCommitEvent;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -142,7 +143,7 @@ public class IcebergCatalogAdapter
           PolarisAuthorizer polarisAuthorizer,
           TaskExecutor taskExecutor,
           FileIOFactory fileIOFactory,
-          PolarisEventListener polarisEventListener) {
+          Event<BeforeTableCommitEvent> beforeTableCommitEvent) {
     this.realmId = realmId;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
@@ -152,7 +153,7 @@ public class IcebergCatalogAdapter
     this.polarisAuthorizer = polarisAuthorizer;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
-    this.polarisEventListener = polarisEventListener;
+    this.beforeTableCommitEvent = beforeTableCommitEvent;
   }
 
   /**
@@ -194,7 +195,7 @@ public class IcebergCatalogAdapter
         polarisAuthorizer,
         taskExecutor,
         fileIOFactory,
-            polarisEventListener);
+            beforeTableCommitEvent);
   }
 
   @Override

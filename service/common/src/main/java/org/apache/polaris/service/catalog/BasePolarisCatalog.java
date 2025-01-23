@@ -24,6 +24,7 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.event.Event;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
@@ -104,7 +105,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.BeforeTableCommitEvent;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -164,7 +165,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private final FileIOFactory fileIOFactory;
   private final long catalogId;
   private final String catalogName;
-  private final PolarisEventListener polarisEventListener;
+  private final Event<BeforeTableCommitEvent> beforeTableCommitEvent;
 
   private String ioImplClassName;
   private FileIO catalogFileIO;
@@ -192,7 +193,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       SecurityContext securityContext,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory,
-      PolarisEventListener polarisEventListener) {
+      Event<BeforeTableCommitEvent> beforeTableCommitEvent) {
     this.realmId = realmId;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
@@ -209,7 +210,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     this.catalogId = catalogEntity.getId();
     this.catalogName = catalogEntity.getName();
-    this.polarisEventListener = polarisEventListener;
+    this.beforeTableCommitEvent = beforeTableCommitEvent;
   }
 
   @Override
@@ -1260,7 +1261,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     @Override
     public void doCommit(TableMetadata base, TableMetadata metadata) {
-      polarisEventListener.onBeforeTableCommit(base, metadata);
+      beforeTableCommitEvent.fire(new BeforeTableCommitEvent(base, metadata));
 
       LOGGER.debug(
           "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);

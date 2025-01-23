@@ -110,7 +110,7 @@ public record TestServices(
             authorizer,
             Mockito.mock(TaskExecutor.class),
             ioFactory,
-                new DefaultPolarisEventListener());
+                null);
 
     IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
 

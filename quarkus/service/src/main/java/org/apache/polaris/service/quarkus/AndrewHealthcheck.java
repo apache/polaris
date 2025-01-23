@@ -17,10 +17,18 @@
  * under the License.
  */
 
-package org.apache.polaris.service.events;
+package org.apache.polaris.service.quarkus;
 
-import org.apache.iceberg.TableMetadata;
+import jakarta.enterprise.context.ApplicationScoped;
+import org.eclipse.microprofile.health.HealthCheck;
+import org.eclipse.microprofile.health.HealthCheckResponse;
+import org.eclipse.microprofile.health.Readiness;
 
-public interface PolarisEventListener {
-    void onBeforeTableCommit(TableMetadata base, TableMetadata metadata);
+@Readiness
+@ApplicationScoped
+public class AndrewHealthcheck implements HealthCheck {
+    @Override
+    public HealthCheckResponse call() {
+        return HealthCheckResponse.up("Andrew health check");
+    }
 }

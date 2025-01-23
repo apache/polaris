@@ -19,16 +19,13 @@
 
 package org.apache.polaris.service.quarkus;
 
-import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.iceberg.TableMetadata;
-import org.apache.polaris.service.events.DefaultPolarisEventListener;
+import jakarta.enterprise.event.Observes;
+import org.apache.polaris.service.events.BeforeTableCommitEvent;
 
 @ApplicationScoped
-@Identifier("andrew")
-public class AndrewPolarisEventListener extends DefaultPolarisEventListener {
-    @Override
-    public void onBeforeTableCommit(TableMetadata base, TableMetadata metadata) {
+public class AndrewPolarisEventListener {
+    void onBeforeTableCommit(@Observes BeforeTableCommitEvent task) {
         System.out.println("ANDREW onBeforeTableCommit");
     }
 }

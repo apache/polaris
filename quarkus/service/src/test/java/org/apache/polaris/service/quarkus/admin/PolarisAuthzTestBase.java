@@ -398,7 +398,7 @@ public abstract class PolarisAuthzTestBase {
             securityContext,
             Mockito.mock(),
             new DefaultFileIOFactory(),
-                new DefaultPolarisEventListener());
+                null);
     this.baseCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

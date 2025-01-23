@@ -17,17 +17,9 @@
  * under the License.
  */
 
-package org.apache.polaris.service.quarkus.events;
+package org.apache.polaris.service.events;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.config.ConfigMapping;
+import org.apache.iceberg.TableMetadata;
 
-@StaticInitSafe
-@ConfigMapping(prefix = "polaris.events")
-public interface QuarkusPolarisEventListenerConfiguration {
-    /**
-     * The type of the catalog IO to use. Must be a registered {@link
-     * org.apache.polaris.service.PolarisEventListener} identifier.
-     */
-    String type();
+public record BeforeTableCommitEvent(TableMetadata base, TableMetadata metadata) {
 }

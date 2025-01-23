@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.event.Event;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
@@ -97,7 +98,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.BeforeTableCommitEvent;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
@@ -133,7 +134,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   private final PolarisAuthorizer authorizer;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
-  private final PolarisEventListener polarisEventListener;
+  private final Event<BeforeTableCommitEvent> beforeTableCommitEvent;
 
   // Initialized in the authorize methods.
   private PolarisResolutionManifest resolutionManifest = null;
@@ -156,7 +157,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
           PolarisAuthorizer authorizer,
           TaskExecutor taskExecutor,
           FileIOFactory fileIOFactory,
-          PolarisEventListener polarisEventListener) {
+          Event<BeforeTableCommitEvent> beforeTableCommitEvent) {
     this.realmId = realmId;
     this.session = session;
     this.entityManager = entityManager;
@@ -176,7 +177,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     this.authorizer = authorizer;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
-    this.polarisEventListener = polarisEventListener;
+    this.beforeTableCommitEvent = beforeTableCommitEvent;
   }
 
   /**
@@ -249,7 +250,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
             securityContext,
             taskExecutor,
             fileIOFactory,
-                polarisEventListener);
+                beforeTableCommitEvent);
 
     // TODO: The initialize properties might need to take more from the CatalogEntity.
     catalogInstance.initialize(catalogName, catalogProperties);
