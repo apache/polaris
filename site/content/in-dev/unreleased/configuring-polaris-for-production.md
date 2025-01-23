@@ -31,7 +31,7 @@ production, there are several best practices to keep in mind.
 Notable configuration used to secure a Polaris deployment are outlined below.
 
 For more information on how to configure Polaris and what configuration options are available,
-refer to the Configuration Reference page.
+refer to the [configuration reference page]({{% ref "configuration" %}}).
 
 ### OAuth2
 
