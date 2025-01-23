@@ -17,20 +17,13 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: Polaris Admin Tool
-title: Apache Polaris (incubating) Admin Tool
+linkTitle: Admin Tool
+title: Admin Tool
 type: docs
 weight: 300
 ---
 
-In order to help administrators manage their Polaris metastore, Polaris provides an administration
-tool.
-
-## How to Download the Admin Tool
-
-Make sure the admin tool and Polaris server are with the same version. If you are using Polaris from
-the source code, you need to build the artifacts yourself by running the following command:
-
+Polaris includes a tool for administrators to manage the metastore. You can download it or build it using this command: 
 ```shell
 ./gradlew :polaris-quarkus-admin:build -Dquarkus.container-image.build=true
 ```
@@ -43,6 +36,7 @@ The above command will generate:
 
 ## Usage
 
+Please make sure the admin tool and Polaris server are with the same version before using it.
 To run the standalone JAR, use the following command:
 
 ```shell
