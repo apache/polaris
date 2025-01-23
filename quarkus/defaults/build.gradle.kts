@@ -22,6 +22,9 @@ plugins {
 }
 
 dependencies {
+
+  // The dependencies below are included merely to allow IDEs to provide
+  // support for Quarkus in this module.
   compileOnly(platform(libs.quarkus.bom))
   compileOnly("io.quarkus:quarkus-logging-json")
   compileOnly("io.quarkus:quarkus-rest-jackson")
