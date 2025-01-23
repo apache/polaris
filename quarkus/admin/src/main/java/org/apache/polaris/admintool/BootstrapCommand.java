@@ -39,7 +39,6 @@ public class BootstrapCommand extends BaseCommand {
   List<String> realms;
 
   @CommandLine.Option(
-<<<<<<< HEAD:quarkus/admin/src/main/java/org/apache/polaris/service/quarkus/admin/BootstrapCommand.java
       names = {"-c", "--credentials"},
       description = "Principal credentials to bootstrap. Must be a valid JSON array e.g. " +
           "[{\"realm\": \"my-realm\", \"principal\": \"root\", \"clientId\": \"polaris\", \"clientSecret\": \"p4ssw0rd\"}]")
@@ -50,13 +49,6 @@ public class BootstrapCommand extends BaseCommand {
       description =
           "Print root credentials to stdout")
   boolean printCredentials;
-=======
-      names = {"-c", "--credential"},
-      paramLabel = "<realm,clientId,clientSecret>",
-      description =
-          "Root principal credentials to bootstrap. Must be of the form 'realm,clientId,clientSecret'.")
-  List<String> credentials;
->>>>>>> 31039dd9961bf792b53c0818827f97d5177a647f:quarkus/admin/src/main/java/org/apache/polaris/admintool/BootstrapCommand.java
 
   @Override
   public Integer call() {
