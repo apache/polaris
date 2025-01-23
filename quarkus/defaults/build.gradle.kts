@@ -17,6 +17,21 @@
  * under the License.
  */
 
-plugins { id("polaris-server") }
+plugins {
+  alias(libs.plugins.quarkus)
+}
+
+dependencies {
+  compileOnly(platform(libs.quarkus.bom))
+  compileOnly("io.quarkus:quarkus-logging-json")
+  compileOnly("io.quarkus:quarkus-rest-jackson")
+  compileOnly("io.quarkus:quarkus-reactive-routes")
+  compileOnly("io.quarkus:quarkus-hibernate-validator")
+  compileOnly("io.quarkus:quarkus-smallrye-health")
+  compileOnly("io.quarkus:quarkus-micrometer")
+  compileOnly("io.quarkus:quarkus-micrometer-registry-prometheus")
+  compileOnly("io.quarkus:quarkus-opentelemetry")
+  compileOnly("io.quarkus:quarkus-smallrye-context-propagation")
+}
 
 tasks.withType<Javadoc> { isFailOnError = false }
