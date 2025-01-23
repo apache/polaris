@@ -83,6 +83,6 @@ public class TaskFileIOSupplier implements BiFunction<TaskEntity, RealmId, FileI
     String ioImpl =
         properties.getOrDefault(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.io.ResolvingFileIO");
-    return fileIOFactory.loadFileIO(ioImpl, properties);
+    return fileIOFactory.loadFileIO(realmId, ioImpl, properties);
   }
 }

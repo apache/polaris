@@ -125,7 +125,7 @@ public class FileIOFactoryTest {
     String testProperty = "test.property";
     FileIOFactory fileIOFactory =
         new DefaultFileIOFactory(
-            realmId, entityManager, metaStoreManager, metaStoreSession, configurationStore) {
+            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore) {
           @Override
           FileIO loadFileIOInternal(
               @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
@@ -134,7 +134,7 @@ public class FileIOFactoryTest {
             return super.loadFileIOInternal(ioImplClassName, properties);
           }
         };
-    fileIOFactory.loadFileIO(InMemoryFileIO.class.getName(), Map.of(testProperty, "true"));
+    fileIOFactory.loadFileIO(realmId, InMemoryFileIO.class.getName(), Map.of(testProperty, "true"));
   }
 
   @Test
@@ -174,7 +174,7 @@ public class FileIOFactoryTest {
     String testProperty = "test.property";
     FileIOFactory fileIOFactory =
         new DefaultFileIOFactory(
-            realmId, entityManager, metaStoreManager, metaStoreSession, configurationStore) {
+            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore) {
           @Override
           FileIO loadFileIOInternal(
               @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
@@ -189,6 +189,7 @@ public class FileIOFactoryTest {
         };
     fileIOFactory
         .loadFileIO(
+            realmId,
             InMemoryFileIO.class.getName(),
             Map.of(testProperty, "true"),
             TableIdentifier.of("my-ns", "my-table"),

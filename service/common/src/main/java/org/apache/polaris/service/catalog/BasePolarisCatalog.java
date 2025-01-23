@@ -1534,6 +1534,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // Reload fileIO based on table specific context
     FileIO fileIO =
         fileIOFactory.loadFileIO(
+            realmId,
             ioImplClassName,
             tableProperties,
             identifier,
@@ -1973,7 +1974,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    */
   private FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
     Map<String, String> propertiesWithS3CustomizedClientFactory = new HashMap<>(properties);
-    return fileIOFactory.loadFileIO(ioImpl, propertiesWithS3CustomizedClientFactory);
+    return fileIOFactory.loadFileIO(realmId, ioImpl, propertiesWithS3CustomizedClientFactory);
   }
 
   private void blockedUserSpecifiedWriteLocation(Map<String, String> properties) {

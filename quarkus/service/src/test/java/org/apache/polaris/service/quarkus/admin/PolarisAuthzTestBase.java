@@ -388,8 +388,7 @@ public abstract class PolarisAuthzTestBase {
         new PolarisPassthroughResolutionView(
             entityManager, metaStoreSession, securityContext, CATALOG_NAME);
     this.fileIOFactory =
-        new DefaultFileIOFactory(
-            realmId, entityManager, metaStoreManager, metaStoreSession, configurationStore);
+        new DefaultFileIOFactory(realmEntityManagerFactory, managerFactory, configurationStore);
     this.baseCatalog =
         new BasePolarisCatalog(
             realmId,

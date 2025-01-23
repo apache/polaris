@@ -210,8 +210,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             entityManager, metaStoreSession, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     this.fileIOFactory =
-        new DefaultFileIOFactory(
-            realmId, entityManager, metaStoreManager, metaStoreSession, configurationStore);
+        new DefaultFileIOFactory(entityManagerFactory, managerFactory, configurationStore);
     this.catalog =
         new BasePolarisCatalog(
             realmId,
@@ -481,9 +480,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     final String tableLocation = "s3://externally-owned-bucket/validate_table/";
     final String tableMetadataLocation = tableLocation + "metadata/";
     FileIOFactory fileIoFactory =
-        spy(
-            new DefaultFileIOFactory(
-                realmId, entityManager, metaStoreManager, metaStoreSession, configurationStore));
+        spy(new DefaultFileIOFactory(entityManagerFactory, managerFactory, configurationStore));
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
             realmId,
@@ -515,7 +512,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     doThrow(new ForbiddenException("Fake failure applying downscoped credentials"))
         .when(fileIoFactory)
-        .loadFileIO(any(), any(), any(), any(), any(), any());
+        .loadFileIO(any(), any(), any(), any(), any(), any(), any());
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Fake failure applying downscoped credentials");
@@ -1497,8 +1494,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             entityManager, metaStoreSession, securityContext, CATALOG_NAME);
 
     TestFileIOFactory measured =
-        new TestFileIOFactory(
-            realmId, entityManager, metaStoreManager, metaStoreSession, configurationStore);
+        new TestFileIOFactory(entityManagerFactory, managerFactory, configurationStore);
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
             realmId,
@@ -1541,7 +1537,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             configurationStore,
             diagServices,
             (task, rc) ->
-                measured.loadFileIO("org.apache.iceberg.inmemory.InMemoryFileIO", Map.of()),
+                measured.loadFileIO(
+                    realmId, "org.apache.iceberg.inmemory.InMemoryFileIO", Map.of()),
             clock);
     handler.handleTask(
         TaskEntity.of(

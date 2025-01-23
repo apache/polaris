@@ -28,11 +28,10 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmId;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.config.RealmEntityManagerFactory;
 
 /** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
 @RequestScoped
@@ -43,24 +42,26 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
 
   @Inject
   public WasbTranslatingFileIOFactory(
-      RealmId realmId,
-      PolarisEntityManager entityManager,
-      PolarisCredentialVendor credentialVendor,
-      PolarisMetaStoreSession metaStoreSession,
+      RealmEntityManagerFactory realmEntityManagerFactory,
+      MetaStoreManagerFactory metaStoreManagerFactory,
       PolarisConfigurationStore configurationStore) {
     defaultFileIOFactory =
         new DefaultFileIOFactory(
-            realmId, entityManager, credentialVendor, metaStoreSession, configurationStore);
+            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
   }
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
-    return new WasbTranslatingFileIO(defaultFileIOFactory.loadFileIO(ioImplClassName, properties));
+      @Nonnull RealmId realmId,
+      @Nonnull String ioImplClassName,
+      @Nonnull Map<String, String> properties) {
+    return new WasbTranslatingFileIO(
+        defaultFileIOFactory.loadFileIO(realmId, ioImplClassName, properties));
   }
 
   @Override
   public FileIO loadFileIO(
+      @Nonnull RealmId realmId,
       @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties,
       @Nonnull TableIdentifier identifier,
@@ -69,6 +70,7 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
       @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
     return new WasbTranslatingFileIO(
         defaultFileIOFactory.loadFileIO(
+            realmId,
             ioImplClassName,
             properties,
             identifier,

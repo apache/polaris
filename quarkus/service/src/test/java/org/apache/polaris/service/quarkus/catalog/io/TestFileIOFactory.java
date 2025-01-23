@@ -27,13 +27,11 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmId;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.*;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.config.RealmEntityManagerFactory;
 
 /**
  * A FileIOFactory that measures the number of bytes read, files written, and files deleted. It can
@@ -53,19 +51,19 @@ public class TestFileIOFactory implements FileIOFactory {
 
   @Inject
   public TestFileIOFactory(
-      RealmId realmId,
-      PolarisEntityManager entityManager,
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisMetaStoreSession metaStoreSession,
-      PolarisConfigurationStore polarisConfigurationStore) {
+      RealmEntityManagerFactory realmEntityManagerFactory,
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      PolarisConfigurationStore configurationStore) {
     defaultFileIOFactory =
         new DefaultFileIOFactory(
-            realmId, entityManager, metaStoreManager, metaStoreSession, polarisConfigurationStore);
+            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
   }
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
+      @Nonnull RealmId realmId,
+      @Nonnull String ioImplClassName,
+      @Nonnull Map<String, String> properties) {
     loadFileIOExceptionSupplier.ifPresent(
         s -> {
           throw s.get();
@@ -73,7 +71,7 @@ public class TestFileIOFactory implements FileIOFactory {
 
     TestFileIO wrapped =
         new TestFileIO(
-            defaultFileIOFactory.loadFileIO(ioImplClassName, properties),
+            defaultFileIOFactory.loadFileIO(realmId, ioImplClassName, properties),
             newInputFileExceptionSupplier,
             newOutputFileExceptionSupplier,
             getLengthExceptionSupplier);
@@ -83,6 +81,7 @@ public class TestFileIOFactory implements FileIOFactory {
 
   @Override
   public FileIO loadFileIO(
+      @Nonnull RealmId realmId,
       @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties,
       @Nonnull TableIdentifier identifier,
@@ -97,6 +96,7 @@ public class TestFileIOFactory implements FileIOFactory {
     TestFileIO wrapped =
         new TestFileIO(
             defaultFileIOFactory.loadFileIO(
+                realmId,
                 ioImplClassName,
                 properties,
                 identifier,

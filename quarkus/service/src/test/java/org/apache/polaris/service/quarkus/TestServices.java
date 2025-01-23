@@ -96,7 +96,7 @@ public record TestServices(
 
     TestFileIOFactory testFileIOFactory =
         new TestFileIOFactory(
-            testRealm, entityManager, metaStoreManager, session, configurationStore);
+            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
 
     IcebergRestCatalogApiService service =
         new IcebergCatalogAdapter(

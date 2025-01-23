@@ -21,7 +21,7 @@ package org.apache.polaris.service.catalog.io;
 import com.google.common.annotations.VisibleForTesting;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
-import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,11 +34,10 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.*;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.config.RealmEntityManagerFactory;
 
 /**
  * A default FileIO factory implementation for creating Iceberg {@link FileIO} instances with
@@ -48,47 +47,50 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
  * by Iceberg's {@link FileIO}. For example, it evaluates storage actions and retrieves subscoped
  * credentials to initialize a {@link FileIO} instance with the most limited permissions necessary.
  */
-@RequestScoped
+@ApplicationScoped
 @Identifier("default")
 public class DefaultFileIOFactory implements FileIOFactory {
 
-  private final RealmId realmId;
-  private final PolarisEntityManager entityManager;
-  private final PolarisCredentialVendor credentialVendor;
-  private final PolarisMetaStoreSession metaStoreSession;
+  private final RealmEntityManagerFactory realmEntityManagerFactory;
+  private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final PolarisConfigurationStore configurationStore;
 
   @Inject
   public DefaultFileIOFactory(
-      RealmId realmId,
-      PolarisEntityManager entityManager,
-      PolarisCredentialVendor credentialVendor,
-      PolarisMetaStoreSession metaStoreSession,
+      RealmEntityManagerFactory realmEntityManagerFactory,
+      MetaStoreManagerFactory metaStoreManagerFactory,
       PolarisConfigurationStore configurationStore) {
-    this.realmId = realmId;
-    this.entityManager = entityManager;
-    this.credentialVendor = credentialVendor;
-    this.metaStoreSession = metaStoreSession;
+    this.realmEntityManagerFactory = realmEntityManagerFactory;
+    this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.configurationStore = configurationStore;
   }
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
+      @Nonnull RealmId realmId,
+      @Nonnull String ioImplClassName,
+      @Nonnull Map<String, String> properties) {
     return loadFileIOInternal(ioImplClassName, properties);
   }
 
   @Override
   public FileIO loadFileIO(
+      @Nonnull RealmId realmId,
       @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties,
       @Nonnull TableIdentifier identifier,
       @Nonnull Set<String> tableLocations,
       @Nonnull Set<PolarisStorageActions> storageActions,
       @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
-    properties = new HashMap<>(properties);
+    PolarisEntityManager entityManager =
+        realmEntityManagerFactory.getOrCreateEntityManager(realmId);
+    PolarisCredentialVendor credentialVendor =
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmId);
+    PolarisMetaStoreSession metaStoreSession =
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
 
     // Get subcoped creds
+    properties = new HashMap<>(properties);
     Optional<PolarisEntity> storageInfoEntity =
         FileIOUtil.findStorageInfoFromHierarchy(resolvedEntityPath);
     Map<String, String> credentialsMap =

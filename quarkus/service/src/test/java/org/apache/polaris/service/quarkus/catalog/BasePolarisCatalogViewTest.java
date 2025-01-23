@@ -150,8 +150,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
         new PolarisPassthroughResolutionView(
             entityManager, metaStoreSession, securityContext, CATALOG_NAME);
     FileIOFactory fileIOFactory =
-        new DefaultFileIOFactory(
-            realmId, entityManager, metaStoreManager, metaStoreSession, configurationStore);
+        new DefaultFileIOFactory(entityManagerFactory, managerFactory, configurationStore);
     this.catalog =
         new BasePolarisCatalog(
             realmId,
