@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
-
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 
@@ -69,13 +68,9 @@ public class PolarisCredentialsBootstrap {
   }
 
   /**
-   * Parse a JSON array of credentials. Example:
-   * """
-   * [
-   *   {"realm": "a", "principal": "root", "clientId": "abc123", "clientSecret": "xyz987"},
-   *   {"realm": "b", "principal": "boot", "clientId": "boot-id", "clientSecret": "boot-secret"},
-   * ]
-   * """
+   * Parse a JSON array of credentials. Example: """ [ {"realm": "a", "principal": "root",
+   * "clientId": "abc123", "clientSecret": "xyz987"}, {"realm": "b", "principal": "boot",
+   * "clientId": "boot-id", "clientSecret": "boot-secret"}, ] """
    */
   public static PolarisCredentialsBootstrap fromJson(String json) {
     ObjectMapper objectMapper = new ObjectMapper();
@@ -92,8 +87,10 @@ public class PolarisCredentialsBootstrap {
           throw new IllegalArgumentException("Invalid JSON format for credentials: " + json);
         }
         if (!principal.equals(PolarisEntityConstants.ROOT_PRINCIPAL_NAME)) {
-          throw new IllegalArgumentException(String.format(
-              "Invalid principal %s. Expected %s.", principal, PolarisEntityConstants.ROOT_PRINCIPAL_NAME));
+          throw new IllegalArgumentException(
+              String.format(
+                  "Invalid principal %s. Expected %s.",
+                  principal, PolarisEntityConstants.ROOT_PRINCIPAL_NAME));
         }
         formattedList.add(String.join(",", realm, principal, clientId, clientSecret));
       }
