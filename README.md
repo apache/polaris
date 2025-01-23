@@ -52,7 +52,7 @@ Apache Polaris is organized into the following modules:
   - `polaris-quarkus-defaults` - The Quarkus-specific configuration defaults
   - `polaris-quarkus-server` - The Polaris server runtime
   - `polaris-quarkus-admin-tool` - The Polaris admin & maintenance tool
-- Persistence modules
+- Persistence modules:
   - `polaris-jpa-model` - The JPA entity definitions
   - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
  
@@ -61,9 +61,6 @@ Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
 - `./gradlew assemble` - To skip tests.
 - `./gradlew test` - To run unit tests and integration tests.
-
-For local development, you can run the following commands:
-
 - `./gradlew polarisServerRun` - To run the Polaris server locally, with profile `prod`; the server 
   is reachable at localhost:8181.
 - `java -Dquarkus.profile=test -jar quarkus/server/build/quarkus-app/quarkus-run.jar` - To run the
@@ -84,31 +81,19 @@ select * from db1.table1;
 
 #### Running in Docker
 
-Please note: there are no official Docker images for Apache Polaris yet. For now, you can build the
-Docker images locally.
-
-To build the Polaris server Docker image locally:
-
-```shell
-./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true
-```
-
-To run the Polaris server Docker image:
-
-```shell
-docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest
-```
+- `./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true` - To 
+  build the image locally.
+- `docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest` - To run the image.
 
 #### Running in Kubernetes
 
 - `./run.sh` - To run Polaris as a mini-deployment locally. This will create a Kind cluster, 
   then deploy one pod and one service. The service is available on ports `8181` and `8182`.
 - `kubectl port-forward svc/polaris-service -n polaris 8181:8181 8182:8182` - To create secure 
-  connections between a local machine and a pod within the cluster for both service and metrics 
-  endpoints.
-  - Currently supported metrics and health endpoints:
-    - http://localhost:8182/q/metrics
-    - http://localhost:8182/q/health
+  connections between a local machine and a pod within the cluster for both service and 
+  health/metrics endpoints:
+  - http://localhost:8182/q/metrics
+  - http://localhost:8182/q/health
 - `kubectl get pods -n polaris` - To check the status of the pods.
 - `kubectl get deployment -n polaris` - To check the status of the deployment.
 - `kubectl describe deployment polaris-deployment -n polaris` - To troubleshoot if things aren't working as expected.
@@ -127,24 +112,13 @@ java -Dquarkus.profile=test -jar quarkus/server/build/quarkus-app/quarkus-run.ja
 Then, you can run the regression tests using the following command:
 
 ```shell
-POLARIS_HOST=localhost ./regtests/run.sh
+env POLARIS_HOST=localhost ./regtests/run.sh
 ```
 
 To run regression tests in a Docker environment, you can use the following command:
 
 ```shell
 docker compose -f regtests/docker-compose.yml up --build --exit-code-from regtest
-```
-
-The above command will by default run Polaris with the Docker image `apache/polaris:latest`; if you
-want to use a different image, you can modify the `docker-compose.yaml` file prior to running it;
-alternatively, you can use the following commands to override the image:
-
-```shell
-cat <<EOF > /tmp/polaris-image.yml
-services: { polaris: { image: localhost:5001/apache/polaris:latest } }
-EOF
-docker compose -f regtests/docker-compose.yml -f /tmp/polaris-image.yml up --build --exit-code-from regtest
 ```
 
 #### Building docs
