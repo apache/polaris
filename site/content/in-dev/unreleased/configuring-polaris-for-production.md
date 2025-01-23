@@ -60,6 +60,13 @@ polaris.authentication.token-broker.rsa-key-pair.public-key-file=/tmp/public.key
 polaris.authentication.token-broker.rsa-key-pair.private-key-file=/tmp/private.key
 ```
 
+To generate an RSA key pair, you can use the following commands:
+
+```shell
+openssl genrsa -out private.key 2048
+openssl rsa -in private.key -pubout -out public.key
+```
+
 Alternatively, you can use a symmetric key by setting the following properties:
 
 ```properties
@@ -67,11 +74,12 @@ polaris.authentication.token-broker.type=symmetric-key
 polaris.authentication.token-broker.symmetric-key.file=/tmp/symmetric.key
 ```
 
-Note: it is also possible to set the symmetric key secret directly in the configuration file, but
-that is not recommended for production use, as the secret is stored in plain text:
+Note: it is also possible to set the symmetric key secret directly in the configuration file. If
+possible, pass the secret as an environment variable to avoid storing sensitive information in the
+configuration file:
 
 ```properties
-polaris.authentication.token-broker.symmetric-key.secret=my-secret
+polaris.authentication.token-broker.symmetric-key.secret=${POLARIS_SYMMETRIC_KEY_SECRET}
 ```
 
 Finally, you can also configure the token broker to use a maximum lifespan by setting the following
