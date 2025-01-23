@@ -17,8 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: Configuring Apache Polaris (Incubating)
-linkTitle: Configuring Polaris
+title: Configuring Polaris
 type: docs
 weight: 550
 ---

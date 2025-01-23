@@ -18,7 +18,6 @@
 # under the License.
 #
 title: Telemetry
-linkTitle: Telemetry
 type: docs
 weight: 450
 ---
