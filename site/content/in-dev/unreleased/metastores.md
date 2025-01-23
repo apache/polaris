@@ -27,10 +27,10 @@ This page documents important configurations for connecting to a production data
 
 ## Building Polaris with EclipseLink
 
-Polaris distributions currently do not ship with any JDBC driver included. To build Polaris with
-EclipseLink, you must specify the JDBC driver when building Polaris from sources. This is done using
-Gradle's project property: `-PeclipseLinkDeps=<jdbc-driver-artifact1>,<jdbc-driver-artifact2>,...`.
-See below examples for H2 and Postgres.
+Polaris doesn't ship with any JDBC driver. You must specify them when building Polaris with
+EclipseLink by using Gradle's project property:
+`-PeclipseLinkDeps=<jdbc-driver-artifact1>,<jdbc-driver-artifact2>,...`. See below examples for H2
+and Postgres.
 
 ## Polaris Server Configuration
 
