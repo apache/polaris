@@ -23,28 +23,27 @@ type: docs
 weight: 600
 ---
 
-## Tuning Polaris for Production
+## Configuring Polaris for Production
 
 The default server configuration is intended for development and testing. When deploying Polaris in
 production, there are several best practices to keep in mind.
 
-Notable configuration options used to secure a Polaris deployment are outlined below.
+Notable configuration used to secure a Polaris deployment are outlined below.
 
 For more information on how to configure Polaris and what configuration options are available,
 refer to the Configuration Reference page.
 
-### Security
+### OAuth2
 
-Notable configuration options used to secure a Polaris deployment are outlined below.
-
-Polaris authentication requires specifying a token broker factory type. Two types are supported:
+Polaris authentication requires specifying a token broker factory type. Two implementations are 
+supported out of the box:
 
 - `rsa-key-pair` uses a pair of public and private keys;
 - `symmetric-key` uses a shared secret.
 
 By default, Polaris uses `rsa-key-pair`, with randomly generated keys. 
 
-> [!WARNING]  
+> [!IMPORTANT]
 > The default `rsa-key-pair` configuration is not suitable when deploying many replicas of Polaris,
 > as each replica will have its own set of keys. This will cause token validation to fail when a
 > request is routed to a different replica than the one that issued the token.
@@ -101,17 +100,17 @@ the default realm. In the above example, `POLARIS` is the default realm.
 
 ### Metastore Configuration
 
-A Metastore Manager should be configured with an implementation that durably persists Polaris
-entities. By default, Polaris uses an in-memory metastore.
+A metastore should be configured with an implementation that durably persists Polaris entities. By
+default, Polaris uses an in-memory metastore.
 
-> [!WARNING]
+> [!IMPORTANT]
 > The default in-memory metastore is not suitable for production use, as it will lose all data
 > when the server is restarted; it is also unusable when multiple Polaris replicas are used.
 
-To use a durable Metastore Manager, you need to switch to the EclipseLink metastore, and provide
-your own `persistence.xml` file. This file contains details of the database used for metastore
-management and the connection settings. For more information, refer to the [metastore
-documentation]({{% ref "metastores" %}}).
+To use a durable metastore, you need to switch to the EclipseLink metastore, and provide your own
+`persistence.xml` file. This file contains details of the database used for metastore management and
+the connection settings. For more information, refer to the [metastore documentation]({{% ref
+"metastores" %}}).
 
 Then, configure Polaris to use your metastore by setting the following properties:
 
@@ -132,12 +131,14 @@ Typically, in Kubernetes, you would define the `persistence.xml` file as a `Conf
 `polaris.persistence.eclipselink.configuration-file` property to the path of the mounted file in
 the container.
 
-Be sure to secure your metastore backend since it will be storing credentials and catalog metadata.
+> [!IMPORTANT]
+> Be sure to secure your metastore backend since it will be storing sensitive data and catalog 
+> metadata.
 
 ### Bootstrapping
 
-Before using Polaris, you must **bootstrap** the metastore manager. This is a manual operation that
-must be performed **only once** in order to prepare the metastore manager to integrate with Polaris.
+Before using Polaris, you must **bootstrap** the metastore. This is a manual operation that must be
+performed **only once** for each realm in order to prepare the metastore to integrate with Polaris.
 
 By default, when bootstrapping a new realm, Polaris will create randomised `CLIENT_ID` and
 `CLIENT_SECRET` for the `root` principal and store their hashes in the metastore backend.
@@ -146,26 +147,8 @@ Depending on your database, this may not be convenient as the generated credenti
 in clear text in the database.
 
 In order to provide your own credentials for `root` principal (so you can request tokens via
-`api/catalog/v1/oauth/tokens`), there are two approaches:
-
-1. Use the Polaris Admin Tool to bootstrap the realm and set its `root`
-   principal credentials.
-2. Set the `root` principal credentials when deploying Polaris for the first time.
-
-The first approach is recommended as it is more flexible (you can bootstrap new realms at any time
-without incurring in a Polaris downtime). The second approach is useful for testing and development,
-but can be used in production as well.
-
-In order to bootstrap root credentials for a realm named `my-realm` when deploying Polaris, set the
-following environment variables:
-
-```
-export POLARIS_BOOTSTRAP_CREDENTIALS=my-realm,my-client-id,my-client-secret
-```
-
-If the realm hasn't been bootstrapped yet, Polaris will create the realm and the `root` principal
-with the provided credentials upon first usage of that realm. If the realm already exists, Polaris
-will not attempt to update the `root` principal credentials.
+`api/catalog/v1/oauth/tokens`), use the Polaris Admin Tool to bootstrap the realm and set its `root`
+principal credentials.
 
 You can verify the setup by attempting a token issue for the `root` principal:
 
@@ -188,8 +171,8 @@ Which should return an access token:
 }
 ```
 
-Note that if you used a realm name that is not the default realm name, then you should add an
-appropriate request header to the `curl` command, for example:
+If you used a non-default realm name, add the appropriate request header to the `curl` command, for
+example:
 
 ```bash
 curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
