@@ -10,6 +10,8 @@
 
     ```shell
     podman compose -f docker/telemetry/docker-compose.yml up
+    ```
+    ```shell
     docker compose -f docker/telemetry/docker-compose.yml up
     ```
 

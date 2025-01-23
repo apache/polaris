@@ -6,6 +6,7 @@
     ```shell
     ./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
        -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
+       -Dquarkus.container-image.tag=postgres-latest \
        -Dquarkus.container-image.build=true
     ```
 
@@ -13,6 +14,8 @@
 
     ```shell
     podman compose -f docker/eclipselink/docker-compose.yml up
+    ```
+    ```shell
     docker compose -f docker/eclipselink/docker-compose.yml up
     ```
 
@@ -20,6 +23,8 @@
 
     ```shell
     podman attach $(podman ps -q --filter name=spark-sql)
+    ```
+    ```shell
     docker attach $(docker ps -q --filter name=spark-sql)
     ```
 

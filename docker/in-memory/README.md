@@ -10,6 +10,8 @@
 
     ```shell
     podman compose -f docker/in-memory/docker-compose.yml up
+    ```
+    ```shell
     docker compose -f docker/in-memory/docker-compose.yml up
     ```
 
