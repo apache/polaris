@@ -23,12 +23,8 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RAND
 import java.time.Clock;
 import java.util.List;
 import java.util.stream.Collectors;
-<<<<<<< HEAD:polaris-core/src/test/java/org/apache/polaris/core/persistence/cache/EntityCacheTest.java
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.core.PolarisCallContext;
-=======
 import org.apache.polaris.core.PolarisConfigurationStore;
->>>>>>> 012acdd10a0c0c54b863f3225027726b1d04598a:polaris-core/src/test/java/org/apache/polaris/core/persistence/EntityCacheTest.java
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmId;
