@@ -153,8 +153,7 @@ Depending on your database, this may not be convenient as the generated credenti
 in clear text in the database.
 
 In order to provide your own credentials for `root` principal (so you can request tokens via
-`api/catalog/v1/oauth/tokens`), use the Polaris Admin Tool to bootstrap the realm and set its `root`
-principal credentials.
+`api/catalog/v1/oauth/tokens`), use the [Polaris Admin Tool]({{% ref "admin-tool" %}})
 
 You can verify the setup by attempting a token issue for the `root` principal:
 
@@ -177,8 +176,9 @@ Which should return an access token:
 }
 ```
 
-If you used a non-default realm name, add the appropriate request header to the `curl` command, for
-example:
+If you used a non-default realm name, add the appropriate request header to the `curl` command,
+otherwise Polaris will resolve the realm to the first one in the configuration
+`polaris.realm-context.realms`. Here is an example to set realm header:
 
 ```bash
 curl -X POST http://localhost:8181/api/catalog/v1/oauth/tokens \
