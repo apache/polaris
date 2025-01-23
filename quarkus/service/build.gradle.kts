@@ -35,9 +35,6 @@ dependencies {
   implementation("org.apache.iceberg:iceberg-core")
   implementation("org.apache.iceberg:iceberg-aws")
 
-  // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
-  implementation(platform(libs.dnsjava))
-
   implementation(platform(libs.opentelemetry.bom))
 
   implementation(platform(libs.quarkus.bom))
@@ -133,10 +130,6 @@ dependencies {
 
   intTestImplementation(platform(libs.quarkus.bom))
   intTestImplementation("io.quarkus:quarkus-junit5")
-
-  // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
-  intTestImplementation(platform(libs.dnsjava))
-  testFixturesImplementation(platform(libs.dnsjava))
 
   // required for QuarkusSparkIT
   intTestImplementation(enforcedPlatform(libs.scala212.lang.library))

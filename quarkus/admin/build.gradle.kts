@@ -47,9 +47,6 @@ dependencies {
 
   implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
 
-  // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
-  implementation(platform(libs.dnsjava))
-
   testImplementation(enforcedPlatform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
 }

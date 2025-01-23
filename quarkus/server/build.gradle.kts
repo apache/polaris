@@ -40,9 +40,6 @@ dependencies {
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-container-image-docker")
-
-  // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
-  implementation(platform(libs.dnsjava))
 }
 
 quarkus {
