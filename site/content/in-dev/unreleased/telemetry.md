@@ -54,14 +54,13 @@ Traces are published using [OpenTelemetry].
 
 [OpenTelemetry]: https://quarkus.io/guides/opentelemetry-tracing
 
-In order for the server to enable OpenTelemetry and publish its traces, the
-`quarkus.otel.exporter.otlp.traces.endpoint` property _must_ be defined. Its value must be a valid
-collector endpoint URL, with either `http://` or `https://` scheme. The collector must talk the
-OpenTelemetry protocol (OTLP) and the port must be its gRPC port (by default 4317), e.g.
-"http://otlp-collector:4317". _If this property is not set, the server will not publish traces._
+To enable OpenTelemetry and publish traces for Polaris, set a valid collector endpoint URL with
+`http://` or `https://` as the server property `quarkus.otel.exporter.otlp.traces.endpoint`. The
+collector must talk the OpenTelemetry protocol (OTLP) and the port must be its gRPC port (by default
+4317), e.g. "http://otlp-collector:4317". _If this property is not set, the server will not publish
+traces._
 
-Alternatively, it's possible to forcibly disable OpenTelemetry at runtime by setting the following
-property: `quarkus.otel.sdk.disabled=true`.
+You can disable OpenTelemetry at runtime by setting `quarkus.otel.sdk.disabled=true`.
 
 By default, a resource named `Apache Polaris Server (incubating)` will be created and its attributes
 will be added to all traces. You can change the resource (service) name and/or add additional
