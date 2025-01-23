@@ -47,16 +47,36 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-databind")
 }
 
+val policyManagementModels =
+  listOf(
+      "CatalogIdentifier",
+      "CreatePolicyRequest",
+      "EntityIdentifier",
+      "LoadPolicyResult",
+      "CreatePolicyResponse",
+      "LoadPolicyResponse",
+      "UpdatePolicyResponse",
+      "NamespaceIdentifier",
+      "Policy",
+      "PolicyContent",
+      "SetPolicyRequest",
+      "TableLikeIdentifier",
+      "UnsetPolicyRequest",
+      "UpdatePolicyRequest",
+    )
+    .joinToString(",")
+
 openApiGenerate {
   inputSpec = "$rootDir/spec/polaris-catalog-open-api.yaml"
   generatorName = "jaxrs-resteasy"
   outputDir = "$projectDir/build/generated"
   apiPackage = "org.apache.polaris.service.catalog.api"
+  modelPackage = "org.apache.polaris.service.types"
   ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
   globalProperties.put("apis", "")
-  globalProperties.put("models", "false")
+  globalProperties.put("models", policyManagementModels)
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")
   configOptions.put("resourceName", "catalog")
@@ -64,6 +84,9 @@ openApiGenerate {
   configOptions.put("useBeanValidation", "false")
   configOptions.put("sourceFolder", "src/main/java")
   configOptions.put("useJakartaEe", "true")
+  configOptions.put("generateBuilders", "true")
+  configOptions.put("generateConstructorWithAllArgs", "true")
+  configOptions.put("openApiNullable", "false")
   openapiNormalizer.put("REFACTOR_ALLOF_WITH_PROPERTIES_ONLY", "true")
   additionalProperties.put("apiNamePrefix", "IcebergRest")
   additionalProperties.put("apiNameSuffix", "")
@@ -104,19 +127,6 @@ openApiGenerate {
       "NotificationRequest" to "org.apache.polaris.service.types.NotificationRequest",
       "TableUpdateNotification" to "org.apache.polaris.service.types.TableUpdateNotification",
       "NotificationType" to "org.apache.polaris.service.types.NotificationType",
-
-      // Policy managements
-      "Policy" to "org.apache.polaris.service.types.policy.Policy",
-      "PolicyContent" to "org.apache.polaris.service.types.policy.PolicyContent",
-      "CreatePolicyRequest" to "org.apache.polaris.service.types.policy.CreatePolicyRequest",
-      "LoadPolicyResult" to "org.apache.polaris.service.types.policy.LoadPolicyResult",
-      "UpdatePolicyRequest" to "org.apache.polaris.service.types.policy.UpdatePolicyRequest",
-      "SetPolicyRequest" to "org.apache.polaris.service.types.policy.SetPolicyRequest",
-      "UnsetPolicyRequest" to "org.apache.polaris.service.types.policy.UnsetPolicyRequest",
-      "CatalogIdentifier" to "org.apache.iceberg.service.types.policy.CatalogIdentifier",
-      "NamespaceIdentifier" to "org.apache.iceberg.service.types.policy.NamespaceIdentifier",
-      "TableLikeIdentifier" to "org.apache.iceberg.service.types.policy.TableLikeIdentifier",
-      "EntityIdentifier" to "org.apache.iceberg.service.types.policy.EntityIdentifier",
     )
 }
 
