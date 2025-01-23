@@ -74,6 +74,13 @@ an attribute `deployment.environment=dev`, set the following property:
 quarkus.otel.resource.attributes=service.name=Polaris,deployment.environment=dev
 ```
 
+Moreover, two additional span attributes are added to all request parent spans: 
+
+- `polaris.request.id`: The unique identifier of the request, if set by the caller through the
+  `Polaris-Request-Id` header.
+- `polaris.realm`: The unique identifier of the realm. Always set (unless the request failed because
+  of a realm resolution error).
+
 ### Troubleshooting Traces
 
 If the server is unable to publish traces, check first for a log warning message like the following:
