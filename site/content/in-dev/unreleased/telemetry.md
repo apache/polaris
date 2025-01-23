@@ -62,9 +62,16 @@ traces._
 
 You can disable OpenTelemetry at runtime by setting `quarkus.otel.sdk.disabled=true`.
 
-By default, a resource named `Apache Polaris Server (incubating)` will be created and its attributes
-will be added to all traces. You can change the resource (service) name and/or add additional
-attributes to the resource by setting the `quarkus.otel.resource.attributes` property.
+By default, Polaris adds a few attributes to the [OpenTelemetry Resource] to identify the server,
+and notably:
+
+- `service.name`: set to `Apache Polaris Server (incubating)`;
+- `service.version`: set to the Polaris version.
+
+[OpenTelemetry Resource]: https://opentelemetry.io/docs/languages/js/resources/
+
+You can override the default resource attributes or add additional ones by setting the
+`quarkus.otel.resource.attributes` property.
 
 This property expects a comma-separated list of key-value pairs, where the key is the attribute name
 and the value is the attribute value. For example, to change the service name to `Polaris` and add
@@ -74,7 +81,14 @@ an attribute `deployment.environment=dev`, set the following property:
 quarkus.otel.resource.attributes=service.name=Polaris,deployment.environment=dev
 ```
 
-Moreover, two additional span attributes are added to all request parent spans: 
+The alternative syntax below can also be used:
+
+```properties
+quarkus.otel.resource.attributes[0]=service.name=Polaris
+quarkus.otel.resource.attributes[1]=deployment.environment=dev
+```
+
+Finally, two additional span attributes are added to all request parent spans: 
 
 - `polaris.request.id`: The unique identifier of the request, if set by the caller through the
   `Polaris-Request-Id` header.
@@ -143,9 +157,10 @@ following MDC keys are available:
 - `sampled`: Whether the trace has been sampled. Present if tracing is enabled and the message is
   originating from a traced context.
 
-Other MDC keys can be added by setting the `polaris.log.mdc.*` property. Each key is a key-value
-pair, where the key is the MDC key name and the value is the MDC key value. For example, to add an
-MDC key `environment=prod` and `region=us-west-2` to all log messages, set the following properties:
+Other MDC keys can be added by setting the `polaris.log.mdc.*` property. Each property is a
+key-value pair, where the key is the MDC key name and the value is the MDC key value. For example,
+to add the MDC keys `environment=prod` and `region=us-west-2` to all log messages, set the following
+properties:
 
 ```properties
 polaris.log.mdc.environment=prod
