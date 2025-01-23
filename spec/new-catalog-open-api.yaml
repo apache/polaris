@@ -1,0 +1,137 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+---
+openapi: 3.0.3
+info:
+  title: Apache Iceberg REST Catalog API
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+  version: 0.0.1
+  description:
+    Defines the specification for the first version of the REST Catalog API.
+    Implementations should ideally support both Iceberg table specs v1 and v2, with priority given to v2.
+servers:
+  - url: "{scheme}://{host}/{basePath}"
+    description: Server URL when the port can be inferred from the scheme
+    variables:
+      scheme:
+        description: The scheme of the URI, either http or https.
+        default: https
+      host:
+        description: The host address for the specified server
+        default: localhost
+      basePath:
+        description: Optional prefix to be appended to all routes
+        default: ""
+  - url: "{scheme}://{host}:{port}/{basePath}"
+    description: Generic base server URL, with all parts configurable
+    variables:
+      scheme:
+        description: The scheme of the URI, either http or https.
+        default: https
+      host:
+        description: The host address for the specified server
+        default: localhost
+      port:
+        description: The port used when addressing the host
+        default: "443"
+      basePath:
+        description: Optional prefix to be appended to all routes
+        default: ""
+# All routes are currently configured using an Authorization header.
+security:
+  - OAuth2: [catalog]
+  - BearerAuth: []
+
+paths:
+  /v1/{prefix}/namespaces:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces'
+  /v1/{prefix}/namespaces/{namespace}:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}'
+  /v1/{prefix}/namespaces/{namespace}/policies:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies'
+  /v1/{prefix}/namespaces/{namespace}/policies/{policy}:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policy}'
+  /v1/{prefix}/namespaces/{namespace}/properties:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1properties'
+  /v1/{prefix}/namespaces/{namespace}/register:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1register'
+  /v1/{prefix}/namespaces/{namespace}/tables:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables'
+  /v1/{prefix}/namespaces/{namespace}/tables/{table}:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}'
+  /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1credentials'
+  /v1/{prefix}/namespaces/{namespace}/tables/{table}/metrics:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1metrics'
+  /v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1notifications'
+  /v1/{prefix}/namespaces/{namespace}/views:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1views'
+  /v1/{prefix}/namespaces/{namespace}/views/{view}:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1views~1{view}'
+  /v1/{prefix}/tables/rename:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1tables~1rename'
+  /v1/{prefix}/transactions/commit:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1transactions~1commit'
+  /v1/{prefix}/views/rename:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1views~1rename'
+  /v1/config:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1config'
+  /v1/oauth/tokens:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1oauth~1tokens'
+
+# components:
+#   examples:
+#     $ref: './rest-catalog-open-api.yaml#/components/examples'
+#   schemas:
+#     $ref: './rest-catalog-open-api.yaml#/components/schemas'
+#   responses:
+#     $ref: './rest-catalog-open-api.yaml#/components/responses'
+#   parameters:
+#     $ref: './rest-catalog-open-api.yaml#/components/parameters'
+#   securitySchemes:
+#     $ref: './rest-catalog-open-api.yaml#/components/securitySchemes'
+
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      description:
+        This scheme is used for OAuth2 authorization.
+
+
+        For unauthorized requests, services should return an appropriate 401 or
+        403 response. Implementations must not return altered success (200)
+        responses when a request is unauthenticated or unauthorized.
+
+        If a separate authorization server is used, substitute the tokenUrl with
+        the full token path of the external authorization server, and use the
+        resulting token to access the resources defined in the spec.
+      flows:
+        clientCredentials:
+          tokenUrl: /v1/oauth/tokens
+          scopes:
+            catalog: Allows interacting with the Config and Catalog APIs
+    BearerAuth:
+      type: http
+      scheme: bearer
