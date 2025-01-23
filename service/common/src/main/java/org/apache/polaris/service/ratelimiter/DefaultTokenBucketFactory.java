@@ -25,7 +25,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmId;
 
 @ApplicationScoped
 @Identifier("default")
@@ -37,11 +37,8 @@ public class DefaultTokenBucketFactory implements TokenBucketFactory {
   private final Map<String, TokenBucket> perRealmBuckets = new ConcurrentHashMap<>();
 
   @Inject
-  public DefaultTokenBucketFactory(RateLimiterConfiguration configuration, Clock clock) {
-    this(
-        configuration.tokenBucket().requestsPerSecond(),
-        configuration.tokenBucket().window(),
-        clock);
+  public DefaultTokenBucketFactory(TokenBucketConfiguration configuration, Clock clock) {
+    this(configuration.requestsPerSecond(), configuration.window(), clock);
   }
 
   public DefaultTokenBucketFactory(long requestsPerSecond, Duration window, Clock clock) {
@@ -51,10 +48,9 @@ public class DefaultTokenBucketFactory implements TokenBucketFactory {
   }
 
   @Override
-  public TokenBucket getOrCreateTokenBucket(RealmContext realmContext) {
-    String realmId = realmContext.getRealmIdentifier();
+  public TokenBucket getOrCreateTokenBucket(RealmId realmId) {
     return perRealmBuckets.computeIfAbsent(
-        realmId,
+        realmId.id(),
         k ->
             new TokenBucket(
                 requestsPerSecond,

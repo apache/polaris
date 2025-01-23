@@ -68,16 +68,30 @@ jobs:
         with:
           name: upload-test-artifacts
           path: |
-            polaris-core/build/test-results/test
-            quarkus/service/build/test-results/test
+            **/build/test-results/**
 
-    # NOTE: The Gradle Wrapper is the default and recommended way to run Gradle (https://docs.gradle.org/current/userguide/gradle_wrapper.html).
-    # If your project does not have the Gradle Wrapper configured, you can use the following configuration to run Gradle with a specified version.
-    #
-    # - name: Setup Gradle
-    #   uses: gradle/actions/setup-gradle@16bf8bc8fe830fa669c3c9f914d3eb147c629707 # v4
-    #   with:
-    #     gradle-version: '8.6'
-    #
-    # - name: Build with Gradle 8.6
-    #   run: gradle build
+      - name: Stop Gradle daemons
+        run: ./gradlew --stop
+
+      # Ensure that the build works properly when building against the "latest greatest" Java version
+      - name: Set up JDK 23
+        uses: actions/setup-java@v4
+        with:
+          java-version: '23'
+          distribution: 'temurin'
+      - name: Show Java version
+        run: java -version
+      - name: Clean
+        run: ./gradlew clean
+      - name: Build
+        run: ./gradlew compileAll
+      - name: Run selected tests
+        run: ./gradlew :polaris-quarkus-service:intTest
+
+      - name: Archive test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: upload-test-artifacts-java-23
+          path: |
+            **/build/test-results/**

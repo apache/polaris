@@ -21,7 +21,7 @@ package org.apache.polaris.service.quarkus.config;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Map;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.junit.jupiter.api.Test;
 
@@ -31,17 +31,16 @@ public class DefaultConfigurationStoreTest {
   public void testGetConfiguration() {
     DefaultConfigurationStore defaultConfigurationStore =
         new DefaultConfigurationStore(Map.of("key1", 1, "key2", "value"));
-    RealmContext realmContext = () -> "test";
-    Object value =
-        defaultConfigurationStore.getConfiguration(realmContext, "missingKeyWithoutDefault");
+    RealmId realmId = RealmId.newRealmId("test");
+    Object value = defaultConfigurationStore.getConfiguration(realmId, "missingKeyWithoutDefault");
     assertThat(value).isNull();
     Object defaultValue =
         defaultConfigurationStore.getConfiguration(
-            realmContext, "missingKeyWithDefault", "defaultValue");
+            realmId, "missingKeyWithDefault", "defaultValue");
     assertThat(defaultValue).isEqualTo("defaultValue");
-    Integer keyOne = defaultConfigurationStore.getConfiguration(realmContext, "key1");
+    Integer keyOne = defaultConfigurationStore.getConfiguration(realmId, "key1");
     assertThat(keyOne).isEqualTo(1);
-    String keyTwo = defaultConfigurationStore.getConfiguration(realmContext, "key2");
+    String keyTwo = defaultConfigurationStore.getConfiguration(realmId, "key2");
     assertThat(keyTwo).isEqualTo("value");
   }
 
@@ -63,31 +62,30 @@ public class DefaultConfigurationStoreTest {
                 Map.of("key1", realm2KeyOneValue, "key2", realm2KeyTwoValue)));
 
     // check realm1 values
-    RealmContext realmContext = () -> "realm1";
-    Object value =
-        defaultConfigurationStore.getConfiguration(realmContext, "missingKeyWithoutDefault");
+    RealmId realmId = RealmId.newRealmId("realm1");
+    Object value = defaultConfigurationStore.getConfiguration(realmId, "missingKeyWithoutDefault");
     assertThat(value).isNull();
     Object defaultValue =
         defaultConfigurationStore.getConfiguration(
-            realmContext, "missingKeyWithDefault", "defaultValue");
+            realmId, "missingKeyWithDefault", "defaultValue");
     assertThat(defaultValue).isEqualTo("defaultValue");
-    Integer keyOneRealm1 = defaultConfigurationStore.getConfiguration(realmContext, "key1");
+    Integer keyOneRealm1 = defaultConfigurationStore.getConfiguration(realmId, "key1");
     assertThat(keyOneRealm1).isEqualTo(realm1KeyOneValue);
-    String keyTwoRealm1 = defaultConfigurationStore.getConfiguration(realmContext, "key2");
+    String keyTwoRealm1 = defaultConfigurationStore.getConfiguration(realmId, "key2");
     assertThat(keyTwoRealm1).isEqualTo(defaultKeyTwoValue);
 
     // check realm2 values
-    realmContext = () -> "realm2";
-    Integer keyOneRealm2 = defaultConfigurationStore.getConfiguration(realmContext, "key1");
+    realmId = RealmId.newRealmId("realm2");
+    Integer keyOneRealm2 = defaultConfigurationStore.getConfiguration(realmId, "key1");
     assertThat(keyOneRealm2).isEqualTo(realm2KeyOneValue);
-    String keyTwoRealm2 = defaultConfigurationStore.getConfiguration(realmContext, "key2");
+    String keyTwoRealm2 = defaultConfigurationStore.getConfiguration(realmId, "key2");
     assertThat(keyTwoRealm2).isEqualTo(realm2KeyTwoValue);
 
     // realm3 has no realm-overrides, so just returns default values
-    realmContext = () -> "realm3";
-    Integer keyOneRealm3 = defaultConfigurationStore.getConfiguration(realmContext, "key1");
+    realmId = RealmId.newRealmId("realm3");
+    Integer keyOneRealm3 = defaultConfigurationStore.getConfiguration(realmId, "key1");
     assertThat(keyOneRealm3).isEqualTo(defaultKeyOneValue);
-    String keyTwoRealm3 = defaultConfigurationStore.getConfiguration(realmContext, "key2");
+    String keyTwoRealm3 = defaultConfigurationStore.getConfiguration(realmId, "key2");
     assertThat(keyTwoRealm3).isEqualTo(defaultKeyTwoValue);
   }
 }

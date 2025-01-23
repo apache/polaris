@@ -24,8 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
@@ -34,7 +32,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -59,12 +56,8 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.exceptions.RESTException;
 import org.apache.iceberg.hadoop.HadoopFileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
-import org.apache.iceberg.rest.HTTPClient;
-import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.RESTSessionCatalog;
-import org.apache.iceberg.rest.auth.AuthConfig;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
-import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -106,6 +99,7 @@ public class PolarisApplicationIntegrationTest {
   private static PolarisClient client;
   private static ClientCredentials clientCredentials;
   private static ClientPrincipal admin;
+  private static String authToken;
 
   private String principalRoleName;
   private String internalCatalogName;
@@ -118,6 +112,7 @@ public class PolarisApplicationIntegrationTest {
     realm = endpoints.realm();
     admin = adminCredentials;
     clientCredentials = adminCredentials.credentials();
+    authToken = client.obtainToken(clientCredentials);
 
     testDir = Path.of("build/test_data/iceberg/" + realm);
     FileUtils.deleteQuietly(testDir.toFile());
@@ -158,7 +153,7 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @AfterEach
-  public void cleanUp() throws Exception {
+  public void cleanUp() {
     client.cleanUp(clientCredentials);
   }
 
@@ -235,10 +230,8 @@ public class PolarisApplicationIntegrationTest {
         Map.of(
             "uri",
             endpoints.catalogApiEndpoint().toString(),
-            OAuth2Properties.CREDENTIAL,
-            clientCredentials.clientId() + ":" + clientCredentials.clientSecret(),
-            OAuth2Properties.SCOPE,
-            PRINCIPAL_ROLE_ALL,
+            OAuth2Properties.TOKEN,
+            authToken,
             "warehouse",
             catalog,
             "header." + REALM_HEADER,
@@ -353,8 +346,8 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testIcebergCreateTablesInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "External";
+  public void testIcebergCreateTablesInExternalCatalog() throws IOException {
+    String catalogName = client.newEntityName("testIcebergCreateTablesInExternalCatalogExternal");
     createCatalog(catalogName, Catalog.TypeEnum.EXTERNAL, principalRoleName);
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
@@ -380,8 +373,9 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testIcebergCreateTablesWithWritePathBlocked(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "Internal";
+  public void testIcebergCreateTablesWithWritePathBlocked() throws IOException {
+    String catalogName =
+        client.newEntityName("testIcebergCreateTablesWithWritePathBlockedInternal");
     createCatalog(catalogName, Catalog.TypeEnum.INTERNAL, principalRoleName);
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName)) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
@@ -424,8 +418,8 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testIcebergRegisterTableInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "External";
+  public void testIcebergRegisterTableInExternalCatalog() throws IOException {
+    String catalogName = client.newEntityName("testIcebergRegisterTableInExternalCatalogExternal");
     createCatalog(
         catalogName,
         Catalog.TypeEnum.EXTERNAL,
@@ -443,8 +437,7 @@ public class PolarisApplicationIntegrationTest {
       String location =
           "file://"
               + testDir.toFile().getAbsolutePath()
-              + "/"
-              + testInfo.getTestMethod().get().getName();
+              + "/testIcebergRegisterTableInExternalCatalog";
       String metadataLocation = location + "/metadata/000001-494949494949494949.metadata.json";
 
       TableMetadata tableMetadata =
@@ -471,8 +464,8 @@ public class PolarisApplicationIntegrationTest {
   }
 
   @Test
-  public void testIcebergUpdateTableInExternalCatalog(TestInfo testInfo) throws IOException {
-    String catalogName = testInfo.getTestMethod().orElseThrow().getName() + "External";
+  public void testIcebergUpdateTableInExternalCatalog() throws IOException {
+    String catalogName = client.newEntityName("testIcebergUpdateTableInExternalCatalogExternal");
     createCatalog(
         catalogName,
         Catalog.TypeEnum.EXTERNAL,
@@ -490,8 +483,7 @@ public class PolarisApplicationIntegrationTest {
       String location =
           "file://"
               + testDir.toFile().getAbsolutePath()
-              + "/"
-              + testInfo.getTestMethod().get().getName();
+              + "/testIcebergUpdateTableInExternalCatalog";
       String metadataLocation = location + "/metadata/000001-494949494949494949.metadata.json";
 
       Types.NestedField col1 = Types.NestedField.of(1, false, "col1", Types.StringType.get());
@@ -580,10 +572,8 @@ public class PolarisApplicationIntegrationTest {
                       Map.of(
                           "uri",
                           endpoints.catalogApiEndpoint().toString(),
-                          OAuth2Properties.CREDENTIAL,
-                          clientCredentials.clientId() + ":" + clientCredentials.clientSecret(),
-                          OAuth2Properties.SCOPE,
-                          PRINCIPAL_ROLE_ALL,
+                          OAuth2Properties.TOKEN,
+                          authToken,
                           "warehouse",
                           emptyEnvironmentVariable,
                           "header." + REALM_HEADER,
@@ -653,32 +643,6 @@ public class PolarisApplicationIntegrationTest {
                   // asserts that one of those things happens.
                 }
               });
-    }
-  }
-
-  @Test
-  public void testRefreshToken() throws IOException {
-    String path = endpoints.catalogApiEndpoint() + "/v1/oauth/tokens";
-    try (RESTClient client =
-        HTTPClient.builder(Map.of()).withHeader(REALM_HEADER, realm).uri(path).build()) {
-      String credentialString =
-          clientCredentials.clientId() + ":" + clientCredentials.clientSecret();
-      String expiredToken =
-          JWT.create().withExpiresAt(Instant.EPOCH).sign(Algorithm.HMAC256("irrelevant-secret"));
-      var authConfig =
-          AuthConfig.builder()
-              .credential(credentialString)
-              .scope("PRINCIPAL_ROLE:ALL")
-              .oauth2ServerUri(path)
-              .token(expiredToken)
-              .build();
-
-      var parentSession = new OAuth2Util.AuthSession(Map.of(), authConfig);
-      var session =
-          OAuth2Util.AuthSession.fromAccessToken(client, null, expiredToken, 0L, parentSession);
-
-      assertThat(session.token()).isNotEqualTo(expiredToken); // implicit refresh
-      assertThat(JWT.decode(session.token()).getExpiresAtAsInstant()).isAfter(Instant.EPOCH);
     }
   }
 }

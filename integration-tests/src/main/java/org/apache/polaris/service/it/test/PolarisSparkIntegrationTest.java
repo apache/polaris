@@ -27,6 +27,7 @@ import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +55,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.LoggerFactory;
 
 @ExtendWith(PolarisIntegrationTestExtension.class)
@@ -69,6 +71,8 @@ public class PolarisSparkIntegrationTest {
   private String sparkToken;
   private String catalogName;
   private String externalCatalogName;
+
+  @TempDir public Path warehouseDir;
 
   @BeforeAll
   public static void setup() throws IOException {
@@ -183,6 +187,7 @@ public class PolarisSparkIntegrationTest {
         .config(
             String.format("spark.sql.catalog.%s", catalogName),
             "org.apache.iceberg.spark.SparkCatalog")
+        .config("spark.sql.warehouse.dir", warehouseDir.toString())
         .config(String.format("spark.sql.catalog.%s.type", catalogName), "rest")
         .config(
             String.format("spark.sql.catalog.%s.uri", catalogName),

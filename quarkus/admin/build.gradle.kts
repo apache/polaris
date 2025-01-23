@@ -23,8 +23,9 @@ plugins {
   alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
   alias(libs.plugins.openapi.generator)
-  id("polaris-server")
-  id("polaris-license-report")
+  id("polaris-quarkus")
+  // id("polaris-license-report")
+  id("distribution")
 }
 
 dependencies {
@@ -34,6 +35,11 @@ dependencies {
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-service-common"))
   implementation(project(":polaris-quarkus-service"))
+  implementation(project(":polaris-quarkus-defaults"))
+
+  if (project.hasProperty("eclipseLinkDeps")) {
+    runtimeOnly(project(":polaris-eclipselink"))
+  }
 
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-picocli")
@@ -77,10 +83,16 @@ publishing {
   }
 }
 
-tasks.named("compileJava") { dependsOn("compileQuarkusGeneratedSourcesJava") }
+tasks.named("distZip") { dependsOn("quarkusBuild") }
 
-tasks.named("sourcesJar") { dependsOn("compileQuarkusGeneratedSourcesJava") }
+tasks.named("distTar") { dependsOn("quarkusBuild") }
 
-tasks.named("javadoc") { dependsOn("jandex") }
-
-tasks.named("quarkusDependenciesBuild") { dependsOn("jandex") }
+distributions {
+  main {
+    contents {
+      from("../../NOTICE")
+      from("../../LICENSE-BINARY-DIST").rename("LICENSE-BINARY-DIST", "LICENSE")
+      from(project.layout.buildDirectory) { include("polaris-quarkus-admin-*-runner.jar") }
+    }
+  }
+}

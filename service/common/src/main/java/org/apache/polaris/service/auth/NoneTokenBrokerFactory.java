@@ -20,7 +20,7 @@ package org.apache.polaris.service.auth;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.service.types.TokenType;
 
 /** Default {@link TokenBrokerFactory} that produces token brokers that do not do anything. */
@@ -59,7 +59,7 @@ public class NoneTokenBrokerFactory implements TokenBrokerFactory {
       };
 
   @Override
-  public TokenBroker apply(RealmContext realmContext) {
+  public TokenBroker apply(RealmId realmId) {
     return NONE_TOKEN_BROKER;
   }
 }

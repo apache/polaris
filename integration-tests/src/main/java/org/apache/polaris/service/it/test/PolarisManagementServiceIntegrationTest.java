@@ -396,7 +396,8 @@ public class PolarisManagementServiceIntegrationTest {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
             .build();
-    String catalogName = "mycatalog";
+    String catalogName =
+        client.newEntityName("testUpdateCatalogWithoutDefaultBaseLocationInUpdate");
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)

@@ -39,15 +39,35 @@ for contribution guidelines.
 ## Building and Running 
 
 Apache Polaris is organized into the following modules:
+
 - `polaris-core` - The main Polaris entity definitions and core business logic
-- `polaris-server` - The Polaris REST API server
-- `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
+- API modules (implementing the Iceberg REST API and Polaris management API):
+  - `polaris-api-management-model` - The Polaris management model
+  - `polaris-api-management-service` - The Polaris management service
+  - `polaris-api-iceberg-service` - The Iceberg REST service
+- Service modules:
+  - `polaris-service-common` - The main components of the Polaris server
+- Quarkus runtime modules:
+  - `polaris-quarkus-service` - The Quarkus-specific components of the Polaris server
+  - `polaris-quarkus-defaults` - The Quarkus-specific configuration defaults
+  - `polaris-quarkus-server` - The Polaris server runtime
+  - `polaris-quarkus-admin-tool` - The Polaris admin & maintenance tool
+- Persistence modules:
+  - `polaris-jpa-model` - The JPA entity definitions
+  - `polaris-eclipselink` - The Eclipselink implementation of the MetaStoreManager interface
  
 Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
+
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
 - `./gradlew assemble` - To skip tests.
 - `./gradlew test` - To run unit tests and integration tests.
-- `./gradlew runApp` - To run the Polaris server locally on localhost:8181. 
+- `./gradlew polarisServerRun` - To run the Polaris server locally, with profile `prod`; the server 
+  is reachable at localhost:8181.
+- `java -Dquarkus.profile=test -jar quarkus/server/build/quarkus-app/quarkus-run.jar` - To run the
+  Polaris server locally, with profile `test`. With this profile, Polaris uses the `test`
+  Authenticator and `test` TokenBroker; this configuration is suitable for running regressions
+  tests, or for connecting with Spark.
+
 - `./regtests/run_spark_sql.sh` - To connect from Spark SQL. Here are some example commands to run in the Spark SQL shell:
 ```sql
 create database db1;
@@ -57,36 +77,52 @@ insert into db1.table1 values (1, 'a');
 select * from db1.table1;
 ```
 
-Apache Polaris supports the following optional build options:
-- `-PeclipseLink=true` – Enables the EclipseLink extension.
-- `-PeclipseLinkDeps=[groupId]:[artifactId]:[version],...` – Specifies one or more additional dependencies for EclipseLink (e.g., JDBC drivers) separated by commas.
-
 ### More build and run options
-Running in Docker
-- `docker build -t localhost:5001/polaris:latest .` - To build the image.
-  - Optional build options:
-    - `docker build -t localhost:5001/polaris:latest --build-arg ECLIPSELINK=true .` - Enables the EclipseLink extension.
-    - `docker build -t localhost:5001/polaris:latest --build-arg ECLIPSELINK=true --build-arg ECLIPSELINK_DEPS=[groupId]:[artifactId]:[version],... .` – Enables the EclipseLink extension with one or more additional dependencies for EclipseLink (e.g. JDBC drivers) separated by commas.
-- `docker run -p 8181:8181 localhost:5001/polaris:latest` - To run the image in standalone mode.
 
-Running in Kubernetes
-- `./run.sh` - To run Polaris as a mini-deployment locally. This will create one pod that bind itself to ports `8181` and `8182`.
-  - Optional run options:
-    - `./run.sh -b "ECLIPSELINK=true"` - Enables the EclipseLink extension.
-    - `./run.sh -b "ECLIPSELINK=true;ECLIPSELINK_DEPS=[groupId]:[artifactId]:[version],..."` – Enables the EclipseLink extension with one or more additional dependencies for EclipseLink (e.g. JDBC drivers) separated by commas.
-- `kubectl port-forward svc/polaris-service -n polaris 8181:8181 8182:8182` - To create secure connections between a local machine and a pod within the cluster for both service and metrics endpoints.
-  - Currently supported metrics endpoints:
-    - localhost:8182/metrics
-    - localhost:8182/healthcheck
+#### Running in Docker
+
+- `./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true` - To 
+  build the image locally.
+- `docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest` - To run the image.
+
+#### Running in Kubernetes
+
+- `./run.sh` - To run Polaris as a mini-deployment locally. This will create a Kind cluster, 
+  then deploy one pod and one service. The service is available on ports `8181` and `8182`.
+- `kubectl port-forward svc/polaris-service -n polaris 8181:8181 8182:8182` - To create secure 
+  connections between a local machine and a pod within the cluster for both service and 
+  health/metrics endpoints:
+  - http://localhost:8182/q/metrics
+  - http://localhost:8182/q/health
 - `kubectl get pods -n polaris` - To check the status of the pods.
 - `kubectl get deployment -n polaris` - To check the status of the deployment.
 - `kubectl describe deployment polaris-deployment -n polaris` - To troubleshoot if things aren't working as expected.
 
-Running regression tests
-- `./regtests/run.sh` - To run regression tests in another terminal.
-- `docker compose up --build --exit-code-from regtest` - To run regression tests in a Docker environment.
+#### Running regression tests
 
-Building docs
+Regression tests can be run in a local environment or in a Docker environment.
+
+To run regression tests locally, you need to have a Polaris server running locally, with the 
+`test` Authenticator enabled. You can do this by running Polaris as below:
+
+```shell
+java -Dquarkus.profile=test -jar quarkus/server/build/quarkus-app/quarkus-run.jar
+```
+
+Then, you can run the regression tests using the following command:
+
+```shell
+env POLARIS_HOST=localhost ./regtests/run.sh
+```
+
+To run regression tests in a Docker environment, you can use the following command:
+
+```shell
+docker compose -f regtests/docker-compose.yml up --build --exit-code-from regtest
+```
+
+#### Building docs
+
 - Docs are generated using [Hugo](https://gohugo.io/) using the [Docsy](https://www.docsy.dev/docs/) theme.
 - To view the site locally, run
   ```bash

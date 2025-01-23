@@ -44,7 +44,7 @@ Notable configuration used to secure a Polaris deployment are outlined below.
 > [!WARNING]  
 > Ensure that the `tokenBroker` setting reflects the token broker specified in `oauth2` above.
 
-#### callContextResolver & realmContextResolver
+#### callContextResolver & realmIdResolver
 * Use these configurations to specify a service that can resolve a realm from bearer tokens.
 * The service(s) used here must implement the relevant interfaces (i.e. [CallContextResolver](https://github.com/apache/polaris/blob/8290019c10290a600e40b35ddb1e2f54bf99e120/polaris-service/src/main/java/io/polaris/service/context/CallContextResolver.java#L27) and [RealmContextResolver](https://github.com/apache/polaris/blob/7ce86f10a68a3b56aed766235c88d6027c0de038/polaris-service/src/main/java/io/polaris/service/context/RealmContextResolver.java)).
 
@@ -75,21 +75,19 @@ Before using Polaris when using a metastore manager other than `in-memory`, you 
 By default, Polaris will create randomised `CLIENT_ID` and `CLIENT_SECRET` for the `root` principal and store their hashes in the metastore backend. In order to provide your own credentials for `root` principal (so you can request tokens via `api/catalog/v1/oauth/tokens`), set the `POLARIS_BOOTSTRAP_CREDENTIALS` environment variable as follows:
 
 ```
-export POLARIS_BOOTSTRAP_CREDENTIALS=my_realm,root,my-client-id,my-client-secret
+export POLARIS_BOOTSTRAP_CREDENTIALS=my_realm,my-client-id,my-client-secret
 ```
 
-The format of the environment variable is `realm,principal,client_id,client_secret`. You can provide multiple credentials separated by `;`. For example, to provide credentials for two realms `my_realm` and `my_realm2`:
+The format of the environment variable is `realm,client_id,client_secret`. You can provide multiple credentials separated by `;`. For example, to provide credentials for two realms `my_realm` and `my_realm2`:
 
 ```
-export POLARIS_BOOTSTRAP_CREDENTIALS=my_realm,root,my-client-id,my-client-secret;my_realm2,root,my-client-id2,my-client-secret2
+export POLARIS_BOOTSTRAP_CREDENTIALS=my_realm,my-client-id,my-client-secret;my_realm2,my-client-id2,my-client-secret2
 ```
-
-You can also provide credentials for other users too. 
 
 It is also possible to use system properties to provide the credentials:
 
 ```
-java -Dpolaris.bootstrap.credentials=my_realm,root,my-client-id,my-client-secret -jar /path/to/jar/polaris-service-all.jar bootstrap polaris-server.yml
+java -Dpolaris.bootstrap.credentials=my_realm,my-client-id,my-client-secret -jar /path/to/jar/polaris-service-all.jar bootstrap polaris-server.yml
 ```
 
 Now, to bootstrap Polaris, run:

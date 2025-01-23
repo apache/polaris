@@ -4,7 +4,26 @@ This module contains a maintenance tool for performing administrative tasks on t
 It is a Quarkus application that can be used to perform various maintenance tasks targeting the
 Polaris database directly.
 
-Building this module will create a runnable uber-jar that can be executed from the command line.
+## Archive distribution
+
+Building this module will create a zip/tar distribution with the Polaris server.
+
+To build the distribution, you can use the following command:
+
+```shell
+./gradlew :polaris-quarkus-admin:build
+```
+
+You can manually unpack and run the distribution archives:
+
+```shell
+cd quarkus/admin/build/distributions
+unzip polaris-quarkus-admin-<version>.zip
+cd polaris-quarkus-admin-<version>
+java -jar polaris-quarkus-admin-<version>-runner.jar
+```
+
+## Docker image
 
 To also build the Docker image, you can use the following command:
 

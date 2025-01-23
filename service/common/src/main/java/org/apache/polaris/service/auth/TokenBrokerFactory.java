@@ -19,10 +19,10 @@
 package org.apache.polaris.service.auth;
 
 import java.util.function.Function;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmId;
 
 /**
  * Factory that creates a {@link TokenBroker} for generating and parsing. The {@link TokenBroker} is
  * created based on the realm context.
  */
-public interface TokenBrokerFactory extends Function<RealmContext, TokenBroker> {}
+public interface TokenBrokerFactory extends Function<RealmId, TokenBroker> {}

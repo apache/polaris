@@ -19,9 +19,10 @@
 
 plugins {
   alias(libs.plugins.quarkus)
+  alias(libs.plugins.jandex)
   alias(libs.plugins.openapi.generator)
-  id("polaris-server")
-  id("polaris-license-report")
+  id("polaris-quarkus")
+  // id("polaris-license-report")
   id("distribution")
 }
 
@@ -31,6 +32,10 @@ dependencies {
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-service-common"))
   implementation(project(":polaris-quarkus-service"))
+
+  if (project.hasProperty("eclipseLinkDeps")) {
+    runtimeOnly(project(":polaris-eclipselink"))
+  }
 
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
@@ -60,6 +65,10 @@ quarkus {
 tasks.named("distZip") { dependsOn("quarkusBuild") }
 
 tasks.named("distTar") { dependsOn("quarkusBuild") }
+
+tasks.withType<Javadoc> { isFailOnError = false }
+
+tasks.register("polarisServerRun") { dependsOn("quarkusRun") }
 
 distributions {
   main {

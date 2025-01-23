@@ -38,7 +38,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -76,17 +76,17 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
   /** use synchronous drop for entities */
   private static final boolean USE_SYNCHRONOUS_DROP = true;
 
-  private final RealmContext realmContext;
+  private final RealmId realmId;
   private final PolarisDiagnostics diagnostics;
   private final PolarisConfigurationStore configurationStore;
   private final Clock clock;
 
   public PolarisMetaStoreManagerImpl(
-      RealmContext realmContext,
+      RealmId realmId,
       PolarisDiagnostics diagnostics,
       PolarisConfigurationStore configurationStore,
       Clock clock) {
-    this.realmContext = realmContext;
+    this.realmId = realmId;
     this.diagnostics = diagnostics;
     this.configurationStore = configurationStore;
     this.clock = clock;
@@ -1815,7 +1815,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
                   PolarisObjectMapperUtil.parseTaskState(entity);
               long taskAgeTimeout =
                   configurationStore.getConfiguration(
-                      realmContext,
+                      realmId,
                       PolarisTaskConstants.TASK_TIMEOUT_MILLIS_CONFIG,
                       PolarisTaskConstants.TASK_TIMEOUT_MILLIS);
               return taskState == null
@@ -1888,7 +1888,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     try {
       EnumMap<PolarisCredentialProperty, String> creds =
           storageIntegration.getSubscopedCreds(
-              realmContext,
+              realmId,
               diagnostics,
               storageConfigurationInfo,
               allowListOperation,
@@ -1935,7 +1935,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
         readStorageConfiguration(diagnostics, reloadedEntity.getEntity());
     Map<String, String> validateLocationAccess =
         storageIntegration
-            .validateAccessToLocations(realmContext, storageConfigurationInfo, actions, locations)
+            .validateAccessToLocations(realmId, storageConfigurationInfo, actions, locations)
             .entrySet()
             .stream()
             .collect(
