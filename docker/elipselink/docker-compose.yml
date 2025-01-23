@@ -37,10 +37,10 @@ services:
     environment:
       JAVA_DEBUG: "true"
       JAVA_DEBUG_PORT: "*:5005"
-      quarkus.otel.exporter.otlp.endpoint: http://jaeger:4317
       polaris.persistence.type: eclipse-link
       polaris.persistence.eclipselink.configuration-file: /deployments/config/eclipselink/persistence.xml
       polaris.realm-context.realms: POLARIS
+      quarkus.otel.sdk.disabled: "true"
     volumes:
       - ../assets/eclipselink/:/deployments/config/eclipselink
     healthcheck:
