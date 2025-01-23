@@ -26,13 +26,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.Nullable;
 import java.io.IOException;
 import java.util.Map;
 import org.apache.iceberg.rest.RESTSerializers;
-import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
-import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,33 +57,33 @@ public class PolarisObjectMapperUtil {
    * @return a String, the JSON representation of the map
    */
   public static String serializeProperties(
-      PolarisCallContext callCtx, Map<String, String> properties) {
+      PolarisDiagnostics diagnostics, Map<String, String> properties) {
 
     String jsonString = null;
     try {
       // Deserialize the JSON string to a Map<String, String>
       jsonString = MAPPER.writeValueAsString(properties);
     } catch (JsonProcessingException ex) {
-      callCtx.getDiagServices().fail("got_json_processing_exception", ex.getMessage());
+      diagnostics.fail("got_json_processing_exception", ex.getMessage());
     }
 
     return jsonString;
   }
 
-  public static String serialize(PolarisCallContext callCtx, Object object) {
+  public static String serialize(PolarisDiagnostics diagnostics, Object object) {
     try {
       return MAPPER.writeValueAsString(object);
     } catch (JsonProcessingException e) {
-      callCtx.getDiagServices().fail("got_json_processing_exception", e.getMessage());
+      diagnostics.fail("got_json_processing_exception", e.getMessage());
     }
     return "";
   }
 
-  public static <T> T deserialize(PolarisCallContext callCtx, String text, Class<T> klass) {
+  public static <T> T deserialize(PolarisDiagnostics diagnostics, String text, Class<T> klass) {
     try {
       return MAPPER.readValue(text, klass);
     } catch (JsonProcessingException e) {
-      callCtx.getDiagServices().fail("got_json_processing_exception", e.getMessage());
+      diagnostics.fail("got_json_processing_exception", e.getMessage());
     }
     return null;
   }
@@ -95,20 +95,16 @@ public class PolarisObjectMapperUtil {
    * @return a Map of string
    */
   public static Map<String, String> deserializeProperties(
-      PolarisCallContext callCtx, String properties) {
+      PolarisDiagnostics diagnostics, String properties) {
 
     Map<String, String> retProperties = null;
     try {
       // Deserialize the JSON string to a Map<String, String>
       retProperties = MAPPER.readValue(properties, new TypeReference<>() {});
     } catch (JsonMappingException ex) {
-      callCtx
-          .getDiagServices()
-          .fail("got_json_mapping_exception", "properties={}, ex={}", properties, ex);
+      diagnostics.fail("got_json_mapping_exception", "properties={}, ex={}", properties, ex);
     } catch (JsonProcessingException ex) {
-      callCtx
-          .getDiagServices()
-          .fail("got_json_processing_exception", "properties={}, ex={}", properties, ex);
+      diagnostics.fail("got_json_processing_exception", "properties={}, ex={}", properties, ex);
     }
 
     return retProperties;

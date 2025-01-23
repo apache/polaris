@@ -31,9 +31,9 @@ afterEvaluate {
       arrayOf(
         LicenseBundleNormalizer(
           "${rootProject.projectDir}/gradle/license/normalizer-bundle.json",
-          false
+          false,
         ),
-        LicenseFileValidation()
+        LicenseFileValidation(),
       )
     allowedLicensesFile = rootProject.projectDir.resolve("gradle/license/allowed-licenses.json")
     renderers =
@@ -48,7 +48,7 @@ val generateLicenseReport =
     inputs
       .files(
         rootProject.projectDir.resolve("gradle/license/normalizer-bundle.json"),
-        rootProject.projectDir.resolve("gradle/license/allowed-licenses.json")
+        rootProject.projectDir.resolve("gradle/license/allowed-licenses.json"),
       )
       .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.property("renderersHash", Arrays.hashCode(licenseReport.renderers))

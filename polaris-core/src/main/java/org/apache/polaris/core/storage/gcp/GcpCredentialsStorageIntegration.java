@@ -25,6 +25,8 @@ import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.CredentialAccessBoundary;
 import com.google.auth.oauth2.DownscopedCredentials;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.common.annotations.VisibleForTesting;
+import jakarta.annotation.Nonnull;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -36,13 +38,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageUtil;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,8 +61,10 @@ public class GcpCredentialsStorageIntegration
   private final HttpTransportFactory transportFactory;
 
   public GcpCredentialsStorageIntegration(
-      GoogleCredentials sourceCredentials, HttpTransportFactory transportFactory) {
-    super(GcpCredentialsStorageIntegration.class.getName());
+      PolarisConfigurationStore configurationStore,
+      GoogleCredentials sourceCredentials,
+      HttpTransportFactory transportFactory) {
+    super(configurationStore, GcpCredentialsStorageIntegration.class.getName());
     // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
     // account key json
     this.sourceCredentials =
@@ -70,11 +74,12 @@ public class GcpCredentialsStorageIntegration
 
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-      @NotNull PolarisDiagnostics diagnostics,
-      @NotNull GcpStorageConfigurationInfo storageConfig,
+      @Nonnull RealmId realmId,
+      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull GcpStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
-      @NotNull Set<String> allowedReadLocations,
-      @NotNull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations) {
     try {
       sourceCredentials.refresh();
     } catch (IOException e) {
@@ -127,8 +132,8 @@ public class GcpCredentialsStorageIntegration
   @VisibleForTesting
   public static CredentialAccessBoundary generateAccessBoundaryRules(
       boolean allowListOperation,
-      @NotNull Set<String> allowedReadLocations,
-      @NotNull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations) {
     Map<String, List<String>> readConditionsMap = new HashMap<>();
     Map<String, List<String>> writeConditionsMap = new HashMap<>();
 

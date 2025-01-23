@@ -57,7 +57,7 @@ Once installed, make sure Docker is running.
 
 If you plan to build Polaris from source yourself, you will need to satisfy a few prerequisites first.
 
-Polaris is built using [gradle](https://gradle.org/) and is compatible with Java 21. We recommend the use of [jenv](https://www.jenv.be/) to manage multiple Java versions. For example, to install Java 21 via [homebrew](https://brew.sh/) and configure it with jenv: 
+Polaris is built using [gradle](https://gradle.org/) and is compatible with Java 21. We recommend the use of [jenv](https://www.jenv.be/) to manage multiple Java versions. For example, to install Java 21 via [homebrew](https://brew.sh/) and configure it with jenv:
 
 ```shell
 cd ~/polaris
@@ -97,45 +97,55 @@ To start using Polaris in Docker, launch Polaris while Docker is running:
 
 ```shell
 cd ~/polaris
-docker compose -f docker-compose.yml up --build
-```
-
-Once the `polaris-polaris` container is up, you can continue to [Defining a Catalog](#defining-a-catalog).
-
-### Building Polaris
-
-Run Polaris locally with:
-
-```shell
-cd ~/polaris
-./gradlew runApp
+./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true
+docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest
 ```
 
 You should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:
 
 ```
-INFO  [...] [main] [] o.e.j.s.handler.ContextHandler: Started i.d.j.MutableServletContextHandler@...
-INFO  [...] [main] [] o.e.j.server.AbstractConnector: Started application@...
-INFO  [...] [main] [] o.e.j.server.AbstractConnector: Started admin@...
-INFO  [...] [main] [] o.eclipse.jetty.server.Server: Started Server@...
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Apache Polaris Server <version> on JVM  (powered by Quarkus <version>) started in 2.656s. Listening on: http://localhost:8181. Management interface listening on http://0.0.0.0:8182.
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Profile prod activated.
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
+```
+
+### Running Polaris as a Standalone Process
+
+The easiest way to run Polaris locally is to start the Polaris server from the
+`quarkus/server/build` directory (after building Polaris):
+
+```shell
+cd ~/polaris
+# Build the server
+./gradlew clean :polaris-quarkus-server:assemble
+# Start the server
+java -jar quarkus/server/build/quarkus-app/quarkus-run.jar
+```
+
+You should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:
+
+```
+realm: <realm> root principal credentials: <client-id>:<client-secret>
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) polaris-quarkus-service <version> on JVM (powered by Quarkus <version>) started in 2.656s. Listening on: http://localhost:8181. Management interface listening on http://0.0.0.0:8182.
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Profile prod activated. Live Coding activated.
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
 ```
 
 At this point, Polaris is running.
 
-## Bootstrapping Polaris
-
 For this tutorial, we'll launch an instance of Polaris that stores entities only in-memory. This means that any entities that you define will be destroyed when Polaris is shut down. It also means that Polaris will automatically bootstrap itself with root credentials. For more information on how to configure Polaris for production usage, see the [docs]({{% ref "configuring-polaris-for-production" %}}).
 
-When Polaris is launched using in-memory mode the root principal credentials can be found in stdout on initial startup. For example:
+When Polaris is launched using an in-memory metastore, the root principal credentials can be found
+in stdout on initial startup. Look for a line that resembles the following:
 
 ```
-realm: default-realm root principal credentials: <client-id>:<client-secret>
+realm: <realm> root principal credentials: <client-id>:<client-secret>
 ```
 
-Be sure to note of these credentials as we'll be using them below. You can also set these credentials as environment variables for use with the Polaris CLI:
+Be sure to take note of these credentials as we'll be using them below. You can also set these credentials as environment variables for use with the Polaris CLI:
 
 ```shell
-export CLIENT_ID=<client-id> 
+export CLIENT_ID=<client-id>
 export CLIENT_SECRET=<client-secret>
 ```
 
@@ -262,7 +272,7 @@ _Note: the credentials provided here are those for our principal, not the root c
 
 ```shell
 bin/spark-shell \
---packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.5.2,org.apache.hadoop:hadoop-aws:3.4.0 \
+--packages org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:1.7.1,org.apache.hadoop:hadoop-aws:3.4.0 \
 --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
 --conf spark.sql.catalog.quickstart_catalog.warehouse=quickstart_catalog \
 --conf spark.sql.catalog.quickstart_catalog.header.X-Iceberg-Access-Delegation=vended-credentials \
@@ -271,7 +281,8 @@ bin/spark-shell \
 --conf spark.sql.catalog.quickstart_catalog.uri=http://localhost:8181/api/catalog \
 --conf spark.sql.catalog.quickstart_catalog.credential='XXXX:YYYY' \
 --conf spark.sql.catalog.quickstart_catalog.scope='PRINCIPAL_ROLE:ALL' \
---conf spark.sql.catalog.quickstart_catalog.token-refresh-enabled=true
+--conf spark.sql.catalog.quickstart_catalog.token-refresh-enabled=true \
+--conf spark.sql.catalog.quickstart_catalog.client.region=us-west-2
 ```
 
 
@@ -291,7 +302,7 @@ spark.sql("USE NAMESPACE quickstart_namespace.schema")
 spark.sql("""
 	CREATE TABLE IF NOT EXISTS quickstart_table (
 		id BIGINT, data STRING
-	) 
+	)
 USING ICEBERG
 """)
 ```

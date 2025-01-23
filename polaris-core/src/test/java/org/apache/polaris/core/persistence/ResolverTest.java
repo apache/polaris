@@ -20,21 +20,32 @@ package org.apache.polaris.core.persistence;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import jakarta.ws.rs.core.SecurityContext;
+import java.security.Principal;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
-import org.apache.polaris.core.PolarisCallContext;
+import java.util.stream.Collectors;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
 import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
@@ -42,8 +53,6 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.assertj.core.api.Assertions;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -52,14 +61,8 @@ public class ResolverTest {
   // diag services
   private final PolarisDiagnostics diagServices;
 
-  // the entity store, use treemap implementation
-  private final PolarisTreeMapStore store;
-
   // to interact with the metastore
   private final PolarisMetaStoreSession metaStore;
-
-  // polaris call context
-  private final PolarisCallContext callCtx;
 
   // utility to bootstrap the mata store
   private final PolarisTestMetaStoreManager tm;
@@ -97,13 +100,19 @@ public class ResolverTest {
    */
   public ResolverTest() {
     diagServices = new PolarisDefaultDiagServiceImpl();
-    store = new PolarisTreeMapStore(diagServices);
-    metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
-    callCtx = new PolarisCallContext(metaStore, diagServices);
-    metaStoreManager = new PolarisMetaStoreManagerImpl();
+    // the entity store, use treemap implementation
+    PolarisTreeMapStore store = new PolarisTreeMapStore(diagServices);
+    metaStore =
+        new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS, diagServices);
+    metaStoreManager =
+        new PolarisMetaStoreManagerImpl(
+            RealmId.newRealmId("test"),
+            diagServices,
+            new PolarisConfigurationStore() {},
+            Clock.systemUTC());
 
     // bootstrap the mata store with our test schema
-    tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
+    tm = new PolarisTestMetaStoreManager(metaStoreManager, metaStore, diagServices);
     tm.testCreateTestCatalog();
 
     // principal P1
@@ -377,7 +386,7 @@ public class ResolverTest {
    *
    * @return new resolver to test with
    */
-  @NotNull
+  @Nonnull
   private Resolver allocateResolver() {
     return this.allocateResolver(null, null);
   }
@@ -389,7 +398,7 @@ public class ResolverTest {
    * @param referenceCatalogName the reference e catalog name, can be null
    * @return new resolver to test with
    */
-  @NotNull
+  @Nonnull
   private Resolver allocateResolver(@Nullable String referenceCatalogName) {
     return this.allocateResolver(null, referenceCatalogName);
   }
@@ -401,7 +410,7 @@ public class ResolverTest {
    * @param cache if not null, cache to use, else one will be created
    * @return new resolver to test with
    */
-  @NotNull
+  @Nonnull
   private Resolver allocateResolver(@Nullable EntityCache cache) {
     return this.allocateResolver(cache, null);
   }
@@ -414,7 +423,7 @@ public class ResolverTest {
    * @param referenceCatalogName the reference e catalog name, can be null
    * @return new resolver to test with
    */
-  @NotNull
+  @Nonnull
   private Resolver allocateResolver(
       @Nullable EntityCache cache, @Nullable String referenceCatalogName) {
     return this.allocateResolver(cache, null, referenceCatalogName);
@@ -429,7 +438,7 @@ public class ResolverTest {
    * @param referenceCatalogName the reference e catalog name, can be null
    * @return new resolver to test with
    */
-  @NotNull
+  @Nonnull
   private Resolver allocateResolver(
       @Nullable EntityCache cache,
       Set<String> principalRolesScope,
@@ -437,14 +446,56 @@ public class ResolverTest {
 
     // create a new cache if needs be
     if (cache == null) {
-      this.cache = new EntityCache(this.metaStoreManager);
+      this.cache = new EntityCache(this.metaStoreManager, diagServices);
     }
+    boolean allRoles = principalRolesScope == null;
+    Optional<List<PrincipalRoleEntity>> roleEntities =
+        Optional.ofNullable(principalRolesScope)
+            .map(
+                scopes ->
+                    scopes.stream()
+                        .map(
+                            role ->
+                                metaStoreManager.readEntityByName(
+                                    this.metaStore,
+                                    null,
+                                    PolarisEntityType.PRINCIPAL_ROLE,
+                                    PolarisEntitySubType.NULL_SUBTYPE,
+                                    role))
+                        .filter(PolarisMetaStoreManager.EntityResult::isSuccess)
+                        .map(PolarisMetaStoreManager.EntityResult::getEntity)
+                        .map(PrincipalRoleEntity::of)
+                        .collect(Collectors.toList()));
+    AuthenticatedPolarisPrincipal authenticatedPrincipal =
+        new AuthenticatedPolarisPrincipal(
+            PrincipalEntity.of(P1), Optional.ofNullable(principalRolesScope).orElse(Set.of()));
     return new Resolver(
-        this.callCtx,
-        this.metaStoreManager,
-        this.P1.getId(),
-        null,
-        principalRolesScope,
+        this.metaStore,
+        this.diagServices,
+        metaStoreManager,
+        new SecurityContext() {
+          @Override
+          public Principal getUserPrincipal() {
+            return authenticatedPrincipal;
+          }
+
+          @Override
+          public boolean isUserInRole(String role) {
+            return roleEntities
+                .map(l -> l.stream().map(PrincipalRoleEntity::getName).anyMatch(role::equals))
+                .orElse(allRoles);
+          }
+
+          @Override
+          public boolean isSecure() {
+            return false;
+          }
+
+          @Override
+          public String getAuthenticationScheme() {
+            return "";
+          }
+        },
         this.cache,
         referenceCatalogName);
   }
@@ -703,7 +754,7 @@ public class ResolverTest {
         // see if the principal exists
         PolarisMetaStoreManager.EntityResult result =
             this.metaStoreManager.readEntityByName(
-                this.callCtx,
+                this.metaStore,
                 null,
                 PolarisEntityType.PRINCIPAL,
                 PolarisEntitySubType.NULL_SUBTYPE,
@@ -724,9 +775,6 @@ public class ResolverTest {
               .isNull();
         }
       }
-
-      // validate that we were able to resolve the caller principal
-      this.ensureResolved(resolver.getResolvedCallerPrincipal(), PolarisEntityType.PRINCIPAL, "P1");
 
       // validate that the correct set if principal roles have been activated
       List<EntityCacheEntry> principalRolesResolved = resolver.getResolvedCallerPrincipalRoles();
@@ -909,7 +957,7 @@ public class ResolverTest {
     // reload the cached entry from the backend
     CachedEntryResult refCachedEntry =
         this.metaStoreManager.loadCachedEntryById(
-            this.callCtx, refEntity.getCatalogId(), refEntity.getId());
+            this.metaStore, refEntity.getCatalogId(), refEntity.getId());
 
     // should exist
     Assertions.assertThat(refCachedEntry).isNotNull();

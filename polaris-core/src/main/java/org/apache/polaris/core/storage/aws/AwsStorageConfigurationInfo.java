@@ -22,11 +22,12 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /** Aws Polaris Storage Configuration information */
 public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
@@ -35,11 +36,11 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   // for allowed read and write locations for subscoping creds.
   @JsonIgnore private static final int MAX_ALLOWED_LOCATIONS = 5;
 
-  // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::\d{12}:role/.+$,
-  @JsonIgnore public static final String ROLE_ARN_PATTERN = "^arn:aws:iam::\\d{12}:role/.+$";
+  // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$,
+  @JsonIgnore public static final String ROLE_ARN_PATTERN = "^arn:aws:iam::(\\d{12}):role/.+$";
 
   // AWS role to be assumed
-  private final @NotNull String roleARN;
+  private final @Nonnull String roleARN;
 
   // AWS external ID, optional
   @JsonProperty(value = "externalId")
@@ -49,23 +50,30 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   @JsonProperty(value = "userARN")
   private @Nullable String userARN = null;
 
+  /** User ARN for the service principal */
+  @JsonProperty(value = "region")
+  private @Nullable String region = null;
+
   @JsonCreator
   public AwsStorageConfigurationInfo(
-      @JsonProperty(value = "storageType", required = true) @NotNull StorageType storageType,
-      @JsonProperty(value = "allowedLocations", required = true) @NotNull
+      @JsonProperty(value = "storageType", required = true) @Nonnull StorageType storageType,
+      @JsonProperty(value = "allowedLocations", required = true) @Nonnull
           List<String> allowedLocations,
-      @JsonProperty(value = "roleARN", required = true) @NotNull String roleARN) {
-    this(storageType, allowedLocations, roleARN, null);
+      @JsonProperty(value = "roleARN", required = true) @Nonnull String roleARN,
+      @JsonProperty(value = "region", required = false) @Nullable String region) {
+    this(storageType, allowedLocations, roleARN, null, region);
   }
 
   public AwsStorageConfigurationInfo(
-      @NotNull StorageType storageType,
-      @NotNull List<String> allowedLocations,
-      @NotNull String roleARN,
-      @Nullable String externalId) {
+      @Nonnull StorageType storageType,
+      @Nonnull List<String> allowedLocations,
+      @Nonnull String roleARN,
+      @Nullable String externalId,
+      @Nullable String region) {
     super(storageType, allowedLocations);
     this.roleARN = roleARN;
     this.externalId = externalId;
+    this.region = region;
     validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
   }
 
@@ -74,7 +82,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     return "org.apache.iceberg.aws.s3.S3FileIO";
   }
 
-  public void validateArn(String arn) {
+  public static void validateArn(String arn) {
     if (arn == null || arn.isEmpty()) {
       throw new IllegalArgumentException("ARN cannot be null or empty");
     }
@@ -87,7 +95,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     }
   }
 
-  public @NotNull String getRoleARN() {
+  public @Nonnull String getRoleARN() {
     return roleARN;
   }
 
@@ -107,6 +115,30 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     this.userARN = userARN;
   }
 
+  public @Nullable String getRegion() {
+    return region;
+  }
+
+  public void setRegion(@Nullable String region) {
+    this.region = region;
+  }
+
+  @JsonIgnore
+  public String getAwsAccountId() {
+    return parseAwsAccountId(roleARN);
+  }
+
+  private static String parseAwsAccountId(String arn) {
+    validateArn(arn);
+    Pattern pattern = Pattern.compile(ROLE_ARN_PATTERN);
+    Matcher matcher = pattern.matcher(arn);
+    if (matcher.matches()) {
+      return matcher.group(1);
+    } else {
+      throw new IllegalArgumentException("ARN does not match the expected role ARN pattern");
+    }
+  }
+
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
@@ -116,6 +148,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
         .add("userARN", userARN)
         .add("externalId", externalId)
         .add("allowedLocation", getAllowedLocations())
+        .add("region", region)
         .toString();
   }
 }

@@ -18,37 +18,38 @@
  */
 package org.apache.polaris.core.storage;
 
-import java.time.Clock;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.Assertions;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 class InMemoryStorageIntegrationTest {
 
+  private final RealmId realmId = RealmId.newRealmId("test");
+
   @Test
   public void testValidateAccessToLocations() {
-    MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
+    MockInMemoryStorageIntegration storage =
+        new MockInMemoryStorageIntegration(new PolarisConfigurationStore() {});
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
+            realmId,
             new AwsStorageConfigurationInfo(
                 PolarisStorageConfigurationInfo.StorageType.S3,
                 List.of(
                     "s3://bucket/path/to/warehouse",
                     "s3://bucket/anotherpath/to/warehouse",
                     "s3://bucket2/warehouse/"),
-                "arn:aws:iam::012345678901:role/jdoe"),
+                "arn:aws:iam::012345678901:role/jdoe",
+                "us-east-2"),
             Set.of(PolarisStorageActions.READ),
             Set.of(
                 "s3://bucket/path/to/warehouse/namespace/table",
@@ -74,69 +75,81 @@ class InMemoryStorageIntegrationTest {
   }
 
   @Test
+  public void testAwsAccountIdParsing() {
+    AwsStorageConfigurationInfo awsConfig =
+        new AwsStorageConfigurationInfo(
+            PolarisStorageConfigurationInfo.StorageType.S3,
+            List.of("s3://bucket/path/to/warehouse"),
+            "arn:aws:iam::012345678901:role/jdoe",
+            "us-east-2");
+
+    String expectedAccountId = "012345678901";
+    String actualAccountId = awsConfig.getAwsAccountId();
+
+    Assertions.assertThat(actualAccountId).isEqualTo(expectedAccountId);
+  }
+
+  @Test
   public void testValidateAccessToLocationsWithWildcard() {
-    MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
     Map<String, Boolean> config = Map.of("ALLOW_WILDCARD_LOCATION", true);
-    PolarisCallContext polarisCallContext =
-        new PolarisCallContext(
-            Mockito.mock(),
-            new PolarisDefaultDiagServiceImpl(),
-            new PolarisConfigurationStore() {
-              @SuppressWarnings("unchecked")
-              @Override
-              public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
-                return (T) config.get(configName);
-              }
-            },
-            Clock.systemUTC());
-    try (CallContext ignored =
-        CallContext.setCurrentContext(CallContext.of(() -> "realm", polarisCallContext))) {
-      Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
-          storage.validateAccessToLocations(
-              new FileStorageConfigurationInfo(List.of("file://", "*")),
-              Set.of(PolarisStorageActions.READ),
-              Set.of(
-                  "s3://bucket/path/to/warehouse/namespace/table",
-                  "file:///etc/passwd",
-                  "a/relative/subdirectory"));
-      Assertions.assertThat(result)
-          .hasSize(3)
-          .hasEntrySatisfying(
-              "s3://bucket/path/to/warehouse/namespace/table",
-              val ->
-                  Assertions.assertThat(val)
-                      .hasSize(1)
-                      .containsKey(PolarisStorageActions.READ)
-                      .extractingByKey(PolarisStorageActions.READ)
-                      .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess))
-          .hasEntrySatisfying(
-              "file:///etc/passwd",
-              val ->
-                  Assertions.assertThat(val)
-                      .hasSize(1)
-                      .containsKey(PolarisStorageActions.READ)
-                      .extractingByKey(PolarisStorageActions.READ)
-                      .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess))
-          .hasEntrySatisfying(
-              "a/relative/subdirectory",
-              val ->
-                  Assertions.assertThat(val)
-                      .hasSize(1)
-                      .containsKey(PolarisStorageActions.READ)
-                      .extractingByKey(PolarisStorageActions.READ)
-                      .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess));
-    }
+    PolarisConfigurationStore configurationStore =
+        new PolarisConfigurationStore() {
+          @SuppressWarnings("unchecked")
+          @Override
+          public <T> @Nullable T getConfiguration(RealmId realmId, String configName) {
+            return (T) config.get(configName);
+          }
+        };
+    MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration(configurationStore);
+    Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
+        storage.validateAccessToLocations(
+            realmId,
+            new FileStorageConfigurationInfo(List.of("file://", "*")),
+            Set.of(PolarisStorageActions.READ),
+            Set.of(
+                "s3://bucket/path/to/warehouse/namespace/table",
+                "file:///etc/passwd",
+                "a/relative/subdirectory"));
+    Assertions.assertThat(result)
+        .hasSize(3)
+        .hasEntrySatisfying(
+            "s3://bucket/path/to/warehouse/namespace/table",
+            val ->
+                Assertions.assertThat(val)
+                    .hasSize(1)
+                    .containsKey(PolarisStorageActions.READ)
+                    .extractingByKey(PolarisStorageActions.READ)
+                    .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess))
+        .hasEntrySatisfying(
+            "file:///etc/passwd",
+            val ->
+                Assertions.assertThat(val)
+                    .hasSize(1)
+                    .containsKey(PolarisStorageActions.READ)
+                    .extractingByKey(PolarisStorageActions.READ)
+                    .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess))
+        .hasEntrySatisfying(
+            "a/relative/subdirectory",
+            val ->
+                Assertions.assertThat(val)
+                    .hasSize(1)
+                    .containsKey(PolarisStorageActions.READ)
+                    .extractingByKey(PolarisStorageActions.READ)
+                    .returns(true, PolarisStorageIntegration.ValidationResult::isSuccess));
   }
 
   @Test
   public void testValidateAccessToLocationsNoAllowedLocations() {
-    MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
+    MockInMemoryStorageIntegration storage =
+        new MockInMemoryStorageIntegration(new PolarisConfigurationStore() {});
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
+            realmId,
             new AwsStorageConfigurationInfo(
                 PolarisStorageConfigurationInfo.StorageType.S3,
                 List.of(),
-                "arn:aws:iam::012345678901:role/jdoe"),
+                "arn:aws:iam::012345678901:role/jdoe",
+                "us-east-2"),
             Set.of(PolarisStorageActions.READ),
             Set.of(
                 "s3://bucket/path/to/warehouse/namespace/table",
@@ -163,13 +176,16 @@ class InMemoryStorageIntegrationTest {
 
   @Test
   public void testValidateAccessToLocationsWithPrefixOfAllowedLocation() {
-    MockInMemoryStorageIntegration storage = new MockInMemoryStorageIntegration();
+    MockInMemoryStorageIntegration storage =
+        new MockInMemoryStorageIntegration(new PolarisConfigurationStore() {});
     Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>> result =
         storage.validateAccessToLocations(
+            realmId,
             new AwsStorageConfigurationInfo(
                 PolarisStorageConfigurationInfo.StorageType.S3,
                 List.of("s3://bucket/path/to/warehouse"),
-                "arn:aws:iam::012345678901:role/jdoe"),
+                "arn:aws:iam::012345678901:role/jdoe",
+                "us-east-2"),
             Set.of(PolarisStorageActions.READ),
             // trying to read a prefix under the allowed location
             Set.of("s3://bucket/path/to"));
@@ -184,17 +200,18 @@ class InMemoryStorageIntegrationTest {
 
   private static final class MockInMemoryStorageIntegration
       extends InMemoryStorageIntegration<PolarisStorageConfigurationInfo> {
-    public MockInMemoryStorageIntegration() {
-      super(MockInMemoryStorageIntegration.class.getName());
+    public MockInMemoryStorageIntegration(PolarisConfigurationStore configurationStore) {
+      super(configurationStore, MockInMemoryStorageIntegration.class.getName());
     }
 
     @Override
     public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-        @NotNull PolarisDiagnostics diagnostics,
-        @NotNull PolarisStorageConfigurationInfo storageConfig,
+        @Nonnull RealmId realmId,
+        @Nonnull PolarisDiagnostics diagnostics,
+        @Nonnull PolarisStorageConfigurationInfo storageConfig,
         boolean allowListOperation,
-        @NotNull Set<String> allowedReadLocations,
-        @NotNull Set<String> allowedWriteLocations) {
+        @Nonnull Set<String> allowedReadLocations,
+        @Nonnull Set<String> allowedWriteLocations) {
       return null;
     }
   }

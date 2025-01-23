@@ -33,10 +33,23 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: fix permissions
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Fix permissions
         run: mkdir -p regtests/output && chmod 777 regtests/output && chmod 777 regtests/t_*/ref/*
+
+      - name: Image build
+        run: |
+          ./gradlew :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true
+
       - name: Regression Test
         env:
           AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
           AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
-        run: docker compose up --build --exit-code-from regtest
+        run: |
+          docker compose -f regtests/docker-compose.yml up --build --exit-code-from regtest

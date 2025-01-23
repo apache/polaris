@@ -20,8 +20,11 @@
 regtests/derby.log
 regtests/metastore_db
 regtests/output/
+# This file, if checked in after running for example regtests, contains unmanaged dependencies that eventually
+# cause unnecessary "security alerts" like https://github.com/apache/polaris/pull/718.
+regtests/client/python/poetry.lock
 
-# Python stuff
+# Python stuff (see note about poetry.lock above as well!)
 /poetry.lock
 /polaris-venv/
 /pyproject.toml
@@ -61,6 +64,7 @@ gradle/wrapper/gradle-wrapper-*.sha256
 # Gradle
 /.gradle
 /build-logic/.gradle
+/build-logic/.kotlin
 **/build/
 !src/**/build/
 

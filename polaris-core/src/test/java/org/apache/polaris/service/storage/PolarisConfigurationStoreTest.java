@@ -18,16 +18,19 @@
  */
 package org.apache.polaris.service.storage;
 
+import jakarta.annotation.Nullable;
 import java.util.List;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.jetbrains.annotations.Nullable;
+import org.apache.polaris.core.context.RealmId;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 /** Unit test for the default behaviors of the PolarisConfigurationStore interface. */
 public class PolarisConfigurationStoreTest {
+
+  private final RealmId realmId = RealmId.newRealmId("test");
+
   @Test
   public void testConfigsCanBeCastedFromString() {
     List<PolarisConfiguration<?>> configs =
@@ -45,7 +48,7 @@ public class PolarisConfigurationStoreTest {
            */
           @SuppressWarnings("unchecked")
           @Override
-          public <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
+          public <T> @Nullable T getConfiguration(RealmId realmId, String configName) {
             for (PolarisConfiguration<?> c : configs) {
               if (c.key.equals(configName)) {
                 return (T) String.valueOf(c.defaultValue);
@@ -62,7 +65,7 @@ public class PolarisConfigurationStoreTest {
     // Ensure that we can fetch all the configs and that the value is what we expect, which
     // is the config's default value based on how we've implemented PolarisConfigurationStore above.
     for (PolarisConfiguration<?> c : configs) {
-      Assertions.assertEquals(c.defaultValue, store.getConfiguration(null, c));
+      Assertions.assertEquals(c.defaultValue, store.getConfiguration(realmId, c));
     }
   }
 
@@ -76,13 +79,14 @@ public class PolarisConfigurationStoreTest {
         new PolarisConfigurationStore() {
           @SuppressWarnings("unchecked")
           @Override
-          public <T> T getConfiguration(PolarisCallContext ctx, String configName) {
+          public <T> T getConfiguration(RealmId realmId, String configName) {
             return (T) "abc123";
           }
         };
 
     for (PolarisConfiguration<?> c : configs) {
-      Assertions.assertThrows(NumberFormatException.class, () -> store.getConfiguration(null, c));
+      Assertions.assertThrows(
+          NumberFormatException.class, () -> store.getConfiguration(realmId, c));
     }
   }
 

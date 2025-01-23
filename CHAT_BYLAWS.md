@@ -23,8 +23,11 @@ Apache Polaris is currently undergoing Incubation at the Apache Software Foundat
 
 ## Motivation
 
-The Polaris project uses a public and open chat service currently provided by Zulip hosted
-at https://polaris-catalog.zulipchat.com/. A few rules shall ensure that the chat conforms to the rules and best
+Apache Polaris uses two public and open chat services:
+* Slack workspace (join [here](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw))
+* Zuplip hosted at https://polaris-catalog.zulipchat.com
+
+A few rules shall ensure that the chat conforms to the rules and best
 practices of the Apache Software Foundation and serves well as a collaboration tool for the project.
 
 Organizations and other open-source projects that contribute continuously and significantly to Polaris are welcome, but
@@ -41,7 +44,7 @@ the Polaris project public chat.
   chat service.
 * Everybody is welcome to join the Polaris project chat. Invites are not needed.
 * All users are automatically promoted to “members” (don’t stay in “guests”).
-* Polaris project (P)PMC members have “owner” privileges on the Zulip chat. Polaris project committers are granted
+* Polaris project (P)PMC members have “owner” privileges on the Zulip and Slack chat. Polaris project committers are granted
   “moderator” or “administrator” privileges for moderation purposes.
 * This bylaws document shall be published on the project’s web site and linked from relevant public channels.
 * Only (P)PMC members are allowed to create new channels. The number of channels shall be limited to #general (user

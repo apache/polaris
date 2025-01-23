@@ -20,11 +20,8 @@ package org.apache.polaris.core.storage.cache;
 
 import java.util.Objects;
 import java.util.Set;
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.jetbrains.annotations.Nullable;
 
 public class StorageCredentialCacheKey {
 
@@ -44,18 +41,11 @@ public class StorageCredentialCacheKey {
 
   private final Set<String> allowedWriteLocations;
 
-  /**
-   * The callContext is passed to be used to fetch subscoped creds, but is not used to hash/equals
-   * as part of the cache key.
-   */
-  private @Nullable PolarisCallContext callContext;
-
   public StorageCredentialCacheKey(
       PolarisEntity entity,
       boolean allowedListAction,
       Set<String> allowedReadLocations,
-      Set<String> allowedWriteLocations,
-      @Nullable PolarisCallContext callContext) {
+      Set<String> allowedWriteLocations) {
     this.catalogId = entity.getCatalogId();
     this.storageConfigSerializedStr =
         entity
@@ -65,10 +55,6 @@ public class StorageCredentialCacheKey {
     this.allowedListAction = allowedListAction;
     this.allowedReadLocations = allowedReadLocations;
     this.allowedWriteLocations = allowedWriteLocations;
-    this.callContext = callContext;
-    if (this.callContext == null) {
-      this.callContext = CallContext.getCurrentContext().getPolarisCallContext();
-    }
   }
 
   public long getCatalogId() {
@@ -93,10 +79,6 @@ public class StorageCredentialCacheKey {
 
   public Set<String> getAllowedWriteLocations() {
     return allowedWriteLocations;
-  }
-
-  public @Nullable PolarisCallContext getCallContext() {
-    return callContext;
   }
 
   @Override

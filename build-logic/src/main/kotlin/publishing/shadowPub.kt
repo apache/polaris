@@ -35,14 +35,14 @@ import org.gradle.api.publish.maven.MavenPublication
 /**
  * "Proper" publication of shadow-jar instead of the "main" jar, with "the right" Gradle's module
  * metadata that refers to the shadow-jar instead of the "main" jar, which is not published by
- * Nessie.
+ * Polaris.
  *
  * Pieces of this function are taken from the `Java(Base)Plugin` and `ShadowExtension`.
  */
 internal fun configureShadowPublishing(
   project: Project,
   mavenPublication: MavenPublication,
-  softwareComponentFactory: SoftwareComponentFactory
+  softwareComponentFactory: SoftwareComponentFactory,
 ) =
   project.run {
     fun isPublishable(element: ConfigurationVariant): Boolean {
@@ -64,15 +64,15 @@ internal fun configureShadowPublishing(
           attribute(Usage.USAGE_ATTRIBUTE, project.objects.named(Usage::class.java, Usage.JAVA_API))
           attribute(
             Category.CATEGORY_ATTRIBUTE,
-            project.objects.named(Category::class.java, Category.LIBRARY)
+            project.objects.named(Category::class.java, Category.LIBRARY),
           )
           attribute(
             LibraryElements.LIBRARY_ELEMENTS_ATTRIBUTE,
-            project.objects.named(LibraryElements::class.java, LibraryElements.JAR)
+            project.objects.named(LibraryElements::class.java, LibraryElements.JAR),
           )
           attribute(
             Bundling.BUNDLING_ATTRIBUTE,
-            project.objects.named(Bundling::class.java, Bundling.SHADOWED)
+            project.objects.named(Bundling::class.java, Bundling.SHADOWED),
           )
         }
         outgoing.artifact(shadowJar)

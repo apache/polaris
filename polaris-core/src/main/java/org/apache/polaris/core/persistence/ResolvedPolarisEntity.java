@@ -19,11 +19,11 @@
 package org.apache.polaris.core.persistence;
 
 import com.google.common.collect.ImmutableList;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
-import org.jetbrains.annotations.NotNull;
 
 public class ResolvedPolarisEntity {
   private final PolarisEntity entity;
@@ -48,7 +48,7 @@ public class ResolvedPolarisEntity {
     this.grantRecordsAsSecurable = grantRecordsAsSecurable;
   }
 
-  public ResolvedPolarisEntity(@NotNull EntityCacheEntry cacheEntry) {
+  public ResolvedPolarisEntity(@Nonnull EntityCacheEntry cacheEntry) {
     this.entity = PolarisEntity.of(cacheEntry.getEntity());
     this.grantRecordsAsGrantee = ImmutableList.copyOf(cacheEntry.getGrantRecordsAsGrantee());
     this.grantRecordsAsSecurable = ImmutableList.copyOf(cacheEntry.getGrantRecordsAsSecurable());

@@ -20,6 +20,7 @@ package org.apache.polaris.core.persistence.resolver;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,13 +30,13 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
@@ -53,8 +54,9 @@ import org.slf4j.LoggerFactory;
 public class PolarisResolutionManifest implements PolarisResolutionManifestCatalogView {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisResolutionManifest.class);
 
+  private final PolarisMetaStoreSession metaStoreSession;
   private final PolarisEntityManager entityManager;
-  private final CallContext callContext;
+  private final SecurityContext securityContext;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final String catalogName;
   private final Resolver primaryResolver;
@@ -79,17 +81,26 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
   private ResolverStatus primaryResolverStatus = null;
 
   public PolarisResolutionManifest(
-      CallContext callContext,
+      PolarisMetaStoreSession metaStoreSession,
+      PolarisDiagnostics diagnostics,
       PolarisEntityManager entityManager,
-      AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      SecurityContext securityContext,
       String catalogName) {
+    this.metaStoreSession = metaStoreSession;
+    this.diagnostics = diagnostics;
     this.entityManager = entityManager;
-    this.callContext = callContext;
-    this.authenticatedPrincipal = authenticatedPrincipal;
     this.catalogName = catalogName;
     this.primaryResolver =
-        entityManager.prepareResolver(callContext, authenticatedPrincipal, catalogName);
-    this.diagnostics = callContext.getPolarisCallContext().getDiagServices();
+        entityManager.prepareResolver(metaStoreSession, securityContext, catalogName);
+    this.diagnostics.checkNotNull(securityContext, "null_security_context_for_resolution_manifest");
+    this.securityContext = securityContext;
+    diagnostics.check(
+        securityContext.getUserPrincipal() instanceof AuthenticatedPolarisPrincipal,
+        "invalid_principal_type_for_resolution_manifest",
+        "principal={}",
+        securityContext.getUserPrincipal());
+    this.authenticatedPrincipal =
+        (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
 
     // TODO: Make the rootContainer lookup no longer optional in the persistence store.
     // For now, we'll try to resolve the rootContainer as "optional", and only if we fail to find
@@ -193,7 +204,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
 
     // Run a single-use Resolver for this path.
     Resolver passthroughResolver =
-        entityManager.prepareResolver(callContext, authenticatedPrincipal, catalogName);
+        entityManager.prepareResolver(metaStoreSession, securityContext, catalogName);
     passthroughResolver.addPath(requestedPath);
     ResolverStatus status = passthroughResolver.resolveAll();
 

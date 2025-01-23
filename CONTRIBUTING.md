@@ -38,8 +38,12 @@ When filing an [issue](https://github.com/apache/polaris/issues), make sure to a
 4. What did you expect to see?
 5. What did you see instead?
 
-Troubleshooting questions should be posted on the [public chat](https://polaris-catalog.zulipchat.com/) (no invite needed) or on [dev mailing list](mailto:dev@polaris.apache.org) (you can [subscribe](mailto:dev-subscribe@polaris.apache.org)) instead of the issue tracker. Maintainers and community members will answer your questions there or ask you to file an issue if you’ve encountered a bug. 
+Troubleshooting questions should be posted on: 
+* [Slack](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw)
+* [Zulip](https://polaris-catalog.zulipchat.com/)
+* [dev mailing list](mailto:dev@polaris.apache.org) (you can [subscribe](mailto:dev-subscribe@polaris.apache.org)) instead of the issue tracker. 
 
+Maintainers and community members will answer your questions there or ask you to file an issue if you’ve encountered a bug.
 
 ### How to suggest a feature or enhancement
 

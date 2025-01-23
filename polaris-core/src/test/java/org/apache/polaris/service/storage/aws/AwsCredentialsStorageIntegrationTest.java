@@ -20,16 +20,18 @@ package org.apache.polaris.service.storage.aws;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import jakarta.annotation.Nonnull;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Set;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.assertj.core.api.InstanceOfAssertFactories;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -59,6 +61,8 @@ class AwsCredentialsStorageIntegrationTest {
           .build();
   public static final String AWS_PARTITION = "aws";
 
+  private static final RealmId REALM_CONTEXT = RealmId.newRealmId("realm");
+
   @Test
   public void testGetSubscopedCreds() {
     StsClient stsClient = Mockito.mock(StsClient.class);
@@ -76,14 +80,16 @@ class AwsCredentialsStorageIntegrationTest {
             });
     String warehouseDir = "s3://bucket/path/to/warehouse";
     EnumMap<PolarisCredentialProperty, String> credentials =
-        new AwsCredentialsStorageIntegration(stsClient)
+        new AwsCredentialsStorageIntegration(new PolarisConfigurationStore() {}, stsClient)
             .getSubscopedCreds(
+                REALM_CONTEXT,
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     List.of(warehouseDir),
                     roleARN,
-                    externalId),
+                    externalId,
+                    null),
                 true,
                 Set.of(warehouseDir + "/namespace/table"),
                 Set.of(warehouseDir + "/namespace/table"));
@@ -213,11 +219,16 @@ class AwsCredentialsStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
     EnumMap<PolarisCredentialProperty, String> credentials =
-        new AwsCredentialsStorageIntegration(stsClient)
+        new AwsCredentialsStorageIntegration(new PolarisConfigurationStore() {}, stsClient)
             .getSubscopedCreds(
+                REALM_CONTEXT,
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
-                    storageType, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId),
+                    storageType,
+                    List.of(s3Path(bucket, warehouseKeyPrefix)),
+                    roleARN,
+                    externalId,
+                    "us-east-2"),
                 true,
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)));
@@ -303,15 +314,17 @@ class AwsCredentialsStorageIntegrationTest {
     PolarisStorageConfigurationInfo.StorageType storageType =
         PolarisStorageConfigurationInfo.StorageType.S3;
     EnumMap<PolarisCredentialProperty, String> credentials =
-        new AwsCredentialsStorageIntegration(stsClient)
+        new AwsCredentialsStorageIntegration(new PolarisConfigurationStore() {}, stsClient)
             .getSubscopedCreds(
+                REALM_CONTEXT,
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
                     roleARN,
-                    externalId),
-                false, /* allowList = false*/
+                    externalId,
+                    "us-east-2"), /* allowList = false*/
+                false,
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of(s3Path(bucket, firstPath)));
     assertThat(credentials)
@@ -394,12 +407,17 @@ class AwsCredentialsStorageIntegrationTest {
     PolarisStorageConfigurationInfo.StorageType storageType =
         PolarisStorageConfigurationInfo.StorageType.S3;
     EnumMap<PolarisCredentialProperty, String> credentials =
-        new AwsCredentialsStorageIntegration(stsClient)
+        new AwsCredentialsStorageIntegration(new PolarisConfigurationStore() {}, stsClient)
             .getSubscopedCreds(
+                REALM_CONTEXT,
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
-                    storageType, List.of(s3Path(bucket, warehouseKeyPrefix)), roleARN, externalId),
-                true, /* allowList = true */
+                    storageType,
+                    List.of(s3Path(bucket, warehouseKeyPrefix)),
+                    roleARN,
+                    externalId,
+                    "us-east-2"), /* allowList = true */
+                true,
                 Set.of(s3Path(bucket, firstPath), s3Path(bucket, secondPath)),
                 Set.of());
     assertThat(credentials)
@@ -452,15 +470,17 @@ class AwsCredentialsStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
     EnumMap<PolarisCredentialProperty, String> credentials =
-        new AwsCredentialsStorageIntegration(stsClient)
+        new AwsCredentialsStorageIntegration(new PolarisConfigurationStore() {}, stsClient)
             .getSubscopedCreds(
+                REALM_CONTEXT,
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     List.of(s3Path(bucket, warehouseKeyPrefix)),
                     roleARN,
-                    externalId),
-                true, /* allowList = true */
+                    externalId,
+                    "us-east-2"), /* allowList = true */
+                true,
                 Set.of(),
                 Set.of());
     assertThat(credentials)
@@ -470,7 +490,68 @@ class AwsCredentialsStorageIntegrationTest {
         .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey");
   }
 
-  private static @NotNull String s3Arn(String partition, String bucket, String keyPrefix) {
+  @Test
+  public void testClientRegion() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+    String clientRegion = "test-region";
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              return ASSUME_ROLE_RESPONSE;
+            });
+    EnumMap<PolarisCredentialProperty, String> credentials =
+        new AwsCredentialsStorageIntegration(new PolarisConfigurationStore() {}, stsClient)
+            .getSubscopedCreds(
+                REALM_CONTEXT,
+                Mockito.mock(PolarisDiagnostics.class),
+                new AwsStorageConfigurationInfo(
+                    PolarisStorageConfigurationInfo.StorageType.S3,
+                    List.of(s3Path(bucket, warehouseKeyPrefix)),
+                    roleARN,
+                    externalId,
+                    clientRegion), /* allowList = true */
+                true,
+                Set.of(),
+                Set.of());
+    assertThat(credentials)
+        .isNotEmpty()
+        .containsEntry(PolarisCredentialProperty.CLIENT_REGION, clientRegion);
+  }
+
+  @Test
+  public void testNoClientRegion() {
+    StsClient stsClient = Mockito.mock(StsClient.class);
+    String roleARN = "arn:aws:iam::012345678901:role/jdoe";
+    String externalId = "externalId";
+    String bucket = "bucket";
+    String warehouseKeyPrefix = "path/to/warehouse";
+    Mockito.when(stsClient.assumeRole(Mockito.isA(AssumeRoleRequest.class)))
+        .thenAnswer(
+            invocation -> {
+              return ASSUME_ROLE_RESPONSE;
+            });
+    EnumMap<PolarisCredentialProperty, String> credentials =
+        new AwsCredentialsStorageIntegration(new PolarisConfigurationStore() {}, stsClient)
+            .getSubscopedCreds(
+                REALM_CONTEXT,
+                Mockito.mock(PolarisDiagnostics.class),
+                new AwsStorageConfigurationInfo(
+                    PolarisStorageConfigurationInfo.StorageType.S3,
+                    List.of(s3Path(bucket, warehouseKeyPrefix)),
+                    roleARN,
+                    externalId,
+                    null), /* allowList = true */
+                true,
+                Set.of(),
+                Set.of());
+    assertThat(credentials).isNotEmpty().doesNotContainKey(PolarisCredentialProperty.CLIENT_REGION);
+  }
+
+  private static @Nonnull String s3Arn(String partition, String bucket, String keyPrefix) {
     String bucketArn = "arn:" + partition + ":s3:::" + bucket;
     if (keyPrefix == null) {
       return bucketArn;
@@ -478,7 +559,7 @@ class AwsCredentialsStorageIntegrationTest {
     return bucketArn + "/" + keyPrefix + "/*";
   }
 
-  private static @NotNull String s3Path(String bucket, String keyPrefix) {
+  private static @Nonnull String s3Path(String bucket, String keyPrefix) {
     return "s3://" + bucket + "/" + keyPrefix;
   }
 }

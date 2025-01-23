@@ -19,7 +19,7 @@
 
 package publishing
 
-import com.github.jengelman.gradle.plugins.shadow.ShadowExtension
+import com.github.jengelman.gradle.plugins.shadow.ShadowPlugin
 import javax.inject.Inject
 import org.gradle.api.*
 import org.gradle.api.component.SoftwareComponentFactory
@@ -27,6 +27,8 @@ import org.gradle.api.publish.PublishingExtension
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.publish.maven.plugins.MavenPublishPlugin
 import org.gradle.api.publish.tasks.GenerateModuleMetadata
+import org.gradle.api.tasks.SourceSetContainer
+import org.gradle.api.tasks.javadoc.Javadoc
 import org.gradle.jvm.tasks.Jar
 import org.gradle.kotlin.dsl.*
 import org.gradle.plugins.signing.SigningExtension
@@ -124,7 +126,7 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
               afterEvaluate {
                 // This MUST happen in an 'afterEvaluate' to ensure that the Shadow*Plugin has
                 // been applied.
-                if (project.extensions.findByType(ShadowExtension::class.java) != null) {
+                if (project.plugins.hasPlugin(ShadowPlugin::class.java)) {
                   configureShadowPublishing(project, mavenPublication, softwareComponentFactory)
                 } else {
                   from(components.firstOrNull { c -> c.name == "javaPlatform" || c.name == "java" })
@@ -132,9 +134,27 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
 
                 suppressPomMetadataWarningsFor("testFixturesApiElements")
                 suppressPomMetadataWarningsFor("testFixturesRuntimeElements")
+              }
 
-                mavenPublication.groupId = "$group"
-                mavenPublication.version = project.version.toString()
+              if (
+                plugins.hasPlugin("java-test-fixtures") &&
+                  project.layout.projectDirectory.dir("src/testFixtures").asFile.exists()
+              ) {
+                val testFixturesSourcesJar by
+                  tasks.registering(org.gradle.api.tasks.bundling.Jar::class) {
+                    val sourceSets: SourceSetContainer by project
+                    from(sourceSets.named("testFixtures").get().allSource)
+                    archiveClassifier.set("test-fixtures-sources")
+                  }
+                tasks.named<Javadoc>("testFixturesJavadoc") { isFailOnError = false }
+                val testFixturesJavadocJar by
+                  tasks.registering(org.gradle.api.tasks.bundling.Jar::class) {
+                    from(tasks.named("testFixturesJavadoc"))
+                    archiveClassifier.set("test-fixtures-javadoc")
+                  }
+
+                artifact(testFixturesSourcesJar)
+                artifact(testFixturesJavadocJar)
               }
 
               tasks.named("generatePomFileForMavenPublication").configure {

@@ -898,6 +898,10 @@ components:
           type: string
           description: the aws user arn used to assume the aws role
           example: "arn:aws:iam::123456789001:user/abc1-b-self1234"
+        region:
+          type: string
+          description: the aws region where data is stored
+          example: "us-east-2"
       required:
         - roleArn
 

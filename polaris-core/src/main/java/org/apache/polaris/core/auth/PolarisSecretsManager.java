@@ -20,29 +20,29 @@ package org.apache.polaris.core.auth;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import org.apache.polaris.core.PolarisCallContext;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseResult;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 
 /** Manages secrets for Polaris principals. */
 public interface PolarisSecretsManager {
   /**
    * Load the principal secrets given the client_id.
    *
-   * @param callCtx call context
+   * @param session the metastore session
    * @param clientId principal client id
    * @return the secrets associated to that principal, including the entity id of the principal
    */
-  @NotNull
+  @Nonnull
   PrincipalSecretsResult loadPrincipalSecrets(
-      @NotNull PolarisCallContext callCtx, @NotNull String clientId);
+      @Nonnull PolarisMetaStoreSession session, @Nonnull String clientId);
 
   /**
    * Rotate secrets
    *
-   * @param callCtx call context
+   * @param session the metastore session
    * @param clientId principal client id
    * @param principalId id of the principal
    * @param reset true if the principal's secrets should be disabled and replaced with a one-time
@@ -51,13 +51,13 @@ public interface PolarisSecretsManager {
    * @param oldSecretHash main secret hash for the principal
    * @return the secrets associated to that principal amd the id of the principal
    */
-  @NotNull
+  @Nonnull
   PrincipalSecretsResult rotatePrincipalSecrets(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull String clientId,
+      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull String clientId,
       long principalId,
       boolean reset,
-      @NotNull String oldSecretHash);
+      @Nonnull String oldSecretHash);
 
   /** the result of load/rotate principal secrets */
   class PrincipalSecretsResult extends BaseResult {
@@ -72,7 +72,7 @@ public interface PolarisSecretsManager {
      * @param extraInformation extra information
      */
     public PrincipalSecretsResult(
-        @NotNull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
+        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.principalSecrets = null;
     }
@@ -82,16 +82,16 @@ public interface PolarisSecretsManager {
      *
      * @param principalSecrets and associated secret information
      */
-    public PrincipalSecretsResult(@NotNull PolarisPrincipalSecrets principalSecrets) {
+    public PrincipalSecretsResult(@Nonnull PolarisPrincipalSecrets principalSecrets) {
       super(BaseResult.ReturnStatus.SUCCESS);
       this.principalSecrets = principalSecrets;
     }
 
     @JsonCreator
     private PrincipalSecretsResult(
-        @JsonProperty("returnStatus") @NotNull BaseResult.ReturnStatus returnStatus,
+        @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
         @JsonProperty("extraInformation") @Nullable String extraInformation,
-        @JsonProperty("principalSecrets") @NotNull PolarisPrincipalSecrets principalSecrets) {
+        @JsonProperty("principalSecrets") @Nonnull PolarisPrincipalSecrets principalSecrets) {
       super(returnStatus, extraInformation);
       this.principalSecrets = principalSecrets;
     }

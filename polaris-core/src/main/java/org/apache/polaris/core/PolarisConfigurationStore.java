@@ -19,11 +19,12 @@
 package org.apache.polaris.core;
 
 import com.google.common.base.Preconditions;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * Dynamic configuration store used to retrieve runtime parameters, which may vary by realm or by
@@ -33,12 +34,12 @@ public interface PolarisConfigurationStore {
   /**
    * Retrieve the current value for a configuration key. May be null if not set.
    *
-   * @param ctx the current call context
+   * @param <T> the type of the configuration value
+   * @param realmId the realm context to check for overrides; may be null.
    * @param configName the name of the configuration key to check
    * @return the current value set for the configuration key or null if not set
-   * @param <T> the type of the configuration value
    */
-  default <T> @Nullable T getConfiguration(PolarisCallContext ctx, String configName) {
+  default <T> @Nullable T getConfiguration(@Nullable RealmId realmId, String configName) {
     return null;
   }
 
@@ -46,16 +47,16 @@ public interface PolarisConfigurationStore {
    * Retrieve the current value for a configuration key. If not set, return the non-null default
    * value.
    *
-   * @param ctx the current call context
+   * @param <T> the type of the configuration value
+   * @param realmId the realm context to check for overrides; may be null.
    * @param configName the name of the configuration key to check
    * @param defaultValue the default value if the configuration key has no value
    * @return the current value or the supplied default value
-   * @param <T> the type of the configuration value
    */
-  default <T> @NotNull T getConfiguration(
-      PolarisCallContext ctx, String configName, @NotNull T defaultValue) {
+  default <T> @Nonnull T getConfiguration(
+      @Nullable RealmId realmId, String configName, @Nonnull T defaultValue) {
     Preconditions.checkNotNull(defaultValue, "Cannot pass null as a default value");
-    T configValue = getConfiguration(ctx, configName);
+    T configValue = getConfiguration(realmId, configName);
     return configValue != null ? configValue : defaultValue;
   }
 
@@ -63,7 +64,7 @@ public interface PolarisConfigurationStore {
    * In some cases, we may extract a value that doesn't match the expected type for a config. This
    * method can be used to attempt to force-cast it using `String.valueOf`
    */
-  private <T> @NotNull T tryCast(PolarisConfiguration<T> config, Object value) {
+  private <T> @Nonnull T tryCast(PolarisConfiguration<T> config, Object value) {
     if (value == null) {
       return config.defaultValue;
     }
@@ -86,13 +87,14 @@ public interface PolarisConfigurationStore {
   /**
    * Retrieve the current value for a configuration.
    *
-   * @param ctx the current call context
+   * @param <T> the type of the configuration value
+   * @param realmId the realm context to check for overrides; may be null.
    * @param config the configuration to load
    * @return the current value set for the configuration key or null if not set
-   * @param <T> the type of the configuration value
    */
-  default <T> @NotNull T getConfiguration(PolarisCallContext ctx, PolarisConfiguration<T> config) {
-    T result = getConfiguration(ctx, config.key, config.defaultValue);
+  default <T> @Nonnull T getConfiguration(
+      @Nullable RealmId realmId, PolarisConfiguration<T> config) {
+    T result = getConfiguration(realmId, config.key, config.defaultValue);
     return tryCast(config, result);
   }
 
@@ -100,21 +102,21 @@ public interface PolarisConfigurationStore {
    * Retrieve the current value for a configuration, overriding with a catalog config if it is
    * present.
    *
-   * @param ctx the current call context
+   * @param <T> the type of the configuration value
+   * @param realmId the realm context to check for overrides; may be null.
    * @param catalogEntity the catalog to check for an override
    * @param config the configuration to load
    * @return the current value set for the configuration key or null if not set
-   * @param <T> the type of the configuration value
    */
-  default <T> @NotNull T getConfiguration(
-      PolarisCallContext ctx,
-      @NotNull CatalogEntity catalogEntity,
+  default <T> @Nonnull T getConfiguration(
+      @Nullable RealmId realmId,
+      @Nonnull CatalogEntity catalogEntity,
       PolarisConfiguration<T> config) {
     if (config.hasCatalogConfig()
         && catalogEntity.getPropertiesAsMap().containsKey(config.catalogConfig())) {
       return tryCast(config, catalogEntity.getPropertiesAsMap().get(config.catalogConfig()));
     } else {
-      return getConfiguration(ctx, config);
+      return getConfiguration(realmId, config);
     }
   }
 }

@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.core.storage;
 
-import org.jetbrains.annotations.Nullable;
+import jakarta.annotation.Nullable;
 
 /**
  * Factory interface that knows how to construct a {@link PolarisStorageIntegration} given a {@link
@@ -26,7 +26,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public interface PolarisStorageIntegrationProvider {
   @SuppressWarnings("unchecked")
-  <T extends PolarisStorageConfigurationInfo> @Nullable
-      PolarisStorageIntegration<T> getStorageIntegrationForConfig(
+  <T extends PolarisStorageConfigurationInfo>
+      @Nullable PolarisStorageIntegration<T> getStorageIntegrationForConfig(
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
 }

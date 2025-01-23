@@ -44,6 +44,19 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
       isDownloadJavadoc = false // was 'true', but didn't work
       isDownloadSources = false // was 'true', but didn't work
       inheritOutputDirs = true
+
+      excludeDirs =
+        excludeDirs +
+          setOf(
+            projectDir.resolve("build-logic/.kotlin"),
+            projectDir.resolve("integration-tests/build"),
+            projectDir.resolve("site/resources/_gen"),
+            projectDir.resolve("site/build"),
+            projectDir.resolve("logs"),
+            projectDir.resolve("polaris-venv"),
+            projectDir.resolve(".idea"),
+          ) +
+          allprojects.map { prj -> prj.layout.buildDirectory.asFile.get() }
     }
 
     project.settings {
@@ -63,20 +76,5 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
 }
 
 extensions.getByType<PublishingHelperExtension>().apply {
-  asfProjectName = "polaris"
-
   mailingLists.addAll("dev", "issues", "commits")
-
-  podlingPpmcAsfIds.addAll(
-    "anoop",
-    "ashvin",
-    "jackye",
-    "jbonofre",
-    "russellspitzer",
-    "snazy",
-    "takidau",
-    "vvcephei"
-  )
-  podlingMentorsAsfIds.addAll("bdelacretaz", "blue", "holden", "jbonofre", "yao")
-  podlingCommitterAsfIds.addAll("adutra", "annafil", "emaynard", "collado", "yufei", "ebyhr")
 }

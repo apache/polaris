@@ -21,7 +21,6 @@ package org.apache.polaris.core.persistence;
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.bootstrap;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Map;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.junit.jupiter.api.Test;
 
@@ -29,7 +28,7 @@ class PrincipalSecretsGeneratorTest {
 
   @Test
   void testRandomSecrets() {
-    PolarisPrincipalSecrets s = bootstrap("test", (name) -> null).produceSecrets("name1", 123);
+    PolarisPrincipalSecrets s = bootstrap("test", null).produceSecrets("name1", 123);
     assertThat(s).isNotNull();
     assertThat(s.getPrincipalId()).isEqualTo(123);
     assertThat(s.getPrincipalClientId()).isNotNull();
@@ -40,15 +39,8 @@ class PrincipalSecretsGeneratorTest {
   @Test
   void testSecretOverride() {
     PrincipalSecretsGenerator gen =
-        bootstrap(
-            "test-Realm",
-            Map.of(
-                    "POLARIS_BOOTSTRAP_TEST-REALM_USER1_CLIENT_ID",
-                    "client1",
-                    "POLARIS_BOOTSTRAP_TEST-REALM_USER1_CLIENT_SECRET",
-                    "sec2")
-                ::get);
-    PolarisPrincipalSecrets s = gen.produceSecrets("user1", 123);
+        bootstrap("test-Realm", PolarisCredentialsBootstrap.fromString("test-Realm,client1,sec2"));
+    PolarisPrincipalSecrets s = gen.produceSecrets("root", 123);
     assertThat(s).isNotNull();
     assertThat(s.getPrincipalId()).isEqualTo(123);
     assertThat(s.getPrincipalClientId()).isEqualTo("client1");
