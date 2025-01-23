@@ -69,6 +69,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
@@ -128,18 +129,20 @@ public class IcebergCatalogAdapter
   private final PolarisAuthorizer polarisAuthorizer;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
+  private final PolarisEventListener polarisEventListener;
 
   @Inject
   public IcebergCatalogAdapter(
-      RealmId realmId,
-      PolarisEntityManager entityManager,
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisMetaStoreSession session,
-      PolarisConfigurationStore configurationStore,
-      PolarisDiagnostics diagnostics,
-      PolarisAuthorizer polarisAuthorizer,
-      TaskExecutor taskExecutor,
-      FileIOFactory fileIOFactory) {
+          RealmId realmId,
+          PolarisEntityManager entityManager,
+          PolarisMetaStoreManager metaStoreManager,
+          PolarisMetaStoreSession session,
+          PolarisConfigurationStore configurationStore,
+          PolarisDiagnostics diagnostics,
+          PolarisAuthorizer polarisAuthorizer,
+          TaskExecutor taskExecutor,
+          FileIOFactory fileIOFactory,
+          PolarisEventListener polarisEventListener) {
     this.realmId = realmId;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
@@ -149,6 +152,7 @@ public class IcebergCatalogAdapter
     this.polarisAuthorizer = polarisAuthorizer;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
+    this.polarisEventListener = polarisEventListener;
   }
 
   /**
@@ -189,7 +193,8 @@ public class IcebergCatalogAdapter
         catalogName,
         polarisAuthorizer,
         taskExecutor,
-        fileIOFactory);
+        fileIOFactory,
+            polarisEventListener);
   }
 
   @Override

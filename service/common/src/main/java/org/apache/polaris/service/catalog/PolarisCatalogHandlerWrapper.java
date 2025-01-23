@@ -97,6 +97,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
@@ -132,6 +133,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   private final PolarisAuthorizer authorizer;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
+  private final PolarisEventListener polarisEventListener;
 
   // Initialized in the authorize methods.
   private PolarisResolutionManifest resolutionManifest = null;
@@ -143,17 +145,18 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   private ViewCatalog viewCatalog = null;
 
   public PolarisCatalogHandlerWrapper(
-      RealmId realmId,
-      PolarisMetaStoreSession session,
-      PolarisConfigurationStore configurationStore,
-      PolarisDiagnostics diagnostics,
-      PolarisEntityManager entityManager,
-      PolarisMetaStoreManager metaStoreManager,
-      SecurityContext securityContext,
-      String catalogName,
-      PolarisAuthorizer authorizer,
-      TaskExecutor taskExecutor,
-      FileIOFactory fileIOFactory) {
+          RealmId realmId,
+          PolarisMetaStoreSession session,
+          PolarisConfigurationStore configurationStore,
+          PolarisDiagnostics diagnostics,
+          PolarisEntityManager entityManager,
+          PolarisMetaStoreManager metaStoreManager,
+          SecurityContext securityContext,
+          String catalogName,
+          PolarisAuthorizer authorizer,
+          TaskExecutor taskExecutor,
+          FileIOFactory fileIOFactory,
+          PolarisEventListener polarisEventListener) {
     this.realmId = realmId;
     this.session = session;
     this.entityManager = entityManager;
@@ -173,6 +176,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     this.authorizer = authorizer;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
+    this.polarisEventListener = polarisEventListener;
   }
 
   /**
@@ -244,7 +248,8 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
             resolutionManifest,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+                polarisEventListener);
 
     // TODO: The initialize properties might need to take more from the CatalogEntity.
     catalogInstance.initialize(catalogName, catalogProperties);

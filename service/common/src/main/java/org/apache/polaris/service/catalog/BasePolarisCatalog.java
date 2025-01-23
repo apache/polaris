@@ -104,6 +104,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -163,6 +164,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private final FileIOFactory fileIOFactory;
   private final long catalogId;
   private final String catalogName;
+  private final PolarisEventListener polarisEventListener;
 
   private String ioImplClassName;
   private FileIO catalogFileIO;
@@ -189,7 +191,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       PolarisResolutionManifestCatalogView resolvedEntityView,
       SecurityContext securityContext,
       TaskExecutor taskExecutor,
-      FileIOFactory fileIOFactory) {
+      FileIOFactory fileIOFactory,
+      PolarisEventListener polarisEventListener) {
     this.realmId = realmId;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
@@ -206,6 +209,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     this.catalogId = catalogEntity.getId();
     this.catalogName = catalogEntity.getName();
+    this.polarisEventListener = polarisEventListener;
   }
 
   @Override
@@ -1256,6 +1260,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     @Override
     public void doCommit(TableMetadata base, TableMetadata metadata) {
+      polarisEventListener.onBeforeTableCommit(base, metadata);
+
       LOGGER.debug(
           "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
