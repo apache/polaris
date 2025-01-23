@@ -66,10 +66,6 @@ paths:
     $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces'
   /v1/{prefix}/namespaces/{namespace}:
     $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}'
-  /v1/{prefix}/namespaces/{namespace}/policies:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies'
-  /v1/{prefix}/namespaces/{namespace}/policies/{policy}:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policy}'
   /v1/{prefix}/namespaces/{namespace}/properties:
     $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1properties'
   /v1/{prefix}/namespaces/{namespace}/register:
@@ -99,17 +95,13 @@ paths:
   /v1/oauth/tokens:
     $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1oauth~1tokens'
 
-# components:
-#   examples:
-#     $ref: './rest-catalog-open-api.yaml#/components/examples'
-#   schemas:
-#     $ref: './rest-catalog-open-api.yaml#/components/schemas'
-#   responses:
-#     $ref: './rest-catalog-open-api.yaml#/components/responses'
-#   parameters:
-#     $ref: './rest-catalog-open-api.yaml#/components/parameters'
-#   securitySchemes:
-#     $ref: './rest-catalog-open-api.yaml#/components/securitySchemes'
+  # policy management apis
+  /v1/{prefix}/namespaces/{namespace}/policies:
+    $ref: './polaris-api/policy-management-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies'
+  /v1/{prefix}/namespaces/{namespace}/policies/{policy}:
+    $ref: './polaris-api/policy-management-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policy}'
+  /v1/{prefix}/namespaces/{namespace}/policies/{policy}/mappings:
+    $ref: './polaris-api/policy-management-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policy}~1mappings'
 
 
 components:
