@@ -17,8 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: Command Line Interface
-title: Apache Polaris (Incubating) CLI
+title: Command Line Interface
 type: docs
 weight: 300
 ---

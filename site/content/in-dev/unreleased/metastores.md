@@ -18,7 +18,6 @@
 # under the License.
 #
 title: Metastores
-linkTitle: Metastores
 type: docs
 weight: 700
 ---

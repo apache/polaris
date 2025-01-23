@@ -17,7 +17,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: Admin Tool
 title: Admin Tool
 type: docs
 weight: 300
