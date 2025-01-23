@@ -38,8 +38,11 @@ refer to the Configuration Reference page.
 Polaris authentication requires specifying a token broker factory type. Two implementations are 
 supported out of the box:
 
-- `rsa-key-pair` uses a pair of public and private keys;
-- `symmetric-key` uses a shared secret.
+- [rsa-key-pair] uses a pair of public and private keys;
+- [symmetric-key] uses a shared secret.
+
+[rsa-key-pair]: https://github.com/apache/polaris/blob/390f1fa57bb1af24a21aa95fdbff49a46e31add7/service/common/src/main/java/org/apache/polaris/service/auth/JWTRSAKeyPairFactory.java
+[symmetric-key]: https://github.com/apache/polaris/blob/390f1fa57bb1af24a21aa95fdbff49a46e31add7/service/common/src/main/java/org/apache/polaris/service/auth/JWTSymmetricKeyFactory.java
 
 By default, Polaris uses `rsa-key-pair`, with randomly generated keys. 
 
@@ -77,6 +80,9 @@ property:
 ```properties
 polaris.authentication.token-broker.max-token-generation=PT1H
 ```
+
+Typically, in Kubernetes, you would define the keys as a `Secret` and mount them as files in the
+container.
 
 ### Realm Id Resolver
 
