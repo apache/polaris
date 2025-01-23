@@ -30,48 +30,34 @@ It is recommended to clean the `regtests/output` directory before running tests.
 running:
 
 ```shell
-rm -rf ./regtests/output && \
-  mkdir -p ./regtests/output && \
-  chmod -R 777 ./regtests/output
+rm -rf ./regtests/output && mkdir -p ./regtests/output && chmod -R 777 ./regtests/output
 ```
 
 ## Run Tests With Docker Compose
 
-Tests can be run with docker-compose using the provided `./regtests/docker-compose.yml` file.
-
-In this setup, a Polaris container will be started using the `apache/polaris:latest` image. If the
-`apache/polaris:latest` image is not available locally, it will be pulled from the Polaris Docker
-Hub repository.
-
-_This means that, by default, the tests will be run against the latest published version of
-Polaris._ If you want to run the tests against a locally-built Polaris image, for example to
-validate changes before pushing to GitHub, _you must build the image first_. This can be done by
-running the following command from the root of the Polaris project:
+Tests can be run with docker-compose using the provided `./regtests/docker-compose.yml` file, as
+follows:
 
 ```shell
-./gradlew clean assemble -Dquarkus.container-image.build=true
+./gradlew :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true
+docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
 ```
 
-Important: if you are also using Minikube, for example to test the Helm chart, you may need to
+In this setup, a Polaris container will be started in a docker-compose group, using the image
+previously built by the Gradle build. Then another container, including a Spark SQL shell, will run
+the tests. The exit code will be the same as the exit code of the Spark container.
+
+This is the flow used in CI and should be done locally before pushing to GitHub to ensure that no
+environmental factors contribute to the outcome of the tests.
+
+**Important**: if you are also using minikube, for example to test the Helm chart, you may need to
 _unset_ the Docker environment that was pointing to the Minikube Docker daemon, otherwise the image
 will be built by the Minikube Docker daemon and will not be available to the local Docker daemon.
-This can be done by running, _before_ building the image:
+This can be done by running, _before_ building the image and running the tests:
 
 ```shell
 eval $(minikube -p minikube docker-env --unset)
 ```
-
-Finally, run the tests from the root of the Polaris project:
-
-```shell
-docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
-```
-
-This will start the Polaris container, then build a Docker image for the Spark container that will
-run the tests. The exit code will be the same as the exit code of the Spark container.
-
-This is the flow used in CI and should be done locally before pushing to GitHub to ensure that no
-environmental factors contribute to the outcome of the tests.
 
 ## Run Tests Locally
 
@@ -97,7 +83,7 @@ Running the test harness will automatically run the idempotent setup script. Fro
 project, just run:
 
 ```shell
-POLARIS_HOST=localhost ./regtests/run.sh
+env POLARIS_HOST=localhost ./regtests/run.sh
 ```
 
 To run the tests in verbose mode, with test stdout printing to console, set the `VERBOSE`
@@ -149,6 +135,7 @@ For example, if the test `t_hello_world` fails, the script to compare the actual
 will be located at `output/t_hello_world/hello_world.sh.fixdiffs.sh`:
 
 ```
+Tue Apr 23 06:32:23 UTC 2024: Running all tests
 Tue Apr 23 06:32:23 UTC 2024: Starting test t_hello_world:hello_world.sh
 Tue Apr 23 06:32:23 UTC 2024: Test run concluded for t_hello_world:hello_world.sh
 Tue Apr 23 06:32:23 UTC 2024: Test FAILED: t_hello_world:hello_world.sh
@@ -217,7 +204,7 @@ pyenv local 3.8
 ```
 
 Once you've done that, you can run `setup.sh` to generate a python virtual environment (installed at `~/polaris-venv`)
-and download all the test dependencies into it. From here, `run.sh` will be able to execute any pytest present.
+and download all of the test dependencies into it. From here, `run.sh` will be able to execute any pytest present.
 
 To debug, setup IntelliJ to point at your virtual environment to find your test dependencies
 (see https://www.jetbrains.com/help/idea/configuring-python-sdk.html). Then run the test in your IDE.
