@@ -1541,23 +1541,24 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         .isGreaterThan(0);
 
     Assertions.assertThat(catalog.dropTable(TABLE)).as("Table deletion should succeed").isTrue();
+    TaskEntity taskEntity =
+        TaskEntity.of(
+            metaStoreManager
+                .loadTasks(metaStoreSession, "testExecutor", 1)
+                .getEntities()
+                .getFirst());
+    Map<String, String> properties = taskEntity.getInternalPropertiesAsMap();
+    properties.put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO");
+    taskEntity.setInternalPropertiesAsMap(properties);
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
             Mockito.mock(),
             createMockMetaStoreManagerFactory(),
             configurationStore,
             diagServices,
-            (task, rc) ->
-                measured.loadFileIO(
-                    realmId, "org.apache.iceberg.inmemory.InMemoryFileIO", Map.of()),
+            new TaskFileIOSupplier(measured),
             clock);
-    handler.handleTask(
-        TaskEntity.of(
-            metaStoreManager
-                .loadTasks(metaStoreSession, "testExecutor", 1)
-                .getEntities()
-                .getFirst()),
-        realmId);
+    handler.handleTask(taskEntity, realmId);
     Assertions.assertThat(measured.getNumDeletedFiles()).as("A table was deleted").isGreaterThan(0);
   }
 }

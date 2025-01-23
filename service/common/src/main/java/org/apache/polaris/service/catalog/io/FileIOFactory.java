@@ -35,19 +35,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
  */
 public interface FileIOFactory {
 
-  /**
-   * Loads a FileIO implementation for the specified realm and class name with the provided
-   * properties.
-   *
-   * <p>This method is commonly used by TaskFileIOSupplier and Tests to instantiate a FileIO object
-   * based on the provided configuration. Usually, the properties will contain the full info to
-   * instantiate a FileIO.
-   *
-   * @param realmId the identifier of the realm for which the FileIO is being loaded.
-   * @param ioImplClassName the fully qualified class name of the FileIO implementation to load.
-   * @param properties a map of configuration properties to initialize the FileIO implementation.
-   * @return an instance of the FileIO implementation configured with the specified properties.
-   */
+  /** This method is intended for use in tests only. */
   FileIO loadFileIO(
       @Nonnull RealmId realmId,
       @Nonnull String ioImplClassName,
