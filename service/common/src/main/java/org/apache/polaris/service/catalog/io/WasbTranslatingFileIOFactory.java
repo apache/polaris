@@ -20,7 +20,7 @@ package org.apache.polaris.service.catalog.io;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
-import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
 import java.util.Set;
@@ -34,7 +34,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 
 /** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
-@RequestScoped
+@ApplicationScoped
 @Identifier("wasb")
 public class WasbTranslatingFileIOFactory implements FileIOFactory {
 
