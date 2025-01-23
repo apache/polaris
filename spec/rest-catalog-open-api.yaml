@@ -1596,7 +1596,7 @@ paths:
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
   
-  /v1/{prefix}/namespaces/{namespaces}/policies:
+  /v1/{prefix}/namespaces/{namespace}/policies:
     parameters:
       - $ref: '#/components/parameters/prefix'
       - $ref: '#/components/parameters/namespace'
@@ -1630,7 +1630,7 @@ paths:
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
 
-  /v1/{prefix}/namespaces/{namespaces}/policies/{policy}:
+  /v1/{prefix}/namespaces/{namespace}/policies/{policy}:
     parameters:
       - $ref: '#/components/parameters/prefix'
       - $ref: '#/components/parameters/namespace'
@@ -1744,7 +1744,7 @@ paths:
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
 
-  /v1/{prefix}/namespaces/{namespaces}/policies/{policy}/mappings:
+  /v1/{prefix}/namespaces/{namespace}/policies/{policy}/mappings:
     parameters:
       - $ref: '#/components/parameters/prefix'
       - $ref: '#/components/parameters/namespace' 
