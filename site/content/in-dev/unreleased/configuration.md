@@ -40,28 +40,33 @@ higher priority overrides those from lower-priority sources.
 
 The sources are listed below, from highest to lowest priority:
 
-1. System properties: Properties set via the Java command line using `-Dproperty.name=value`.
-2. Environment variables.
+1. System properties: properties set via the Java command line using `-Dproperty.name=value`.
+2. Environment variables (see below for important details).
 3. Settings in `$PWD/config/application.properties` file.
 4. The `application.properties` files packaged in Polaris.
 5. Default values: hardcoded defaults within the application.
 
-When using environment variables, the environment variable is converted to a property name using a
-special naming convention; e.g. `POLARIS_REALM_CONTEXT_REALMS` would match the
-`polaris.realm-context.realms` property. The environment variable name is derived from the property
-name by replacing all `.` with `_` and converting the name to upper case. See
-[here](https://smallrye.io/smallrye-config/Main/config/environment-variables/) for more details.
+When using environment variables, there are two naming conventions:
 
-Note: Kubernetes deployments also accept environment variables in lowercase and with dashes and
-dots. For example, the following env variables are equivalent:
+1. If possible, just use the property name as the environment variable name. This works fine in most
+   cases, e.g. in Kubernetes deployments. For example, `polaris.realm-context.realms` can be 
+   included as is in a container YAML definition:
+   ```yaml
+   env:
+   - name: "polaris.realm-context.realms"
+     value: "realm1,realm2"
+   ```
 
-```yaml
-env:
-  - name: POLARIS_REALM_CONTEXT_REALMS
-    value: "realm1,realm2"
-  - name: polaris.realm-context.realms
-    value: "realm1,realm2"
-```
+2. If running from a script or shell prompt, however, stricter naming rules apply: variable names
+   can consist solely of uppercase letters, digits, and the `_` (underscore) sign. In such
+   situations, the environment variable name must be derived from the property name, by using
+   uppercase letters, and replacing all dots, dashes and quotes by underscores. For example,
+   `polaris.realm-context.realms` becomes `POLARIS_REALM_CONTEXT_REALMS`. See
+   [here](https://smallrye.io/smallrye-config/Main/config/environment-variables/) for more details.
+
+> [!IMPORTANT]
+> While convenient, uppercase-only environment variables can be problematic for complex property
+> names. In these situations, it's preferable to use system properties or a configuration file.
 
 As stated above, a configuration file can also be provided at runtime; it should be available
 (mounted) at `$PWD/config/application.properties` for Polaris server to recognize it. In Polaris
@@ -106,10 +111,11 @@ everything at its default!
 | `GC_CONTAINER_OPTIONS`           | Specify Java GC to use. The value of this variable should contain the necessary JRE command-line options to specify the required GC, which will override the default of `-XX:+UseParallelGC` (example: `-XX:+UseG1GC`).                                                                                                                                                                                                                                                                                                                |
 Here are some examples:
 
-| Example                                    | `docker run` option                                                                                                |
-|--------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| Example                                    | `docker run` option                                                                                                 |
+|--------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
 | Using another GC                           | `-e GC_CONTAINER_OPTIONS="-XX:+UseShenandoahGC"` lets Polaris use Shenandoah GC instead of the default parallel GC. |
 | Set the Java heap size to a _fixed_ amount | `-e JAVA_OPTS_APPEND="-Xms8g -Xmx8g"` lets Polaris use a Java heap of 8g.                                           | 
+| Set the maximum heap percentage            | `-e JAVA_MAX_MEM_RATIO="70"` lets Polaris use 70% percent of the available memory.                                  | 
 
 
 ## Troubleshooting Configuration Issues
