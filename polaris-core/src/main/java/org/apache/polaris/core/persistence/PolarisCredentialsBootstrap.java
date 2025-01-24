@@ -74,9 +74,8 @@ public class PolarisCredentialsBootstrap {
   public static PolarisCredentialsBootstrap fromJson(String json) {
     ObjectMapper objectMapper = new ObjectMapper();
     try {
-      List<Map<String, String>> credentialsList =
-          objectMapper.readValue(json, new TypeReference<List<Map<String, String>>>() {});
-      List<String> formattedList = new ArrayList<>();
+      List<Map<String, String>> credentialsList = objectMapper.readValue(json, new TypeReference<>() {});
+      Map<String, Map.Entry<String, String>> credentials = new HashMap<>();
       for (Map<String, String> entry : credentialsList) {
         String realm = entry.get("realm");
         String principal = entry.get("principal");
@@ -84,18 +83,20 @@ public class PolarisCredentialsBootstrap {
         String clientSecret = entry.get("clientSecret");
         if (realm == null || principal == null || clientId == null || clientSecret == null) {
           throw new IllegalArgumentException("Invalid JSON format for credentials: " + json);
-        }
-        if (!principal.equals(PolarisEntityConstants.ROOT_PRINCIPAL_NAME)) {
+        } else if (!principal.equals(PolarisEntityConstants.ROOT_PRINCIPAL_NAME)) {
           throw new IllegalArgumentException(
               String.format(
                   "Invalid principal %s. Expected %s.",
                   principal, PolarisEntityConstants.ROOT_PRINCIPAL_NAME));
+        } if (credentials.containsKey(realm)) {
+          throw new IllegalArgumentException("Duplicate realm: " + realm);
+        } else {
+          credentials.put(realm, new SimpleEntry<>(clientId, clientSecret));
         }
-        formattedList.add(String.join(",", realm, principal, clientId, clientSecret));
       }
-      return fromList(formattedList);
+      return new PolarisCredentialsBootstrap(credentials);
     } catch (Exception e) {
-      throw new IllegalArgumentException("Failed to parse JSON: " + json, e);
+      throw new IllegalArgumentException("Failed to find bootstrap credentials in: " + json, e);
     }
   }
 
