@@ -41,6 +41,8 @@ tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
   options.errorprone.disableAllWarnings = true
   options.errorprone.disableWarningsInGeneratedCode = true
+  options.errorprone.excludedPaths =
+    ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated/.*"
   options.errorprone.error(
     "DefaultCharset",
     "FallThrough",
