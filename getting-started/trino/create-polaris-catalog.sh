@@ -38,3 +38,8 @@ curl -i -X POST -H "Authorization: Bearer $PRINCIPAL_TOKEN" -H 'Accept: applicat
           }
         }
       }'
+
+# Add TABLE_WRITE_DATA to the catalog's catalog_admin role since by default it can only manage access and metadata
+curl -i -X PUT -H "Authorization: Bearer $PRINCIPAL_TOKEN" -H 'Accept: application/json' -H 'Content-Type: application/json' \
+  http://polaris:8181/api/management/v1/catalogs/polaris/catalog-roles/catalog_admin/grants \
+  -d '{"type": "catalog", "privilege": "TABLE_WRITE_DATA"}'
