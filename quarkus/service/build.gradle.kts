@@ -136,6 +136,7 @@ dependencies {
 
   // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
   intTestImplementation(platform(libs.dnsjava))
+  testFixturesImplementation(platform(libs.dnsjava))
 
   // required for QuarkusSparkIT
   intTestImplementation(enforcedPlatform(libs.scala212.lang.library))
