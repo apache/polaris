@@ -339,5 +339,5 @@ Spark will lose access to the table:
 ```
 spark.sql("SELECT * FROM quickstart_table").show(false)
 
-org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated ids '[6, 7]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION
+org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated grants via '[quickstart_catalog_role, quickstart_user_role]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION
 ```
