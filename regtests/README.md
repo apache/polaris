@@ -104,7 +104,7 @@ Simply run the specified fixdiffs file to run `meld` and fix the ref file.
 
 ## Run a spark-sql interactive shell
 
-With in-memory standalong Polaris running:
+With in-memory standalone Polaris running:
 
 ```
 ./run_spark_sql.sh
