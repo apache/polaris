@@ -204,6 +204,9 @@ tasks.withType<Javadoc>().configureEach {
   val opt = options as CoreJavadocOptions
   // don't spam log w/ "warning: no @param/@return"
   opt.addStringOption("Xdoclint:-reference", "-quiet")
+  if (plugins.hasPlugin("org.kordamp.gradle.jandex")) {
+    dependsOn("jandex")
+  }
 }
 
 tasks.register("printRuntimeClasspath").configure {
