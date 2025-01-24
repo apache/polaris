@@ -99,8 +99,7 @@ select * from db1.table1;
 
 Regression tests can be run in a local environment or in a Docker environment.
 
-To run regression tests locally, you first need to start Polaris, with default realm `POLARIS` and
-root credentials: `root:secret`, then run the tests:
+To run regression tests locally, you first need to start Polaris, then run the tests:
 
 ```shell
 ./gradlew polarisServerRun
