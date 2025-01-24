@@ -162,7 +162,7 @@ public class IcebergCatalogAdapter
     try (PolarisCatalogHandlerWrapper wrapper = newHandlerWrapper(securityContext, catalogName)) {
       return action.apply(wrapper);
     } catch (RuntimeException e) {
-      LOGGER.error("Error while operating on catalog", e);
+      LOGGER.debug("RuntimeException while operating on catalog. Propagating to caller.", e);
       throw e;
     } catch (Exception e) {
       LOGGER.error("Error while operating on catalog", e);
