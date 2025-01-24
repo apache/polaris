@@ -21,6 +21,12 @@
 
 This getting started guide provides a `docker-compose` file to set up [Trino](https://trino.io/) with Apache Polaris. Apache Polaris is configured as an Iceberg REST Catalog in Trino. 
 
+## Build Polaris Image
+Build Polaris Image while Docker is running
+```
+./gradlew :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true
+```
+
 ## Run the `docker-compose` file
 To start the `docker-compose` file, run this command from the repo's root directory:
 ```
