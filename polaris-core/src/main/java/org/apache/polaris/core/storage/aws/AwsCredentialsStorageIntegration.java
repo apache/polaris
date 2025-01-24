@@ -104,7 +104,7 @@ public class AwsCredentialsStorageIntegration
   /**
    * generate an IamPolicy from the input readLocations and writeLocations, optionally with list
    * support. Credentials will be scoped to exactly the resources provided. If read and write
-   * locations are empty, a non-empty policy will be generated that grants GetObject and (optionally
+   * locations are empty, a non-empty policy will be generated that grants GetObject and optionally
    * ListBucket privileges with no resources. This prevents us from sending an empty policy to AWS
    * and just assuming the role with full privileges.
    */
