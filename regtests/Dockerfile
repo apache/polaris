@@ -40,10 +40,11 @@ COPY ./setup.sh /home/spark/regtests/setup.sh
 COPY ./pyspark-setup.sh /home/spark/regtests/pyspark-setup.sh
 COPY ./client/python /home/spark/regtests/client/python
 COPY ./polaris-reg-test /home/spark/polaris
+COPY ./requirements.txt /tmp/
 
 RUN python3 -m venv /home/spark/polaris-venv && \
     . /home/spark/polaris-venv/bin/activate && \
-    pip install poetry==1.5.0 && \
+    pip install -r /tmp/requirements.txt && \
     deactivate \
 RUN ./setup.sh
 
