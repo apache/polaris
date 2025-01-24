@@ -151,11 +151,11 @@ Then commit the changes to the ref file.
 
 ## Run a spark-sql interactive shell
 
-With a Polaris server running in "dev" mode (see above), you can run a spark-sql interactive shell
-to test. From the root of the project:
+With a Polaris server running, you can run a spark-sql interactive shell to test. From the root of
+the project:
 
 ```shell
-POLARIS_HOST=localhost ./regtests/run_spark_sql.sh
+env POLARIS_HOST=localhost ./regtests/run_spark_sql.sh
 ```
 
 Some SQL commands that you can try:
