@@ -32,6 +32,17 @@ services:
     environment:
       POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,s3cr3t
       quarkus.otel.exporter.otlp.endpoint: http://jaeger:4317
+      # Resource attributes (added to all traces)
+      quarkus.otel.resource.attributes[0]: polaris.app=polaris-getting-started
+      quarkus.otel.resource.attributes[1]: polaris.env=dev
+      # Custom metrics (added to all requests)
+      polaris.metrics.tags.app: polaris-getting-started
+      polaris.metrics.tags.env: dev
+      # Custom logging (added to all log messages)
+      polaris.log.mdc.app: polaris-getting-started
+      polaris.log.mdc.env: dev
+      quarkus.log.console.format: "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{app},%X{env}] [%X{realmId},%X{requestId}] [%X{traceId},%X{spanId}] (%t) %s%e%n"
+      quarkus.log.file.format:    "%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{app},%X{env}] [%X{realmId},%X{requestId}] [%X{traceId},%X{spanId}] (%t) %s%e%n"
       polaris.realm-context.realms: POLARIS
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
