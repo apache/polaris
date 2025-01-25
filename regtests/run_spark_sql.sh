@@ -48,6 +48,7 @@ cd ${REGTEST_HOME}
 
 export SPARK_VERSION=spark-3.5.3
 export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3
+export SPARK_LOCAL_HOSTNAME=localhost #avoid VPN messy up driver local IP address binding
 
 ./setup.sh
 
