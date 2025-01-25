@@ -177,14 +177,14 @@ The client can be generated using two commands:
 
 ```shell
 # generate the management api client
-$ docker run --rm \
+docker run --rm \
   -v ${PWD}:/local openapitools/openapi-generator-cli generate \
   -i /local/spec/polaris-management-service.yml \
   -g python \
   -o /local/regtests/client/python --additional-properties=packageName=polaris.management --additional-properties=apiNamePrefix=polaris
 
 # generate the iceberg rest client
-$ docker run --rm \
+docker run --rm \
   -v ${PWD}:/local openapitools/openapi-generator-cli generate \
   -i /local/spec/rest-catalog-open-api.yaml \
   -g python \
