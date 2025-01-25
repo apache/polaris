@@ -61,12 +61,9 @@ Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
 - `./gradlew assemble` - To skip tests.
 - `./gradlew test` - To run unit tests and integration tests.
-- `./gradlew polarisServerRun` - To run the Polaris server locally, with profile `prod`; the server 
-  is reachable at localhost:8181.
-- `java -Dquarkus.profile=test -jar quarkus/server/build/quarkus-app/quarkus-run.jar` - To run the
-  Polaris server locally, with profile `test`. With this profile, Polaris uses the `test`
-  Authenticator and `test` TokenBroker; this configuration is suitable for running regressions
-  tests, or for connecting with Spark.
+- `./gradlew polarisServerRun` - To run the Polaris server locally; the server is reachable at 
+  localhost:8181. This is also suitable for running regression tests, or for connecting with Spark. 
+  See below for more information on regression tests.
 
 - `./regtests/run_spark_sql.sh` - To connect from Spark SQL. Here are some example commands to run in the Spark SQL shell:
 ```sql
@@ -102,16 +99,10 @@ select * from db1.table1;
 
 Regression tests can be run in a local environment or in a Docker environment.
 
-To run regression tests locally, you need to have a Polaris server running locally, with the 
-`test` Authenticator enabled. You can do this by running Polaris as below:
+To run regression tests locally, you first need to start Polaris, then run the tests:
 
 ```shell
-java -Dquarkus.profile=test -jar quarkus/server/build/quarkus-app/quarkus-run.jar
-```
-
-Then, you can run the regression tests using the following command:
-
-```shell
+./gradlew polarisServerRun
 env POLARIS_HOST=localhost ./regtests/run.sh
 ```
 

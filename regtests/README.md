@@ -67,17 +67,13 @@ In this setup, a Polaris server must be running on localhost:8181 before running
 way to do this is to run the Polaris server in a separate terminal window:
 
 ```shell
-./gradlew polarisServerRun \
-  '-Dpolaris.authentication.authenticator.type=test' \
-  '-Dpolaris.authentication.token-service.type=test' \
-  '-Dpolaris.features.defaults."SUPPORTED_CATALOG_STORAGE_TYPES"=["FILE","S3","GCS","AZURE"]' \
-  '-Dpolaris.realm-context.realms=default-realm,realm1' \
-  '-Dquarkus.otel.sdk.disabled=true'
+./gradlew polarisServerRun
 ```
 
 Note: the regression tests expect Polaris to run with certain options, e.g. with support for `FILE`
-storage and with realms `default-realm,realm1`; if you run the above command, this will be the case.
-If you run Polaris in a different way, make sure that Polaris is configured appropriately.
+storage, default realm `POLARIS` and root credentials `root:secret`; if you run the above command,
+this will be the case. If you run Polaris in a different way, make sure that Polaris is configured
+appropriately.
 
 Running the test harness will automatically run the idempotent setup script. From the root of the
 project, just run:
@@ -92,7 +88,7 @@ test directories as arguments to `run.sh`. For example, to run only the `t_spark
 verbose mode:
 
 ```shell
-VERBOSE=1 POLARIS_HOST=localhost ./regtests/run.sh t_spark_sql/src/spark_sql_basic.sh
+env VERBOSE=1 POLARIS_HOST=localhost ./regtests/run.sh t_spark_sql/src/spark_sql_basic.sh
 ```
 
 ## Run with Cloud resources
@@ -155,11 +151,11 @@ Then commit the changes to the ref file.
 
 ## Run a spark-sql interactive shell
 
-With a Polaris server running in "dev" mode (see above), you can run a spark-sql interactive shell
-to test. From the root of the project:
+With a Polaris server running, you can run a spark-sql interactive shell to test. From the root of
+the project:
 
 ```shell
-POLARIS_HOST=localhost ./regtests/run_spark_sql.sh
+env POLARIS_HOST=localhost ./regtests/run_spark_sql.sh
 ```
 
 Some SQL commands that you can try:
@@ -181,14 +177,14 @@ The client can be generated using two commands:
 
 ```shell
 # generate the management api client
-$ docker run --rm \
+docker run --rm \
   -v ${PWD}:/local openapitools/openapi-generator-cli generate \
   -i /local/spec/polaris-management-service.yml \
   -g python \
   -o /local/regtests/client/python --additional-properties=packageName=polaris.management --additional-properties=apiNamePrefix=polaris
 
 # generate the iceberg rest client
-$ docker run --rm \
+docker run --rm \
   -v ${PWD}:/local openapitools/openapi-generator-cli generate \
   -i /local/spec/rest-catalog-open-api.yaml \
   -g python \
