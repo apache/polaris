@@ -51,6 +51,7 @@ class CatalogsCommand(Command):
     role_arn: str
     external_id: str
     user_arn: str
+    region: str
     tenant_id: str
     multi_tenant_app_name: str
     consent_url: str
@@ -81,6 +82,7 @@ class CatalogsCommand(Command):
             if self._has_azure_storage_info() or self._has_gcs_storage_info():
                 raise Exception(f"Storage type 's3' supports the storage credentials"
                                 f" {Argument.to_flag_name(Arguments.ROLE_ARN)},"
+                                f" {Argument.to_flag_name(Arguments.REGION)},"
                                 f" {Argument.to_flag_name(Arguments.EXTERNAL_ID)}, and"
                                 f" {Argument.to_flag_name(Arguments.USER_ARN)}")
         elif self.storage_type == StorageType.AZURE.value:
@@ -101,7 +103,7 @@ class CatalogsCommand(Command):
                 raise Exception("Storage type 'file' does not support any storage credentials")
 
     def _has_aws_storage_info(self):
-        return self.role_arn or self.external_id or self.user_arn
+        return self.role_arn or self.external_id or self.user_arn or self.region
 
     def _has_azure_storage_info(self):
         return self.tenant_id or self.multi_tenant_app_name or self.consent_url
@@ -117,7 +119,8 @@ class CatalogsCommand(Command):
                 allowed_locations=self.allowed_locations,
                 role_arn=self.role_arn,
                 external_id=self.external_id,
-                user_arn=self.user_arn
+                user_arn=self.user_arn,
+                region=self.region
             )
         elif self.storage_type == StorageType.AZURE.value:
             config = AzureStorageConfigInfo(
@@ -212,4 +215,3 @@ class CatalogsCommand(Command):
             api.update_catalog(self.catalog_name, request)
         else:
             raise Exception(f'{self.catalogs_subcommand} is not supported in the CLI')
-
