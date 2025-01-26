@@ -70,7 +70,7 @@ tasks.named("distTar") { dependsOn("quarkusBuild") }
 
 tasks.withType<Javadoc> { isFailOnError = false }
 
-tasks.register("polarisServerRun") { dependsOn("quarkusRun") }
+tasks.register("run") { dependsOn("quarkusRun") }
 
 tasks.named<QuarkusRun>("quarkusRun") {
   jvmArgs = listOf("-Dpolaris.bootstrap.credentials=POLARIS,root,secret")
