@@ -24,7 +24,7 @@ This getting started guide provides a `docker-compose` file to set up [Trino](ht
 ## Build Polaris Image
 Build Polaris Image while Docker is running
 ```
-./gradlew :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true
+./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true
 ```
 
 ## Run the `docker-compose` file
@@ -53,6 +53,6 @@ SELECT * FROM iceberg.tpch.test_polaris;
 ```
 
 ## Note
-The Polaris catalog setup script uses the credential `principal:root;realm:default-realm`. This credential is used so users do not need to fetch credentials from Apache Polaris' console output.
+The Polaris in this example is started with realm `default-realm` and root credentials: `root:s3cr3t`.
 
 An example catalog is created in Apache Polaris using the `curl` command. See `create-polaris-catalog.sh` for details.
