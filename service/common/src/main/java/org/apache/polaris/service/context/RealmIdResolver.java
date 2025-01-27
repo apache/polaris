@@ -19,6 +19,7 @@
 package org.apache.polaris.service.context;
 
 import java.util.Map;
+import java.util.function.Function;
 import org.apache.polaris.core.context.RealmId;
 
 public interface RealmIdResolver {
@@ -30,5 +31,10 @@ public interface RealmIdResolver {
    * @throws UnresolvableRealmException if the realm cannot be resolved
    */
   RealmId resolveRealmId(
-      String requestURL, String method, String path, Map<String, String> headers);
+      String requestURL, String method, String path, Function<String, String> headers);
+
+  default RealmId resolveRealmId(
+      String requestURL, String method, String path, Map<String, String> headers) {
+    return resolveRealmId(requestURL, method, path, headers::get);
+  }
 }

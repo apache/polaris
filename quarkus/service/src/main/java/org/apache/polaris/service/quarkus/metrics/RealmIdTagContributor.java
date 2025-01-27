@@ -23,7 +23,6 @@ import io.quarkus.micrometer.runtime.HttpServerMetricsTagsContributor;
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.util.HashMap;
 import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.service.context.RealmIdResolver;
 
@@ -49,10 +48,6 @@ public class RealmIdTagContributor implements HttpServerMetricsTagsContributor {
 
   private RealmId resolveRealmContext(HttpServerRequest request) {
     return realmIdResolver.resolveRealmId(
-        request.absoluteURI(),
-        request.method().name(),
-        request.path(),
-        request.headers().entries().stream()
-            .collect(HashMap::new, (m, e) -> m.put(e.getKey(), e.getValue()), HashMap::putAll));
+        request.absoluteURI(), request.method().name(), request.path(), request.headers()::get);
   }
 }

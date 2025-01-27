@@ -18,13 +18,12 @@
  */
 package org.apache.polaris.service.context;
 
-import java.util.Map;
 import org.apache.polaris.core.exceptions.PolarisException;
 
 /**
  * Exception thrown when a realm cannot be resolved.
  *
- * @see RealmIdResolver#resolveRealmId(String, String, String, Map)
+ * @see RealmIdResolver#resolveRealmId(String, String, String, java.util.function.Function)
  */
 public class UnresolvableRealmException extends PolarisException {
 

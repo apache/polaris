@@ -25,8 +25,6 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.ext.Provider;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.service.config.PolarisFilterPriorities;
 
@@ -47,11 +45,7 @@ public class RealmIdFilter implements ContainerRequestFilter {
             rc.getUriInfo().getRequestUri().toString(),
             rc.getMethod(),
             rc.getUriInfo().getPath(),
-            rc.getHeaders().entrySet().stream()
-                .collect(
-                    HashMap::new,
-                    (m, e) -> m.put(e.getKey(), e.getValue().getFirst()),
-                    Map::putAll));
+            rc.getHeaders()::getFirst);
     rc.setProperty(REALM_ID_KEY, realmId);
   }
 }
