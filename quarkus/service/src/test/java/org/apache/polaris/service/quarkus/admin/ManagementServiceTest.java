@@ -32,7 +32,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
-import org.apache.polaris.service.quarkus.TestServices;
+import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.api.Test;
 
 public class ManagementServiceTest {

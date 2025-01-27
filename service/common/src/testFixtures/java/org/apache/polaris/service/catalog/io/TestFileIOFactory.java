@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.catalog.io;
+package org.apache.polaris.service.catalog.io;
 
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.inject.Vetoed;
@@ -34,8 +34,6 @@ import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
-import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 
 /**
