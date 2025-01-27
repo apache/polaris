@@ -24,7 +24,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
 import jakarta.annotation.Nullable;
 import java.util.AbstractMap.SimpleEntry;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -74,7 +73,8 @@ public class PolarisCredentialsBootstrap {
   public static PolarisCredentialsBootstrap fromJson(String json) {
     ObjectMapper objectMapper = new ObjectMapper();
     try {
-      List<Map<String, String>> credentialsList = objectMapper.readValue(json, new TypeReference<>() {});
+      List<Map<String, String>> credentialsList =
+          objectMapper.readValue(json, new TypeReference<>() {});
       Map<String, Map.Entry<String, String>> credentials = new HashMap<>();
       for (Map<String, String> entry : credentialsList) {
         String realm = entry.get("realm");
@@ -88,7 +88,8 @@ public class PolarisCredentialsBootstrap {
               String.format(
                   "Invalid principal %s. Expected %s.",
                   principal, PolarisEntityConstants.ROOT_PRINCIPAL_NAME));
-        } if (credentials.containsKey(realm)) {
+        }
+        if (credentials.containsKey(realm)) {
           throw new IllegalArgumentException("Duplicate realm: " + realm);
         } else {
           credentials.put(realm, new SimpleEntry<>(clientId, clientSecret));
