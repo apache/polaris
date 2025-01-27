@@ -26,6 +26,7 @@ import com.google.common.collect.ImmutableSet;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import java.util.Arrays;
@@ -119,7 +120,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
         || rex instanceof AzureException
         || rex instanceof StorageException) {
       if (doesAnyThrowableContainAccessDeniedHint(rex)) {
-        return Response.Status.FORBIDDEN.getStatusCode();
+        return Status.FORBIDDEN.getStatusCode();
       }
 
       int httpCode =
@@ -129,39 +130,54 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
             case StorageException se -> se.getCode();
             default -> -1;
           };
+      Status httpStatus = Status.fromStatusCode(httpCode);
 
-      if (300 <= httpCode && httpCode <= 499) {
+      if (Status.Family.familyOf(httpCode) == Status.Family.REDIRECTION) {
+        return Status.BAD_GATEWAY.getStatusCode();
+      }
+      if (Status.Family.familyOf(httpCode) == Status.Family.SERVER_ERROR) {
+        return Status.INTERNAL_SERVER_ERROR.getStatusCode();
+      }
+      if (httpStatus == Status.NOT_FOUND) {
+        return Status.BAD_REQUEST.getStatusCode();
+      }
+      if (httpStatus == Status.UNAUTHORIZED) {
+        return Status.FORBIDDEN.getStatusCode();
+      }
+      if (httpStatus == Status.BAD_REQUEST
+          || httpStatus == Status.FORBIDDEN
+          || httpStatus == Status.TOO_MANY_REQUESTS) {
         return httpCode;
       }
     }
 
     // Non-cloud exceptions
     return switch (rex) {
-      case NoSuchNamespaceException e -> Response.Status.NOT_FOUND.getStatusCode();
-      case NoSuchIcebergTableException e -> Response.Status.NOT_FOUND.getStatusCode();
-      case NoSuchTableException e -> Response.Status.NOT_FOUND.getStatusCode();
-      case NoSuchViewException e -> Response.Status.NOT_FOUND.getStatusCode();
-      case NotFoundException e -> Response.Status.NOT_FOUND.getStatusCode();
-      case AlreadyExistsException e -> Response.Status.CONFLICT.getStatusCode();
-      case CommitFailedException e -> Response.Status.CONFLICT.getStatusCode();
+      case NoSuchNamespaceException e -> Status.NOT_FOUND.getStatusCode();
+      case NoSuchIcebergTableException e -> Status.NOT_FOUND.getStatusCode();
+      case NoSuchTableException e -> Status.NOT_FOUND.getStatusCode();
+      case NoSuchViewException e -> Status.NOT_FOUND.getStatusCode();
+      case NotFoundException e -> Status.NOT_FOUND.getStatusCode();
+      case AlreadyExistsException e -> Status.CONFLICT.getStatusCode();
+      case CommitFailedException e -> Status.CONFLICT.getStatusCode();
       case UnprocessableEntityException e -> 422;
-      case CherrypickAncestorCommitException e -> Response.Status.BAD_REQUEST.getStatusCode();
-      case CommitStateUnknownException e -> Response.Status.BAD_REQUEST.getStatusCode();
-      case DuplicateWAPCommitException e -> Response.Status.BAD_REQUEST.getStatusCode();
-      case ForbiddenException e -> Response.Status.FORBIDDEN.getStatusCode();
-      case jakarta.ws.rs.ForbiddenException e -> Response.Status.FORBIDDEN.getStatusCode();
-      case NotAuthorizedException e -> Response.Status.UNAUTHORIZED.getStatusCode();
-      case NamespaceNotEmptyException e -> Response.Status.BAD_REQUEST.getStatusCode();
-      case ValidationException e -> Response.Status.BAD_REQUEST.getStatusCode();
-      case ServiceUnavailableException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
-      case RuntimeIOException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
-      case ServiceFailureException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
-      case CleanableFailure e -> Response.Status.BAD_REQUEST.getStatusCode();
-      case RESTException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
-      case IllegalArgumentException e -> Response.Status.BAD_REQUEST.getStatusCode();
-      case UnsupportedOperationException e -> Response.Status.NOT_ACCEPTABLE.getStatusCode();
+      case CherrypickAncestorCommitException e -> Status.BAD_REQUEST.getStatusCode();
+      case CommitStateUnknownException e -> Status.BAD_REQUEST.getStatusCode();
+      case DuplicateWAPCommitException e -> Status.BAD_REQUEST.getStatusCode();
+      case ForbiddenException e -> Status.FORBIDDEN.getStatusCode();
+      case jakarta.ws.rs.ForbiddenException e -> Status.FORBIDDEN.getStatusCode();
+      case NotAuthorizedException e -> Status.UNAUTHORIZED.getStatusCode();
+      case NamespaceNotEmptyException e -> Status.BAD_REQUEST.getStatusCode();
+      case ValidationException e -> Status.BAD_REQUEST.getStatusCode();
+      case ServiceUnavailableException e -> Status.SERVICE_UNAVAILABLE.getStatusCode();
+      case RuntimeIOException e -> Status.SERVICE_UNAVAILABLE.getStatusCode();
+      case ServiceFailureException e -> Status.SERVICE_UNAVAILABLE.getStatusCode();
+      case CleanableFailure e -> Status.BAD_REQUEST.getStatusCode();
+      case RESTException e -> Status.SERVICE_UNAVAILABLE.getStatusCode();
+      case IllegalArgumentException e -> Status.BAD_REQUEST.getStatusCode();
+      case UnsupportedOperationException e -> Status.NOT_ACCEPTABLE.getStatusCode();
       case WebApplicationException e -> e.getResponse().getStatus();
-      default -> Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
+      default -> Status.INTERNAL_SERVER_ERROR.getStatusCode();
     };
   }
 }
