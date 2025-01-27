@@ -48,6 +48,7 @@ class IcebergExceptionMapperTest {
         Arguments.of(new HttpResponseException("", mockAzureResponse(403), ""), 403),
         Arguments.of(new HttpResponseException("", mockAzureResponse(404), ""), 400),
         Arguments.of(new HttpResponseException("", mockAzureResponse(429), ""), 429),
+        Arguments.of(new HttpResponseException("", mockAzureResponse(504), ""), 500),
         Arguments.of(new HttpResponseException("", mockAzureResponse(302), ""), 502),
         Arguments.of(S3Exception.builder().message("Access denied").build(), 403),
         Arguments.of(S3Exception.builder().message("").statusCode(400).build(), 400),
@@ -55,6 +56,7 @@ class IcebergExceptionMapperTest {
         Arguments.of(S3Exception.builder().message("").statusCode(403).build(), 403),
         Arguments.of(S3Exception.builder().message("").statusCode(404).build(), 400),
         Arguments.of(S3Exception.builder().message("").statusCode(429).build(), 429),
+        Arguments.of(S3Exception.builder().message("").statusCode(504).build(), 500),
         Arguments.of(S3Exception.builder().message("").statusCode(302).build(), 502),
         Arguments.of(new StorageException(1, "access denied"), 403),
         Arguments.of(new StorageException(400, ""), 400),
@@ -62,6 +64,7 @@ class IcebergExceptionMapperTest {
         Arguments.of(new StorageException(403, ""), 403),
         Arguments.of(new StorageException(404, ""), 400),
         Arguments.of(new StorageException(429, ""), 429),
+        Arguments.of(new StorageException(504, ""), 500),
         Arguments.of(new StorageException(302, ""), 502));
   }
 
