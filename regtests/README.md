@@ -67,7 +67,7 @@ In this setup, a Polaris server must be running on localhost:8181 before running
 way to do this is to run the Polaris server in a separate terminal window:
 
 ```shell
-./gradlew polarisServerRun
+./gradlew run
 ```
 
 Note: the regression tests expect Polaris to run with certain options, e.g. with support for `FILE`

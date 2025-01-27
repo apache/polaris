@@ -61,10 +61,8 @@ Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
 - `./gradlew assemble` - To skip tests.
 - `./gradlew test` - To run unit tests and integration tests.
-- `./gradlew polarisServerRun` - To run the Polaris server locally; the server is reachable at 
+- `./gradlew run` - To run the Polaris server locally; the server is reachable at 
   localhost:8181. This is also suitable for running regression tests, or for connecting with Spark. 
-  See below for more information on regression tests.
-
 - `./regtests/run_spark_sql.sh` - To connect from Spark SQL. Here are some example commands to run in the Spark SQL shell:
 ```sql
 create database db1;
@@ -73,7 +71,7 @@ create table db1.table1 (id int, name string);
 insert into db1.table1 values (1, 'a');
 select * from db1.table1;
 ```
-
+- `env POLARIS_HOST=localhost ./regtests/run.sh` - To run regression tests locally, see more options [here](./regtests/README.md).
 ### More build and run options
 
 #### Running in Docker
@@ -94,23 +92,6 @@ select * from db1.table1;
 - `kubectl get pods -n polaris` - To check the status of the pods.
 - `kubectl get deployment -n polaris` - To check the status of the deployment.
 - `kubectl describe deployment polaris-deployment -n polaris` - To troubleshoot if things aren't working as expected.
-
-#### Running regression tests
-
-Regression tests can be run in a local environment or in a Docker environment.
-
-To run regression tests locally, you first need to start Polaris, then run the tests:
-
-```shell
-./gradlew polarisServerRun
-env POLARIS_HOST=localhost ./regtests/run.sh
-```
-
-To run regression tests in a Docker environment, you can use the following command:
-
-```shell
-docker compose -f regtests/docker-compose.yml up --build --exit-code-from regtest
-```
 
 #### Building docs
 
