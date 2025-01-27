@@ -20,6 +20,9 @@ package org.apache.polaris.service.quarkus.context;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
+import io.smallrye.config.WithConverter;
+import java.util.List;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmIdResolver;
 
@@ -32,4 +35,8 @@ public interface QuarkusRealmContextConfiguration extends RealmContextConfigurat
    * identifier.
    */
   String type();
+
+  @Override
+  @WithConverter(RealmIdConverter.class)
+  List<RealmId> realms();
 }

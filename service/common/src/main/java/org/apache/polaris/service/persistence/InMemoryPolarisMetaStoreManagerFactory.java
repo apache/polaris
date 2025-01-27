@@ -86,7 +86,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
   @Override
   public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmId realmId) {
     if (!bootstrappedRealms.contains(realmId.id())) {
-      bootstrapRealmsAndPrintCredentials(List.of(realmId.id()));
+      bootstrapRealmsAndPrintCredentials(List.of(realmId));
     }
     return super.getOrCreateMetaStoreManager(realmId);
   }
@@ -95,25 +95,25 @@ public class InMemoryPolarisMetaStoreManagerFactory
   public synchronized Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(
       RealmId realmId) {
     if (!bootstrappedRealms.contains(realmId.id())) {
-      bootstrapRealmsAndPrintCredentials(List.of(realmId.id()));
+      bootstrapRealmsAndPrintCredentials(List.of(realmId));
     }
     return super.getOrCreateSessionSupplier(realmId);
   }
 
-  private void bootstrapRealmsAndPrintCredentials(List<String> realms) {
+  private void bootstrapRealmsAndPrintCredentials(List<RealmId> realms) {
     PolarisCredentialsBootstrap credentialsBootstrap =
         PolarisCredentialsBootstrap.fromEnvironment();
-    Map<String, PrincipalSecretsResult> results =
+    Map<RealmId, PrincipalSecretsResult> results =
         this.bootstrapRealms(realms, credentialsBootstrap);
-    bootstrappedRealms.addAll(realms);
 
-    for (String realmId : realms) {
-      PrincipalSecretsResult principalSecrets = results.get(realmId);
+    for (RealmId realm : results.keySet()) {
+      bootstrappedRealms.add(realm.id());
+      PrincipalSecretsResult principalSecrets = results.get(realm);
 
       String msg =
           String.format(
               "realm: %1s root principal credentials: %2s:%3s",
-              realmId,
+              realm.id(),
               principalSecrets.getPrincipalSecrets().getPrincipalClientId(),
               principalSecrets.getPrincipalSecrets().getMainSecret());
       System.out.println(msg);
