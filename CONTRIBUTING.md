@@ -103,7 +103,7 @@ The Apache Polaris build currently requires Java 21 or later. There are a few to
 
 * Change of public interface (or more generally speaking Polaris extension point) should be discussed and approved on the dev mailing list.
   The discussion on the dev mailing list should happen before having a "ready-for-review" Pull Request.
-* Using git (`git log`), you can find the original authors of the code you are modifying. If you need, feel free to tag the author in your Pull Request comment if you need assistance or review.
+* `git log` you can help you find the original/relevant authors of the code you are modifying. If you need, feel free to tag the author in your Pull Request comment if you need assistance or review.
 * Use a single Pull Request related to the same changes: don't close a Pull Request to create another one. The purpose here is to keep the history and all comments in the Pull Request.
 * Consider all comments in your Pull Request, provide replies and resolve all pending comments.
 * Give time for review. For instance two working days is a good base to get first reviews and comments.
