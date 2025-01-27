@@ -53,7 +53,6 @@ If you're looking for a feature that doesn't exist in Apache Polaris, you're pro
 
 When creating your feature request, document your requirements first. Please, try to not directly describe the solution.
 
-
 ## Before you begin contributing code 
 
 ### Review open issues and discuss your approach
@@ -100,3 +99,12 @@ The Apache Polaris build currently requires Java 21 or later. There are a few to
 * [SDKMAN!](https://sdkman.io/) follow the installation instructions, then run `sdk list java` to see the available distributions and versions, then run `sdk install java <identifer from list>` using the identifier for the distribution and version (>= 21) of your choice.
 * [jenv](https://www.jenv.be/) If on a Mac you can use jenv to set the appropriate SDK.
 
+## Good Practices
+
+* Change of public interface (or more generally speaking Polaris extension point) should be discussed and approved on the dev mailing list.
+  The discussion on the dev mailing list should happen before any change Pull Request.
+* Using git (`git log`), you can find the original authors of the code you are modifying. If you need, feel free to tag the author in your Pull Request comment if you need assistance or review.
+* Use a single Pull Request related to the same changes: don't close a Pull Request to create another one. The purpose here is to keep the history and all comments in the Pull Request.
+* Consider all comments in your Pull Request, provide replies and resolve all pending comments.
+* Give time for review. For instance two working days is a good base to get first reviews and comments.
+* If you have the feeling that the discussions in a Pull Request are not going to a consensus, feel free to bring the discussion on the dev mailing list.
