@@ -29,12 +29,13 @@ import picocli.CommandLine;
 @CommandLine.Command(
     name = "bootstrap",
     mixinStandardHelpOptions = true,
-    description = "Bootstraps realms and root principal credentials.")
+    description = "Bootstraps realms and root principal credentials. If --credentials is not provided, root " +
+        "credentials will be randomly generated.")
 public class BootstrapCommand extends BaseCommand {
 
   @CommandLine.Option(
       names = {"-c", "--credentials"},
-      description = "Principal credentials to bootstrap. Must be a valid JSON array e.g. " +
+      description = "Principal credentials to bootstrap. If provided, must be a valid JSON array e.g. " +
           "[{\"realm\": \"my-realm\", \"principal\": \"root\", \"clientId\": \"polaris\", \"clientSecret\": \"p4ssw0rd\"}]")
   String credentials;
 
