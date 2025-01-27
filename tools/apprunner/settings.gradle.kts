@@ -17,11 +17,7 @@
  * under the License.
  */
 
-import java.util.Properties
-
-includeBuild("build-logic") { name = "polaris-build-logic" }
-
-includeBuild("tools/apprunner") { name = "polaris-apprunner" }
+includeBuild("apprunner-build-logic") { name = "polaris-apprunner-build-logic" }
 
 if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
   throw GradleException(
@@ -36,28 +32,18 @@ if (!JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_21)) {
   )
 }
 
-rootProject.name = "polaris"
+rootProject.name = "polaris-apprunner"
 
-val baseVersion = file("version.txt").readText().trim()
+val baseVersion = file("../../version.txt").readText().trim()
 
-fun loadProperties(file: File): Properties {
-  val props = Properties()
-  file.reader().use { reader -> props.load(reader) }
-  return props
+fun addProject(name: String) {
+  var fullName = "polaris-apprunner-$name"
+  include(fullName)
+  val prj = project(":$fullName")
+  prj.projectDir = file(name)
 }
 
-fun polarisProject(name: String, directory: File) {
-  include(name)
-  val prj = project(":${name}")
-  prj.name = name
-  prj.projectDir = file(directory)
-}
-
-val projects = Properties()
-
-loadProperties(file("gradle/projects.main.properties")).forEach { name, directory ->
-  polarisProject(name as String, file(directory as String))
-}
+listOf("common", "gradle-plugin", "maven-plugin").forEach { addProject(it) }
 
 pluginManagement {
   repositories {
@@ -76,5 +62,5 @@ dependencyResolutionManagement {
 
 gradle.beforeProject {
   version = baseVersion
-  group = "org.apache.polaris"
+  group = "org.apache.polaris.apprunner"
 }
