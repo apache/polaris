@@ -22,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
-
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -93,10 +92,11 @@ class PolarisCredentialsBootstrapTest {
 
   @Test
   void testMultiRealmJson() {
-    String json = "["
-        + "{\"realm\": \"a\", \"principal\": \"root\", \"clientId\": \"abc123\", \"clientSecret\": \"xyz987\"},"
-        + "{\"realm\": \"b\", \"principal\": \"root\", \"clientId\": \"boot-id\", \"clientSecret\": \"boot-secret\"}"
-        + "]";
+    String json =
+        "["
+            + "{\"realm\": \"a\", \"principal\": \"root\", \"clientId\": \"abc123\", \"clientSecret\": \"xyz987\"},"
+            + "{\"realm\": \"b\", \"principal\": \"root\", \"clientId\": \"boot-id\", \"clientSecret\": \"boot-secret\"}"
+            + "]";
 
     PolarisCredentialsBootstrap result = PolarisCredentialsBootstrap.fromJson(json);
 
@@ -110,42 +110,55 @@ class PolarisCredentialsBootstrapTest {
 
   @Test
   void testInvalidMultiRealmJson() {
-    String json = "["
-        + "{\"realm\": \"a\", \"principal\": \"root\", \"clientId\": \"abc123\"},"
-        + "{\"realm\": \"b\", \"principal\": \"root\", \"clientId\": \"boot-id\", \"clientSecret\": \"boot-secret\"}"
-        + "]";
+    String json =
+        "["
+            + "{\"realm\": \"a\", \"principal\": \"root\", \"clientId\": \"abc123\"},"
+            + "{\"realm\": \"b\", \"principal\": \"root\", \"clientId\": \"boot-id\", \"clientSecret\": \"boot-secret\"}"
+            + "]";
 
-    Exception exception = Assertions.assertThrows(IllegalArgumentException.class, () -> {
-      PolarisCredentialsBootstrap.fromJson(json);
-    });
+    Exception exception =
+        Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              PolarisCredentialsBootstrap.fromJson(json);
+            });
 
     Assertions.assertTrue(exception.getMessage().contains("Failed to find credentials"));
   }
 
   @Test
   void testNonRootPrincipalInJson() {
-    String json = "["
-        + "{\"realm\": \"a\", \"principal\": \"invalid\", \"clientId\": \"abc123\", \"clientSecret\": \"xyz987\"},"
-        + "{\"realm\": \"b\", \"principal\": \"root\", \"clientId\": \"boot-id\", \"clientSecret\": \"boot-secret\"}"
-        + "]";
+    String json =
+        "["
+            + "{\"realm\": \"a\", \"principal\": \"invalid\", \"clientId\": \"abc123\", \"clientSecret\": \"xyz987\"},"
+            + "{\"realm\": \"b\", \"principal\": \"root\", \"clientId\": \"boot-id\", \"clientSecret\": \"boot-secret\"}"
+            + "]";
 
-    Exception exception = Assertions.assertThrows(IllegalArgumentException.class, () -> {
-      PolarisCredentialsBootstrap.fromJson(json);
-    });
+    Exception exception =
+        Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              PolarisCredentialsBootstrap.fromJson(json);
+            });
 
-    Assertions.assertTrue(exception.getMessage().contains("Invalid principal invalid. Expected root."));
+    Assertions.assertTrue(
+        exception.getMessage().contains("Invalid principal invalid. Expected root."));
   }
 
   @Test
   void testDuplicateRealmInJson() {
-    String json = "["
-        + "{\"realm\": \"a\", \"principal\": \"root\", \"clientId\": \"abc123\", \"clientSecret\": \"xyz987\"},"
-        + "{\"realm\": \"a\", \"principal\": \"root\", \"clientId\": \"boot-id\", \"clientSecret\": \"boot-secret\"}"
-        + "]";
+    String json =
+        "["
+            + "{\"realm\": \"a\", \"principal\": \"root\", \"clientId\": \"abc123\", \"clientSecret\": \"xyz987\"},"
+            + "{\"realm\": \"a\", \"principal\": \"root\", \"clientId\": \"boot-id\", \"clientSecret\": \"boot-secret\"}"
+            + "]";
 
-    Exception exception = Assertions.assertThrows(IllegalArgumentException.class, () -> {
-      PolarisCredentialsBootstrap.fromJson(json);
-    });
+    Exception exception =
+        Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              PolarisCredentialsBootstrap.fromJson(json);
+            });
 
     Assertions.assertTrue(exception.getMessage().contains("Duplicate realm: a"));
   }

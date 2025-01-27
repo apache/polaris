@@ -75,32 +75,31 @@ public class PolarisCredentialsBootstrap {
     ObjectMapper objectMapper = new ObjectMapper();
     List<Map<String, String>> credentialsList = new ArrayList<>();
     try {
-      credentialsList =
-          objectMapper.readValue(json, new TypeReference<>() {});
+      credentialsList = objectMapper.readValue(json, new TypeReference<>() {});
     } catch (Exception e) {
       throw new IllegalArgumentException("Could not parse credentials JSON: " + json, e);
     }
-      Map<String, Map.Entry<String, String>> credentials = new HashMap<>();
-      for (Map<String, String> entry : credentialsList) {
-        String realm = entry.get("realm");
-        String principal = entry.get("principal");
-        String clientId = entry.get("clientId");
-        String clientSecret = entry.get("clientSecret");
-        if (realm == null || principal == null || clientId == null || clientSecret == null) {
-          throw new IllegalArgumentException("Failed to find credentials in: " + json);
-        } else if (!principal.equals(PolarisEntityConstants.ROOT_PRINCIPAL_NAME)) {
-          throw new IllegalArgumentException(
-              String.format(
-                  "Invalid principal %s. Expected %s.",
-                  principal, PolarisEntityConstants.ROOT_PRINCIPAL_NAME));
-        }
-        if (credentials.containsKey(realm)) {
-          throw new IllegalArgumentException("Duplicate realm: " + realm);
-        } else {
-          credentials.put(realm, new SimpleEntry<>(clientId, clientSecret));
-        }
+    Map<String, Map.Entry<String, String>> credentials = new HashMap<>();
+    for (Map<String, String> entry : credentialsList) {
+      String realm = entry.get("realm");
+      String principal = entry.get("principal");
+      String clientId = entry.get("clientId");
+      String clientSecret = entry.get("clientSecret");
+      if (realm == null || principal == null || clientId == null || clientSecret == null) {
+        throw new IllegalArgumentException("Failed to find credentials in: " + json);
+      } else if (!principal.equals(PolarisEntityConstants.ROOT_PRINCIPAL_NAME)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid principal %s. Expected %s.",
+                principal, PolarisEntityConstants.ROOT_PRINCIPAL_NAME));
       }
-      return new PolarisCredentialsBootstrap(credentials);
+      if (credentials.containsKey(realm)) {
+        throw new IllegalArgumentException("Duplicate realm: " + realm);
+      } else {
+        credentials.put(realm, new SimpleEntry<>(clientId, clientSecret));
+      }
+    }
+    return new PolarisCredentialsBootstrap(credentials);
   }
 
   /**
