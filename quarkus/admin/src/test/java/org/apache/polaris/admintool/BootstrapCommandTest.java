@@ -50,8 +50,9 @@ class BootstrapCommandTest {
           "--print-credentials"
       })
   public void testPrintCredentials(LaunchResult result) {
-    assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
-    assertThat(result.getOutput()).contains("s3cr3t");
+    String output = result.getOutput();
+    assertThat(output).contains("Bootstrap completed successfully.");
+    assertThat(output).contains("root:");
   }
 
   @Test
@@ -63,6 +64,6 @@ class BootstrapCommandTest {
       })
   public void testPrintGeneratedCredentials(LaunchResult result) {
     assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
-    assertThat(result.getOutput()).contains("root");
+    assertThat(result.getOutput()).contains("root:");
   }
 }

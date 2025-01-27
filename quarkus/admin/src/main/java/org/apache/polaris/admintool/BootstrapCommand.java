@@ -80,6 +80,7 @@ public class BootstrapCommand extends BaseCommand {
             .printf(
                 "Bootstrapping '%s' failed: %s%n",
                 realm, result.getValue().getReturnStatus().toString());
+        spec.commandLine().getErr().flush();
         success = false;
       }
     }
@@ -94,13 +95,16 @@ public class BootstrapCommand extends BaseCommand {
                   entry.getValue().getPrincipalSecrets().getPrincipalClientId(),
                   entry.getValue().getPrincipalSecrets().getMainSecret());
           spec.commandLine().getOut().println(msg);
+          spec.commandLine().getOut().flush();
         }
       }
 
       spec.commandLine().getOut().println("Bootstrap completed successfully.");
+      spec.commandLine().getOut().flush();
       return 0;
     } else {
       spec.commandLine().getErr().println("Bootstrap encountered errors during operation.");
+      spec.commandLine().getErr().flush();
       return EXIT_CODE_BOOTSTRAP_ERROR;
     }
   }
