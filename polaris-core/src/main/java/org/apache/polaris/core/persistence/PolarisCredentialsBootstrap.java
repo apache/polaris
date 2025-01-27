@@ -154,7 +154,7 @@ public class PolarisCredentialsBootstrap {
 
   public List<String> getRealmIds() {
     ArrayList<String> realmIds = new ArrayList<>();
-    for (Map.Entry<String, Map.Entry<String, String>> credential: credentials.entrySet()) {
+    for (Map.Entry<String, Map.Entry<String, String>> credential : credentials.entrySet()) {
       realmIds.add(credential.getKey());
     }
     return realmIds;
