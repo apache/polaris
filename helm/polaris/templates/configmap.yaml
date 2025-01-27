@@ -110,13 +110,13 @@ data:
     {{- $_ = set $map "quarkus.log.file.enable" "false" -}}
     {{- end -}}
     {{- $categories := dict -}}
-    {{- list .Values.logging.categories "" $categories | include "polaris.mergeAdvancedConfig" -}}
+    {{- list .Values.logging.categories "" $categories | include "polaris.mergeConfigTree" -}}
     {{- range $k, $v := $categories -}}
     {{- $_ = set $map (printf "quarkus.log.category.\"%s\".level" $k) $v -}}
     {{- end -}}
     {{- $_ = set $map "polaris.log.request-id-header-name" .Values.logging.requestIdHeaderName -}}
     {{- $mdc := dict -}}
-    {{- list .Values.logging.mdc "" $mdc | include "polaris.mergeAdvancedConfig" -}}
+    {{- list .Values.logging.mdc "" $mdc | include "polaris.mergeConfigTree" -}}
     {{- range $k, $v := $mdc -}}
     {{- $_ = set $map (printf "polaris.log.mdc.\"%s\"" $k) $v -}}
     {{- end -}}
@@ -126,7 +126,7 @@ data:
     {{- $_ = set $map "quarkus.otel.exporter.otlp.endpoint" .Values.tracing.endpoint -}}
     {{- if .Values.tracing.attributes -}}
     {{- $attributes := dict -}}
-    {{- list .Values.tracing.attributes "" $attributes | include "polaris.mergeAdvancedConfig" -}}
+    {{- list .Values.tracing.attributes "" $attributes | include "polaris.mergeConfigTree" -}}
     {{- $i := 0 -}}
     {{- range $k, $v := $attributes -}}
     {{- $_ = set $map (printf "quarkus.otel.resource.attributes[%d]" $i) (printf "%s=%s" $k $v) -}}
@@ -158,7 +158,7 @@ data:
     {{- end -}}
 
     {{- /* Advanced Configuration (must be done last since it can override any of the settings above) */ -}}
-    {{- list .Values.advancedConfig "" $map | include "polaris.mergeAdvancedConfig" }}
+    {{- list .Values.advancedConfig "" $map | include "polaris.mergeConfigTree" }}
 
     {{- /* Print the resulting configmap; each configuration option is templatized */ -}}
     {{- $global := . -}}
