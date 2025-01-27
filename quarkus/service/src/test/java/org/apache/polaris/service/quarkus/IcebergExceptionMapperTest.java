@@ -27,6 +27,7 @@ import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.HttpResponse;
 import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.core.Response;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -37,35 +38,40 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 class IcebergExceptionMapperTest {
 
   static Stream<Arguments> fileIOExceptionMapping() {
-    return Stream.of(
-        Arguments.of(new AzureException("Unknown"), 500),
-        Arguments.of(new AzureException("Forbidden"), 403),
-        Arguments.of(new AzureException("FORBIDDEN"), 403),
-        Arguments.of(new AzureException("Not Authorized"), 403),
-        Arguments.of(new AzureException("Access Denied"), 403),
-        Arguments.of(new HttpResponseException("", mockAzureResponse(400), ""), 400),
-        Arguments.of(new HttpResponseException("", mockAzureResponse(401), ""), 403),
-        Arguments.of(new HttpResponseException("", mockAzureResponse(403), ""), 403),
-        Arguments.of(new HttpResponseException("", mockAzureResponse(404), ""), 400),
-        Arguments.of(new HttpResponseException("", mockAzureResponse(429), ""), 429),
-        Arguments.of(new HttpResponseException("", mockAzureResponse(504), ""), 500),
-        Arguments.of(new HttpResponseException("", mockAzureResponse(302), ""), 502),
-        Arguments.of(S3Exception.builder().message("Access denied").build(), 403),
-        Arguments.of(S3Exception.builder().message("").statusCode(400).build(), 400),
-        Arguments.of(S3Exception.builder().message("").statusCode(401).build(), 403),
-        Arguments.of(S3Exception.builder().message("").statusCode(403).build(), 403),
-        Arguments.of(S3Exception.builder().message("").statusCode(404).build(), 400),
-        Arguments.of(S3Exception.builder().message("").statusCode(429).build(), 429),
-        Arguments.of(S3Exception.builder().message("").statusCode(504).build(), 500),
-        Arguments.of(S3Exception.builder().message("").statusCode(302).build(), 502),
-        Arguments.of(new StorageException(1, "access denied"), 403),
-        Arguments.of(new StorageException(400, ""), 400),
-        Arguments.of(new StorageException(401, ""), 403),
-        Arguments.of(new StorageException(403, ""), 403),
-        Arguments.of(new StorageException(404, ""), 400),
-        Arguments.of(new StorageException(429, ""), 429),
-        Arguments.of(new StorageException(504, ""), 500),
-        Arguments.of(new StorageException(302, ""), 502));
+    Map<Integer, Integer> cloudCodeMappings =
+        Map.of(
+            // Map of HTTP code returned from a cloud provider to the HTTP code Polaris is expected
+            // to return
+            302, 422,
+            400, 400,
+            401, 403,
+            403, 403,
+            404, 400,
+            408, 408,
+            429, 429,
+            503, 502,
+            504, 504);
+
+    return Stream.concat(
+        Stream.of(
+            Arguments.of(new AzureException("Unknown"), 500),
+            Arguments.of(new AzureException("Forbidden"), 403),
+            Arguments.of(new AzureException("FORBIDDEN"), 403),
+            Arguments.of(new AzureException("Not Authorized"), 403),
+            Arguments.of(new AzureException("Access Denied"), 403),
+            Arguments.of(S3Exception.builder().message("Access denied").build(), 403),
+            Arguments.of(new StorageException(1, "access denied"), 403)),
+        cloudCodeMappings.entrySet().stream()
+            .flatMap(
+                entry ->
+                    Stream.of(
+                        Arguments.of(
+                            new HttpResponseException("", mockAzureResponse(entry.getKey()), ""),
+                            entry.getValue()),
+                        Arguments.of(
+                            S3Exception.builder().message("").statusCode(entry.getKey()).build(),
+                            entry.getValue()),
+                        Arguments.of(new StorageException(entry.getKey(), ""), entry.getValue()))));
   }
 
   @ParameterizedTest

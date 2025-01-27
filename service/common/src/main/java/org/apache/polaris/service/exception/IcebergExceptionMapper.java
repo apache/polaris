@@ -119,36 +119,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     if (rex instanceof S3Exception
         || rex instanceof AzureException
         || rex instanceof StorageException) {
-      if (doesAnyThrowableContainAccessDeniedHint(rex)) {
-        return Status.FORBIDDEN.getStatusCode();
-      }
-
-      int httpCode =
-          switch (rex) {
-            case S3Exception s3e -> s3e.statusCode();
-            case HttpResponseException hre -> hre.getResponse().getStatusCode();
-            case StorageException se -> se.getCode();
-            default -> -1;
-          };
-      Status httpStatus = Status.fromStatusCode(httpCode);
-
-      if (Status.Family.familyOf(httpCode) == Status.Family.REDIRECTION) {
-        return Status.BAD_GATEWAY.getStatusCode();
-      }
-      if (Status.Family.familyOf(httpCode) == Status.Family.SERVER_ERROR) {
-        return Status.INTERNAL_SERVER_ERROR.getStatusCode();
-      }
-      if (httpStatus == Status.NOT_FOUND) {
-        return Status.BAD_REQUEST.getStatusCode();
-      }
-      if (httpStatus == Status.UNAUTHORIZED) {
-        return Status.FORBIDDEN.getStatusCode();
-      }
-      if (httpStatus == Status.BAD_REQUEST
-          || httpStatus == Status.FORBIDDEN
-          || httpStatus == Status.TOO_MANY_REQUESTS) {
-        return httpCode;
-      }
+      return mapCloudExceptionToResponseCode(rex);
     }
 
     // Non-cloud exceptions
@@ -179,5 +150,47 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       case WebApplicationException e -> e.getResponse().getStatus();
       default -> Status.INTERNAL_SERVER_ERROR.getStatusCode();
     };
+  }
+
+  static int mapCloudExceptionToResponseCode(RuntimeException rex) {
+    if (doesAnyThrowableContainAccessDeniedHint(rex)) {
+      return Status.FORBIDDEN.getStatusCode();
+    }
+
+    int httpCode =
+        switch (rex) {
+          case S3Exception s3e -> s3e.statusCode();
+          case HttpResponseException hre -> hre.getResponse().getStatusCode();
+          case StorageException se -> se.getCode();
+          default -> -1;
+        };
+    Status httpStatus = Status.fromStatusCode(httpCode);
+    Status.Family httpFamily = Status.Family.familyOf(httpCode);
+
+    if (httpStatus == Status.NOT_FOUND) {
+      return Status.BAD_REQUEST.getStatusCode();
+    }
+    if (httpStatus == Status.UNAUTHORIZED) {
+      return Status.FORBIDDEN.getStatusCode();
+    }
+    if (httpStatus == Status.BAD_REQUEST
+        || httpStatus == Status.FORBIDDEN
+        || httpStatus == Status.REQUEST_TIMEOUT
+        || httpStatus == Status.TOO_MANY_REQUESTS
+        || httpStatus == Status.GATEWAY_TIMEOUT) {
+      return httpCode;
+    }
+    if (httpFamily == Status.Family.REDIRECTION) {
+      // Currently Polaris doesn't know how to follow redirects from cloud providers, thus clients
+      // shouldn't expect it to.
+      // This is a 4xx error to indicate that the client may be able to resolve this by changing
+      // some data, such as their catalog's region.
+      return 422;
+    }
+    if (httpFamily == Status.Family.SERVER_ERROR) {
+      return Status.BAD_GATEWAY.getStatusCode();
+    }
+
+    return Status.INTERNAL_SERVER_ERROR.getStatusCode();
   }
 }
