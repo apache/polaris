@@ -28,18 +28,14 @@ import java.net.URI;
  */
 public final class PolarisApiEndpoints implements Serializable {
 
-  /**
-   * The header name for the realm ID. Tests must make sure that Polaris is configured with this
-   * header name.
-   */
-  public static String REALM_HEADER = "Polaris-Realm";
-
   private final URI baseUri;
   private final String realm;
+  private final String realmHeader;
 
-  public PolarisApiEndpoints(URI baseUri, String realm) {
+  public PolarisApiEndpoints(URI baseUri, String realm, String realmHeader) {
     this.baseUri = baseUri;
     this.realm = realm;
+    this.realmHeader = realmHeader;
   }
 
   public URI catalogApiEndpoint() {
@@ -52,5 +48,9 @@ public final class PolarisApiEndpoints implements Serializable {
 
   public String realm() {
     return realm;
+  }
+
+  public String realmHeader() {
+    return realmHeader;
   }
 }

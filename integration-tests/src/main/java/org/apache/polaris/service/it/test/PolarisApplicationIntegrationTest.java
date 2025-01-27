@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.it.test;
 
-import static org.apache.polaris.service.it.env.PolarisApiEndpoints.REALM_HEADER;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -252,7 +251,7 @@ public class PolarisApplicationIntegrationTest {
             authToken,
             "warehouse",
             catalog,
-            "header." + REALM_HEADER,
+            "header." + endpoints.realmHeader(),
             realm));
     return sessionCatalog;
   }
@@ -594,7 +593,7 @@ public class PolarisApplicationIntegrationTest {
                           authToken,
                           "warehouse",
                           emptyEnvironmentVariable,
-                          "header." + REALM_HEADER,
+                          "header." + endpoints.realmHeader(),
                           realm)))
           .isInstanceOf(BadRequestException.class)
           .hasMessage("Malformed request: Please specify a warehouse");
@@ -680,20 +679,22 @@ public class PolarisApplicationIntegrationTest {
   @ParameterizedTest
   @ValueSource(strings = {"POLARIS", "OTHER"})
   public void testRealmHeaderValid(String realmId) {
+    String catalogName = client.newEntityName("testRealmHeaderValid" + realmId);
+    createCatalog(catalogName, Catalog.TypeEnum.INTERNAL, principalRoleName);
     try (Response response =
         managementApi
             .request(
                 "v1/catalogs",
                 Map.of(),
                 Map.of(),
-                Map.of("Authorization", "Bearer " + authToken, REALM_HEADER, realmId))
+                Map.of("Authorization", "Bearer " + authToken, endpoints.realmHeader(), realmId))
             .get()) {
       assertThat(response.getStatus()).isEqualTo(Status.OK.getStatusCode());
-      Catalogs roles = response.readEntity(Catalogs.class);
+      Catalogs catalogsList = response.readEntity(Catalogs.class);
       if ("POLARIS".equals(realmId)) {
-        assertThat(roles.getCatalogs()).extracting(Catalog::getName).contains(internalCatalogName);
+        assertThat(catalogsList.getCatalogs()).extracting(Catalog::getName).contains(catalogName);
       } else {
-        assertThat(roles.getCatalogs()).isEmpty();
+        assertThat(catalogsList.getCatalogs()).isEmpty();
       }
     }
   }
@@ -706,7 +707,7 @@ public class PolarisApplicationIntegrationTest {
                 "v1/catalogs",
                 Map.of(),
                 Map.of(),
-                Map.of("Authorization", "Bearer " + authToken, REALM_HEADER, "INVALID"))
+                Map.of("Authorization", "Bearer " + authToken, endpoints.realmHeader(), "INVALID"))
             .get()) {
       assertThat(response.getStatus()).isEqualTo(Status.UNAUTHORIZED.getStatusCode());
     }

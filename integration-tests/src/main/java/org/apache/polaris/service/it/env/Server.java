@@ -25,6 +25,9 @@ import java.net.URI;
  * the provided admin credentials or create new principals.
  */
 public interface Server extends AutoCloseable {
+
+  String DEFAULT_REALM_HEADER = "Polaris-Realm";
+
   String realmId();
 
   /**
@@ -36,4 +39,8 @@ public interface Server extends AutoCloseable {
   URI baseUri();
 
   ClientPrincipal adminCredentials();
+
+  default String realmHeader() {
+    return DEFAULT_REALM_HEADER;
+  }
 }

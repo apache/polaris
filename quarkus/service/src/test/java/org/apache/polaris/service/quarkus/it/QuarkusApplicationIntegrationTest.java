@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.quarkus.it;
 
-import static org.apache.polaris.service.it.env.PolarisApiEndpoints.REALM_HEADER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.auth0.jwt.JWT;
@@ -60,7 +59,7 @@ public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegra
     String path = endpoints.catalogApiEndpoint() + "/v1/oauth/tokens";
     try (RESTClient client =
         HTTPClient.builder(Map.of())
-            .withHeader(REALM_HEADER, endpoints.realm())
+            .withHeader(endpoints.realmHeader(), endpoints.realm())
             .uri(path)
             .build()) {
       String credentialString =

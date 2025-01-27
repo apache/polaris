@@ -50,7 +50,7 @@ public class RestApi {
   public Invocation.Builder request(
       String path, Map<String, String> templateValues, Map<String, String> queryParams) {
     Map<String, String> headers = new HashMap<>();
-    headers.put(PolarisApiEndpoints.REALM_HEADER, endpoints.realm());
+    headers.put(endpoints.realmHeader(), endpoints.realm());
     if (authToken != null) {
       headers.put("Authorization", "Bearer " + authToken);
     }
