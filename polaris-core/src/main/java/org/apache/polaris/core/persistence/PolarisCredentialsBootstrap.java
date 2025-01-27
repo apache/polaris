@@ -151,4 +151,12 @@ public class PolarisCredentialsBootstrap {
     }
     return Optional.empty();
   }
+
+  public List<String> getRealmIds() {
+    ArrayList<String> realmIds = new ArrayList<>();
+    for (Map.Entry<String, Map.Entry<String, String>> credential: credentials.entrySet()) {
+      realmIds.add(credential.getKey());
+    }
+    return realmIds;
+  }
 }

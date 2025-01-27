@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.admintool;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
@@ -30,13 +31,6 @@ import picocli.CommandLine;
     mixinStandardHelpOptions = true,
     description = "Bootstraps realms and root principal credentials.")
 public class BootstrapCommand extends BaseCommand {
-
-  @CommandLine.Option(
-      names = {"-r", "--realm"},
-      paramLabel = "<realm>",
-      required = true,
-      description = "The name of a realm to bootstrap.")
-  List<String> realms;
 
   @CommandLine.Option(
       names = {"-c", "--credentials"},
@@ -71,9 +65,10 @@ public class BootstrapCommand extends BaseCommand {
             ? PolarisCredentialsBootstrap.EMPTY
             : PolarisCredentialsBootstrap.fromJson(credentials);
 
+
     // Execute the bootstrap
     Map<String, PrincipalSecretsResult> results =
-        metaStoreManagerFactory.bootstrapRealms(realms, credentialsBootstrap);
+        metaStoreManagerFactory.bootstrapRealms(credentialsBootstrap.getRealmIds(), credentialsBootstrap);
 
     // Log any errors:
     boolean success = true;

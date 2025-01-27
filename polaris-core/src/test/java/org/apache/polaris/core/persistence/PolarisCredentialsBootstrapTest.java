@@ -91,6 +91,21 @@ class PolarisCredentialsBootstrapTest {
   }
 
   @Test
+  void testSingleRealmJson() {
+    String json =
+        "["
+            + "{\"realm\": \"a\", \"principal\": \"root\", \"clientId\": \"abc123\", \"clientSecret\": \"xyz987\"},"
+            + "]";
+
+    PolarisCredentialsBootstrap result = PolarisCredentialsBootstrap.fromJson(json);
+
+    Assertions.assertNotNull(result);
+    Assertions.assertEquals(1, result.credentials.size());
+    Assertions.assertEquals("abc123", result.credentials.get("a").getKey());
+    Assertions.assertEquals("xyz987", result.credentials.get("a").getValue());
+  }
+
+  @Test
   void testMultiRealmJson() {
     String json =
         "["
