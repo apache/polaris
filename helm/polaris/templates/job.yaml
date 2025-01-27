@@ -21,7 +21,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "polaris.fullname" . }}
+  name: {{ include "polaris.fullnameWithSuffix" (list . "bootstrap") }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "polaris.labels" . | nindent 4 }}
@@ -54,8 +54,40 @@ spec:
       securityContext:
         {{- tpl (toYaml .Values.podSecurityContext) . | nindent 8 }}
       {{- end }}
+      {{- if .Values.bootstrap.purge }}
+      initContainers:
+        - name: "polaris-purge"
+          {{- if .Values.containerSecurityContext }}
+          securityContext:
+            {{- tpl (toYaml .Values.containerSecurityContext) . | nindent 12 }}
+          {{- end }}
+          image: "{{ tpl .Values.bootstrap.image.repository . }}:{{ tpl .Values.bootstrap.image.tag . | default .Chart.Version }}"
+          imagePullPolicy: {{ tpl .Values.bootstrap.image.pullPolicy . }}
+          args:
+            - "purge"
+            {{- range $realm := .Values.bootstrap.realms }}
+            - --realm={{ $realm }}
+            {{- end }}
+          env:
+            {{- if .Values.bootstrap.extraEnv }}
+            {{- tpl (toYaml .Values.bootstrap.extraEnv) . | nindent 12 }}
+            {{- end }}
+            - name: "quarkus.log.file.enable"
+              value: "false"
+          volumeMounts:
+            - name: config-volume
+              mountPath: {{ trimSuffix "/" .Values.bootstrap.image.configDir }}
+              readOnly: true
+            - name: temp-dir
+              mountPath: /tmp
+              readOnly: false
+          {{- if .Values.resources }}
+          resources:
+            {{- tpl (toYaml .Values.resources) . | nindent 12 }}
+          {{- end }}
+      {{- end }}
       containers:
-        - name: {{ .Chart.Name }}
+        - name: "polaris-bootstrap"
           {{- if .Values.containerSecurityContext }}
           securityContext:
             {{- tpl (toYaml .Values.containerSecurityContext) . | nindent 12 }}

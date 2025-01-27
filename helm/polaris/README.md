@@ -66,27 +66,29 @@ see https://github.com/helm/helm/issues/7019.
 
 The below instructions assume Kind and Helm are installed.
 
-Simply run the `run.sh` script from the Polaris repo root:
+Simply run the `run.sh` script from the Polaris repo root, making sure to specify the
+`--eclipse-link-deps` option:
 
 ```bash
-./run.sh
+./run.sh --eclipse-link-deps=org.postgresql:postgresql:42.7.4
 ```
 
 This script will create a Kind cluster, deploy a local Docker registry, build the Polaris Docker
-images and load them into the Kind cluster. (It will also create an example Deployment and Service.)
+images with support for Postgres and load them into the Kind cluster. (It will also create an
+example Deployment and Service with in-memory storage.)
 
 ### Running locally with a Minikube cluster
 
 The below instructions assume a Minikube cluster is already running and Helm is installed.
 
-If necessary, load the Docker images into Minikube:
+If necessary, build and load the Docker images with support for Postgres into Minikube:
 
 ```bash
 eval $(minikube -p minikube docker-env)
 
 ./gradlew :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
     -Dquarkus.container-image.build=true \
-    -PeclipseLinkDeps=com.h2database:h2:2.3.232
+    -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
 ```
 
 ### Installing the chart locally
@@ -147,7 +149,7 @@ helm uninstall --namespace polaris polaris
 | autoscaling.minReplicas | int | `1` | The minimum number of replicas to maintain. |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Optional; set to zero or empty to disable. |
 | autoscaling.targetMemoryUtilizationPercentage | string | `nil` | Optional; set to zero or empty to disable. |
-| bootstrap | object | `{"credentials":[],"enabled":false,"extraEnv":[],"image":{"configDir":"/deployments/config","pullPolicy":"IfNotPresent","repository":"apache/polaris-admin-tool","tag":"latest"},"realms":[]}` | Configures whether to enable the bootstrap metastore manager job. It is recommended to bootstrap realms using the Polaris Admin Tool; use this only if you need to bootstrap realms while deploying Polaris at the same time. |
+| bootstrap | object | `{"credentials":[],"enabled":false,"extraEnv":[],"image":{"configDir":"/deployments/config","pullPolicy":"IfNotPresent","repository":"apache/polaris-admin-tool","tag":"latest"},"purge":false,"realms":[]}` | Configures whether to enable the bootstrap metastore manager job. It is recommended to bootstrap realms using the Polaris Admin Tool; use this only if you need to bootstrap realms while deploying Polaris at the same time. |
 | bootstrap.credentials | list | `[]` | The root credentials to create during the bootstrap. If you don't provide credentials for the root principal of each realm to bootstrap, random credentials will be generated. Each entry in the array must be of the form: realm,clientId,clientSecret |
 | bootstrap.enabled | bool | `false` | Specifies whether the bootstrap metastore manager job should be enabled. |
 | bootstrap.extraEnv | list | `[]` | Extra environment variables to add to the bootstrap metastore manager job (see `extraEnv` for an example) |
@@ -156,7 +158,8 @@ helm uninstall --namespace polaris polaris
 | bootstrap.image.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
 | bootstrap.image.repository | string | `"apache/polaris-admin-tool"` | The image repository to pull from. |
 | bootstrap.image.tag | string | `"latest"` | The image tag. |
-| bootstrap.realms | list | `[]` | The names of the realms to bootstrap. |
+| bootstrap.purge | bool | `false` | Specifies whether to purge the existing metastore before bootstrapping. This will delete all realms specified below, along with all their data. Use with caution! |
+| bootstrap.realms | list | `[]` | The names of the realms to bootstrap (and optionally purge). |
 | configMapLabels | object | `{}` | Additional Labels to apply to polaris configmap. |
 | containerSecurityContext | object | `{}` | Security context for the polaris container. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
 | cors | object | `{"accessControlAllowCredentials":true,"accessControlMaxAge":600,"allowedHeaders":["*"],"allowedMethods":["PATCH","POST","DELETE","GET","PUT"],"allowedOrigins":["http://localhost:8080"],"exposedHeaders":["*"]}` | Polaris HTTP ports configuration. |

@@ -52,7 +52,7 @@ tests:
     asserts:
       - equal:
           path: metadata.name
-          value: polaris-release
+          value: polaris-release-bootstrap
   - it: should set job name with override
     set:
       bootstrap.enabled: true
@@ -60,7 +60,7 @@ tests:
     asserts:
       - equal:
           path: metadata.name
-          value: polaris-release-polaris-override
+          value: polaris-release-polaris-override-bootstrap
   - it: should set job name with full override
     set:
       bootstrap.enabled: true
@@ -68,7 +68,7 @@ tests:
     asserts:
       - equal:
           path: metadata.name
-          value: polaris-override
+          value: polaris-override-bootstrap
 
   # metadata.namespace (with bootstrap.enabled true)
   - it: should set job namespace
@@ -235,6 +235,151 @@ tests:
           content:
             runAsUser: 1000
 
+  # spec.template.spec.initContainers (with bootstrap.enabled true and bootstrap.purge false)
+  - it: should not create init container name by default
+    set:
+      bootstrap.enabled: true
+    asserts:
+      - notExists:
+          path: spec.template.spec.initContainers
+
+  # spec.template.spec.initContainers (with bootstrap.enabled true and bootstrap.purge true)
+  - it: should create init container name if purge is true
+    set:
+      bootstrap.enabled: true
+      bootstrap.purge: true
+    asserts:
+      - exists:
+          path: spec.template.spec.initContainers
+
+  # spec.template.spec.initContainers (with bootstrap.enabled true and bootstrap.purge true)
+  - it: should set init container name
+    set:
+      bootstrap.enabled: true
+      bootstrap.purge: true
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: polaris-purge
+
+  # spec.template.spec.initContainers[0].securityContext (with bootstrap.enabled true and bootstrap.purge true)
+  - it: should not set init container securityContext by default
+    set:
+      bootstrap.enabled: true
+      bootstrap.purge: true
+    asserts:
+      - notExists:
+          path: spec.template.spec.initContainers[0].securityContext
+  - it: should set init container securityContext
+    set:
+      bootstrap.enabled: true
+      bootstrap.purge: true
+      containerSecurityContext:
+        runAsUser: 1000
+    asserts:
+      - isSubset:
+          path: spec.template.spec.initContainers[0].securityContext
+          content:
+            runAsUser: 1000
+
+  # spec.template.spec.initContainers[0].image (with bootstrap.enabled true and bootstrap.purge true)
+  - it: should set init container image
+    set:
+      bootstrap:
+        enabled: true
+        purge: true
+        image:
+          repository: test-repo
+          tag: test-tag
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: test-repo:test-tag
+  - it: should set init container image with template
+    set:
+      bootstrap:
+        enabled: true
+        purge: true
+        image:
+          repository: test-repo-{{ .Chart.Version }}
+          tag: test-tag-{{ .Release.Name }}
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: test-repo-1.2.3:test-tag-polaris-release
+  - it: should set init container image with chart version if no tag provided
+    set:
+      bootstrap:
+        enabled: true
+        purge: true
+        image:
+          repository: test-repo
+          tag: ""
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: test-repo:1.2.3
+
+  # spec.template.spec.initContainers[0].imagePullPolicy (with bootstrap.enabled true and bootstrap.purge true)
+  - it: should set init container pull policy
+    set:
+      bootstrap:
+        enabled: true
+        purge: true
+        image:
+          pullPolicy: Always
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].imagePullPolicy
+          value: Always
+
+  # spec.template.spec.initContainers[0].resources (with bootstrap.enabled true and bootstrap.purge true)
+  - it: should not set init container resources by default
+    set:
+      bootstrap.enabled: true
+      bootstrap.purge: true
+    asserts:
+      - notExists:
+          path: spec.template.spec.initContainers[0].resources
+  - it: should set init container resources
+    set:
+      bootstrap:
+        enabled: true
+        purge: true
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].resources
+          value:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+
+  # spec.template.spec.initContainers[0].env (with bootstrap.enabled true and bootstrap.purge true)
+  - it: should set init container env
+    set:
+      bootstrap:
+        enabled: true
+        purge: true
+        extraEnv:
+          - name: foo
+            value: bar
+    asserts:
+      - contains:
+          path: spec.template.spec.initContainers[0].env
+          content:
+            name: foo
+            value: bar
+
   # spec.template.spec.containers (with bootstrap.enabled true)
   - it: should set container name
     set:
@@ -242,7 +387,7 @@ tests:
     asserts:
       - equal:
           path: spec.template.spec.containers[0].name
-          value: polaris
+          value: polaris-bootstrap
 
   # spec.template.spec.containers[0].securityContext (with bootstrap.enabled true)
   - it: should not set container securityContext by default
