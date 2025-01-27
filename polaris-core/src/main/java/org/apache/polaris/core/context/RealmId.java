@@ -37,6 +37,10 @@ public interface RealmId {
     return ImmutableRealmId.of(id);
   }
 
+  static RealmId copyOf(RealmId realmId) {
+    return ImmutableRealmId.copyOf(realmId);
+  }
+
   @Value.Parameter
   @JsonValue
   String id();
