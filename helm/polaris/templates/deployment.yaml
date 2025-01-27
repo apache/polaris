@@ -85,8 +85,6 @@ spec:
           {{- end }}
           image: "{{ tpl .Values.image.repository . }}:{{ tpl .Values.image.tag . | default .Chart.Version }}"
           imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}
-          command: ["/app/bin/polaris-service"]
-          args: ["server", "/app/config/polaris-server.yml"]
           {{- if .Values.extraEnv }}
           env:
             {{- tpl (toYaml .Values.extraEnv) . | nindent 12 }}
@@ -107,7 +105,7 @@ spec:
             {{- end }}
           livenessProbe:
             httpGet:
-              path: /healthcheck
+              path: /q/health/live
               port: "polaris-metrics"
               scheme: HTTP
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
@@ -118,7 +116,7 @@ spec:
             terminationGracePeriodSeconds: {{ .Values.livenessProbe.terminationGracePeriodSeconds }}
           readinessProbe:
             httpGet:
-              path: /healthcheck
+              path: /q/health/ready
               port: "polaris-metrics"
               scheme: HTTP
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}

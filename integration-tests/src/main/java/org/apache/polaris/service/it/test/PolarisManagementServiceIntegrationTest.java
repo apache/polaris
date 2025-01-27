@@ -86,6 +86,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
+/**
+ * @implSpec @implSpec This test expects the server to be configured with the following features
+ *     configured:
+ *     <ul>
+ *       <li>{@link org.apache.polaris.core.PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
+ *           {@code true}
+ *       <li>{@link
+ *           org.apache.polaris.core.PolarisConfiguration#ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING}:
+ *           {@code true}
+ *     </ul>
+ */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisManagementServiceIntegrationTest {
   private static final int MAX_IDENTIFIER_LENGTH = 256;

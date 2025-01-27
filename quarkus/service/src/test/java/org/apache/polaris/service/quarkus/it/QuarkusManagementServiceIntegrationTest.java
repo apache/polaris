@@ -19,8 +19,29 @@
 package org.apache.polaris.service.quarkus.it;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
+import java.util.Map;
 import org.apache.polaris.service.it.test.PolarisManagementServiceIntegrationTest;
 
 @QuarkusTest
+@TestProfile(QuarkusManagementServiceIntegrationTest.Profile.class)
 public class QuarkusManagementServiceIntegrationTest
-    extends PolarisManagementServiceIntegrationTest {}
+    extends PolarisManagementServiceIntegrationTest {
+
+  public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.features.defaults.\"ALLOW_OVERLAPPING_CATALOG_URLS\"",
+          "true",
+          "polaris.features.defaults.\"ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING\"",
+          "true",
+          "polaris.storage.gcp.token",
+          "token",
+          "polaris.storage.gcp.lifespan",
+          "PT1H");
+    }
+  }
+}

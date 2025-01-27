@@ -19,10 +19,9 @@
 
 services:
   polaris:
-    build:
-      context: .
+    image: apache/polaris:latest
     ports:
-      - "8181:8181"
+      - "8181"
       - "8182"
     environment:
       AWS_REGION: us-west-2
@@ -32,12 +31,11 @@ services:
       AZURE_TENANT_ID: $AZURE_TENANT_ID
       AZURE_CLIENT_ID: $AZURE_CLIENT_ID
       AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET
-      POLARIS_AUTHENTICATION_AUTHENTICATOR_TYPE: test
-      POLARIS_AUTHENTICATION_TOKEN_SERVICE_TYPE: test
-      QUARKUS_OTEL_SDK_DISABLED: "true"
+      POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,secret
+      quarkus.log.file.enable: "false"
+      quarkus.otel.sdk.disabled: "true"
     volumes:
-      - ./regtests/credentials:/tmp/credentials/
-
+      - ./credentials:/tmp/credentials/
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
       interval: 10s
@@ -45,7 +43,7 @@ services:
       retries: 5
   regtest:
     build:
-      context: regtests
+      context: .
       args:
         POLARIS_HOST: polaris
     depends_on:
@@ -69,5 +67,5 @@ services:
       AWS_CROSS_REGION_BUCKET: $AWS_CROSS_REGION_BUCKET
       AWS_ROLE_FOR_CROSS_REGION_BUCKET: $AWS_ROLE_FOR_CROSS_REGION_BUCKET
     volumes:
-      - ./regtests/output:/tmp/polaris-regtests/
-      - ./regtests/credentials:/tmp/credentials/
+      - ./output:/tmp/polaris-regtests/
+      - ./credentials:/tmp/credentials/

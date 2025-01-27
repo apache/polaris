@@ -46,7 +46,7 @@ class IcebergSparkSession:
       aws_region: str = "us-west-2",
       catalog_name: str = None,
       polaris_url: str = None,
-      realm: str = 'default-realm'
+      realm: str = 'POLARIS'
   ):
     """Constructor for Iceberg Spark session. Sets the member variables."""
     self.bearer_token = bearer_token

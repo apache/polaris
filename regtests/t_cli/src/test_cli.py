@@ -38,7 +38,7 @@ def get_salt(length=8) -> str:
 
 
 def root_cli(*args):
-    return cli('principal:root;realm:default-realm')(*args)
+    return cli(os.getenv('REGTEST_ROOT_BEARER_TOKEN'))(*args)
 
 
 def cli(access_token):

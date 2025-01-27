@@ -37,9 +37,9 @@ class BootstrapCommandTest {
         "-r",
         "realm2",
         "-c",
-        "realm1,root,root,s3cr3t",
+        "realm1,root,s3cr3t",
         "-c",
-        "realm2,root,root,s3cr3t"
+        "realm2,root,s3cr3t"
       })
   public void testBootstrap(LaunchResult result) {
     assertThat(result.getOutput()).contains("Bootstrap completed successfully.");

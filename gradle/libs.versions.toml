@@ -20,7 +20,7 @@
 [versions]
 hadoop = "3.4.1"
 iceberg = "1.7.1"
-quarkus = "3.17.7"
+quarkus = "3.17.8"
 immutables = "2.10.1"
 picocli = "4.7.6"
 scala212 = "2.12.19"
@@ -39,11 +39,11 @@ swagger = "1.6.15"
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.3" } # spark integration tests
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.3" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.4.0" }
-awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.30.2" }
+awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.30.6" }
 azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.30" }
 bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version = "1.80" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.0" }
-commons-codec1 = { module = "commons-codec:commons-codec", version = "1.17.2" }
+commons-codec1 = { module = "commons-codec:commons-codec", version = "1.18.0" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version = "3.17.0" }
 commons-text = { module = "org.apache.commons:commons-text", version = "1.13.0" }
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.5" }
@@ -51,8 +51,7 @@ errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.3
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.47.0" }
 guava = { module = "com.google.guava:guava", version = "33.4.0-jre" }
 h2 = { module = "com.h2database:h2", version = "2.3.232" }
-# Strict dnsjava downgrade due to https://github.com/dnsjava/dnsjava/issues/329
-dnsjava = { module = "dnsjava:dnsjava", version = "3.5.3!!" }
+dnsjava = { module = "dnsjava:dnsjava", version = "3.6.3" }
 hadoop-client-api = { module = "org.apache.hadoop:hadoop-client-api", version.ref = "hadoop" }
 hadoop-client-runtime = { module = "org.apache.hadoop:hadoop-client-runtime", version.ref = "hadoop" }
 hadoop-common = { module = "org.apache.hadoop:hadoop-common", version.ref = "hadoop" }
@@ -71,7 +70,7 @@ jakarta-servlet-api = { module = "jakarta.servlet:jakarta.servlet-api", version 
 jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api", version = "3.1.0" }
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
-jetbrains-annotations = { module = "org.jetbrains:annotations", version = "26.0.1" }
+jetbrains-annotations = { module = "org.jetbrains:annotations", version = "26.0.2" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.11.4" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.16" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.14.3" }
