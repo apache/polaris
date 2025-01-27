@@ -349,7 +349,10 @@ extraInitContainers: []
 bootstrap:
   # -- Specifies whether the bootstrap metastore manager job should be enabled.
   enabled: false
-  # -- The names of the realms to bootstrap.
+  # -- Specifies whether to purge the existing metastore before bootstrapping.
+  # This will delete all realms specified below, along with all their data. Use with caution!
+  purge: false
+  # -- The names of the realms to bootstrap (and optionally purge).
   realms: []
   # -- The root credentials to create during the bootstrap. If you don't provide credentials for the
   # root principal of each realm to bootstrap, random credentials will be generated.

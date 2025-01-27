@@ -40,11 +40,10 @@ persistence:
 
 bootstrap:
   enabled: true
+  purge: true
   realms:
     - "POLARIS"
-    - "POLARIS2"
   credentials:
     - POLARIS,root,secret
-    - POLARIS2,root,secret
   image:
     pullPolicy: Never
