@@ -58,6 +58,7 @@ import org.apache.iceberg.hadoop.HadoopFileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTSessionCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
+import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -709,7 +710,13 @@ public class PolarisApplicationIntegrationTest {
                 Map.of(),
                 Map.of("Authorization", "Bearer " + authToken, endpoints.realmHeader(), "INVALID"))
             .get()) {
-      assertThat(response.getStatus()).isEqualTo(Status.UNAUTHORIZED.getStatusCode());
+      assertThat(response.getStatus()).isEqualTo(Status.NOT_FOUND.getStatusCode());
+      assertThat(response.readEntity(ErrorResponse.class))
+          .extracting(ErrorResponse::code, ErrorResponse::type, ErrorResponse::message)
+          .containsExactly(
+              Status.NOT_FOUND.getStatusCode(),
+              "UnresolvableRealmException",
+              "Unknown realm: INVALID");
     }
   }
 }

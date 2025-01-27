@@ -21,12 +21,9 @@ package org.apache.polaris.service.context;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.PreMatching;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.ext.Provider;
 import java.util.HashMap;
 import java.util.Map;
@@ -45,24 +42,16 @@ public class RealmIdFilter implements ContainerRequestFilter {
 
   @Override
   public void filter(ContainerRequestContext rc) {
-    RealmId realmId = null;
-    try {
-      realmId = resolveRealmContext(rc);
-    } catch (NotAuthorizedException e) {
-      rc.abortWith(Response.status(Status.UNAUTHORIZED).build());
-    } catch (Exception e) {
-      rc.abortWith(Response.status(Status.INTERNAL_SERVER_ERROR).build());
-    }
+    RealmId realmId =
+        realmIdResolver.resolveRealmId(
+            rc.getUriInfo().getRequestUri().toString(),
+            rc.getMethod(),
+            rc.getUriInfo().getPath(),
+            rc.getHeaders().entrySet().stream()
+                .collect(
+                    HashMap::new,
+                    (m, e) -> m.put(e.getKey(), e.getValue().getFirst()),
+                    Map::putAll));
     rc.setProperty(REALM_ID_KEY, realmId);
-  }
-
-  protected RealmId resolveRealmContext(ContainerRequestContext rc) {
-    return realmIdResolver.resolveRealmId(
-        rc.getUriInfo().getRequestUri().toString(),
-        rc.getMethod(),
-        rc.getUriInfo().getPath(),
-        rc.getHeaders().entrySet().stream()
-            .collect(
-                HashMap::new, (m, e) -> m.put(e.getKey(), e.getValue().getFirst()), Map::putAll));
   }
 }

@@ -19,16 +19,16 @@
 package org.apache.polaris.service.context;
 
 import java.util.Map;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.exceptions.PolarisException;
 
-public interface RealmIdResolver {
+/**
+ * Exception thrown when a realm cannot be resolved.
+ *
+ * @see RealmIdResolver#resolveRealmId(String, String, String, Map)
+ */
+public class UnresolvableRealmException extends PolarisException {
 
-  /**
-   * Resolves the realm id for the given request.
-   *
-   * @return the resolved realm id
-   * @throws UnresolvableRealmException if the realm cannot be resolved
-   */
-  RealmId resolveRealmId(
-      String requestURL, String method, String path, Map<String, String> headers);
+  public UnresolvableRealmException(String realm) {
+    super("Unknown realm: " + realm);
+  }
 }
