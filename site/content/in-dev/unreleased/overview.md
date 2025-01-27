@@ -94,7 +94,7 @@ when you create a catalog. The storage configuration is used to set the values t
 catalog creation process, an IAM entity is generated and used to create a trust relationship between the cloud storage provider and Polaris
 Catalog.
 
-When you create a catalog, you supply the following information about your external cloud storage:
+When you create a catalog, you supply the following information about your cloud storage:
 
 | Cloud storage provider | Information |
 | -----------------------| ----------- |
@@ -128,7 +128,7 @@ In the following example workflow, Bob creates an Apache Iceberg&trade; table na
 ### Credential vending
 
 To secure interactions with service connections, Polaris vends temporary storage credentials to the query engine during query
-execution. These credentials allow the query engine to run the query without requiring access to your external cloud storage for
+execution. These credentials allow the query engine to run the query without requiring access to your cloud storage for
 Iceberg tables. This process is called credential vending.
 
 As of now, the following limitation is known regarding Apache Iceberg support:
