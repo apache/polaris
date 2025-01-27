@@ -80,6 +80,9 @@ select * from db1.table1;
   build the image locally.
 - `docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest` - To run the image.
 
+The Polaris codebase contains some docker compose examples to quickly get started with Polaris,
+using different configurations. Check the `./getting-started` directory for more information.
+
 #### Running in Kubernetes
 
 - `./run.sh` - To run Polaris as a mini-deployment locally. This will create a Kind cluster, 
