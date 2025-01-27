@@ -28,7 +28,7 @@ import org.apache.polaris.core.exceptions.PolarisException;
  */
 public class UnresolvableRealmException extends PolarisException {
 
-  public UnresolvableRealmException(String realm) {
-    super("Unknown realm: " + realm);
+  public UnresolvableRealmException(String message) {
+    super(message);
   }
 }

@@ -44,9 +44,13 @@ public class DefaultRealmIdResolver implements RealmIdResolver {
     if (headers.containsKey(configuration.headerName())) {
       realm = headers.get(configuration.headerName());
       if (!configuration.realms().contains(realm)) {
-        throw new UnresolvableRealmException(realm);
+        throw new UnresolvableRealmException("Unknown realm: " + realm);
       }
     } else {
+      if (configuration.requireHeader()) {
+        throw new UnresolvableRealmException(
+            "Missing required realm header: " + configuration.headerName());
+      }
       realm = configuration.defaultRealm();
     }
 
