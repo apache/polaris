@@ -204,7 +204,8 @@ public class PolarisSparkIntegrationTest {
             endpoints.catalogApiEndpoint().toString())
         .config(String.format("spark.sql.catalog.%s.warehouse", catalogName), catalogName)
         .config(String.format("spark.sql.catalog.%s.scope", catalogName), "PRINCIPAL_ROLE:ALL")
-        .config(String.format("spark.sql.catalog.%s.header.realm", catalogName), endpoints.realm())
+        .config(
+            String.format("spark.sql.catalog.%s.header.realm", catalogName), endpoints.realmId())
         .config(String.format("spark.sql.catalog.%s.token", catalogName), sparkToken)
         .config(String.format("spark.sql.catalog.%s.s3.access-key-id", catalogName), "fakekey")
         .config(

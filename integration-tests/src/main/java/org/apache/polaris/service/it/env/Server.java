@@ -33,7 +33,7 @@ public interface Server extends AutoCloseable {
     return DEFAULT_REALM_ID;
   }
 
-  default String realmHeader() {
+  default String realmHeaderName() {
     return DEFAULT_REALM_HEADER;
   }
 

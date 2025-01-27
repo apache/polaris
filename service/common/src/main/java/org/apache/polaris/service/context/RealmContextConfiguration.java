@@ -38,8 +38,7 @@ public interface RealmContextConfiguration {
    * header is not present, the request will be rejected. If this is false and the realm header is
    * not present, the default realm will be used.
    *
-   * <p>Note: this is actually only enforced when using {@link DefaultRealmIdResolver}. When using
-   * {@link TestRealmIdResolver}, this setting is ignored.
+   * <p>Note: this is actually only enforced in production setups.
    */
   boolean requireHeader();
 

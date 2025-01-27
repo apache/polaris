@@ -59,7 +59,7 @@ public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegra
     String path = endpoints.catalogApiEndpoint() + "/v1/oauth/tokens";
     try (RESTClient client =
         HTTPClient.builder(Map.of())
-            .withHeader(endpoints.realmHeader(), endpoints.realm())
+            .withHeader(endpoints.realmHeaderName(), endpoints.realmId())
             .uri(path)
             .build()) {
       String credentialString =

@@ -127,7 +127,7 @@ public class PolarisApplicationIntegrationTest {
       throws IOException {
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
-    realm = endpoints.realm();
+    realm = endpoints.realmId();
     admin = adminCredentials;
     clientCredentials = adminCredentials.credentials();
     authToken = client.obtainToken(clientCredentials);
@@ -252,7 +252,7 @@ public class PolarisApplicationIntegrationTest {
             authToken,
             "warehouse",
             catalog,
-            "header." + endpoints.realmHeader(),
+            "header." + endpoints.realmHeaderName(),
             realm));
     return sessionCatalog;
   }
@@ -594,7 +594,7 @@ public class PolarisApplicationIntegrationTest {
                           authToken,
                           "warehouse",
                           emptyEnvironmentVariable,
-                          "header." + endpoints.realmHeader(),
+                          "header." + endpoints.realmHeaderName(),
                           realm)))
           .isInstanceOf(BadRequestException.class)
           .hasMessage("Malformed request: Please specify a warehouse");
@@ -688,7 +688,8 @@ public class PolarisApplicationIntegrationTest {
                 "v1/catalogs",
                 Map.of(),
                 Map.of(),
-                Map.of("Authorization", "Bearer " + authToken, endpoints.realmHeader(), realmId))
+                Map.of(
+                    "Authorization", "Bearer " + authToken, endpoints.realmHeaderName(), realmId))
             .get()) {
       assertThat(response.getStatus()).isEqualTo(Status.OK.getStatusCode());
       Catalogs catalogsList = response.readEntity(Catalogs.class);
@@ -708,7 +709,8 @@ public class PolarisApplicationIntegrationTest {
                 "v1/catalogs",
                 Map.of(),
                 Map.of(),
-                Map.of("Authorization", "Bearer " + authToken, endpoints.realmHeader(), "INVALID"))
+                Map.of(
+                    "Authorization", "Bearer " + authToken, endpoints.realmHeaderName(), "INVALID"))
             .get()) {
       assertThat(response.getStatus()).isEqualTo(Status.NOT_FOUND.getStatusCode());
       assertThat(response.readEntity(ErrorResponse.class))

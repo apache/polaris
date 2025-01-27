@@ -54,7 +54,7 @@ public final class IcebergHelper {
                 org.apache.iceberg.CatalogProperties.FILE_IO_IMPL,
                 "org.apache.iceberg.inmemory.InMemoryFileIO")
             .put("warehouse", catalog)
-            .put("header." + endpoints.realmHeader(), endpoints.realm())
+            .put("header." + endpoints.realmHeaderName(), endpoints.realmId())
             .putAll(extraProperties);
 
     restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());
