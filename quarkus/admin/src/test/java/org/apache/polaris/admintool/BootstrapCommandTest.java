@@ -59,11 +59,10 @@ class BootstrapCommandTest {
   @Launch(
       value = {
           "bootstrap",
-          "-c",
           "--print-credentials"
       })
   public void testPrintGeneratedCredentials(LaunchResult result) {
     assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
-    assertThat(result.getOutput()).contains("root:");
+    assertThat(result.getOutput()).contains("root principal");
   }
 }
