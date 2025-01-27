@@ -105,9 +105,9 @@ kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
 Finally, install the chart. From Polaris repo root:
 
 ```bash
-helm upgrade --install --namespace polaris polaris helm/polaris \
-  --debug \
-  --values helm/polaris/ci/simple-values.yaml
+helm upgrade --install --namespace polaris \
+  --debug --values helm/polaris/ci/simple-values.yaml \
+   polaris helm/polaris
 ```
 
 The `helm/polaris/ci` contains a number of values files that can be used to install the chart with
@@ -117,10 +117,7 @@ You can also run `ct` (chart-testing):
 
 ```bash
 ct lint --charts helm/polaris
-ct install --helm-extra-set-args "--set=image.tag=unstable --set bootstrap.image.tag=unstable" \
-  --debug \
-  --namespace polaris \
-  --charts ./helm/polaris
+ct install --namespace polaris --debug --charts ./helm/polaris
 ```
 
 ### Uninstalling the chart
