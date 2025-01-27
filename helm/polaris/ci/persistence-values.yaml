@@ -40,7 +40,7 @@ persistence:
 
 bootstrap:
   enabled: true
-  purge: true
+  purge: false
   realms:
     - "POLARIS"
   credentials:
