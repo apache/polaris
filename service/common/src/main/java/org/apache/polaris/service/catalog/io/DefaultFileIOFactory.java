@@ -72,14 +72,6 @@ public class DefaultFileIOFactory implements FileIOFactory {
   public FileIO loadFileIO(
       @Nonnull RealmId realmId,
       @Nonnull String ioImplClassName,
-      @Nonnull Map<String, String> properties) {
-    return loadFileIOInternal(ioImplClassName, properties);
-  }
-
-  @Override
-  public FileIO loadFileIO(
-      @Nonnull RealmId realmId,
-      @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties,
       @Nonnull TableIdentifier identifier,
       @Nonnull Set<String> tableLocations,

@@ -54,15 +54,6 @@ public class WasbTranslatingFileIOFactory implements FileIOFactory {
   public FileIO loadFileIO(
       @Nonnull RealmId realmId,
       @Nonnull String ioImplClassName,
-      @Nonnull Map<String, String> properties) {
-    return new WasbTranslatingFileIO(
-        defaultFileIOFactory.loadFileIO(realmId, ioImplClassName, properties));
-  }
-
-  @Override
-  public FileIO loadFileIO(
-      @Nonnull RealmId realmId,
-      @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties,
       @Nonnull TableIdentifier identifier,
       @Nonnull Set<String> tableLocations,

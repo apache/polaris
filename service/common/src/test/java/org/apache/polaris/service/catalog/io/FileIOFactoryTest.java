@@ -121,23 +121,6 @@ public class FileIOFactoryTest {
   }
 
   @Test
-  public void testLoadFileIOForCatalog() {
-    String testProperty = "test.property";
-    FileIOFactory fileIOFactory =
-        new DefaultFileIOFactory(
-            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore) {
-          @Override
-          FileIO loadFileIOInternal(
-              @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
-            org.assertj.core.api.Assertions.assertThat(properties)
-                .containsEntry(testProperty, "true");
-            return super.loadFileIOInternal(ioImplClassName, properties);
-          }
-        };
-    fileIOFactory.loadFileIO(realmId, InMemoryFileIO.class.getName(), Map.of(testProperty, "true"));
-  }
-
-  @Test
   public void testLoadFileIOForTableLike() {
     String storageLocation = "s3://my-bucket/path/to/data";
     AwsStorageConfigurationInfo storageConfig =

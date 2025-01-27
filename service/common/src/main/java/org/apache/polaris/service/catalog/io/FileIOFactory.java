@@ -35,12 +35,6 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
  */
 public interface FileIOFactory {
 
-  /** This method is intended for use in tests only. */
-  FileIO loadFileIO(
-      @Nonnull RealmId realmId,
-      @Nonnull String ioImplClassName,
-      @Nonnull Map<String, String> properties);
-
   /**
    * Loads a FileIO implementation for a specific table in the given realm with detailed config.
    *

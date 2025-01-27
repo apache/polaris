@@ -66,26 +66,6 @@ public class TestFileIOFactory implements FileIOFactory {
   public FileIO loadFileIO(
       @Nonnull RealmId realmId,
       @Nonnull String ioImplClassName,
-      @Nonnull Map<String, String> properties) {
-    loadFileIOExceptionSupplier.ifPresent(
-        s -> {
-          throw s.get();
-        });
-
-    TestFileIO wrapped =
-        new TestFileIO(
-            defaultFileIOFactory.loadFileIO(realmId, ioImplClassName, properties),
-            newInputFileExceptionSupplier,
-            newOutputFileExceptionSupplier,
-            getLengthExceptionSupplier);
-    ios.add(wrapped);
-    return wrapped;
-  }
-
-  @Override
-  public FileIO loadFileIO(
-      @Nonnull RealmId realmId,
-      @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties,
       @Nonnull TableIdentifier identifier,
       @Nonnull Set<String> tableLocations,

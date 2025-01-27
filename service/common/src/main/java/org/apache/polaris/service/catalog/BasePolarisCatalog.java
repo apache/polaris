@@ -40,9 +40,11 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseMetastoreTableOperations;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
@@ -325,7 +327,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
     }
     FileIO fileIO =
-        refreshIOForTableLike(
+        loadFileIOForTableLike(
             identifier,
             Set.of(locationDir),
             resolvedParent,
@@ -1194,7 +1196,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               // then we should use the actual current table properties for IO refresh here
               // instead of the general tableDefaultProperties.
               FileIO fileIO =
-                  refreshIOForTableLike(
+                  loadFileIOForTableLike(
                       tableIdentifier,
                       Set.of(latestLocationDir),
                       resolvedEntities,
@@ -1230,7 +1232,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
       // refresh credentials because we need to read the metadata file to validate its location
       tableFileIO =
-          refreshIOForTableLike(
+          loadFileIOForTableLike(
               tableIdentifier,
               getLocationsAllowedToBeAccessed(metadata),
               resolvedStorageEntity,
@@ -1414,7 +1416,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               // then we should use the actual current table properties for IO refresh here
               // instead of the general tableDefaultProperties.
               FileIO fileIO =
-                  refreshIOForTableLike(
+                  loadFileIOForTableLike(
                       identifier,
                       Set.of(latestLocationDir),
                       resolvedEntities,
@@ -1468,7 +1470,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       Map<String, String> tableProperties = new HashMap<>(metadata.properties());
 
       viewFileIO =
-          refreshIOForTableLike(
+          loadFileIOForTableLike(
               identifier,
               getLocationsAllowedToBeAccessed(metadata),
               resolvedStorageEntity,
@@ -1525,7 +1527,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private FileIO refreshIOForTableLike(
+  private FileIO loadFileIOForTableLike(
       TableIdentifier identifier,
       Set<String> readLocations,
       PolarisResolvedPathWrapper resolvedStorageEntity,
@@ -1839,7 +1841,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
       // Validate that we can construct a FileIO
       String locationDir = metadataLocation.substring(0, metadataLocation.lastIndexOf("/"));
-      refreshIOForTableLike(
+      loadFileIOForTableLike(
           tableIdentifier,
           Set.of(locationDir),
           resolvedStorageEntity,
@@ -1894,7 +1896,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       String locationDir = newLocation.substring(0, newLocation.lastIndexOf("/"));
 
       FileIO fileIO =
-          refreshIOForTableLike(
+          loadFileIOForTableLike(
               tableIdentifier,
               Set.of(locationDir),
               resolvedParent,
@@ -1973,8 +1975,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    * @return FileIO object
    */
   private FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
-    Map<String, String> propertiesWithS3CustomizedClientFactory = new HashMap<>(properties);
-    return fileIOFactory.loadFileIO(realmId, ioImpl, propertiesWithS3CustomizedClientFactory);
+    return CatalogUtil.loadFileIO(ioImpl, properties, new Configuration());
   }
 
   private void blockedUserSpecifiedWriteLocation(Map<String, String> properties) {
