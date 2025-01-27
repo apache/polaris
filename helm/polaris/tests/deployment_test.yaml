@@ -615,6 +615,11 @@ tests:
                 name: polaris-storage-secret
                 key: awsAccessKeyId
 
+  - it: should not set any environment variables by default
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].env
+
   - it: should configure config volume
     set:
       image.configDir: /config/dir

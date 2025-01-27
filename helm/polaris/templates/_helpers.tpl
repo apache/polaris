@@ -104,16 +104,30 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Merges the advanced configuration into the destination map.
+Merges a configuration tree into the destination configuration map. See configmap.yaml template.
+Two styles of configuration trees are supported:
+- Flattened configuration tree: The configuration option names are specified as a dot-separated
+  string, and the configuration option values are the values of the configuration options. E.g.:
+  "key1.subkey1": "value1"
+  "key1.subkey2.subsubkey1": "value2"
+- Nested configuration tree: The configuration option names are specified as a nested structure.
+  The resulting option names are formed by concatenating the nested keys with a dot separator.
+  E.g.:
+  key1:
+    subkey1: "value1"
+    subkey2:
+      subsubkey1: "value2"
+The configuration option values are evaluated as templates against the global context before being
+printed.
 */}}
-{{- define "polaris.mergeAdvancedConfig" -}}
+{{- define "polaris.mergeConfigTree" -}}
 {{- $advConfig := index . 0 -}}
 {{- $prefix := index . 1 -}}
 {{- $dest := index . 2 -}}
 {{- range $key, $val := $advConfig -}}
 {{- $name := ternary $key (print $prefix "." $key) (eq $prefix "") -}}
 {{- if kindOf $val | eq "map" -}}
-{{- list $val $name $dest | include "polaris.mergeAdvancedConfig" -}}
+{{- list $val $name $dest | include "polaris.mergeConfigTree" -}}
 {{- else -}}
 {{- $_ := set $dest $name $val -}}
 {{- end -}}
@@ -121,7 +135,7 @@ Merges the advanced configuration into the destination map.
 {{- end -}}
 
 {{/*
-Prints the configuration option to the destination configmap entry. See confimap.yaml.
+Prints the configuration option to the destination configmap entry. See configmap.yaml template.
 Any nil values will be printed as empty config options; otherwise, the value will be evaluated
 as a template against the global context, then printed. Furthermore, if the value contains
 line breaks, they will be escaped and a multi-line option will be printed.
@@ -187,6 +201,23 @@ Prints the config volume definition for deployments and jobs.
             - key: {{ tpl .Values.persistence.eclipseLink.secret.key . }}
               path: persistence.xml
       {{- end }}
+{{- end -}}
+
+{{/*
+Prints an environment variable for a secret key reference.
+*/}}
+{{- define "polaris.secretToEnv" -}}
+{{- $secret := index . 0 -}}
+{{- $keyRef := index . 1 -}}
+{{- $varName := index . 2 -}}
+{{- $key := get $secret $keyRef -}}
+{{- if and $secret.name $key }}
+- name: {{ $varName }}
+  valueFrom:
+    secretKeyRef:
+      name: {{ $secret.name }}
+      key: {{ $key }}
+{{- end }}
 {{- end -}}
 
 {{/*

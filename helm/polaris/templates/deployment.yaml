@@ -74,29 +74,9 @@ spec:
           imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}
           {{- if or .Values.storage.secret.name .Values.extraEnv }}
           env:
-            {{- if .Values.storage.secret.name }}
-            {{- if .Values.storage.secret.awsAccessKeyId }}
-            - name: polaris.storage.aws.access-key
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.storage.secret.name }}
-                  key: {{ .Values.storage.secret.awsAccessKeyId }}
-            {{- end }}
-            {{- if .Values.storage.secret.awsSecretAccessKey }}
-            - name: polaris.storage.aws.secret-key
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.storage.secret.name }}
-                  key: {{ .Values.storage.secret.awsSecretAccessKey }}
-            {{- end }}
-            {{- if .Values.storage.secret.gcpToken }}
-            - name: polaris.storage.gcp.token
-              valueFrom:
-                secretKeyRef:
-                  name: {{ .Values.storage.secret.name }}
-                  key: {{ .Values.storage.secret.gcpToken }}
-            {{- end }}
-            {{- end }}
+            {{- include "polaris.secretToEnv" (list .Values.storage.secret "awsAccessKeyId" "polaris.storage.aws.access-key") | nindent 12 }}
+            {{- include "polaris.secretToEnv" (list .Values.storage.secret "awsSecretAccessKey" "polaris.storage.aws.secret-key") | nindent 12 }}
+            {{- include "polaris.secretToEnv" (list .Values.storage.secret "gcpToken" "polaris.storage.gcp.token") | nindent 12 }}
             {{- if .Values.extraEnv }}
             {{- tpl (toYaml .Values.extraEnv) . | nindent 12 }}
             {{- end }}
