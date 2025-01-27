@@ -170,14 +170,14 @@ Prints the config volume definition for deployments and jobs.
           name: {{ tpl .Values.authentication.tokenBroker.secret.name . }}
           items:
           {{- if eq .Values.authentication.tokenBroker.type "rsa-key-pair" }}
-          - key: {{ tpl .Values.authentication.tokenBroker.secret.publicKey . }}
-            path: public.pem
-          - key: {{ tpl .Values.authentication.tokenBroker.secret.privateKey . }}
-            path: private.pem
+            - key: {{ tpl .Values.authentication.tokenBroker.secret.publicKey . }}
+              path: public.pem
+            - key: {{ tpl .Values.authentication.tokenBroker.secret.privateKey . }}
+              path: private.pem
           {{- end }}
           {{- if eq .Values.authentication.tokenBroker.type "symmetric-key" }}
-          - key: {{ tpl .Values.authentication.tokenBroker.secret.secretKey . }}
-            path: symmetric.key
+            - key: {{ tpl .Values.authentication.tokenBroker.secret.secretKey . }}
+              path: symmetric.key
           {{- end }}
       {{- end }}
       {{- if and ( eq .Values.persistence.type "eclipse-link" ) .Values.persistence.eclipseLink.secret.name }}
@@ -258,9 +258,9 @@ ports:
 {{- fail (printf "service.ports[%d]: port number already taken: %v" $i $portNumber) -}}
 {{- end -}}
 {{- $_ := set $ports $port.name $portNumber }}
-- name: {{ $port.name }}
-  containerPort: {{ coalesce $port.targetPort $port.port }}
-  protocol: {{ $port.protocol | default "TCP" }}
+  - name: {{ $port.name }}
+    containerPort: {{ coalesce $port.targetPort $port.port }}
+    protocol: {{ $port.protocol | default "TCP" }}
 {{- end -}}
 
 {{- /* Management service ports */ -}}
@@ -273,9 +273,9 @@ ports:
 {{- fail (printf "managementService.ports[%d]: port number already taken: %v" $i $portNumber) -}}
 {{- end -}}
 {{- $_ := set $ports $port.name $portNumber }}
-- name: {{ $port.name }}
-  containerPort: {{ coalesce $port.targetPort $port.port }}
-  protocol: {{ $port.protocol | default "TCP" }}
+  - name: {{ $port.name }}
+    containerPort: {{ coalesce $port.targetPort $port.port }}
+    protocol: {{ $port.protocol | default "TCP" }}
 {{- end -}}
 
 {{- /* Extra service ports */ -}}
@@ -290,9 +290,9 @@ ports:
 {{- fail (printf "extraServices[%d].ports[%d]: port number already taken: %v" $i $j $portNumber) -}}
 {{- end -}}
 {{- $_ := set $ports $port.name $portNumber }}
-- name: {{ $port.name }}
-  containerPort: {{ coalesce $port.targetPort $port.port }}
-  protocol: {{ $port.protocol | default "TCP" }}
+  - name: {{ $port.name }}
+    containerPort: {{ coalesce $port.targetPort $port.port }}
+    protocol: {{ $port.protocol | default "TCP" }}
 {{- end -}}
 {{- end -}}
 
