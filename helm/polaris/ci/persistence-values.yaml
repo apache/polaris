@@ -42,7 +42,7 @@ bootstrap:
   enabled: true
   purge: false
   realms:
-    - "POLARIS"
+    - POLARIS
   credentials:
     - POLARIS,root,secret
   image:
