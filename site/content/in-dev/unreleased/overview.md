@@ -59,7 +59,7 @@ A catalog can be one of the following two types:
 - Internal: The catalog is managed by Polaris. Tables from this catalog can be read and written in Polaris.
 
 - External: The catalog is externally managed by another Iceberg catalog provider (for example, Snowflake, Glue, Dremio Arctic). Tables from 
-  this catalog are synced to Polaris. These tables are read-only in Polaris. In the current release, only a Snowflake external catalog is provided.
+  this catalog are synced to Polaris. These tables are read-only in Polaris.
 
 A catalog is configured with a storage configuration that can point to S3, Azure storage, or GCS.
 
@@ -67,16 +67,6 @@ A catalog is configured with a storage configuration that can point to S3, Azure
 
 You create *namespaces* to logically group Iceberg tables within a catalog. A catalog can have multiple namespaces. You can also create
 nested namespaces. Iceberg tables belong to namespaces.
-
-### Apache Iceberg&trade; tables and catalogs
-
-In an internal catalog, an Iceberg table is registered in Polaris, but read and written via query engines. The table data and
-metadata is stored in your external cloud storage. The table uses Polaris as the Iceberg catalog.
-
-If you have tables housed in another Iceberg catalog, you can sync these tables to an external catalog in Polaris.
-If you sync this catalog to Polaris, it appears as an external catalog in Polaris. Clients connecting to the external
-catalog can read from or write to these tables. However, clients connecting to Polaris will only be able to
-read from these tables.
 
 > **Important**
 >
@@ -97,46 +87,9 @@ read from these tables.
 > - /namespace1/namespace1a/customers/<files for the customers table *only*>
 > - /namespace1/namespace1a/orders/<files for the orders table *only*>
 
-### Service principal
-
-A service principal is an entity that you create in Polaris. Each service principal encapsulates credentials that you use to connect
-to Polaris.
-
-Query engines use service principals to connect to catalogs.
-
-Polaris generates a Client ID and Client Secret pair for each service principal.
-
-The following table displays example service principals that you might create in Polaris:
-
-  | Service connection name     | Purpose |
-  | --------------------------- | ----------- |
-  |  Flink ingestion            | For Apache Flink&reg; to ingest streaming data into Apache Iceberg&trade; tables. |
-  |  Spark ETL pipeline         | For Apache Spark&trade; to run ETL pipeline jobs on Iceberg tables. |
-  |  Snowflake data pipelines   | For Snowflake to run data pipelines for transforming data in Apache Iceberg&trade; tables.  |
-  |  Trino BI dashboard         | For Trino to run BI queries for powering a dashboard. |
-  |  Snowflake AI team          | For Snowflake to run AI jobs on data in Apache Iceberg&trade; tables. |
-
-### Service connection
-
-A service connection represents a REST-compatible engine (such as Apache Spark&trade;, Apache Flink&reg;, or Trino) that can read from and write to Polaris
-Catalog. When creating a new service connection, the Polaris administrator grants the service principal that is created with the new service 
-connection either a new or existing principal role. A principal role is a resource in Polaris that you can use to logically group Polaris 
-service principals together and grant privileges on securable objects. For more information, see [Principal role]({{% ref "access-control#principal-role" %}}). Polaris uses a role-based access control (RBAC) model to grant service principals access to resources. For more information, 
-see [Access control]({{% ref "access-control" %}}). For a diagram of this model, see [RBAC model]({{% ref "access-control#rbac-model" %}}).
-
-If the Polaris administrator grants the service principal for the new service connection a new principal role, the service principal
-doesn't have any privileges granted to it yet. When securing the catalog that the new service connection will connect to, the Polaris
-administrator grants privileges to catalog roles and then grants these catalog roles to the new principal role. As a result, the service
-principal for the new service connection has these privileges. For more information about catalog roles, see [Catalog role]({{% ref "access-control#catalog-role" %}}).
-
-If the Polaris administrator grants an existing principal role to the service principal for the new service connection, the service principal
-has the same privileges granted to the catalog roles that are granted to the existing principal role. If needed, the Polaris
-administrator can grant additional catalog roles to the existing principal role or remove catalog roles from it to adjust the privileges
-bestowed to the service principal. For an example of how RBAC works in Polaris, see [RBAC example]({{% ref "access-control#rbac-example" %}}).
-
 ### Storage configuration
 
-A storage configuration stores a generated identity and access management (IAM) entity for your external cloud storage and is created
+A storage configuration stores a generated identity and access management (IAM) entity for your cloud storage and is created
 when you create a catalog. The storage configuration is used to set the values to connect Polaris to your cloud storage. During the
 catalog creation process, an IAM entity is generated and used to create a trust relationship between the cloud storage provider and Polaris
 Catalog.
@@ -171,8 +124,6 @@ In the following example workflow, Bob creates an Apache Iceberg&trade; table na
 ![Diagram that shows an example workflow for Apache Polaris (Incubating)](/img/example-workflow.svg "Example workflow for Apache Polaris (Incubating)")
 
 ## Security and access control
-
-This section describes security and access control.
 
 ### Credential vending
 
