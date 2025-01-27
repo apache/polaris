@@ -50,9 +50,34 @@ When using a custom `persistence.xml`, a Kubernetes Secret must be created for i
 kubectl create secret generic polaris-secret -n polaris --from-file=persistence.xml
 ```
 
-### From local directory (for development purposes)
+### Running the unit tests
 
-The below instructions assume Minikube is running and Helm is installed.
+Helm unit tests do not require a Kubernetes cluster. To run the unit tests from the Polaris repo
+root:
+
+```bash
+helm unittest helm/polaris 2> >(grep -v 'found symbolic link' >&2)
+```
+
+Note: the `grep` command is used to filter out the annoying warning messages about symbolic links;
+see https://github.com/helm/helm/issues/7019.
+
+### Running locally with a Kind cluster
+
+The below instructions assume Kind and Helm are installed.
+
+Simply run the `run.sh` script from the Polaris repo root:
+
+```bash
+./run.sh
+```
+
+This script will create a Kind cluster, deploy a local Docker registry, build the Polaris Docker
+images and load them into the Kind cluster. (It will also create an example Deployment and Service.)
+
+### Running locally with a Minikube cluster
+
+The below instructions assume a Minikube cluster is already running and Helm is installed.
 
 If necessary, load the Docker images into Minikube:
 
@@ -61,11 +86,14 @@ eval $(minikube -p minikube docker-env)
 
 ./gradlew :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
     -Dquarkus.container-image.build=true \
-    -Dquarkus.container-image.tag=unstable \
     -PeclipseLinkDeps=com.h2database:h2:2.3.232
 ```
 
-Then create and populate the namespace:
+### Installing the chart locally
+
+The below instructions assume a local Kubernetes cluster is running and Helm is installed.
+
+Create and populate the target namespace:
 
 ```bash
 kubectl create namespace polaris
@@ -76,11 +104,12 @@ Finally, install the chart. From Polaris repo root:
 
 ```bash
 helm upgrade --install --namespace polaris polaris helm/polaris \
-  --set image.tag=unstable \
-  --set bootstrap.image.tag=unstable \
   --debug \
   --values helm/polaris/ci/simple-values.yaml
 ```
+
+The `helm/polaris/ci` contains a number of values files that can be used to install the chart with
+different configurations.
 
 You can also run `ct` (chart-testing):
 
