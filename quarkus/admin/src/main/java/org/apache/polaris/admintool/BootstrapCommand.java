@@ -56,7 +56,7 @@ public class BootstrapCommand extends BaseCommand {
 
     if (credentials == null || credentials.isEmpty()) {
       if (!printCredentials) {
-        throw new IllegalArgumentException("Specify either `--credentials` or `--print-credentials` to ensure" +
+        spec.commandLine().getErr().println("Specify either `--credentials` or `--print-credentials` to ensure" +
             " the root user is accessible after bootstrapping.");
       }
     }

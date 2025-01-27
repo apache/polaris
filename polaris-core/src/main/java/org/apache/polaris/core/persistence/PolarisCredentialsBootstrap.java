@@ -24,6 +24,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Splitter;
 import jakarta.annotation.Nullable;
 import java.util.AbstractMap.SimpleEntry;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,9 +73,13 @@ public class PolarisCredentialsBootstrap {
    */
   public static PolarisCredentialsBootstrap fromJson(String json) {
     ObjectMapper objectMapper = new ObjectMapper();
+    List<Map<String, String>> credentialsList = new ArrayList<>();
     try {
-      List<Map<String, String>> credentialsList =
+      credentialsList =
           objectMapper.readValue(json, new TypeReference<>() {});
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Could not parse credentials JSON: " + json, e);
+    }
       Map<String, Map.Entry<String, String>> credentials = new HashMap<>();
       for (Map<String, String> entry : credentialsList) {
         String realm = entry.get("realm");
@@ -82,7 +87,7 @@ public class PolarisCredentialsBootstrap {
         String clientId = entry.get("clientId");
         String clientSecret = entry.get("clientSecret");
         if (realm == null || principal == null || clientId == null || clientSecret == null) {
-          throw new IllegalArgumentException("Invalid JSON format for credentials: " + json);
+          throw new IllegalArgumentException("Failed to find credentials in: " + json);
         } else if (!principal.equals(PolarisEntityConstants.ROOT_PRINCIPAL_NAME)) {
           throw new IllegalArgumentException(
               String.format(
@@ -96,9 +101,6 @@ public class PolarisCredentialsBootstrap {
         }
       }
       return new PolarisCredentialsBootstrap(credentials);
-    } catch (Exception e) {
-      throw new IllegalArgumentException("Failed to find bootstrap credentials in: " + json, e);
-    }
   }
 
   /**
