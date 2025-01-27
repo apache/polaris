@@ -83,6 +83,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.persistence.BaseResult;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -345,12 +346,12 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
       @Override
       public Map<String, PrincipalSecretsResult> bootstrapRealms(
-          List<String> realms, RootCredentialsSet rootCredentialsSet) {
+          Iterable<String> realms, RootCredentialsSet rootCredentialsSet) {
         throw new NotImplementedException("Bootstrapping realms is not supported");
       }
 
       @Override
-      public void purgeRealms(List<String> realms) {
+      public Map<String, BaseResult> purgeRealms(Iterable<String> realms) {
         throw new NotImplementedException("Purging realms is not supported");
       }
     };
