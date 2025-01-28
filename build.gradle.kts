@@ -159,3 +159,36 @@ nexusPublishing {
     }
   }
 }
+
+copiedCodeChecks {
+  addDefaultContentTypes()
+
+  licenseFile = project.layout.projectDirectory.file("LICENSE")
+
+  scanDirectories {
+    register("build-logic") { srcDir("build-logic/src") }
+    register("misc") {
+      srcDir(".github")
+      srcDir("codestyle")
+      srcDir("getting-started")
+      srcDir("k8")
+      srcDir("regtests")
+      srcDir("server-templates")
+      srcDir("spec")
+    }
+    register("gradle") {
+      srcDir("gradle")
+      exclude("wrapper/*.jar")
+      exclude("wrapper/*.sha256")
+    }
+    register("site") {
+      srcDir("site")
+      exclude("build/**")
+      exclude(".hugo_build.lock")
+    }
+    register("root") {
+      srcDir(".")
+      include("*")
+    }
+  }
+}
