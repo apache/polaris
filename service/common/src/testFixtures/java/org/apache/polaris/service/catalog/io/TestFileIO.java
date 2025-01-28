@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.catalog.io;
+package org.apache.polaris.service.catalog.io;
 
 import java.util.Map;
 import java.util.Optional;

@@ -16,25 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.catalog.io;
+package org.apache.polaris.service.catalog.io;
 
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.inject.Vetoed;
+import jakarta.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.iceberg.CatalogUtil;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
+import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.config.RealmEntityManagerFactory;
 
 /**
  * A FileIOFactory that measures the number of bytes read, files written, and files deleted. It can
  * inject exceptions at various parts of the IO construction.
  */
 @Vetoed
-public class TestFileIOFactory extends DefaultFileIOFactory {
+public class TestFileIOFactory implements FileIOFactory {
   private final List<TestFileIO> ios = new ArrayList<>();
 
   // When present, the following will be used to throw exceptions at various parts of the IO
@@ -43,10 +50,27 @@ public class TestFileIOFactory extends DefaultFileIOFactory {
   public Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier = Optional.empty();
   public Optional<Supplier<RuntimeException>> getLengthExceptionSupplier = Optional.empty();
 
-  public TestFileIOFactory() {}
+  private final FileIOFactory defaultFileIOFactory;
+
+  @Inject
+  public TestFileIOFactory(
+      RealmEntityManagerFactory realmEntityManagerFactory,
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      PolarisConfigurationStore configurationStore) {
+    defaultFileIOFactory =
+        new DefaultFileIOFactory(
+            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
+  }
 
   @Override
-  public FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
+  public FileIO loadFileIO(
+      @Nonnull RealmId realmId,
+      @Nonnull String ioImplClassName,
+      @Nonnull Map<String, String> properties,
+      @Nonnull TableIdentifier identifier,
+      @Nonnull Set<String> tableLocations,
+      @Nonnull Set<PolarisStorageActions> storageActions,
+      @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
     loadFileIOExceptionSupplier.ifPresent(
         s -> {
           throw s.get();
@@ -54,7 +78,14 @@ public class TestFileIOFactory extends DefaultFileIOFactory {
 
     TestFileIO wrapped =
         new TestFileIO(
-            CatalogUtil.loadFileIO(ioImpl, properties, new Configuration()),
+            defaultFileIOFactory.loadFileIO(
+                realmId,
+                ioImplClassName,
+                properties,
+                identifier,
+                tableLocations,
+                storageActions,
+                resolvedEntityPath),
             newInputFileExceptionSupplier,
             newOutputFileExceptionSupplier,
             getLengthExceptionSupplier);
