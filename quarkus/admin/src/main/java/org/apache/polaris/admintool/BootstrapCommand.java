@@ -21,6 +21,7 @@ package org.apache.polaris.admintool;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
+import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.persistence.PolarisCredentialsBootstrap;
 import picocli.CommandLine;
 
@@ -34,8 +35,9 @@ public class BootstrapCommand extends BaseCommand {
       names = {"-r", "--realm"},
       paramLabel = "<realm>",
       required = true,
+      converter = RealmIdConverter.class,
       description = "The name of a realm to bootstrap.")
-  List<String> realms;
+  List<RealmId> realms;
 
   @CommandLine.Option(
       names = {"-c", "--credential"},
@@ -54,19 +56,19 @@ public class BootstrapCommand extends BaseCommand {
             : PolarisCredentialsBootstrap.fromList(credentials);
 
     // Execute the bootstrap
-    Map<String, PrincipalSecretsResult> results =
+    Map<RealmId, PrincipalSecretsResult> results =
         metaStoreManagerFactory.bootstrapRealms(realms, credentialsBootstrap);
 
     // Log any errors:
     boolean success = true;
-    for (Map.Entry<String, PrincipalSecretsResult> result : results.entrySet()) {
+    for (Map.Entry<RealmId, PrincipalSecretsResult> result : results.entrySet()) {
       if (!result.getValue().isSuccess()) {
-        String realm = result.getKey();
+        RealmId realm = result.getKey();
         spec.commandLine()
             .getErr()
             .printf(
                 "Bootstrapping '%s' failed: %s%n",
-                realm, result.getValue().getReturnStatus().toString());
+                realm.id(), result.getValue().getReturnStatus().toString());
         success = false;
       }
     }

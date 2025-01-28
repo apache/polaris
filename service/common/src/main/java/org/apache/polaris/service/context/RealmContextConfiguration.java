@@ -20,6 +20,7 @@ package org.apache.polaris.service.context;
 
 import jakarta.validation.constraints.Size;
 import java.util.List;
+import org.apache.polaris.core.context.RealmId;
 
 public interface RealmContextConfiguration {
 
@@ -28,13 +29,13 @@ public interface RealmContextConfiguration {
    * considered the default realm.
    */
   @Size(min = 1)
-  List<String> realms();
+  List<RealmId> realms();
 
   /** The header name that contains the realm identifier. */
   String headerName();
 
   /** The default realm to use when no realm is specified. */
-  default String defaultRealm() {
+  default RealmId defaultRealm() {
     return realms().getFirst();
   }
 }
