@@ -23,6 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.quarkus.test.junit.main.Launch;
 import io.quarkus.test.junit.main.LaunchResult;
 import io.quarkus.test.junit.main.QuarkusMainTest;
+import org.apache.polaris.core.persistence.PolarisCredentialsBootstrap;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 @QuarkusMainTest
@@ -32,16 +34,35 @@ class BootstrapCommandTest {
   @Launch(
       value = {
         "bootstrap",
-        "-r",
-        "realm1",
-        "-r",
-        "realm2",
         "-c",
-        "realm1,root,s3cr3t",
-        "-c",
-        "realm2,root,s3cr3t"
+        "[{\"realm\":\"realm1\",\"principal\":\"root\",\"clientId\":\"root\",\"clientSecret\":\"s3cr3t\"}]"
       })
   public void testBootstrap(LaunchResult result) {
     assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
+  }
+
+  @Test
+  @Launch(
+      value = {
+          "bootstrap",
+          "-c",
+          "[{\"realm\":\"realm1\",\"principal\":\"root\",\"clientId\":\"root\",\"clientSecret\":\"s3cr3t\"}]",
+          "--print-credentials"
+      })
+  public void testPrintCredentials(LaunchResult result) {
+    assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
+    assertThat(result.getOutput()).contains("root:");
+  }
+
+  @Test
+  @Launch(
+      value = {
+          "bootstrap",
+          "--print-credentials"
+      })
+  public void testPrintGeneratedCredentials(LaunchResult result) {
+    assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
+    assertThat(result.getOutput()).doesNotContain("root:");
+    assertThat(result.getOutput()).contains("root principal");
   }
 }
