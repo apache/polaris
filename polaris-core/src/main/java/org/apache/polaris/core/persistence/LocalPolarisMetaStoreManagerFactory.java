@@ -51,6 +51,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
 
+  // These maps are all keyed by RealmId.id(); we avoid keying by RealmId to avoid using a CDI proxy
+  // as a key
   private final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
   private final Map<String, StorageCredentialCache> storageCredentialCacheMap = new HashMap<>();
   private final Map<String, EntityCache> entityCacheMap = new HashMap<>();
@@ -107,6 +109,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
         PrincipalSecretsResult secretsResult =
             bootstrapServiceAndCreatePolarisPrincipalForRealm(
                 realm, metaStoreManagerMap.get(realm.id()));
+        // copy to avoid using a CDI proxy as a key
         results.put(ImmutableRealmId.copyOf(realm), secretsResult);
       }
     }
@@ -123,6 +126,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       PolarisMetaStoreSession session = getOrCreateSessionSupplier(realm).get();
 
       BaseResult result = metaStoreManager.purge(session);
+      // copy to avoid using a CDI proxy as a key
       results.put(ImmutableRealmId.copyOf(realm), result);
 
       storageCredentialCacheMap.remove(realm.id());

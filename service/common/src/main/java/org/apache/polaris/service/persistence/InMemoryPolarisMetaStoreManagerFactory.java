@@ -48,6 +48,9 @@ public class InMemoryPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
 
   private final PolarisStorageIntegrationProvider storageIntegration;
+
+  // This set contains RealmId.id() values; we avoid using RealmId to avoid putting CDI beans in
+  // the set.
   private final Set<String> bootstrappedRealms = new CopyOnWriteArraySet<>();
 
   public InMemoryPolarisMetaStoreManagerFactory() {
