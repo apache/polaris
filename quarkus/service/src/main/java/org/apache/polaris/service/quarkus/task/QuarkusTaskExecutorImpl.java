@@ -76,7 +76,7 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
         tracer
             .spanBuilder("polaris.task")
             .setParent(Context.current())
-            .setAttribute(QuarkusTracingFilter.REALM_ID_ATTRIBUTE, realm.id())
+            .setAttribute(QuarkusTracingFilter.REALM_ID_ATTRIBUTE, realm.name())
             .setAttribute("polaris.task.entity.id", taskEntityId)
             .setAttribute("polaris.task.attempt", attempt)
             .startSpan();

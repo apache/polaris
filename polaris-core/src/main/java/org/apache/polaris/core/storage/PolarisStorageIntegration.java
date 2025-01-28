@@ -47,7 +47,7 @@ public abstract class PolarisStorageIntegration<T extends PolarisStorageConfigur
   /**
    * Subscope the creds against the allowed read and write locations.
    *
-   * @param realm the realm context
+   * @param realm the realm
    * @param diagnostics the diagnostics service
    * @param storageConfig storage configuration
    * @param allowListOperation whether to allow LIST on all the provided allowed read/write

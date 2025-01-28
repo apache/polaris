@@ -100,7 +100,7 @@ public class PolarisIntegrationTestFixture {
           List.of(this.realm), PolarisCredentialsBootstrap.fromEnvironment());
     }
 
-    Realm realm = Realm.newRealm(this.realm);
+    Realm realm = Realm.fromName(this.realm);
 
     PolarisMetaStoreSession metaStoreSession =
         helper.metaStoreManagerFactory.getOrCreateSessionSupplier(realm).get();

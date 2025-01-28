@@ -200,7 +200,7 @@ sealed interface PolarisEclipseLinkPersistenceUnit
       }
       // Replace database name in JDBC URL with realm
       if (properties.containsKey(JDBC_URL)) {
-        properties.put(JDBC_URL, properties.get(JDBC_URL).replace("{realm}", realm.id()));
+        properties.put(JDBC_URL, properties.get(JDBC_URL).replace("{realm}", realm.name()));
       }
       return properties;
     } catch (XPathExpressionException

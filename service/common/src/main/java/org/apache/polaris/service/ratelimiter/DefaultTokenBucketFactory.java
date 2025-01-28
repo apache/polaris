@@ -50,7 +50,7 @@ public class DefaultTokenBucketFactory implements TokenBucketFactory {
   @Override
   public TokenBucket getOrCreateTokenBucket(Realm realm) {
     return perRealmBuckets.computeIfAbsent(
-        realm.id(),
+        realm.name(),
         k ->
             new TokenBucket(
                 requestsPerSecond,

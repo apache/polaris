@@ -106,7 +106,7 @@ public class ResolverTest {
         new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS, diagServices);
     metaStoreManager =
         new PolarisMetaStoreManagerImpl(
-            Realm.newRealm("test"),
+            Realm.fromName("test"),
             diagServices,
             new PolarisConfigurationStore() {},
             Clock.systemUTC());

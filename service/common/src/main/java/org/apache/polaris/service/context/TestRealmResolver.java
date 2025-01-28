@@ -70,7 +70,7 @@ public class TestRealmResolver implements RealmResolver {
       parsedProperties.put(REALM_PROPERTY_KEY, configuration.defaultRealm());
     }
     String realm = parsedProperties.get(REALM_PROPERTY_KEY);
-    return Realm.newRealm(realm);
+    return Realm.fromName(realm);
   }
 
   /**

@@ -92,8 +92,8 @@ public class TaskExecutorImpl implements TaskExecutor {
 
   /**
    * Register a {@link Realm} for a specific task id. That task will be loaded and executed
-   * asynchronously with a copy of the provided {@link Realm} (because the realm context is a
-   * request-scoped component).
+   * asynchronously with a copy of the provided {@link Realm} (because the realm is a request-scoped
+   * component).
    */
   @Override
   public void addTaskHandlerContext(long taskEntityId, Realm realm) {

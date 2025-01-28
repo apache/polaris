@@ -88,7 +88,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
    *
    * @param store Backing store of EclipseLink implementation
    * @param storageIntegrationProvider Storage integration provider
-   * @param realm Realm context used to communicate with different database.
+   * @param realm Realm used to communicate with different database.
    * @param confFile Optional EclipseLink configuration file. Default to 'META-INF/persistence.xml'.
    * @param persistenceUnitName Optional persistence-unit name in confFile. Default to 'polaris'.
    */
@@ -101,7 +101,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       @Nonnull PrincipalSecretsGenerator secretsGenerator,
       @Nonnull PolarisDiagnostics diagnostics) {
     this.diagnostics = diagnostics;
-    LOGGER.debug("Creating EclipseLink Meta Store Session for realm {}", realm.id());
+    LOGGER.debug("Creating EclipseLink Meta Store Session for realm {}", realm.name());
     emf = createEntityManagerFactory(realm, confFile, persistenceUnitName);
 
     // init store
@@ -122,7 +122,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   private EntityManagerFactory createEntityManagerFactory(
       @Nonnull Realm realm, @Nullable String confFile, @Nullable String persistenceUnitName) {
     return realmFactories.computeIfAbsent(
-        realm.id(),
+        realm.name(),
         key -> {
           try {
             PolarisEclipseLinkPersistenceUnit persistenceUnit =

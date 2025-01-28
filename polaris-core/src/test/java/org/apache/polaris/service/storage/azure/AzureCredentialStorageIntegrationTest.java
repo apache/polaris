@@ -68,7 +68,7 @@ public class AzureCredentialStorageIntegrationTest {
   private final String clientId = System.getenv("AZURE_CLIENT_ID");
   private final String clientSecret = System.getenv("AZURE_CLIENT_SECRET");
   private final String tenantId = System.getenv("AZURE_TENANT_ID");
-  private final Realm realm = Realm.newRealm("realm");
+  private final Realm realm = Realm.fromName("realm");
 
   private void assumeEnvVariablesNotNull() {
     Assumptions.assumeThat(

@@ -39,7 +39,7 @@ public class RealmIdTagContributor implements HttpServerMetricsTagsContributor {
     // FIXME request scope does not work here, so we have to resolve the realm context manually
     HttpServerRequest request = context.request();
     Realm realm = resolveRealmContext(request);
-    return Tags.of(TAG_REALM, realm.id());
+    return Tags.of(TAG_REALM, realm.name());
   }
 
   private Realm resolveRealmContext(HttpServerRequest request) {

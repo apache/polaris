@@ -33,7 +33,7 @@ import org.junit.jupiter.api.Test;
 
 class InMemoryStorageIntegrationTest {
 
-  private final Realm realm = Realm.newRealm("test");
+  private final Realm realm = Realm.fromName("test");
 
   @Test
   public void testValidateAccessToLocations() {

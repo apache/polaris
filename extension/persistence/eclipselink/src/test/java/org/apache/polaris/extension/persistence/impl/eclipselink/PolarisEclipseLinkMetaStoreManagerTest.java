@@ -101,7 +101,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
-    Realm realm = Realm.newRealm("realm");
+    Realm realm = Realm.fromName("realm");
     PolarisMetaStoreSession session =
         new PolarisEclipseLinkMetaStoreSessionImpl(
             store, Mockito.mock(), realm, null, "polaris", RANDOM_SECRETS, diagServices);
@@ -128,7 +128,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
           new PolarisEclipseLinkMetaStoreSessionImpl(
               store,
               Mockito.mock(),
-              Realm.newRealm("realm"),
+              Realm.fromName("realm"),
               confFile,
               "polaris",
               RANDOM_SECRETS,

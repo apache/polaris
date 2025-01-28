@@ -56,7 +56,7 @@ public record TestServices(
     Realm realm,
     SecurityContext securityContext) {
 
-  private static final Realm testRealm = Realm.newRealm("test-realm");
+  private static final Realm testRealm = Realm.fromName("test-realm");
 
   public static TestServices inMemory(Map<String, Object> config) {
     return inMemory(new TestFileIOFactory(), config);

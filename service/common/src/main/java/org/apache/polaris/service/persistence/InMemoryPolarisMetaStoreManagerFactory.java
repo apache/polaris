@@ -85,16 +85,16 @@ public class InMemoryPolarisMetaStoreManagerFactory
 
   @Override
   public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(Realm realm) {
-    if (!bootstrappedRealms.contains(realm.id())) {
-      bootstrapRealmsAndPrintCredentials(List.of(realm.id()));
+    if (!bootstrappedRealms.contains(realm.name())) {
+      bootstrapRealmsAndPrintCredentials(List.of(realm.name()));
     }
     return super.getOrCreateMetaStoreManager(realm);
   }
 
   @Override
   public synchronized Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(Realm realm) {
-    if (!bootstrappedRealms.contains(realm.id())) {
-      bootstrapRealmsAndPrintCredentials(List.of(realm.id()));
+    if (!bootstrappedRealms.contains(realm.name())) {
+      bootstrapRealmsAndPrintCredentials(List.of(realm.name()));
     }
     return super.getOrCreateSessionSupplier(realm);
   }

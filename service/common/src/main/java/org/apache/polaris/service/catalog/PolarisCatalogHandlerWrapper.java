@@ -208,7 +208,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
         resolutionManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity();
     CatalogEntity catalog = CatalogEntity.of(baseCatalogEntity);
 
-    String realm = this.realm.id();
+    String realm = this.realm.name();
     String catalogKey = realm + "/" + catalogName;
     LOGGER.info("Initializing new BasePolarisCatalog for key: {}", catalogKey);
 

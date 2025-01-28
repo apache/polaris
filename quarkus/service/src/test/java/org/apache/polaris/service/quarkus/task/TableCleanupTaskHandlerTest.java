@@ -60,7 +60,7 @@ class TableCleanupTaskHandlerTest {
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisDiagnostics diagnostics;
 
-  private final Realm realm = Realm.newRealm("realmName");
+  private final Realm realm = Realm.fromName("realmName");
 
   @Test
   public void testTableCleanup() throws IOException {

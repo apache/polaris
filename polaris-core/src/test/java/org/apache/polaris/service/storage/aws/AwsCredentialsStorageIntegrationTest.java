@@ -61,7 +61,7 @@ class AwsCredentialsStorageIntegrationTest {
           .build();
   public static final String AWS_PARTITION = "aws";
 
-  private static final Realm REALM = Realm.newRealm("realm");
+  private static final Realm REALM = Realm.fromName("realm");
 
   @Test
   public void testGetSubscopedCreds() {

@@ -121,7 +121,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
         "realm_%s_%s"
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
-    Realm realm = Realm.newRealm(realmName);
+    Realm realm = Realm.fromName(realmName);
 
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realm);
     metaStoreSession = managerFactory.getOrCreateSessionSupplier(realm).get();

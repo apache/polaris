@@ -25,16 +25,16 @@ import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
 /**
- * Represents the ID of the realm used in a REST request associated with routing to independent and
- * isolated "universes".
+ * Represents an isolated "universe" within the system, such as different deployments (e.g.,
+ * production, staging, QA) or distinct accounts.
  */
 @PolarisImmutable
 @JsonSerialize(as = ImmutableRealm.class)
 @JsonDeserialize(as = ImmutableRealm.class)
 public interface Realm {
 
-  static Realm newRealm(String id) {
-    return ImmutableRealm.of(id);
+  static Realm fromName(String name) {
+    return ImmutableRealm.of(name);
   }
 
   static Realm copyOf(Realm realm) {
@@ -43,5 +43,5 @@ public interface Realm {
 
   @Value.Parameter
   @JsonValue
-  String id();
+  String name();
 }

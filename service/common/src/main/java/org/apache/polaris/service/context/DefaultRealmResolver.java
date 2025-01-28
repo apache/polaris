@@ -50,6 +50,6 @@ public class DefaultRealmResolver implements RealmResolver {
       realm = configuration.defaultRealm();
     }
 
-    return Realm.newRealm(realm);
+    return Realm.fromName(realm);
   }
 }

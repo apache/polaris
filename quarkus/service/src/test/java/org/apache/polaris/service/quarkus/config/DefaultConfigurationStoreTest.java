@@ -31,7 +31,7 @@ public class DefaultConfigurationStoreTest {
   public void testGetConfiguration() {
     DefaultConfigurationStore defaultConfigurationStore =
         new DefaultConfigurationStore(Map.of("key1", 1, "key2", "value"));
-    Realm realm = Realm.newRealm("test");
+    Realm realm = Realm.fromName("test");
     Object value = defaultConfigurationStore.getConfiguration(realm, "missingKeyWithoutDefault");
     assertThat(value).isNull();
     Object defaultValue =
@@ -61,7 +61,7 @@ public class DefaultConfigurationStoreTest {
                 Map.of("key1", realm2KeyOneValue, "key2", realm2KeyTwoValue)));
 
     // check realm1 values
-    Realm realm = Realm.newRealm("realm1");
+    Realm realm = Realm.fromName("realm1");
     Object value = defaultConfigurationStore.getConfiguration(realm, "missingKeyWithoutDefault");
     assertThat(value).isNull();
     Object defaultValue =
@@ -73,14 +73,14 @@ public class DefaultConfigurationStoreTest {
     assertThat(keyTwoRealm1).isEqualTo(defaultKeyTwoValue);
 
     // check realm2 values
-    realm = Realm.newRealm("realm2");
+    realm = Realm.fromName("realm2");
     Integer keyOneRealm2 = defaultConfigurationStore.getConfiguration(realm, "key1");
     assertThat(keyOneRealm2).isEqualTo(realm2KeyOneValue);
     String keyTwoRealm2 = defaultConfigurationStore.getConfiguration(realm, "key2");
     assertThat(keyTwoRealm2).isEqualTo(realm2KeyTwoValue);
 
     // realm3 has no realm-overrides, so just returns default values
-    realm = Realm.newRealm("realm3");
+    realm = Realm.fromName("realm3");
     Integer keyOneRealm3 = defaultConfigurationStore.getConfiguration(realm, "key1");
     assertThat(keyOneRealm3).isEqualTo(defaultKeyOneValue);
     String keyTwoRealm3 = defaultConfigurationStore.getConfiguration(realm, "key2");

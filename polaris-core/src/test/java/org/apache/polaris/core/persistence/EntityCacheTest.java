@@ -85,7 +85,7 @@ public class EntityCacheTest {
         new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS, diagServices);
     metaStoreManager =
         new PolarisMetaStoreManagerImpl(
-            Realm.newRealm("test"),
+            Realm.fromName("test"),
             diagServices,
             new PolarisConfigurationStore() {},
             Clock.systemUTC());

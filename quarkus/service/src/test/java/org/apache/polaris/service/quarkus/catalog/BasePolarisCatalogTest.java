@@ -182,7 +182,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         "realm_%s_%s"
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
-    realm = Realm.newRealm(realmName);
+    realm = Realm.fromName(realmName);
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realm);
     metaStoreSession = managerFactory.getOrCreateSessionSupplier(realm).get();
     entityManager = entityManagerFactory.getOrCreateEntityManager(realm);

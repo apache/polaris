@@ -49,7 +49,7 @@ public class RealmEntityManagerFactory {
   }
 
   public PolarisEntityManager getOrCreateEntityManager(Realm context) {
-    String realm = context.id();
+    String realm = context.name();
 
     LOGGER.debug("Looking up PolarisEntityManager for realm {}", realm);
 

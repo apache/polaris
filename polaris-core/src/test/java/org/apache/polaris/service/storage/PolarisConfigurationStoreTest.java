@@ -29,7 +29,7 @@ import org.junit.jupiter.api.Test;
 /** Unit test for the default behaviors of the PolarisConfigurationStore interface. */
 public class PolarisConfigurationStoreTest {
 
-  private final Realm realm = Realm.newRealm("test");
+  private final Realm realm = Realm.fromName("test");
 
   @Test
   public void testConfigsCanBeCastedFromString() {

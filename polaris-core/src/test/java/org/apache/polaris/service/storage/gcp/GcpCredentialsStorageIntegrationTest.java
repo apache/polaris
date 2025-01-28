@@ -73,7 +73,7 @@ class GcpCredentialsStorageIntegrationTest {
         .describedAs("Environment variable GOOGLE_APPLICATION_CREDENTIALS not exits")
         .isNotNull()
         .isNotEmpty();
-    Realm realm = Realm.newRealm("realm");
+    Realm realm = Realm.fromName("realm");
     List<String> allowedRead =
         Arrays.asList(
             "gs://sfc-dev1-regtest/polaris-test/subscoped-test/read1/",

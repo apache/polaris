@@ -35,7 +35,7 @@ public interface PolarisConfigurationStore {
    * Retrieve the current value for a configuration key. May be null if not set.
    *
    * @param <T> the type of the configuration value
-   * @param realm the realm context to check for overrides; may be null.
+   * @param realm the realm to check for overrides; may be null.
    * @param configName the name of the configuration key to check
    * @return the current value set for the configuration key or null if not set
    */
@@ -48,7 +48,7 @@ public interface PolarisConfigurationStore {
    * value.
    *
    * @param <T> the type of the configuration value
-   * @param realm the realm context to check for overrides; may be null.
+   * @param realm the realm to check for overrides; may be null.
    * @param configName the name of the configuration key to check
    * @param defaultValue the default value if the configuration key has no value
    * @return the current value or the supplied default value
@@ -88,7 +88,7 @@ public interface PolarisConfigurationStore {
    * Retrieve the current value for a configuration.
    *
    * @param <T> the type of the configuration value
-   * @param realm the realm context to check for overrides; may be null.
+   * @param realm the realm to check for overrides; may be null.
    * @param config the configuration to load
    * @return the current value set for the configuration key or null if not set
    */
@@ -102,7 +102,7 @@ public interface PolarisConfigurationStore {
    * present.
    *
    * @param <T> the type of the configuration value
-   * @param realm the realm context to check for overrides; may be null.
+   * @param realm the realm to check for overrides; may be null.
    * @param catalogEntity the catalog to check for an override
    * @param config the configuration to load
    * @return the current value set for the configuration key or null if not set

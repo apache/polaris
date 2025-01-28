@@ -57,7 +57,7 @@ public class DefaultConfigurationStore implements PolarisConfigurationStore {
     Object rawValue = defaults.get(configName);
     if (realm != null) {
       rawValue =
-          realmOverrides.getOrDefault(realm.id(), Map.of()).getOrDefault(configName, rawValue);
+          realmOverrides.getOrDefault(realm.name(), Map.of()).getOrDefault(configName, rawValue);
     }
     @SuppressWarnings("unchecked")
     T value = (T) rawValue;

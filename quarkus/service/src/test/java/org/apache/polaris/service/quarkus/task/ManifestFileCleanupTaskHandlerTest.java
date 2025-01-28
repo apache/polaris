@@ -58,7 +58,7 @@ class ManifestFileCleanupTaskHandlerTest {
 
   @Inject PolarisDiagnostics diagnostics;
 
-  private final Realm realm = Realm.newRealm("realmName");
+  private final Realm realm = Realm.fromName("realmName");
 
   @Test
   public void testCleanupFileNotExists() throws IOException {

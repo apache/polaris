@@ -57,8 +57,8 @@ public class QuarkusLoggingMDCFilter {
       MDC.put(REQUEST_ID_KEY, requestId);
       rc.put(REQUEST_ID_KEY, requestId);
     }
-    MDC.put(REALM_ID_KEY, realm.id());
-    rc.put(REALM_ID_KEY, realm.id());
+    MDC.put(REALM_ID_KEY, realm.name());
+    rc.put(REALM_ID_KEY, realm.name());
     // Do not explicitly remove the MDC values from the request context with an end handler,
     // as this could remove MDC context still in use in TaskExecutor threads
     //    rc.addEndHandler(
