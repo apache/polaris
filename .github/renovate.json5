@@ -22,7 +22,8 @@
     "config:base",
     // Required to not pin dependencies to _exact_ versions (pip)
     ":preserveSemverRanges",
-    "group:monorepos",
+    // Group all updates in one PR
+    "group:all",
     "helpers:pinGitHubActionDigests",
     ":semanticPrefixFixDepsChoreOthers",
     ":dependencyDashboard",
@@ -71,4 +72,7 @@
   // concurrent PRs limit.
   prConcurrentLimit: 50,
   prHourlyLimit: 5,
+
+  // add renovatebot label to easily filter PRs/email
+  labels: ["renovatebot"],
 }
