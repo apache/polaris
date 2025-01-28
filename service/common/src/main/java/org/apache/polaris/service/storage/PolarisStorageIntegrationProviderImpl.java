@@ -32,7 +32,7 @@ import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -102,7 +102,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
             new PolarisStorageIntegration<>("file") {
               @Override
               public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-                  @Nonnull RealmId realmId,
+                  @Nonnull Realm realm,
                   @Nonnull PolarisDiagnostics diagnostics,
                   @Nonnull T storageConfig,
                   boolean allowListOperation,
@@ -114,7 +114,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
               @Override
               public @Nonnull Map<String, Map<PolarisStorageActions, ValidationResult>>
                   validateAccessToLocations(
-                      @Nonnull RealmId realmId,
+                      @Nonnull Realm realm,
                       @Nonnull T storageConfig,
                       @Nonnull Set<PolarisStorageActions> actions,
                       @Nonnull Set<String> locations) {

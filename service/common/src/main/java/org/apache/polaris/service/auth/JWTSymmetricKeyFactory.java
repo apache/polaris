@@ -28,7 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.function.Supplier;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.auth.AuthenticationConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
 
@@ -58,10 +58,10 @@ public class JWTSymmetricKeyFactory implements TokenBrokerFactory {
   }
 
   @Override
-  public TokenBroker apply(RealmId realmId) {
+  public TokenBroker apply(Realm realm) {
     return new JWTSymmetricKeyBroker(
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmId),
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get(),
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realm),
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realm).get(),
         (int) maxTokenGeneration.toSeconds(),
         secretSupplier);
   }

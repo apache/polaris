@@ -38,7 +38,7 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
@@ -101,13 +101,13 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
-    RealmId realmId = RealmId.newRealmId("realm");
+    Realm realm = Realm.newRealm("realm");
     PolarisMetaStoreSession session =
         new PolarisEclipseLinkMetaStoreSessionImpl(
-            store, Mockito.mock(), realmId, null, "polaris", RANDOM_SECRETS, diagServices);
+            store, Mockito.mock(), realm, null, "polaris", RANDOM_SECRETS, diagServices);
     return new PolarisTestMetaStoreManager(
         new PolarisMetaStoreManagerImpl(
-            realmId,
+            realm,
             diagServices,
             new PolarisConfigurationStore() {},
             timeSource.withZone(ZoneId.systemDefault())),
@@ -128,7 +128,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
           new PolarisEclipseLinkMetaStoreSessionImpl(
               store,
               Mockito.mock(),
-              RealmId.newRealmId("realm"),
+              Realm.newRealm("realm"),
               confFile,
               "polaris",
               RANDOM_SECRETS,

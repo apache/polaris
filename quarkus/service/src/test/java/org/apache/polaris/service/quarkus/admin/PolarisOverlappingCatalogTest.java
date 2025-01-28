@@ -80,7 +80,7 @@ public class PolarisOverlappingCatalogTest {
     return services
         .catalogsApi()
         .createCatalog(
-            new CreateCatalogRequest(catalog), services.realmId(), services.securityContext());
+            new CreateCatalogRequest(catalog), services.realm(), services.securityContext());
   }
 
   @ParameterizedTest

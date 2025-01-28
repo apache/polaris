@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -58,7 +58,7 @@ public class TestOAuth2ApiService implements IcebergRestOAuth2ApiService {
       TokenType subjectTokenType,
       String actorToken,
       TokenType actorTokenType,
-      RealmId realmId,
+      Realm realm,
       SecurityContext securityContext) {
     Map<String, Object> response = new HashMap<>();
     String principalName = getPrincipalName(clientId);
@@ -69,7 +69,7 @@ public class TestOAuth2ApiService implements IcebergRestOAuth2ApiService {
             + ";password:"
             + clientSecret
             + ";realm:"
-            + realmId.id()
+            + realm.id()
             + ";role:"
             + scope.replaceAll(BasePolarisAuthenticator.PRINCIPAL_ROLE_PREFIX, ""));
     response.put("token_type", "bearer");

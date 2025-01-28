@@ -22,20 +22,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /** Configuration interface for configuring the {@link PolarisMetaStoreManager}. */
 public interface MetaStoreManagerFactory {
 
-  PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmId realmId);
+  PolarisMetaStoreManager getOrCreateMetaStoreManager(Realm realm);
 
-  Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(RealmId realmId);
+  Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(Realm realm);
 
-  StorageCredentialCache getOrCreateStorageCredentialCache(RealmId realmId);
+  StorageCredentialCache getOrCreateStorageCredentialCache(Realm realm);
 
-  EntityCache getOrCreateEntityCache(RealmId realmId);
+  EntityCache getOrCreateEntityCache(Realm realm);
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(
       List<String> realms, PolarisCredentialsBootstrap credentialsBootstrap);

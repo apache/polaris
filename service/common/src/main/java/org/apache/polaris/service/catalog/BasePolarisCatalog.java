@@ -79,7 +79,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -154,7 +154,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private final PolarisMetaStoreSession metaStoreSession;
   private final PolarisConfigurationStore configurationStore;
   private final PolarisDiagnostics diagnostics;
-  private final RealmId realmId;
+  private final Realm realm;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
   private final TaskExecutor taskExecutor;
@@ -172,7 +172,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private Map<String, String> tableDefaultProperties;
 
   /**
-   * @param realmId the current RealmId
+   * @param realm the current Realm
    * @param entityManager provides handle to underlying PolarisMetaStoreManager with which to
    *     perform mutations on entities.
    * @param resolvedEntityView accessor to resolved entity paths that have been pre-vetted to ensure
@@ -180,7 +180,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    * @param taskExecutor Executor we use to register cleanup task handlers
    */
   public BasePolarisCatalog(
-      RealmId realmId,
+      Realm realm,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
       PolarisMetaStoreSession metaStoreSession,
@@ -190,7 +190,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       SecurityContext securityContext,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory) {
-    this.realmId = realmId;
+    this.realm = realm;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
     this.metaStoreSession = metaStoreSession;
@@ -450,7 +450,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           "Scheduled cleanup task {} for table {}",
           dropEntityResult.getCleanupTaskId(),
           tableIdentifier);
-      taskExecutor.addTaskHandlerContext(dropEntityResult.getCleanupTaskId(), realmId);
+      taskExecutor.addTaskHandlerContext(dropEntityResult.getCleanupTaskId(), realm);
     }
 
     return true;
@@ -514,7 +514,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             .setBaseLocation(baseLocation)
             .build();
     if (!configurationStore.getConfiguration(
-        realmId, PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+        realm, PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap for {} with sibling tables or namespaces", namespace);
       validateNoLocationOverlap(
           entity.getBaseLocation(), resolvedParent.getRawFullPath(), entity.getName());
@@ -639,7 +639,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 leafEntity,
                 Map.of(),
                 configurationStore.getConfiguration(
-                    realmId, PolarisConfiguration.CLEANUP_ON_NAMESPACE_DROP));
+                    realm, PolarisConfiguration.CLEANUP_ON_NAMESPACE_DROP));
 
     if (!dropEntityResult.isSuccess() && dropEntityResult.failedBecauseNotEmpty()) {
       throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);
@@ -665,7 +665,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         new PolarisEntity.Builder(entity).setProperties(newProperties).build();
 
     if (!configurationStore.getConfiguration(
-        realmId, PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+        realm, PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
       validateNoLocationOverlap(
           NamespaceEntity.of(updatedEntity).getBaseLocation(),
@@ -953,14 +953,14 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedStorageEntity) {
     Optional<PolarisStorageConfigurationInfo> optStorageConfiguration =
         PolarisStorageConfigurationInfo.forEntityPath(
-            realmId, configurationStore, diagnostics, resolvedStorageEntity.getRawFullPath());
+            realm, configurationStore, diagnostics, resolvedStorageEntity.getRawFullPath());
 
     optStorageConfiguration.ifPresentOrElse(
         storageConfigInfo -> {
           Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>>
               validationResults =
                   InMemoryStorageIntegration.validateSubpathsOfAllowedLocations(
-                      realmId,
+                      realm,
                       configurationStore,
                       storageConfigInfo,
                       Set.of(PolarisStorageActions.ALL),
@@ -1007,7 +1007,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         () -> {
           List<String> allowedStorageTypes =
               configurationStore.getConfiguration(
-                  realmId, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+                  realm, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
           if (!allowedStorageTypes.contains(StorageConfigInfo.StorageTypeEnum.FILE.name())) {
             List<String> invalidLocations =
                 locations.stream()
@@ -1032,7 +1032,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       List<PolarisEntity> resolvedNamespace,
       String location) {
     if (configurationStore.getConfiguration(
-        realmId, catalog, PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP)) {
+        realm, catalog, PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP)) {
       LOGGER.debug("Skipping location overlap validation for identifier '{}'", identifier);
     } else { // if (entity.getSubType().equals(PolarisEntitySubType.TABLE)) {
       // TODO - is this necessary for views? overlapping views do not expose subdirectories via the
@@ -1399,10 +1399,10 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       TableIdentifier identifier, TableMetadata metadata, CatalogEntity catalog) {
     boolean allowEscape =
         configurationStore.getConfiguration(
-            realmId, PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
+            realm, PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
     if (!allowEscape
         && !configurationStore.getConfiguration(
-            realmId, PolarisConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
+            realm, PolarisConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
       LOGGER.debug(
           "Validating base location {} for table {} in metadata file {}",
           metadata.location(),
@@ -1836,7 +1836,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     if (catalogPath != null && !catalogPath.isEmpty() && purge) {
       boolean dropWithPurgeEnabled =
           configurationStore.getConfiguration(
-              realmId, catalogEntity, PolarisConfiguration.DROP_WITH_PURGE_ENABLED);
+              realm, catalogEntity, PolarisConfiguration.DROP_WITH_PURGE_ENABLED);
       if (!dropWithPurgeEnabled) {
         throw new ForbiddenException(
             String.format(
@@ -2055,7 +2055,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   /** Helper to retrieve dynamic context-based configuration that has a boolean value. */
   private Boolean getBooleanContextConfiguration(String configKey, boolean defaultValue) {
-    return configurationStore.getConfiguration(realmId, configKey, defaultValue);
+    return configurationStore.getConfiguration(realm, configKey, defaultValue);
   }
 
   /**

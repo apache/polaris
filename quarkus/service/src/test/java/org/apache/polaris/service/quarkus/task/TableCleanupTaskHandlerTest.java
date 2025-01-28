@@ -38,7 +38,7 @@ import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -60,12 +60,12 @@ class TableCleanupTaskHandlerTest {
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisDiagnostics diagnostics;
 
-  private final RealmId realmId = RealmId.newRealmId("realmName");
+  private final Realm realm = Realm.newRealm("realmName");
 
   @Test
   public void testTableCleanup() throws IOException {
     PolarisMetaStoreSession metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realm).get();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
@@ -105,11 +105,11 @@ class TableCleanupTaskHandlerTest {
             .build();
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
-    handler.handleTask(task, realmId);
+    handler.handleTask(task, realm);
 
     assertThat(
             metaStoreManagerFactory
-                .getOrCreateMetaStoreManager(realmId)
+                .getOrCreateMetaStoreManager(realm)
                 .loadTasks(metaStoreSession, "test", 2)
                 .getEntities())
         .hasSize(2)
@@ -148,7 +148,7 @@ class TableCleanupTaskHandlerTest {
   @Test
   public void testTableCleanupHandlesAlreadyDeletedMetadata() throws IOException {
     PolarisMetaStoreSession metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realm).get();
     FileIO fileIO =
         new InMemoryFileIO() {
           @Override
@@ -191,13 +191,13 @@ class TableCleanupTaskHandlerTest {
     // handle the same task twice
     // the first one should successfully delete the metadata
     List<Boolean> results =
-        List.of(handler.handleTask(task, realmId), handler.handleTask(task, realmId));
+        List.of(handler.handleTask(task, realm), handler.handleTask(task, realm));
     assertThat(results).containsExactly(true, true);
 
     // both tasks successfully executed, but only one should queue subtasks
     assertThat(
             metaStoreManagerFactory
-                .getOrCreateMetaStoreManager(realmId)
+                .getOrCreateMetaStoreManager(realm)
                 .loadTasks(metaStoreSession, "test", 5)
                 .getEntities())
         .hasSize(1);
@@ -206,7 +206,7 @@ class TableCleanupTaskHandlerTest {
   @Test
   public void testTableCleanupDuplicatesTasksIfFileStillExists() throws IOException {
     PolarisMetaStoreSession metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realm).get();
     FileIO fileIO =
         new InMemoryFileIO() {
           @Override
@@ -257,13 +257,13 @@ class TableCleanupTaskHandlerTest {
     // handle the same task twice
     // the first one should successfully delete the metadata
     List<Boolean> results =
-        List.of(handler.handleTask(task, realmId), handler.handleTask(task, realmId));
+        List.of(handler.handleTask(task, realm), handler.handleTask(task, realm));
     assertThat(results).containsExactly(true, true);
 
     // both tasks successfully executed, but only one should queue subtasks
     assertThat(
             metaStoreManagerFactory
-                .getOrCreateMetaStoreManager(realmId)
+                .getOrCreateMetaStoreManager(realm)
                 .loadTasks(metaStoreSession, "test", 5)
                 .getEntities())
         .hasSize(2)
@@ -303,7 +303,7 @@ class TableCleanupTaskHandlerTest {
   @Test
   public void testTableCleanupMultipleSnapshots() throws IOException {
     PolarisMetaStoreSession metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realm).get();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
@@ -365,11 +365,11 @@ class TableCleanupTaskHandlerTest {
             .build();
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
-    handler.handleTask(task, realmId);
+    handler.handleTask(task, realm);
 
     List<PolarisBaseEntity> entities =
         metaStoreManagerFactory
-            .getOrCreateMetaStoreManager(realmId)
+            .getOrCreateMetaStoreManager(realm)
             .loadTasks(metaStoreSession, "test", 5)
             .getEntities();
 
@@ -452,7 +452,7 @@ class TableCleanupTaskHandlerTest {
   @Test
   public void testTableCleanupMultipleMetadata() throws IOException {
     PolarisMetaStoreSession metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realm).get();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
@@ -528,11 +528,11 @@ class TableCleanupTaskHandlerTest {
 
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
-    handler.handleTask(task, realmId);
+    handler.handleTask(task, realm);
 
     List<PolarisBaseEntity> entities =
         metaStoreManagerFactory
-            .getOrCreateMetaStoreManager(realmId)
+            .getOrCreateMetaStoreManager(realm)
             .loadTasks(metaStoreSession, "test", 6)
             .getEntities();
 

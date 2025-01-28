@@ -23,13 +23,13 @@ import jakarta.inject.Inject;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** Gets or creates PolarisEntityManager instances based on config values and RealmId. */
+/** Gets or creates PolarisEntityManager instances based on config values and Realm. */
 @ApplicationScoped
 public class RealmEntityManagerFactory {
 
@@ -38,7 +38,7 @@ public class RealmEntityManagerFactory {
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final PolarisDiagnostics diagnostics;
 
-  // Key: realmIdentifier
+  // Key: realm
   private final Map<String, PolarisEntityManager> cachedEntityManagers = new ConcurrentHashMap<>();
 
   @Inject
@@ -48,7 +48,7 @@ public class RealmEntityManagerFactory {
     this.diagnostics = diagnostics;
   }
 
-  public PolarisEntityManager getOrCreateEntityManager(RealmId context) {
+  public PolarisEntityManager getOrCreateEntityManager(Realm context) {
     String realm = context.id();
 
     LOGGER.debug("Looking up PolarisEntityManager for realm {}", realm);

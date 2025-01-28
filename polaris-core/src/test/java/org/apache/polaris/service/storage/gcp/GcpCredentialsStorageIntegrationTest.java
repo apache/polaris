@@ -50,7 +50,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
@@ -73,7 +73,7 @@ class GcpCredentialsStorageIntegrationTest {
         .describedAs("Environment variable GOOGLE_APPLICATION_CREDENTIALS not exits")
         .isNotNull()
         .isNotEmpty();
-    RealmId realmId = RealmId.newRealmId("realm");
+    Realm realm = Realm.newRealm("realm");
     List<String> allowedRead =
         Arrays.asList(
             "gs://sfc-dev1-regtest/polaris-test/subscoped-test/read1/",
@@ -82,8 +82,7 @@ class GcpCredentialsStorageIntegrationTest {
         Arrays.asList(
             "gs://sfc-dev1-regtest/polaris-test/subscoped-test/write1/",
             "gs://sfc-dev1-regtest/polaris-test/subscoped-test/write2/");
-    Storage storageClient =
-        setupStorageClient(realmId, allowedRead, allowedWrite, allowedListAction);
+    Storage storageClient = setupStorageClient(realm, allowedRead, allowedWrite, allowedListAction);
     BlobInfo blobInfoGoodWrite =
         createStorageBlob("sfc-dev1-regtest", "polaris-test/subscoped-test/write1/", "file.txt");
     BlobInfo blobInfoBad =
@@ -126,7 +125,7 @@ class GcpCredentialsStorageIntegrationTest {
             "gs://sfc-dev1-regtest/polaris-test/subscoped-test/write2/",
             "gs://sfc-dev1-regtest/polaris-test/subscoped-test/write3/");
     Storage clientForDelete =
-        setupStorageClient(realmId, List.of(), allowedWrite2, allowedListAction);
+        setupStorageClient(realm, List.of(), allowedWrite2, allowedListAction);
 
     // can not delete because it is not in allowed write path for this client
     Assertions.assertThatThrownBy(() -> clientForDelete.delete(blobInfoGoodWrite.getBlobId()))
@@ -138,13 +137,13 @@ class GcpCredentialsStorageIntegrationTest {
   }
 
   private Storage setupStorageClient(
-      RealmId realmId,
+      Realm realm,
       List<String> allowedReadLoc,
       List<String> allowedWriteLoc,
       boolean allowListAction)
       throws IOException {
     Map<PolarisCredentialProperty, String> credsMap =
-        subscopedCredsForOperations(realmId, allowedReadLoc, allowedWriteLoc, allowListAction);
+        subscopedCredsForOperations(realm, allowedReadLoc, allowedWriteLoc, allowListAction);
     return createStorageClient(credsMap);
   }
 
@@ -167,7 +166,7 @@ class GcpCredentialsStorageIntegrationTest {
   }
 
   private Map<PolarisCredentialProperty, String> subscopedCredsForOperations(
-      RealmId realmId,
+      Realm realm,
       List<String> allowedReadLoc,
       List<String> allowedWriteLoc,
       boolean allowListAction)
@@ -183,7 +182,7 @@ class GcpCredentialsStorageIntegrationTest {
             ServiceOptions.getFromServiceLoader(HttpTransportFactory.class, NetHttpTransport::new));
     EnumMap<PolarisCredentialProperty, String> credsMap =
         gcpCredsIntegration.getSubscopedCreds(
-            realmId,
+            realm,
             new PolarisDefaultDiagServiceImpl(),
             gcpConfig,
             allowListAction,

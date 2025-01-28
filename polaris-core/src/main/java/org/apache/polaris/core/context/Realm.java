@@ -16,13 +16,32 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.context;
+package org.apache.polaris.core.context;
 
-import java.util.Map;
-import org.apache.polaris.core.context.RealmId;
+import com.fasterxml.jackson.annotation.JsonValue;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import org.apache.polaris.immutables.PolarisImmutable;
+import org.immutables.value.Value;
 
-public interface RealmIdResolver {
+/**
+ * Represents the ID of the realm used in a REST request associated with routing to independent and
+ * isolated "universes".
+ */
+@PolarisImmutable
+@JsonSerialize(as = ImmutableRealm.class)
+@JsonDeserialize(as = ImmutableRealm.class)
+public interface Realm {
 
-  RealmId resolveRealmContext(
-      String requestURL, String method, String path, Map<String, String> headers);
+  static Realm newRealm(String id) {
+    return ImmutableRealm.of(id);
+  }
+
+  static Realm copyOf(Realm realm) {
+    return ImmutableRealm.copyOf(realm);
+  }
+
+  @Value.Parameter
+  @JsonValue
+  String id();
 }

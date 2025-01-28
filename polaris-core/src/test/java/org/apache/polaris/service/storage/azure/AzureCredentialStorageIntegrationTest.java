@@ -49,7 +49,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
@@ -68,7 +68,7 @@ public class AzureCredentialStorageIntegrationTest {
   private final String clientId = System.getenv("AZURE_CLIENT_ID");
   private final String clientSecret = System.getenv("AZURE_CLIENT_SECRET");
   private final String tenantId = System.getenv("AZURE_TENANT_ID");
-  private final RealmId realmId = RealmId.newRealmId("realm");
+  private final Realm realm = Realm.newRealm("realm");
 
   private void assumeEnvVariablesNotNull() {
     Assumptions.assumeThat(
@@ -88,7 +88,7 @@ public class AzureCredentialStorageIntegrationTest {
     Assertions.assertThatThrownBy(
             () ->
                 subscopedCredsForOperations(
-                    realmId, differentEndpointList, /* allowedWriteLoc= */ new ArrayList<>(), true))
+                    realm, differentEndpointList, /* allowedWriteLoc= */ new ArrayList<>(), true))
         .isInstanceOf(RuntimeException.class);
 
     List<String> differentStorageAccts =
@@ -98,7 +98,7 @@ public class AzureCredentialStorageIntegrationTest {
     Assertions.assertThatThrownBy(
             () ->
                 subscopedCredsForOperations(
-                    realmId, differentStorageAccts, /* allowedWriteLoc= */ new ArrayList<>(), true))
+                    realm, differentStorageAccts, /* allowedWriteLoc= */ new ArrayList<>(), true))
         .isInstanceOf(RuntimeException.class);
     List<String> differentContainers =
         Arrays.asList(
@@ -108,7 +108,7 @@ public class AzureCredentialStorageIntegrationTest {
     Assertions.assertThatThrownBy(
             () ->
                 subscopedCredsForOperations(
-                    realmId, differentContainers, /* allowedWriteLoc= */ new ArrayList<>(), true))
+                    realm, differentContainers, /* allowedWriteLoc= */ new ArrayList<>(), true))
         .isInstanceOf(RuntimeException.class);
   }
 
@@ -125,7 +125,7 @@ public class AzureCredentialStorageIntegrationTest {
                 service));
     Map<PolarisCredentialProperty, String> credsMap =
         subscopedCredsForOperations(
-            /* allowedReadLoc= */ realmId,
+            /* allowedReadLoc= */ realm,
             allowedLoc,
             /* allowedWriteLoc= */ new ArrayList<>(),
             allowListAction);
@@ -197,7 +197,7 @@ public class AzureCredentialStorageIntegrationTest {
                 service, allowedPrefix));
     Map<PolarisCredentialProperty, String> credsMap =
         subscopedCredsForOperations(
-            /* allowedReadLoc= */ realmId,
+            /* allowedReadLoc= */ realm,
             allowedLoc,
             /* allowedWriteLoc= */ new ArrayList<>(),
             /* allowListAction= */ false);
@@ -268,7 +268,7 @@ public class AzureCredentialStorageIntegrationTest {
                 service, allowedPrefix));
     Map<PolarisCredentialProperty, String> credsMap =
         subscopedCredsForOperations(
-            /* allowedReadLoc= */ realmId,
+            /* allowedReadLoc= */ realm,
             new ArrayList<>(),
             /* allowedWriteLoc= */ allowedLoc,
             /* allowListAction= */ false);
@@ -345,7 +345,7 @@ public class AzureCredentialStorageIntegrationTest {
   }
 
   private Map<PolarisCredentialProperty, String> subscopedCredsForOperations(
-      RealmId realmId,
+      Realm realm,
       List<String> allowedReadLoc,
       List<String> allowedWriteLoc,
       boolean allowListAction) {
@@ -358,7 +358,7 @@ public class AzureCredentialStorageIntegrationTest {
         new AzureCredentialsStorageIntegration(new PolarisConfigurationStore() {});
     EnumMap<PolarisCredentialProperty, String> credsMap =
         azureCredsIntegration.getSubscopedCreds(
-            realmId,
+            realm,
             new PolarisDefaultDiagServiceImpl(),
             azureConfig,
             allowListAction,

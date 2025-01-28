@@ -26,7 +26,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.iceberg.exceptions.ServiceFailureException;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Base implementation of {@link Authenticator} constructs a {@link AuthenticatedPolarisPrincipal}
  * from the token parsed by subclasses. The {@link AuthenticatedPolarisPrincipal} is read from the
- * {@link PolarisMetaStoreManager} for the current {@link RealmId}. If the token defines a non-empty
+ * {@link PolarisMetaStoreManager} for the current {@link Realm}. If the token defines a non-empty
  * set of scopes, only the principal roles specified in the scopes will be active for the current
  * principal. Only the grants assigned to these roles will be active in the current request.
  */

@@ -21,15 +21,14 @@ package org.apache.polaris.service.quarkus.context;
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 import org.apache.polaris.service.context.RealmContextConfiguration;
-import org.apache.polaris.service.context.RealmIdResolver;
+import org.apache.polaris.service.context.RealmResolver;
 
 @StaticInitSafe
 @ConfigMapping(prefix = "polaris.realm-context")
 public interface QuarkusRealmContextConfiguration extends RealmContextConfiguration {
 
   /**
-   * The type of the realm context resolver. Must be a registered {@link RealmIdResolver}
-   * identifier.
+   * The type of the realm context resolver. Must be a registered {@link RealmResolver} identifier.
    */
   String type();
 }

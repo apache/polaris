@@ -39,11 +39,11 @@ public class QuarkusTracingFilter {
     if (!sdkDisabled) {
       Span span = Span.current();
       String requestId = QuarkusLoggingMDCFilter.requestId(rc);
-      String realmId = QuarkusLoggingMDCFilter.realmId(rc);
+      String realm = QuarkusLoggingMDCFilter.realm(rc);
       if (requestId != null) {
         span.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);
       }
-      span.setAttribute(REALM_ID_ATTRIBUTE, realmId);
+      span.setAttribute(REALM_ID_ATTRIBUTE, realm);
     }
     rc.next();
   }
