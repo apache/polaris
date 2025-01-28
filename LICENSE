@@ -211,3 +211,59 @@ Home page: https://github.com/gradle/gradle
 License: https://www.apache.org/licenses/LICENSE-2.0
 
 --------------------------------------------------------------------------------
+
+This product includes code from Apache Iceberg.
+
+* spec/rest-catalog-open-api.yaml
+* dropwizard/service/src/test/java/org/apache/polaris/service/dropwizard/catalog/PolarisRestCatalogIntegrationTest.java
+
+Copyright: Copyright 2017-2025 The Apache Software Foundation
+Home page: https://iceberg.apache.org
+License: https://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+
+This product includes code from OpenAPITool openapi-generator
+
+* server-templates/formParams.mustache
+* server-templates/apiService.mustache
+* server-templates/bodyParams.mustache
+* server-templates/pojo.mustache
+* server-templates/headerParams.mustache
+* server-templates/apiServiceImpl.mustache
+* server-templates/queryParams.mustache
+* server-templates/api.mustache
+
+Copyright: Copyright 2018 OpenAPI-Generator Contributors (https://openapi-generator.tech) 
+           Copyright 2018 SmartBear Software
+Home page: https://openapi-generator.tech/
+License: https://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+
+This product includes code from Google Docsy.
+
+* site/layouts/community/list.html
+* site/layouts/docs/baseof.html
+* site/layouts/partials/community_links.html
+* site/layouts/partials/head.html
+* site/layouts/partials/navbar.html
+* site/layouts/shortcodes/redoc-polaris.html
+
+Home page: https://www.docsy.dev/
+License: https://www.apache.org/licenses/LICENSE-2.0
+
+--------------------------------------------------------------------------------
+
+This product includes code from Project Nessie.
+
+* build-logic/src/main/kotlin/LicenseFileValidation.kt
+* build-logic/src/main/kotlin/publishing/MemoizedGitInfo.kt
+* build-logic/src/main/kotlin/publishing/PublishingHelperExtension.kt
+* build-logic/src/main/kotlin/publishing/PublishingHelperPlugin.kt
+* build-logic/src/main/kotlin/publishing/shadowPub.kt
+* build-logic/src/main/kotlin/publishing/util.kt
+
+Copyright: Copyright 2015-2025 Dremio Corporation
+Home page: https://projectnessie.org/
+License: https://www.apache.org/licenses/LICENSE-2.0
