@@ -16,34 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it.env;
+package org.apache.polaris.service.quarkus.config;
 
-import java.net.URI;
+import org.apache.polaris.service.config.PolarisFilterPriorities;
 
-/**
- * This is a holder for access information to a particular Polaris Server. Test cases may use only
- * the provided admin credentials or create new principals.
- */
-public interface Server extends AutoCloseable {
-
-  String DEFAULT_REALM_HEADER = "Polaris-Realm";
-  String DEFAULT_REALM_ID = "POLARIS";
-
-  default String realmId() {
-    return DEFAULT_REALM_ID;
-  }
-
-  default String realmHeaderName() {
-    return DEFAULT_REALM_HEADER;
-  }
-
-  /**
-   * The base URI to all Polaris APIs (e.g. the common base of the Iceberg REST API endpoints and
-   * Polaris Management API endpoints).
-   *
-   * @see PolarisApiEndpoints
-   */
-  URI baseUri();
-
-  ClientPrincipal adminCredentials();
+public final class QuarkusFilterPriorities {
+  public static final int MDC_FILTER = PolarisFilterPriorities.REALM_ID_FILTER + 1;
+  public static final int TRACING_FILTER = PolarisFilterPriorities.REALM_ID_FILTER + 2;
 }
