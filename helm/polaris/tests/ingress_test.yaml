@@ -45,7 +45,7 @@ tests:
           kind: Ingress
           apiVersion: networking.k8s.io/v1
 
-  # metadata.name (with with ingress enabled)
+  # metadata.name (with ingress enabled)
   - it: should set ingress name
     set:
       ingress.enabled: true

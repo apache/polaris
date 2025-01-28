@@ -1,4 +1,4 @@
-{{/*
+{{/**
   Licensed to the Apache Software Foundation (ASF) under one
   or more contributor license agreements.  See the NOTICE file
   distributed with this work for additional information
@@ -6,39 +6,36 @@
   to you under the Apache License, Version 2.0 (the
   "License"); you may not use this file except in compliance
   with the License.  You may obtain a copy of the License at
- 
+
    http://www.apache.org/licenses/LICENSE-2.0
- 
+
   Unless required by applicable law or agreed to in writing,
   software distributed under the License is distributed on an
   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
   KIND, either express or implied.  See the License for the
   specific language governing permissions and limitations
   under the License.
-*/}}
+**/}}
 
+{{- if .Values.logging.file.enabled }}
 apiVersion: v1
-kind: Pod
+kind: PersistentVolumeClaim
 metadata:
-  name: "{{ include "polaris.fullname" . }}-test-connection"
+  name: {{ include "polaris.fullnameWithSuffix" (list . "logs") }}
   namespace: {{ .Release.Namespace }}
   labels:
-    helm.sh/chart: {{ include "polaris.chart" . }}
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
-    {{- if .Chart.AppVersion }}
-    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
-    {{- end }}
-  annotations:
-    "helm.sh/hook": test
+    {{- include "polaris.labels" . | nindent 4 }}
 spec:
-  containers:
-    - name: check-connection
-      image: busybox
-      command: ['sh', '-c']
-      args:
-        - |
-          for i in $(seq 1 10); do
-            wget --spider '{{ include "polaris.fullnameWithSuffix" (list . "mgmt") }}:{{ get (first .Values.managementService.ports) "port" }}/q/health/ready' && exit 0 || sleep 3;
-          done;
-          exit 1
-  restartPolicy: Never
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  storageClassName: {{ .Values.logging.file.storage.className }}
+  resources:
+    requests:
+      storage: "{{ .Values.logging.file.storage.size }}"
+{{- if .Values.logging.file.storage.selectorLabels }}
+  selector:
+    matchLabels:
+      {{- toYaml .Values.logging.file.storage.selectorLabels | nindent 6 }}
+{{- end }}
+{{- end }}
