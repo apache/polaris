@@ -115,7 +115,7 @@ public class FileIOFactoryTest {
                 });
 
     testServices =
-        new TestServices.Builder()
+        TestServices.builder()
             .config(Map.of("ALLOW_SPECIFYING_FILE_IO_IMPL", true))
             .realmId(realmId)
             .stsClient(stsClient)

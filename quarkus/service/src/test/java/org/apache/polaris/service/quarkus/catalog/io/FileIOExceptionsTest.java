@@ -59,7 +59,7 @@ public class FileIOExceptionsTest {
 
   @BeforeAll
   public static void beforeAll() {
-    services = new TestServices.Builder().build();
+    services = TestServices.builder().build();
     ioFactory = (TestFileIOFactory) services.fileIOFactory();
 
     FileStorageConfigInfo storageConfigInfo =

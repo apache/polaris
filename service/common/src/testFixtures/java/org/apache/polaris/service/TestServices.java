@@ -78,11 +78,17 @@ public record TestServices(
           PolarisConfigurationStore,
           FileIOFactory> {}
 
+  public static Builder builder() {
+    return new Builder();
+  }
+
   public static class Builder {
     private RealmId realmId = TEST_REALM;
     private Map<String, Object> config = Map.of();
     private StsClient stsClient = Mockito.mock(StsClient.class);
     private FileIOFactorySupplier fileIOFactorySupplier = TestFileIOFactory::new;
+
+    private Builder() {}
 
     public Builder realmId(RealmId realmId) {
       this.realmId = realmId;

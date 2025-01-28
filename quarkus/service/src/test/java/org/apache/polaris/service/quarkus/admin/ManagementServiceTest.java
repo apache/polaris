@@ -37,7 +37,7 @@ import org.junit.jupiter.api.Test;
 
 public class ManagementServiceTest {
   static TestServices services =
-      new TestServices.Builder()
+      TestServices.builder()
           .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
           .build();
 

@@ -40,7 +40,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 public class PolarisOverlappingCatalogTest {
 
   static TestServices services =
-      new TestServices.Builder().config(Map.of("ALLOW_OVERLAPPING_CATALOG_URLS", "false")).build();
+      TestServices.builder().config(Map.of("ALLOW_OVERLAPPING_CATALOG_URLS", "false")).build();
 
   private Response createCatalog(String prefix, String defaultBaseLocation, boolean isExternal) {
     return createCatalog(prefix, defaultBaseLocation, isExternal, new ArrayList<String>());
