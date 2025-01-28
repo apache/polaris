@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Set;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
@@ -61,7 +61,7 @@ class AwsCredentialsStorageIntegrationTest {
           .build();
   public static final String AWS_PARTITION = "aws";
 
-  private static final RealmId REALM_CONTEXT = RealmId.newRealmId("realm");
+  private static final Realm REALM = Realm.newRealm("realm");
 
   @Test
   public void testGetSubscopedCreds() {
@@ -82,7 +82,7 @@ class AwsCredentialsStorageIntegrationTest {
     EnumMap<PolarisCredentialProperty, String> credentials =
         new AwsCredentialsStorageIntegration(new PolarisConfigurationStore() {}, stsClient)
             .getSubscopedCreds(
-                REALM_CONTEXT,
+                REALM,
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
@@ -221,7 +221,7 @@ class AwsCredentialsStorageIntegrationTest {
     EnumMap<PolarisCredentialProperty, String> credentials =
         new AwsCredentialsStorageIntegration(new PolarisConfigurationStore() {}, stsClient)
             .getSubscopedCreds(
-                REALM_CONTEXT,
+                REALM,
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
                     storageType,
@@ -316,7 +316,7 @@ class AwsCredentialsStorageIntegrationTest {
     EnumMap<PolarisCredentialProperty, String> credentials =
         new AwsCredentialsStorageIntegration(new PolarisConfigurationStore() {}, stsClient)
             .getSubscopedCreds(
-                REALM_CONTEXT,
+                REALM,
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
@@ -409,7 +409,7 @@ class AwsCredentialsStorageIntegrationTest {
     EnumMap<PolarisCredentialProperty, String> credentials =
         new AwsCredentialsStorageIntegration(new PolarisConfigurationStore() {}, stsClient)
             .getSubscopedCreds(
-                REALM_CONTEXT,
+                REALM,
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
                     storageType,
@@ -472,7 +472,7 @@ class AwsCredentialsStorageIntegrationTest {
     EnumMap<PolarisCredentialProperty, String> credentials =
         new AwsCredentialsStorageIntegration(new PolarisConfigurationStore() {}, stsClient)
             .getSubscopedCreds(
-                REALM_CONTEXT,
+                REALM,
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
@@ -506,7 +506,7 @@ class AwsCredentialsStorageIntegrationTest {
     EnumMap<PolarisCredentialProperty, String> credentials =
         new AwsCredentialsStorageIntegration(new PolarisConfigurationStore() {}, stsClient)
             .getSubscopedCreds(
-                REALM_CONTEXT,
+                REALM,
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,
@@ -537,7 +537,7 @@ class AwsCredentialsStorageIntegrationTest {
     EnumMap<PolarisCredentialProperty, String> credentials =
         new AwsCredentialsStorageIntegration(new PolarisConfigurationStore() {}, stsClient)
             .getSubscopedCreds(
-                REALM_CONTEXT,
+                REALM,
                 Mockito.mock(PolarisDiagnostics.class),
                 new AwsStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3,

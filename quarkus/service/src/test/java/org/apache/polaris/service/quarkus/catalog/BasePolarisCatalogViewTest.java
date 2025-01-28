@@ -44,7 +44,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -121,10 +121,10 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
         "realm_%s_%s"
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
-    RealmId realmId = RealmId.newRealmId(realmName);
+    Realm realm = Realm.newRealm(realmName);
 
-    metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmId);
-    metaStoreSession = managerFactory.getOrCreateSessionSupplier(realmId).get();
+    metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realm);
+    metaStoreSession = managerFactory.getOrCreateSessionSupplier(realm).get();
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -140,14 +140,14 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     AuthenticatedPolarisPrincipal authenticatedRoot =
         new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
 
-    PolarisEntityManager entityManager = entityManagerFactory.getOrCreateEntityManager(realmId);
+    PolarisEntityManager entityManager = entityManagerFactory.getOrCreateEntityManager(realm);
 
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
     PolarisAdminService adminService =
         new PolarisAdminService(
-            realmId,
+            realm,
             entityManager,
             metaStoreManager,
             metaStoreSession,
@@ -173,7 +173,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             entityManager, metaStoreSession, securityContext, CATALOG_NAME);
     this.catalog =
         new BasePolarisCatalog(
-            realmId,
+            realm,
             entityManager,
             metaStoreManager,
             metaStoreSession,

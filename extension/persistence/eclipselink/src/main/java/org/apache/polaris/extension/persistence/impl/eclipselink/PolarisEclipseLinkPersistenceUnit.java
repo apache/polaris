@@ -43,7 +43,7 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkPersistenceUnit.ClasspathResourcePolarisEclipseLinkPersistenceUnit;
 import org.apache.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkPersistenceUnit.FileSystemPolarisEclipseLinkPersistenceUnit;
 import org.apache.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkPersistenceUnit.JarFilePolarisEclipseLinkPersistenceUnit;
@@ -57,15 +57,15 @@ sealed interface PolarisEclipseLinkPersistenceUnit
         FileSystemPolarisEclipseLinkPersistenceUnit,
         JarFilePolarisEclipseLinkPersistenceUnit {
 
-  EntityManagerFactory createEntityManagerFactory(RealmId realmId) throws IOException;
+  EntityManagerFactory createEntityManagerFactory(Realm realm) throws IOException;
 
   record ClasspathResourcePolarisEclipseLinkPersistenceUnit(
       URL resource, String resourceName, String persistenceUnitName)
       implements PolarisEclipseLinkPersistenceUnit {
 
     @Override
-    public EntityManagerFactory createEntityManagerFactory(RealmId realmId) throws IOException {
-      Map<String, String> properties = loadProperties(resource, persistenceUnitName, realmId);
+    public EntityManagerFactory createEntityManagerFactory(Realm realm) throws IOException {
+      Map<String, String> properties = loadProperties(resource, persistenceUnitName, realm);
       properties.put(ECLIPSELINK_PERSISTENCE_XML, resourceName);
       return Persistence.createEntityManagerFactory(persistenceUnitName, properties);
     }
@@ -75,9 +75,9 @@ sealed interface PolarisEclipseLinkPersistenceUnit
       implements PolarisEclipseLinkPersistenceUnit {
 
     @Override
-    public EntityManagerFactory createEntityManagerFactory(RealmId realmId) throws IOException {
+    public EntityManagerFactory createEntityManagerFactory(Realm realm) throws IOException {
       Map<String, String> properties =
-          loadProperties(path.toUri().toURL(), persistenceUnitName, realmId);
+          loadProperties(path.toUri().toURL(), persistenceUnitName, realm);
       Path archiveDirectory = path.getParent();
       String descriptorPath = archiveDirectory.getParent().relativize(path).toString();
       properties.put(ECLIPSELINK_PERSISTENCE_XML, descriptorPath);
@@ -99,8 +99,8 @@ sealed interface PolarisEclipseLinkPersistenceUnit
       implements PolarisEclipseLinkPersistenceUnit {
 
     @Override
-    public EntityManagerFactory createEntityManagerFactory(RealmId realmId) throws IOException {
-      Map<String, String> properties = loadProperties(confUrl, persistenceUnitName, realmId);
+    public EntityManagerFactory createEntityManagerFactory(Realm realm) throws IOException {
+      Map<String, String> properties = loadProperties(confUrl, persistenceUnitName, realm);
       properties.put(ECLIPSELINK_PERSISTENCE_XML, descriptorPath);
       ClassLoader prevClassLoader = Thread.currentThread().getContextClassLoader();
       try (URLClassLoader currentClassLoader =
@@ -180,7 +180,7 @@ sealed interface PolarisEclipseLinkPersistenceUnit
 
   /** Load the persistence unit properties from a given configuration file */
   private static Map<String, String> loadProperties(
-      @Nonnull URL confFile, @Nonnull String persistenceUnitName, @Nonnull RealmId realmId)
+      @Nonnull URL confFile, @Nonnull String persistenceUnitName, @Nonnull Realm realm)
       throws IOException {
     try (InputStream input = confFile.openStream()) {
       DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -200,7 +200,7 @@ sealed interface PolarisEclipseLinkPersistenceUnit
       }
       // Replace database name in JDBC URL with realm
       if (properties.containsKey(JDBC_URL)) {
-        properties.put(JDBC_URL, properties.get(JDBC_URL).replace("{realm}", realmId.id()));
+        properties.put(JDBC_URL, properties.get(JDBC_URL).replace("{realm}", realm.id()));
       }
       return properties;
     } catch (XPathExpressionException

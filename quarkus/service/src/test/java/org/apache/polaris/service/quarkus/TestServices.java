@@ -30,7 +30,7 @@ import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -53,10 +53,10 @@ import org.mockito.Mockito;
 public record TestServices(
     IcebergRestCatalogApi restApi,
     PolarisCatalogsApi catalogsApi,
-    RealmId realmId,
+    Realm realm,
     SecurityContext securityContext) {
 
-  private static final RealmId testRealm = RealmId.newRealmId("test-realm");
+  private static final Realm testRealm = Realm.newRealm("test-realm");
 
   public static TestServices inMemory(Map<String, Object> config) {
     return inMemory(new TestFileIOFactory(), config);

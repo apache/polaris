@@ -35,7 +35,7 @@ public class QuarkusServerManager implements PolarisServerManager {
     return new Server() {
 
       @Override
-      public String realmId() {
+      public String realm() {
         return TEST_REALM;
       }
 

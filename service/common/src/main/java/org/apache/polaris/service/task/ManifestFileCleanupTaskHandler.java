@@ -37,7 +37,7 @@ import org.apache.iceberg.ManifestReader;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.slf4j.Logger;
@@ -56,12 +56,12 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
   public static final int FILE_DELETION_RETRY_MILLIS = 100;
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ManifestFileCleanupTaskHandler.class);
-  private final BiFunction<TaskEntity, RealmId, FileIO> fileIOSupplier;
+  private final BiFunction<TaskEntity, Realm, FileIO> fileIOSupplier;
   private final ExecutorService executorService;
   private final PolarisDiagnostics diagnostics;
 
   public ManifestFileCleanupTaskHandler(
-      BiFunction<TaskEntity, RealmId, FileIO> fileIOSupplier,
+      BiFunction<TaskEntity, Realm, FileIO> fileIOSupplier,
       ExecutorService executorService,
       PolarisDiagnostics diagnostics) {
     this.fileIOSupplier = fileIOSupplier;
@@ -76,10 +76,10 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
   }
 
   @Override
-  public boolean handleTask(TaskEntity task, RealmId realmId) {
+  public boolean handleTask(TaskEntity task, Realm realm) {
     ManifestCleanupTask cleanupTask = task.readData(diagnostics, ManifestCleanupTask.class);
     TableIdentifier tableId = cleanupTask.getTableId();
-    try (FileIO authorizedFileIO = fileIOSupplier.apply(task, realmId)) {
+    try (FileIO authorizedFileIO = fileIOSupplier.apply(task, realm)) {
       if (task.getTaskType(diagnostics) == AsyncTaskType.MANIFEST_FILE_CLEANUP) {
         ManifestFile manifestFile = decodeManifestData(cleanupTask.getManifestFileData());
         return cleanUpManifestFile(manifestFile, authorizedFileIO, tableId);

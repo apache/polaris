@@ -22,7 +22,7 @@ import io.quarkus.vertx.web.RouteFilter;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.slf4j.MDC;
 
 @ApplicationScoped
@@ -33,7 +33,7 @@ public class QuarkusLoggingMDCFilter {
   private static final String REQUEST_ID_KEY = "requestId";
   private static final String REALM_ID_KEY = "realmId";
 
-  @Inject RealmId realmId;
+  @Inject Realm realm;
 
   @Inject QuarkusLoggingConfiguration loggingConfiguration;
 
@@ -41,7 +41,7 @@ public class QuarkusLoggingMDCFilter {
     return rc.get(REQUEST_ID_KEY);
   }
 
-  public static String realmId(RoutingContext rc) {
+  public static String realm(RoutingContext rc) {
     return rc.get(REALM_ID_KEY);
   }
 
@@ -57,8 +57,8 @@ public class QuarkusLoggingMDCFilter {
       MDC.put(REQUEST_ID_KEY, requestId);
       rc.put(REQUEST_ID_KEY, requestId);
     }
-    MDC.put(REALM_ID_KEY, realmId.id());
-    rc.put(REALM_ID_KEY, realmId.id());
+    MDC.put(REALM_ID_KEY, realm.id());
+    rc.put(REALM_ID_KEY, realm.id());
     // Do not explicitly remove the MDC values from the request context with an end handler,
     // as this could remove MDC context still in use in TaskExecutor threads
     //    rc.addEndHandler(

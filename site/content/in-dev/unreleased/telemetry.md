@@ -133,7 +133,7 @@ The log message format for both console and file output is highly configurable. 
 is:
 
 ```
-%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realmId}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n
+%d{yyyy-MM-dd HH:mm:ss,SSS} %-5p [%c{3.}] [%X{requestId},%X{realm}] [%X{traceId},%X{parentId},%X{spanId},%X{sampled}] (%t) %s%e%n
 ```
 
 Refer to the [Logging format](https://quarkus.io/guides/logging#logging-format) guide for more
@@ -146,7 +146,7 @@ following MDC keys are available:
 
 - `requestId`: The unique identifier of the request, if set by the caller through the
   `Polaris-Request-Id` header.
-- `realmId`: The unique identifier of the realm. Always set.
+- `realm`: The unique identifier of the realm. Always set.
 - `traceId`: The unique identifier of the trace. Present if tracing is enabled and the message is
   originating from a traced context.
 - `parentId`: The unique identifier of the parent span. Present if tracing is enabled and the

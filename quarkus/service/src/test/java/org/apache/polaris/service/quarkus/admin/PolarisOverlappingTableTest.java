@@ -63,7 +63,7 @@ public class PolarisOverlappingTableTest {
                 namespace,
                 createTableRequest,
                 null,
-                services.realmId(),
+                services.realm(),
                 services.securityContext())) {
       return response.getStatus();
     } catch (ForbiddenException e) {
@@ -130,7 +130,7 @@ public class PolarisOverlappingTableTest {
             .catalogsApi()
             .createCatalog(
                 new CreateCatalogRequest(catalogObject),
-                services.realmId(),
+                services.realm(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
@@ -141,7 +141,7 @@ public class PolarisOverlappingTableTest {
         services
             .restApi()
             .createNamespace(
-                catalog, createNamespaceRequest, services.realmId(), services.securityContext())) {
+                catalog, createNamespaceRequest, services.realm(), services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
 

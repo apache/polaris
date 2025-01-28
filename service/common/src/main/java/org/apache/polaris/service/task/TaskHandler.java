@@ -18,11 +18,11 @@
  */
 package org.apache.polaris.service.task;
 
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.entity.TaskEntity;
 
 public interface TaskHandler {
   boolean canHandleTask(TaskEntity task);
 
-  boolean handleTask(TaskEntity task, RealmId realmId);
+  boolean handleTask(TaskEntity task, Realm realm);
 }

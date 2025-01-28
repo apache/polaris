@@ -39,7 +39,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -53,7 +53,7 @@ import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
-import org.apache.polaris.service.context.RealmIdResolver;
+import org.apache.polaris.service.context.RealmResolver;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguration;
 import org.apache.polaris.service.quarkus.catalog.io.QuarkusFileIOConfiguration;
@@ -100,8 +100,8 @@ public class QuarkusProducers {
 
   @Produces
   @RequestScoped
-  public RealmId realmId(@Context HttpServerRequest request, RealmIdResolver realmIdResolver) {
-    return realmIdResolver.resolveRealmContext(
+  public Realm realm(@Context HttpServerRequest request, RealmResolver realmResolver) {
+    return realmResolver.resolveRealmContext(
         request.absoluteURI(),
         request.method().name(),
         request.path(),
@@ -112,50 +112,49 @@ public class QuarkusProducers {
   @Produces
   @RequestScoped
   public PolarisMetaStoreSession metaStoreSession(
-      MetaStoreManagerFactory metaStoreManagerFactory, RealmId realmId) {
-    return metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
+      MetaStoreManagerFactory metaStoreManagerFactory, Realm realm) {
+    return metaStoreManagerFactory.getOrCreateSessionSupplier(realm).get();
   }
 
   @Produces
   @RequestScoped
   // TODO break into separate beans
   public PolarisMetaStoreManager polarisMetaStoreManager(
-      MetaStoreManagerFactory metaStoreManagerFactory, RealmId realmId) {
-    return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmId);
+      MetaStoreManagerFactory metaStoreManagerFactory, Realm realm) {
+    return metaStoreManagerFactory.getOrCreateMetaStoreManager(realm);
   }
 
   @Produces
   @RequestScoped
   public StorageCredentialCache storageCredentialCache(
-      MetaStoreManagerFactory metaStoreManagerFactory, RealmId realmId) {
-    return metaStoreManagerFactory.getOrCreateStorageCredentialCache(realmId);
+      MetaStoreManagerFactory metaStoreManagerFactory, Realm realm) {
+    return metaStoreManagerFactory.getOrCreateStorageCredentialCache(realm);
   }
 
   @Produces
   @RequestScoped
-  public EntityCache entityCache(MetaStoreManagerFactory metaStoreManagerFactory, RealmId realmId) {
-    return metaStoreManagerFactory.getOrCreateEntityCache(realmId);
+  public EntityCache entityCache(MetaStoreManagerFactory metaStoreManagerFactory, Realm realm) {
+    return metaStoreManagerFactory.getOrCreateEntityCache(realm);
   }
 
   @Produces
   @RequestScoped
   public PolarisEntityManager polarisEntityManager(
-      RealmEntityManagerFactory realmEntityManagerFactory, RealmId realmId) {
-    return realmEntityManagerFactory.getOrCreateEntityManager(realmId);
+      RealmEntityManagerFactory realmEntityManagerFactory, Realm realm) {
+    return realmEntityManagerFactory.getOrCreateEntityManager(realm);
   }
 
   @Produces
   @RequestScoped
-  public TokenBroker tokenBroker(TokenBrokerFactory tokenBrokerFactory, RealmId realmId) {
-    return tokenBrokerFactory.apply(realmId);
+  public TokenBroker tokenBroker(TokenBrokerFactory tokenBrokerFactory, Realm realm) {
+    return tokenBrokerFactory.apply(realm);
   }
 
   // Polaris service beans - selected from @Identifier-annotated beans
 
   @Produces
-  public RealmIdResolver realmContextResolver(
-      QuarkusRealmContextConfiguration config,
-      @Any Instance<RealmIdResolver> realmContextResolvers) {
+  public RealmResolver realmContextResolver(
+      QuarkusRealmContextConfiguration config, @Any Instance<RealmResolver> realmContextResolvers) {
     return realmContextResolvers.select(Identifier.Literal.of(config.type())).get();
   }
 
