@@ -44,7 +44,7 @@ import org.apache.polaris.service.catalog.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.catalog.io.TestFileIOFactory;
+import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
@@ -86,7 +86,7 @@ public record TestServices(
     private RealmId realmId = TEST_REALM;
     private Map<String, Object> config = Map.of();
     private StsClient stsClient = Mockito.mock(StsClient.class);
-    private FileIOFactorySupplier fileIOFactorySupplier = TestFileIOFactory::new;
+    private FileIOFactorySupplier fileIOFactorySupplier = MeasuredFileIOFactory::new;
 
     private Builder() {}
 

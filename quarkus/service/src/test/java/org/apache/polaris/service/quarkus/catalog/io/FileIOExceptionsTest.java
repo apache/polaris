@@ -39,7 +39,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.TestServices;
-import org.apache.polaris.service.catalog.io.TestFileIOFactory;
+import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -55,12 +55,12 @@ public class FileIOExceptionsTest {
   private static final String catalogBaseLocation = "file:/tmp/buckets/my-bucket/path/to/data";
 
   private static TestServices services;
-  private static TestFileIOFactory ioFactory;
+  private static MeasuredFileIOFactory ioFactory;
 
   @BeforeAll
   public static void beforeAll() {
     services = TestServices.builder().build();
-    ioFactory = (TestFileIOFactory) services.fileIOFactory();
+    ioFactory = (MeasuredFileIOFactory) services.fileIOFactory();
 
     FileStorageConfigInfo storageConfigInfo =
         FileStorageConfigInfo.builder()

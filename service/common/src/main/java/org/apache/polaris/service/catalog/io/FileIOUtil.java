@@ -39,6 +39,8 @@ import org.slf4j.LoggerFactory;
 public class FileIOUtil {
   private static final Logger LOGGER = LoggerFactory.getLogger(FileIOUtil.class);
 
+  private FileIOUtil() {}
+
   /**
    * Finds storage configuration information in the hierarchy of the resolved storage entity.
    *

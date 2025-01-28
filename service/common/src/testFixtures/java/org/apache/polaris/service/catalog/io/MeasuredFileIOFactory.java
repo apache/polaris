@@ -41,8 +41,8 @@ import org.apache.polaris.service.config.RealmEntityManagerFactory;
  * inject exceptions at various parts of the IO construction.
  */
 @Vetoed
-public class TestFileIOFactory implements FileIOFactory {
-  private final List<TestFileIO> ios = new ArrayList<>();
+public class MeasuredFileIOFactory implements FileIOFactory {
+  private final List<MeasuredFileIO> ios = new ArrayList<>();
 
   // When present, the following will be used to throw exceptions at various parts of the IO
   public Optional<Supplier<RuntimeException>> loadFileIOExceptionSupplier = Optional.empty();
@@ -53,7 +53,7 @@ public class TestFileIOFactory implements FileIOFactory {
   private final FileIOFactory defaultFileIOFactory;
 
   @Inject
-  public TestFileIOFactory(
+  public MeasuredFileIOFactory(
       RealmEntityManagerFactory realmEntityManagerFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
       PolarisConfigurationStore configurationStore) {
@@ -76,8 +76,8 @@ public class TestFileIOFactory implements FileIOFactory {
           throw s.get();
         });
 
-    TestFileIO wrapped =
-        new TestFileIO(
+    MeasuredFileIO wrapped =
+        new MeasuredFileIO(
             defaultFileIOFactory.loadFileIO(
                 realmId,
                 ioImplClassName,
@@ -95,7 +95,7 @@ public class TestFileIOFactory implements FileIOFactory {
 
   public long getInputBytes() {
     long sum = 0;
-    for (TestFileIO io : ios) {
+    for (MeasuredFileIO io : ios) {
       sum += io.getInputBytes();
     }
     return sum;
@@ -103,7 +103,7 @@ public class TestFileIOFactory implements FileIOFactory {
 
   public long getNumOutputFiles() {
     long sum = 0;
-    for (TestFileIO io : ios) {
+    for (MeasuredFileIO io : ios) {
       sum += io.getNumOuptutFiles();
     }
     return sum;
@@ -111,7 +111,7 @@ public class TestFileIOFactory implements FileIOFactory {
 
   public long getNumDeletedFiles() {
     long sum = 0;
-    for (TestFileIO io : ios) {
+    for (MeasuredFileIO io : ios) {
       sum += io.getNumDeletedFiles();
     }
     return sum;

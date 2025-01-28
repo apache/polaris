@@ -32,7 +32,7 @@ import org.apache.iceberg.io.OutputFile;
  * File IO wrapper used for tests. It measures the number of bytes read, files written, and files
  * deleted. It can inject exceptions during InputFile and OutputFile creation.
  */
-public class TestFileIO implements FileIO {
+public class MeasuredFileIO implements FileIO {
   private final FileIO io;
 
   // When present, the following will be used to throw exceptions at various parts of the IO
@@ -44,7 +44,7 @@ public class TestFileIO implements FileIO {
   private int numOutputFiles;
   private int numDeletedFiles;
 
-  public TestFileIO(
+  public MeasuredFileIO(
       FileIO io,
       Optional<Supplier<RuntimeException>> newInputFileExceptionSupplier,
       Optional<Supplier<RuntimeException>> newOutputFileExceptionSupplier,
@@ -73,9 +73,9 @@ public class TestFileIO implements FileIO {
           throw s.get();
         });
 
-    // Use the inner's length in case the TestInputFile throws a getLength exception
+    // Use the inner's length in case the MeasuredInputFile throws a getLength exception
     inputBytes += inner.getLength();
-    return new TestInputFile(inner, getLengthExceptionSupplier);
+    return new MeasuredInputFile(inner, getLengthExceptionSupplier);
   }
 
   @Override

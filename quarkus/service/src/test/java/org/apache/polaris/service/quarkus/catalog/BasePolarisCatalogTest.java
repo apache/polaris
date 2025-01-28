@@ -98,7 +98,7 @@ import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.catalog.io.TestFileIOFactory;
+import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -1523,8 +1523,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         new PolarisPassthroughResolutionView(
             entityManager, metaStoreSession, securityContext, CATALOG_NAME);
 
-    TestFileIOFactory measured =
-        new TestFileIOFactory(entityManagerFactory, managerFactory, configurationStore);
+    MeasuredFileIOFactory measured =
+        new MeasuredFileIOFactory(entityManagerFactory, managerFactory, configurationStore);
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
             realmId,

@@ -24,11 +24,11 @@ import org.apache.iceberg.io.InputFile;
 import org.apache.iceberg.io.SeekableInputStream;
 
 /** An InputFile wrapper that can be forced to throw exceptions. */
-public class TestInputFile implements InputFile {
+public class MeasuredInputFile implements InputFile {
   private final InputFile inputFile;
   private final Optional<Supplier<RuntimeException>> getLengthExceptionSupplier;
 
-  public TestInputFile(
+  public MeasuredInputFile(
       InputFile inputFile, Optional<Supplier<RuntimeException>> getLengthExceptionSupplier) {
     this.inputFile = inputFile;
     this.getLengthExceptionSupplier = getLengthExceptionSupplier;
