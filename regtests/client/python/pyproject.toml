@@ -25,7 +25,7 @@ authors = [
     {name = "Apache Software Foundation", email = "dev@polaris.apache.org"}
 ]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9,<4.0"
 license = "Apache-2.0"
 keywords = ["Polaris", "Polaris Management Service"]
 dynamic = ["classifiers"]
