@@ -145,9 +145,11 @@ public final class PolarisVersion {
     return readResource("LICENSE");
   }
 
+  /*
   public static String readBinaryLicenseFile() {
     return readResource("LICENSE-BINARY-DIST");
   }
+   */
 
   private static final String MF_VERSION = "Apache-Polaris-Version";
   private static final String MF_IS_RELEASE = "Apache-Polaris-Is-Release";

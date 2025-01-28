@@ -17,8 +17,14 @@
 # under the License.
 #
 
-pytest~=8.3.4
-pytest-cov>=2.8.1
-pytest-randomly>=3.12.0
-mypy>=1.4.1
-types-python-dateutil>=2.8.19
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+scrape_configs:
+  - job_name: 'polaris'
+    scrape_interval: 5s
+    metrics_path: /q/metrics
+    static_configs:
+      - targets: ['polaris:8182']
+        labels:
+          service: polaris

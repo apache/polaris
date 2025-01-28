@@ -39,7 +39,7 @@ spec:
     spec:
       containers:
       - name: polaris
-        image: localhost:5001/polaris:latest
+        image: localhost:5001/apache/polaris:latest
         ports:
         - containerPort: 8181
         - containerPort: 8182

@@ -19,6 +19,9 @@
 package org.apache.polaris.service.quarkus.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
+import java.util.Map;
 import org.apache.polaris.service.it.test.PolarisSparkIntegrationTest;
 
 @QuarkusIntegrationTest

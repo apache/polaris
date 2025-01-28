@@ -47,7 +47,7 @@ public class QuarkusServerManager implements PolarisServerManager {
       @Override
       public ClientPrincipal adminCredentials() {
         // These credentials are injected via env. variables from build scripts.
-        // Cf. POLARIS_BOOTSTRAP_POLARIS_ROOT_CLIENT_ID
+        // Cf. POLARIS_BOOTSTRAP_CREDENTIALS in build.gradle.kts
         return new ClientPrincipal("root", new ClientCredentials("test-admin", "test-secret"));
       }
 

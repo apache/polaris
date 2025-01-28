@@ -28,14 +28,12 @@ dependencies {
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-service-common"))
+  implementation(project(":polaris-quarkus-defaults"))
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
   implementation("org.apache.iceberg:iceberg-aws")
-
-  // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
-  implementation(platform(libs.dnsjava))
 
   implementation(platform(libs.opentelemetry.bom))
 
@@ -133,9 +131,6 @@ dependencies {
   intTestImplementation(platform(libs.quarkus.bom))
   intTestImplementation("io.quarkus:quarkus-junit5")
 
-  // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
-  intTestImplementation(platform(libs.dnsjava))
-
   // required for QuarkusSparkIT
   intTestImplementation(enforcedPlatform(libs.scala212.lang.library))
   intTestImplementation(enforcedPlatform(libs.scala212.lang.reflect))
@@ -145,33 +140,38 @@ dependencies {
 
 tasks.withType(Test::class.java).configureEach {
   systemProperty("java.util.logging.manager", "org.jboss.logmanager.LogManager")
-  addSparkJvmOptions()
-}
-
-tasks.named<Test>("test").configure {
   if (System.getenv("AWS_REGION") == null) {
     environment("AWS_REGION", "us-west-2")
   }
-  // Note: the test secrets are referenced in DropwizardServerManager
-  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,root,test-admin,test-secret")
+  // Note: the test secrets are referenced in
+  // org.apache.polaris.service.quarkus.it.QuarkusServerManager
+  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   // Need to allow a java security manager after Java 21, for Subject.getSubject to work
   // "getSubject is supported only if a security manager is allowed".
   systemProperty("java.security.manager", "allow")
-  maxParallelForks = 4
 }
+
+tasks.named<Test>("test").configure { maxParallelForks = 4 }
 
 tasks.named<Test>("intTest").configure {
-  if (System.getenv("AWS_REGION") == null) {
-    environment("AWS_REGION", "us-west-2")
-  }
-  // Note: the test secrets are referenced in DropwizardServerManager
-  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,root,test-admin,test-secret")
-  jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
-  // Need to allow a java security manager after Java 21, for Subject.getSubject to work
-  // "getSubject is supported only if a security manager is allowed".
-  systemProperty("java.security.manager", "allow")
   maxParallelForks = 1
+  // Same issue as above: allow a java security manager after Java 21
+  // (this setting is for the application under test, while the setting above is for test code).
+  systemProperty("quarkus.test.arg-line", "-Djava.security.manager=allow")
+  val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
+  // delete files from previous runs
+  doFirst {
+    // delete log files written by Polaris
+    logsDir.deleteRecursively()
+    // delete quarkus.log file (captured Polaris stdout/stderr)
+    project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
+  }
+  // This property is not honored in a per-profile application.properties file,
+  // so we need to set it here.
+  systemProperty("quarkus.log.file.path", logsDir.resolve("polaris.log").absolutePath)
+  // For Spark integration tests
+  addSparkJvmOptions()
 }
 
 /**

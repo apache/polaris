@@ -19,8 +19,10 @@
 package org.apache.polaris.service.quarkus.it;
 
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
+import java.util.Map;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.service.it.test.PolarisRestCatalogViewFileIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +31,14 @@ import org.junit.jupiter.api.io.TempDir;
 @QuarkusTest
 public class QuarkusRestCatalogViewFileIntegrationTest
     extends PolarisRestCatalogViewFileIntegrationTest {
+
+  public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of("polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"", "[\"FILE\"]");
+    }
+  }
 
   @BeforeEach
   public void setUpTempDir(@TempDir Path tempDir) throws Exception {

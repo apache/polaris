@@ -22,7 +22,7 @@ jobs:
   stale:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/stale@f04443dce335c74ba15c65f4cbb3688e6cb6a6ec
+      - uses: actions/stale@ee7ef89499a3de6e4fe1fc1acb994e67c64e0a2a
         with:
           days-before-close: 5
           days-before-stale: 30
