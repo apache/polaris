@@ -27,12 +27,14 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
@@ -41,123 +43,169 @@ import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
 import org.apache.polaris.service.catalog.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.TestFileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
+import org.assertj.core.util.TriFunction;
 import org.mockito.Mockito;
+import software.amazon.awssdk.services.sts.StsClient;
 
 public record TestServices(
-    IcebergRestCatalogApi restApi,
     PolarisCatalogsApi catalogsApi,
+    IcebergRestCatalogApi restApi,
+    PolarisConfigurationStore configurationStore,
+    PolarisDiagnostics polarisDiagnostics,
+    RealmEntityManagerFactory entityManagerFactory,
+    MetaStoreManagerFactory metaStoreManagerFactory,
     RealmId realmId,
     SecurityContext securityContext,
-    TestFileIOFactory testFileIOFactory) {
+    FileIOFactory fileIOFactory,
+    TaskExecutor taskExecutor) {
 
-  private static final RealmId testRealm = RealmId.newRealmId("test-realm");
+  private static final RealmId TEST_REALM =
+      org.apache.polaris.core.context.RealmId.newRealmId("test-realm");
+  private static final String GCP_ACCESS_TOKEN = "abc";
 
-  public static TestServices inMemory() {
-    return inMemory(Map.of());
-  }
+  @FunctionalInterface
+  public interface FileIOFactorySupplier
+      extends TriFunction<
+          RealmEntityManagerFactory,
+          MetaStoreManagerFactory,
+          PolarisConfigurationStore,
+          FileIOFactory> {}
 
-  public static TestServices inMemory(Map<String, Object> config) {
+  public static class Builder {
+    private RealmId realmId = TEST_REALM;
+    private Map<String, Object> config = Map.of();
+    private StsClient stsClient = Mockito.mock(StsClient.class);
+    private FileIOFactorySupplier fileIOFactorySupplier = TestFileIOFactory::new;
 
-    DefaultConfigurationStore configurationStore = new DefaultConfigurationStore(config);
-    PolarisDiagnostics polarisDiagnostics = Mockito.mock(PolarisDiagnostics.class);
+    public Builder realmId(RealmId realmId) {
+      this.realmId = realmId;
+      return this;
+    }
 
-    PolarisStorageIntegrationProviderImpl storageIntegrationProvider =
-        new PolarisStorageIntegrationProviderImpl(
-            Mockito::mock,
-            () -> GoogleCredentials.create(new AccessToken("abc", new Date())),
-            configurationStore);
+    public Builder config(Map<String, Object> config) {
+      this.config = config;
+      return this;
+    }
 
-    InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory(
-            storageIntegrationProvider,
-            configurationStore,
-            polarisDiagnostics,
-            Clock.systemDefaultZone());
+    public Builder fileIOFactorySupplier(FileIOFactorySupplier fileIOFactorySupplier) {
+      this.fileIOFactorySupplier = fileIOFactorySupplier;
+      return this;
+    }
 
-    PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(testRealm);
+    public Builder stsClient(StsClient stsClient) {
+      this.stsClient = stsClient;
+      return this;
+    }
 
-    PolarisMetaStoreSession session =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(testRealm).get();
+    public TestServices build() {
+      DefaultConfigurationStore configurationStore = new DefaultConfigurationStore(config);
+      PolarisDiagnostics polarisDiagnostics = Mockito.mock(PolarisDiagnostics.class);
+      PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
 
-    RealmEntityManagerFactory realmEntityManagerFactory =
-        new RealmEntityManagerFactory(metaStoreManagerFactory, polarisDiagnostics) {};
+      // Application level
+      PolarisStorageIntegrationProviderImpl storageIntegrationProvider =
+          new PolarisStorageIntegrationProviderImpl(
+              () -> stsClient,
+              () -> GoogleCredentials.create(new AccessToken(GCP_ACCESS_TOKEN, new Date())),
+              configurationStore);
+      InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
+          new InMemoryPolarisMetaStoreManagerFactory(
+              storageIntegrationProvider,
+              configurationStore,
+              polarisDiagnostics,
+              Clock.systemDefaultZone());
+      RealmEntityManagerFactory realmEntityManagerFactory =
+          new RealmEntityManagerFactory(metaStoreManagerFactory, polarisDiagnostics) {};
 
-    PolarisEntityManager entityManager =
-        realmEntityManagerFactory.getOrCreateEntityManager(testRealm);
+      PolarisEntityManager entityManager =
+          realmEntityManagerFactory.getOrCreateEntityManager(realmId);
+      PolarisMetaStoreManager metaStoreManager =
+          metaStoreManagerFactory.getOrCreateMetaStoreManager(realmId);
+      PolarisMetaStoreSession metaStoreSession =
+          metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
 
-    PolarisAuthorizer authorizer = Mockito.mock(PolarisAuthorizer.class);
+      FileIOFactory fileIOFactory =
+          fileIOFactorySupplier.apply(
+              realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
 
-    TestFileIOFactory testFileIOFactory =
-        new TestFileIOFactory(
-            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
+      TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
+      IcebergRestCatalogApiService service =
+          new IcebergCatalogAdapter(
+              realmId,
+              entityManager,
+              metaStoreManager,
+              metaStoreSession,
+              configurationStore,
+              polarisDiagnostics,
+              authorizer,
+              taskExecutor,
+              fileIOFactory);
 
-    IcebergRestCatalogApiService service =
-        new IcebergCatalogAdapter(
-            testRealm,
-            entityManager,
-            metaStoreManager,
-            session,
-            configurationStore,
-            polarisDiagnostics,
-            authorizer,
-            Mockito.mock(TaskExecutor.class),
-            testFileIOFactory);
+      IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
 
-    IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
+      PolarisMetaStoreManager.CreatePrincipalResult createdPrincipal =
+          metaStoreManager.createPrincipal(
+              metaStoreSession,
+              new PrincipalEntity.Builder()
+                  .setName("test-principal")
+                  .setCreateTimestamp(Instant.now().toEpochMilli())
+                  .setCredentialRotationRequiredState()
+                  .build());
+      AuthenticatedPolarisPrincipal principal =
+          new AuthenticatedPolarisPrincipal(
+              PolarisEntity.of(createdPrincipal.getPrincipal()), Set.of());
 
-    PolarisMetaStoreManager.CreatePrincipalResult createdPrincipal =
-        metaStoreManager.createPrincipal(
-            session,
-            new PrincipalEntity.Builder()
-                .setName("test-principal")
-                .setCreateTimestamp(Instant.now().toEpochMilli())
-                .setCredentialRotationRequiredState()
-                .build());
+      SecurityContext securityContext =
+          new SecurityContext() {
+            @Override
+            public Principal getUserPrincipal() {
+              return principal;
+            }
 
-    AuthenticatedPolarisPrincipal principal =
-        new AuthenticatedPolarisPrincipal(
-            PolarisEntity.of(createdPrincipal.getPrincipal()), Set.of());
+            @Override
+            public boolean isUserInRole(String s) {
+              return false;
+            }
 
-    SecurityContext securityContext =
-        new SecurityContext() {
-          @Override
-          public Principal getUserPrincipal() {
-            return principal;
-          }
+            @Override
+            public boolean isSecure() {
+              return true;
+            }
 
-          @Override
-          public boolean isUserInRole(String s) {
-            return false;
-          }
+            @Override
+            public String getAuthenticationScheme() {
+              return "";
+            }
+          };
 
-          @Override
-          public boolean isSecure() {
-            return true;
-          }
+      PolarisCatalogsApi catalogsApi =
+          new PolarisCatalogsApi(
+              new PolarisServiceImpl(
+                  entityManager,
+                  metaStoreManager,
+                  metaStoreSession,
+                  configurationStore,
+                  authorizer,
+                  polarisDiagnostics));
 
-          @Override
-          public String getAuthenticationScheme() {
-            return "";
-          }
-        };
-
-    PolarisCatalogsApi catalogsApi =
-        new PolarisCatalogsApi(
-            new PolarisServiceImpl(
-                entityManager,
-                metaStoreManager,
-                session,
-                configurationStore,
-                authorizer,
-                polarisDiagnostics));
-
-    return new TestServices(restApi, catalogsApi, testRealm, securityContext, testFileIOFactory);
+      return new TestServices(
+          catalogsApi,
+          restApi,
+          configurationStore,
+          polarisDiagnostics,
+          realmEntityManagerFactory,
+          metaStoreManagerFactory,
+          realmId,
+          securityContext,
+          fileIOFactory,
+          taskExecutor);
+    }
   }
 }

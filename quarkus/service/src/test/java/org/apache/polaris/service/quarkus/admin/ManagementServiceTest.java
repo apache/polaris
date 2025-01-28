@@ -37,8 +37,9 @@ import org.junit.jupiter.api.Test;
 
 public class ManagementServiceTest {
   static TestServices services =
-      TestServices.inMemory(
-          Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")));
+      new TestServices.Builder()
+          .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
+          .build();
 
   @Test
   public void testCreateCatalogWithDisallowedStorageConfig() {

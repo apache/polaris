@@ -94,13 +94,17 @@ dependencies {
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
   testFixturesImplementation(project(":polaris-core"))
+  testFixturesImplementation(project(":polaris-api-management-model"))
   testFixturesImplementation(project(":polaris-api-management-service"))
   testFixturesImplementation(project(":polaris-api-iceberg-service"))
 
   testFixturesImplementation(libs.jakarta.enterprise.cdi.api)
   testFixturesImplementation(libs.jakarta.annotation.api)
-  testFixturesImplementation(libs.jakarta.inject.api)
   testFixturesImplementation(libs.jakarta.ws.rs.api)
+
+  testFixturesImplementation(platform(libs.quarkus.bom))
+  testFixturesImplementation("io.quarkus:quarkus-rest-client")
+  testFixturesImplementation("io.quarkus:quarkus-rest-client-jackson")
 
   testFixturesImplementation(platform(libs.iceberg.bom))
   testFixturesImplementation("org.apache.iceberg:iceberg-api")

@@ -18,35 +18,36 @@
  */
 package org.apache.polaris.service.catalog.io;
 
+import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
-import com.google.auth.oauth2.AccessToken;
-import com.google.auth.oauth2.GoogleCredentials;
+import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import java.lang.reflect.Method;
-import java.time.Clock;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import org.apache.iceberg.Schema;
 import org.apache.iceberg.aws.s3.S3FileIOProperties;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.iceberg.types.Types;
+import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
+import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.admin.model.CatalogProperties;
+import org.apache.polaris.core.admin.model.CreateCatalogRequest;
+import org.apache.polaris.core.admin.model.PolarisCatalog;
+import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.entity.*;
 import org.apache.polaris.core.persistence.*;
-import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
-import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
-import org.apache.polaris.service.config.DefaultConfigurationStore;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
-import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
-import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.catalog.BasePolarisCatalog;
+import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
+import org.apache.polaris.service.task.TaskFileIOSupplier;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,20 +60,20 @@ import software.amazon.awssdk.services.sts.model.Credentials;
 
 public class FileIOFactoryTest {
 
+  public static final String CATALOG_NAME = "polaris-catalog";
+  public static final Namespace NS = Namespace.of("newdb");
+  public static final TableIdentifier TABLE = TableIdentifier.of(NS, "table");
+  public static final Schema SCHEMA =
+      new Schema(
+          required(3, "id", Types.IntegerType.get(), "unique ID 🤪"),
+          required(4, "data", Types.StringType.get()));
   public static final String TEST_ACCESS_KEY = "test_access_key";
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
   public static final String SESSION_TOKEN = "session_token";
 
-  private RealmEntityManagerFactory realmEntityManagerFactory;
-  private PolarisStorageIntegrationProvider storageIntegrationProvider;
-  private MetaStoreManagerFactory metaStoreManagerFactory;
-  private PolarisDiagnostics polarisDiagnostics;
-  private PolarisEntityManager entityManager;
-  private PolarisMetaStoreManager metaStoreManager;
-  private PolarisMetaStoreSession metaStoreSession;
-  private PolarisConfigurationStore configurationStore;
-
   private RealmId realmId;
+  private StsClient stsClient;
+  private TestServices testServices;
 
   @BeforeEach
   public void before(TestInfo testInfo) {
@@ -81,28 +82,9 @@ public class FileIOFactoryTest {
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
     realmId = RealmId.newRealmId(realmName);
-    configurationStore = new DefaultConfigurationStore(Map.of());
-    polarisDiagnostics = Mockito.mock(PolarisDiagnostics.class);
-
-    StsClient stsClient = Mockito.mock(StsClient.class);
-    storageIntegrationProvider =
-        new PolarisStorageIntegrationProviderImpl(
-            () -> stsClient,
-            () -> GoogleCredentials.create(new AccessToken("abc", new Date())),
-            configurationStore);
-    metaStoreManagerFactory =
-        new InMemoryPolarisMetaStoreManagerFactory(
-            storageIntegrationProvider,
-            configurationStore,
-            polarisDiagnostics,
-            Clock.systemDefaultZone());
-    realmEntityManagerFactory =
-        new RealmEntityManagerFactory(metaStoreManagerFactory, polarisDiagnostics) {};
-    entityManager = realmEntityManagerFactory.getOrCreateEntityManager(realmId);
-    metaStoreManager = metaStoreManagerFactory.getOrCreateMetaStoreManager(realmId);
-    metaStoreSession = metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
 
     // Mock get subscoped creds
+    stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
         .thenReturn(
             AssumeRoleResponse.builder()
@@ -113,99 +95,135 @@ public class FileIOFactoryTest {
                         .sessionToken(SESSION_TOKEN)
                         .build())
                 .build());
+
+    // Spy FileIOFactory and check if the credentials are passed to the FileIO
+    TestServices.FileIOFactorySupplier fileIOFactorySupplier =
+        (entityManagerFactory, metaStoreManagerFactory, configurationStore) ->
+            Mockito.spy(
+                new DefaultFileIOFactory(
+                    entityManagerFactory, metaStoreManagerFactory, configurationStore) {
+                  @Override
+                  FileIO loadFileIOInternal(
+                      @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
+                    // properties should contain credentials
+                    Assertions.assertThat(properties)
+                        .containsEntry(S3FileIOProperties.ACCESS_KEY_ID, TEST_ACCESS_KEY)
+                        .containsEntry(S3FileIOProperties.SECRET_ACCESS_KEY, SECRET_ACCESS_KEY)
+                        .containsEntry(S3FileIOProperties.SESSION_TOKEN, SESSION_TOKEN);
+                    return super.loadFileIOInternal(ioImplClassName, properties);
+                  }
+                });
+
+    testServices =
+        new TestServices.Builder()
+            .config(Map.of("ALLOW_SPECIFYING_FILE_IO_IMPL", true))
+            .realmId(realmId)
+            .stsClient(stsClient)
+            .fileIOFactorySupplier(fileIOFactorySupplier)
+            .build();
   }
 
   @AfterEach
-  public void after() {
-    metaStoreManager.purge(metaStoreSession);
-  }
+  public void after() {}
 
   @Test
   public void testLoadFileIOForTableLike() {
-    String storageLocation = "s3://my-bucket/path/to/data";
-    AwsStorageConfigurationInfo storageConfig =
-        new AwsStorageConfigurationInfo(
-            PolarisStorageConfigurationInfo.StorageType.S3,
-            List.of(storageLocation, "s3://externally-owned-bucket"),
-            "arn:aws:iam::012345678901:role/jdoe",
-            null,
-            null);
-    ResolvedPolarisEntity catalogEntity =
-        createResolvedEntity(
-            10,
-            PolarisEntityType.CATALOG,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            10,
-            0,
-            "my-catalog",
-            Map.of(
-                PolarisEntityConstants.getStorageConfigInfoPropertyName(),
-                storageConfig.serialize()));
-    ResolvedPolarisEntity tableEntity =
-        createResolvedEntity(
-            10,
-            PolarisEntityType.TABLE_LIKE,
-            PolarisEntitySubType.TABLE,
-            11,
-            10,
-            "my-table",
-            Map.of());
-    metaStoreManager.createCatalog(metaStoreSession, catalogEntity.getEntity(), List.of());
-    PolarisResolvedPathWrapper resolvedPathWrapper =
-        new PolarisResolvedPathWrapper(List.of(catalogEntity, tableEntity));
+    BasePolarisCatalog catalog = createCatalog(testServices);
+    catalog.createNamespace(NS);
+    catalog.createTable(TABLE, SCHEMA);
 
-    String testProperty = "test.property";
-    FileIOFactory fileIOFactory =
-        new DefaultFileIOFactory(
-            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore) {
-          @Override
-          FileIO loadFileIOInternal(
-              @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
-            // properties should contain credentials
-            org.assertj.core.api.Assertions.assertThat(properties)
-                .containsEntry(S3FileIOProperties.ACCESS_KEY_ID, TEST_ACCESS_KEY)
-                .containsEntry(S3FileIOProperties.SECRET_ACCESS_KEY, SECRET_ACCESS_KEY)
-                .containsEntry(S3FileIOProperties.SESSION_TOKEN, SESSION_TOKEN)
-                .containsEntry(testProperty, "true");
-            return super.loadFileIOInternal(ioImplClassName, properties);
-          }
-        };
-    fileIOFactory
+    // 1. BasePolarisCatalog:doCommit: for writing the table during the creation
+    Mockito.verify(testServices.fileIOFactory(), Mockito.times(1))
         .loadFileIO(
-            realmId,
-            InMemoryFileIO.class.getName(),
-            Map.of(testProperty, "true"),
-            TableIdentifier.of("my-ns", "my-table"),
-            Set.of(storageLocation),
-            Set.of(PolarisStorageActions.READ),
-            resolvedPathWrapper)
-        .close();
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any());
   }
 
-  private ResolvedPolarisEntity createResolvedEntity(
-      long catalogId,
-      PolarisEntityType type,
-      PolarisEntitySubType subType,
-      long id,
-      long parentId,
-      String name,
-      Map<String, String> internalProperties) {
-    PolarisEntity polarisEntity =
-        new PolarisEntity(
-            catalogId,
-            type,
-            subType,
-            id,
-            parentId,
-            name,
-            0,
-            0,
-            0,
-            0,
-            Map.of(),
-            internalProperties,
-            0,
-            0);
-    return new ResolvedPolarisEntity(polarisEntity, List.of(), List.of());
+  @Test
+  public void testLoadFileIOForCleanupTask() {
+    BasePolarisCatalog catalog = createCatalog(testServices);
+    catalog.createNamespace(NS);
+    catalog.createTable(TABLE, SCHEMA);
+    catalog.dropTable(TABLE, true);
+
+    List<PolarisBaseEntity> tasks =
+        testServices
+            .metaStoreManagerFactory()
+            .getOrCreateMetaStoreManager(realmId)
+            .loadTasks(
+                testServices.metaStoreManagerFactory().getOrCreateSessionSupplier(realmId).get(),
+                "testExecutor",
+                1)
+            .getEntities();
+    Assertions.assertThat(tasks).hasSize(1);
+    TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
+    FileIO fileIO = new TaskFileIOSupplier(testServices.fileIOFactory()).apply(taskEntity, realmId);
+    Assertions.assertThat(fileIO).isNotNull().isInstanceOf(InMemoryFileIO.class);
+
+    // 1. BasePolarisCatalog:doCommit: for writing the table during the creation
+    // 2. BasePolarisCatalog:doRefresh: for reading the table during the drop
+    // 3. TaskFileIOSupplier:apply: for clean up metadata files and merge files
+    Mockito.verify(testServices.fileIOFactory(), Mockito.times(3))
+        .loadFileIO(
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any(),
+            Mockito.any());
+  }
+
+  BasePolarisCatalog createCatalog(TestServices services) {
+    String storageLocation = "s3://my-bucket/path/to/data";
+    AwsStorageConfigInfo awsStorageConfigInfo =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(storageLocation))
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .build();
+
+    // Create Catalog Entity
+    Catalog catalog =
+        PolarisCatalog.builder()
+            .setType(Catalog.TypeEnum.INTERNAL)
+            .setName(CATALOG_NAME)
+            .setProperties(new CatalogProperties("s3://tmp/path/to/data"))
+            .setStorageConfigInfo(awsStorageConfigInfo)
+            .build();
+    services
+        .catalogsApi()
+        .createCatalog(
+            new CreateCatalogRequest(catalog), services.realmId(), services.securityContext());
+
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            services.entityManagerFactory().getOrCreateEntityManager(realmId),
+            services.metaStoreManagerFactory().getOrCreateSessionSupplier(realmId).get(),
+            services.securityContext(),
+            CATALOG_NAME);
+    BasePolarisCatalog polarisCatalog =
+        new BasePolarisCatalog(
+            services.realmId(),
+            services.entityManagerFactory().getOrCreateEntityManager(realmId),
+            services.metaStoreManagerFactory().getOrCreateMetaStoreManager(realmId),
+            services.metaStoreManagerFactory().getOrCreateSessionSupplier(realmId).get(),
+            services.configurationStore(),
+            services.polarisDiagnostics(),
+            passthroughView,
+            services.securityContext(),
+            services.taskExecutor(),
+            services.fileIOFactory());
+    polarisCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            org.apache.iceberg.CatalogProperties.FILE_IO_IMPL,
+            "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    return polarisCatalog;
   }
 }

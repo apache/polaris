@@ -105,7 +105,7 @@ public class PolarisOverlappingTableTest {
       Map<String, Object> serverConfig,
       Map<String, String> catalogConfig,
       int expectedStatusForOverlaps) {
-    TestServices services = TestServices.inMemory(serverConfig);
+    TestServices services = new TestServices.Builder().config(serverConfig).build();
 
     CatalogProperties.Builder propertiesBuilder =
         CatalogProperties.builder()

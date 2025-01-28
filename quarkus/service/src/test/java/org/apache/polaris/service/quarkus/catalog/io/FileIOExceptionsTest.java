@@ -59,8 +59,8 @@ public class FileIOExceptionsTest {
 
   @BeforeAll
   public static void beforeAll() {
-    services = TestServices.inMemory();
-    ioFactory = services.testFileIOFactory();
+    services = new TestServices.Builder().build();
+    ioFactory = (TestFileIOFactory) services.fileIOFactory();
 
     FileStorageConfigInfo storageConfigInfo =
         FileStorageConfigInfo.builder()

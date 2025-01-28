@@ -104,8 +104,8 @@ public class DefaultFileIOFactory implements FileIOFactory {
                         storageInfo))
             .orElse(Map.of());
 
-    // Update the FileIO before we write the new metadata file
-    // update with properties in case there are table-level overrides the credentials should
+    // Update the FileIO with the subscoped credentials
+    // Update with properties in case there are table-level overrides the credentials should
     // always override table-level properties, since storage configuration will be found at
     // whatever entity defines it
     properties.putAll(credentialsMap);
