@@ -85,6 +85,8 @@ dependencies {
 
   implementation(platform(libs.azuresdk.bom))
   implementation("com.azure:azure-core")
+  implementation("com.azure:azure-storage-blob")
+  implementation("com.azure:azure-storage-file-datalake")
 
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")

@@ -16,13 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.dropwizard;
+package org.apache.polaris.service.quarkus;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.azure.core.exception.AzureException;
+import com.azure.core.exception.HttpResponseException;
+import com.azure.core.http.HttpResponse;
 import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.core.Response;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,14 +38,40 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 class IcebergExceptionMapperTest {
 
   static Stream<Arguments> fileIOExceptionMapping() {
-    return Stream.of(
-        Arguments.of(new AzureException("Unknown"), 500),
-        Arguments.of(new AzureException("Forbidden"), 403),
-        Arguments.of(new AzureException("FORBIDDEN"), 403),
-        Arguments.of(new AzureException("Not Authorized"), 403),
-        Arguments.of(new AzureException("Access Denied"), 403),
-        Arguments.of(S3Exception.builder().message("Access denied").build(), 403),
-        Arguments.of(new StorageException(1, "access denied"), 403));
+    Map<Integer, Integer> cloudCodeMappings =
+        Map.of(
+            // Map of HTTP code returned from a cloud provider to the HTTP code Polaris is expected
+            // to return
+            302, 422,
+            400, 400,
+            401, 403,
+            403, 403,
+            404, 400,
+            408, 408,
+            429, 429,
+            503, 502,
+            504, 504);
+
+    return Stream.concat(
+        Stream.of(
+            Arguments.of(new AzureException("Unknown"), 500),
+            Arguments.of(new AzureException("Forbidden"), 403),
+            Arguments.of(new AzureException("FORBIDDEN"), 403),
+            Arguments.of(new AzureException("Not Authorized"), 403),
+            Arguments.of(new AzureException("Access Denied"), 403),
+            Arguments.of(S3Exception.builder().message("Access denied").build(), 403),
+            Arguments.of(new StorageException(1, "access denied"), 403)),
+        cloudCodeMappings.entrySet().stream()
+            .flatMap(
+                entry ->
+                    Stream.of(
+                        Arguments.of(
+                            new HttpResponseException("", mockAzureResponse(entry.getKey()), ""),
+                            entry.getValue()),
+                        Arguments.of(
+                            S3Exception.builder().message("").statusCode(entry.getKey()).build(),
+                            entry.getValue()),
+                        Arguments.of(new StorageException(entry.getKey(), ""), entry.getValue()))));
   }
 
   @ParameterizedTest
@@ -51,5 +82,18 @@ class IcebergExceptionMapperTest {
       assertThat(response.getStatus()).isEqualTo(statusCode);
       assertThat(response.getEntity()).extracting("message").isEqualTo(ex.getMessage());
     }
+  }
+
+  /**
+   * Creates a mock of the Azure-specific HttpResponse object, as it's quite difficult to construct
+   * a "real" one.
+   *
+   * @param statusCode
+   * @return
+   */
+  private static HttpResponse mockAzureResponse(int statusCode) {
+    HttpResponse res = mock(HttpResponse.class);
+    when(res.getStatusCode()).thenReturn(statusCode);
+    return res;
   }
 }
