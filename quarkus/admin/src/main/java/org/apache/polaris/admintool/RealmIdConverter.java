@@ -21,6 +21,12 @@ package org.apache.polaris.admintool;
 import org.apache.polaris.core.context.RealmId;
 import picocli.CommandLine.ITypeConverter;
 
+/**
+ * An {@link ITypeConverter} that converts strings to {@link RealmId} instances.
+ *
+ * <p>This class is used by the {@link BootstrapCommand} and the {@link PurgeCommand} to convert the
+ * realm ids provided on the command line to {@link RealmId} instances.
+ */
 public class RealmIdConverter implements ITypeConverter<RealmId> {
 
   @Override

@@ -21,6 +21,12 @@ package org.apache.polaris.service.quarkus.context;
 import org.apache.polaris.core.context.RealmId;
 import org.eclipse.microprofile.config.spi.Converter;
 
+/**
+ * An {@link Converter} that converts strings to {@link RealmId} instances.
+ *
+ * <p>This class is used by the {@link QuarkusRealmContextConfiguration} to convert the realm ids
+ * provided in the configuration to {@link RealmId} instances.
+ */
 public class RealmIdConverter implements Converter<RealmId> {
 
   @Override
