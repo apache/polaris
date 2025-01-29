@@ -40,11 +40,9 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseMetastoreTableOperations;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.Schema;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
@@ -95,6 +93,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -1975,7 +1974,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    * @return FileIO object
    */
   private FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
-    return CatalogUtil.loadFileIO(ioImpl, properties, new Configuration());
+    TableLikeEntity tableLikeEntity = TableLikeEntity.of(catalogEntity);
+    TableIdentifier identifier = tableLikeEntity.getTableIdentifier();
+    Set<String> locations = Set.of(catalogEntity.getDefaultBaseLocation());
+    ResolvedPolarisEntity resolvedCatalogEntity =
+        new ResolvedPolarisEntity(catalogEntity, List.of(), List.of());
+    PolarisResolvedPathWrapper resolvedPath =
+        new PolarisResolvedPathWrapper(List.of(resolvedCatalogEntity));
+    Set<PolarisStorageActions> storageActions = Set.of(PolarisStorageActions.ALL);
+    return fileIOFactory.loadFileIO(
+        realmId, ioImpl, properties, identifier, locations, storageActions, resolvedPath);
   }
 
   private void blockedUserSpecifiedWriteLocation(Map<String, String> properties) {

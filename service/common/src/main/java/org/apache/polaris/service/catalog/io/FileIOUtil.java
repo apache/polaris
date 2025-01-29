@@ -93,7 +93,7 @@ public class FileIOUtil {
             PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
     if (skipCredentialSubscopingIndirection) {
       LOGGER
-          .atInfo()
+          .atDebug()
           .addKeyValue("tableIdentifier", tableIdentifier)
           .log("Skipping generation of subscoped creds for table");
       return Map.of();

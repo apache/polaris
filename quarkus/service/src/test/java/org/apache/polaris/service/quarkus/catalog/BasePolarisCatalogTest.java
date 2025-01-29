@@ -244,22 +244,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     TaskExecutor taskExecutor = Mockito.mock();
     this.fileIOFactory =
         new DefaultFileIOFactory(entityManagerFactory, managerFactory, configurationStore);
-    this.catalog =
-        new BasePolarisCatalog(
-            realmId,
-            entityManager,
-            metaStoreManager,
-            metaStoreSession,
-            configurationStore,
-            diagServices,
-            passthroughView,
-            securityContext,
-            taskExecutor,
-            fileIOFactory);
-    this.catalog.initialize(
-        CATALOG_NAME,
-        ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
         .thenReturn(
@@ -276,6 +261,23 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     when(storageIntegrationProvider.getStorageIntegrationForConfig(
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
+
+    this.catalog =
+        new BasePolarisCatalog(
+            realmId,
+            entityManager,
+            metaStoreManager,
+            metaStoreSession,
+            configurationStore,
+            diagServices,
+            passthroughView,
+            securityContext,
+            taskExecutor,
+            fileIOFactory);
+    this.catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
   }
 
   @AfterEach
