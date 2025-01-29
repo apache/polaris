@@ -32,7 +32,7 @@ import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisCredentialsBootstrap;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -76,28 +76,46 @@ public class InMemoryPolarisMetaStoreManagerFactory
   @Override
   protected PolarisMetaStoreSession createMetaStoreSession(
       @Nonnull PolarisTreeMapStore store,
-      @Nonnull RealmId realmId,
+      @Nonnull RealmContext realmContext,
       @Nullable PolarisCredentialsBootstrap credentialsBootstrap,
       @Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisTreeMapMetaStoreSessionImpl(
-        store, storageIntegration, secretsGenerator(realmId, credentialsBootstrap), diagnostics);
+        store,
+        storageIntegration,
+        secretsGenerator(realmContext, credentialsBootstrap),
+        diagnostics);
   }
 
   @Override
+<<<<<<< HEAD
   public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmId realmId) {
     if (!bootstrappedRealms.contains(realmId.id())) {
       bootstrapRealmsAndPrintCredentials(List.of(realmId.id()));
+=======
+  public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(
+      RealmContext realmContext) {
+    String realmId = realmContext.getRealmIdentifier();
+    if (!bootstrappedRealms.contains(realmId)) {
+      bootstrapRealmAndPrintCredentials(realmId);
+>>>>>>> parent of 390f1fa5 (Refactor `RealmContext` to `RealmId` (#741))
     }
-    return super.getOrCreateMetaStoreManager(realmId);
+    return super.getOrCreateMetaStoreManager(realmContext);
   }
 
   @Override
   public synchronized Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(
+<<<<<<< HEAD
       RealmId realmId) {
     if (!bootstrappedRealms.contains(realmId.id())) {
       bootstrapRealmsAndPrintCredentials(List.of(realmId.id()));
+=======
+      RealmContext realmContext) {
+    String realmId = realmContext.getRealmIdentifier();
+    if (!bootstrappedRealms.contains(realmId)) {
+      bootstrapRealmAndPrintCredentials(realmId);
+>>>>>>> parent of 390f1fa5 (Refactor `RealmContext` to `RealmId` (#741))
     }
-    return super.getOrCreateSessionSupplier(realmId);
+    return super.getOrCreateSessionSupplier(realmContext);
   }
 
   private void bootstrapRealmsAndPrintCredentials(List<String> realms) {

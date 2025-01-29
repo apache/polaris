@@ -51,7 +51,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -162,7 +162,7 @@ public abstract class PolarisAuthzTestBase {
   protected PolarisMetaStoreSession metaStoreSession;
   protected PolarisBaseEntity catalogEntity;
   protected PrincipalEntity principalEntity;
-  protected RealmId realmId;
+  protected RealmContext realmContext;
   protected AuthenticatedPolarisPrincipal authenticatedRoot;
 
   @BeforeAll
@@ -177,10 +177,10 @@ public abstract class PolarisAuthzTestBase {
 
   @BeforeEach
   public void before(TestInfo testInfo) {
-    realmId = testInfo::getDisplayName;
-    metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmId);
-    metaStoreSession = managerFactory.getOrCreateSessionSupplier(realmId).get();
-    entityManager = realmEntityManagerFactory.getOrCreateEntityManager(realmId);
+    realmContext = testInfo::getDisplayName;
+    metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
+    metaStoreSession = managerFactory.getOrCreateSessionSupplier(realmContext).get();
+    entityManager = realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -198,7 +198,7 @@ public abstract class PolarisAuthzTestBase {
 
     this.adminService =
         new PolarisAdminService(
-            realmId,
+            realmContext,
             entityManager,
             metaStoreManager,
             metaStoreSession,
@@ -387,7 +387,7 @@ public abstract class PolarisAuthzTestBase {
             entityManager, metaStoreSession, securityContext, CATALOG_NAME);
     this.baseCatalog =
         new BasePolarisCatalog(
-            realmId,
+            realmContext,
             entityManager,
             metaStoreManager,
             metaStoreSession,

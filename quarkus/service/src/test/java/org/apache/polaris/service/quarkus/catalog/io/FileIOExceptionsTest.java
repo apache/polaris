@@ -81,7 +81,7 @@ public class FileIOExceptionsTest {
             .catalogsApi()
             .createCatalog(
                 new CreateCatalogRequest(catalog),
-                services.realmId(),
+                services.realmContext(),
                 services.securityContext())) {
       assertThat(res.getStatus()).isEqualTo(201);
     }
@@ -92,7 +92,7 @@ public class FileIOExceptionsTest {
             .createNamespace(
                 FileIOExceptionsTest.catalog,
                 CreateNamespaceRequest.builder().withNamespace(Namespace.of("ns1")).build(),
-                services.realmId(),
+                services.realmContext(),
                 services.securityContext())) {
       assertThat(res.getStatus()).isEqualTo(200);
     }
@@ -112,7 +112,7 @@ public class FileIOExceptionsTest {
         services
             .restApi()
             .createTable(
-                catalog, "ns1", request, null, services.realmId(), services.securityContext());
+                catalog, "ns1", request, null, services.realmContext(), services.securityContext());
     res.close();
   }
 
