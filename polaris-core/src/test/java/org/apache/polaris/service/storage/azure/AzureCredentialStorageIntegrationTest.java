@@ -125,8 +125,8 @@ public class AzureCredentialStorageIntegrationTest {
                 service));
     Map<PolarisCredentialProperty, String> credsMap =
         subscopedCredsForOperations(
-            /* allowedReadLoc= */ realm,
-            allowedLoc,
+            realm,
+            /* allowedReadLoc= */ allowedLoc,
             /* allowedWriteLoc= */ new ArrayList<>(),
             allowListAction);
     Assertions.assertThat(credsMap).hasSize(2);

@@ -42,9 +42,9 @@ public interface PolarisServerManager {
    * Returns server connection parameters for the tests under the specified context.
    *
    * <p>Implementations may reuse the same server for multiple contexts (with the same of different
-   * {@link Server#realm() realm IDs}) or create a fresh server for each context. In any case,
-   * {@link Server#close()} will be invoked when the context provided as the argument to this call
-   * is closed.
+   * {@link Server#realm() realm}) or create a fresh server for each context. In any case, {@link
+   * Server#close()} will be invoked when the context provided as the argument to this call is
+   * closed.
    *
    * <p>Note: {@link Server} objects are generally attached to the test {@code class} context, but
    * this is not guaranteed.
