@@ -30,7 +30,7 @@ metadata:
     {{- end }}
 spec:
   endpoints:
-    - port: {{ get (first .Values.managementService.ports) "port" }}
+    - port: {{ get (first .Values.managementService.ports) "name" }}
       scheme: http
       {{- if .Values.serviceMonitor.interval }}
       interval: {{ .Values.serviceMonitor.interval }}

@@ -20,7 +20,6 @@
 image:
   pullPolicy: Never
 
-
 storage:
   secret:
     name: polaris-storage
