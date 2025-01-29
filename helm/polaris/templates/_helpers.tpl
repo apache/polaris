@@ -276,24 +276,17 @@ Prints the ports section of the container spec. Also validates all port names an
 that they are consistent and that there are no overlaps.
 */}}
 {{- define "polaris.containerPorts" -}}
-ports:
 {{- $ports := dict -}}
-
 {{- /* Main service ports */ -}}
 {{- range $i, $port := .Values.service.ports -}}
 {{- if hasKey $ports $port.name -}}
 {{- fail (printf "service.ports[%d]: port name already taken: %v" $i $port.name) -}}
 {{- end -}}
-{{- $portNumber := coalesce $port.targetPort $port.port -}}
-{{- if has $portNumber (values $ports) -}}
-{{- fail (printf "service.ports[%d]: port number already taken: %v" $i $portNumber) -}}
+{{- if has $port.port (values $ports) -}}
+{{- fail (printf "service.ports[%d]: port number already taken: %v" $i $port.port) -}}
 {{- end -}}
-{{- $_ := set $ports $port.name $portNumber }}
-  - name: {{ $port.name }}
-    containerPort: {{ coalesce $port.targetPort $port.port }}
-    protocol: {{ $port.protocol | default "TCP" }}
+{{- $_ := set $ports $port.name $port.port -}}
 {{- end -}}
-
 {{- /* Management service ports */ -}}
 {{- range $i, $port := .Values.managementService.ports -}}
 {{- if hasKey $ports $port.name -}}
@@ -304,27 +297,24 @@ ports:
 {{- fail (printf "managementService.ports[%d]: port number already taken: %v" $i $portNumber) -}}
 {{- end -}}
 {{- $_ := set $ports $port.name $portNumber }}
-  - name: {{ $port.name }}
-    containerPort: {{ coalesce $port.targetPort $port.port }}
-    protocol: {{ $port.protocol | default "TCP" }}
 {{- end -}}
-
 {{- /* Extra service ports */ -}}
 {{- range $i, $svc := .Values.extraServices -}}
 {{- range $j, $port := $svc.ports -}}
-{{- $portNumber := coalesce $port.targetPort $port.port -}}
 {{- if hasKey $ports $port.name -}}
-{{- if ne $portNumber (get $ports $port.name) -}}
-{{- fail (printf "extraServices[%d].ports[%d]: wrong port number for port %s, expected %v, got %v" $i $j $port.name (get $ports $port.name) $portNumber) -}}
+{{- if ne $port.port (get $ports $port.name) -}}
+{{- fail (printf "extraServices[%d].ports[%d]: wrong port number for port %s, expected %v, got %v" $i $j $port.name (get $ports $port.name) $port.port) -}}
 {{- end -}}
-{{- else if has $portNumber (values $ports) -}}
-{{- fail (printf "extraServices[%d].ports[%d]: port number already taken: %v" $i $j $portNumber) -}}
+{{- else if has $port.port (values $ports) -}}
+{{- fail (printf "extraServices[%d].ports[%d]: port number already taken: %v" $i $j $port.port) -}}
 {{- end -}}
-{{- $_ := set $ports $port.name $portNumber }}
-  - name: {{ $port.name }}
-    containerPort: {{ coalesce $port.targetPort $port.port }}
-    protocol: {{ $port.protocol | default "TCP" }}
+{{- $_ := set $ports $port.name $port.port -}}
 {{- end -}}
-{{- end -}}
-
+{{- end }}
+ports:
+{{- range $portName, $portNumber := $ports }}
+  - name: {{ $portName }}
+    containerPort: {{ $portNumber }}
+    protocol: TCP
+{{- end }}
 {{- end -}}
