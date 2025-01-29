@@ -204,7 +204,8 @@
 
 This product includes a gradle wrapper.
 
-* gradlew and gradle/wrapper/gradle-wrapper.properties
+* gradlew
+* gradle/wrapper/gradle-wrapper.properties
 
 Copyright: 2010-2019 Gradle Authors.
 Home page: https://github.com/gradle/gradle
