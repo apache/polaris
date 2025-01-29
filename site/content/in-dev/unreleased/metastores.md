@@ -49,7 +49,7 @@ The `configuration-file` option must point to an [EclipseLink configuration file
 `persistence.xml`, is used to set up the database connection properties, which can differ depending
 on the type of database and its configuration.
 
-> Note: EclipseLink is scanning the folder containing the `persistence.xml` but also the parent folder. If this reason, you have to locate the `persistence.xml` at least two folders down to the root folder, e.g. `/deployments/config/persistence.xml` is correct, whereas `/deployments/persistence.xml` is not correct.
+> Note: EclipseLink is scanning the folder containing the `persistence.xml` but also the parent folder. For this reason, you have to locate the `persistence.xml` at least two folders down to the root folder, e.g. `/deployments/config/persistence.xml` is correct, whereas `/deployments/persistence.xml` is not correct.
 
 [Quarkus Configuration Reference]: https://quarkus.io/guides/config-reference
 [EclipseLink configuration file]: https://eclipse.dev/eclipselink/documentation/2.5/solutions/testingjpa002.htm
