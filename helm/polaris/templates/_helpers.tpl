@@ -217,7 +217,7 @@ Prints an environment variable for a secret key reference.
     secretKeyRef:
       name: {{ $secret.name }}
       key: {{ $key }}
-{{- end }}
+{{- end -}}
 {{- end -}}
 
 {{/*
