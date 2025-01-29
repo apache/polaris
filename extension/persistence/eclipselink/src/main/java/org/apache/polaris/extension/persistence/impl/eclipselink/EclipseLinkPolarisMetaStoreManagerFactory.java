@@ -27,7 +27,7 @@ import java.nio.file.Path;
 import java.time.Clock;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisCredentialsBootstrap;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -71,16 +71,16 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
   @Override
   protected PolarisMetaStoreSession createMetaStoreSession(
       @Nonnull PolarisEclipseLinkStore store,
-      @Nonnull RealmId realmId,
+      @Nonnull Realm realm,
       @Nullable PolarisCredentialsBootstrap credentialsBootstrap,
       @Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisEclipseLinkMetaStoreSessionImpl(
         store,
         storageIntegrationProvider,
-        realmId,
+        realm,
         configurationFile(),
         persistenceUnitName(),
-        secretsGenerator(realmId, credentialsBootstrap),
+        secretsGenerator(realm, credentialsBootstrap),
         diagnostics);
   }
 

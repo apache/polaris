@@ -19,10 +19,10 @@
 package org.apache.polaris.service.context;
 
 import java.util.Map;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.Realm;
 
-public interface RealmIdResolver {
+public interface RealmResolver {
 
-  RealmId resolveRealmContext(
+  Realm resolveRealmContext(
       String requestURL, String method, String path, Map<String, String> headers);
 }
