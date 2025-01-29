@@ -87,33 +87,21 @@ public class InMemoryPolarisMetaStoreManagerFactory
   }
 
   @Override
-<<<<<<< HEAD
-  public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmId realmId) {
-    if (!bootstrappedRealms.contains(realmId.id())) {
-      bootstrapRealmsAndPrintCredentials(List.of(realmId.id()));
-=======
   public synchronized PolarisMetaStoreManager getOrCreateMetaStoreManager(
       RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     if (!bootstrappedRealms.contains(realmId)) {
       bootstrapRealmAndPrintCredentials(realmId);
->>>>>>> parent of 390f1fa5 (Refactor `RealmContext` to `RealmId` (#741))
     }
     return super.getOrCreateMetaStoreManager(realmContext);
   }
 
   @Override
   public synchronized Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(
-<<<<<<< HEAD
-      RealmId realmId) {
-    if (!bootstrappedRealms.contains(realmId.id())) {
-      bootstrapRealmsAndPrintCredentials(List.of(realmId.id()));
-=======
       RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     if (!bootstrappedRealms.contains(realmId)) {
       bootstrapRealmAndPrintCredentials(realmId);
->>>>>>> parent of 390f1fa5 (Refactor `RealmContext` to `RealmId` (#741))
     }
     return super.getOrCreateSessionSupplier(realmContext);
   }
