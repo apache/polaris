@@ -47,33 +47,16 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-databind")
 }
 
-val policyManagementModels =
-  listOf(
-      "CatalogIdentifier",
-      "CreatePolicyRequest",
-      "EntityIdentifier",
-      "LoadPolicyResult",
-      "NamespaceIdentifier",
-      "Policy",
-      "PolicyContent",
-      "SetPolicyRequest",
-      "TableLikeIdentifier",
-      "UnsetPolicyRequest",
-      "UpdatePolicyRequest",
-    )
-    .joinToString(",")
-
 openApiGenerate {
   inputSpec = "$rootDir/spec/polaris-catalog-open-api.yaml"
   generatorName = "jaxrs-resteasy"
   outputDir = "$projectDir/build/generated"
   apiPackage = "org.apache.polaris.service.catalog.api"
-  modelPackage = "org.apache.polaris.service.types"
   ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
   globalProperties.put("apis", "")
-  globalProperties.put("models", policyManagementModels)
+  globalProperties.put("models", "false")
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")
   configOptions.put("resourceName", "catalog")
@@ -81,9 +64,6 @@ openApiGenerate {
   configOptions.put("useBeanValidation", "false")
   configOptions.put("sourceFolder", "src/main/java")
   configOptions.put("useJakartaEe", "true")
-  configOptions.put("generateBuilders", "true")
-  configOptions.put("generateConstructorWithAllArgs", "true")
-  configOptions.put("openApiNullable", "false")
   openapiNormalizer.put("REFACTOR_ALLOF_WITH_PROPERTIES_ONLY", "true")
   additionalProperties.put("apiNamePrefix", "IcebergRest")
   additionalProperties.put("apiNameSuffix", "")

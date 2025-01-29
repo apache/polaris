@@ -20,14 +20,16 @@
 ---
 openapi: 3.0.3
 info:
-  title: Apache Iceberg REST Catalog API
+  title: Apache Polaris and Apache Iceberg REST Catalog API
   license:
     name: Apache 2.0
     url: https://www.apache.org/licenses/LICENSE-2.0.html
   version: 0.0.1
   description:
-    Defines the specification for the first version of the REST Catalog API.
-    Implementations should ideally support both Iceberg table specs v1 and v2, with priority given to v2.
+    Defines the specification for the Polaris Catalog API, which encompasses both the Iceberg REST Catalog API 
+    and Polaris-native API.
+
+# The server configuration is sourced from rest-catalog-open-api.yaml
 servers:
   - url: "{scheme}://{host}/{basePath}"
     description: Server URL when the port can be inferred from the scheme
@@ -56,57 +58,76 @@ servers:
       basePath:
         description: Optional prefix to be appended to all routes
         default: ""
+
+# The security configuration is sourced from rest-catalog-open-api.yaml
 # All routes are currently configured using an Authorization header.
 security:
   - OAuth2: [catalog]
   - BearerAuth: []
 
 paths:
-  /v1/{prefix}/namespaces:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces'
-  /v1/{prefix}/namespaces/{namespace}:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}'
-  /v1/{prefix}/namespaces/{namespace}/properties:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1properties'
-  /v1/{prefix}/namespaces/{namespace}/register:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1register'
-  /v1/{prefix}/namespaces/{namespace}/tables:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables'
-  /v1/{prefix}/namespaces/{namespace}/tables/{table}:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}'
-  /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1credentials'
-  /v1/{prefix}/namespaces/{namespace}/tables/{table}/metrics:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1metrics'
-  /v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1notifications'
-  /v1/{prefix}/namespaces/{namespace}/views:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1views'
-  /v1/{prefix}/namespaces/{namespace}/views/{view}:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1views~1{view}'
-  /v1/{prefix}/tables/rename:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1tables~1rename'
-  /v1/{prefix}/transactions/commit:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1transactions~1commit'
-  /v1/{prefix}/views/rename:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1views~1rename'
+
+  ############################
+  # Iceberg REST Catalog API #
+  ############################
+
   /v1/config:
     $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1config'
+
   /v1/oauth/tokens:
     $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1oauth~1tokens'
 
-  # policy management apis
-  /v1/{prefix}/namespaces/{namespace}/policies:
-    $ref: './polaris-api/policy-management-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies'
-  /v1/{prefix}/namespaces/{namespace}/policies/{policy}:
-    $ref: './polaris-api/policy-management-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policy}'
-  /v1/{prefix}/namespaces/{namespace}/policies/{policy}/mappings:
-    $ref: './polaris-api/policy-management-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policy}~1mappings'
+  /v1/{prefix}/namespaces:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces'
+
+  /v1/{prefix}/namespaces/{namespace}:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}'
+
+  /v1/{prefix}/namespaces/{namespace}/properties:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1properties'
+
+  /v1/{prefix}/namespaces/{namespace}/tables:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables'
+
+  /v1/{prefix}/namespaces/{namespace}/register:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1register'
+
+  /v1/{prefix}/namespaces/{namespace}/tables/{table}:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}'
+
+  /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1credentials'
+
+  /v1/{prefix}/tables/rename:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1tables~1rename'
+
+  /v1/{prefix}/namespaces/{namespace}/tables/{table}/metrics:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1metrics'
+
+  /v1/{prefix}/transactions/commit:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1transactions~1commit'
+
+  /v1/{prefix}/namespaces/{namespace}/views:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1views'
+
+  /v1/{prefix}/namespaces/{namespace}/views/{view}:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1views~1{view}'
+
+  /v1/{prefix}/views/rename:
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1views~1rename'
+
+  ######################
+  # Polaris-native API #
+  ######################
+
+  /v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications:
+    $ref: './polaris-api/notifications-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1notifications'
 
 
 components:
   securitySchemes:
     OAuth2:
       $ref: './rest-catalog-open-api.yaml#/components/securitySchemes/OAuth2'
+
     BearerAuth:
       $ref: './rest-catalog-open-api.yaml#/components/securitySchemes/BearerAuth'
