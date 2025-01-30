@@ -22,7 +22,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -40,11 +40,10 @@ import org.apache.polaris.core.storage.cache.StorageCredentialCache;
  * id and name resolution mechanics around PolarisEntities.
  */
 public class PolarisEntityManager {
-
   private final PolarisMetaStoreManager metaStoreManager;
   private final EntityCache entityCache;
+
   private final StorageCredentialCache credentialCache;
-  private final PolarisDiagnostics diagnostics;
 
   // Lazily instantiated only a single time per entity manager.
   private ResolvedPolarisEntity implicitResolvedRootContainerEntity = null;
@@ -57,21 +56,18 @@ public class PolarisEntityManager {
   public PolarisEntityManager(
       @Nonnull PolarisMetaStoreManager metaStoreManager,
       @Nonnull StorageCredentialCache credentialCache,
-      @Nonnull EntityCache entityCache,
-      @Nonnull PolarisDiagnostics diagnostics) {
-    this.diagnostics = diagnostics;
+      @Nonnull EntityCache entityCache) {
     this.metaStoreManager = metaStoreManager;
     this.credentialCache = credentialCache;
     this.entityCache = entityCache;
   }
 
   public Resolver prepareResolver(
-      @Nonnull PolarisMetaStoreSession metaStoreSession,
+      @Nonnull CallContext callContext,
       @Nonnull SecurityContext securityContext,
       @Nullable String referenceCatalogName) {
     return new Resolver(
-        metaStoreSession,
-        diagnostics,
+        callContext.getPolarisCallContext(),
         metaStoreManager,
         securityContext,
         entityCache,
@@ -79,14 +75,13 @@ public class PolarisEntityManager {
   }
 
   public PolarisResolutionManifest prepareResolutionManifest(
-      @Nonnull PolarisMetaStoreSession metaStoreSession,
+      @Nonnull CallContext callContext,
       @Nonnull SecurityContext securityContext,
       @Nullable String referenceCatalogName) {
     PolarisResolutionManifest manifest =
-        new PolarisResolutionManifest(
-            metaStoreSession, diagnostics, this, securityContext, referenceCatalogName);
+        new PolarisResolutionManifest(callContext, this, securityContext, referenceCatalogName);
     manifest.setSimulatedResolvedRootContainerEntity(
-        getSimulatedResolvedRootContainerEntity(metaStoreSession));
+        getSimulatedResolvedRootContainerEntity(callContext));
     return manifest;
   }
 
@@ -95,7 +90,7 @@ public class PolarisEntityManager {
    * parent container of all things in this realm.
    */
   private synchronized ResolvedPolarisEntity getSimulatedResolvedRootContainerEntity(
-      PolarisMetaStoreSession metaStoreSession) {
+      CallContext callContext) {
     if (implicitResolvedRootContainerEntity == null) {
       // For now, the root container is only implicit and doesn't exist in the entity store, and
       // only
@@ -109,7 +104,7 @@ public class PolarisEntityManager {
           PolarisEntity.of(
               metaStoreManager
                   .readEntityByName(
-                      metaStoreSession,
+                      callContext.getPolarisCallContext(),
                       null,
                       PolarisEntityType.PRINCIPAL_ROLE,
                       PolarisEntitySubType.NULL_SUBTYPE,

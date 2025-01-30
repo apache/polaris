@@ -25,6 +25,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -51,11 +52,11 @@ public interface PolarisMetaStoreManager
    * Bootstrap the Polaris service, creating the root catalog, root principal, and associated
    * service admin role. Will fail if the service has already been bootstrapped.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @return the result of the bootstrap attempt
    */
   @Nonnull
-  BaseResult bootstrapPolarisService(@Nonnull PolarisMetaStoreSession session);
+  BaseResult bootstrapPolarisService(@Nonnull PolarisCallContext callCtx);
 
   /**
    * Purge all metadata associated with the Polaris service, resetting the metastore to the state it
@@ -65,11 +66,11 @@ public interface PolarisMetaStoreManager
    *
    * <p>This will destroy whatever Polaris metadata exists in the metastore
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @return always success or unexpected error
    */
   @Nonnull
-  BaseResult purge(@Nonnull PolarisMetaStoreSession session);
+  BaseResult purge(@Nonnull PolarisCallContext callCtx);
 
   /** the return for an entity lookup call */
   class EntityResult extends BaseResult {
@@ -152,7 +153,7 @@ public interface PolarisMetaStoreManager
    * catalog like a namespace, a role, a table like entity, or a principal. If the entity is inside
    * a catalog, the parameter catalogPath must be specified
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param catalogPath path inside a catalog to that entity, rooted by the catalog. If null, the
    *     entity being resolved is a top-level account entity like a catalog.
    * @param entityType entity type
@@ -165,7 +166,7 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   PolarisMetaStoreManager.EntityResult readEntityByName(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
@@ -217,7 +218,7 @@ public interface PolarisMetaStoreManager
    * List all entities of the specified type under the specified catalogPath. If the catalogPath is
    * null, listed entities will be top-level entities like catalogs.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param catalogPath path inside a catalog. If null or empty, the entities to list are top-level,
    *     like catalogs
    * @param entityType entity type
@@ -227,7 +228,7 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   ListEntitiesResult listEntities(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType);
@@ -278,11 +279,11 @@ public interface PolarisMetaStoreManager
    * Generate a new unique id that can be used by the Polaris client when it needs to create a new
    * entity
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @return the newly created id, not expected to fail
    */
   @Nonnull
-  GenerateEntityIdResult generateNewEntityId(@Nonnull PolarisMetaStoreSession session);
+  GenerateEntityIdResult generateNewEntityId(@Nonnull PolarisCallContext callCtx);
 
   /** the return the result of a create-principal method */
   class CreatePrincipalResult extends BaseResult {
@@ -342,14 +343,14 @@ public interface PolarisMetaStoreManager
    * Create a new principal. This not only creates the new principal entity but also generates a
    * client_id/secret pair for this new principal.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param principal the principal entity to create
    * @return the client_id/secret for the new principal which was created. Will return
    *     ENTITY_ALREADY_EXISTS if the principal already exists
    */
   @Nonnull
   CreatePrincipalResult createPrincipal(
-      @Nonnull PolarisMetaStoreSession session, @Nonnull PolarisBaseEntity principal);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity principal);
 
   /** the return the result of a create-catalog method */
   class CreateCatalogResult extends BaseResult {
@@ -411,7 +412,7 @@ public interface PolarisMetaStoreManager
    * role required to admin this catalog. If inline storage integration property is provided, create
    * a storage integration.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param catalog the catalog entity to create
    * @param principalRoles once the catalog has been created, list of principal roles to grant its
    *     catalog_admin role to. If no principal role is specified, we will grant the catalog_admin
@@ -420,7 +421,7 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   CreateCatalogResult createCatalog(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisBaseEntity catalog,
       @Nonnull List<PolarisEntityCore> principalRoles);
 
@@ -432,7 +433,7 @@ public interface PolarisMetaStoreManager
    * cannot be resolved, we will return null. And of course if another entity exists with the same
    * name, we will fail and also return null.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param catalogPath path inside a catalog. If null, the entity to persist is assumed to be
    *     top-level.
    * @param entity entity to write
@@ -443,7 +444,7 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   EntityResult createEntityIfNotExists(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity);
 
@@ -498,7 +499,7 @@ public interface PolarisMetaStoreManager
    * will be persisted. And of course if any entity conflicts with an existing entity with the same
    * name, we will fail all entities and also return null.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param catalogPath path inside a catalog. If null, the entity to persist is assumed to be
    *     top-level.
    * @param entities batch of entities to write
@@ -509,7 +510,7 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   EntitiesResult createEntitiesIfNotExist(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull List<? extends PolarisBaseEntity> entities);
 
@@ -518,14 +519,14 @@ public interface PolarisMetaStoreManager
    * has not changed. If this is not the case we will return false. Else we will update both the
    * internal and visible properties and return true
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param catalogPath path to that entity. Could be null if this entity is top-level
    * @param entity entity to update, cannot be null
    * @return the entity we updated or null if the client should retry
    */
   @Nonnull
   EntityResult updateEntityPropertiesIfNotChanged(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity);
 
@@ -555,23 +556,23 @@ public interface PolarisMetaStoreManager
   }
 
   /**
-   * This works exactly like {@link #updateEntityPropertiesIfNotChanged(PolarisMetaStoreSession,
-   * List, PolarisBaseEntity)} but allows to operate on multiple entities at once. Just loop through
-   * the list, calling each entity update and return null if any of those fail.
+   * This works exactly like {@link #updateEntityPropertiesIfNotChanged(PolarisCallContext, List,
+   * PolarisBaseEntity)} but allows to operate on multiple entities at once. Just loop through the
+   * list, calling each entity update and return null if any of those fail.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param entities the set of entities to update
    * @return list of all entities we updated or null if the client should retry because one update
    *     failed
    */
   @Nonnull
   EntitiesResult updateEntitiesPropertiesIfNotChanged(
-      @Nonnull PolarisMetaStoreSession session, @Nonnull List<EntityWithPath> entities);
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityWithPath> entities);
 
   /**
    * Rename an entity, potentially re-parenting it.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param catalogPath path to that entity. Could be an empty list of the entity is a catalog.
    * @param entityToRename entity to rename. This entity should have been resolved by the client
    * @param newCatalogPath if not null, new catalog path
@@ -582,7 +583,7 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   EntityResult renameEntity(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
@@ -649,7 +650,7 @@ public interface PolarisMetaStoreManager
   /**
    * Drop the specified entity assuming it exists
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param catalogPath path to that entity. Could be an empty list of the entity is a catalog.
    * @param entityToDrop entity to drop, must have been resolved by the client
    * @param cleanupProperties if not null, properties that will be persisted with the cleanup task
@@ -660,7 +661,7 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   DropEntityResult dropEntityIfExists(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
@@ -670,22 +671,21 @@ public interface PolarisMetaStoreManager
    * Load the entity from backend store. Will return NULL if the entity does not exist, i.e. has
    * been purged. The entity being loaded might have been dropped
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param entityCatalogId id of the catalog for that entity
    * @param entityId the id of the entity to load
    */
   @Nonnull
-  EntityResult loadEntity(
-      @Nonnull PolarisMetaStoreSession session, long entityCatalogId, long entityId);
+  EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
 
   /**
    * Fetch a list of tasks to be completed. Tasks
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param executorId executor id
    * @param limit limit
    * @return list of tasks to be completed
    */
   @Nonnull
-  EntitiesResult loadTasks(@Nonnull PolarisMetaStoreSession session, String executorId, int limit);
+  EntitiesResult loadTasks(@Nonnull PolarisCallContext callCtx, String executorId, int limit);
 }

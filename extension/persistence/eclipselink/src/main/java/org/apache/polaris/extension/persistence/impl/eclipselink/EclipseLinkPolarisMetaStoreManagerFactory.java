@@ -24,8 +24,6 @@ import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
-import java.time.Clock;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
@@ -44,24 +42,8 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 public class EclipseLinkPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisEclipseLinkStore> {
 
-  private final EclipseLinkConfiguration eclipseLinkConfiguration;
-  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
-
-  public EclipseLinkPolarisMetaStoreManagerFactory() {
-    this(null, null, null, null, null);
-  }
-
-  @Inject
-  public EclipseLinkPolarisMetaStoreManagerFactory(
-      EclipseLinkConfiguration eclipseLinkConfiguration,
-      PolarisStorageIntegrationProvider storageIntegrationProvider,
-      PolarisConfigurationStore configurationStore,
-      PolarisDiagnostics diagnostics,
-      Clock clock) {
-    super(configurationStore, diagnostics, clock);
-    this.eclipseLinkConfiguration = eclipseLinkConfiguration;
-    this.storageIntegrationProvider = storageIntegrationProvider;
-  }
+  @Inject EclipseLinkConfiguration eclipseLinkConfiguration;
+  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
 
   @Override
   protected PolarisEclipseLinkStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
@@ -70,18 +52,26 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
 
   @Override
   protected PolarisMetaStoreSession createMetaStoreSession(
+<<<<<<< HEAD
       @Nonnull PolarisEclipseLinkStore store,
       @Nonnull RealmContext realmContext,
       @Nullable PolarisCredentialsBootstrap credentialsBootstrap,
       @Nonnull PolarisDiagnostics diagnostics) {
+=======
+      @Nonnull PolarisEclipseLinkStore store, @Nonnull RealmContext realmContext) {
+>>>>>>> parent of b84f4624 (Remove CallContext and its ThreadLocal usage (#589))
     return new PolarisEclipseLinkMetaStoreSessionImpl(
         store,
         storageIntegrationProvider,
         realmContext,
         configurationFile(),
         persistenceUnitName(),
+<<<<<<< HEAD
         secretsGenerator(realmContext, credentialsBootstrap),
         diagnostics);
+=======
+        secretsGenerator(realmContext));
+>>>>>>> parent of b84f4624 (Remove CallContext and its ThreadLocal usage (#589))
   }
 
   private String configurationFile() {
