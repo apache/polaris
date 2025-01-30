@@ -30,7 +30,7 @@ import java.util.Map;
 
 @ApplicationScoped
 @Identifier("mylistener")
-public class AndrewPolarisEventListener extends DefaultPolarisEventListener {
+public class MyPolarisEventListener extends DefaultPolarisEventListener {
     @Override
     public BeforeTableCommitEventResponse onBeforeTableCommit(TableMetadata base, TableMetadata metadata) {
         System.out.println("Observed onBeforeTableCommit");
