@@ -16,38 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.it.env;
 
-import java.io.Serializable;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
 import java.net.URI;
-import java.nio.file.Path;
 
 /**
- * This class contains the most fundamental information for accessing Polaris APIs, such as the base
- * URI and realm ID and provides methods for obtaining Icenberg REST API and Polaris Management
- * endpoints.
+ * Unit tests for PolarisApiEndpoints
  */
-public final class PolarisApiEndpoints implements Serializable {
-
-  public static String REALM_HEADER = "realm";
-
-  private final URI baseUri;
-  private final String realm;
-
-  public PolarisApiEndpoints(URI baseUri, String realm) {
-    this.baseUri = baseUri;
-    this.realm = realm;
-  }
-
-  public URI catalogApiEndpoint() {
-    return baseUri.resolve(Path.of(baseUri.getRawPath(), "api/catalog").toString());
-  }
-
-  public URI managementApiEndpoint() {
-    return baseUri.resolve(Path.of(baseUri.getRawPath(), "api/management").toString());
-  }
-
-  public String realm() {
-    return realm;
-  }
+public class PolarisApiEndpointsTest {
+    @Test
+    void testEndpointRespectsPathPrefix() {
+        URI baseUri = URI.create("http://myserver.com/polaris");
+        Assertions.assertEquals("http://myserver.com/polaris/api/catalog", new PolarisApiEndpoints(baseUri, "").catalogApiEndpoint().toString());
+        Assertions.assertEquals("http://myserver.com/polaris/api/management", new PolarisApiEndpoints(baseUri, "").managementApiEndpoint().toString());
+    }
 }
