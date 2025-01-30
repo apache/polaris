@@ -16,22 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.it.env;
 
+import java.net.URI;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.net.URI;
-
-/**
- * Unit tests for PolarisApiEndpoints
- */
+/** Unit tests for PolarisApiEndpoints */
 public class PolarisApiEndpointsTest {
-    @Test
-    void testEndpointRespectsPathPrefix() {
-        URI baseUri = URI.create("http://myserver.com/polaris");
-        Assertions.assertEquals("http://myserver.com/polaris/api/catalog", new PolarisApiEndpoints(baseUri, "").catalogApiEndpoint().toString());
-        Assertions.assertEquals("http://myserver.com/polaris/api/management", new PolarisApiEndpoints(baseUri, "").managementApiEndpoint().toString());
-    }
+  @Test
+  void testEndpointRespectsPathPrefix() {
+    PolarisApiEndpoints endpoints =
+        new PolarisApiEndpoints(URI.create("http://myserver.com/polaris"), "");
+    Assertions.assertEquals(
+        "http://myserver.com/polaris/api/catalog", endpoints.catalogApiEndpoint().toString());
+    Assertions.assertEquals(
+        "http://myserver.com/polaris/api/management", endpoints.managementApiEndpoint().toString());
+  }
 }
