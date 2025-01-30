@@ -113,8 +113,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         catalogName,
         polarisAuthorizer,
         Mockito.mock(),
-        new DefaultFileIOFactory(),
-            null);
+        new DefaultFileIOFactory());
   }
 
   /**

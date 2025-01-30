@@ -159,8 +159,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             passthroughView,
             securityContext,
             Mockito.mock(),
-            new DefaultFileIOFactory(),
-                null);
+            new DefaultFileIOFactory());
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

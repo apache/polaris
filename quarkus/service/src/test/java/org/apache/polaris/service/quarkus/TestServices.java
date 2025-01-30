@@ -108,8 +108,7 @@ public record TestServices(
             polarisDiagnostics,
             authorizer,
             Mockito.mock(TaskExecutor.class),
-            ioFactory,
-                null);
+            ioFactory);
 
     IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
 

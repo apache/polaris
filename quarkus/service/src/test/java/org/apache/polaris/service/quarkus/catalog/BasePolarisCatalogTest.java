@@ -234,8 +234,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            new DefaultFileIOFactory(),
-                null);
+            new DefaultFileIOFactory());
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -504,8 +503,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            fileIoFactory,
-                null);
+            fileIoFactory);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -833,8 +831,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            new DefaultFileIOFactory(),
-                null);
+            new DefaultFileIOFactory());
     catalog.initialize(
         catalogWithoutStorage,
         ImmutableMap.of(
@@ -899,8 +896,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            new DefaultFileIOFactory(),
-                null);
+            new DefaultFileIOFactory());
     catalog.initialize(
         catalogName,
         ImmutableMap.of(
@@ -1436,8 +1432,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            new DefaultFileIOFactory(),
-                null);
+            new DefaultFileIOFactory());
     noPurgeCatalog.initialize(
         noPurgeCatalogName,
         ImmutableMap.of(
@@ -1521,8 +1516,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            measured,
-                null);
+            measured);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

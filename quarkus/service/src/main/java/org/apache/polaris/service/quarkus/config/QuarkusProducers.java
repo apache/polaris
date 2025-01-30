@@ -161,7 +161,7 @@ public class QuarkusProducers {
 
   @Produces
   public FileIOFactory fileIOFactory(
-          QuarkusFileIOConfiguration config, @Any Instance<FileIOFactory> fileIOFactories) {
+      QuarkusFileIOConfiguration config, @Any Instance<FileIOFactory> fileIOFactories) {
     return fileIOFactories.select(Identifier.Literal.of(config.type())).get();
   }
 
