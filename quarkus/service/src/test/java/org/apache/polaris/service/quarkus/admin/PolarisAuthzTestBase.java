@@ -26,6 +26,8 @@ import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import jakarta.annotation.Nonnull;
+import jakarta.enterprise.context.RequestScoped;
+import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -37,6 +39,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.Schema;
+import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.ForbiddenException;
@@ -65,6 +68,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
@@ -72,7 +76,10 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.quarkus.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.apache.polaris.service.task.TaskExecutor;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -84,6 +91,11 @@ import org.mockito.Mockito;
 public abstract class PolarisAuthzTestBase {
 
   public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Set<Class<?>> getEnabledAlternatives() {
+      return Set.of(TestPolarisCallContextCatalogFactory.class);
+    }
 
     @Override
     public Map<String, String> getConfigOverrides() {
@@ -221,8 +233,6 @@ public abstract class PolarisAuthzTestBase {
                 .setName(CATALOG_NAME)
                 .setCatalogType("INTERNAL")
                 .setDefaultBaseLocation(storageLocation)
-                .addProperty(
-                    CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
                 .setStorageConfigurationInfo(storageConfigModel, storageLocation)
                 .build());
 
@@ -323,7 +333,7 @@ public abstract class PolarisAuthzTestBase {
     Mockito.when(securityContext.getUserPrincipal()).thenReturn(p);
     Set<String> principalRoleNames = loadPrincipalRolesNames(p);
     Mockito.when(securityContext.isUserInRole(Mockito.anyString()))
-        .thenAnswer(invocation -> principalRoleNames.contains((String) invocation.getArgument(0)));
+        .thenAnswer(invocation -> principalRoleNames.contains(invocation.getArgument(0)));
     return securityContext;
   }
 
@@ -405,6 +415,53 @@ public abstract class PolarisAuthzTestBase {
         CATALOG_NAME,
         ImmutableMap.of(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+  }
+
+  @Alternative
+  @RequestScoped
+  public static class TestPolarisCallContextCatalogFactory
+      extends PolarisCallContextCatalogFactory {
+
+    public TestPolarisCallContextCatalogFactory() {
+      super(null, null, null, null, null, null, null);
+    }
+
+    @Inject
+    public TestPolarisCallContextCatalogFactory(
+        PolarisEntityManager entityManager,
+        PolarisMetaStoreManager metaStoreManager,
+        PolarisMetaStoreSession metaStoreSession,
+        PolarisConfigurationStore configurationStore,
+        PolarisDiagnostics diagnostics,
+        TaskExecutor taskExecutor,
+        FileIOFactory fileIOFactory) {
+      super(
+          entityManager,
+          metaStoreManager,
+          metaStoreSession,
+          configurationStore,
+          diagnostics,
+          taskExecutor,
+          fileIOFactory);
+    }
+
+    @Override
+    public Catalog createCallContextCatalog(
+        RealmContext realmContext,
+        AuthenticatedPolarisPrincipal authenticatedPolarisPrincipal,
+        SecurityContext securityContext,
+        final PolarisResolutionManifest resolvedManifest) {
+      // This depends on the BasePolarisCatalog allowing calling initialize multiple times
+      // to override the previous config.
+      Catalog catalog =
+          super.createCallContextCatalog(
+              realmContext, authenticatedPolarisPrincipal, securityContext, resolvedManifest);
+      catalog.initialize(
+          CATALOG_NAME,
+          ImmutableMap.of(
+              CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+      return catalog;
+    }
   }
 
   /**

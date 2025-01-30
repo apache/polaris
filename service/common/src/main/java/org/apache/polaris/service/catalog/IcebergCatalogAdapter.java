@@ -68,8 +68,7 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
-import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.task.TaskExecutor;
+import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -120,35 +119,32 @@ public class IcebergCatalogAdapter
           .build();
 
   private final RealmContext realmContext;
+  private final CallContextCatalogFactory catalogFactory;
   private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisEntityManager entityManager;
   private final PolarisMetaStoreSession session;
   private final PolarisConfigurationStore configurationStore;
   private final PolarisDiagnostics diagnostics;
   private final PolarisAuthorizer polarisAuthorizer;
-  private final TaskExecutor taskExecutor;
-  private final FileIOFactory fileIOFactory;
 
   @Inject
   public IcebergCatalogAdapter(
       RealmContext realmContext,
+      CallContextCatalogFactory catalogFactory,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
       PolarisMetaStoreSession session,
       PolarisConfigurationStore configurationStore,
       PolarisDiagnostics diagnostics,
-      PolarisAuthorizer polarisAuthorizer,
-      TaskExecutor taskExecutor,
-      FileIOFactory fileIOFactory) {
+      PolarisAuthorizer polarisAuthorizer) {
     this.realmContext = realmContext;
+    this.catalogFactory = catalogFactory;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
     this.session = session;
     this.configurationStore = configurationStore;
     this.diagnostics = diagnostics;
     this.polarisAuthorizer = polarisAuthorizer;
-    this.taskExecutor = taskExecutor;
-    this.fileIOFactory = fileIOFactory;
   }
 
   /**
@@ -186,10 +182,9 @@ public class IcebergCatalogAdapter
         entityManager,
         metaStoreManager,
         securityContext,
+        catalogFactory,
         catalogName,
-        polarisAuthorizer,
-        taskExecutor,
-        fileIOFactory);
+        polarisAuthorizer);
   }
 
   @Override
