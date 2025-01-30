@@ -3,12 +3,27 @@ Polaris provides two sets of OpenAPI specifications:
 - `polaris-management-service.yml` - Defines the management APIs for using Polaris to create and manage Iceberg catalogs and their principals
 - `polaris-catalog-service.yaml` - Defines the specification for the Polaris Catalog API, which encompasses both the Iceberg REST Catalog API
    and Polaris-native API.
-  - `polaris-apis` - Contains the specification of Polaris-native API
-  - `iceberg-rest-api` - Contains the specification for Iceberg Rest Catalog API [1]
+  - `polaris-apis` - Contains the specifications of Polaris-native API
+  - `rest-catalog-open-api.yaml` - Contains the specification for Iceberg Rest Catalog API
 
-Note:
+## Generated Specification Files
+The specification files in the generated folder are automatically created using OpenAPI bundling tools such as 
+[Redocly CLI](https://github.com/Redocly/redocly-cli).
 
-1. The `rest-catalog-open-api.yaml` in `iceberg-rest-api` should match a released version of Iceberg Rest Catalog OpenAPI spec and should not be changed manually
+These files should not be manually edited (except adding license header). They are intended for preview purposes only, 
+such as rendering a preview on a website.
 
+Whenever the source specification files are updated, the generated files must be re-generated to reflect those changes.
+
+Below are steps to generate `bundled-polaris-catalog-service.yaml`
+### Install redocly-cli
+```
+npm install @redocly/cli -g
+```
+
+### Generate the Bundle
+```
+redocly bundle spec/polaris-catalog-open-api.yaml -o spec/generated/generated-polaris-catalog-service.yaml
+```
 
 
