@@ -1260,7 +1260,10 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     @Override
     public void doCommit(TableMetadata base, TableMetadata metadata) {
-      polarisEventListener.onBeforeTableCommit(base, metadata);
+      TableMetadata modifiedMetadata = polarisEventListener.onBeforeTableCommit(base, metadata).getModifiedMetadata();
+      if(modifiedMetadata != null) {
+        metadata = modifiedMetadata;
+      }
 
       LOGGER.debug(
           "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);

@@ -97,7 +97,6 @@ import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
-import org.apache.polaris.service.events.DefaultPolarisEventListener;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.quarkus.catalog.io.TestFileIOFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -235,8 +234,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            new DefaultFileIOFactory(),
-                new DefaultPolarisEventListener());
+            new DefaultFileIOFactory());
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -505,8 +503,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            fileIoFactory,
-                new DefaultPolarisEventListener());
+            fileIoFactory);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -834,8 +831,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            new DefaultFileIOFactory(),
-                new DefaultPolarisEventListener());
+            new DefaultFileIOFactory());
     catalog.initialize(
         catalogWithoutStorage,
         ImmutableMap.of(
@@ -900,8 +896,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            new DefaultFileIOFactory(),
-                new DefaultPolarisEventListener());
+            new DefaultFileIOFactory());
     catalog.initialize(
         catalogName,
         ImmutableMap.of(
@@ -1437,8 +1432,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            new DefaultFileIOFactory(),
-                new DefaultPolarisEventListener());
+            new DefaultFileIOFactory());
     noPurgeCatalog.initialize(
         noPurgeCatalogName,
         ImmutableMap.of(
@@ -1522,8 +1516,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            measured,
-                new DefaultPolarisEventListener());
+            measured);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

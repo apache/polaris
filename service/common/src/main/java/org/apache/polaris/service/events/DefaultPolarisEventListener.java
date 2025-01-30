@@ -26,5 +26,7 @@ import org.apache.iceberg.TableMetadata;
 @ApplicationScoped
 @Identifier("default")
 public class DefaultPolarisEventListener implements PolarisEventListener {
-    @Override public void onBeforeTableCommit(TableMetadata base, TableMetadata metadata) {}
+    @Override public BeforeTableCommitEventResponse onBeforeTableCommit(TableMetadata base, TableMetadata metadata) {
+        return new BeforeTableCommitEventResponse();
+    }
 }

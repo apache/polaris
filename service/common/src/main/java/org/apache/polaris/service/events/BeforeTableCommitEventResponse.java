@@ -21,6 +21,18 @@ package org.apache.polaris.service.events;
 
 import org.apache.iceberg.TableMetadata;
 
-public interface PolarisEventListener {
-    BeforeTableCommitEventResponse onBeforeTableCommit(TableMetadata base, TableMetadata metadata);
+public class BeforeTableCommitEventResponse {
+    private final TableMetadata modifiedMetadata;
+
+    public BeforeTableCommitEventResponse() {
+        this(null);
+    }
+
+    public BeforeTableCommitEventResponse(TableMetadata modifiedMetadata) {
+        this.modifiedMetadata = modifiedMetadata;
+    }
+
+    public TableMetadata getModifiedMetadata() {
+        return modifiedMetadata;
+    }
 }

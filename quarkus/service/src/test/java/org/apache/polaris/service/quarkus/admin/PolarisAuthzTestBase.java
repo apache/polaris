@@ -70,7 +70,6 @@ import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
-import org.apache.polaris.service.events.DefaultPolarisEventListener;
 import org.apache.polaris.service.quarkus.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.assertj.core.api.Assertions;
@@ -397,8 +396,7 @@ public abstract class PolarisAuthzTestBase {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            new DefaultFileIOFactory(),
-                new DefaultPolarisEventListener());
+            new DefaultFileIOFactory());
     this.baseCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

@@ -22,13 +22,23 @@ package org.apache.polaris.service.quarkus;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.iceberg.TableMetadata;
+import org.apache.polaris.service.events.BeforeTableCommitEventResponse;
 import org.apache.polaris.service.events.DefaultPolarisEventListener;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @ApplicationScoped
-@Identifier("andrew")
+@Identifier("mylistener")
 public class AndrewPolarisEventListener extends DefaultPolarisEventListener {
     @Override
-    public void onBeforeTableCommit(TableMetadata base, TableMetadata metadata) {
-        System.out.println("ANDREW onBeforeTableCommit");
+    public BeforeTableCommitEventResponse onBeforeTableCommit(TableMetadata base, TableMetadata metadata) {
+        System.out.println("Observed onBeforeTableCommit");
+
+        Map<String, String> newProperties = new HashMap<>(metadata.properties());
+        newProperties.put("my_custom_property", "i_made_a_modification_during_the_commit_event");
+        return new BeforeTableCommitEventResponse(
+                metadata.replaceProperties(newProperties)
+        );
     }
 }
