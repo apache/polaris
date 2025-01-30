@@ -16,29 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus;
 
-import jakarta.annotation.Priority;
+package org.apache.polaris.service.events;
+
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.event.Event;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.Priorities;
-import jakarta.ws.rs.container.ContainerRequestContext;
-import jakarta.ws.rs.container.ContainerRequestFilter;
-import jakarta.ws.rs.container.PreMatching;
-import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.ext.Provider;
-import java.io.IOException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/** Request filter that returns a 429 Too Many Requests if the rate limiter says so */
-@Provider
-@PreMatching
-@Priority(Priorities.AUTHENTICATION - 1)
 @ApplicationScoped
-public class AndrewFilter implements ContainerRequestFilter {
-    @Override
-    public void filter(ContainerRequestContext ctx) {
-//        ctx.abortWith(Response.status(Response.Status.INTERNAL_SERVER_ERROR).entity("nope").build());
+public class PolarisEventEmitter {
+    @Inject private Event<BeforeTableCommitEvent> beforeTableCommitEvent;
+
+    public void fire(BeforeTableCommitEvent event) {
+        beforeTableCommitEvent.fire(event);
     }
 }

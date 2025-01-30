@@ -20,15 +20,12 @@
 package org.apache.polaris.service.quarkus;
 
 import jakarta.enterprise.context.ApplicationScoped;
-import org.eclipse.microprofile.health.HealthCheck;
-import org.eclipse.microprofile.health.HealthCheckResponse;
-import org.eclipse.microprofile.health.Readiness;
+import jakarta.enterprise.event.Observes;
+import org.apache.polaris.service.events.BeforeTableCommitEvent;
 
-@Readiness
 @ApplicationScoped
-public class AndrewHealthcheck implements HealthCheck {
-    @Override
-    public HealthCheckResponse call() {
-        return HealthCheckResponse.up("Andrew health check");
+public class ExamplePolarisEventListener {
+    void onBeforeTableCommit(@Observes BeforeTableCommitEvent task) {
+        System.out.println("Observed BeforeTableCommitEvent");
     }
 }

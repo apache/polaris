@@ -71,6 +71,7 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.events.BeforeTableCommitEvent;
+import org.apache.polaris.service.events.PolarisEventEmitter;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
@@ -130,7 +131,7 @@ public class IcebergCatalogAdapter
   private final PolarisAuthorizer polarisAuthorizer;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
-  private final Event<BeforeTableCommitEvent> beforeTableCommitEvent;
+  private final PolarisEventEmitter eventEmitter;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -143,7 +144,7 @@ public class IcebergCatalogAdapter
           PolarisAuthorizer polarisAuthorizer,
           TaskExecutor taskExecutor,
           FileIOFactory fileIOFactory,
-          Event<BeforeTableCommitEvent> beforeTableCommitEvent) {
+          PolarisEventEmitter eventEmitter) {
     this.realmId = realmId;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
@@ -153,7 +154,7 @@ public class IcebergCatalogAdapter
     this.polarisAuthorizer = polarisAuthorizer;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
-    this.beforeTableCommitEvent = beforeTableCommitEvent;
+    this.eventEmitter = eventEmitter;
   }
 
   /**
@@ -195,7 +196,7 @@ public class IcebergCatalogAdapter
         polarisAuthorizer,
         taskExecutor,
         fileIOFactory,
-            beforeTableCommitEvent);
+            eventEmitter);
   }
 
   @Override
