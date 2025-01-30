@@ -17,7 +17,6 @@
  * under the License.
  */
 
-import gradle.kotlin.dsl.accessors._fa00c0b20184971a79f32516372275b9.testing
 import org.gradle.api.attributes.TestSuiteType
 import org.gradle.api.plugins.jvm.JvmTestSuite
 import org.gradle.kotlin.dsl.register

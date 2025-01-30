@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.catalog;
+package org.apache.polaris.service.catalog;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Arrays;
