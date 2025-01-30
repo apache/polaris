@@ -17,14 +17,14 @@
 # under the License.
 #
 
-FROM docker.io/apache/spark:3.5.4-python3
+FROM docker.io/apache/spark:3.5.4-java17-python3
 ARG POLARIS_HOST=polaris
 ENV POLARIS_HOST=$POLARIS_HOST
 ENV SPARK_HOME=/opt/spark
 
 USER root
 RUN apt update
-RUN apt-get install -y diffutils wget curl python3.8-venv
+RUN apt-get install -y diffutils wget curl python3.10-venv
 RUN mkdir -p /home/spark &&  \
     chown -R spark /home/spark && \
     mkdir -p /tmp/polaris-regtests && \
