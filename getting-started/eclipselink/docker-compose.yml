@@ -116,6 +116,5 @@ services:
       --conf, "spark.sql.catalog.polaris.scope=PRINCIPAL_ROLE:ALL",
       --conf, "spark.sql.defaultCatalog=polaris",
       --conf, "spark.sql.catalogImplementation=in-memory",
+      --conf, "spark.driver.extraJavaOptions=-Divy.cache.dir=/tmp -Divy.home=/tmp"
     ]
-    volumes:
-      - ~/.ivy2:/home/spark/.ivy2
