@@ -72,49 +72,49 @@ paths:
   ############################
 
   /v1/config:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1config'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1config'
 
   /v1/oauth/tokens:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1oauth~1tokens'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1oauth~1tokens'
 
   /v1/{prefix}/namespaces:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces'
 
   /v1/{prefix}/namespaces/{namespace}:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}'
 
   /v1/{prefix}/namespaces/{namespace}/properties:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1properties'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1properties'
 
   /v1/{prefix}/namespaces/{namespace}/tables:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables'
 
   /v1/{prefix}/namespaces/{namespace}/register:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1register'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1register'
 
   /v1/{prefix}/namespaces/{namespace}/tables/{table}:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}'
 
   /v1/{prefix}/namespaces/{namespace}/tables/{table}/credentials:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1credentials'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1credentials'
 
   /v1/{prefix}/tables/rename:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1tables~1rename'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1tables~1rename'
 
   /v1/{prefix}/namespaces/{namespace}/tables/{table}/metrics:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1metrics'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1metrics'
 
   /v1/{prefix}/transactions/commit:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1transactions~1commit'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1transactions~1commit'
 
   /v1/{prefix}/namespaces/{namespace}/views:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1views'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1views'
 
   /v1/{prefix}/namespaces/{namespace}/views/{view}:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1views~1{view}'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1views~1{view}'
 
   /v1/{prefix}/views/rename:
-    $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1views~1rename'
+    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1views~1rename'
 
   ######################
   # Polaris-native API #
@@ -127,7 +127,7 @@ paths:
 components:
   securitySchemes:
     OAuth2:
-      $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/components/securitySchemes/OAuth2'
+      $ref: './rest-catalog-open-api.yaml#/components/securitySchemes/OAuth2'
 
     BearerAuth:
-      $ref: './iceberg-rest-api/rest-catalog-open-api.yaml#/components/securitySchemes/BearerAuth'
+      $ref: './rest-catalog-open-api.yaml#/components/securitySchemes/BearerAuth'
