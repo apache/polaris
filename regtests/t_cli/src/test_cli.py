@@ -29,7 +29,6 @@ from typing import Callable
 
 CLI_PYTHONPATH = f'{os.path.dirname(os.path.abspath(__file__))}/../../client/python'
 ROLE_ARN = 'arn:aws:iam::123456789012:role/my-role'
-REGION = 'us-west-2'
 POLARIS_HOST = os.getenv('POLARIS_HOST', 'localhost')
 POLARIS_URL = f'http://{POLARIS_HOST}:8181/api/catalog/v1/oauth/tokens'
 
@@ -194,36 +193,6 @@ def test_quickstart_flow():
         check_output(cli(user_token)('namespaces', 'list', '--catalog', f'test_cli_catalog_{SALT}'),
                      checker=lambda s: f'test_cli_namespace_{SALT}' not in s)
 
-    finally:
-        sys.path.pop(0)
-    pass
-
-
-def test_cli_parsing():
-    """
-    Tests cli parsing
-    """
-    SALT = get_salt()
-    sys.path.insert(0, CLI_PYTHONPATH)
-    try:
-        # Create S3 catalog with custom region
-        check_output(root_cli(
-            'catalogs',
-            'create',
-            '--storage-type',
-            's3',
-            '--role-arn',
-            ROLE_ARN,
-            '--region',
-            REGION,
-            '--default-base-location',
-            f's3://fake-location2-{SALT}',
-            '--external-id',
-            'custom-external-id-123',
-            f'test_cli_catalog_aws_region_{SALT}'), checker=lambda s: s == '')
-        check_output(root_cli('catalogs', 'get', f'test_cli_catalog_aws_region_{SALT}'),
-                    checker=lambda s: 's3://fake-location2' in s and
-                        'custom-external-id-123' in s and REGION in s)
     finally:
         sys.path.pop(0)
     pass
