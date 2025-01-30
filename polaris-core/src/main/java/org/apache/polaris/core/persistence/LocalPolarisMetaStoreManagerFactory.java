@@ -19,16 +19,14 @@
 package org.apache.polaris.core.persistence;
 
 import jakarta.annotation.Nonnull;
-<<<<<<< HEAD
 import jakarta.annotation.Nullable;
 import java.time.Clock;
-=======
->>>>>>> parent of b84f4624 (Remove CallContext and its ThreadLocal usage (#589))
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
@@ -62,15 +60,10 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
 
-<<<<<<< HEAD
-  private final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
-  private final Map<String, StorageCredentialCache> storageCredentialCacheMap = new HashMap<>();
-  private final Map<String, EntityCache> entityCacheMap = new HashMap<>();
-  private final Map<String, Supplier<PolarisMetaStoreSession>> sessionSupplierMap = new HashMap<>();
-
   private final PolarisConfigurationStore configurationStore;
   private final PolarisDiagnostics diagnostics;
   private final Clock clock;
+  private boolean bootstrap;
 
   protected LocalPolarisMetaStoreManagerFactory(
       PolarisConfigurationStore configurationStore, PolarisDiagnostics diagnostics, Clock clock) {
@@ -78,21 +71,14 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     this.diagnostics = diagnostics;
     this.clock = clock;
   }
-=======
-  private boolean bootstrap;
->>>>>>> parent of b84f4624 (Remove CallContext and its ThreadLocal usage (#589))
 
   protected abstract StoreType createBackingStore(@Nonnull PolarisDiagnostics diagnostics);
 
   protected abstract PolarisMetaStoreSession createMetaStoreSession(
-<<<<<<< HEAD
       @Nonnull StoreType store,
       @Nonnull RealmContext realmContext,
       @Nullable PolarisCredentialsBootstrap credentialsBootstrap,
       @Nonnull PolarisDiagnostics diagnostics);
-=======
-      @Nonnull StoreType store, @Nonnull RealmContext realmContext);
->>>>>>> parent of b84f4624 (Remove CallContext and its ThreadLocal usage (#589))
 
   protected PrincipalSecretsGenerator secretsGenerator(
       RealmContext realmContext, @Nullable PolarisCredentialsBootstrap credentialsBootstrap) {
@@ -104,7 +90,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     }
   }
 
-<<<<<<< HEAD
   private void initializeForRealm(
       RealmContext realmContext, PolarisCredentialsBootstrap credentialsBootstrap) {
     final StoreType backingStore = createBackingStore(diagnostics);
@@ -112,14 +97,6 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
         realmContext.getRealmIdentifier(),
         () ->
             createMetaStoreSession(backingStore, realmContext, credentialsBootstrap, diagnostics));
-=======
-  private void initializeForRealm(RealmContext realmContext) {
-    final StoreType backingStore = createBackingStore(diagServices);
-    backingStoreMap.put(realmContext.getRealmIdentifier(), backingStore);
-    sessionSupplierMap.put(
-        realmContext.getRealmIdentifier(),
-        () -> createMetaStoreSession(backingStore, realmContext));
->>>>>>> parent of b84f4624 (Remove CallContext and its ThreadLocal usage (#589))
 
     PolarisMetaStoreManager metaStoreManager = new PolarisMetaStoreManagerImpl();
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);

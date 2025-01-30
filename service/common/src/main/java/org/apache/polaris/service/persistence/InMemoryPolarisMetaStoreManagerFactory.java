@@ -23,16 +23,13 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-<<<<<<< HEAD
 import java.time.Clock;
-import java.util.List;
-=======
-import java.util.Collections;
 import java.util.HashSet;
->>>>>>> parent of b84f4624 (Remove CallContext and its ThreadLocal usage (#589))
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
@@ -54,12 +51,15 @@ public class InMemoryPolarisMetaStoreManagerFactory
   private final Set<String> bootstrappedRealms = new HashSet<>();
 
   public InMemoryPolarisMetaStoreManagerFactory() {
-    this(null);
+    this(null, null, null);
   }
 
   @Inject
   public InMemoryPolarisMetaStoreManagerFactory(
-      PolarisStorageIntegrationProvider storageIntegration) {
+      PolarisStorageIntegrationProvider storageIntegration,
+      PolarisConfigurationStore configurationStore,
+      PolarisDiagnostics diagnostics) {
+    super(configurationStore, diagnostics, Clock.systemDefaultZone());
     this.storageIntegration = storageIntegration;
   }
 
@@ -74,21 +74,12 @@ public class InMemoryPolarisMetaStoreManagerFactory
 
   @Override
   protected PolarisMetaStoreSession createMetaStoreSession(
-<<<<<<< HEAD
       @Nonnull PolarisTreeMapStore store,
       @Nonnull RealmContext realmContext,
       @Nullable PolarisCredentialsBootstrap credentialsBootstrap,
       @Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisTreeMapMetaStoreSessionImpl(
-        store,
-        storageIntegration,
-        secretsGenerator(realmContext, credentialsBootstrap),
-        diagnostics);
-=======
-      @Nonnull PolarisTreeMapStore store, @Nonnull RealmContext realmContext) {
-    return new PolarisTreeMapMetaStoreSessionImpl(
-        store, storageIntegration, secretsGenerator(realmContext));
->>>>>>> parent of b84f4624 (Remove CallContext and its ThreadLocal usage (#589))
+        store, storageIntegration, secretsGenerator(realmContext, credentialsBootstrap));
   }
 
   @Override

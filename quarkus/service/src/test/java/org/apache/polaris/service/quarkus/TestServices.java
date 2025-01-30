@@ -28,6 +28,7 @@ import java.util.Date;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
@@ -70,10 +71,14 @@ public record TestServices(
   }
 
   public static TestServices inMemory(FileIOFactory ioFactory, Map<String, Object> config) {
+    PolarisConfigurationStore configurationStore = new DefaultConfigurationStore(config);
+
     InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory =
         new InMemoryPolarisMetaStoreManagerFactory(
             new PolarisStorageIntegrationProviderImpl(
-                Mockito::mock, () -> GoogleCredentials.create(new AccessToken("abc", new Date()))));
+                Mockito::mock, () -> GoogleCredentials.create(new AccessToken("abc", new Date()))),
+            configurationStore,
+            Mockito.mock(PolarisDiagnostics.class));
 
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(testRealm);
@@ -85,7 +90,7 @@ public record TestServices(
         new PolarisCallContext(
             session,
             Mockito.mock(PolarisDiagnostics.class),
-            new DefaultConfigurationStore(config),
+            configurationStore,
             Clock.systemDefaultZone());
 
     CallContext callContext = CallContext.of(testRealm, context);

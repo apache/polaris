@@ -129,30 +129,8 @@ public class IcebergCatalogAdapter
     this.entityManagerFactory = entityManagerFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.polarisAuthorizer = polarisAuthorizer;
-<<<<<<< HEAD
-  }
-
-  /**
-   * Execute operations on a catalog wrapper and ensure we close the BaseCatalog afterward. This
-   * will typically ensure the underlying FileIO is closed.
-   */
-  private Response withCatalog(
-      SecurityContext securityContext,
-      String catalogName,
-      Function<PolarisCatalogHandlerWrapper, Response> action) {
-    try (PolarisCatalogHandlerWrapper wrapper = newHandlerWrapper(securityContext, catalogName)) {
-      return action.apply(wrapper);
-    } catch (RuntimeException e) {
-      LOGGER.debug("RuntimeException while operating on catalog. Propagating to caller.", e);
-      throw e;
-    } catch (Exception e) {
-      LOGGER.error("Error while operating on catalog", e);
-      throw new RuntimeException(e);
-    }
-=======
     // FIXME: This is a hack to set the current context for downstream calls.
     CallContext.setCurrentContext(callContext);
->>>>>>> parent of b84f4624 (Remove CallContext and its ThreadLocal usage (#589))
   }
 
   private PolarisCatalogHandlerWrapper newHandlerWrapper(

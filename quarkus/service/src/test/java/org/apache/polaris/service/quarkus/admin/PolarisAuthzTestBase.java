@@ -99,7 +99,6 @@ public abstract class PolarisAuthzTestBase {
     public Set<Class<?>> getEnabledAlternatives() {
       return Set.of(TestPolarisCallContextCatalogFactory.class);
     }
-<<<<<<< HEAD
 
     @Override
     public Map<String, String> getConfigOverrides() {
@@ -109,8 +108,6 @@ public abstract class PolarisAuthzTestBase {
           "polaris.features.defaults.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"",
           "true");
     }
-=======
->>>>>>> parent of b84f4624 (Remove CallContext and its ThreadLocal usage (#589))
   }
 
   protected static final String CATALOG_NAME = "polaris-catalog";

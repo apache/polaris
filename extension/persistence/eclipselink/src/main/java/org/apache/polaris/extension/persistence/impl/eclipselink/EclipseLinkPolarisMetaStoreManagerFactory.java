@@ -24,6 +24,8 @@ import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
+import java.time.Clock;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
@@ -45,6 +47,11 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
   @Inject EclipseLinkConfiguration eclipseLinkConfiguration;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
 
+  protected EclipseLinkPolarisMetaStoreManagerFactory(
+      PolarisConfigurationStore configurationStore, PolarisDiagnostics diagnostics, Clock clock) {
+    super(configurationStore, diagnostics, clock);
+  }
+
   @Override
   protected PolarisEclipseLinkStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisEclipseLinkStore(diagnostics);
@@ -52,26 +59,18 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
 
   @Override
   protected PolarisMetaStoreSession createMetaStoreSession(
-<<<<<<< HEAD
       @Nonnull PolarisEclipseLinkStore store,
       @Nonnull RealmContext realmContext,
       @Nullable PolarisCredentialsBootstrap credentialsBootstrap,
       @Nonnull PolarisDiagnostics diagnostics) {
-=======
-      @Nonnull PolarisEclipseLinkStore store, @Nonnull RealmContext realmContext) {
->>>>>>> parent of b84f4624 (Remove CallContext and its ThreadLocal usage (#589))
     return new PolarisEclipseLinkMetaStoreSessionImpl(
         store,
         storageIntegrationProvider,
         realmContext,
         configurationFile(),
         persistenceUnitName(),
-<<<<<<< HEAD
         secretsGenerator(realmContext, credentialsBootstrap),
         diagnostics);
-=======
-        secretsGenerator(realmContext));
->>>>>>> parent of b84f4624 (Remove CallContext and its ThreadLocal usage (#589))
   }
 
   private String configurationFile() {
