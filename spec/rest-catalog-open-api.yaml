@@ -1949,7 +1949,7 @@ components:
       description: a policy name
       required: true
       schema:
-        type: string
+        $ref: '#/components/schemas/PolicyName'
       example: 'compaction'
 
   ##############################
@@ -4242,6 +4242,10 @@ components:
             type: integer
           description: "List of equality field IDs"
     
+    PolicyName:
+      type: string
+      pattern: '^[A-Za-z0-9\-\._~]+$'
+    
     Policy:
       type: object
       required:
@@ -4259,7 +4263,7 @@ components:
         policy-type:
           type: string
         name:
-          type: string
+          $ref: '#/components/schemas/PolicyName'
         description: 
           type: string
         content:
@@ -4278,7 +4282,6 @@ components:
       required:
         - name
         - type
-        - content
       properties:
         name: 
           type: string
