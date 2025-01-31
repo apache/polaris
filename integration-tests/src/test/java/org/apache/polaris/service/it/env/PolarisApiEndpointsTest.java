@@ -18,35 +18,19 @@
  */
 package org.apache.polaris.service.it.env;
 
-import java.io.Serializable;
 import java.net.URI;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-/**
- * This class contains the most fundamental information for accessing Polaris APIs, such as the base
- * URI and realm ID and provides methods for obtaining Icenberg REST API and Polaris Management
- * endpoints.
- */
-public final class PolarisApiEndpoints implements Serializable {
-
-  public static String REALM_HEADER = "realm";
-
-  private final URI baseUri;
-  private final String realm;
-
-  public PolarisApiEndpoints(URI baseUri, String realm) {
-    this.baseUri = baseUri;
-    this.realm = realm;
-  }
-
-  public URI catalogApiEndpoint() {
-    return baseUri.resolve(baseUri.getRawPath() + "/api/catalog").normalize();
-  }
-
-  public URI managementApiEndpoint() {
-    return baseUri.resolve(baseUri.getRawPath() + "/api/management").normalize();
-  }
-
-  public String realm() {
-    return realm;
+/** Unit tests for PolarisApiEndpoints */
+public class PolarisApiEndpointsTest {
+  @Test
+  void testEndpointRespectsPathPrefix() {
+    PolarisApiEndpoints endpoints =
+        new PolarisApiEndpoints(URI.create("http://myserver.com/polaris"), "");
+    Assertions.assertEquals(
+        "http://myserver.com/polaris/api/catalog", endpoints.catalogApiEndpoint().toString());
+    Assertions.assertEquals(
+        "http://myserver.com/polaris/api/management", endpoints.managementApiEndpoint().toString());
   }
 }
