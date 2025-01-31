@@ -60,3 +60,5 @@ val aggregatedLicenseReportsZip by
     destinationDirectory.set(layout.buildDirectory.dir("distributions"))
     archiveExtension.set("zip")
   }
+
+tasks.register("check")
