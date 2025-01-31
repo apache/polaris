@@ -20,7 +20,6 @@ package org.apache.polaris.service.it.env;
 
 import java.io.Serializable;
 import java.net.URI;
-import java.nio.file.Path;
 
 /**
  * This class contains the most fundamental information for accessing Polaris APIs, such as the base
@@ -40,11 +39,11 @@ public final class PolarisApiEndpoints implements Serializable {
   }
 
   public URI catalogApiEndpoint() {
-    return baseUri.resolve(Path.of(baseUri.getRawPath(), "api/catalog").toString());
+    return baseUri.resolve(baseUri.getRawPath() + "/api/catalog").normalize();
   }
 
   public URI managementApiEndpoint() {
-    return baseUri.resolve(Path.of(baseUri.getRawPath(), "api/management").toString());
+    return baseUri.resolve(baseUri.getRawPath() + "/api/management").normalize();
   }
 
   public String realm() {
