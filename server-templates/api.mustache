@@ -55,7 +55,7 @@ import {{javaxPackage}}.ws.rs.core.SecurityContext;
 
 import {{javaxPackage}}.inject.Inject;
 
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,7 +107,7 @@ public class {{classname}}  {
   @Consumes({ {{#consumes}}"{{{mediaType}}}"{{^-last}}, {{/-last}}{{/consumes}} }){{/hasConsumes}}{{#hasProduces}}
   @Produces({ {{#produces}}"{{{mediaType}}}"{{^-last}}, {{/-last}}{{/produces}} }){{/hasProduces}}
   @Timed("{{metricsPrefix}}.{{baseName}}.{{nickname}}")
-  public Response {{nickname}}({{#isMultipart}}MultipartFormDataInput input,{{/isMultipart}}{{#allParams}}{{>queryParams}}{{>pathParams}}{{>headerParams}}{{>bodyParams}}{{^isMultipart}}{{>formParams}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}@Context @MeterTag(key="realm_id",expression="realm.id") RealmId realmId,@Context SecurityContext securityContext) {
+  public Response {{nickname}}({{#isMultipart}}MultipartFormDataInput input,{{/isMultipart}}{{#allParams}}{{>queryParams}}{{>pathParams}}{{>headerParams}}{{>bodyParams}}{{^isMultipart}}{{>formParams}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}@Context @MeterTag(key="realm_id",expression="realmIdentifier") RealmContext realmContext,@Context SecurityContext securityContext) {
 {{! Don't log form or header params in case there are secrets, e.g., OAuth tokens }}
     LOGGER.atDebug().setMessage("Invoking {{baseName}} with params")
       .addKeyValue("operation", "{{nickname}}"){{#allParams}}{{^isHeaderParam}}{{^isFormParam}}
@@ -115,7 +115,7 @@ public class {{classname}}  {
       .log();
 
     Response ret =
-      service.{{nickname}}({{#isMultipart}}input,{{/isMultipart}}{{#allParams}}{{^isMultipart}}{{paramName}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}}{{paramName}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}realmId,securityContext);
+      service.{{nickname}}({{#isMultipart}}input,{{/isMultipart}}{{#allParams}}{{^isMultipart}}{{paramName}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}}{{paramName}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}realmContext,securityContext);
     LOGGER.debug("Completed execution of {{nickname}} API with status code {}", ret.getStatus());
     return ret;
   }

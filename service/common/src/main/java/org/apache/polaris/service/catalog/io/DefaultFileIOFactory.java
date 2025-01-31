@@ -32,7 +32,7 @@ import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -70,7 +70,7 @@ public class DefaultFileIOFactory implements FileIOFactory {
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull RealmId realmId,
+      @Nonnull RealmContext realmContext,
       @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties,
       @Nonnull TableIdentifier identifier,
@@ -78,11 +78,11 @@ public class DefaultFileIOFactory implements FileIOFactory {
       @Nonnull Set<PolarisStorageActions> storageActions,
       @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
     PolarisEntityManager entityManager =
-        realmEntityManagerFactory.getOrCreateEntityManager(realmId);
+        realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
     PolarisCredentialVendor credentialVendor =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmId);
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     PolarisMetaStoreSession metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
 
     // Get subcoped creds
     properties = new HashMap<>(properties);
@@ -93,7 +93,7 @@ public class DefaultFileIOFactory implements FileIOFactory {
             .map(
                 storageInfo ->
                     FileIOUtil.refreshCredentials(
-                        realmId,
+                        realmContext,
                         entityManager,
                         credentialVendor,
                         metaStoreSession,

@@ -30,7 +30,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Given a list of registered {@link TaskHandler}s, execute tasks asynchronously with the provided
- * {@link RealmId}.
+ * {@link RealmContext}.
  */
 public class TaskExecutorImpl implements TaskExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(TaskExecutorImpl.class);
@@ -91,39 +91,37 @@ public class TaskExecutorImpl implements TaskExecutor {
   }
 
   /**
-   * Register a {@link RealmId} for a specific task id. That task will be loaded and executed
-   * asynchronously with a copy of the provided {@link RealmId} (because the realm context is a
+   * Register a {@link RealmContext} for a specific task id. That task will be loaded and executed
+   * asynchronously with a copy of the provided {@link RealmContext} (because the realm context is a
    * request-scoped component).
    */
   @Override
-  public void addTaskHandlerContext(long taskEntityId, RealmId realmId) {
-    // Realm id is a request-scoped component, so we need to copy it to ensure it is available when
-    // the task is executed, even if the original realm id is no longer available because the
-    // request has completed.
-    tryHandleTask(taskEntityId, RealmId.copyOf(realmId), null, 1);
+  public void addTaskHandlerContext(long taskEntityId, RealmContext realmContext) {
+    tryHandleTask(taskEntityId, RealmContext.copyOf(realmContext), null, 1);
   }
 
   private @Nonnull CompletableFuture<Void> tryHandleTask(
-      long taskEntityId, RealmId realmId, Throwable e, int attempt) {
+      long taskEntityId, RealmContext realmContext, Throwable e, int attempt) {
     if (attempt > 3) {
       return CompletableFuture.failedFuture(e);
     }
-    return CompletableFuture.runAsync(() -> handleTask(taskEntityId, realmId, attempt), executor)
+    return CompletableFuture.runAsync(
+            () -> handleTask(taskEntityId, realmContext, attempt), executor)
         .exceptionallyComposeAsync(
             (t) -> {
               LOGGER.warn("Failed to handle task entity id {}", taskEntityId, t);
-              return tryHandleTask(taskEntityId, realmId, t, attempt + 1);
+              return tryHandleTask(taskEntityId, realmContext, t, attempt + 1);
             },
             CompletableFuture.delayedExecutor(
                 TASK_RETRY_DELAY * (long) attempt, TimeUnit.MILLISECONDS, executor));
   }
 
-  protected void handleTask(long taskEntityId, RealmId realmId, int attempt) {
+  protected void handleTask(long taskEntityId, RealmContext realmContext, int attempt) {
     LOGGER.info("Handling task entity id {}", taskEntityId);
     PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmId);
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     PolarisMetaStoreSession metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     PolarisBaseEntity taskEntity =
         metaStoreManager.loadEntity(metaStoreSession, 0L, taskEntityId).getEntity();
     if (!PolarisEntityType.TASK.equals(taskEntity.getType())) {
@@ -141,7 +139,7 @@ public class TaskExecutorImpl implements TaskExecutor {
       return;
     }
     TaskHandler handler = handlerOpt.get();
-    boolean success = handler.handleTask(task, realmId);
+    boolean success = handler.handleTask(task, realmContext);
     if (success) {
       LOGGER
           .atInfo()

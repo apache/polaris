@@ -25,7 +25,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.auth.AuthenticationConfiguration.TokenBrokerConfiguration;
 import org.apache.polaris.service.auth.AuthenticationConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
@@ -53,10 +53,10 @@ public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
   }
 
   @Override
-  public TokenBroker apply(RealmId realmId) {
+  public TokenBroker apply(RealmContext realmContext) {
     return new JWTRSAKeyPair(
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmId),
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get(),
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
         (int) tokenBrokerConfiguration.maxTokenGeneration().toSeconds(),
         keyPairConfiguration.publicKeyFile(),
         keyPairConfiguration.privateKeyFile());

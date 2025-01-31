@@ -24,7 +24,7 @@ import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -77,7 +77,7 @@ public class FileIOUtil {
    * </ul>
    */
   public static Map<String, String> refreshCredentials(
-      RealmId realmId,
+      RealmContext realmContext,
       PolarisEntityManager entityManager,
       PolarisCredentialVendor credentialVendor,
       PolarisMetaStoreSession metaStoreSession,
@@ -88,7 +88,7 @@ public class FileIOUtil {
       PolarisEntity entity) {
     boolean skipCredentialSubscopingIndirection =
         configurationStore.getConfiguration(
-            realmId,
+            realmContext,
             PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
             PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
     if (skipCredentialSubscopingIndirection) {

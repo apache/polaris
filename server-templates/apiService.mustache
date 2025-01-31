@@ -35,7 +35,7 @@ import {{javaxPackage}}.validation.Valid;
 import {{javaxPackage}}.ws.rs.core.Response;
 import {{javaxPackage}}.ws.rs.core.SecurityContext;
 
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 
 {{!
 Note that this template is copied from https://github.com/OpenAPITools/openapi-generator/blob/783e68c7acbbdcbb2282d167d1644b069f12d486/modules/openapi-generator/src/main/resources/JavaJaxRS/resteasy/apiService.mustache
@@ -54,7 +54,7 @@ It is here to remove some unsupported imports and to update the default implemen
 {{#operations}}
 public interface {{classname}}Service {
   {{#operation}}
-  default Response {{nickname}}({{#isMultipart}}MultipartFormDataInput input,{{/isMultipart}}{{#allParams}}{{>serviceQueryParams}}{{>servicePathParams}}{{>serviceHeaderParams}}{{>serviceBodyParams}}{{^isMultipart}}{{>serviceFormParams}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}RealmId realmId,SecurityContext securityContext) {
+  default Response {{nickname}}({{#isMultipart}}MultipartFormDataInput input,{{/isMultipart}}{{#allParams}}{{>serviceQueryParams}}{{>servicePathParams}}{{>serviceHeaderParams}}{{>serviceBodyParams}}{{^isMultipart}}{{>serviceFormParams}},{{/isMultipart}}{{#isMultipart}}{{^isFormParam}},{{/isFormParam}}{{/isMultipart}}{{/allParams}}RealmContext realmContext,SecurityContext securityContext) {
     return Response.status(501).build(); // not implemented
   }
   {{/operation}}

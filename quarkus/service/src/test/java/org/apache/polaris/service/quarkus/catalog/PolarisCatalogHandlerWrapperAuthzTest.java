@@ -106,7 +106,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
   private PolarisCatalogHandlerWrapper newWrapper(
       SecurityContext securityContext, String catalogName) {
     return new PolarisCatalogHandlerWrapper(
-        realmId,
+        realmContext,
         metaStoreSession,
         configurationStore,
         diagServices,

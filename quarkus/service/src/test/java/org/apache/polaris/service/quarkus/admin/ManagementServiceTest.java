@@ -61,7 +61,7 @@ public class ManagementServiceTest {
                     .catalogsApi()
                     .createCatalog(
                         new CreateCatalogRequest(catalog),
-                        services.realmId(),
+                        services.realmContext(),
                         services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported storage type: FILE");
@@ -90,7 +90,7 @@ public class ManagementServiceTest {
             .catalogsApi()
             .createCatalog(
                 new CreateCatalogRequest(catalog),
-                services.realmId(),
+                services.realmContext(),
                 services.securityContext())) {
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
@@ -100,7 +100,7 @@ public class ManagementServiceTest {
     try (Response response =
         services
             .catalogsApi()
-            .getCatalog(catalogName, services.realmId(), services.securityContext())) {
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = (Catalog) response.getEntity();
 
@@ -126,7 +126,10 @@ public class ManagementServiceTest {
                 services
                     .catalogsApi()
                     .updateCatalog(
-                        catalogName, updateRequest, services.realmId(), services.securityContext()))
+                        catalogName,
+                        updateRequest,
+                        services.realmContext(),
+                        services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported storage type: FILE");
   }

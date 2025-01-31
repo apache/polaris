@@ -48,7 +48,7 @@ import java.util.Set;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.slf4j.Logger;
@@ -75,7 +75,7 @@ public class AzureCredentialsStorageIntegration
 
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-      @Nonnull RealmId realmId,
+      @Nonnull RealmContext realmContext,
       @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull AzureStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
@@ -132,7 +132,7 @@ public class AzureCredentialsStorageIntegration
     OffsetDateTime startTime = start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
     int intendedDurationSeconds =
         configurationStore.getConfiguration(
-            realmId, PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+            realmContext, PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
     OffsetDateTime intendedEndTime =
         start.plusSeconds(intendedDurationSeconds).atOffset(ZoneOffset.UTC);
     OffsetDateTime maxAllowedEndTime =
