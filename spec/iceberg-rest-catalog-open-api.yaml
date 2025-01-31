@@ -4609,65 +4609,19 @@ components:
         entity:
           $ref: '#/components/schemas/EntityIdentifier'
 
-    CatalogIdentifier:
-      allOf:
-        - $ref: '#/components/schemas/EntityIdentifier'
-        - type: object
-          required:
-            - catalog
-          properties:
-            catalog:
-              type: string
-    
-    NamespaceIdentifier:
-      allOf:
-        - $ref: '#/components/schemas/EntityIdentifier'
-        - type: object
-          required:
-              - catalog
-              - namespace
-          properties:
-            catalog:
-              type: string
-              nullable: false
-            namespace:
-              $ref: '#/components/schemas/Namespace'
-
-    TableLikeIdentifier:
-      allOf:
-        - $ref: '#/components/schemas/EntityIdentifier'
-        - type: object
-          required:
-            - catalog
-            - namespace
-            - name
-          properties:
-            catalog:
-              type: string
-              nullable: false
-            namespace:
-              $ref: '#/components/schemas/Namespace'
-            name:
-              type: string
-              nullable: false
-
     EntityIdentifier:
       type: object
-      discriminator:
-        propertyName: type
-        mapping:
-          catalog: '#/components/schemas/CatalogIdentifier'
-          namespace: '#/components/schemas/NamespaceIdentifier'
-          table-like: '#/components/schemas/TableLikeIdentifier'
-      properties:
-        type:
-          type: string
-          enum:
-            - catalog
-            - namespace
-            - table-like
       required:
-        - type
+        - catalog
+      properties:
+        catalog:
+          type: string
+          nullable: false
+        namespace:
+          $ref: '#/components/schemas/Namespace'
+        name:
+          type: string
+          nullable: false
 
 
 

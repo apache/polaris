@@ -49,14 +49,11 @@ dependencies {
 
 val policyManagementModels =
   listOf(
-      "CatalogIdentifier",
       "CreatePolicyRequest",
       "EntityIdentifier",
       "LoadPolicyResult",
-      "NamespaceIdentifier",
       "Policy",
       "SetPolicyRequest",
-      "TableLikeIdentifier",
       "UnsetPolicyRequest",
       "UpdatePolicyRequest",
     )
@@ -82,7 +79,6 @@ openApiGenerate {
   configOptions.put("useJakartaEe", "true")
   configOptions.put("generateBuilders", "true")
   configOptions.put("generateConstructorWithAllArgs", "true")
-  configOptions.put("openApiNullable", "false")
   openapiNormalizer.put("REFACTOR_ALLOF_WITH_PROPERTIES_ONLY", "true")
   additionalProperties.put("apiNamePrefix", "IcebergRest")
   additionalProperties.put("apiNameSuffix", "")
