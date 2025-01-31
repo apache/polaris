@@ -55,7 +55,6 @@ val policyManagementModels =
       "LoadPolicyResult",
       "NamespaceIdentifier",
       "Policy",
-      "PolicyContent",
       "SetPolicyRequest",
       "TableLikeIdentifier",
       "UnsetPolicyRequest",
