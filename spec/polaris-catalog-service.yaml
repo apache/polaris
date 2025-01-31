@@ -121,13 +121,35 @@ paths:
   ######################
 
   /v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications:
-    $ref: './polaris-apis/notifications-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1notifications'
+    $ref: './polaris-catalog-apis/notifications-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1notifications'
 
 
 components:
   securitySchemes:
+
+    # The OAuth2 scheme is sourced from rest-catalog-open-api.yaml
+    #
+    # If the /v1/oauth/tokens endpoint is removed or modified
+    # (see https://github.com/apache/polaris/issues/12),
+    # the scheme must be updated accordingly.
     OAuth2:
-      $ref: './rest-catalog-open-api.yaml#/components/securitySchemes/OAuth2'
+      type: oauth2
+      description:
+        This scheme is used for OAuth2 authorization.
+        
+        
+        For unauthorized requests, services should return an appropriate 401 or
+        403 response. Implementations must not return altered success (200)
+        responses when a request is unauthenticated or unauthorized.
+        
+        If a separate authorization server is used, substitute the tokenUrl with
+        the full token path of the external authorization server, and use the
+        resulting token to access the resources defined in the spec.
+      flows:
+        clientCredentials:
+          tokenUrl: /v1/oauth/tokens
+          scopes:
+            catalog: Allows interacting with the Config and Catalog APIs
 
     BearerAuth:
       $ref: './rest-catalog-open-api.yaml#/components/securitySchemes/BearerAuth'
