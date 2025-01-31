@@ -44,9 +44,6 @@ dependencies {
   compileOnly(libs.jetbrains.annotations)
   compileOnly(libs.spotbugs.annotations)
 
-  compileOnly(project(":polaris-immutables"))
-  annotationProcessor(project(":polaris-immutables", configuration = "processor"))
-
   constraints {
     implementation("org.xerial.snappy:snappy-java:1.1.10.7") {
       because("Vulnerability detected in 1.1.8.2")

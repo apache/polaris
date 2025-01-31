@@ -31,7 +31,7 @@ import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -61,13 +61,12 @@ public record TestServices(
     PolarisDiagnostics polarisDiagnostics,
     RealmEntityManagerFactory entityManagerFactory,
     MetaStoreManagerFactory metaStoreManagerFactory,
-    RealmId realmId,
+    RealmContext realmContext,
     SecurityContext securityContext,
     FileIOFactory fileIOFactory,
     TaskExecutor taskExecutor) {
 
-  private static final RealmId TEST_REALM =
-      org.apache.polaris.core.context.RealmId.newRealmId("test-realm");
+  private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
 
   @FunctionalInterface
@@ -83,15 +82,15 @@ public record TestServices(
   }
 
   public static class Builder {
-    private RealmId realmId = TEST_REALM;
+    private RealmContext realm = TEST_REALM;
     private Map<String, Object> config = Map.of();
     private StsClient stsClient = Mockito.mock(StsClient.class);
     private FileIOFactorySupplier fileIOFactorySupplier = MeasuredFileIOFactory::new;
 
     private Builder() {}
 
-    public Builder realmId(RealmId realmId) {
-      this.realmId = realmId;
+    public Builder realmId(RealmContext realmId) {
+      this.realm = realmId;
       return this;
     }
 
@@ -131,11 +130,11 @@ public record TestServices(
           new RealmEntityManagerFactory(metaStoreManagerFactory, polarisDiagnostics) {};
 
       PolarisEntityManager entityManager =
-          realmEntityManagerFactory.getOrCreateEntityManager(realmId);
+          realmEntityManagerFactory.getOrCreateEntityManager(realm);
       PolarisMetaStoreManager metaStoreManager =
-          metaStoreManagerFactory.getOrCreateMetaStoreManager(realmId);
+          metaStoreManagerFactory.getOrCreateMetaStoreManager(realm);
       PolarisMetaStoreSession metaStoreSession =
-          metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
+          metaStoreManagerFactory.getOrCreateSessionSupplier(realm).get();
 
       FileIOFactory fileIOFactory =
           fileIOFactorySupplier.apply(
@@ -144,7 +143,7 @@ public record TestServices(
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
       IcebergRestCatalogApiService service =
           new IcebergCatalogAdapter(
-              realmId,
+              realm,
               entityManager,
               metaStoreManager,
               metaStoreSession,
@@ -208,7 +207,7 @@ public record TestServices(
           polarisDiagnostics,
           realmEntityManagerFactory,
           metaStoreManagerFactory,
-          realmId,
+          realm,
           securityContext,
           fileIOFactory,
           taskExecutor);

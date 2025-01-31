@@ -28,7 +28,7 @@ import java.util.function.BiFunction;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -38,7 +38,7 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 
 @ApplicationScoped
-public class TaskFileIOSupplier implements BiFunction<TaskEntity, RealmId, FileIO> {
+public class TaskFileIOSupplier implements BiFunction<TaskEntity, RealmContext, FileIO> {
   private final FileIOFactory fileIOFactory;
 
   @Inject
@@ -47,7 +47,7 @@ public class TaskFileIOSupplier implements BiFunction<TaskEntity, RealmId, FileI
   }
 
   @Override
-  public FileIO apply(TaskEntity task, RealmId realmId) {
+  public FileIO apply(TaskEntity task, RealmContext realmContext) {
     Map<String, String> internalProperties = task.getInternalPropertiesAsMap();
     Map<String, String> properties = new HashMap<>(internalProperties);
 
@@ -66,6 +66,6 @@ public class TaskFileIOSupplier implements BiFunction<TaskEntity, RealmId, FileI
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.io.ResolvingFileIO");
 
     return fileIOFactory.loadFileIO(
-        realmId, ioImpl, properties, identifier, locations, storageActions, resolvedPath);
+        realmContext, ioImpl, properties, identifier, locations, storageActions, resolvedPath);
   }
 }
