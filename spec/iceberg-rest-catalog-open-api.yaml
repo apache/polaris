@@ -4546,7 +4546,7 @@ components:
         description: 
           type: string
         content:
-          $ref: '#/components/schemas/PolicyContent'
+          type: string
         version:
           type: integer
         created-at-ms:
@@ -4555,9 +4555,6 @@ components:
         updated-at-ms: 
           type: integer
           format: int64
-
-    PolicyContent:
-      type: string
 
     CreatePolicyRequest:
       type: object
@@ -4573,7 +4570,7 @@ components:
         description:
           type: string
         content:
-          $ref: '#/components/schemas/PolicyContent'
+          type: string
 
     LoadPolicyResult:
       type: object
@@ -4587,7 +4584,7 @@ components:
         description:
           type: string
         content:
-          $ref: '#/components/schemas/PolicyContent'
+          type: string
 
     SetPolicyRequest:
       type: object
