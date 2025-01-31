@@ -97,10 +97,7 @@ public class TaskExecutorImpl implements TaskExecutor {
    */
   @Override
   public void addTaskHandlerContext(long taskEntityId, RealmId realmId) {
-    // Realm id is a request-scoped component, so we need to copy it to ensure it is available when
-    // the task is executed, even if the original realm id is no longer available because the
-    // request has completed.
-    tryHandleTask(taskEntityId, RealmId.copyOf(realmId), null, 1);
+    tryHandleTask(taskEntityId, realmId, null, 1);
   }
 
   private @Nonnull CompletableFuture<Void> tryHandleTask(
