@@ -4245,7 +4245,7 @@ components:
     Policy:
       type: object
       required:
-        - owner_id
+        - owner-entity-id
         - policy-id
         - policy-type
         - name
@@ -4273,7 +4273,8 @@ components:
           type: integer
           format: int64
 
-    PolicyContent: {}
+    PolicyContent:
+      type: string
 
     CreatePolicyRequest:
       type: object
