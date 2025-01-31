@@ -38,5 +38,3 @@ dependencies {
   compileOnly("io.quarkus:quarkus-opentelemetry")
   compileOnly("io.quarkus:quarkus-smallrye-context-propagation")
 }
-
-tasks.withType<Javadoc> { isFailOnError = false }

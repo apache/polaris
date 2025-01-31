@@ -16,8 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.server.quarkus;
 
-// This file is here as a placeholder to allow quarkusDev and quarkusRun
-// tasks to work, since this module currently has no source files.
+/**
+ * This file is here as a placeholder to allow quarkusDev and quarkusRun tasks to work, since this
+ * module currently has no source files.
+ */
+@SuppressWarnings("unused")
+public final class Readme {
+  private Readme() {}
+}

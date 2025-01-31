@@ -65,8 +65,6 @@ tasks.named("distZip") { dependsOn("quarkusBuild") }
 
 tasks.named("distTar") { dependsOn("quarkusBuild") }
 
-tasks.withType<Javadoc> { isFailOnError = false }
-
 tasks.register("run") { dependsOn("quarkusRun") }
 
 tasks.named<QuarkusRun>("quarkusRun") {
