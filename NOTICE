@@ -1,8 +1,62 @@
 Apache Polaris (incubating)
-Copyright 2024 The Apache Software Foundation
+Copyright 2025 The Apache Software Foundation
 
 This product includes software developed at
 The Apache Software Foundation (http://www.apache.org/).
 
 The initial code for the Polaris project was donated
 to the ASF by Snowflake Inc. (https://www.snowflake.com/) copyright 2024.
+
+-------------------------------------------------------------------------
+
+This project includes code from Project Nessie, with the following in its NOTICE file:
+
+| NOTICE applicable to Nessie source
+| ----------------------------------
+| 
+| Dremio
+| Copyright 2015-2025 Dremio Corporation
+| 
+| This product includes software developed at
+| The Apache Software Foundation (http://www.apache.org/).
+| 
+| Apache Avro
+| Copyright The Apache Software Foundation
+| 
+| Apache Commons
+| Copyright The Apache Software Foundation
+| 
+| Apache Curator
+| Copyright The Apache Software Foundation
+| 
+| Apache Hadoop
+| Copyright The Apache Software Foundation
+| 
+| Apache HTTP Components
+| Copyright The Apache Software Foundation
+| 
+| Apache Iceberg
+| Copyright The Apache Software Foundation
+| 
+| Apache Kerby
+| Copyright The Apache Software Foundation
+| 
+| Apache Polaris (incubating)
+| Copyright The Apache Software Foundation
+| 
+| Netty
+| Copyright The Netty Project
+| 
+| This product includes additional software licensed under the terms
+| of the following licenses:
+| * Apache Software License, Version 2.0
+| * Creative Commons 1.0 Universal
+| * Eclipse Distribution License, Version 1.0
+| * Eclipse Public License, Version 1.0
+| * Eclipse Public License, Version 2.0
+| 
+| See also the LICENSE file for Nessie source.
+| 
+| The Nessie web site provides aggregated license reports for recent Nessie
+| binary distributions, available at https://projectnessie.org/docs/ and
+| https://projectnessie.org/downloads/.
