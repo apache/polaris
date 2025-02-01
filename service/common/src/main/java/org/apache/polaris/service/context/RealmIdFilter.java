@@ -16,43 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.tracing;
+package org.apache.polaris.service.context;
 
-import io.opentelemetry.api.trace.Span;
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.PreMatching;
 import jakarta.ws.rs.ext.Provider;
 import org.apache.polaris.core.context.RealmId;
-import org.apache.polaris.service.context.RealmIdFilter;
-import org.apache.polaris.service.quarkus.config.QuarkusFilterPriorities;
-import org.apache.polaris.service.quarkus.logging.QuarkusLoggingMDCFilter;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.apache.polaris.service.config.PolarisFilterPriorities;
 
 @PreMatching
 @ApplicationScoped
-@Priority(QuarkusFilterPriorities.TRACING_FILTER)
+@Priority(PolarisFilterPriorities.REALM_ID_FILTER)
 @Provider
-public class QuarkusTracingFilter implements ContainerRequestFilter {
+public class RealmIdFilter implements ContainerRequestFilter {
 
-  public static final String REQUEST_ID_ATTRIBUTE = "polaris.request.id";
-  public static final String REALM_ID_ATTRIBUTE = "polaris.realm";
+  public static final String REALM_ID_KEY = "realmId";
 
-  @ConfigProperty(name = "quarkus.otel.sdk.disabled")
-  boolean sdkDisabled;
+  @Inject RealmIdResolver realmIdResolver;
 
   @Override
   public void filter(ContainerRequestContext rc) {
-    if (!sdkDisabled) {
-      Span span = Span.current();
-      String requestId = (String) rc.getProperty(QuarkusLoggingMDCFilter.REQUEST_ID_KEY);
-      RealmId realmId = (RealmId) rc.getProperty(RealmIdFilter.REALM_ID_KEY);
-      if (requestId != null) {
-        span.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);
-      }
-      span.setAttribute(REALM_ID_ATTRIBUTE, realmId.id());
-    }
+    RealmId realmId =
+        realmIdResolver.resolveRealmId(
+            rc.getUriInfo().getRequestUri().toString(),
+            rc.getMethod(),
+            rc.getUriInfo().getPath(),
+            rc.getHeaders()::getFirst);
+    rc.setProperty(REALM_ID_KEY, realmId);
   }
 }

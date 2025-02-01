@@ -16,34 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it.env;
+package org.apache.polaris.service.context;
 
-import java.net.URI;
+import org.apache.polaris.core.exceptions.PolarisException;
 
 /**
- * This is a holder for access information to a particular Polaris Server. Test cases may use only
- * the provided admin credentials or create new principals.
+ * Exception thrown when a realm cannot be resolved.
+ *
+ * @see RealmIdResolver#resolveRealmId(String, String, String, java.util.function.Function)
  */
-public interface Server extends AutoCloseable {
+public class UnresolvableRealmException extends PolarisException {
 
-  String DEFAULT_REALM_HEADER = "Polaris-Realm";
-  String DEFAULT_REALM_ID = "POLARIS";
-
-  default String realmId() {
-    return DEFAULT_REALM_ID;
+  public UnresolvableRealmException(String message) {
+    super(message);
   }
-
-  default String realmHeaderName() {
-    return DEFAULT_REALM_HEADER;
-  }
-
-  /**
-   * The base URI to all Polaris APIs (e.g. the common base of the Iceberg REST API endpoints and
-   * Polaris Management API endpoints).
-   *
-   * @see PolarisApiEndpoints
-   */
-  URI baseUri();
-
-  ClientPrincipal adminCredentials();
 }
