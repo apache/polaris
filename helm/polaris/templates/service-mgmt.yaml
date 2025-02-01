@@ -20,20 +20,20 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "polaris.fullname" . }}
+  name: {{ include "polaris.fullnameWithSuffix" (list . "mgmt") }}
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "polaris.labels" . | nindent 4 }}
-  {{- with .Values.service.annotations }}
+  {{- with .Values.managementService.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.managementService.type }}
   selector:
     {{- include "polaris.selectorLabels" . | nindent 4 }}
   ports:
-    {{- range .Values.service.ports }}
+    {{- range .Values.managementService.ports }}
     - name: {{ .name }}
       port: {{ .port }}
       {{- if .targetPort }}
@@ -44,18 +44,18 @@ spec:
       {{- end }}
       protocol: {{ default "TCP" .protocol }}
     {{- end }}
-  {{- if .Values.service.sessionAffinity }}
-  sessionAffinity: {{ .Values.service.sessionAffinity }}
+  {{- if .Values.managementService.sessionAffinity }}
+  sessionAffinity: {{ .Values.managementService.sessionAffinity }}
   {{- end }}
-  {{- if .Values.service.clusterIP }}
-  clusterIP: {{ .Values.service.clusterIP }}
+  {{- if .Values.managementService.clusterIP }}
+  clusterIP: {{ .Values.managementService.clusterIP }}
   {{- end }}
-  {{- if and .Values.service.externalTrafficPolicy (or (eq .Values.service.type "LoadBalancer") (eq .Values.service.type "NodePort")) }}
-  externalTrafficPolicy: {{ .Values.service.externalTrafficPolicy }}
+  {{- if and .Values.managementService.externalTrafficPolicy (or (eq .Values.managementService.type "LoadBalancer") (eq .Values.managementService.type "NodePort")) }}
+  externalTrafficPolicy: {{ .Values.managementService.externalTrafficPolicy }}
   {{- end }}
-  {{- if and .Values.service.internalTrafficPolicy }}
-  internalTrafficPolicy: {{ .Values.service.internalTrafficPolicy }}
+  {{- if and .Values.managementService.internalTrafficPolicy }}
+  internalTrafficPolicy: {{ .Values.managementService.internalTrafficPolicy }}
   {{- end }}
-  {{- if and .Values.service.trafficDistribution (ge (int .Capabilities.KubeVersion.Minor) 31) }}
-  trafficDistribution: {{ .Values.service.trafficDistribution }}
+  {{- if and .Values.managementService.trafficDistribution (ge (int $.Capabilities.KubeVersion.Minor) 31) }}
+  trafficDistribution: {{ .Values.managementService.trafficDistribution }}
   {{- end }}

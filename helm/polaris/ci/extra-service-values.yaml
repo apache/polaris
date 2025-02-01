@@ -20,30 +20,9 @@
 image:
   pullPolicy: Never
 
-authentication:
-  tokenBroker:
-    secret:
-      name: polaris-token-broker
-
-logging:
-  file:
-    enabled: true
-    json: true
-    storage:
-      size: 50Mi
-
-persistence:
-  type: eclipse-link
-  eclipseLink:
-    secret:
-      name: polaris-persistence
-
-bootstrap:
-  enabled: true
-  purge: false
-  realms:
-    - POLARIS
-  credentials:
-    - POLARIS,root,secret
-  image:
-    pullPolicy: Never
+extraServices:
+  - nameSuffix: "ext"
+    type: ClusterIP
+    ports:
+    - name: polaris-http2
+      port: 18181
