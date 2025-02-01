@@ -128,6 +128,7 @@ public class IcebergCatalogAdapter
   private final PolarisAuthorizer polarisAuthorizer;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
+  private final IcebergCatalogPrefixParser prefixParser;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -139,7 +140,8 @@ public class IcebergCatalogAdapter
       PolarisDiagnostics diagnostics,
       PolarisAuthorizer polarisAuthorizer,
       TaskExecutor taskExecutor,
-      FileIOFactory fileIOFactory) {
+      FileIOFactory fileIOFactory,
+      IcebergCatalogPrefixParser prefixParser) {
     this.realmId = realmId;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
@@ -149,6 +151,7 @@ public class IcebergCatalogAdapter
     this.polarisAuthorizer = polarisAuthorizer;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
+    this.prefixParser = prefixParser;
   }
 
   /**
@@ -157,8 +160,9 @@ public class IcebergCatalogAdapter
    */
   private Response withCatalog(
       SecurityContext securityContext,
-      String catalogName,
+      String prefix,
       Function<PolarisCatalogHandlerWrapper, Response> action) {
+    String catalogName = prefixParser.prefixToCatalogName(realmId, prefix);
     try (PolarisCatalogHandlerWrapper wrapper = newHandlerWrapper(securityContext, catalogName)) {
       return action.apply(wrapper);
     } catch (RuntimeException e) {
@@ -633,10 +637,11 @@ public class IcebergCatalogAdapter
     Map<String, String> properties =
         PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
 
+    String prefix = prefixParser.catalogNameToPrefix(realmId, warehouse);
     return Response.ok(
             ConfigResponse.builder()
                 .withDefaults(properties) // catalog properties are defaults
-                .withOverrides(ImmutableMap.of("prefix", warehouse))
+                .withOverrides(ImmutableMap.of("prefix", prefix))
                 .withEndpoints(
                     ImmutableList.<Endpoint>builder()
                         .addAll(DEFAULT_ENDPOINTS)
