@@ -29,7 +29,7 @@ cascade:
 
 We have bi-weekly community meeting using https://meet.google.com/pii-faxn-woh[Google Meet].
 
-Join https://calendar.app.google/pUm1MH1gWiMYzXzD8[Polaris Community Sync invite].
+Join https://groups.google.com/u/0/g/polaris-community-sync[Polaris Community Sync invite].
 
 == Scheduled Meetings
 
