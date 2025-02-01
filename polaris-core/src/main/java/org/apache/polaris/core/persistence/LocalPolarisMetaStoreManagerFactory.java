@@ -28,6 +28,7 @@ import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
+import org.apache.polaris.core.context.ImmutableRealmId;
 import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -50,6 +51,8 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   private static final Logger LOGGER =
       LoggerFactory.getLogger(LocalPolarisMetaStoreManagerFactory.class);
 
+  // These maps are all keyed by RealmId.id(); we avoid keying by RealmId to avoid using a CDI proxy
+  // as a key
   private final Map<String, PolarisMetaStoreManager> metaStoreManagerMap = new HashMap<>();
   private final Map<String, StorageCredentialCache> storageCredentialCacheMap = new HashMap<>();
   private final Map<String, EntityCache> entityCacheMap = new HashMap<>();
@@ -96,37 +99,42 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   }
 
   @Override
-  public synchronized Map<String, PrincipalSecretsResult> bootstrapRealms(
-      List<String> realms, PolarisCredentialsBootstrap credentialsBootstrap) {
-    Map<String, PrincipalSecretsResult> results = new HashMap<>();
+  public synchronized Map<RealmId, PrincipalSecretsResult> bootstrapRealms(
+      List<RealmId> realms, PolarisCredentialsBootstrap credentialsBootstrap) {
+    Map<RealmId, PrincipalSecretsResult> results = new HashMap<>();
 
-    for (String realm : realms) {
-      RealmId realmId = RealmId.newRealmId(realm);
-      if (!metaStoreManagerMap.containsKey(realmId.id())) {
-        initializeForRealm(realmId, credentialsBootstrap);
+    for (RealmId realm : realms) {
+      if (!metaStoreManagerMap.containsKey(realm.id())) {
+        initializeForRealm(realm, credentialsBootstrap);
         PrincipalSecretsResult secretsResult =
             bootstrapServiceAndCreatePolarisPrincipalForRealm(
-                realmId, metaStoreManagerMap.get(realmId.id()));
-        results.put(realmId.id(), secretsResult);
+                realm, metaStoreManagerMap.get(realm.id()));
+        // copy to avoid using a CDI proxy as a key
+        results.put(ImmutableRealmId.copyOf(realm), secretsResult);
       }
     }
 
-    return results;
+    return Map.copyOf(results);
   }
 
   @Override
-  public void purgeRealms(List<String> realms) {
-    for (String realm : realms) {
-      PolarisMetaStoreManager metaStoreManager =
-          getOrCreateMetaStoreManager(RealmId.newRealmId(realm));
-      PolarisMetaStoreSession session = getOrCreateSessionSupplier(RealmId.newRealmId(realm)).get();
+  public synchronized Map<RealmId, BaseResult> purgeRealms(List<RealmId> realms) {
+    Map<RealmId, BaseResult> results = new HashMap<>();
 
-      metaStoreManager.purge(session);
+    for (RealmId realm : realms) {
+      PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(realm);
+      PolarisMetaStoreSession session = getOrCreateSessionSupplier(realm).get();
 
-      storageCredentialCacheMap.remove(realm);
-      sessionSupplierMap.remove(realm);
-      metaStoreManagerMap.remove(realm);
+      BaseResult result = metaStoreManager.purge(session);
+      // copy to avoid using a CDI proxy as a key
+      results.put(ImmutableRealmId.copyOf(realm), result);
+
+      storageCredentialCacheMap.remove(realm.id());
+      sessionSupplierMap.remove(realm.id());
+      metaStoreManagerMap.remove(realm.id());
     }
+
+    return Map.copyOf(results);
   }
 
   @Override

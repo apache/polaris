@@ -67,7 +67,7 @@ public class TestRealmIdResolver implements RealmIdResolver {
           "Failed to parse {} from headers; using {}",
           REALM_PROPERTY_KEY,
           configuration.defaultRealm());
-      parsedProperties.put(REALM_PROPERTY_KEY, configuration.defaultRealm());
+      parsedProperties.put(REALM_PROPERTY_KEY, configuration.defaultRealm().id());
     }
     String realmId = parsedProperties.get(REALM_PROPERTY_KEY);
     return RealmId.newRealmId(realmId);

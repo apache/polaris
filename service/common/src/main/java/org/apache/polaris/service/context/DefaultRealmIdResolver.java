@@ -39,10 +39,10 @@ public class DefaultRealmIdResolver implements RealmIdResolver {
   public RealmId resolveRealmContext(
       String requestURL, String method, String path, Map<String, String> headers) {
 
-    String realm;
+    RealmId realm;
 
     if (headers.containsKey(configuration.headerName())) {
-      realm = headers.get(configuration.headerName());
+      realm = RealmId.newRealmId(headers.get(configuration.headerName()));
       if (!configuration.realms().contains(realm)) {
         throw new IllegalArgumentException("Unknown realm: " + realm);
       }
@@ -50,6 +50,6 @@ public class DefaultRealmIdResolver implements RealmIdResolver {
       realm = configuration.defaultRealm();
     }
 
-    return RealmId.newRealmId(realm);
+    return realm;
   }
 }

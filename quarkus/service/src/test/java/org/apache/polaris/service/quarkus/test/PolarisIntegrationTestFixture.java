@@ -95,12 +95,12 @@ public class PolarisIntegrationTestFixture {
   }
 
   private PolarisPrincipalSecrets fetchAdminSecrets() {
+    RealmId realmId = RealmId.newRealmId(realm);
+
     if (!(helper.metaStoreManagerFactory instanceof InMemoryPolarisMetaStoreManagerFactory)) {
       helper.metaStoreManagerFactory.bootstrapRealms(
-          List.of(realm), PolarisCredentialsBootstrap.fromEnvironment());
+          List.of(realmId), PolarisCredentialsBootstrap.fromEnvironment());
     }
-
-    RealmId realmId = RealmId.newRealmId(realm);
 
     PolarisMetaStoreSession metaStoreSession =
         helper.metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
@@ -199,7 +199,7 @@ public class PolarisIntegrationTestFixture {
   public void destroy() {
     try {
       if (realm != null) {
-        helper.metaStoreManagerFactory.purgeRealms(List.of(realm));
+        helper.metaStoreManagerFactory.purgeRealms(List.of(RealmId.newRealmId(realm)));
       }
     } catch (Exception e) {
       LOGGER.error("Failed to purge realm", e);

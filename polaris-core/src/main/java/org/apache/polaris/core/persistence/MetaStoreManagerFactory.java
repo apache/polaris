@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence;
 
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -37,9 +38,11 @@ public interface MetaStoreManagerFactory {
 
   EntityCache getOrCreateEntityCache(RealmId realmId);
 
-  Map<String, PrincipalSecretsResult> bootstrapRealms(
-      List<String> realms, PolarisCredentialsBootstrap credentialsBootstrap);
+  @CanIgnoreReturnValue
+  Map<RealmId, PrincipalSecretsResult> bootstrapRealms(
+      List<RealmId> realms, PolarisCredentialsBootstrap credentialsBootstrap);
 
   /** Purge all metadata for the realms provided */
-  void purgeRealms(List<String> realms);
+  @CanIgnoreReturnValue
+  Map<RealmId, BaseResult> purgeRealms(List<RealmId> realms);
 }

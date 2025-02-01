@@ -18,35 +18,19 @@
  */
 package org.apache.polaris.admintool;
 
-import java.util.List;
 import org.apache.polaris.core.context.RealmId;
-import picocli.CommandLine;
+import picocli.CommandLine.ITypeConverter;
 
-@CommandLine.Command(
-    name = "purge",
-    mixinStandardHelpOptions = true,
-    description = "Purge realms and all associated entities.")
-public class PurgeCommand extends BaseCommand {
-
-  @CommandLine.Option(
-      names = {"-r", "--realm"},
-      paramLabel = "<realm>",
-      required = true,
-      converter = RealmIdConverter.class,
-      description = "The name of a realm to purge.")
-  List<RealmId> realms;
+/**
+ * An {@link ITypeConverter} that converts strings to {@link RealmId} instances.
+ *
+ * <p>This class is used by the {@link BootstrapCommand} and the {@link PurgeCommand} to convert the
+ * realm ids provided on the command line to {@link RealmId} instances.
+ */
+public class RealmIdConverter implements ITypeConverter<RealmId> {
 
   @Override
-  public Integer call() {
-    warnOnInMemory();
-
-    try {
-      metaStoreManagerFactory.purgeRealms(realms);
-      spec.commandLine().getOut().println("Purge completed successfully.");
-      return 0;
-    } catch (Exception e) {
-      spec.commandLine().getErr().println("Purge encountered errors during operation.");
-      return EXIT_CODE_PURGE_ERROR;
-    }
+  public RealmId convert(String value) {
+    return RealmId.newRealmId(value);
   }
 }
