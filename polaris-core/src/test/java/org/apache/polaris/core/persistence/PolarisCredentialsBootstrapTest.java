@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 class PolarisCredentialsBootstrapTest {
@@ -87,6 +88,104 @@ class PolarisCredentialsBootstrapTest {
     } finally {
       System.clearProperty("polaris.bootstrap.credentials");
     }
+  }
+
+  @Test
+  void testSingleRealmJson() {
+    String json =
+        "["
+            + "{\"realm\": \"a\", \"principal\": \"root\", \"clientId\": \"abc123\", \"clientSecret\": \"xyz987\"},"
+            + "]";
+
+    PolarisCredentialsBootstrap result = PolarisCredentialsBootstrap.fromJson(json);
+
+    Assertions.assertNotNull(result);
+    Assertions.assertEquals(1, result.credentials.size());
+    Assertions.assertEquals("abc123", result.credentials.get("a").getKey());
+    Assertions.assertEquals("xyz987", result.credentials.get("a").getValue());
+  }
+
+  @Test
+  void testMultiRealmJson() {
+    String json =
+        "["
+            + "{\"realm\": \"a\", \"principal\": \"root\", \"clientId\": \"abc123\", \"clientSecret\": \"xyz987\"},"
+            + "{\"realm\": \"b\", \"principal\": \"root\", \"clientId\": \"boot-id\", \"clientSecret\": \"boot-secret\"}"
+            + "]";
+
+    PolarisCredentialsBootstrap result = PolarisCredentialsBootstrap.fromJson(json);
+
+    Assertions.assertNotNull(result);
+    Assertions.assertEquals(2, result.credentials.size());
+    Assertions.assertEquals("abc123", result.credentials.get("a").getKey());
+    Assertions.assertEquals("xyz987", result.credentials.get("a").getValue());
+    Assertions.assertEquals("boot-id", result.credentials.get("b").getKey());
+    Assertions.assertEquals("boot-secret", result.credentials.get("b").getValue());
+  }
+
+  @Test
+  void testInvalidMultiRealmJson() {
+    String json =
+        "["
+            + "{\"realm\": \"a\", \"principal\": \"root\", \"clientId\": \"abc123\"},"
+            + "{\"realm\": \"b\", \"principal\": \"root\", \"clientId\": \"boot-id\", \"clientSecret\": \"boot-secret\"}"
+            + "]";
+
+    Exception exception =
+        Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              PolarisCredentialsBootstrap.fromJson(json);
+            });
+
+    Assertions.assertTrue(exception.getMessage().contains("Failed to find credentials"));
+  }
+
+  @Test
+  void testNonRootPrincipalInJson() {
+    String json =
+        "["
+            + "{\"realm\": \"a\", \"principal\": \"invalid\", \"clientId\": \"abc123\", \"clientSecret\": \"xyz987\"},"
+            + "{\"realm\": \"b\", \"principal\": \"root\", \"clientId\": \"boot-id\", \"clientSecret\": \"boot-secret\"}"
+            + "]";
+
+    Exception exception =
+        Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              PolarisCredentialsBootstrap.fromJson(json);
+            });
+
+    Assertions.assertTrue(
+        exception.getMessage().contains("Invalid principal invalid. Expected root."));
+  }
+
+  @Test
+  void testDuplicateRealmInJson() {
+    String json =
+        "["
+            + "{\"realm\": \"a\", \"principal\": \"root\", \"clientId\": \"abc123\", \"clientSecret\": \"xyz987\"},"
+            + "{\"realm\": \"a\", \"principal\": \"root\", \"clientId\": \"boot-id\", \"clientSecret\": \"boot-secret\"}"
+            + "]";
+
+    Exception exception =
+        Assertions.assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              PolarisCredentialsBootstrap.fromJson(json);
+            });
+
+    Assertions.assertTrue(exception.getMessage().contains("Duplicate realm: a"));
+  }
+
+  @Test
+  void testEmptyCredentialsJson() {
+    String json = "[]";
+
+    PolarisCredentialsBootstrap result = PolarisCredentialsBootstrap.fromJson(json);
+
+    Assertions.assertNotNull(result);
+    Assertions.assertTrue(result.credentials.isEmpty());
   }
 
   private void assertCredentials(PolarisCredentialsBootstrap credentials) {
