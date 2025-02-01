@@ -17,6 +17,7 @@
  * under the License.
  */
 
+import io.quarkus.gradle.tasks.QuarkusBuild
 import io.quarkus.gradle.tasks.QuarkusRun
 
 plugins {
@@ -27,6 +28,11 @@ plugins {
   // id("polaris-license-report")
   id("distribution")
 }
+
+val quarkusRunner by
+  configurations.creating {
+    description = "Used to reference the generated runner-jar (either fast-jar or uber-jar)"
+  }
 
 dependencies {
   implementation(project(":polaris-core"))
@@ -81,5 +87,15 @@ distributions {
       from("../../LICENSE-BINARY-DIST").rename("LICENSE-BINARY-DIST", "LICENSE")
       exclude("lib/main/io.quarkus.quarkus-container-image*")
     }
+  }
+}
+
+val quarkusBuild = tasks.named<QuarkusBuild>("quarkusBuild")
+
+// Expose runnable jar via quarkusRunner configuration for integration-tests that require the
+// server.
+artifacts {
+  add(quarkusRunner.name, provider { quarkusBuild.get().fastJar.resolve("quarkus-run.jar") }) {
+    builtBy(quarkusBuild)
   }
 }
