@@ -16,20 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool;
 
-import jakarta.inject.Inject;
-import java.util.concurrent.Callable;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import picocli.CommandLine.Model.CommandSpec;
-import picocli.CommandLine.Spec;
+CREATE DATABASE polaris_realm2;
+GRANT ALL PRIVILEGES ON DATABASE polaris_realm2 TO polaris;
 
-public abstract class BaseCommand implements Callable<Integer> {
-
-  public static final int EXIT_CODE_BOOTSTRAP_ERROR = 3;
-  public static final int EXIT_CODE_PURGE_ERROR = 4;
-
-  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-
-  @Spec CommandSpec spec;
-}
+CREATE DATABASE polaris_realm3;
+GRANT ALL PRIVILEGES ON DATABASE polaris_realm3 TO polaris;
