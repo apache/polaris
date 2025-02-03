@@ -37,12 +37,3 @@ persistence:
   eclipseLink:
     secret:
       name: polaris-persistence
-
-bootstrap:
-  enabled: true
-  realms:
-    - POLARIS
-  credentials:
-    - POLARIS,root,secret
-  image:
-    pullPolicy: Never

@@ -368,34 +368,6 @@ extraInitContainers: []
   #   imagePullPolicy: Always
   #   command: ['sh', '-c', 'echo "hello world"']
 
-# -- Configures whether to enable the bootstrap metastore manager job.
-# It is recommended to bootstrap realms using the Polaris Admin Tool; use this only if you need to
-# bootstrap realms while deploying Polaris at the same time.
-bootstrap:
-  # -- Specifies whether the bootstrap metastore manager job should be enabled.
-  enabled: false
-  # -- The names of the realms to bootstrap.
-  realms: []
-  # -- The root credentials to create during the bootstrap. If you don't provide credentials for the
-  # root principal of each realm to bootstrap, random credentials will be generated.
-  # Each entry in the array must be of the form: realm,clientId,clientSecret
-  credentials: []
-    # - realm1,root,s3cr3t
-    # - realm2,root,s3cr3t
-  # -- The image to use for the bootstrap metastore manager job.
-  image:
-    # -- The image repository to pull from.
-    repository: apache/polaris-admin-tool
-    # -- The image pull policy.
-    pullPolicy: IfNotPresent
-    # -- The image tag.
-    tag: "latest"
-    # -- The path to the directory where the application.properties file, and other configuration
-    # files, if any, should be mounted.
-    configDir: /deployments/config
-  # -- Extra environment variables to add to the bootstrap metastore manager job (see `extraEnv` for an example)
-  extraEnv: []
-
 tracing:
   # -- Specifies whether tracing for the polaris server should be enabled.
   enabled: false

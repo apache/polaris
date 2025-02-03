@@ -149,16 +149,6 @@ helm uninstall --namespace polaris polaris
 | autoscaling.minReplicas | int | `1` | The minimum number of replicas to maintain. |
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Optional; set to zero or empty to disable. |
 | autoscaling.targetMemoryUtilizationPercentage | string | `nil` | Optional; set to zero or empty to disable. |
-| bootstrap | object | `{"credentials":[],"enabled":false,"extraEnv":[],"image":{"configDir":"/deployments/config","pullPolicy":"IfNotPresent","repository":"apache/polaris-admin-tool","tag":"latest"},"realms":[]}` | Configures whether to enable the bootstrap metastore manager job. It is recommended to bootstrap realms using the Polaris Admin Tool; use this only if you need to bootstrap realms while deploying Polaris at the same time. |
-| bootstrap.credentials | list | `[]` | The root credentials to create during the bootstrap. If you don't provide credentials for the root principal of each realm to bootstrap, random credentials will be generated. Each entry in the array must be of the form: realm,clientId,clientSecret |
-| bootstrap.enabled | bool | `false` | Specifies whether the bootstrap metastore manager job should be enabled. |
-| bootstrap.extraEnv | list | `[]` | Extra environment variables to add to the bootstrap metastore manager job (see `extraEnv` for an example) |
-| bootstrap.image | object | `{"configDir":"/deployments/config","pullPolicy":"IfNotPresent","repository":"apache/polaris-admin-tool","tag":"latest"}` | The image to use for the bootstrap metastore manager job. |
-| bootstrap.image.configDir | string | `"/deployments/config"` | The path to the directory where the application.properties file, and other configuration files, if any, should be mounted. |
-| bootstrap.image.pullPolicy | string | `"IfNotPresent"` | The image pull policy. |
-| bootstrap.image.repository | string | `"apache/polaris-admin-tool"` | The image repository to pull from. |
-| bootstrap.image.tag | string | `"latest"` | The image tag. |
-| bootstrap.realms | list | `[]` | The names of the realms to bootstrap. |
 | configMapLabels | object | `{}` | Additional Labels to apply to polaris configmap. |
 | containerSecurityContext | object | `{}` | Security context for the polaris container. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
 | cors | object | `{"accessControlAllowCredentials":null,"accessControlMaxAge":null,"allowedHeaders":[],"allowedMethods":[],"allowedOrigins":[],"exposedHeaders":[]}` | Polaris CORS configuration. |
