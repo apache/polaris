@@ -46,6 +46,9 @@ stringData:
           <property name="eclipselink.logging.level.sql" value="FINE"/>
           <property name="eclipselink.logging.parameters" value="true"/>
           <property name="eclipselink.persistence-context.flush-mode" value="auto"/>
+          <property name="eclipselink.connection-pool.default.initial" value="1" />
+          <property name="eclipselink.connection-pool.default.min" value="1" />
+          <property name="eclipselink.connection-pool.default.max" value="1" />
         </properties>
       </persistence-unit>
     </persistence>
