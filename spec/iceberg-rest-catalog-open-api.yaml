@@ -1787,8 +1787,35 @@ paths:
         - Catalog API
       summary: 'Create a policy in the given namespace'
       operationId: createPolicy
-      description:
-        Create a policy in the given namespace
+      description: >
+        Creates a policy within the specified namespace.
+
+        
+        A policy defines a set of rules governing actions on specified resources under predefined conditions.
+
+        In Apache Polaris, policies are created, stored, and later referenced by external engines to enforce access controls on associated resources.
+
+        
+        User provides the following inputs when creating a policy
+        
+        - `name`(REQUIRED): The name of the policy. It Must include only unreserved URL characters: letters(A-Z, a-z), digits (0-9), hyphens (-), periods (.), underscores (_) and tildes (~)
+        
+        - `type` (REQUIRED): The type of the policy. It can be either predefined type or custom type.
+          - **Predefined Policies:** system.compaction, system.snapshot_retention
+          - **Custom Policies:** custom.<org_name>.data_masking, custom.<user_id>.audit_policy
+        
+        - `description` (OPTIONAL): Provides details about the policy's purpose and functionality
+        
+        - `content` (OPTIONAL): Defines the rules that control actions and access conditions on resources. The format can be JSON, SQL, or any other format.
+          
+        
+        The policy content is validated by the server upon creation or update: 
+        
+        - Predefined policies are validated using built-in server-side validators
+        
+        - Custom policies rely on user-provided validators.
+
+
       requestBody:
         required: true
         content:
@@ -1826,7 +1853,7 @@ paths:
         Get a policy from the catalog
         
         
-        The response contains the policy's metadata and content
+        The response contains the policy's metadata and content. For more details, refer to the definition of the `Policy` model.
       responses:
         200:
           $ref: '#/components/responses/LoadPolicyResponse'
@@ -1860,6 +1887,11 @@ paths:
       operationId: updatePolicy
       description:
         Update a policy
+
+        
+        A policy's description and content can be updated. 
+        The new content is validated against the policy's corresponding validator, which is determined by its type—predefined policies use built-in server-side validators, while custom policies rely on user-provided validators. 
+        Upon a successful update, the policy's version is incremented by 1.
       requestBody:
         required: true
         content:
@@ -1936,10 +1968,29 @@ paths:
         - Catalog API
       summary: Create a mapping between a policy and a resource entity
       operationId: setPolicy
-      description: 
+      description: >
         Create a mapping between a policy and a resource entity
 
-        A resource entity can be a catalog, namespace, or any table-like entity
+        
+        Policy can be set at different levels, table, namespace, and catalog, and they will be interited by lower level entities. Different levels are:
+        
+        1. **Table-like level:** Policies specific to individual tables/views.
+        
+        2. **Namsepace level:** Policies that apply to all tables within a namespace.
+        
+        3. **Catalog level:** Catalog-wide policies that ally across all tables within a namespace
+
+        
+        Policy Inheritance Override rules
+
+        - Table-like-level policies override namespace and catalog policies
+        
+        - Namespace-level policies override upper level namespace or catalog policies
+        
+        - Overrides apply only to policies of the same type
+
+
+        Additional parameters can be provided in `parameters` when creating a mapping to define specific behavior or constraints.
       requestBody:
         required: true
         content:
@@ -1992,6 +2043,7 @@ paths:
       description: 
         Remove a mapping between a policy and a resource entity
 
+        
         A resource entity can be a catalog, namespace, or any table-like entity
       requestBody:
         required: true
@@ -2135,11 +2187,13 @@ components:
     policy:
       name: policy
       in: path
-      description: a policy name
+      description: 
+        A policy name. A valid policy name should only consist of unreserved URI characters,
+        which include uppercase and lowercase letters (A-Z, a-z), digits (0-9), hyphens (-),
+        periods (.), underscores (_), and tildes (~). 
       required: true
       schema:
         $ref: '#/components/schemas/PolicyName'
-      example: 'compaction'
 
   ##############################
   # Application Schema Objects #
@@ -4528,9 +4582,41 @@ components:
     PolicyName:
       type: string
       pattern: '^[A-Za-z0-9\-\._~]+$'
+      example: 'compaction'
     
     Policy:
       type: object
+      description: >
+        A policy in Apache Polaris defines a set of rules for governing access, data usage, and operational consistency
+        across various catalog resources. Policies are stored within Polaris and can be applied to catalogs, namespaces,
+        tables, and views. They enable fine-grained control over who can perform specific actions on these resources.
+
+        
+        The policy object includes
+
+        - **owner-entity-id:** The id of the entity that owns the policy
+        
+        - **policy-id:** A unique id for the policy
+        
+        - **policy-type:** The type of the policy, which determines the expected format and semantics of the policy content.
+          For example, predefined types include `system.compaction` or `system.snapshot_retention`, while custom policy types
+          follow a namespaced format like `custom.<org_name>.data_masking`.
+        
+        - **name:**  A human-readable name for the policy, which must be unique within a given namespace.
+        
+        - **description:** Detailed description of the purpose and functionalities of the policy.
+        
+        - **content:** Policy content, which can be validated against predefined schemas for policy types.
+        
+        - **version:** Indicates the current version of the policy. Versions increased monotonically, the default value is 0
+        
+        - **created_at:** A timestamp (in milliseconds) indicating when the policy was created.
+        
+        - **updated_at:** A timestamp (in milliseconds) indicating the last update time of the policy.
+
+        
+        Policies stored in Polaris serve as the persistent definition for access control and governance rules, while
+        their evaluation and enforcement are delegated to external computation engines.
       required:
         - owner-entity-id
         - policy-id
@@ -4539,7 +4625,7 @@ components:
         - content
         - version
       properties:
-        owner-id:
+        owner-entity-id:
           type: string
         policy-id:
           type: string
@@ -4567,7 +4653,7 @@ components:
         - type
       properties:
         name: 
-          type: string
+          $ref: '#/components/schemas/PolicyName'
         type:
           type: string
         description:
