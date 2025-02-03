@@ -18,30 +18,17 @@
  */
 package org.apache.polaris.core.context;
 
-import com.fasterxml.jackson.annotation.JsonValue;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import org.apache.polaris.immutables.PolarisImmutable;
-import org.immutables.value.Value;
-
 /**
- * Represents the ID of the realm used in a REST request associated with routing to independent and
- * isolated "universes".
+ * Represents the elements of a REST request associated with routing to independent and isolated
+ * "universes". This may include properties such as region, deployment environment (e.g. dev, qa,
+ * prod), and/or account.
  */
-@PolarisImmutable
-@JsonSerialize(as = ImmutableRealmId.class)
-@JsonDeserialize(as = ImmutableRealmId.class)
-public interface RealmId {
+public interface RealmContext {
 
-  static RealmId newRealmId(String id) {
-    return ImmutableRealmId.of(id);
+  static RealmContext copyOf(RealmContext original) {
+    String realmIdentifier = original.getRealmIdentifier();
+    return () -> realmIdentifier;
   }
 
-  static RealmId copyOf(RealmId realmId) {
-    return ImmutableRealmId.copyOf(realmId);
-  }
-
-  @Value.Parameter
-  @JsonValue
-  String id();
+  String getRealmIdentifier();
 }

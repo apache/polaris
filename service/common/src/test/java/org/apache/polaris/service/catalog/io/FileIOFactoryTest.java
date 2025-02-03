@@ -40,9 +40,8 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.*;
-import org.apache.polaris.core.persistence.*;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
@@ -71,7 +70,7 @@ public class FileIOFactoryTest {
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
   public static final String SESSION_TOKEN = "session_token";
 
-  private RealmId realmId;
+  private RealmContext realmContext;
   private StsClient stsClient;
   private TestServices testServices;
 
@@ -81,7 +80,7 @@ public class FileIOFactoryTest {
         "realm_%s_%s"
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
-    realmId = RealmId.newRealmId(realmName);
+    realmContext = () -> realmName;
 
     // Mock get subscoped creds
     stsClient = Mockito.mock(StsClient.class);
@@ -117,7 +116,7 @@ public class FileIOFactoryTest {
     testServices =
         TestServices.builder()
             .config(Map.of("ALLOW_SPECIFYING_FILE_IO_IMPL", true))
-            .realmId(realmId)
+            .realmId(realmContext)
             .stsClient(stsClient)
             .fileIOFactorySupplier(fileIOFactorySupplier)
             .build();
@@ -154,15 +153,19 @@ public class FileIOFactoryTest {
     List<PolarisBaseEntity> tasks =
         testServices
             .metaStoreManagerFactory()
-            .getOrCreateMetaStoreManager(realmId)
+            .getOrCreateMetaStoreManager(realmContext)
             .loadTasks(
-                testServices.metaStoreManagerFactory().getOrCreateSessionSupplier(realmId).get(),
+                testServices
+                    .metaStoreManagerFactory()
+                    .getOrCreateSessionSupplier(realmContext)
+                    .get(),
                 "testExecutor",
                 1)
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
-    FileIO fileIO = new TaskFileIOSupplier(testServices.fileIOFactory()).apply(taskEntity, realmId);
+    FileIO fileIO =
+        new TaskFileIOSupplier(testServices.fileIOFactory()).apply(taskEntity, realmContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(InMemoryFileIO.class);
 
     // 1. BasePolarisCatalog:doCommit: for writing the table during the creation
@@ -199,20 +202,20 @@ public class FileIOFactoryTest {
     services
         .catalogsApi()
         .createCatalog(
-            new CreateCatalogRequest(catalog), services.realmId(), services.securityContext());
+            new CreateCatalogRequest(catalog), services.realmContext(), services.securityContext());
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            services.entityManagerFactory().getOrCreateEntityManager(realmId),
-            services.metaStoreManagerFactory().getOrCreateSessionSupplier(realmId).get(),
+            services.entityManagerFactory().getOrCreateEntityManager(realmContext),
+            services.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
             services.securityContext(),
             CATALOG_NAME);
     BasePolarisCatalog polarisCatalog =
         new BasePolarisCatalog(
-            services.realmId(),
-            services.entityManagerFactory().getOrCreateEntityManager(realmId),
-            services.metaStoreManagerFactory().getOrCreateMetaStoreManager(realmId),
-            services.metaStoreManagerFactory().getOrCreateSessionSupplier(realmId).get(),
+            services.realmContext(),
+            services.entityManagerFactory().getOrCreateEntityManager(realmContext),
+            services.metaStoreManagerFactory().getOrCreateMetaStoreManager(realmContext),
+            services.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
             services.configurationStore(),
             services.polarisDiagnostics(),
             passthroughView,
