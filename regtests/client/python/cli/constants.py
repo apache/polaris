@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import os
 from enum import Enum
 
 
@@ -58,6 +59,7 @@ class Commands:
     CATALOG_ROLES = 'catalog-roles'
     PRIVILEGES = 'privileges'
     NAMESPACES = 'namespaces'
+    PROFILES = 'profiles'
 
 
 class Subcommands:
@@ -131,6 +133,7 @@ class Arguments:
     BASE_URL = 'base_url'
     PARENT = 'parent'
     LOCATION = 'location'
+    PROFILE = 'profile'
 
 
 class Hints:
@@ -229,3 +232,5 @@ CLIENT_ID_ENV = 'CLIENT_ID'
 CLIENT_SECRET_ENV = 'CLIENT_SECRET'
 DEFAULT_HOSTNAME = 'localhost'
 DEFAULT_PORT = 8181
+CONFIG_DIR = os.path.expanduser("~/.polaris")
+CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
