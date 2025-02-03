@@ -199,5 +199,5 @@ data:
     {{- /* Print the resulting configmap; each configuration option is templatized */ -}}
     {{- $global := . -}}
     {{- range $k, $v := $map }}
-    {{ include "polaris.appendConfigOption" (list  $k $v $global) }}
+    {{ include "polaris.appendConfigOption" (list $k $v $global) }}
     {{- end }}
