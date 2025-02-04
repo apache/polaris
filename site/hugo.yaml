@@ -251,3 +251,11 @@ privacy:
     simple: true
   youtube:
     privacyEnhanced: true
+
+server:
+  headers:
+    for: /**
+    values:
+      Content-Security-Policy: >2
+            script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval' https://analytics.apache.org/ https://cdn.jsdelivr.net
+
