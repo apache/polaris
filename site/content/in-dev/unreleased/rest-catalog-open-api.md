@@ -17,7 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'Apache Polaris Catalog OpenAPI'
+title: 'Apache Polaris and Iceberg Catalog OpenAPI'
 linkTitle: 'Catalog OpenAPI'
 weight: 900
 params:
