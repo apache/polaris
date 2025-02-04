@@ -17,11 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'Apache Iceberg OpenAPI'
-linkTitle: 'Iceberg OpenAPI'
+title: 'Apache Polaris and Iceberg Catalog OpenAPI'
+linkTitle: 'Catalog OpenAPI'
 weight: 900
 params:
   show_page_toc: false
 ---
 
-{{< redoc-polaris "rest-catalog-open-api.yaml" >}}
+{{< redoc-polaris "generated/bundled-polaris-catalog-service.yaml" >}}
