@@ -60,7 +60,7 @@ Helm unit tests do not require a Kubernetes cluster. To run the unit tests from 
 root:
 
 ```bash
-helm unittest helm/polaris 2> >(grep -v 'found symbolic link' >&2)
+helm unittest helm/polaris
 ```
 
 Note: the `grep` command is used to filter out the annoying warning messages about symbolic links;

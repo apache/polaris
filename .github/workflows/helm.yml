@@ -79,7 +79,7 @@ jobs:
         if: steps.list-changed.outputs.changed == 'true'
         run: |
           helm plugin install https://github.com/helm-unittest/helm-unittest.git || true
-          helm unittest helm/polaris 2> >(grep -v 'found symbolic link' >&2)
+          helm unittest helm/polaris
 
       - name: Run chart-testing (lint)
         if: steps.list-changed.outputs.changed == 'true'
