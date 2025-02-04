@@ -1615,15 +1615,20 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // storage configuration will be found at whatever entity defines it
     tableProperties.putAll(credentialsMap);
 
-    Map<String, String> updatedProps = tableProperties.entrySet().stream()
-            .filter(entry -> entry.getKey().contains("sas-token")) // Filter entries containing "sas-token"
-            .collect(Collectors.toMap(
-                    entry -> entry.getKey()
+    Map<String, String> updatedProps =
+        tableProperties.entrySet().stream()
+            .filter(
+                entry ->
+                    entry.getKey().contains("sas-token")) // Filter entries containing "sas-token"
+            .collect(
+                Collectors.toMap(
+                    entry ->
+                        entry
+                            .getKey()
                             .replace(".dfs.core.windows.net", "")
-                            .replace(".blob.core.windows.net", ""), // Modified key
-                    Map.Entry::getValue,                                      // Original value
-                    (oldVal, newVal) -> newVal // Merge function for duplicate keys (important!)
-            ));
+                            .replace(".blob.core.windows.net", ""),
+                    Map.Entry::getValue, // Original value
+                    (oldVal, newVal) -> newVal));
 
     tableProperties.putAll(updatedProps);
     FileIO fileIO = null;
