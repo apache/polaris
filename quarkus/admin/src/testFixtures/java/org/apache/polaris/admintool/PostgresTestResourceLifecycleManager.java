@@ -18,18 +18,14 @@
  */
 package org.apache.polaris.admintool;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import io.quarkus.test.common.DevServicesContext;
 import io.quarkus.test.common.QuarkusTestResourceLifecycleManager;
-import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Comparator;
 import java.util.Map;
-import java.util.stream.Stream;
+import org.apache.commons.io.FileUtils;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -80,10 +76,8 @@ public class PostgresTestResourceLifecycleManager
       }
     }
     if (rootDir != null) {
-      try (Stream<Path> paths = Files.walk(rootDir)) {
-        boolean allDeleted =
-            paths.sorted(Comparator.reverseOrder()).map(Path::toFile).allMatch(File::delete);
-        assertTrue(allDeleted);
+      try {
+        FileUtils.deleteDirectory(rootDir.toFile());
       } catch (IOException e) {
         throw new UncheckedIOException(e);
       } finally {
