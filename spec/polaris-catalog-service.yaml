@@ -134,6 +134,15 @@ paths:
   /v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications:
     $ref: './polaris-catalog-apis/notifications-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1notifications'
 
+  /v1/{prefix}/namespaces/{namespace}/policies:
+    $ref: './polaris-catalog-apis/policy-management-apis.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies'
+
+  /v1/{prefix}/namespaces/{namespace}/policies/{policy}:
+    $ref: './polaris-catalog-apis/policy-management-apis.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policy}'
+
+  /v1/{prefix}/namespaces/{namespace}/policies/{policy}/mappings:
+    $ref: './polaris-catalog-apis/policy-management-apis.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policy}~1mappings'
+
 
 components:
   securitySchemes:
