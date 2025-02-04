@@ -1070,11 +1070,11 @@ paths:
       requestBody:
         description:
           The request containing the notification to be sent.
-          
+        
           For each table, Polaris will reject any notification where the timestamp in the request body
           is older than or equal to the most recent time Polaris has already processed for the table.
-          The responsibility of ensuring the correct order of timestamps for a sequence of notifications
-          lies with the caller of the API. This includes managing potential clock skew or inconsistencies
+          The responsibility of ensuring the correct order of timestamps for a sequence of notifications 
+          lies with the caller of the API. This includes managing potential clock skew or inconsistencies 
           when notifications are sent from multiple sources.
 
           A VALIDATE request behaves like a dry-run of a CREATE or UPDATE request up to but not including
@@ -1111,7 +1111,7 @@ paths:
                   $ref: '#/components/examples/NoSuchTableError'
         409:
           description:
-            Conflict - The timestamp of the received notification is older than or equal to the
+            Conflict - The timestamp of the received notification is older than or equal to the 
             most recent timestamp Polaris has already processed for the specified table.
           content:
             application/json:
@@ -4364,7 +4364,7 @@ components:
 
     OutOfOrderNotificationError:
       summary:
-        The timestamp of the received notification is older than or equal to the most recent timestamp
+        The timestamp of the received notification is older than or equal to the most recent timestamp 
         Polaris has already processed for the specified table.
       value: {
         "error": {
