@@ -74,8 +74,10 @@ paths:
   /v1/config:
     $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1config'
 
+  # Deprecated, it should be removed or modified in the future according to
+  # https://github.com/apache/polaris/issues/12
   /v1/oauth/tokens:
-    $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1oauth~1tokens'
+    $ref: './polaris-catalog-apis/oauth-tokens-api.yaml#/paths/~1v1~1oauth~1tokens'
 
   /v1/{prefix}/namespaces:
     $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1namespaces'
