@@ -1,0 +1,538 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+---
+paths:
+
+  /v1/{prefix}/namespaces/{namespace}/policies:
+    parameters:
+      - $ref: '../rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '../rest-catalog-open-api.yaml#/components/parameters/namespace'
+
+    post:
+      tags:
+        - Catalog API
+      summary: 'Create a policy in the given namespace'
+      operationId: createPolicy
+      description: >
+        Creates a policy within the specified namespace.
+        
+        
+        A policy defines a set of rules governing actions on specified resources under predefined conditions.
+        
+        In Apache Polaris, policies are created, stored, and later referenced by external engines to enforce access controls on associated resources.
+        
+        
+        User provides the following inputs when creating a policy
+        
+        - `name`(REQUIRED): The name of the policy. It Must include only unreserved URL characters: letters(A-Z, a-z), digits (0-9), hyphens (-), periods (.), underscores (_) and tildes (~)
+        
+        - `type` (REQUIRED): The type of the policy. It can be either predefined type or custom type.
+          - **Predefined Policies:** system.compaction, system.snapshot_retention
+          - **Custom Policies:** custom.<org_name>.data_masking, custom.<user_id>.audit_policy
+        
+        - `description` (OPTIONAL): Provides details about the policy's purpose and functionality
+        
+        - `content` (OPTIONAL): Defines the rules that control actions and access conditions on resources. The format can be JSON, SQL, or any other format.
+        
+        
+        The policy content is validated by the server upon creation or update: 
+        
+        - Predefined policies are validated using built-in server-side validators
+        
+        - Custom policies rely on user-provided validators.
+      
+
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePolicyRequest'
+      responses:
+        200:
+          $ref: '#/components/responses/CreatePolicyResponse'
+        400:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        419:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+  /v1/{prefix}/namespaces/{namespace}/policies/{policy}:
+    parameters:
+      - $ref: '../rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '../rest-catalog-open-api.yaml#/components/parameters/namespace'
+      - $ref: '#/components/parameters/policy'
+
+    get:
+      tags:
+        - Catalog API
+      summary: 'Get a policy'
+      operationId: getPolicy
+      description:
+        Get a policy from the catalog
+
+
+        The response contains the policy's metadata and content. For more details, refer to the definition of the `Policy` model.
+      responses:
+        200:
+          $ref: '#/components/responses/LoadPolicyResponse'
+        400:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchPolicyException, policy to get does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                PolicyToGetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchPolicyError'
+        419:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+    put:
+      tags:
+        - Catalog API
+      summary: Update a policy
+      operationId: updatePolicy
+      description:
+        Update a policy
+
+
+        A policy's description and content can be updated.
+        The new content is validated against the policy's corresponding validator, which is determined by its type—predefined policies use built-in server-side validators, while custom policies rely on user-provided validators.
+        Upon a successful update, the policy's version is incremented by 1.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePolicyRequest'
+
+      responses:
+        200:
+          $ref: '#/components/responses/UpdatePolicyResponse'
+        400:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchPolicyException, policy to get does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                PolicyToUpdateDoesNotExist:
+                  $ref: '#/components/examples/NoSuchPolicyError'
+        419:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+    delete:
+      tags:
+        - Catalog API
+      summary: Delete a policy from the catalog
+      operationId: deletePolicy
+      description: Remove a policy from the catalog
+      responses:
+        204:
+          description: Success, no content
+        400:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchPolicyException, policy to get does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                PolicyToDeleteDoesNotExist:
+                  $ref: '#/components/examples/NoSuchPolicyError'
+        419:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+  /v1/{prefix}/namespaces/{namespace}/policies/{policy}/mappings:
+    parameters:
+      - $ref: '../rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '../rest-catalog-open-api.yaml#/components/parameters/namespace'
+      - $ref: '#/components/parameters/policy'
+
+    post:
+      tags:
+        - Catalog API
+      summary: Create a mapping between a policy and a resource entity
+      operationId: setPolicy
+      description: >
+        Create a mapping between a policy and a resource entity
+
+
+        Policy can be set at different levels, table, namespace, and catalog, and they will be interited by lower level entities. Different levels are:
+
+        1. **Table-like level:** Policies specific to individual tables/views.
+
+        2. **Namsepace level:** Policies that apply to all tables within a namespace.
+
+        3. **Catalog level:** Catalog-wide policies that ally across all tables within a namespace
+
+
+        Policy Inheritance Override rules
+
+        - Table-like-level policies override namespace and catalog policies
+
+        - Namespace-level policies override upper level namespace or catalog policies
+
+        - Overrides apply only to policies of the same type
+
+
+        Additional parameters can be provided in `parameters` when creating a mapping to define specific behavior or constraints.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPolicyRequest'
+
+      responses:
+        204:
+          description: Success, no content
+        400:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchPolicyException, NoSuchEntityException
+          content:
+            application/json:
+              schema:
+                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                PolicyToSetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchPolicyError'
+                EntityToSetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchEntityError'
+        409:
+          description: Conflict - The mapping already exists
+          content:
+            application/json:
+              schema:
+                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                MappingAlreadyExistsError:
+                  $ref: '#/components/examples/MappingAlreadyExistsError'
+        419:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+    delete:
+      tags:
+        - Catalog API
+      summary: Remove a mapping between a policy and a resource entity
+      operationId: unsetPolicy
+      description:
+        Remove a mapping between a policy and a resource entity
+
+
+        A resource entity can be a catalog, namespace, or any table-like entity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnsetPolicyRequest'
+
+      responses:
+        204:
+          description: Success, no content
+        400:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found - NoSuchPolicyException, NoSuchEntityException, NoSuchMappingException
+          content:
+            application/json:
+              schema:
+                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                PolicyToUnsetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchPolicyError'
+                EntityToUnsetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchEntityError'
+                MappingToUnsetDoesNotExist:
+                  $ref: '#/components/examples/NoSuchMappingError'
+        419:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+
+
+components:
+  parameters:
+    policy:
+      name: policy
+      in: path
+      description:
+        A policy name. A valid policy name should only consist of unreserved URI characters,
+        which include uppercase and lowercase letters (A-Z, a-z), digits (0-9), hyphens (-),
+        periods (.), underscores (_), and tildes (~).
+      required: true
+      schema:
+        $ref: '#/components/schemas/PolicyName'
+
+  schemas:
+    PolicyName:
+      type: string
+      pattern: '^[A-Za-z0-9\-\._~]+$'
+      example: 'compaction'
+
+    Policy:
+      type: object
+      description: >
+        A policy in Apache Polaris defines a set of rules for governing access, data usage, and operational consistency
+        across various catalog resources. Policies are stored within Polaris and can be applied to catalogs, namespaces,
+        tables, and views. They enable fine-grained control over who can perform specific actions on these resources.
+        
+        
+        The policy object includes
+        
+        - **owner-entity-id:** The id of the entity that owns the policy
+        
+        - **policy-id:** A unique id for the policy
+        
+        - **policy-type:** The type of the policy, which determines the expected format and semantics of the policy content.
+          For example, predefined types include `system.compaction` or `system.snapshot_retention`, while custom policy types
+          follow a namespaced format like `custom.<org_name>.data_masking`.
+        
+        - **name:**  A human-readable name for the policy, which must be unique within a given namespace.
+        
+        - **description:** Detailed description of the purpose and functionalities of the policy.
+        
+        - **content:** Policy content, which can be validated against predefined schemas for policy types.
+        
+        - **version:** Indicates the current version of the policy. Versions increased monotonically, the default value is 0
+        
+        - **created_at:** A timestamp (in milliseconds) indicating when the policy was created.
+        
+        - **updated_at:** A timestamp (in milliseconds) indicating the last update time of the policy.
+        
+        
+        Policies stored in Polaris serve as the persistent definition for access control and governance rules, while
+        their evaluation and enforcement are delegated to external computation engines.
+      required:
+        - owner-entity-id
+        - policy-id
+        - policy-type
+        - name
+        - content
+        - version
+      properties:
+        owner-entity-id:
+          type: string
+        policy-id:
+          type: string
+        policy-type:
+          type: string
+        name:
+          $ref: '#/components/schemas/PolicyName'
+        description:
+          type: string
+        content:
+          type: string
+        version:
+          type: integer
+        created-at-ms:
+          type: integer
+          format: int64
+        updated-at-ms:
+          type: integer
+          format: int64
+
+    CreatePolicyRequest:
+      type: object
+      required:
+        - name
+        - type
+      properties:
+        name:
+          $ref: '#/components/schemas/PolicyName'
+        type:
+          type: string
+        description:
+          type: string
+        content:
+          type: string
+
+    LoadPolicyResult:
+      type: object
+      properties:
+        policy:
+          $ref: '#/components/schemas/Policy'
+
+    UpdatePolicyRequest:
+      type: object
+      properties:
+        description:
+          type: string
+        content:
+          type: string
+
+    SetPolicyRequest:
+      type: object
+      required:
+        - entity
+      properties:
+        entity:
+          $ref: '#/components/schemas/EntityIdentifier'
+        parameters:
+          type: object
+          additionalProperties:
+            type: string
+
+    UnsetPolicyRequest:
+      type: object
+      required:
+        - entity
+      properties:
+        entity:
+          $ref: '#/components/schemas/EntityIdentifier'
+
+    EntityIdentifier:
+      type: object
+      required:
+        - catalog
+      properties:
+        catalog:
+          type: string
+          nullable: false
+        namespace:
+          $ref: '../rest-catalog-open-api.yaml#/components/schemas/Namespace'
+        name:
+          type: string
+          nullable: false
+
+  responses:
+    CreatePolicyResponse:
+      description: Policy object result after creating a policy
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadPolicyResult'
+
+    LoadPolicyResponse:
+      description: Policy object result when getting a policy
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadPolicyResult'
+
+    UpdatePolicyResponse:
+      description:
+        Response used when a policy is successfully updated
+        
+        The updated policy JSON is returned in the policy field
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadPolicyResult'
+
+
+  examples:
+    NoSuchPolicyError:
+      summary: The requested policy does not exist
+      value: {
+        "error": {
+          "message": "The given policy does not exist",
+          "type": "NoSuchPolicyException",
+          "code": 404
+        }
+      }
+
+    NoSuchEntityError:
+      summary: The requested entity does not exist
+      value: {
+        "error": {
+          "message": "The given entity does not exist",
+          "type": "NoSuchEntityException",
+          "code": 404
+        }
+      }
+
+    NoSuchMappingError:
+      summary: The requested mapping between policy and entity does not exist
+      value: {
+        "error": {
+          "message": "The given mapping between policy and entity does not exist",
+          "type": "NoSuchMappingException",
+          "code": 404
+        }
+      }
+
+    MappingAlreadyExistsError:
+      summary: The mapping between the given policy and entity already exists
+      value: {
+        "error": {
+          "message": "The mapping between the given policy and entity does not exist",
+          "type": "MappingAlreadyExistsError",
+          "code": 409
+        }
+      }
