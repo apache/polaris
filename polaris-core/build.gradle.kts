@@ -78,6 +78,8 @@ dependencies {
   implementation("software.amazon.awssdk:iam-policy-builder")
   implementation("software.amazon.awssdk:s3")
 
+  implementation("org.everit.json:org.everit.json.schema:1.5.1")
+
   implementation("org.apache.iceberg:iceberg-azure")
   implementation(platform(libs.azuresdk.bom))
   implementation("com.azure:azure-storage-blob")
