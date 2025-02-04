@@ -33,7 +33,7 @@ import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -59,7 +59,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final PolarisConfigurationStore configurationStore;
   private final PolarisDiagnostics diagnostics;
-  private final BiFunction<TaskEntity, RealmId, FileIO> fileIOSupplier;
+  private final BiFunction<TaskEntity, RealmContext, FileIO> fileIOSupplier;
   private final Clock clock;
 
   public TableCleanupTaskHandler(
@@ -67,7 +67,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
       MetaStoreManagerFactory metaStoreManagerFactory,
       PolarisConfigurationStore configurationStore,
       PolarisDiagnostics diagnostics,
-      BiFunction<TaskEntity, RealmId, FileIO> fileIOSupplier,
+      BiFunction<TaskEntity, RealmContext, FileIO> fileIOSupplier,
       Clock clock) {
     this.taskExecutor = taskExecutor;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
@@ -89,12 +89,12 @@ public class TableCleanupTaskHandler implements TaskHandler {
   }
 
   @Override
-  public boolean handleTask(TaskEntity cleanupTask, RealmId realmId) {
+  public boolean handleTask(TaskEntity cleanupTask, RealmContext realmContext) {
     PolarisBaseEntity entity = cleanupTask.readData(diagnostics, PolarisBaseEntity.class);
     PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmId);
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     PolarisMetaStoreSession metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
 
     TableLikeEntity tableEntity = TableLikeEntity.of(entity);
     LOGGER
@@ -106,7 +106,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
     // It's likely the cleanupTask has already been completed, but wasn't dropped successfully.
     // Log a
     // warning and move on
-    try (FileIO fileIO = fileIOSupplier.apply(cleanupTask, realmId)) {
+    try (FileIO fileIO = fileIOSupplier.apply(cleanupTask, realmContext)) {
       if (!TaskUtils.exists(tableEntity.getMetadataLocation(), fileIO)) {
         LOGGER
             .atWarn()
@@ -132,7 +132,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
       // TODO: handle partition statistics files
       Stream<TaskEntity> metadataFileCleanupTasks =
           getMetadataTaskStream(
-              realmId,
+              realmContext,
               cleanupTask,
               tableMetadata,
               tableEntity,
@@ -157,7 +157,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
             .log(
                 "Successfully queued tasks to delete manifests, previous metadata, and statistics files - deleting table metadata file");
         for (PolarisBaseEntity createdTask : createdTasks) {
-          taskExecutor.addTaskHandlerContext(createdTask.getId(), realmId);
+          taskExecutor.addTaskHandlerContext(createdTask.getId(), realmContext);
         }
 
         fileIO.deleteFile(tableEntity.getMetadataLocation());
@@ -222,7 +222,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
   }
 
   private Stream<TaskEntity> getMetadataTaskStream(
-      RealmId realmId,
+      RealmContext realmContext,
       TaskEntity cleanupTask,
       TableMetadata tableMetadata,
       TableLikeEntity tableEntity,
@@ -230,7 +230,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
       PolarisMetaStoreSession metaStoreSession,
       PolarisConfigurationStore configurationStore,
       Clock clock) {
-    int batchSize = configurationStore.getConfiguration(realmId, BATCH_SIZE_CONFIG_KEY, 10);
+    int batchSize = configurationStore.getConfiguration(realmContext, BATCH_SIZE_CONFIG_KEY, 10);
     return getMetadataFileBatches(tableMetadata, batchSize).stream()
         .map(
             metadataBatch -> {

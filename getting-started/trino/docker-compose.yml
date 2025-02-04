@@ -19,19 +19,21 @@
 
 services:
   polaris:
-    build:
-      context: ../../
+    image: apache/polaris:latest
     ports:
       - "8181:8181"
       - "8182"
     environment:
       AWS_REGION: us-west-2
+      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
       GOOGLE_APPLICATION_CREDENTIALS: $GOOGLE_APPLICATION_CREDENTIALS
       AZURE_TENANT_ID: $AZURE_TENANT_ID
       AZURE_CLIENT_ID: $AZURE_CLIENT_ID
       AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET
-      # add aws keys as dropwizard config
-      JAVA_OPTS: -Ddw.awsAccessKey=$AWS_ACCESS_KEY_ID -Ddw.awsSecretKey=$AWS_SECRET_ACCESS_KEY
+      POLARIS_BOOTSTRAP_CREDENTIALS: default-realm,root,s3cr3t
+      polaris.realm-context.realms: default-realm
+      quarkus.otel.sdk.disabled: "true"
 
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/healthcheck"]

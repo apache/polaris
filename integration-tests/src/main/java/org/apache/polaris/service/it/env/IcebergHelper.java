@@ -19,7 +19,6 @@
 package org.apache.polaris.service.it.env;
 
 import static org.apache.polaris.service.it.env.PolarisApiEndpoints.REALM_HEADER;
-import static org.apache.polaris.service.it.test.PolarisApplicationIntegrationTest.PRINCIPAL_ROLE_ALL;
 
 import com.google.common.collect.ImmutableMap;
 import java.util.Map;
@@ -33,10 +32,12 @@ public final class IcebergHelper {
   private IcebergHelper() {}
 
   public static RESTCatalog restCatalog(
+      PolarisClient client,
       PolarisApiEndpoints endpoints,
       PrincipalWithCredentials credentials,
       String catalog,
       Map<String, String> extraProperties) {
+    String authToken = client.obtainToken(credentials);
     SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
     RESTCatalog restCatalog =
         new RESTCatalog(
@@ -50,12 +51,7 @@ public final class IcebergHelper {
         ImmutableMap.<String, String>builder()
             .put(
                 org.apache.iceberg.CatalogProperties.URI, endpoints.catalogApiEndpoint().toString())
-            .put(
-                OAuth2Properties.CREDENTIAL,
-                credentials.getCredentials().getClientId()
-                    + ":"
-                    + credentials.getCredentials().getClientSecret())
-            .put(OAuth2Properties.SCOPE, PRINCIPAL_ROLE_ALL)
+            .put(OAuth2Properties.TOKEN, authToken)
             .put(
                 org.apache.iceberg.CatalogProperties.FILE_IO_IMPL,
                 "org.apache.iceberg.inmemory.InMemoryFileIO")

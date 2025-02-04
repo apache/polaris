@@ -18,11 +18,7 @@
 #
 
 image:
-  repository: polaris
-  tag: latest
   pullPolicy: Never
-
-bootstrapMetastoreManager: true
 
 persistenceConfigSecret: polaris-persistence
 

@@ -24,7 +24,7 @@ Apache Polaris is currently undergoing Incubation at the Apache Software Foundat
 ## Motivation
 
 Apache Polaris uses two public and open chat services:
-* Slack workspace (join [here](https://join.slack.com/t/apache-polaris/shared_invite/zt-2w1fddyh3-zqCeeJwn7wNvhn3mVT5njQ))
+* Slack workspace (join [here](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw))
 * Zuplip hosted at https://polaris-catalog.zulipchat.com
 
 A few rules shall ensure that the chat conforms to the rules and best

@@ -58,7 +58,6 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.service.catalog.PolarisCatalogHandlerWrapper;
-import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -75,7 +74,11 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
 
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of("polaris.features.defaults.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"", "true");
+      return Map.of(
+          "polaris.features.defaults.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
+          "true",
+          "polaris.features.defaults.\"ALLOW_EXTERNAL_METADATA_FILE_LOCATION\"",
+          "true");
     }
   }
 
@@ -103,7 +106,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
   private PolarisCatalogHandlerWrapper newWrapper(
       SecurityContext securityContext, String catalogName) {
     return new PolarisCatalogHandlerWrapper(
-        realmId,
+        realmContext,
         metaStoreSession,
         configurationStore,
         diagServices,
@@ -113,7 +116,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         catalogName,
         polarisAuthorizer,
         Mockito.mock(),
-        new DefaultFileIOFactory());
+        fileIOFactory);
   }
 
   /**

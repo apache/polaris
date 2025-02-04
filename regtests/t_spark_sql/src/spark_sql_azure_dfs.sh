@@ -19,7 +19,7 @@
 # under the License.
 #
 
-SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN:-principal:root;realm:realm1}"
+SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN}"
 
 curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \

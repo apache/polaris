@@ -154,7 +154,7 @@ def snowman_catalog_client(polaris_catalog_url, snowman):
   token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=snowman.principal.client_id,
                               client_secret=snowman.credentials.client_secret,
                               grant_type='client_credentials',
-                              _headers={'realm': 'default-realm'})
+                              _headers={'realm': 'POLARIS'})
 
   return IcebergCatalogAPI(CatalogApiClient(Configuration(access_token=token.access_token,
                                                           host=polaris_catalog_url)))
@@ -175,7 +175,7 @@ def creator_catalog_client(polaris_catalog_url, creator):
   token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=creator.principal.client_id,
                               client_secret=creator.credentials.client_secret,
                               grant_type='client_credentials',
-                              _headers={'realm': 'default-realm'})
+                              _headers={'realm': 'POLARIS'})
 
   return IcebergCatalogAPI(CatalogApiClient(Configuration(access_token=token.access_token,
                                                           host=polaris_catalog_url)))
@@ -230,7 +230,7 @@ def reader_catalog_client(polaris_catalog_url, reader):
   token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=reader.principal.client_id,
                               client_secret=reader.credentials.client_secret,
                               grant_type='client_credentials',
-                              _headers={'realm': 'default-realm'})
+                              _headers={'realm': 'POLARIS'})
 
   return IcebergCatalogAPI(CatalogApiClient(Configuration(access_token=token.access_token,
                                                           host=polaris_catalog_url)))
@@ -1015,7 +1015,7 @@ def create_principal(polaris_url, polaris_catalog_url, api, principal_name):
     token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=principal_result.principal.client_id,
                                 client_secret=principal_result.credentials.client_secret,
                                 grant_type='client_credentials',
-                                _headers={'realm': 'default-realm'})
+                                _headers={'realm': 'POLARIS'})
     rotate_client = ManagementApiClient(Configuration(access_token=token.access_token,
                                                       host=polaris_url))
     rotate_api = PolarisDefaultApi(rotate_client)

@@ -24,7 +24,7 @@ plugins {
   alias(libs.plugins.jandex)
   alias(libs.plugins.openapi.generator)
   id("polaris-quarkus")
-  id("polaris-license-report")
+  // id("polaris-license-report")
   id("distribution")
 }
 
@@ -35,15 +35,17 @@ dependencies {
   implementation(project(":polaris-api-iceberg-service"))
   implementation(project(":polaris-service-common"))
   implementation(project(":polaris-quarkus-service"))
+  implementation(project(":polaris-quarkus-defaults"))
+
+  if (project.hasProperty("eclipseLinkDeps")) {
+    runtimeOnly(project(":polaris-eclipselink"))
+  }
 
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
 
   implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
-
-  // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
-  implementation(platform(libs.dnsjava))
 
   testImplementation(enforcedPlatform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")

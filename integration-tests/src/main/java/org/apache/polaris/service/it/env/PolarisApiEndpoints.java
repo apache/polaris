@@ -39,11 +39,11 @@ public final class PolarisApiEndpoints implements Serializable {
   }
 
   public URI catalogApiEndpoint() {
-    return baseUri.resolve("api/catalog");
+    return baseUri.resolve(baseUri.getRawPath() + "/api/catalog").normalize();
   }
 
   public URI managementApiEndpoint() {
-    return baseUri.resolve("api/management");
+    return baseUri.resolve(baseUri.getRawPath() + "/api/management").normalize();
   }
 
   public String realm() {

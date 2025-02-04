@@ -96,6 +96,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 /**
  * Import the full core Iceberg catalog tests by hitting the REST service via the RESTCatalog
  * client.
+ *
+ * @implSpec @implSpec This test expects the server to be configured with the following features
+ *     configured:
+ *     <ul>
+ *       <li>{@link PolarisConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING}: {@code false}
+ *     </ul>
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog> {
@@ -222,7 +228,11 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
     restCatalog =
         IcebergHelper.restCatalog(
-            endpoints, principalCredentials, currentCatalogName, extraPropertiesBuilder.build());
+            client,
+            endpoints,
+            principalCredentials,
+            currentCatalogName,
+            extraPropertiesBuilder.build());
   }
 
   @AfterEach

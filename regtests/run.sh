@@ -26,6 +26,7 @@ if [ -z "${SPARK_HOME}" ]; then
   export SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
 fi
 export PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
+export SPARK_LOCAL_HOSTNAME=localhost # avoid VPN messing up driver local IP address binding
 
 FMT_RED='\033[0;31m'
 FMT_GREEN='\033[0;32m'
@@ -64,6 +65,26 @@ NUM_SUCCESSES=0
 
 export AWS_ACCESS_KEY_ID=''
 export AWS_SECRET_ACCESS_KEY=''
+
+if ! output=$(curl -X POST -H "Polaris-Realm: POLARIS" "http://${POLARIS_HOST:-localhost}:8181/api/catalog/v1/oauth/tokens" \
+  -d "grant_type=client_credentials" \
+  -d "client_id=root" \
+  -d "client_secret=secret" \
+  -d "scope=PRINCIPAL_ROLE:ALL"); then
+  logred "Error: Failed to retrieve bearer token"
+  exit 1
+fi
+
+token=$(echo "$output" | awk -F\" '{print $4}')
+
+if [ "$token" == "unauthorized_client" ]; then
+  logred "Error: Failed to retrieve bearer token"
+  exit 1
+fi
+
+export REGTEST_ROOT_BEARER_TOKEN=$token
+
+echo "Root bearer token: ${REGTEST_ROOT_BEARER_TOKEN}"
 
 for TEST_FILE in ${TEST_LIST}; do
   TEST_SUITE=$(dirname $(dirname ${TEST_FILE}))

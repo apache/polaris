@@ -17,6 +17,7 @@
  * under the License.
  */
 
+import copiedcode.CopiedCodeCheckerPlugin
 import org.jetbrains.gradle.ext.copyright
 import org.jetbrains.gradle.ext.encodings
 import org.jetbrains.gradle.ext.settings
@@ -29,6 +30,8 @@ plugins {
 }
 
 apply<PublishingHelperPlugin>()
+
+apply<CopiedCodeCheckerPlugin>()
 
 spotless {
   kotlinGradle {

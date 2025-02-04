@@ -19,12 +19,14 @@
 package org.apache.polaris.service.exception;
 
 import com.azure.core.exception.AzureException;
+import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import java.util.Arrays;
@@ -73,40 +75,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   @Override
   public Response toResponse(RuntimeException runtimeException) {
     LOGGER.info("Handling runtimeException {}", runtimeException.getMessage());
-    int responseCode =
-        switch (runtimeException) {
-          case NoSuchNamespaceException e -> Response.Status.NOT_FOUND.getStatusCode();
-          case NoSuchIcebergTableException e -> Response.Status.NOT_FOUND.getStatusCode();
-          case NoSuchTableException e -> Response.Status.NOT_FOUND.getStatusCode();
-          case NoSuchViewException e -> Response.Status.NOT_FOUND.getStatusCode();
-          case NotFoundException e -> Response.Status.NOT_FOUND.getStatusCode();
-          case AlreadyExistsException e -> Response.Status.CONFLICT.getStatusCode();
-          case CommitFailedException e -> Response.Status.CONFLICT.getStatusCode();
-          case UnprocessableEntityException e -> 422;
-          case CherrypickAncestorCommitException e -> Response.Status.BAD_REQUEST.getStatusCode();
-          case CommitStateUnknownException e -> Response.Status.BAD_REQUEST.getStatusCode();
-          case DuplicateWAPCommitException e -> Response.Status.BAD_REQUEST.getStatusCode();
-          case ForbiddenException e -> Response.Status.FORBIDDEN.getStatusCode();
-          case jakarta.ws.rs.ForbiddenException e -> Response.Status.FORBIDDEN.getStatusCode();
-          case NotAuthorizedException e -> Response.Status.UNAUTHORIZED.getStatusCode();
-          case NamespaceNotEmptyException e -> Response.Status.BAD_REQUEST.getStatusCode();
-          case ValidationException e -> Response.Status.BAD_REQUEST.getStatusCode();
-          case ServiceUnavailableException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
-          case RuntimeIOException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
-          case ServiceFailureException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
-          case CleanableFailure e -> Response.Status.BAD_REQUEST.getStatusCode();
-          case RESTException e -> Response.Status.SERVICE_UNAVAILABLE.getStatusCode();
-          case IllegalArgumentException e -> Response.Status.BAD_REQUEST.getStatusCode();
-          case UnsupportedOperationException e -> Response.Status.NOT_ACCEPTABLE.getStatusCode();
-          case S3Exception e when doesAnyThrowableContainAccessDeniedHint(e) ->
-              Response.Status.FORBIDDEN.getStatusCode();
-          case AzureException e when doesAnyThrowableContainAccessDeniedHint(e) ->
-              Response.Status.FORBIDDEN.getStatusCode();
-          case StorageException e when doesAnyThrowableContainAccessDeniedHint(e) ->
-              Response.Status.FORBIDDEN.getStatusCode();
-          case WebApplicationException e -> e.getResponse().getStatus();
-          default -> Response.Status.INTERNAL_SERVER_ERROR.getStatusCode();
-        };
+    int responseCode = mapExceptionToResponseCode(runtimeException);
     if (responseCode == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()) {
       LOGGER.error("Unhandled exception returning INTERNAL_SERVER_ERROR", runtimeException);
     }
@@ -143,5 +112,85 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   @VisibleForTesting
   public static Collection<String> getAccessDeniedHints() {
     return ImmutableSet.copyOf(ACCESS_DENIED_HINTS);
+  }
+
+  static int mapExceptionToResponseCode(RuntimeException rex) {
+    // Cloud exceptions
+    if (rex instanceof S3Exception
+        || rex instanceof AzureException
+        || rex instanceof StorageException) {
+      return mapCloudExceptionToResponseCode(rex);
+    }
+
+    // Non-cloud exceptions
+    return switch (rex) {
+      case NoSuchNamespaceException e -> Status.NOT_FOUND.getStatusCode();
+      case NoSuchIcebergTableException e -> Status.NOT_FOUND.getStatusCode();
+      case NoSuchTableException e -> Status.NOT_FOUND.getStatusCode();
+      case NoSuchViewException e -> Status.NOT_FOUND.getStatusCode();
+      case NotFoundException e -> Status.NOT_FOUND.getStatusCode();
+      case AlreadyExistsException e -> Status.CONFLICT.getStatusCode();
+      case CommitFailedException e -> Status.CONFLICT.getStatusCode();
+      case UnprocessableEntityException e -> 422;
+      case CherrypickAncestorCommitException e -> Status.BAD_REQUEST.getStatusCode();
+      case CommitStateUnknownException e -> Status.BAD_REQUEST.getStatusCode();
+      case DuplicateWAPCommitException e -> Status.BAD_REQUEST.getStatusCode();
+      case ForbiddenException e -> Status.FORBIDDEN.getStatusCode();
+      case jakarta.ws.rs.ForbiddenException e -> Status.FORBIDDEN.getStatusCode();
+      case NotAuthorizedException e -> Status.UNAUTHORIZED.getStatusCode();
+      case NamespaceNotEmptyException e -> Status.BAD_REQUEST.getStatusCode();
+      case ValidationException e -> Status.BAD_REQUEST.getStatusCode();
+      case ServiceUnavailableException e -> Status.SERVICE_UNAVAILABLE.getStatusCode();
+      case RuntimeIOException e -> Status.SERVICE_UNAVAILABLE.getStatusCode();
+      case ServiceFailureException e -> Status.SERVICE_UNAVAILABLE.getStatusCode();
+      case CleanableFailure e -> Status.BAD_REQUEST.getStatusCode();
+      case RESTException e -> Status.SERVICE_UNAVAILABLE.getStatusCode();
+      case IllegalArgumentException e -> Status.BAD_REQUEST.getStatusCode();
+      case UnsupportedOperationException e -> Status.NOT_ACCEPTABLE.getStatusCode();
+      case WebApplicationException e -> e.getResponse().getStatus();
+      default -> Status.INTERNAL_SERVER_ERROR.getStatusCode();
+    };
+  }
+
+  static int mapCloudExceptionToResponseCode(RuntimeException rex) {
+    if (doesAnyThrowableContainAccessDeniedHint(rex)) {
+      return Status.FORBIDDEN.getStatusCode();
+    }
+
+    int httpCode =
+        switch (rex) {
+          case S3Exception s3e -> s3e.statusCode();
+          case HttpResponseException hre -> hre.getResponse().getStatusCode();
+          case StorageException se -> se.getCode();
+          default -> -1;
+        };
+    Status httpStatus = Status.fromStatusCode(httpCode);
+    Status.Family httpFamily = Status.Family.familyOf(httpCode);
+
+    if (httpStatus == Status.NOT_FOUND) {
+      return Status.BAD_REQUEST.getStatusCode();
+    }
+    if (httpStatus == Status.UNAUTHORIZED) {
+      return Status.FORBIDDEN.getStatusCode();
+    }
+    if (httpStatus == Status.BAD_REQUEST
+        || httpStatus == Status.FORBIDDEN
+        || httpStatus == Status.REQUEST_TIMEOUT
+        || httpStatus == Status.TOO_MANY_REQUESTS
+        || httpStatus == Status.GATEWAY_TIMEOUT) {
+      return httpCode;
+    }
+    if (httpFamily == Status.Family.REDIRECTION) {
+      // Currently Polaris doesn't know how to follow redirects from cloud providers, thus clients
+      // shouldn't expect it to.
+      // This is a 4xx error to indicate that the client may be able to resolve this by changing
+      // some data, such as their catalog's region.
+      return 422;
+    }
+    if (httpFamily == Status.Family.SERVER_ERROR) {
+      return Status.BAD_GATEWAY.getStatusCode();
+    }
+
+    return Status.INTERNAL_SERVER_ERROR.getStatusCode();
   }
 }

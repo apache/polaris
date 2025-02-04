@@ -22,7 +22,7 @@ import io.micrometer.common.annotation.ValueExpressionResolver;
 import io.micrometer.common.lang.Nullable;
 import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 
 @ApplicationScoped
 public class QuarkusValueExpressionResolver implements ValueExpressionResolver {
@@ -30,8 +30,8 @@ public class QuarkusValueExpressionResolver implements ValueExpressionResolver {
   @Override
   public String resolve(@Nonnull String expression, @Nullable Object parameter) {
     // TODO maybe replace with CEL of some expression engine and make this more generic
-    if (parameter instanceof RealmId realmId && expression.equals("realm.id")) {
-      return realmId.id();
+    if (parameter instanceof RealmContext realmContext && expression.equals("realmIdentifier")) {
+      return realmContext.getRealmIdentifier();
     }
     return null;
   }

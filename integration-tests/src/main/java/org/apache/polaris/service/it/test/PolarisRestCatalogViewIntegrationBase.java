@@ -48,6 +48,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 /**
  * Import the full core Iceberg catalog tests by hitting the REST service via the RESTCatalog
  * client.
+ *
+ * @implSpec This test expects the server to be configured with {@link
+ *     org.apache.polaris.core.PolarisConfiguration#SUPPORTED_CATALOG_STORAGE_TYPES} set to the
+ *     appropriate storage type.
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogTests<RESTCatalog> {
@@ -108,7 +112,8 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
             .build();
     managementApi.createCatalog(principalRoleName, catalog);
 
-    restCatalog = IcebergHelper.restCatalog(endpoints, principalCredentials, catalogName, Map.of());
+    restCatalog =
+        IcebergHelper.restCatalog(client, endpoints, principalCredentials, catalogName, Map.of());
   }
 
   @AfterEach
