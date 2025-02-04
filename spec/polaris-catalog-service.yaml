@@ -118,6 +118,15 @@ paths:
   /v1/{prefix}/views/rename:
     $ref: './rest-catalog-open-api.yaml#/paths/~1v1~1{prefix}~1views~1rename'
 
+  # /v1/{prefix}/namespaces/{namespace}/tables/{table}/plan:
+  # Not implemented in Polaris
+
+  # /v1/{prefix}/namespaces/{namespace}/tables/{table}/plan/{plan-id}:
+  # Not implemented in Polaris
+
+  # /v1/{prefix}/namespaces/{namespace}/tables/{table}/tasks:
+  # Not implemented in Polaris
+
   ######################
   # Polaris-native API #
   ######################
