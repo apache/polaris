@@ -90,11 +90,15 @@ public class IcebergCatalogAdapter
       ImmutableSet.<Endpoint>builder()
           .add(Endpoint.V1_LIST_NAMESPACES)
           .add(Endpoint.V1_LOAD_NAMESPACE)
+          // TODO Use Endpoint.V1_NAMESPACE_EXISTS once Iceberg 1.8.0 is released
+          .add(Endpoint.create("HEAD", ResourcePaths.V1_NAMESPACE))
           .add(Endpoint.V1_CREATE_NAMESPACE)
           .add(Endpoint.V1_UPDATE_NAMESPACE)
           .add(Endpoint.V1_DELETE_NAMESPACE)
           .add(Endpoint.V1_LIST_TABLES)
           .add(Endpoint.V1_LOAD_TABLE)
+          // TODO Use Endpoint.V1_TABLE_EXISTS once Iceberg 1.8.0 is released
+          .add(Endpoint.create("HEAD", ResourcePaths.V1_TABLE))
           .add(Endpoint.V1_CREATE_TABLE)
           .add(Endpoint.V1_UPDATE_TABLE)
           .add(Endpoint.V1_DELETE_TABLE)
@@ -107,6 +111,8 @@ public class IcebergCatalogAdapter
       ImmutableSet.<Endpoint>builder()
           .add(Endpoint.V1_LIST_VIEWS)
           .add(Endpoint.V1_LOAD_VIEW)
+          // TODO Use Endpoint.V1_VIEW_EXISTS once Iceberg 1.8.0 is released
+          .add(Endpoint.create("HEAD", ResourcePaths.V1_VIEW))
           .add(Endpoint.V1_CREATE_VIEW)
           .add(Endpoint.V1_UPDATE_VIEW)
           .add(Endpoint.V1_DELETE_VIEW)
