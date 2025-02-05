@@ -18,44 +18,58 @@
  */
 package org.apache.polaris.admintool;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
+import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.PolarisCredentialsBootstrap;
 import picocli.CommandLine;
 
 @CommandLine.Command(
     name = "bootstrap",
     mixinStandardHelpOptions = true,
-    description = "Bootstraps realms and root principal credentials.")
+    description = "Bootstraps realms and root principal credentials. If --credentials is not provided, root " +
+        "credentials will be randomly generated.")
 public class BootstrapCommand extends BaseCommand {
 
   @CommandLine.Option(
-      names = {"-r", "--realm"},
-      paramLabel = "<realm>",
-      required = true,
-      description = "The name of a realm to bootstrap.")
-  List<String> realms;
+      names = {"-c", "--credentials"},
+      description = "Principal credentials to bootstrap. If provided, must be a valid JSON array e.g. " +
+          "[{\"realm\": \"my-realm\", \"principal\": \"root\", \"clientId\": \"polaris\", \"clientSecret\": \"p4ssw0rd\"}]")
+  String credentials;
 
   @CommandLine.Option(
-      names = {"-c", "--credential"},
-      paramLabel = "<realm,clientId,clientSecret>",
+      names = {"-p", "--print-credentials"},
       description =
-          "Root principal credentials to bootstrap. Must be of the form 'realm,clientId,clientSecret'.")
-  List<String> credentials;
+          "Print root credentials to stdout")
+  boolean printCredentials;
 
   @Override
   public Integer call() {
     warnOnInMemory();
 
+    if (credentials == null || credentials.isEmpty()) {
+      if (!printCredentials) {
+        spec.commandLine().getErr().println("Specify either `--credentials` or `--print-credentials` to ensure" +
+            " the root user is accessible after bootstrapping.");
+      }
+    }
+
+    return bootstrap();
+  }
+
+  /** Bootstraps the metastore without any preliminary checks */
+  private Integer bootstrap() {
     PolarisCredentialsBootstrap credentialsBootstrap =
         credentials == null || credentials.isEmpty()
             ? PolarisCredentialsBootstrap.EMPTY
-            : PolarisCredentialsBootstrap.fromList(credentials);
+            : PolarisCredentialsBootstrap.fromJson(credentials);
+
 
     // Execute the bootstrap
     Map<String, PrincipalSecretsResult> results =
-        metaStoreManagerFactory.bootstrapRealms(realms, credentialsBootstrap);
+        metaStoreManagerFactory.bootstrapRealms(credentialsBootstrap.getRealmIds(), credentialsBootstrap);
 
     // Log any errors:
     boolean success = true;
@@ -67,15 +81,31 @@ public class BootstrapCommand extends BaseCommand {
             .printf(
                 "Bootstrapping '%s' failed: %s%n",
                 realm, result.getValue().getReturnStatus().toString());
+        spec.commandLine().getErr().flush();
         success = false;
       }
     }
 
     if (success) {
+      if (printCredentials) {
+        for (Map.Entry<String, PrincipalSecretsResult> entry : results.entrySet()) {
+          String msg =
+              String.format(
+                  "realm: %1s root principal credentials: %2s:%3s",
+                  entry.getKey(),
+                  entry.getValue().getPrincipalSecrets().getPrincipalClientId(),
+                  entry.getValue().getPrincipalSecrets().getMainSecret());
+          spec.commandLine().getOut().println(msg);
+          spec.commandLine().getOut().flush();
+        }
+      }
+
       spec.commandLine().getOut().println("Bootstrap completed successfully.");
+      spec.commandLine().getOut().flush();
       return 0;
     } else {
       spec.commandLine().getErr().println("Bootstrap encountered errors during operation.");
+      spec.commandLine().getErr().flush();
       return EXIT_CODE_BOOTSTRAP_ERROR;
     }
   }
