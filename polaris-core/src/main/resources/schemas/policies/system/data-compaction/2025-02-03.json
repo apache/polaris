@@ -1,4 +1,5 @@
 {
+  "license": "Licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)",
   "$id": "https://polaris.apache.org/schemas/policies/system/data-compaction/2025-02-03.json",
   "title": "Data Compaction Policy",
   "description": "Inheritable Polaris policy schema for Iceberg table data compaction.",
