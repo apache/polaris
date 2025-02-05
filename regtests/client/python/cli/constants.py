@@ -230,7 +230,8 @@ class Hints:
 UNIT_SEPARATOR = chr(0x1F)
 CLIENT_ID_ENV = 'CLIENT_ID'
 CLIENT_SECRET_ENV = 'CLIENT_SECRET'
+CLIENT_PROFILE_ENV = 'CLIENT_PROFILE'
 DEFAULT_HOSTNAME = 'localhost'
 DEFAULT_PORT = 8181
-CONFIG_DIR = os.path.expanduser("~/.polaris")
-CONFIG_FILE = os.path.join(CONFIG_DIR, "config.json")
+CONFIG_DIR = os.environ.get('SCRIPT_DIR')
+CONFIG_FILE = os.path.join(CONFIG_DIR, '.polaris.json')

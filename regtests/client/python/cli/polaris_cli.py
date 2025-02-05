@@ -24,7 +24,7 @@ from json import JSONDecodeError
 
 from typing import Dict
 
-from cli.constants import Arguments, Commands, CLIENT_ID_ENV, CLIENT_SECRET_ENV, DEFAULT_HOSTNAME, DEFAULT_PORT, CONFIG_FILE
+from cli.constants import Arguments, Commands, CLIENT_ID_ENV, CLIENT_SECRET_ENV, CLIENT_PROFILE_ENV, DEFAULT_HOSTNAME, DEFAULT_PORT, CONFIG_FILE
 from cli.options.option_tree import Argument
 from cli.options.parser import Parser
 from polaris.management import ApiClient, Configuration
@@ -105,11 +105,12 @@ class PolarisCli:
     @staticmethod
     def _get_client_builder(options):
         profile = {}
-        if options.profile:
+        client_profile = options.profile or os.getenv(CLIENT_PROFILE_ENV)
+        if client_profile:
             profiles = PolarisCli._load_profiles()
-            profile = profiles.get(options.profile, {})
+            profile = profiles.get(client_profile)
             if not profile:
-                raise Exception(f'Polaris profile {options.profile} not found')
+                raise Exception(f'Polaris profile {client_profile} not found')
         # Determine which credentials to use
         client_id = options.client_id or os.getenv(CLIENT_ID_ENV) or profile.get('client_id')
         client_secret = options.client_secret or os.getenv(CLIENT_SECRET_ENV) or profile.get('client_secret')

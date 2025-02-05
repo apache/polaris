@@ -94,10 +94,10 @@ class ProfilesCommand(Command):
     def _update_profile(self, name: str) -> None:
         profiles = self._load_profiles()
         if name in profiles:
-            current_client_id = profiles[name].get("client_id", "None")
-            current_client_secret = profiles[name].get("client_secret", "None")
-            current_host = profiles[name].get("host", "None")
-            current_port = profiles[name].get("port", "None")
+            current_client_id = profiles[name].get("client_id")
+            current_client_secret = profiles[name].get("client_secret")
+            current_host = profiles[name].get("host")
+            current_port = profiles[name].get("port")
 
             client_id = input(f"Polaris Client ID [{current_client_id}]: ") or current_client_id
             client_secret = input(f"Polaris Client Secret [{current_client_secret}]: ") or current_client_secret
