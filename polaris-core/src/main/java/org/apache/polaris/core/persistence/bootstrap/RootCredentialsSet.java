@@ -145,6 +145,7 @@ public interface RootCredentialsSet {
     }
   }
 
+  /** Get all the credentials contained in this set, keyed by realm identifier. */
   @JsonAnyGetter
   @JsonAnySetter
   @Value.Parameter(order = 0)
