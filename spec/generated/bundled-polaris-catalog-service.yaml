@@ -3550,15 +3550,13 @@ components:
         content:
           type: string
     EntityIdentifier:
+      type: object
       discriminator:
         propertyName: type
         mapping:
           catalog: '#/components/schemas/CatalogIdentifier'
           namespace: '#/components/schemas/NamespaceIdentifier'
           table-like: '#/components/schemas/TableLikeIdentifier'
-      type: object
-      required:
-        - type
       properties:
         type:
           type: string
@@ -3566,34 +3564,25 @@ components:
             - catalog
             - namespace
             - table-like
+      required:
+        - type
     CatalogIdentifier:
       allOf:
         - $ref: '#/components/schemas/EntityIdentifier'
         - type: object
           required:
-            - type
             - catalog
           properties:
-            type:
-              type: string
-              enum:
-                - catalog
             catalog:
               type: string
-              nullable: false
     NamespaceIdentifier:
       allOf:
         - $ref: '#/components/schemas/EntityIdentifier'
         - type: object
           required:
-            - type
             - catalog
             - namespace
           properties:
-            type:
-              type: string
-              enum:
-                - namespace
             catalog:
               type: string
               nullable: false
@@ -3604,15 +3593,10 @@ components:
         - $ref: '#/components/schemas/EntityIdentifier'
         - type: object
           required:
-            - type
             - catalog
             - namespace
             - name
           properties:
-            type:
-              type: string
-              enum:
-                - table-like
             catalog:
               type: string
               nullable: false
