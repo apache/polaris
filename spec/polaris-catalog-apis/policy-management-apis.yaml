@@ -460,7 +460,6 @@ components:
           properties:
             catalog:
               type: string
-              nullable: false
 
     NamespaceIdentifier:
       allOf:
@@ -475,7 +474,6 @@ components:
               nullable: false
             namespace:
               $ref: '../rest-catalog-open-api.yaml#/components/schemas/Namespace'
-
 
     TableLikeIdentifier:
       allOf:
@@ -496,13 +494,13 @@ components:
               nullable: false
 
     EntityIdentifier:
+      type: object
       discriminator:
         propertyName: type
         mapping:
           catalog: '#/components/schemas/CatalogIdentifier'
           namespace: '#/components/schemas/NamespaceIdentifier'
           table-like: '#/components/schemas/TableLikeIdentifier'
-      type: object
       properties:
         type:
           type: string
