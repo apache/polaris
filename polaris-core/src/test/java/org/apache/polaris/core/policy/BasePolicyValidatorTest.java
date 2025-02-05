@@ -44,6 +44,10 @@ public class BasePolicyValidatorTest {
     validJson = "{\"version\":\"2025-02-03\", \"enable\": true, \"target_file_size_bytes\": 12342}";
     result = validator.validate(new Policy(validJson));
     assertThat(result).isTrue();
+
+    validJson = "{\"enable\": true, \"config\": {\"key1\": \"value1\", \"key2\": true}}";
+    result = validator.validate(new Policy(validJson));
+    assertThat(result).isTrue();
   }
 
   @Test

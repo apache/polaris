@@ -16,6 +16,11 @@
     "target_file_size_bytes": {
       "type": "number",
       "description": "Target data file size in bytes."
+    },
+    "config": {
+      "type": "object",
+      "description": "A map containing custom configuration properties. Please note that interoperability is not guaranteed.",
+      "additionalProperties": {}
     }
   },
   "required": ["enable"],
@@ -24,7 +29,12 @@
     {
       "version": "2025-02-03",
       "enable": true,
-      "target_file_size_bytes": 134217728
+      "target_file_size_bytes": 134217728,
+      "config": {
+        "compaction_strategy": "bin-pack",
+        "max-concurrent-file-group-rewrites": 5,
+        "my-key": "my-value"
+      }
     }
   ]
 }

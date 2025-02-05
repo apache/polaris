@@ -29,7 +29,8 @@ public class BasePolicyValidator implements PolicyValidator {
   @Override
   public boolean validate(Policy policy) {
     try {
-      InputStream schemaStream = getResourceAsStream("data-compaction-policy.json");
+      InputStream schemaStream =
+          getResourceAsStream("schemas/policies/system/data-compaction/2025-02-03.json");
       JSONObject rawSchema = new JSONObject(new JSONTokener(schemaStream));
       Schema schema = SchemaLoader.load(rawSchema);
 
