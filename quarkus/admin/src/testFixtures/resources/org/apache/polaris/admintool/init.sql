@@ -17,6 +17,12 @@
  * under the License.
  */
 
+-- Create two more databases for testing. The first database, polaris_realm1, is created
+-- during container initialization. See PostgresTestResourceLifecycleManager.
+
+-- Note: the database names must follow the pattern polaris_{realm}. That's the pattern
+-- specified by the persistence.xml file used in tests.
+
 CREATE DATABASE polaris_realm2;
 GRANT ALL PRIVILEGES ON DATABASE polaris_realm2 TO polaris;
 
