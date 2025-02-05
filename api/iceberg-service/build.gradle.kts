@@ -50,10 +50,10 @@ dependencies {
 val policyManagementModels =
   listOf(
       "CreatePolicyRequest",
-      "EntityIdentifier",
       "CatalogIdentifier",
       "NamespaceIdentifier",
       "TableLikeIdentifier",
+      "EntityIdentifier",
       "LoadPolicyResult",
       "Policy",
       "SetPolicyRequest",
