@@ -1,22 +1,21 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://polaris.apache.org/policy/system.data_compaction/schema/2025-02-03",
   "title": "Data Compaction Policy",
-  "description": "An inheritable Polaris policy schema for Iceberg table data compaction",
+  "description": "Inheritable Polaris policy schema for Iceberg table data compaction.",
   "type": "object",
   "properties": {
     "version": {
       "type": "string",
       "const": "2025-02-03",
-      "description": "Schema version, must always be 2025-02-03."
+      "description": "Schema version."
     },
     "enable": {
       "type": "boolean",
-      "description": "Mandatory flag to enable or disable the data compaction."
+      "description": "Enable or disable data compaction."
     },
     "target_file_size_bytes": {
       "type": "number",
-      "description": "Target file size in bytes."
+      "description": "Target data file size in bytes."
     }
   },
   "required": ["enable"],
@@ -29,4 +28,3 @@
     }
   ]
 }
-
