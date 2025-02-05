@@ -232,6 +232,18 @@ class TestCliParsing(unittest.TestCase):
             })
         check_arguments(
             mock_execute([
+                'catalogs', 'create', 'my-catalog', '--storage-type', 's3',
+                '--allowed-location', 'a', '--role-arn', 'ra', '--region', 'us-west-2',
+                '--external-id', 'ei', '--default-base-location', 'x']),
+            'create_catalog', {
+                (0, 'catalog.name'): 'my-catalog',
+                (0, 'catalog.storage_config_info.storage_type'): 'S3',
+                (0, 'catalog.properties.default_base_location'): 'x',
+                (0, 'catalog.storage_config_info.allowed_locations'): ['a'],
+                (0, 'catalog.storage_config_info.region'): 'us-west-2',
+            })
+        check_arguments(
+            mock_execute([
                 'catalogs', 'create', 'my-catalog', '--storage-type', 'gcs',
                 '--allowed-location', 'a', '--allowed-location', 'b',
                 '--service-account', 'sa', '--default-base-location', 'x']),

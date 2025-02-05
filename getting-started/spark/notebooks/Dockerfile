@@ -20,7 +20,8 @@
 FROM jupyter/all-spark-notebook:spark-3.5.0
 
 COPY --chown=jovyan regtests/client /home/jovyan/client
-RUN pip install poetry==1.5.0 && \
+COPY --chown=jovyan regtests/requirements.txt /tmp
+RUN pip install -r /tmp/requirements.txt && \
     cd client/python && \
     python3 -m poetry install && \
     pip install -e .

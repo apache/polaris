@@ -54,6 +54,7 @@ class Command(ABC):
                 role_arn=options_get(Arguments.ROLE_ARN),
                 external_id=options_get(Arguments.EXTERNAL_ID),
                 user_arn=options_get(Arguments.USER_ARN),
+                region=options_get(Arguments.REGION),
                 tenant_id=options_get(Arguments.TENANT_ID),
                 multi_tenant_app_name=options_get(Arguments.MULTI_TENANT_APP_NAME),
                 consent_url=options_get(Arguments.CONSENT_URL),

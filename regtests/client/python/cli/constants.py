@@ -133,6 +133,7 @@ class Arguments:
     BASE_URL = 'base_url'
     PARENT = 'parent'
     LOCATION = 'location'
+    REGION = 'region'
     PROFILE = 'profile'
 
 
@@ -167,6 +168,7 @@ class Hints:
 
             ROLE_ARN = '(Required for S3) A role ARN to use when connecting to S3'
             EXTERNAL_ID = '(Only for S3) The external ID to use when connecting to S3'
+            REGION = '(Only for S3) The region to use when connecting to S3'
             USER_ARN = '(Only for S3) A user ARN to use when connecting to S3'
 
             TENANT_ID = '(Required for Azure) A tenant ID to use when connecting to Azure Storage'
@@ -233,5 +235,5 @@ CLIENT_SECRET_ENV = 'CLIENT_SECRET'
 CLIENT_PROFILE_ENV = 'CLIENT_PROFILE'
 DEFAULT_HOSTNAME = 'localhost'
 DEFAULT_PORT = 8181
-CONFIG_DIR = os.environ.get('SCRIPT_DIR')
+CONFIG_DIR = os.environ.get('SCRIPT_DIR', '~/.polaris/')
 CONFIG_FILE = os.path.join(CONFIG_DIR, '.polaris.json')

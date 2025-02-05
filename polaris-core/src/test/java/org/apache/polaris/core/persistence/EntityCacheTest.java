@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -85,10 +84,7 @@ public class EntityCacheTest {
         new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS, diagServices);
     metaStoreManager =
         new PolarisMetaStoreManagerImpl(
-            RealmId.newRealmId("test"),
-            diagServices,
-            new PolarisConfigurationStore() {},
-            Clock.systemUTC());
+            () -> "test", diagServices, new PolarisConfigurationStore() {}, Clock.systemUTC());
 
     // bootstrap the mata store with our test schema
     tm = new PolarisTestMetaStoreManager(metaStoreManager, metaStore, diagServices);

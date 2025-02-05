@@ -16,13 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.auth;
+package org.apache.polaris.service.context;
 
-import java.util.function.Function;
+import java.util.Map;
 import org.apache.polaris.core.context.RealmContext;
 
-/**
- * Factory that creates a {@link TokenBroker} for generating and parsing. The {@link TokenBroker} is
- * created based on the realm context.
- */
-public interface TokenBrokerFactory extends Function<RealmContext, TokenBroker> {}
+public interface RealmContextResolver {
+
+  RealmContext resolveRealmContext(
+      String requestURL, String method, String path, Map<String, String> headers);
+}

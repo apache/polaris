@@ -24,7 +24,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -36,25 +36,26 @@ import org.slf4j.LoggerFactory;
  */
 @ApplicationScoped
 @Identifier("test")
-public class TestRealmIdResolver implements RealmIdResolver {
-  private static final Logger LOGGER = LoggerFactory.getLogger(DefaultRealmIdResolver.class);
+public class TestRealmContextResolver implements RealmContextResolver {
+  private static final Logger LOGGER = LoggerFactory.getLogger(DefaultRealmContextResolver.class);
 
   public static final String REALM_PROPERTY_KEY = "realm";
 
   private final RealmContextConfiguration configuration;
 
   @Inject
-  public TestRealmIdResolver(RealmContextConfiguration configuration) {
+  public TestRealmContextResolver(RealmContextConfiguration configuration) {
     this.configuration = configuration;
   }
 
   @Override
-  public RealmId resolveRealmContext(
+  public RealmContext resolveRealmContext(
       String requestURL, String method, String path, Map<String, String> headers) {
     // Since this default resolver is strictly for use in test/dev environments, we'll consider
     // it safe to log all contents. Any "real" resolver used in a prod environment should make
     // sure to only log non-sensitive contents.
-    LOGGER.debug("Resolving RealmId for method: {}, path: {}, headers: {}", method, path, headers);
+    LOGGER.debug(
+        "Resolving RealmContext for method: {}, path: {}, headers: {}", method, path, headers);
     Map<String, String> parsedProperties = parseBearerTokenAsKvPairs(headers);
 
     if (!parsedProperties.containsKey(REALM_PROPERTY_KEY)
@@ -70,7 +71,7 @@ public class TestRealmIdResolver implements RealmIdResolver {
       parsedProperties.put(REALM_PROPERTY_KEY, configuration.defaultRealm());
     }
     String realmId = parsedProperties.get(REALM_PROPERTY_KEY);
-    return RealmId.newRealmId(realmId);
+    return () -> realmId;
   }
 
   /**

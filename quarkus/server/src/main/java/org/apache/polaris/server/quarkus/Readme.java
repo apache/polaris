@@ -16,9 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.polaris.server.quarkus;
 
-package org.apache.polaris.service.defaults;
-
-// This file is here as a placeholder to have some java content in
-// the corresponding jar. Relevant data is in the application.properties
-// file at the root of the resources tree.
+/**
+ * This file is here as a placeholder to allow quarkusDev and quarkusRun tasks to work, since this
+ * module currently has no source files.
+ */
+@SuppressWarnings("unused")
+public final class Readme {
+  private Readme() {}
+}

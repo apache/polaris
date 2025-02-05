@@ -18,11 +18,16 @@
  */
 package org.apache.polaris.service.context;
 
-import java.util.Map;
-import org.apache.polaris.core.context.RealmId;
+import jakarta.ws.rs.core.SecurityContext;
+import org.apache.iceberg.catalog.Catalog;
+import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 
-public interface RealmIdResolver {
-
-  RealmId resolveRealmContext(
-      String requestURL, String method, String path, Map<String, String> headers);
+public interface CallContextCatalogFactory {
+  Catalog createCallContextCatalog(
+      RealmContext realmContext,
+      AuthenticatedPolarisPrincipal authenticatedPrincipal,
+      SecurityContext securityContext,
+      PolarisResolutionManifest resolvedManifest);
 }

@@ -87,6 +87,7 @@ class OptionTree:
                     Argument(Arguments.ALLOWED_LOCATION, str, Hints.Catalogs.Create.ALLOWED_LOCATION,
                              allow_repeats=True),
                     Argument(Arguments.ROLE_ARN, str, Hints.Catalogs.Create.ROLE_ARN),
+                    Argument(Arguments.REGION, str, Hints.Catalogs.Create.REGION),
                     Argument(Arguments.EXTERNAL_ID, str, Hints.Catalogs.Create.EXTERNAL_ID),
                     Argument(Arguments.TENANT_ID, str, Hints.Catalogs.Create.TENANT_ID),
                     Argument(Arguments.MULTI_TENANT_APP_NAME, str, Hints.Catalogs.Create.MULTI_TENANT_APP_NAME),
