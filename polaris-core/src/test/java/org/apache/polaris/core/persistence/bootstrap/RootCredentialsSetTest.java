@@ -90,25 +90,21 @@ class RootCredentialsSetTest {
 
   @Test
   void getSecretsValidJson() {
-    URL resource =
-        getClass().getResource("/org/apache/polaris/core/persistence/bootstrap/credentials.json");
+    URL resource = getClass().getResource("credentials.json");
     RootCredentialsSet set = RootCredentialsSet.fromUrl(resource);
     assertCredentials(set);
   }
 
   @Test
   void getSecretsValidYaml() {
-    URL resource =
-        getClass().getResource("/org/apache/polaris/core/persistence/bootstrap/credentials.yaml");
+    URL resource = getClass().getResource("credentials.yaml");
     RootCredentialsSet set = RootCredentialsSet.fromUrl(resource);
     assertCredentials(set);
   }
 
   @Test
   void getSecretsInvalidJson() {
-    URL resource =
-        getClass()
-            .getResource("/org/apache/polaris/core/persistence/bootstrap/credentials-invalid.json");
+    URL resource = getClass().getResource("credentials-invalid.json");
     assertThatThrownBy(() -> RootCredentialsSet.fromUrl(resource))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Failed to read credentials file")
@@ -120,9 +116,7 @@ class RootCredentialsSetTest {
 
   @Test
   void getSecretsInvalidYaml() {
-    URL resource =
-        getClass()
-            .getResource("/org/apache/polaris/core/persistence/bootstrap/credentials-invalid.yaml");
+    URL resource = getClass().getResource("credentials-invalid.yaml");
     assertThatThrownBy(() -> RootCredentialsSet.fromUrl(resource))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Failed to read credentials file")

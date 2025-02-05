@@ -35,10 +35,10 @@ import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Objects;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusMainTest
 @WithTestResource(
@@ -51,9 +51,9 @@ class BootstrapCommandTest {
   private static Path yaml;
 
   @BeforeAll
-  static void prepareFiles() throws IOException {
-    json = copyResource("/org/apache/polaris/admintool/credentials.json");
-    yaml = copyResource("/org/apache/polaris/admintool/credentials.yaml");
+  static void prepareFiles(@TempDir Path temp) throws IOException {
+    json = copyResource(temp, "credentials.json");
+    yaml = copyResource(temp, "credentials.yaml");
   }
 
   @Test
@@ -132,13 +132,12 @@ class BootstrapCommandTest {
         .contains("Bootstrap encountered errors during operation.");
   }
 
-  private static Path copyResource(String resource) throws IOException {
-    URL jsonSource = Objects.requireNonNull(BootstrapCommandTest.class.getResource(resource));
-    Path file = Files.createTempFile("credentials", "tmp");
-    file.toFile().deleteOnExit();
-    try (InputStream is = jsonSource.openStream()) {
-      Files.copy(is, file, StandardCopyOption.REPLACE_EXISTING);
+  private static Path copyResource(Path temp, String resource) throws IOException {
+    URL source = Objects.requireNonNull(BootstrapCommandTest.class.getResource(resource));
+    Path dest = temp.resolve(resource);
+    try (InputStream in = source.openStream()) {
+      Files.copy(in, dest);
     }
-    return file;
+    return dest;
   }
 }

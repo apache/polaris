@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.persistence.bootstrap;
 
+import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
+
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -110,6 +112,9 @@ public interface RootCredentialsSet {
    * # etc.
    * </pre>
    *
+   * Multiple YAMl documents are also supported; all documents will be merged into a single set of
+   * credentials.
+   *
    * <p>The expected JSON format is:
    *
    * <pre>
@@ -126,9 +131,15 @@ public interface RootCredentialsSet {
    * </pre>
    */
   static RootCredentialsSet fromUrl(URL url) {
-    try {
-      ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-      return mapper.readValue(url, RootCredentialsSet.class);
+    YAMLFactory factory = new YAMLFactory();
+    ObjectMapper mapper = new ObjectMapper(factory).configure(FAIL_ON_UNKNOWN_PROPERTIES, false);
+    try (var parser = factory.createParser(url)) {
+      var values = mapper.readValues(parser, RootCredentialsSet.class);
+      var builder = ImmutableRootCredentialsSet.builder();
+      while (values.hasNext()) {
+        builder.putAllCredentials(values.next().credentials());
+      }
+      return builder.build();
     } catch (Exception e) {
       throw new IllegalArgumentException("Failed to read credentials file: " + url, e);
     }
