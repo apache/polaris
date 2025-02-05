@@ -1527,9 +1527,9 @@ paths:
       description: |
         Create a mapping between a policy and a resource entity
 
-        Policy can be set at different levels, table, namespace, and catalog, and they will be interited by lower level entities. Different levels are:
+        Policy can be set at different levels, table, namespace, and catalog, and they will be inherited by lower level entities. Different levels are:
         1. **Table-like level:** Policies specific to individual tables/views.
-        2. **Namsepace level:** Policies that apply to all tables within a namespace.
+        2. **Namespace level:** Policies that apply to all tables within a namespace.
         3. **Catalog level:** Catalog-wide policies that ally across all tables within a namespace
 
         Policy Inheritance Override rules
@@ -3549,14 +3549,85 @@ components:
           type: string
         content:
           type: string
+    EntityIdentifier:
+      discriminator:
+        propertyName: type
+        mapping:
+          catalog: '#/components/schemas/CatalogIdentifier'
+          namespace: '#/components/schemas/NamespaceIdentifier'
+          table-like: '#/components/schemas/TableLikeIdentifier'
+      type: object
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - catalog
+            - namespace
+            - table-like
+    CatalogIdentifier:
+      allOf:
+        - $ref: '#/components/schemas/EntityIdentifier'
+        - type: object
+          required:
+            - type
+            - catalog
+          properties:
+            type:
+              type: string
+              enum:
+                - catalog
+            catalog:
+              type: string
+              nullable: false
+    NamespaceIdentifier:
+      allOf:
+        - $ref: '#/components/schemas/EntityIdentifier'
+        - type: object
+          required:
+            - type
+            - catalog
+            - namespace
+          properties:
+            type:
+              type: string
+              enum:
+                - namespace
+            catalog:
+              type: string
+              nullable: false
+            namespace:
+              $ref: '#/components/schemas/Namespace'
+    TableLikeIdentifier:
+      allOf:
+        - $ref: '#/components/schemas/EntityIdentifier'
+        - type: object
+          required:
+            - type
+            - catalog
+            - namespace
+            - name
+          properties:
+            type:
+              type: string
+              enum:
+                - table-like
+            catalog:
+              type: string
+              nullable: false
+            namespace:
+              $ref: '#/components/schemas/Namespace'
+            name:
+              type: string
+              nullable: false
     Policy:
       type: object
       description: |
         A policy in Apache Polaris defines a set of rules for governing access, data usage, and operational consistency across various catalog resources. Policies are stored within Polaris and can be applied to catalogs, namespaces, tables, and views. They enable fine-grained control over who can perform specific actions on these resources.
 
         The policy object includes
-        - **owner-entity-id:** The id of the entity that owns the policy
-        - **policy-id:** A unique id for the policy
+        - **owner-entity:** The entity that owns the policy
         - **policy-type:** The type of the policy, which determines the expected format and semantics of the policy content.
           For example, predefined types include `system.compaction` or `system.snapshot_retention`, while custom policy types
           follow a namespaced format like `custom.<org_name>.data_masking`.
@@ -3570,17 +3641,14 @@ components:
 
         Policies stored in Polaris serve as the persistent definition for access control and governance rules, while their evaluation and enforcement are delegated to external computation engines.
       required:
-        - owner-entity-id
-        - policy-id
+        - owner-entity
         - policy-type
         - name
         - content
         - version
       properties:
-        owner-entity-id:
-          type: string
-        policy-id:
-          type: string
+        owner-entity:
+          $ref: '#/components/schemas/EntityIdentifier'
         policy-type:
           type: string
         name:
@@ -3609,19 +3677,6 @@ components:
           type: string
         content:
           type: string
-    EntityIdentifier:
-      type: object
-      required:
-        - catalog
-      properties:
-        catalog:
-          type: string
-          nullable: false
-        namespace:
-          $ref: '#/components/schemas/Namespace'
-        name:
-          type: string
-          nullable: false
     SetPolicyRequest:
       type: object
       required:
