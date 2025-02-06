@@ -34,10 +34,11 @@ import org.apache.polaris.service.auth.TestOAuth2ApiService;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.context.DefaultRealmContextResolver;
-import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextResolver;
 import org.apache.polaris.service.context.TestRealmContextResolver;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.eclipse.microprofile.config.Config;
+import org.eclipse.microprofile.config.ConfigValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,14 +108,15 @@ public class ProductionReadinessChecks {
   }
 
   public void checkRealmResolver(
-      @Observes StartupEvent event,
-      RealmContextConfiguration configuration,
-      RealmContextResolver resolver) {
+      @Observes StartupEvent event, Config config, RealmContextResolver resolver) {
     if (resolver instanceof TestRealmContextResolver) {
       warnOnTestOnly("realm context resolver", "polaris.realm-context.type");
     }
     if (resolver instanceof DefaultRealmContextResolver) {
-      if (!configuration.requireHeader()) {
+      ConfigValue configValue = config.getConfigValue("polaris.realm-context.require-header");
+      boolean userProvided =
+          configValue.getSourceOrdinal() > 250; // ordinal for application.properties in classpath
+      if ("false".equals(configValue.getValue()) && !userProvided) {
         LOGGER.warn(
             "The realm context resolver is configured to map requests without a realm header to the default realm. "
                 + "Do not do this in production (offending configuration option: 'polaris.realm-context.require-header').");
