@@ -17,7 +17,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: 'Apache Polaris Catalog API Specification'
 linkTitle: 'Catalog API Spec'
 weight: 900
 params:
