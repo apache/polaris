@@ -1375,7 +1375,7 @@ paths:
         In Apache Polaris, policies are created, stored, and later referenced by external engines to enforce access controls on associated resources.
 
         User provides the following inputs when creating a policy
-        - `name`(REQUIRED): The name of the policy. It Must include only unreserved URL characters: letters(A-Z, a-z), digits (0-9), hyphens (-), periods (.), underscores (_) and tildes (~)
+        - `name`(REQUIRED): The name of the policy. It must include only unreserved URL characters: letters(A-Z, a-z), digits (0-9), hyphens (-), periods (.), underscores (_) and tildes (~)
         - `type` (REQUIRED): The type of the policy. It can be either predefined type or custom type.
           - **Predefined Policies:** system.compaction, system.snapshot_retention
           - **Custom Policies:** custom.<org_name>.data_masking, custom.<user_id>.audit_policy
@@ -1453,7 +1453,9 @@ paths:
       description: |-
         Update a policy
 
-        A policy's description and content can be updated. The new content is validated against the policy's corresponding validator, which is determined by its type—predefined policies use built-in server-side validators, while custom policies rely on user-provided validators. Upon a successful update, the policy's version is incremented by 1.
+        A policy's description and content can be updated. The new content is validated against the policy's corresponding validator, 
+        which is determined by its type—predefined policies use built-in server-side validators, while custom policies rely on user-provided validators. 
+        Upon a successful update, the policy's version is incremented by 1.
       requestBody:
         required: true
         content:
