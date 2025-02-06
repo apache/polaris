@@ -37,7 +37,7 @@ paths:
         In Apache Polaris, policies are created, stored, and later referenced by external engines to enforce access controls on associated resources.
 
         User provides the following inputs when creating a policy
-        - `name`(REQUIRED): The name of the policy. It must include only unreserved URL characters: letters(A-Z, a-z), digits (0-9), hyphens (-), periods (.), underscores (_) and tildes (~)
+        - `name`(REQUIRED): The name of the policy. It must include only letters(A-Z, a-z), digits (0-9), hyphens (-), and underscores (_)
         - `type` (REQUIRED): The type of the policy. It can be either predefined type or custom type.
           - **Predefined Policies:** system.compaction, system.snapshot_retention
           - **Custom Policies:** custom.<org_name>.data_masking, custom.<user_id>.audit_policy
@@ -308,10 +308,6 @@ components:
     policy:
       name: policy
       in: path
-      description:
-        A policy name. A valid policy name should only consist of unreserved URI characters,
-        which include uppercase and lowercase letters (A-Z, a-z), digits (0-9), hyphens (-),
-        periods (.), underscores (_), and tildes (~).
       required: true
       schema:
         $ref: '#/components/schemas/PolicyName'
@@ -319,7 +315,10 @@ components:
   schemas:
     PolicyName:
       type: string
-      pattern: '^[A-Za-z0-9\-\._~]+$'
+      description:
+        A policy name. A valid policy name should only consist of uppercase and lowercase letters (A-Z, a-z), 
+        digits (0-9), hyphens (-), underscores (_).
+      pattern: '^[A-Za-z0-9\-_]+$'
       example: 'compaction'
 
     Policy:
