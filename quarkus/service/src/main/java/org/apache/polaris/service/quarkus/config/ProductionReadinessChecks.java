@@ -24,6 +24,7 @@ import jakarta.enterprise.event.Observes;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
+import org.apache.polaris.service.auth.AuthenticationConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
 import org.apache.polaris.service.auth.AuthenticationConfiguration.TokenBrokerConfiguration.SymmetricKeyConfiguration;
 import org.apache.polaris.service.auth.Authenticator;
 import org.apache.polaris.service.auth.JWTRSAKeyPairFactory;
@@ -64,11 +65,26 @@ public class ProductionReadinessChecks {
       AuthenticationConfiguration configuration,
       TokenBrokerFactory factory) {
     if (factory instanceof JWTRSAKeyPairFactory) {
-      LOGGER.warn(
-          "No public and private key files were provided; these will be generated. "
-              + "Do not do this in production (offending configuration options: "
-              + "'polaris.authentication.token-broker.rsa-key-pair.public-key-file' and "
-              + "'polaris.authentication.token-broker.rsa-key-pair.private-key-file').");
+      if (configuration
+          .tokenBroker()
+          .rsaKeyPair()
+          .map(RSAKeyPairConfiguration::publicKeyFile)
+          .isEmpty()) {
+        LOGGER.warn(
+            "A public key file wasn't provided and will be generated. "
+                + "Do not do this in production (offending configuration option: "
+                + "'polaris.authentication.token-broker.rsa-key-pair.public-key-file').");
+      }
+      if (configuration
+          .tokenBroker()
+          .rsaKeyPair()
+          .map(RSAKeyPairConfiguration::privateKeyFile)
+          .isEmpty()) {
+        LOGGER.warn(
+            "A private key file wasn't provided and will be generated. "
+                + "Do not do this in production (offending configuration option: "
+                + "'polaris.authentication.token-broker.rsa-key-pair.private-key-file').");
+      }
     }
     if (factory instanceof JWTSymmetricKeyFactory) {
       if (configuration
