@@ -22,7 +22,6 @@ import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.NotAuthorizedException;
-import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.PreMatching;
@@ -31,9 +30,10 @@ import jakarta.ws.rs.ext.Provider;
 import java.security.Principal;
 import java.util.Optional;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.service.config.PolarisFilterPriorities;
 
 @PreMatching
-@Priority(Priorities.AUTHENTICATION)
+@Priority(PolarisFilterPriorities.AUTHENTICATOR_FILTER)
 @ApplicationScoped
 @Provider
 public class PolarisPrincipalAuthenticatorFilter implements ContainerRequestFilter {

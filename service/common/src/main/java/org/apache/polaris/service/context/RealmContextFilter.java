@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.ratelimiter;
+package org.apache.polaris.service.context;
 
 import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -24,34 +24,28 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.container.ContainerRequestFilter;
 import jakarta.ws.rs.container.PreMatching;
-import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.Provider;
-import java.io.IOException;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.config.PolarisFilterPriorities;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/** Request filter that returns a 429 Too Many Requests if the rate limiter says so */
-@Provider
 @PreMatching
-@Priority(PolarisFilterPriorities.RATE_LIMITER_FILTER)
 @ApplicationScoped
-public class RateLimiterFilter implements ContainerRequestFilter {
-  private static final Logger LOGGER = LoggerFactory.getLogger(RateLimiterFilter.class);
+@Priority(PolarisFilterPriorities.REALM_CONTEXT_FILTER)
+@Provider
+public class RealmContextFilter implements ContainerRequestFilter {
 
-  private final RateLimiter rateLimiter;
+  public static final String REALM_CONTEXT_KEY = "realmContext";
 
-  @Inject
-  public RateLimiterFilter(RateLimiter rateLimiter) {
-    this.rateLimiter = rateLimiter;
-  }
+  @Inject RealmContextResolver realmContextResolver;
 
-  /** Returns a 429 if the rate limiter says so. Otherwise, forwards the request along. */
   @Override
-  public void filter(ContainerRequestContext ctx) throws IOException {
-    if (!rateLimiter.canProceed()) {
-      ctx.abortWith(Response.status(Response.Status.TOO_MANY_REQUESTS).build());
-      LOGGER.atDebug().log("Rate limiting request");
-    }
+  public void filter(ContainerRequestContext rc) {
+    RealmContext realmContext =
+        realmContextResolver.resolveRealmContext(
+            rc.getUriInfo().getRequestUri().toString(),
+            rc.getMethod(),
+            rc.getUriInfo().getPath(),
+            rc.getHeaders()::getFirst);
+    rc.setProperty(REALM_CONTEXT_KEY, realmContext);
   }
 }

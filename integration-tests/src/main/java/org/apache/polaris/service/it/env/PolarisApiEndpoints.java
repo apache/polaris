@@ -28,14 +28,14 @@ import java.net.URI;
  */
 public final class PolarisApiEndpoints implements Serializable {
 
-  public static String REALM_HEADER = "realm";
-
   private final URI baseUri;
-  private final String realm;
+  private final String realmId;
+  private final String realmHeaderName;
 
-  public PolarisApiEndpoints(URI baseUri, String realm) {
+  public PolarisApiEndpoints(URI baseUri, String realmId, String realmHeaderName) {
     this.baseUri = baseUri;
-    this.realm = realm;
+    this.realmId = realmId;
+    this.realmHeaderName = realmHeaderName;
   }
 
   public URI catalogApiEndpoint() {
@@ -46,7 +46,11 @@ public final class PolarisApiEndpoints implements Serializable {
     return baseUri.resolve(baseUri.getRawPath() + "/api/management").normalize();
   }
 
-  public String realm() {
-    return realm;
+  public String realmId() {
+    return realmId;
+  }
+
+  public String realmHeaderName() {
+    return realmHeaderName;
   }
 }

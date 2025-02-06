@@ -16,21 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.it.env;
+package org.apache.polaris.service.context;
 
-import java.net.URI;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import java.util.Map;
+import org.apache.polaris.core.exceptions.PolarisException;
 
-/** Unit tests for PolarisApiEndpoints */
-public class PolarisApiEndpointsTest {
-  @Test
-  void testEndpointRespectsPathPrefix() {
-    PolarisApiEndpoints endpoints =
-        new PolarisApiEndpoints(URI.create("http://myserver.com/polaris"), "", "Polaris-Realm");
-    Assertions.assertEquals(
-        "http://myserver.com/polaris/api/catalog", endpoints.catalogApiEndpoint().toString());
-    Assertions.assertEquals(
-        "http://myserver.com/polaris/api/management", endpoints.managementApiEndpoint().toString());
+/**
+ * Exception thrown when a realm context cannot be resolved.
+ *
+ * @see RealmContextResolver#resolveRealmContext(String, String, String, Map)
+ */
+public class UnresolvableRealmContextException extends PolarisException {
+
+  public UnresolvableRealmContextException(String message) {
+    super(message);
   }
 }

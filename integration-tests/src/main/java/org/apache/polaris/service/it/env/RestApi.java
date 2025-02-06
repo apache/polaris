@@ -22,6 +22,7 @@ import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.client.WebTarget;
 import java.net.URI;
+import java.util.HashMap;
 import java.util.Map;
 
 /** Base class for API helper classes. */
@@ -48,6 +49,19 @@ public class RestApi {
 
   public Invocation.Builder request(
       String path, Map<String, String> templateValues, Map<String, String> queryParams) {
+    Map<String, String> headers = new HashMap<>();
+    headers.put(endpoints.realmHeaderName(), endpoints.realmId());
+    if (authToken != null) {
+      headers.put("Authorization", "Bearer " + authToken);
+    }
+    return request(path, templateValues, queryParams, headers);
+  }
+
+  public Invocation.Builder request(
+      String path,
+      Map<String, String> templateValues,
+      Map<String, String> queryParams,
+      Map<String, String> headers) {
     WebTarget target = client.target(uri).path(path);
     for (Map.Entry<String, String> entry : templateValues.entrySet()) {
       target = target.resolveTemplate(entry.getKey(), entry.getValue());
@@ -56,10 +70,7 @@ public class RestApi {
       target = target.queryParam(entry.getKey(), entry.getValue());
     }
     Invocation.Builder request = target.request("application/json");
-    request = request.header(PolarisApiEndpoints.REALM_HEADER, endpoints.realm());
-    if (authToken != null) {
-      request = request.header("Authorization", "Bearer " + authToken);
-    }
+    headers.forEach(request::header);
     return request;
   }
 }
