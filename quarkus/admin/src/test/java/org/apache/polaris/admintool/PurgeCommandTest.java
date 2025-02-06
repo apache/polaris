@@ -20,17 +20,40 @@ package org.apache.polaris.admintool;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.quarkus.runtime.StartupEvent;
+import io.quarkus.test.common.WithTestResource;
 import io.quarkus.test.junit.main.Launch;
 import io.quarkus.test.junit.main.LaunchResult;
 import io.quarkus.test.junit.main.QuarkusMainTest;
+import jakarta.enterprise.event.Observes;
+import java.util.List;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisCredentialsBootstrap;
 import org.junit.jupiter.api.Test;
 
 @QuarkusMainTest
+@WithTestResource(PostgresTestResourceLifecycleManager.class)
 class PurgeCommandTest {
+
+  void preBootstrap(@Observes StartupEvent event, MetaStoreManagerFactory metaStoreManagerFactory) {
+    metaStoreManagerFactory.bootstrapRealms(
+        List.of("realm1", "realm2"), PolarisCredentialsBootstrap.EMPTY);
+  }
 
   @Test
   @Launch(value = {"purge", "-r", "realm1", "-r", "realm2"})
   public void testPurge(LaunchResult result) {
     assertThat(result.getOutput()).contains("Purge completed successfully.");
+  }
+
+  @Test
+  @Launch(
+      value = {"purge", "-r", "realm3"},
+      exitCode = BaseCommand.EXIT_CODE_PURGE_ERROR)
+  public void testPurgeFailure(LaunchResult result) {
+    assertThat(result.getOutput())
+        .contains(
+            "Realm realm3 is not bootstrapped, could not load root principal. Please run Bootstrap command.");
+    assertThat(result.getErrorOutput()).contains("Purge encountered errors during operation.");
   }
 }

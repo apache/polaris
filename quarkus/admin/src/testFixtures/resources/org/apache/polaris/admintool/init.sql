@@ -16,20 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.admintool;
 
-import jakarta.inject.Inject;
-import java.util.concurrent.Callable;
-import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import picocli.CommandLine.Model.CommandSpec;
-import picocli.CommandLine.Spec;
+-- Create two more databases for testing. The first database, polaris_realm1, is created
+-- during container initialization. See PostgresTestResourceLifecycleManager.
 
-public abstract class BaseCommand implements Callable<Integer> {
+-- Note: the database names must follow the pattern polaris_{realm}. That's the pattern
+-- specified by the persistence.xml file used in tests.
 
-  public static final int EXIT_CODE_BOOTSTRAP_ERROR = 3;
-  public static final int EXIT_CODE_PURGE_ERROR = 4;
+CREATE DATABASE polaris_realm2;
+GRANT ALL PRIVILEGES ON DATABASE polaris_realm2 TO polaris;
 
-  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-
-  @Spec CommandSpec spec;
-}
+CREATE DATABASE polaris_realm3;
+GRANT ALL PRIVILEGES ON DATABASE polaris_realm3 TO polaris;
