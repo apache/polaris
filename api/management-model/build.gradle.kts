@@ -29,6 +29,9 @@ dependencies {
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.swagger.annotations)
+  testImplementation(platform("org.junit:junit-bom:5.9.2"))
+  testImplementation("org.junit.jupiter:junit-jupiter")
+  testImplementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 }
 
 openApiGenerate {
@@ -54,12 +57,37 @@ openApiGenerate {
   serverVariables = mapOf("basePath" to "api/v1")
 }
 
+sourceSets {
+    main {
+        java {
+            srcDir(project.layout.buildDirectory.dir("generated/src/main/java"))
+        }
+    }
+    test {
+        java {
+            srcDir("src/test/java")
+        }
+    }
+}
+
 listOf("sourcesJar", "compileJava").forEach { task ->
   tasks.named(task) { dependsOn("openApiGenerate") }
 }
 
-sourceSets {
-  main { java { srcDir(project.layout.buildDirectory.dir("generated/src/main/java")) } }
+tasks.named("javadoc") { dependsOn("jandex") }
+
+tasks.named<JavaCompile>("compileTestJava") {
+    dependsOn("openApiGenerate")
+}
+tasks.named<Test>("test") {
+    dependsOn("openApiGenerate")
 }
 
-tasks.named("javadoc") { dependsOn("jandex") }
+tasks.withType<Test> {
+    useJUnitPlatform()
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+    }
+    dependsOn("openApiGenerate")
+}
