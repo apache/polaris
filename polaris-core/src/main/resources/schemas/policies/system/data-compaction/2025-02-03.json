@@ -14,14 +14,12 @@
       "type": "boolean",
       "description": "Enable or disable data compaction."
     },
-    "target_file_size_bytes": {
-      "type": "number",
-      "description": "Target data file size in bytes."
-    },
     "config": {
       "type": "object",
       "description": "A map containing custom configuration properties. Please note that interoperability is not guaranteed.",
-      "additionalProperties": {}
+      "additionalProperties": {
+        "type": ["string", "number", "boolean"]
+      }
     }
   },
   "required": ["enable"],
@@ -30,8 +28,8 @@
     {
       "version": "2025-02-03",
       "enable": true,
-      "target_file_size_bytes": 134217728,
       "config": {
+        "target_file_size_bytes": 134217728,
         "compaction_strategy": "bin-pack",
         "max-concurrent-file-group-rewrites": 5,
         "my-key": "my-value"
