@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import java.util.Collections;
 import com.fasterxml.jackson.databind.JsonMappingException;
+import java.util.Arrays;
 
 public class CatalogSerializationTest {
 
@@ -177,6 +178,70 @@ public class CatalogSerializationTest {
                 + "}";
 
         assertThrows(JsonProcessingException.class, () -> mapper.readValue(json, Catalog.class));
+    }
+
+    @Test
+    public void testLongCatalogName() throws JsonProcessingException {
+        String longName = "a".repeat(1000);
+        Catalog catalog = new Catalog(
+                Catalog.TypeEnum.INTERNAL,
+                longName,
+                new CatalogProperties(TEST_LOCATION),
+                null);
+        String json = mapper.writeValueAsString(catalog);
+        Catalog deserialized = mapper.readValue(json, Catalog.class);
+        assertEquals(longName, deserialized.getName());
+    }
+
+    @Test
+    public void testUnicodeCharacters() throws JsonProcessingException {
+        String unicodeName = "测试目录";
+        Catalog catalog = new Catalog(
+                Catalog.TypeEnum.INTERNAL,
+                unicodeName,
+                new CatalogProperties(TEST_LOCATION),
+                null);
+        String json = mapper.writeValueAsString(catalog);
+        Catalog deserialized = mapper.readValue(json, Catalog.class);
+        assertEquals(unicodeName, deserialized.getName());
+    }
+
+    @Test
+    public void testWhitespaceHandling() throws JsonProcessingException {
+        String nameWithSpaces = "  test  catalog  ";
+        Catalog catalog = new Catalog(
+                Catalog.TypeEnum.INTERNAL,
+                nameWithSpaces,
+                new CatalogProperties("  " + TEST_LOCATION + "  "),
+                null);
+        String json = mapper.writeValueAsString(catalog);
+        Catalog deserialized = mapper.readValue(json, Catalog.class);
+        assertEquals(nameWithSpaces, deserialized.getName());
+    }
+
+    @Test
+    public void testRoleArnValidation() throws JsonProcessingException {
+        String[] validArns = {
+                "arn:aws:iam::123456789012:role/test-role",
+                "arn:aws:iam::123456789012:role/service-role/test-role",
+                "arn:aws:iam::123456789012:role/path/to/role"
+        };
+
+        for (String arn : validArns) {
+            StorageConfigInfo storageConfig = new AwsStorageConfigInfo(
+                    arn,
+                    StorageConfigInfo.StorageTypeEnum.S3);
+
+            Catalog catalog = new Catalog(
+                    Catalog.TypeEnum.INTERNAL,
+                    TEST_CATALOG_NAME,
+                    new CatalogProperties(TEST_LOCATION),
+                    storageConfig);
+
+            String json = mapper.writeValueAsString(catalog);
+            Catalog deserialized = mapper.readValue(json, Catalog.class);
+            assertEquals(arn, ((AwsStorageConfigInfo) deserialized.getStorageConfigInfo()).getRoleArn());
+        }
     }
 
     private int countTypeFields(JsonNode node) {
