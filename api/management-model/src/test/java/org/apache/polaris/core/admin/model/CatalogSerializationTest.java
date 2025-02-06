@@ -8,10 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import java.util.Collections;
-import org.apache.polaris.core.admin.model.Catalog;
-import org.apache.polaris.core.admin.model.CatalogProperties;
-import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum;
+import com.fasterxml.jackson.databind.JsonMappingException;
 
 public class CatalogSerializationTest {
 
@@ -135,6 +132,51 @@ public class CatalogSerializationTest {
         String json = mapper.writeValueAsString(catalog);
         JsonNode node = mapper.readTree(json);
         assertEquals(specialName, node.get("name").asText());
+    }
+
+    @Test
+    public void testCatalogWithEmptyStrings() throws JsonProcessingException {
+        String json = "{"
+                + "\"type\": \"INTERNAL\","
+                + "\"name\": \"\","
+                + "\"properties\": {"
+                + "    \"default-base-location\": \"\""
+                + "},"
+                + "\"storageConfigInfo\": {"
+                + "    \"storageType\": \"S3\","
+                + "    \"roleArn\": \"\","
+                + "    \"allowedLocations\": []"
+                + "}"
+                + "}";
+
+        Catalog catalog = mapper.readValue(json, Catalog.class);
+        String serialized = mapper.writeValueAsString(catalog);
+        JsonNode node = mapper.readTree(serialized);
+
+        assertEquals("", node.get("name").asText());
+        assertEquals("", node.at("/properties/default-base-location").asText());
+        assertEquals("", node.at("/storageConfigInfo/roleArn").asText());
+    }
+
+    @Test
+    public void testInvalidEnumValue() {
+        String json = "{"
+                + "\"type\": \"INVALID_TYPE\","
+                + "\"name\": \"test-catalog\""
+                + "}";
+
+        assertThrows(JsonMappingException.class, () -> mapper.readValue(json, Catalog.class));
+    }
+
+    @Test
+    public void testMalformedJson() {
+        String json = "{"
+                + "\"type\": \"INTERNAL\","
+                + "\"name\": \"test-catalog\","
+                + "\"properties\": {"
+                + "}";
+
+        assertThrows(JsonProcessingException.class, () -> mapper.readValue(json, Catalog.class));
     }
 
     private int countTypeFields(JsonNode node) {
