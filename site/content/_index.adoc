@@ -29,7 +29,7 @@ Apache Polaris is an open-source, fully-featured catalog for Apache Iceberg™. 
 image::img/Polaris-Catalog-BLOG-symmetrical-subhead.png[Polaris Catalog]
 
 {{< blocks/section color="dark" type="row" >}}
-{{% blocks/feature icon="fa-lightbulb" title="Join the community!" url="https://polaris-catalog.zulipchat.com/" url_text="Chat with us" %}}
+{{% blocks/feature icon="fa-lightbulb" title="Join the community!" url="https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw" url_text="Chat with us" %}}
 Chat with users and project developers!
 {{% /blocks/feature %}}
 {{% blocks/feature icon="fa-brands fa-github" title="Contributions welcome!" url="https://github.com/apache/polaris/pulls" url_text="Polaris Pull Requests" %}}

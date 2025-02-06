@@ -46,10 +46,6 @@ params:
         url: https://apache-polaris.slack.com/
         icon: fa-regular fa-comment-dots
         desc: Chat with other project developers
-      - name: Zulip
-        url: https://polaris-catalog.zulipchat.com/
-        icon: fa-regular fa-comment-dots
-        desc: Chat with other project developers
       - name: Community Meetings
         url: /community/meetings/
         icon: fa-brands fa-square-youtube
