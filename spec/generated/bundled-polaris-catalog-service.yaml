@@ -1,21 +1,19 @@
-#
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
+#  Licensed to the Apache Software Foundation (ASF) under one
+#  or more contributor license agreements.  See the NOTICE file
+#  distributed with this work for additional information
+#  regarding copyright ownership.  The ASF licenses this file
+#  to you under the Apache License, Version 2.0 (the
+#  "License"); you may not use this file except in compliance
+#  with the License.  You may obtain a copy of the License at
+
 #   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-#
+
+#  Unless required by applicable law or agreed to in writing,
+#  software distributed under the License is distributed on an
+#  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+#  KIND, either express or implied.  See the License for the
+#  specific language governing permissions and limitations
+#  under the License.
 openapi: 3.0.3
 info:
   title: Apache Polaris and Apache Iceberg REST Catalog API
@@ -1377,7 +1375,7 @@ paths:
         In Apache Polaris, policies are created, stored, and later referenced by external engines to enforce access controls on associated resources.
 
         User provides the following inputs when creating a policy
-        - `name`(REQUIRED): The name of the policy. It must include only letters(A-Z, a-z), digits (0-9), hyphens (-), and underscores (_)
+        - `name`(REQUIRED): The name of the policy.
         - `type` (REQUIRED): The type of the policy. It can be either predefined type or custom type.
           - **Predefined Policies:** system.compaction, system.snapshot_retention
           - **Custom Policies:** custom.<org_name>.data_masking, custom.<user_id>.audit_policy
@@ -1531,15 +1529,10 @@ paths:
       description: |
         Create a mapping between a policy and a resource entity
 
-        Policy can be set at different levels, table, namespace, and catalog, and they will be inherited by lower level entities. Different levels are:
-        1. **Table-like level:** Policies specific to individual tables/views.
-        2. **Namespace level:** Policies that apply to all tables within a namespace.
-        3. **Catalog level:** Catalog-wide policies that ally across all tables within a namespace
-
-        Policy Inheritance Override rules
-        - Table-like-level policies override namespace and catalog policies
-        - Namespace-level policies override upper level namespace or catalog policies
-        - Overrides apply only to policies of the same type
+        Policy can be set at different levels:
+        1. **Table-like level:** Policies specific to individual tables, views, or other table-like entities.
+        2. **Namespace level:** Policies applies to a namespace.
+        3. **Catalog level:** Policies that applies to a catalog
 
         Additional parameters can be provided in `parameters` when creating a mapping to define specific behavior or constraints.
       requestBody:
@@ -3613,7 +3606,9 @@ components:
     Policy:
       type: object
       description: |
-        A policy in Apache Polaris defines a set of rules for governing access, data usage, and operational consistency across various catalog resources. Policies are stored within Polaris and can be applied to catalogs, namespaces, tables, and views. They enable fine-grained control over who can perform specific actions on these resources.
+        A policy in Apache Polaris defines a set of rules for governing access, data usage, and operational consistency across various catalog resources. 
+        Policies are stored within Polaris and can be applied to catalogs, namespaces, tables, and views. tables, and views. 
+        For example, they can be used for fine-grained control over who can perform specific actions on certain resources.
 
         The policy object includes
         - **owner-entity:** The entity that owns the policy
@@ -3623,17 +3618,16 @@ components:
 
         - **name:**  A human-readable name for the policy, which must be unique within a given namespace.
         - **description:** Detailed description of the purpose and functionalities of the policy.
-        - **content:** Policy content, which can be validated against predefined schemas for policy types.
+        - **content:** Policy content, which can be validated against predefined schemas of a policy type.
         - **version:** Indicates the current version of the policy. Versions increased monotonically, the default value is 0
         - **created_at:** A timestamp (in milliseconds) indicating when the policy was created.
         - **updated_at:** A timestamp (in milliseconds) indicating the last update time of the policy.
 
-        Policies stored in Polaris serve as the persistent definition for access control and governance rules, while their evaluation and enforcement are delegated to external computation engines.
+        Policies stored in Polaris serve as the persistent definition for access control and governance rules.
       required:
         - owner-entity
         - policy-type
         - name
-        - content
         - version
       properties:
         owner-entity:
