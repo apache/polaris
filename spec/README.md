@@ -23,7 +23,7 @@ npm install @redocly/cli -g
 
 ### Generate the Bundle
 ```
-redocly bundle spec/polaris-catalog-open-api.yaml -o spec/generated/generated-polaris-catalog-service.yaml
+redocly bundle spec/polaris-catalog-service.yaml -o spec/generated/bundled-polaris-catalog-service.yaml
 ```
 
 

@@ -1336,7 +1336,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/responses-IcebergErrorResponse'
+                $ref: '#/components/schemas/IcebergErrorResponse'
               examples:
                 TableToLoadDoesNotExist:
                   $ref: '#/components/examples/NoSuchTableError'
@@ -1345,7 +1345,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/responses-IcebergErrorResponse'
+                $ref: '#/components/schemas/IcebergErrorResponse'
               example:
                 summary: The timestamp of the received notification is older than or equal to the most recent timestamp Polaris has already processed for the specified table.
                 value:
@@ -3257,17 +3257,6 @@ components:
           $ref: '#/components/schemas/NotificationType'
         payload:
           $ref: '#/components/schemas/TableUpdateNotification'
-    responses-IcebergErrorResponse:
-      description: JSON wrapper for all error responses (non-2xx)
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/IcebergErrorResponse'
-          example:
-            error:
-              message: The server does not support this operation
-              type: UnsupportedOperationException
-              code: 406
   responses:
     BadRequestErrorResponse:
       description: Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server's middleware.
