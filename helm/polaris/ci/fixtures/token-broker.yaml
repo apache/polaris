@@ -22,6 +22,10 @@ kind: Secret
 metadata:
   name: polaris-token-broker
 type: Opaque
+# The following values were generated using the following commands:
+# openssl genrsa -out private.pem 2048
+# openssl rsa -in private.pem -pubout -out public.pem
+# They do not contain any sensitive information and are used for testing purposes only.
 stringData:
   private.pem: |-
     -----BEGIN PRIVATE KEY-----
