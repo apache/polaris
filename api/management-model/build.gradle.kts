@@ -58,16 +58,8 @@ openApiGenerate {
 }
 
 sourceSets {
-    main {
-        java {
-            srcDir(project.layout.buildDirectory.dir("generated/src/main/java"))
-        }
-    }
-    test {
-        java {
-            srcDir("src/test/java")
-        }
-    }
+  main { java { srcDir(project.layout.buildDirectory.dir("generated/src/main/java")) } }
+  test { java { srcDir("src/test/java") } }
 }
 
 listOf("sourcesJar", "compileJava").forEach { task ->
@@ -76,18 +68,15 @@ listOf("sourcesJar", "compileJava").forEach { task ->
 
 tasks.named("javadoc") { dependsOn("jandex") }
 
-tasks.named<JavaCompile>("compileTestJava") {
-    dependsOn("openApiGenerate")
-}
-tasks.named<Test>("test") {
-    dependsOn("openApiGenerate")
-}
+tasks.named<JavaCompile>("compileTestJava") { dependsOn("openApiGenerate") }
+
+tasks.named<Test>("test") { dependsOn("openApiGenerate") }
 
 tasks.withType<Test> {
-    useJUnitPlatform()
-    testLogging {
-        events("passed", "skipped", "failed")
-        showStandardStreams = true
-    }
-    dependsOn("openApiGenerate")
+  useJUnitPlatform()
+  testLogging {
+    events("passed", "skipped", "failed")
+    showStandardStreams = true
+  }
+  dependsOn("openApiGenerate")
 }
