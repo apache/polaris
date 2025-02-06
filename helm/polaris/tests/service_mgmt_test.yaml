@@ -172,10 +172,11 @@ tests:
           value: ClientIP
 
   # spec.clusterIP
-  - it: should not set service cluster IP by default
+  - it: should set service cluster IP to None (headless) by default
     asserts:
-      - notExists:
+      - equal:
           path: spec.clusterIP
+          value: None
   - it: should set service cluster IP
     set:
       managementService.clusterIP: 1.2.3.4

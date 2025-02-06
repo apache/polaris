@@ -164,7 +164,10 @@ managementService:
       nodePort: ~  # 30000
       # -- The IP protocol for this port. Supports "TCP", "UDP", and "SCTP". Default is TCP.
       protocol: ~
-  clusterIP: ~
+  # -- By default, the management service is headless, i.e. it does not have a cluster IP.
+  # This is generally the right option for exposing health checks and metrics, e.g. for metrics
+  # scraping and service monitoring.
+  clusterIP: None
   sessionAffinity: ~
   internalTrafficPolicy: ~
   externalTrafficPolicy: ~
