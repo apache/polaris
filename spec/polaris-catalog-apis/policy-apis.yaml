@@ -193,7 +193,7 @@ paths:
       - $ref: '../rest-catalog-open-api.yaml#/components/parameters/namespace'
       - $ref: '#/components/parameters/policy'
 
-    post:
+    put:
       tags:
         - Catalog API
       summary: Create a mapping between a policy and a resource entity
@@ -235,15 +235,6 @@ paths:
                   $ref: '#/components/examples/NoSuchPolicyError'
                 EntityToSetDoesNotExist:
                   $ref: '#/components/examples/NoSuchEntityError'
-        409:
-          description: Conflict - The mapping already exists
-          content:
-            application/json:
-              schema:
-                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
-              examples:
-                MappingAlreadyExistsError:
-                  $ref: '#/components/examples/MappingAlreadyExistsError'
         419:
           $ref: '../rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
         503:
@@ -525,15 +516,5 @@ components:
           "message": "The given mapping between policy and entity does not exist",
           "type": "NoSuchMappingException",
           "code": 404
-        }
-      }
-
-    MappingAlreadyExistsError:
-      summary: The mapping between the given policy and entity already exists
-      value: {
-        "error": {
-          "message": "The mapping between the given policy and entity does not exist",
-          "type": "MappingAlreadyExistsError",
-          "code": 409
         }
       }
