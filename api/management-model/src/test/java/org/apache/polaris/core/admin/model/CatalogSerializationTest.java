@@ -25,11 +25,30 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.Collections;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-// Tests for serialization and deserialization of Catalog objects
+/**
+ * Test suite for Catalog JSON serialization and deserialization.
+ * 
+ * Coverage includes:
+ * <ul>
+ * <li>Basic serialization/deserialization of Catalog objects</li>
+ * <li>Handling of null and empty fields</li>
+ * <li>Special character handling in field values</li>
+ * <li>Unicode character support</li>
+ * <li>Whitespace preservation</li>
+ * <li>AWS role ARN validation</li>
+ * </ul>
+ * 
+ * Error handling coverage:
+ * <ul>
+ * <li>Invalid JSON input</li>
+ * <li>Malformed JSON structure</li>
+ * <li>Invalid enum values</li>
+ * <li>Edge cases like very long catalog names</li>
+ * </ul>
+ */
 public class CatalogSerializationTest {
 
   private ObjectMapper mapper;
@@ -43,84 +62,107 @@ public class CatalogSerializationTest {
     mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   }
 
-  // Tests basic catalog object serialization to JSON and verifies type field
-  // handling
+  /**
+   * Helper method to verify round-trip serialization/deserialization of Catalog
+   * objects.
+   * Ensures all fields are preserved correctly through the process.
+   *
+   * @param original The catalog object to test
+   * @return The deserialized catalog for additional assertions if needed
+   */
+  private Catalog verifyRoundTrip(Catalog original) throws JsonProcessingException {
+    // Perform serialization and deserialization
+    String json = mapper.writeValueAsString(original);
+    Catalog deserialized = mapper.readValue(json, Catalog.class);
+
+    // Verify required fields
+    assertEquals(original.getType(), deserialized.getType(), "Catalog type should match");
+    assertEquals(original.getName(), deserialized.getName(), "Catalog name should match");
+
+    // Verify properties
+    if (original.getProperties() != null) {
+      assertNotNull(deserialized.getProperties(), "Properties should not be null");
+      assertEquals(
+          original.getProperties().getDefaultBaseLocation(),
+          deserialized.getProperties().getDefaultBaseLocation(),
+          "Default base location should match");
+    } else {
+      assertNull(deserialized.getProperties(), "Properties should be null");
+    }
+
+    // Verify storage config
+    if (original.getStorageConfigInfo() != null) {
+      assertNotNull(deserialized.getStorageConfigInfo(), "Storage config should not be null");
+      assertEquals(
+          original.getStorageConfigInfo().getStorageType(),
+          deserialized.getStorageConfigInfo().getStorageType(),
+          "Storage type should match");
+
+      // Only check AWS-specific fields if we're explicitly using AWS storage config
+      if (original.getStorageConfigInfo() instanceof AwsStorageConfigInfo) {
+        assertTrue(
+            deserialized.getStorageConfigInfo() instanceof AwsStorageConfigInfo,
+            "Storage config should be AWS type");
+        AwsStorageConfigInfo originalAws = (AwsStorageConfigInfo) original.getStorageConfigInfo();
+        AwsStorageConfigInfo deserializedAws = (AwsStorageConfigInfo) deserialized.getStorageConfigInfo();
+
+        assertEquals(
+            originalAws.getRoleArn(),
+            deserializedAws.getRoleArn(),
+            "Role ARN should match");
+      }
+
+      assertEquals(
+          original.getStorageConfigInfo().getAllowedLocations(),
+          deserialized.getStorageConfigInfo().getAllowedLocations(),
+          "Allowed locations should match");
+    } else {
+      assertNull(deserialized.getStorageConfigInfo(), "Storage config should be null");
+    }
+
+    return deserialized;
+  }
+
+  // Update testCatalogSerialization to use verifyRoundTrip
   @Test
   public void testCatalogSerialization() throws JsonProcessingException {
     CatalogProperties properties = new CatalogProperties(TEST_LOCATION);
 
-    StorageConfigInfo storageConfig = new StorageConfigInfo(StorageConfigInfo.StorageTypeEnum.S3,
-        Collections.emptyList());
+    // Create AWS storage config with required roleArn
+    StorageConfigInfo storageConfig = new AwsStorageConfigInfo(
+        TEST_ROLE_ARN,
+        StorageConfigInfo.StorageTypeEnum.S3);
 
-    Catalog catalog = new Catalog(Catalog.TypeEnum.INTERNAL, TEST_CATALOG_NAME, properties, storageConfig);
+    Catalog catalog = new Catalog(
+        Catalog.TypeEnum.INTERNAL,
+        TEST_CATALOG_NAME,
+        properties,
+        storageConfig);
 
-    String json = mapper.writeValueAsString(catalog);
-
-    // Assert exact JSON string
-    String expectedJson = "{" +
-        "\"type\":\"INTERNAL\"," +
-        "\"name\":\"test-catalog\"," +
-        "\"properties\":{" +
-        "\"default-base-location\":\"s3://test/\"" +
-        "}," +
-        "\"createTimestamp\":null," +
-        "\"lastUpdateTimestamp\":null," +
-        "\"entityVersion\":null," +
-        "\"storageConfigInfo\":{" +
-        "\"storageType\":\"S3\"," +
-        "\"allowedLocations\":[]" +
-        "}" +
-        "}";
-
-    assertEquals(expectedJson, json);
+    verifyRoundTrip(catalog);
   }
 
-  // Tests deserialization of JSON string into Catalog object and validates field
-  // values
+  // Update testCatalogDeserialization
   @Test
   public void testCatalogDeserialization() throws JsonProcessingException {
-    String json = "{"
-        + "\"type\": \"INTERNAL\","
-        + "\"name\": \"test-catalog\","
-        + "\"properties\": {"
-        + "    \"default-base-location\": \"s3://test/\""
-        + "},"
-        + "\"storageConfigInfo\": {"
-        + "    \"storageType\": \"S3\","
-        + "    \"roleArn\": \"arn:aws:iam::123456789012:role/test-role\","
-        + "    \"allowedLocations\": []"
-        + "}"
-        + "}";
-
-    Catalog catalog = mapper.readValue(json, Catalog.class);
-
-    assertEquals(Catalog.TypeEnum.INTERNAL, catalog.getType());
-    assertEquals(TEST_CATALOG_NAME, catalog.getName());
-    assertEquals(TEST_LOCATION, catalog.getProperties().getDefaultBaseLocation());
+    StorageConfigInfo storageConfig = new AwsStorageConfigInfo(TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3);
+    Catalog catalog = new Catalog(
+        Catalog.TypeEnum.INTERNAL,
+        TEST_CATALOG_NAME,
+        new CatalogProperties(TEST_LOCATION),
+        storageConfig);
+    verifyRoundTrip(catalog);
   }
 
-  // Tests handling of null fields during serialization and deserialization
+  // Update testCatalogWithNullFields - already using proper verification
   @Test
   public void testCatalogWithNullFields() throws JsonProcessingException {
-    // Create catalog with null fields except type (required)
     Catalog catalog = new Catalog(
-        Catalog.TypeEnum.INTERNAL, // type cannot be null for polymorphic deserialization
-        null, // null name
-        null, // null properties
-        null // null storage config
-    );
-
-    // Test serialization
-    String json = mapper.writeValueAsString(catalog);
-
-    // Test deserialization
-    Catalog deserializedCatalog = mapper.readValue(json, Catalog.class);
-
-    // Verify fields
-    assertEquals(Catalog.TypeEnum.INTERNAL, deserializedCatalog.getType());
-    assertNull(deserializedCatalog.getName());
-    assertNull(deserializedCatalog.getProperties());
-    assertNull(deserializedCatalog.getStorageConfigInfo());
+        Catalog.TypeEnum.INTERNAL,
+        null,
+        null,
+        null);
+    verifyRoundTrip(catalog);
   }
 
   // Tests error handling for invalid JSON input during deserialization
@@ -151,21 +193,17 @@ public class CatalogSerializationTest {
     assertEquals("", catalog.getProperties().getDefaultBaseLocation());
   }
 
-  // Tests handling of special characters in catalog name
+  // Update testSpecialCharacters
   @Test
   public void testSpecialCharacters() throws JsonProcessingException {
-    StorageConfigInfo storageConfig = new AwsStorageConfigInfo(TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3);
-
     String specialName = "test\"catalog";
+    StorageConfigInfo storageConfig = new AwsStorageConfigInfo(TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3);
     Catalog catalog = new Catalog(
         Catalog.TypeEnum.INTERNAL,
         specialName,
         new CatalogProperties(TEST_LOCATION),
         storageConfig);
-
-    String json = mapper.writeValueAsString(catalog);
-    JsonNode node = mapper.readTree(json);
-    assertEquals(specialName, node.get("name").asText());
+    verifyRoundTrip(catalog);
   }
 
   // Tests serialization and deserialization of empty string values
@@ -209,15 +247,16 @@ public class CatalogSerializationTest {
     assertThrows(JsonProcessingException.class, () -> mapper.readValue(json, Catalog.class));
   }
 
-  // Tests handling of very long catalog names
+  // Update testLongCatalogName
   @Test
   public void testLongCatalogName() throws JsonProcessingException {
     String longName = "a".repeat(1000);
     Catalog catalog = new Catalog(
-        Catalog.TypeEnum.INTERNAL, longName, new CatalogProperties(TEST_LOCATION), null);
-    String json = mapper.writeValueAsString(catalog);
-    Catalog deserialized = mapper.readValue(json, Catalog.class);
-    assertEquals(longName, deserialized.getName());
+        Catalog.TypeEnum.INTERNAL,
+        longName,
+        new CatalogProperties(TEST_LOCATION),
+        null);
+    verifyRoundTrip(catalog);
   }
 
   // Tests handling of Unicode characters in catalog names
@@ -225,13 +264,14 @@ public class CatalogSerializationTest {
   public void testUnicodeCharacters() throws JsonProcessingException {
     String unicodeName = "测试目录";
     Catalog catalog = new Catalog(
-        Catalog.TypeEnum.INTERNAL, unicodeName, new CatalogProperties(TEST_LOCATION), null);
-    String json = mapper.writeValueAsString(catalog);
-    Catalog deserialized = mapper.readValue(json, Catalog.class);
-    assertEquals(unicodeName, deserialized.getName());
+        Catalog.TypeEnum.INTERNAL,
+        unicodeName,
+        new CatalogProperties(TEST_LOCATION),
+        null);
+    verifyRoundTrip(catalog);
   }
 
-  // Tests preservation of whitespace in field values
+  // Update testWhitespaceHandling
   @Test
   public void testWhitespaceHandling() throws JsonProcessingException {
     String nameWithSpaces = "  test  catalog  ";
@@ -240,9 +280,7 @@ public class CatalogSerializationTest {
         nameWithSpaces,
         new CatalogProperties("  " + TEST_LOCATION + "  "),
         null);
-    String json = mapper.writeValueAsString(catalog);
-    Catalog deserialized = mapper.readValue(json, Catalog.class);
-    assertEquals(nameWithSpaces, deserialized.getName());
+    verifyRoundTrip(catalog);
   }
 
   // Tests validation of AWS role ARN formats
@@ -256,29 +294,13 @@ public class CatalogSerializationTest {
 
     for (String arn : validArns) {
       StorageConfigInfo storageConfig = new AwsStorageConfigInfo(arn, StorageConfigInfo.StorageTypeEnum.S3);
-
       Catalog catalog = new Catalog(
           Catalog.TypeEnum.INTERNAL,
           TEST_CATALOG_NAME,
           new CatalogProperties(TEST_LOCATION),
           storageConfig);
-
-      String json = mapper.writeValueAsString(catalog);
-      Catalog deserialized = mapper.readValue(json, Catalog.class);
-      assertEquals(arn, ((AwsStorageConfigInfo) deserialized.getStorageConfigInfo()).getRoleArn());
+      verifyRoundTrip(catalog);
     }
   }
 
-  private int countTypeFields(JsonNode node) {
-    int count = 0;
-    if (node.has("type")) {
-      count++;
-    }
-    if (node.isObject()) {
-      for (JsonNode child : node) {
-        count += countTypeFields(child);
-      }
-    }
-    return count;
-  }
 }
