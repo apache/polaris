@@ -18,14 +18,22 @@
  */
 package org.apache.polaris.admintool;
 
+import static org.apache.polaris.admintool.PostgresTestResourceLifecycleManager.INIT_SCRIPT;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.quarkus.test.common.ResourceArg;
+import io.quarkus.test.common.TestResourceScope;
+import io.quarkus.test.common.WithTestResource;
 import io.quarkus.test.junit.main.Launch;
 import io.quarkus.test.junit.main.LaunchResult;
 import io.quarkus.test.junit.main.QuarkusMainTest;
 import org.junit.jupiter.api.Test;
 
 @QuarkusMainTest
+@WithTestResource(
+    value = PostgresTestResourceLifecycleManager.class,
+    scope = TestResourceScope.GLOBAL,
+    initArgs = @ResourceArg(name = INIT_SCRIPT, value = "org/apache/polaris/admintool/init.sql"))
 class BootstrapCommandTest {
 
   @Test

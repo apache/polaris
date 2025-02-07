@@ -25,6 +25,7 @@ import jakarta.ws.rs.ext.Provider;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.exceptions.PolarisException;
+import org.apache.polaris.service.context.UnresolvableRealmContextException;
 
 /**
  * An {@link ExceptionMapper} implementation for {@link PolarisException}s modeled after {@link
@@ -36,6 +37,8 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
   private Response.Status getStatus(PolarisException exception) {
     if (exception instanceof AlreadyExistsException) {
       return Response.Status.CONFLICT;
+    } else if (exception instanceof UnresolvableRealmContextException) {
+      return Response.Status.NOT_FOUND;
     } else {
       return Response.Status.INTERNAL_SERVER_ERROR;
     }

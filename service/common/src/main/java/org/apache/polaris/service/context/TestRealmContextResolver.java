@@ -24,6 +24,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 import org.apache.polaris.core.context.RealmContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,7 +51,7 @@ public class TestRealmContextResolver implements RealmContextResolver {
 
   @Override
   public RealmContext resolveRealmContext(
-      String requestURL, String method, String path, Map<String, String> headers) {
+      String requestURL, String method, String path, Function<String, String> headers) {
     // Since this default resolver is strictly for use in test/dev environments, we'll consider
     // it safe to log all contents. Any "real" resolver used in a prod environment should make
     // sure to only log non-sensitive contents.
@@ -58,9 +59,9 @@ public class TestRealmContextResolver implements RealmContextResolver {
         "Resolving RealmContext for method: {}, path: {}, headers: {}", method, path, headers);
     Map<String, String> parsedProperties = parseBearerTokenAsKvPairs(headers);
 
-    if (!parsedProperties.containsKey(REALM_PROPERTY_KEY)
-        && headers.containsKey(REALM_PROPERTY_KEY)) {
-      parsedProperties.put(REALM_PROPERTY_KEY, headers.get(REALM_PROPERTY_KEY));
+    String realm = headers.apply(REALM_PROPERTY_KEY);
+    if (!parsedProperties.containsKey(REALM_PROPERTY_KEY) && realm != null) {
+      parsedProperties.put(REALM_PROPERTY_KEY, realm);
     }
 
     if (!parsedProperties.containsKey(REALM_PROPERTY_KEY)) {
@@ -78,10 +79,10 @@ public class TestRealmContextResolver implements RealmContextResolver {
    * Returns kv pairs parsed from the "Authorization: Bearer k1:v1;k2:v2;k3:v3" header if it exists;
    * if missing, returns empty map.
    */
-  private static Map<String, String> parseBearerTokenAsKvPairs(Map<String, String> headers) {
+  private static Map<String, String> parseBearerTokenAsKvPairs(Function<String, String> headers) {
     Map<String, String> parsedProperties = new HashMap<>();
     if (headers != null) {
-      String authHeader = headers.get("Authorization");
+      String authHeader = headers.apply("Authorization");
       if (authHeader != null) {
         String[] parts = authHeader.split(" ");
         if (parts.length == 2 && "Bearer".equalsIgnoreCase(parts[0])) {

@@ -19,32 +19,41 @@
 package org.apache.polaris.service.quarkus.tracing;
 
 import io.opentelemetry.api.trace.Span;
-import io.quarkus.vertx.web.RouteFilter;
-import io.vertx.ext.web.RoutingContext;
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.container.PreMatching;
+import jakarta.ws.rs.ext.Provider;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.context.RealmContextFilter;
+import org.apache.polaris.service.quarkus.config.QuarkusFilterPriorities;
 import org.apache.polaris.service.quarkus.logging.QuarkusLoggingMDCFilter;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
+@PreMatching
 @ApplicationScoped
-public class QuarkusTracingFilter {
+@Priority(QuarkusFilterPriorities.TRACING_FILTER)
+@Provider
+public class QuarkusTracingFilter implements ContainerRequestFilter {
 
   public static final String REQUEST_ID_ATTRIBUTE = "polaris.request.id";
-  public static final String REALM_ID_ATTRIBUTE = "polaris.realm";
+  public static final String REALM_ID_ATTRIBUTE = "polaris.realm.id";
 
   @ConfigProperty(name = "quarkus.otel.sdk.disabled")
   boolean sdkDisabled;
 
-  @RouteFilter(QuarkusLoggingMDCFilter.PRIORITY - 1)
-  public void applySpanAttributes(RoutingContext rc) {
+  @Override
+  public void filter(ContainerRequestContext rc) {
     if (!sdkDisabled) {
       Span span = Span.current();
-      String requestId = QuarkusLoggingMDCFilter.requestId(rc);
-      String realmId = QuarkusLoggingMDCFilter.realmId(rc);
+      String requestId = (String) rc.getProperty(QuarkusLoggingMDCFilter.REQUEST_ID_KEY);
       if (requestId != null) {
         span.setAttribute(REQUEST_ID_ATTRIBUTE, requestId);
       }
-      span.setAttribute(REALM_ID_ATTRIBUTE, realmId);
+      RealmContext realmContext =
+          (RealmContext) rc.getProperty(RealmContextFilter.REALM_CONTEXT_KEY);
+      span.setAttribute(REALM_ID_ATTRIBUTE, realmContext.getRealmIdentifier());
     }
-    rc.next();
   }
 }

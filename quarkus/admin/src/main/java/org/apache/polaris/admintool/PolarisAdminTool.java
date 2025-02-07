@@ -43,8 +43,6 @@ public class PolarisAdminTool extends BaseCommand {
   }
 
   private int info() {
-    warnOnInMemory();
-
     PrintWriter out = spec.commandLine().getOut();
 
     out.println("Polaris administration & maintenance tool.");

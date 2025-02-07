@@ -32,7 +32,6 @@ and [Apache Iceberg REST API doc](https://polaris.apache.org/index.html#tag/Conf
 for contribution guidelines.
 
 [![Slack](https://img.shields.io/badge/chat-on%20Slack-brightgreen.svg?style=for-the-badge)](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw)
-[![Zulip](https://img.shields.io/badge/Zulip-Chat-blue?color=3d4db3&logo=zulip&style=for-the-badge&logoColor=white)](https://polaris-catalog.zulipchat.com/)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/apache/polaris/gradle.yml?branch=main&label=Main%20CI&logo=Github&style=for-the-badge)](https://github.com/apache/polaris/actions/workflows/gradle.yml?query=branch%3Amain)
 
 [dev-list-subscribe]: mailto:dev-subscribe@polaris.apache.org

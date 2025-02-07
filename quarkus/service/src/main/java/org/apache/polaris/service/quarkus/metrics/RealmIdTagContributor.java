@@ -23,7 +23,6 @@ import io.quarkus.micrometer.runtime.HttpServerMetricsTagsContributor;
 import io.vertx.core.http.HttpServerRequest;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.util.HashMap;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.context.RealmContextResolver;
 
@@ -38,16 +37,17 @@ public class RealmIdTagContributor implements HttpServerMetricsTagsContributor {
   public Tags contribute(Context context) {
     // FIXME request scope does not work here, so we have to resolve the realm context manually
     HttpServerRequest request = context.request();
-    RealmContext realmContext = resolveRealmContext(request);
-    return Tags.of(TAG_REALM, realmContext.getRealmIdentifier());
+    try {
+      RealmContext realmContext = resolveRealmContext(request);
+      return Tags.of(TAG_REALM, realmContext.getRealmIdentifier());
+    } catch (Exception ignored) {
+      // ignore, the RealmContextFilter will handle the error
+      return Tags.empty();
+    }
   }
 
   private RealmContext resolveRealmContext(HttpServerRequest request) {
     return realmContextResolver.resolveRealmContext(
-        request.absoluteURI(),
-        request.method().name(),
-        request.path(),
-        request.headers().entries().stream()
-            .collect(HashMap::new, (m, e) -> m.put(e.getKey(), e.getValue()), HashMap::putAll));
+        request.absoluteURI(), request.method().name(), request.path(), request.headers()::get);
   }
 }
