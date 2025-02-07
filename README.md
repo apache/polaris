@@ -100,7 +100,7 @@ using different configurations. Check the `./getting-started` directory for more
 #### Configuring Polaris
 
 Polaris Servers can be configured using a variety of ways.
-Please see the [Configuration Guide](https://polaris.apache.org/in-dev/unreleased/configuration/)
+Please see the [Configuration Guide](site/content/in-dev/unreleased/configuration.md)
 for more information.
 
 Default configuration values can be found in `quarkus/defaults/src/main/resources/application.properties`.
