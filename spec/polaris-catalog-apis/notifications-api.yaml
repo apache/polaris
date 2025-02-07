@@ -17,8 +17,6 @@
 # under the License.
 #
 
-# CODE_COPIED_TO_POLARIS
-
 ---
 paths:
   /v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications:
