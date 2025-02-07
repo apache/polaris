@@ -96,6 +96,14 @@ using different configurations. Check the `./getting-started` directory for more
 - `kubectl get deployment -n polaris` - To check the status of the deployment.
 - `kubectl describe deployment polaris-deployment -n polaris` - To troubleshoot if things aren't working as expected.
 
+#### Configuring Polaris
+
+Polaris Servers can be configured using a variety of ways.
+Please see the [Configuration Guide](site/content/in-dev/unreleased/configuration.md)
+for more information.
+
+Default configuration values can be found in `quarkus/defaults/src/main/resources/application.properties`.
+
 #### Building docs
 
 - Docs are generated using [Hugo](https://gohugo.io/) using the [Docsy](https://www.docsy.dev/docs/) theme.
