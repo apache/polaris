@@ -43,7 +43,8 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBrokerFactory.apply(realmContext)).thenReturn(tokenBroker);
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(false);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
-    when(tokenBroker.generateFromClientSecrets("client", "secret", CLIENT_CREDENTIALS, "scope"))
+    when(tokenBroker.generateFromClientSecrets(
+            "client", "secret", CLIENT_CREDENTIALS, "scope", TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -70,7 +71,8 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBrokerFactory.apply(realmContext)).thenReturn(tokenBroker);
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(false);
-    when(tokenBroker.generateFromClientSecrets("client", "secret", CLIENT_CREDENTIALS, "scope"))
+    when(tokenBroker.generateFromClientSecrets(
+            "client", "secret", CLIENT_CREDENTIALS, "scope", TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -97,7 +99,8 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBrokerFactory.apply(realmContext)).thenReturn(tokenBroker);
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
-    when(tokenBroker.generateFromClientSecrets(null, "secret", CLIENT_CREDENTIALS, "scope"))
+    when(tokenBroker.generateFromClientSecrets(
+            null, "secret", CLIENT_CREDENTIALS, "scope", TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -121,7 +124,8 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBrokerFactory.apply(realmContext)).thenReturn(tokenBroker);
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
-    when(tokenBroker.generateFromClientSecrets("client", "secret", CLIENT_CREDENTIALS, "scope"))
+    when(tokenBroker.generateFromClientSecrets(
+            "client", "secret", CLIENT_CREDENTIALS, "scope", TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -147,7 +151,11 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsGrantType(TokenRequestValidator.TOKEN_EXCHANGE)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
-            "client", "secret", TokenRequestValidator.TOKEN_EXCHANGE, "scope"))
+            "client",
+            "secret",
+            TokenRequestValidator.TOKEN_EXCHANGE,
+            "scope",
+            TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -175,7 +183,7 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsGrantType(TokenRequestValidator.TOKEN_EXCHANGE)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
-            null, "secret", TokenRequestValidator.TOKEN_EXCHANGE, "scope"))
+            null, "secret", TokenRequestValidator.TOKEN_EXCHANGE, "scope", TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -206,7 +214,7 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
 
     when(tokenBroker.generateFromClientSecrets(
-            "", "secret", TokenRequestValidator.TOKEN_EXCHANGE, "scope"))
+            "", "secret", TokenRequestValidator.TOKEN_EXCHANGE, "scope", TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()

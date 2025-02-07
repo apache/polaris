@@ -96,12 +96,14 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
       }
     }
     TokenResponse tokenResponse;
-    if (subjectToken != null) {
+    if (clientSecret != null) {
       tokenResponse =
-          tokenBroker.generateFromToken(subjectTokenType, subjectToken, grantType, scope);
-    } else if (clientSecret != null) {
+          tokenBroker.generateFromClientSecrets(
+              clientId, clientSecret, grantType, scope, requestedTokenType);
+    } else if (subjectToken != null) {
       tokenResponse =
-          tokenBroker.generateFromClientSecrets(clientId, clientSecret, grantType, scope);
+          tokenBroker.generateFromToken(
+              subjectTokenType, subjectToken, grantType, scope, requestedTokenType);
     } else {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
     }
