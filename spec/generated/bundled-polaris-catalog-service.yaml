@@ -14,6 +14,9 @@
 #  KIND, either express or implied.  See the License for the
 #  specific language governing permissions and limitations
 #  under the License.
+
+# CODE_COPIED_TO_POLARIS
+
 openapi: 3.0.3
 info:
   title: Apache Polaris and Apache Iceberg REST Catalog API
