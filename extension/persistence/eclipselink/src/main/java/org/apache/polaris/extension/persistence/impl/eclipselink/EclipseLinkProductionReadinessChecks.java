@@ -20,11 +20,12 @@ package org.apache.polaris.extension.persistence.impl.eclipselink;
 
 import static org.eclipse.persistence.config.PersistenceUnitProperties.JDBC_URL;
 
-import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Observes;
+import jakarta.enterprise.inject.Produces;
 import java.io.IOException;
 import java.nio.file.Path;
+import org.apache.polaris.core.config.ProductionReadinessCheck;
+import org.apache.polaris.core.config.ProductionReadinessCheck.Error;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,8 +35,8 @@ public class EclipseLinkProductionReadinessChecks {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(EclipseLinkProductionReadinessChecks.class);
 
-  public void checkJdbcUrl(
-      @Observes StartupEvent event, EclipseLinkConfiguration eclipseLinkConfiguration) {
+  @Produces
+  public ProductionReadinessCheck checkJdbcUrl(EclipseLinkConfiguration eclipseLinkConfiguration) {
     try {
       var confFile = eclipseLinkConfiguration.configurationFile().map(Path::toString).orElse(null);
       var persistenceUnitName =
@@ -45,14 +46,14 @@ public class EclipseLinkProductionReadinessChecks {
       var properties = unit.loadProperties();
       var jdbcUrl = properties.get(JDBC_URL);
       if (jdbcUrl != null && jdbcUrl.startsWith("jdbc:h2")) {
-        LOGGER.warn(
-            "!!! The current persistence unit (jdbc:h2) is intended for tests only. "
-                + "Do not do this in production! "
-                + "Offending configuration option: 'polaris.persistence.eclipselink.configuration-file'. "
-                + "See https://polaris.apache.org/in-dev/unreleased/configuring-polaris-for-production/.");
+        return ProductionReadinessCheck.of(
+            Error.of(
+                "The current persistence unit (jdbc:h2) is intended for tests only.",
+                "polaris.persistence.eclipselink.configuration-file"));
       }
     } catch (IOException e) {
       LOGGER.error("Failed to check JDBC URL", e);
     }
+    return ProductionReadinessCheck.OK;
   }
 }
