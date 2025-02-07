@@ -46,8 +46,10 @@ public class EclipseLinkProductionReadinessChecks {
       var jdbcUrl = properties.get(JDBC_URL);
       if (jdbcUrl != null && jdbcUrl.startsWith("jdbc:h2")) {
         LOGGER.warn(
-            "The current persistence unit is intended for tests only; do not use it in production "
-                + "(offending configuration option: 'polaris.persistence.eclipselink.configuration-file')");
+            "!!! The current persistence unit (jdbc:h2) is intended for tests only. "
+                + "Do not do this in production! "
+                + "Offending configuration option: 'polaris.persistence.eclipselink.configuration-file'. "
+                + "See https://polaris.apache.org/in-dev/unreleased/configuring-polaris-for-production/.");
       }
     } catch (IOException e) {
       LOGGER.error("Failed to check JDBC URL", e);

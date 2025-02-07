@@ -51,13 +51,17 @@ public class ProductionReadinessChecks {
       @Observes StartupEvent event,
       Authenticator<String, AuthenticatedPolarisPrincipal> authenticator) {
     if (authenticator instanceof TestInlineBearerTokenPolarisAuthenticator) {
-      warnOnTestOnly("authenticator", "polaris.authentication.authenticator.type");
+      warn(
+          "The current authenticator is intended for tests only.",
+          "polaris.authentication.authenticator.type");
     }
   }
 
   public void checkTokenService(@Observes StartupEvent event, IcebergRestOAuth2ApiService service) {
     if (service instanceof TestOAuth2ApiService) {
-      warnOnTestOnly("token service", "polaris.authentication.token-service.type");
+      warn(
+          "The current token service is intended for tests only.",
+          "polaris.authentication.token-service.type");
     }
   }
 
@@ -71,20 +75,18 @@ public class ProductionReadinessChecks {
           .rsaKeyPair()
           .map(RSAKeyPairConfiguration::publicKeyFile)
           .isEmpty()) {
-        LOGGER.warn(
-            "A public key file wasn't provided and will be generated. "
-                + "Do not do this in production (offending configuration option: "
-                + "'polaris.authentication.token-broker.rsa-key-pair.public-key-file').");
+        warn(
+            "A public key file wasn't provided and will be generated.",
+            "polaris.authentication.token-broker.rsa-key-pair.public-key-file");
       }
       if (configuration
           .tokenBroker()
           .rsaKeyPair()
           .map(RSAKeyPairConfiguration::privateKeyFile)
           .isEmpty()) {
-        LOGGER.warn(
-            "A private key file wasn't provided and will be generated. "
-                + "Do not do this in production (offending configuration option: "
-                + "'polaris.authentication.token-broker.rsa-key-pair.private-key-file').");
+        warn(
+            "A private key file wasn't provided and will be generated.",
+            "polaris.authentication.token-broker.rsa-key-pair.private-key-file");
       }
     }
     if (factory instanceof JWTSymmetricKeyFactory) {
@@ -93,41 +95,42 @@ public class ProductionReadinessChecks {
           .symmetricKey()
           .map(SymmetricKeyConfiguration::secret)
           .isPresent()) {
-        LOGGER.warn(
-            "A symmetric key secret was provided through configuration rather than through a secret file. "
-                + "Do not do this in production (offending configuration option: "
-                + "'polaris.authentication.token-broker.symmetric-key.secret').");
+        warn(
+            "A symmetric key secret was provided through configuration rather than through a secret file.",
+            "polaris.authentication.token-broker.symmetric-key.secret");
       }
     }
   }
 
   public void checkMetastore(@Observes StartupEvent event, MetaStoreManagerFactory factory) {
     if (factory instanceof InMemoryPolarisMetaStoreManagerFactory) {
-      warnOnTestOnly("metastore", "polaris.persistence.type");
+      warn("The current metastore is intended for tests only.", "polaris.persistence.type");
     }
   }
 
   public void checkRealmResolver(
       @Observes StartupEvent event, Config config, RealmContextResolver resolver) {
     if (resolver instanceof TestRealmContextResolver) {
-      warnOnTestOnly("realm context resolver", "polaris.realm-context.type");
+      warn(
+          "The current realm context resolver is intended for tests only.",
+          "polaris.realm-context.type");
     }
     if (resolver instanceof DefaultRealmContextResolver) {
       ConfigValue configValue = config.getConfigValue("polaris.realm-context.require-header");
       boolean userProvided =
           configValue.getSourceOrdinal() > 250; // ordinal for application.properties in classpath
       if ("false".equals(configValue.getValue()) && !userProvided) {
-        LOGGER.warn(
-            "The realm context resolver is configured to map requests without a realm header to the default realm. "
-                + "Do not do this in production (offending configuration option: 'polaris.realm-context.require-header').");
+        warn(
+            "The realm context resolver is configured to map requests without a realm header to the default realm.",
+            "polaris.realm-context.require-header");
       }
     }
   }
 
-  private static void warnOnTestOnly(String description, String property) {
-    LOGGER.warn(
-        "The current {} is intended for tests only. Do not use it in production (offending configuration option: '{}').",
-        description,
-        property);
+  private static void warn(String message, String property) {
+    String fullMessage =
+        "!!! {} Do not do this in production! Offending configuration option: '{}'. "
+            + "See https://polaris.apache.org/in-dev/unreleased/configuring-polaris-for-production/.";
+    LOGGER.warn(fullMessage, message, property);
   }
 }
