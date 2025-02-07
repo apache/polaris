@@ -41,13 +41,10 @@ paths:
         - `type` (REQUIRED): The type of the policy. It can be either predefined type or custom type.
           - **Predefined Policies:** system.compaction, system.snapshot_retention
           - **Custom Policies:** custom.<org_name>.data_masking, custom.<user_id>.audit_policy
-
         - `description` (OPTIONAL): Provides details about the policy's purpose and functionality
         - `content` (OPTIONAL): Defines the rules that control actions and access conditions on resources. The format can be JSON, SQL, or any other format.
 
-        The policy content is validated by the server upon creation or update: 
-        - Predefined policies are validated using built-in server-side validators
-        - Custom policies rely on user-provided validators.
+        The policy content is validated against the policy's corresponding validator upon creation
       requestBody:
         required: true
         content:
@@ -119,8 +116,7 @@ paths:
       description: |-
         Update a policy
         
-        A policy's description and content can be updated. The new content is validated against the policy's corresponding validator, 
-        which is determined by its type—predefined policies use built-in server-side validators, while custom policies rely on user-provided validators. 
+        A policy's description and content can be updated. The new content is validated against the policy's corresponding validator
         Upon a successful update, the policy's version is incremented by 1.
       requestBody:
         required: true
@@ -311,7 +307,7 @@ components:
       type: object
       description: |
         A policy in Apache Polaris defines a set of rules for governing access, data usage, and operational consistency across various catalog resources. 
-        Policies are stored within Polaris and can be applied to catalogs, namespaces, tables, and views. tables, and views. 
+        Policies are stored within Polaris and can be applied to catalogs, namespaces, tables, views, and other table-like entities.
         For example, they can be used for fine-grained control over who can perform specific actions on certain resources.
 
         The policy object includes
@@ -319,7 +315,6 @@ components:
         - **policy-type:** The type of the policy, which determines the expected format and semantics of the policy content.
           For example, predefined types include `system.compaction` or `system.snapshot_retention`, while custom policy types
           follow a namespaced format like `custom.<org_name>.data_masking`.
-
         - **name:**  A human-readable name for the policy, which must be unique within a given namespace.
         - **description:** Detailed description of the purpose and functionalities of the policy.
         - **content:** Policy content, which can be validated against predefined schemas of a policy type.
