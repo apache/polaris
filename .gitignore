@@ -94,4 +94,4 @@ hs_err_pid*
 *.DS_Store
 
 # vscode
-.vscode/
+.vscode/settings.json
