@@ -19,10 +19,22 @@
 package org.apache.polaris.service.context;
 
 import java.util.Map;
+import java.util.function.Function;
 import org.apache.polaris.core.context.RealmContext;
 
 public interface RealmContextResolver {
 
+  /**
+   * Resolves the realm context for the given request.
+   *
+   * @return the resolved realm context
+   * @throws UnresolvableRealmContextException if the realm context cannot be resolved
+   */
   RealmContext resolveRealmContext(
-      String requestURL, String method, String path, Map<String, String> headers);
+      String requestURL, String method, String path, Function<String, String> headers);
+
+  default RealmContext resolveRealmContext(
+      String requestURL, String method, String path, Map<String, String> headers) {
+    return resolveRealmContext(requestURL, method, path, headers::get);
+  }
 }

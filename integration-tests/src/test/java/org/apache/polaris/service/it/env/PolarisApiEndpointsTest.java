@@ -27,7 +27,7 @@ public class PolarisApiEndpointsTest {
   @Test
   void testEndpointRespectsPathPrefix() {
     PolarisApiEndpoints endpoints =
-        new PolarisApiEndpoints(URI.create("http://myserver.com/polaris"), "");
+        new PolarisApiEndpoints(URI.create("http://myserver.com/polaris"), "", "Polaris-Realm");
     Assertions.assertEquals(
         "http://myserver.com/polaris/api/catalog", endpoints.catalogApiEndpoint().toString());
     Assertions.assertEquals(

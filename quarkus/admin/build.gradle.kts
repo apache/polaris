@@ -33,13 +33,8 @@ dependencies {
   implementation(project(":polaris-version"))
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
-  implementation(project(":polaris-service-common"))
-  implementation(project(":polaris-quarkus-service"))
-  implementation(project(":polaris-quarkus-defaults"))
 
-  if (project.hasProperty("eclipseLinkDeps")) {
-    runtimeOnly(project(":polaris-eclipselink"))
-  }
+  runtimeOnly(project(":polaris-eclipselink"))
 
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-picocli")
@@ -47,8 +42,17 @@ dependencies {
 
   implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
 
-  testImplementation(enforcedPlatform(libs.quarkus.bom))
-  testImplementation("io.quarkus:quarkus-junit5")
+  testFixturesApi(project(":polaris-core"))
+
+  testFixturesApi(enforcedPlatform(libs.quarkus.bom))
+  testFixturesApi("io.quarkus:quarkus-junit5")
+
+  testFixturesApi(platform(libs.testcontainers.bom))
+  testFixturesApi("org.testcontainers:testcontainers")
+  testFixturesApi("org.testcontainers:postgresql")
+
+  testRuntimeOnly(project(":polaris-eclipselink"))
+  testRuntimeOnly("org.postgresql:postgresql")
 }
 
 quarkus {
