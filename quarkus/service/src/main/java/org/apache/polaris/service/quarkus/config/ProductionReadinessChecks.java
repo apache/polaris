@@ -18,9 +18,9 @@
  */
 package org.apache.polaris.service.quarkus.config;
 
-import io.quarkus.runtime.StartupEvent;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
+import jakarta.enterprise.event.Startup;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.auth.AuthenticationConfiguration;
@@ -48,8 +48,7 @@ public class ProductionReadinessChecks {
   private static final Logger LOGGER = LoggerFactory.getLogger(ProductionReadinessChecks.class);
 
   public void checkAuthenticator(
-      @Observes StartupEvent event,
-      Authenticator<String, AuthenticatedPolarisPrincipal> authenticator) {
+      @Observes Startup event, Authenticator<String, AuthenticatedPolarisPrincipal> authenticator) {
     if (authenticator instanceof TestInlineBearerTokenPolarisAuthenticator) {
       warn(
           "The current authenticator is intended for tests only.",
@@ -57,7 +56,7 @@ public class ProductionReadinessChecks {
     }
   }
 
-  public void checkTokenService(@Observes StartupEvent event, IcebergRestOAuth2ApiService service) {
+  public void checkTokenService(@Observes Startup event, IcebergRestOAuth2ApiService service) {
     if (service instanceof TestOAuth2ApiService) {
       warn(
           "The current token service is intended for tests only.",
@@ -66,7 +65,7 @@ public class ProductionReadinessChecks {
   }
 
   public void checkTokenBroker(
-      @Observes StartupEvent event,
+      @Observes Startup event,
       AuthenticationConfiguration configuration,
       TokenBrokerFactory factory) {
     if (factory instanceof JWTRSAKeyPairFactory) {
@@ -102,14 +101,14 @@ public class ProductionReadinessChecks {
     }
   }
 
-  public void checkMetastore(@Observes StartupEvent event, MetaStoreManagerFactory factory) {
+  public void checkMetastore(@Observes Startup event, MetaStoreManagerFactory factory) {
     if (factory instanceof InMemoryPolarisMetaStoreManagerFactory) {
       warn("The current metastore is intended for tests only.", "polaris.persistence.type");
     }
   }
 
   public void checkRealmResolver(
-      @Observes StartupEvent event, Config config, RealmContextResolver resolver) {
+      @Observes Startup event, Config config, RealmContextResolver resolver) {
     if (resolver instanceof TestRealmContextResolver) {
       warn(
           "The current realm context resolver is intended for tests only.",
