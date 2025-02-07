@@ -77,28 +77,26 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
     if (authHeader == null && clientSecret == null) {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_client);
     }
-    // token exchange with client id and client secret means the client has previously
-    // attempted to refresh an access token, but refreshing was not supported by the token broker.
-    // Accept the client id and secret and treat it as a new token request
+    // token exchange with client id and client secret in the authorization header means the client
+    // has previously attempted to refresh an access token, but refreshing was not supported by the
+    // token broker. Accept the client id and secret and treat it as a new token request
     if (authHeader != null && clientSecret == null && authHeader.startsWith("Basic ")) {
       String credentials = new String(Base64.decodeBase64(authHeader.substring(6)), UTF_8);
+      if (!credentials.contains(":")) {
+        return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
+      }
       LOGGER.debug("Found credentials in auth header - treating as client_credentials");
       String[] parts = credentials.split(":", 2);
       if (parts.length == 2) {
         clientId = parts[0];
         clientSecret = parts[1];
-      } else if (parts.length == 1) {
-        clientSecret = parts[0];
       } else {
         LOGGER.debug("Don't know how to parse Basic auth header");
-        OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
+        return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
       }
     }
     TokenResponse tokenResponse;
     if (subjectToken != null) {
-      if (!tokenBroker.supportsRequestedTokenType(subjectTokenType)) {
-        return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
-      }
       tokenResponse =
           tokenBroker.generateFromToken(subjectTokenType, subjectToken, grantType, scope);
     } else if (clientSecret != null) {

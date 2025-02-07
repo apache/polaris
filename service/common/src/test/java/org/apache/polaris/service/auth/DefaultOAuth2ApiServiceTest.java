@@ -167,7 +167,7 @@ class DefaultOAuth2ApiServiceTest {
   }
 
   @Test
-  public void testReadClientSecretFromAuthHeader() {
+  public void testAuthHeaderRequiresValidCredentialPair() {
     TokenBrokerFactory tokenBrokerFactory = Mockito.mock();
     RealmContext realmContext = () -> "realm";
     TokenBroker tokenBroker = Mockito.mock();
@@ -183,6 +183,39 @@ class DefaultOAuth2ApiServiceTest {
                 "Basic "
                     + Base64.getEncoder()
                         .encodeToString("secret".getBytes(Charset.defaultCharset())))
+            .scope("scope")
+            .grantType(TokenRequestValidator.TOKEN_EXCHANGE)
+            .requestedTokenType(TokenType.ACCESS_TOKEN)
+            .realmContext(realmContext)
+            .invoke(new DefaultOAuth2ApiService(tokenBrokerFactory));
+    Assertions.assertThat(response.getEntity())
+        .isInstanceOf(OAuthTokenErrorResponse.class)
+        .asInstanceOf(InstanceOfAssertFactories.type(OAuthTokenErrorResponse.class))
+        .returns(
+            OAuthTokenErrorResponse.Error.invalid_request.name(),
+            OAuthTokenErrorResponse::getError);
+  }
+
+  @Test
+  public void testReadClientSecretFromAuthHeader() {
+    TokenBrokerFactory tokenBrokerFactory = Mockito.mock();
+    RealmContext realmContext = () -> "realm";
+    TokenBroker tokenBroker = Mockito.mock();
+    when(tokenBrokerFactory.apply(realmContext)).thenReturn(tokenBroker);
+    when(tokenBroker.supportsGrantType(TokenRequestValidator.TOKEN_EXCHANGE)).thenReturn(true);
+    when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
+
+    when(tokenBroker.generateFromClientSecrets(
+            "", "secret", TokenRequestValidator.TOKEN_EXCHANGE, "scope"))
+        .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
+    Response response =
+        new InvocationBuilder()
+
+            // here the auth header has a blank client id, providing a blank, but not null client id
+            .authHeader(
+                "Basic "
+                    + Base64.getEncoder()
+                        .encodeToString(":secret".getBytes(Charset.defaultCharset())))
             .scope("scope")
             .grantType(TokenRequestValidator.TOKEN_EXCHANGE)
             .requestedTokenType(TokenType.ACCESS_TOKEN)
