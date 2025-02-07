@@ -170,18 +170,19 @@ public class CatalogSerializationTest {
   @Test
   public void testCatalogWithEmptyFields() throws JsonProcessingException {
     String json =
-        "{"
-            + "\"type\": \"INTERNAL\","
-            + "\"name\": \"\","
-            + "\"properties\": {"
-            + "    \"default-base-location\": \"\""
-            + "},"
-            + "\"storageConfigInfo\": {"
-            + "    \"storageType\": \"S3\","
-            + "    \"roleArn\": \"arn:aws:iam::123456789012:role/empty\","
-            + "    \"allowedLocations\": []"
-            + "}"
-            + "}";
+        """
+        {
+          "type": "INTERNAL",
+          "name": "",
+          "properties": {
+            "default-base-location": ""
+          },
+          "storageConfigInfo": {
+            "storageType": "S3",
+            "roleArn": "arn:aws:iam::123456789012:role/empty",
+            "allowedLocations": []
+          }
+        }""";
 
     Catalog catalog = mapper.readValue(json, Catalog.class);
     assertEquals("", catalog.getName());
@@ -207,18 +208,19 @@ public class CatalogSerializationTest {
   @Test
   public void testCatalogWithEmptyStrings() throws JsonProcessingException {
     String json =
-        "{"
-            + "\"type\": \"INTERNAL\","
-            + "\"name\": \"\","
-            + "\"properties\": {"
-            + "    \"default-base-location\": \"\""
-            + "},"
-            + "\"storageConfigInfo\": {"
-            + "    \"storageType\": \"S3\","
-            + "    \"roleArn\": \"\","
-            + "    \"allowedLocations\": []"
-            + "}"
-            + "}";
+        """
+        {
+            "type": "INTERNAL",
+            "name": "",
+            "properties": {
+                "default-base-location": ""
+            },
+            "storageConfigInfo": {
+                "storageType": "S3",
+                "roleArn": "",
+                "allowedLocations": []
+            }
+        }""";
 
     Catalog catalog = mapper.readValue(json, Catalog.class);
     String serialized = mapper.writeValueAsString(catalog);
