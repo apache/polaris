@@ -97,6 +97,28 @@ using different configurations. Check the `./getting-started` directory for more
 - `kubectl get deployment -n polaris` - To check the status of the deployment.
 - `kubectl describe deployment polaris-deployment -n polaris` - To troubleshoot if things aren't working as expected.
 
+#### Configuring Polaris
+
+Polaris Servers can be configured using any of these ways (or a mixture):
+- Passing config settings as java system properties. For example: `-Dsome-config.name=value`
+- Passing config settings as environment variables usign the same name as java system properties.
+  - Note: Some shells may put restrictions on the names of environment variables and some advanced
+    configuration may not be settable this way. K8s, though, supports all chars that are used in config
+    names.
+  - Note: Some examples may show upper-case environment variable names. They work for simple cases, but
+    more advanced configuration requires using exact case plus `.`, `,`, `"`, and `-` chars as defined
+    in the Polaris source. 
+- Putting config settings as environment variables into the `.env` file in the current working directory.
+- Putting config settings into a java properties file located at `$PWD/config/application.properties`.
+  - Note: This location is relative to the current directory of the Polaris Server process.  
+
+Most common configuration settings that users may want to change are:
+- `polaris.persistence.type` (see the Getting Stated guide for specific instructions).
+- `polaris.features.defaults.SUPPORTED_CATALOG_STORAGE_TYPES=["S3","GCS","AZURE"]`.
+   - Note: this excludes the default `FILE` storage type, which is not meaningful in a distributed deployment. 
+
+Default configuration values can be found in `quarkus/defaults/src/main/resources/application.properties`.
+
 #### Building docs
 
 - Docs are generated using [Hugo](https://gohugo.io/) using the [Docsy](https://www.docsy.dev/docs/) theme.
