@@ -21,7 +21,7 @@
 
 ---
 paths:
-  # The /v1/oauth/tokens endpoint is sourced from rest-catalog-open-api.yaml
+  # The /v1/oauth/tokens endpoint is sourced from iceberg-rest-catalog-open-api.yaml
   /v1/oauth/tokens:
 
     post:
