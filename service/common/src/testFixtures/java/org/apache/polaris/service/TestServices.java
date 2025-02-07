@@ -84,15 +84,15 @@ public record TestServices(
   }
 
   public static class Builder {
-    private RealmContext realm = TEST_REALM;
+    private RealmContext realmContext = TEST_REALM;
     private Map<String, Object> config = Map.of();
     private StsClient stsClient = Mockito.mock(StsClient.class);
     private FileIOFactorySupplier fileIOFactorySupplier = MeasuredFileIOFactory::new;
 
     private Builder() {}
 
-    public Builder realmId(RealmContext realmId) {
-      this.realm = realmId;
+    public Builder realmContext(RealmContext realmContext) {
+      this.realmContext = realmContext;
       return this;
     }
 
@@ -132,11 +132,11 @@ public record TestServices(
           new RealmEntityManagerFactory(metaStoreManagerFactory, polarisDiagnostics) {};
 
       PolarisEntityManager entityManager =
-          realmEntityManagerFactory.getOrCreateEntityManager(realm);
+          realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
       PolarisMetaStoreManager metaStoreManager =
-          metaStoreManagerFactory.getOrCreateMetaStoreManager(realm);
+          metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
       PolarisMetaStoreSession metaStoreSession =
-          metaStoreManagerFactory.getOrCreateSessionSupplier(realm).get();
+          metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
 
       FileIOFactory fileIOFactory =
           fileIOFactorySupplier.apply(
@@ -156,7 +156,7 @@ public record TestServices(
 
       IcebergRestCatalogApiService service =
           new IcebergCatalogAdapter(
-              realm,
+              realmContext,
               callContextFactory,
               entityManager,
               metaStoreManager,
@@ -219,7 +219,7 @@ public record TestServices(
           polarisDiagnostics,
           realmEntityManagerFactory,
           metaStoreManagerFactory,
-          realm,
+          realmContext,
           securityContext,
           fileIOFactory,
           taskExecutor);
