@@ -30,23 +30,25 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Test suite for Catalog JSON serialization and deserialization.
- * 
- * Coverage includes:
+ *
+ * <p>Coverage includes:
+ *
  * <ul>
- * <li>Basic serialization/deserialization of Catalog objects</li>
- * <li>Handling of null and empty fields</li>
- * <li>Special character handling in field values</li>
- * <li>Unicode character support</li>
- * <li>Whitespace preservation</li>
- * <li>AWS role ARN validation</li>
+ *   <li>Basic serialization/deserialization of Catalog objects
+ *   <li>Handling of null and empty fields
+ *   <li>Special character handling in field values
+ *   <li>Unicode character support
+ *   <li>Whitespace preservation
+ *   <li>AWS role ARN validation
  * </ul>
- * 
+ *
  * Error handling coverage:
+ *
  * <ul>
- * <li>Invalid JSON input</li>
- * <li>Malformed JSON structure</li>
- * <li>Invalid enum values</li>
- * <li>Edge cases like very long catalog names</li>
+ *   <li>Invalid JSON input
+ *   <li>Malformed JSON structure
+ *   <li>Invalid enum values
+ *   <li>Edge cases like very long catalog names
  * </ul>
  */
 public class CatalogSerializationTest {
@@ -63,9 +65,8 @@ public class CatalogSerializationTest {
   }
 
   /**
-   * Helper method to verify round-trip serialization/deserialization of Catalog
-   * objects.
-   * Ensures all fields are preserved correctly through the process.
+   * Helper method to verify round-trip serialization/deserialization of Catalog objects. Ensures
+   * all fields are preserved correctly through the process.
    *
    * @param original The catalog object to test
    * @return The deserialized catalog for additional assertions if needed
@@ -104,12 +105,11 @@ public class CatalogSerializationTest {
             deserialized.getStorageConfigInfo() instanceof AwsStorageConfigInfo,
             "Storage config should be AWS type");
         AwsStorageConfigInfo originalAws = (AwsStorageConfigInfo) original.getStorageConfigInfo();
-        AwsStorageConfigInfo deserializedAws = (AwsStorageConfigInfo) deserialized.getStorageConfigInfo();
+        AwsStorageConfigInfo deserializedAws =
+            (AwsStorageConfigInfo) deserialized.getStorageConfigInfo();
 
         assertEquals(
-            originalAws.getRoleArn(),
-            deserializedAws.getRoleArn(),
-            "Role ARN should match");
+            originalAws.getRoleArn(), deserializedAws.getRoleArn(), "Role ARN should match");
       }
 
       assertEquals(
@@ -129,15 +129,11 @@ public class CatalogSerializationTest {
     CatalogProperties properties = new CatalogProperties(TEST_LOCATION);
 
     // Create AWS storage config with required roleArn
-    StorageConfigInfo storageConfig = new AwsStorageConfigInfo(
-        TEST_ROLE_ARN,
-        StorageConfigInfo.StorageTypeEnum.S3);
+    StorageConfigInfo storageConfig =
+        new AwsStorageConfigInfo(TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3);
 
-    Catalog catalog = new Catalog(
-        Catalog.TypeEnum.INTERNAL,
-        TEST_CATALOG_NAME,
-        properties,
-        storageConfig);
+    Catalog catalog =
+        new Catalog(Catalog.TypeEnum.INTERNAL, TEST_CATALOG_NAME, properties, storageConfig);
 
     verifyRoundTrip(catalog);
   }
@@ -145,23 +141,21 @@ public class CatalogSerializationTest {
   // Update testCatalogDeserialization
   @Test
   public void testCatalogDeserialization() throws JsonProcessingException {
-    StorageConfigInfo storageConfig = new AwsStorageConfigInfo(TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3);
-    Catalog catalog = new Catalog(
-        Catalog.TypeEnum.INTERNAL,
-        TEST_CATALOG_NAME,
-        new CatalogProperties(TEST_LOCATION),
-        storageConfig);
+    StorageConfigInfo storageConfig =
+        new AwsStorageConfigInfo(TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3);
+    Catalog catalog =
+        new Catalog(
+            Catalog.TypeEnum.INTERNAL,
+            TEST_CATALOG_NAME,
+            new CatalogProperties(TEST_LOCATION),
+            storageConfig);
     verifyRoundTrip(catalog);
   }
 
   // Update testCatalogWithNullFields - already using proper verification
   @Test
   public void testCatalogWithNullFields() throws JsonProcessingException {
-    Catalog catalog = new Catalog(
-        Catalog.TypeEnum.INTERNAL,
-        null,
-        null,
-        null);
+    Catalog catalog = new Catalog(Catalog.TypeEnum.INTERNAL, null, null, null);
     verifyRoundTrip(catalog);
   }
 
@@ -175,18 +169,19 @@ public class CatalogSerializationTest {
   // Tests handling of empty string values in catalog fields
   @Test
   public void testCatalogWithEmptyFields() throws JsonProcessingException {
-    String json = "{"
-        + "\"type\": \"INTERNAL\","
-        + "\"name\": \"\","
-        + "\"properties\": {"
-        + "    \"default-base-location\": \"\""
-        + "},"
-        + "\"storageConfigInfo\": {"
-        + "    \"storageType\": \"S3\","
-        + "    \"roleArn\": \"arn:aws:iam::123456789012:role/empty\","
-        + "    \"allowedLocations\": []"
-        + "}"
-        + "}";
+    String json =
+        "{"
+            + "\"type\": \"INTERNAL\","
+            + "\"name\": \"\","
+            + "\"properties\": {"
+            + "    \"default-base-location\": \"\""
+            + "},"
+            + "\"storageConfigInfo\": {"
+            + "    \"storageType\": \"S3\","
+            + "    \"roleArn\": \"arn:aws:iam::123456789012:role/empty\","
+            + "    \"allowedLocations\": []"
+            + "}"
+            + "}";
 
     Catalog catalog = mapper.readValue(json, Catalog.class);
     assertEquals("", catalog.getName());
@@ -197,30 +192,33 @@ public class CatalogSerializationTest {
   @Test
   public void testSpecialCharacters() throws JsonProcessingException {
     String specialName = "test\"catalog";
-    StorageConfigInfo storageConfig = new AwsStorageConfigInfo(TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3);
-    Catalog catalog = new Catalog(
-        Catalog.TypeEnum.INTERNAL,
-        specialName,
-        new CatalogProperties(TEST_LOCATION),
-        storageConfig);
+    StorageConfigInfo storageConfig =
+        new AwsStorageConfigInfo(TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3);
+    Catalog catalog =
+        new Catalog(
+            Catalog.TypeEnum.INTERNAL,
+            specialName,
+            new CatalogProperties(TEST_LOCATION),
+            storageConfig);
     verifyRoundTrip(catalog);
   }
 
   // Tests serialization and deserialization of empty string values
   @Test
   public void testCatalogWithEmptyStrings() throws JsonProcessingException {
-    String json = "{"
-        + "\"type\": \"INTERNAL\","
-        + "\"name\": \"\","
-        + "\"properties\": {"
-        + "    \"default-base-location\": \"\""
-        + "},"
-        + "\"storageConfigInfo\": {"
-        + "    \"storageType\": \"S3\","
-        + "    \"roleArn\": \"\","
-        + "    \"allowedLocations\": []"
-        + "}"
-        + "}";
+    String json =
+        "{"
+            + "\"type\": \"INTERNAL\","
+            + "\"name\": \"\","
+            + "\"properties\": {"
+            + "    \"default-base-location\": \"\""
+            + "},"
+            + "\"storageConfigInfo\": {"
+            + "    \"storageType\": \"S3\","
+            + "    \"roleArn\": \"\","
+            + "    \"allowedLocations\": []"
+            + "}"
+            + "}";
 
     Catalog catalog = mapper.readValue(json, Catalog.class);
     String serialized = mapper.writeValueAsString(catalog);
@@ -242,7 +240,8 @@ public class CatalogSerializationTest {
   // Tests error handling for malformed JSON structure
   @Test
   public void testMalformedJson() {
-    String json = "{" + "\"type\": \"INTERNAL\"," + "\"name\": \"test-catalog\"," + "\"properties\": {" + "}";
+    String json =
+        "{" + "\"type\": \"INTERNAL\"," + "\"name\": \"test-catalog\"," + "\"properties\": {" + "}";
 
     assertThrows(JsonProcessingException.class, () -> mapper.readValue(json, Catalog.class));
   }
@@ -251,11 +250,9 @@ public class CatalogSerializationTest {
   @Test
   public void testLongCatalogName() throws JsonProcessingException {
     String longName = "a".repeat(1000);
-    Catalog catalog = new Catalog(
-        Catalog.TypeEnum.INTERNAL,
-        longName,
-        new CatalogProperties(TEST_LOCATION),
-        null);
+    Catalog catalog =
+        new Catalog(
+            Catalog.TypeEnum.INTERNAL, longName, new CatalogProperties(TEST_LOCATION), null);
     verifyRoundTrip(catalog);
   }
 
@@ -263,11 +260,9 @@ public class CatalogSerializationTest {
   @Test
   public void testUnicodeCharacters() throws JsonProcessingException {
     String unicodeName = "测试目录";
-    Catalog catalog = new Catalog(
-        Catalog.TypeEnum.INTERNAL,
-        unicodeName,
-        new CatalogProperties(TEST_LOCATION),
-        null);
+    Catalog catalog =
+        new Catalog(
+            Catalog.TypeEnum.INTERNAL, unicodeName, new CatalogProperties(TEST_LOCATION), null);
     verifyRoundTrip(catalog);
   }
 
@@ -275,11 +270,12 @@ public class CatalogSerializationTest {
   @Test
   public void testWhitespaceHandling() throws JsonProcessingException {
     String nameWithSpaces = "  test  catalog  ";
-    Catalog catalog = new Catalog(
-        Catalog.TypeEnum.INTERNAL,
-        nameWithSpaces,
-        new CatalogProperties("  " + TEST_LOCATION + "  "),
-        null);
+    Catalog catalog =
+        new Catalog(
+            Catalog.TypeEnum.INTERNAL,
+            nameWithSpaces,
+            new CatalogProperties("  " + TEST_LOCATION + "  "),
+            null);
     verifyRoundTrip(catalog);
   }
 
@@ -287,20 +283,21 @@ public class CatalogSerializationTest {
   @Test
   public void testRoleArnValidation() throws JsonProcessingException {
     String[] validArns = {
-        "arn:aws:iam::123456789012:role/test-role",
-        "arn:aws:iam::123456789012:role/service-role/test-role",
-        "arn:aws:iam::123456789012:role/path/to/role"
+      "arn:aws:iam::123456789012:role/test-role",
+      "arn:aws:iam::123456789012:role/service-role/test-role",
+      "arn:aws:iam::123456789012:role/path/to/role"
     };
 
     for (String arn : validArns) {
-      StorageConfigInfo storageConfig = new AwsStorageConfigInfo(arn, StorageConfigInfo.StorageTypeEnum.S3);
-      Catalog catalog = new Catalog(
-          Catalog.TypeEnum.INTERNAL,
-          TEST_CATALOG_NAME,
-          new CatalogProperties(TEST_LOCATION),
-          storageConfig);
+      StorageConfigInfo storageConfig =
+          new AwsStorageConfigInfo(arn, StorageConfigInfo.StorageTypeEnum.S3);
+      Catalog catalog =
+          new Catalog(
+              Catalog.TypeEnum.INTERNAL,
+              TEST_CATALOG_NAME,
+              new CatalogProperties(TEST_LOCATION),
+              storageConfig);
       verifyRoundTrip(catalog);
     }
   }
-
 }

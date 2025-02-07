@@ -33,12 +33,12 @@ import org.junit.jupiter.api.extension.ParameterResolver;
 import org.junit.platform.engine.UniqueId;
 
 /**
- * A JUnit test extension that connects {@link PolarisServerManager} with test
- * code by resolving
+ * A JUnit test extension that connects {@link PolarisServerManager} with test code by resolving
  * test parameters and managing the lifecycle of {@link Server} objects.
  */
 public class PolarisIntegrationTestExtension implements ParameterResolver {
-  private static final Namespace NAMESPACE = Namespace.create(PolarisIntegrationTestExtension.class);
+  private static final Namespace NAMESPACE =
+      Namespace.create(PolarisIntegrationTestExtension.class);
 
   @Override
   public boolean supportsParameter(
