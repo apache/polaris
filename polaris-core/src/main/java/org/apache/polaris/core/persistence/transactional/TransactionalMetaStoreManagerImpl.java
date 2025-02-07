@@ -33,6 +33,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -445,6 +446,23 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     ms.persistStorageIntegrationIfNeededInCurrentTxn(callCtx, catalog, integration);
+
+    // TODO: Push this into an IntegrationPersistence flow which prepares an external secret store
+    // and swaps it with a reference in internalProperties which can be used to reconstitue the
+    // secret.
+    if (catalog.getPropertiesAsMap().containsKey(CatalogEntity.CONNECTION_CLIENT_SECRET_KEY)) {
+      catalog =
+          new PolarisEntity.Builder(PolarisEntity.of(catalog))
+              .addInternalProperty(
+                  CatalogEntity.CONNECTION_CLIENT_ID_KEY,
+                  catalog.getPropertiesAsMap().get(CatalogEntity.CONNECTION_CLIENT_ID_KEY))
+              .addInternalProperty(
+                  CatalogEntity.CONNECTION_CLIENT_SECRET_KEY,
+                  catalog.getPropertiesAsMap().get(CatalogEntity.CONNECTION_CLIENT_SECRET_KEY))
+              .addProperty(CatalogEntity.CONNECTION_CLIENT_ID_KEY, "<hidden>")
+              .addProperty(CatalogEntity.CONNECTION_CLIENT_SECRET_KEY, "<hidden>")
+              .build();
+    }
 
     // now create and persist new catalog entity
     this.persistNewEntity(callCtx, ms, catalog);

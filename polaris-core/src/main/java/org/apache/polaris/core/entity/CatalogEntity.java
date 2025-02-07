@@ -66,6 +66,13 @@ public class CatalogEntity extends PolarisEntity {
   public static final String REPLACE_NEW_LOCATION_PREFIX_WITH_CATALOG_DEFAULT_KEY =
       "replace-new-location-prefix-with-catalog-default";
 
+  // TODO: Refactor all these into ConnectionConfigurationInfo
+  public static final String CONNECTION_REMOTE_URI_KEY = "connection.remoteUri";
+  public static final String CONNECTION_CLIENT_ID_KEY = "connection.clientId";
+  public static final String CONNECTION_CLIENT_SECRET_KEY = "connection.clientSecret";
+  public static final String CONNECTION_CATALOG_NAME_KEY = "connection.catalogName";
+  public static final String CONNECTION_SCOPES_KEY = "connection.scopes";
+
   public CatalogEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
   }
@@ -188,6 +195,37 @@ public class CatalogEntity extends PolarisEntity {
     return Optional.ofNullable(getInternalPropertiesAsMap().get(CATALOG_TYPE_PROPERTY))
         .map(Catalog.TypeEnum::valueOf)
         .orElse(null);
+  }
+
+  public boolean isPassthroughFacade() {
+    // TODO: Refactor this to use new ConnectionConfigurationInfo
+    String remoteUri = getPropertiesAsMap().get(CONNECTION_REMOTE_URI_KEY);
+    return remoteUri != null && !remoteUri.isEmpty();
+  }
+
+  public String getConnectionRemoteUri() {
+    // TODO: Refactor this to use new ConnectionConfigurationInfo
+    return getPropertiesAsMap().get(CONNECTION_REMOTE_URI_KEY);
+  }
+
+  public String getConnectionClientId() {
+    // TODO: Refactor this to use new ConnectionConfigurationInfo
+    return getInternalPropertiesAsMap().get(CONNECTION_CLIENT_ID_KEY);
+  }
+
+  public String getConnectionClientSecret() {
+    // TODO: Refactor this to use new ConnectionConfigurationInfo
+    return getInternalPropertiesAsMap().get(CONNECTION_CLIENT_SECRET_KEY);
+  }
+
+  public String getConnectionCatalogName() {
+    // TODO: Refactor this to use new ConnectionConfigurationInfo
+    return getPropertiesAsMap().get(CONNECTION_CATALOG_NAME_KEY);
+  }
+
+  public String getConnectionScopes() {
+    // TODO: Refactor this to use new ConnectionConfigurationInfo
+    return getPropertiesAsMap().get(CONNECTION_SCOPES_KEY);
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<CatalogEntity, Builder> {
