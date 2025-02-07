@@ -29,7 +29,8 @@ dependencies {
   compileOnly(libs.jakarta.annotation.api)
   compileOnly(libs.jakarta.validation.api)
   compileOnly(libs.swagger.annotations)
-  testImplementation(platform("org.junit:junit-bom:5.9.2"))
+
+  testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
   testImplementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 }
