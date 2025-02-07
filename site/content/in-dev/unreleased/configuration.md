@@ -78,7 +78,7 @@ read-only mode, as Polaris only reads the configuration file once, at startup.
 ## Polaris Configuration Options Reference
 
 Most common configuration settings that users may want to change are:
-- `polaris.persistence.type` (see the [Configuring Apache Polaris for Production](https://polaris.apache.org/in-dev/unreleased/configuring-polaris-for-production/)
+- `polaris.persistence.type` (see the [Configuring Apache Polaris for Production]({{% ref "configuring-polaris-for-production.md" %}})
   guide for specific instructions).
 - `polaris.features.defaults.SUPPORTED_CATALOG_STORAGE_TYPES=["S3","GCS","AZURE"]`.
    - Note: this excludes the default `FILE` storage type, which is not meaningful in a distributed deployment.
