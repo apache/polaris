@@ -56,24 +56,22 @@ public class ProductionReadinessChecks {
 
   /**
    * A warning sign ⚠ {@code 26A0} with variant selector {@code FE0F}. The sign is preceded by a
-   * null character {@code 0000} to ensure that the warning sign is displayed correctly.
+   * null character {@code 0000} to ensure that the warning sign is displayed correctly regardless
+   * of the log pattern (some log patterns seem to interfere with non-ASCII characters).
    */
-  private static final String WARNING_SIGN_WITH_VARIANT_SELECTOR = "\u0000\u26A0\uFE0F";
+  private static final String WARNING_SIGN_UTF_8 = "\u0000\u26A0\uFE0F";
 
   /** A simple warning sign displayed when the character set is not UTF-8. */
-  private static final String SIMPLE_WARNING_SIGN = "!!!";
+  private static final String WARNING_SIGN_PLAIN = "!!!";
 
-  public void performChecks(@Observes Startup event, Instance<ProductionReadinessCheck> checks) {
-    List<Error> errors =
-        checks.stream()
-            .filter(check -> !check.ready())
-            .flatMap(check -> check.getErrors().stream())
-            .toList();
+  public void warnOnFailedChecks(
+      @Observes Startup event, Instance<ProductionReadinessCheck> checks) {
+    List<Error> errors = checks.stream().flatMap(check -> check.getErrors().stream()).toList();
     if (!errors.isEmpty()) {
       String warning =
           Charset.defaultCharset().equals(StandardCharsets.UTF_8)
-              ? WARNING_SIGN_WITH_VARIANT_SELECTOR
-              : SIMPLE_WARNING_SIGN;
+              ? WARNING_SIGN_UTF_8
+              : WARNING_SIGN_PLAIN;
       LOGGER.warn("{} Production readiness checks failed! Check the warnings below.", warning);
       errors.forEach(
           error ->
