@@ -31,7 +31,7 @@ info:
     Defines the specification for the Polaris Catalog API, which encompasses both the Iceberg REST Catalog API 
     and Polaris-native API.
 
-# The server configuration is sourced from iceberg-iceberg-rest-catalog-open-api.yaml
+# The server configuration is sourced from iceberg-rest-catalog-open-api.yaml
 servers:
   - url: "{scheme}://{host}/{basePath}"
     description: Server URL when the port can be inferred from the scheme
@@ -61,7 +61,7 @@ servers:
         description: Optional prefix to be appended to all routes
         default: ""
 
-# The security configuration is sourced from iceberg-iceberg-rest-catalog-open-api.yaml
+# The security configuration is sourced from iceberg-rest-catalog-open-api.yaml
 # All routes are currently configured using an Authorization header.
 security:
   - OAuth2: [catalog]
@@ -140,7 +140,7 @@ paths:
 components:
   securitySchemes:
 
-    # The OAuth2 scheme is sourced from iceberg-iceberg-rest-catalog-open-api.yaml
+    # The OAuth2 scheme is sourced from iceberg-rest-catalog-open-api.yaml
     #
     # If the /v1/oauth/tokens endpoint is removed or modified
     # (see https://github.com/apache/polaris/issues/12),
