@@ -71,4 +71,7 @@
   // concurrent PRs limit.
   prConcurrentLimit: 50,
   prHourlyLimit: 5,
+
+  // add renovate-polaris label to easily filter PRs/email
+  labels: ["renovate-polaris"],
 }
