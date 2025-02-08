@@ -40,6 +40,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
+import org.apache.polaris.service.catalog.DefaultIcebergCatalogPrefixParser;
 import org.apache.polaris.service.catalog.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -163,7 +164,8 @@ public record TestServices(
               metaStoreSession,
               configurationStore,
               polarisDiagnostics,
-              authorizer);
+              authorizer,
+              new DefaultIcebergCatalogPrefixParser());
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
 

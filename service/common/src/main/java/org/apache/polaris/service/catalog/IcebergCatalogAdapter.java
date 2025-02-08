@@ -126,6 +126,7 @@ public class IcebergCatalogAdapter
   private final PolarisConfigurationStore configurationStore;
   private final PolarisDiagnostics diagnostics;
   private final PolarisAuthorizer polarisAuthorizer;
+  private final IcebergCatalogPrefixParser prefixParser;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -136,7 +137,8 @@ public class IcebergCatalogAdapter
       PolarisMetaStoreSession session,
       PolarisConfigurationStore configurationStore,
       PolarisDiagnostics diagnostics,
-      PolarisAuthorizer polarisAuthorizer) {
+      PolarisAuthorizer polarisAuthorizer,
+      IcebergCatalogPrefixParser prefixParser) {
     this.realmContext = realmContext;
     this.catalogFactory = catalogFactory;
     this.entityManager = entityManager;
@@ -145,6 +147,7 @@ public class IcebergCatalogAdapter
     this.configurationStore = configurationStore;
     this.diagnostics = diagnostics;
     this.polarisAuthorizer = polarisAuthorizer;
+    this.prefixParser = prefixParser;
   }
 
   /**
@@ -153,8 +156,9 @@ public class IcebergCatalogAdapter
    */
   private Response withCatalog(
       SecurityContext securityContext,
-      String catalogName,
+      String prefix,
       Function<PolarisCatalogHandlerWrapper, Response> action) {
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
     try (PolarisCatalogHandlerWrapper wrapper = newHandlerWrapper(securityContext, catalogName)) {
       return action.apply(wrapper);
     } catch (RuntimeException e) {
@@ -629,10 +633,11 @@ public class IcebergCatalogAdapter
     Map<String, String> properties =
         PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
 
+    String prefix = prefixParser.catalogNameToPrefix(realmContext, warehouse);
     return Response.ok(
             ConfigResponse.builder()
                 .withDefaults(properties) // catalog properties are defaults
-                .withOverrides(ImmutableMap.of("prefix", warehouse))
+                .withOverrides(ImmutableMap.of("prefix", prefix))
                 .withEndpoints(
                     ImmutableList.<Endpoint>builder()
                         .addAll(DEFAULT_ENDPOINTS)
