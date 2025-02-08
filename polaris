@@ -33,7 +33,7 @@ if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
 fi
 
 pushd $SCRIPT_DIR > /dev/null
-PYTHONPATH=regtests/client/python ${SCRIPT_DIR}/polaris-venv/bin/python3 regtests/client/python/cli/polaris_cli.py "$@"
+PYTHONPATH=regtests/client/python SCRIPT_DIR="$SCRIPT_DIR" ${SCRIPT_DIR}/polaris-venv/bin/python3 regtests/client/python/cli/polaris_cli.py "$@"
 status=$?
 popd > /dev/null
 
