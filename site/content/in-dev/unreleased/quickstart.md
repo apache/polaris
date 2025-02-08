@@ -98,7 +98,7 @@ To start using Polaris in Docker, launch Polaris while Docker is running:
 ```shell
 cd ~/polaris
 ./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true
-docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest
+docker run --privileged -p 8181:8181 -p 8182:8182 apache/polaris:latest
 ```
 
 You should see output for some time as Polaris builds and starts up. Eventually, you won’t see any more logs and should see messages that resemble the following:
