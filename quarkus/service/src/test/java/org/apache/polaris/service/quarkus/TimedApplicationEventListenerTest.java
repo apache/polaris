@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.quarkus;
 
-import static org.apache.polaris.service.context.TestRealmIdResolver.REALM_PROPERTY_KEY;
+import static org.apache.polaris.service.context.TestRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.type;
 
@@ -56,7 +56,8 @@ public class TimedApplicationEventListenerTest {
 
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of("polaris.metrics.tags.environment", "prod");
+      return Map.of(
+          "polaris.metrics.tags.environment", "prod", "polaris.realm-context.type", "test");
     }
   }
 

@@ -36,7 +36,7 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.service.quarkus.TestServices;
+import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -63,7 +63,7 @@ public class PolarisOverlappingTableTest {
                 namespace,
                 createTableRequest,
                 null,
-                services.realmId(),
+                services.realmContext(),
                 services.securityContext())) {
       return response.getStatus();
     } catch (ForbiddenException e) {
@@ -105,7 +105,7 @@ public class PolarisOverlappingTableTest {
       Map<String, Object> serverConfig,
       Map<String, String> catalogConfig,
       int expectedStatusForOverlaps) {
-    TestServices services = TestServices.inMemory(serverConfig);
+    TestServices services = TestServices.builder().config(serverConfig).build();
 
     CatalogProperties.Builder propertiesBuilder =
         CatalogProperties.builder()
@@ -130,7 +130,7 @@ public class PolarisOverlappingTableTest {
             .catalogsApi()
             .createCatalog(
                 new CreateCatalogRequest(catalogObject),
-                services.realmId(),
+                services.realmContext(),
                 services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.CREATED.getStatusCode());
     }
@@ -141,7 +141,10 @@ public class PolarisOverlappingTableTest {
         services
             .restApi()
             .createNamespace(
-                catalog, createNamespaceRequest, services.realmId(), services.securityContext())) {
+                catalog,
+                createNamespaceRequest,
+                services.realmContext(),
+                services.securityContext())) {
       assertThat(response.getStatus()).isEqualTo(Response.Status.OK.getStatusCode());
     }
 

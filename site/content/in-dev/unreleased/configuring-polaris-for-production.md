@@ -35,7 +35,7 @@ refer to the [configuration reference page]({{% ref "configuration" %}}).
 
 ### OAuth2
 
-Polaris authentication requires specifying a token broker factory type. Two implementations are 
+Polaris authentication requires specifying a token broker factory type. Two implementations are
 supported out of the box:
 
 - [rsa-key-pair] uses a pair of public and private keys;
@@ -44,7 +44,7 @@ supported out of the box:
 [rsa-key-pair]: https://github.com/apache/polaris/blob/390f1fa57bb1af24a21aa95fdbff49a46e31add7/service/common/src/main/java/org/apache/polaris/service/auth/JWTRSAKeyPairFactory.java
 [symmetric-key]: https://github.com/apache/polaris/blob/390f1fa57bb1af24a21aa95fdbff49a46e31add7/service/common/src/main/java/org/apache/polaris/service/auth/JWTSymmetricKeyFactory.java
 
-By default, Polaris uses `rsa-key-pair`, with randomly generated keys. 
+By default, Polaris uses `rsa-key-pair`, with randomly generated keys.
 
 > [!IMPORTANT]
 > The default `rsa-key-pair` configuration is not suitable when deploying many replicas of Polaris,
@@ -109,8 +109,22 @@ Where:
 - `header-name` is the name of the header used to resolve the realm; by default, it is
   `Polaris-Realm`.
 
-If a request does not contain the specified header, Polaris will use the first realm in the list as
-the default realm. In the above example, `POLARIS` is the default realm.
+If a request contains the specified header, Polaris will use the realm specified in the header. If
+the realm is not in the list of allowed realms, Polaris will return a `404 Not Found` response.
+
+If a request _does not_ contain the specified header, however, by default Polaris will use the first
+realm in the list as the default realm. In the above example, `POLARIS` is the default realm and
+would be used if the `Polaris-Realm` header is not present in the request.
+
+This is not recommended for production use, as it may lead to security vulnerabilities. To avoid
+this, set the following property to `true`:
+
+```properties
+polaris.realm-context.require-header=true
+```
+
+This will cause Polaris to also return a `404 Not Found` response if the realm header is not present
+in the request.
 
 ### Metastore Configuration
 
@@ -138,7 +152,7 @@ Where:
 
 - `polaris.persistence.type` indicates that we are using the EclipseLink metastore.
 - `polaris.persistence.eclipselink.configuration-file` is the path to the `persistence.xml` file.
-- `polaris.persistence.eclipselink.persistence-unit` is the name of the persistence unit to use (in 
+- `polaris.persistence.eclipselink.persistence-unit` is the name of the persistence unit to use (in
   case the configuration file has many persistence units).
 
 Typically, in Kubernetes, you would define the `persistence.xml` file as a `ConfigMap` and set the
@@ -146,7 +160,7 @@ Typically, in Kubernetes, you would define the `persistence.xml` file as a `Conf
 the container.
 
 > [!IMPORTANT]
-> Be sure to secure your metastore backend since it will be storing sensitive data and catalog 
+> Be sure to secure your metastore backend since it will be storing sensitive data and catalog
 > metadata.
 
 ### Bootstrapping
@@ -206,5 +220,4 @@ When deploying Polaris in production, consider adjusting the following configura
 - By default, Polaris catalogs are allowed to be located in local filesystem with the `FILE` storage
   type. This should be disabled for production systems.
 - Use this configuration to additionally disable any other storage types that will not be in use.
-
 

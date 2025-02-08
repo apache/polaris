@@ -46,8 +46,6 @@ public class BootstrapCommand extends BaseCommand {
 
   @Override
   public Integer call() {
-    warnOnInMemory();
-
     PolarisCredentialsBootstrap credentialsBootstrap =
         credentials == null || credentials.isEmpty()
             ? PolarisCredentialsBootstrap.EMPTY

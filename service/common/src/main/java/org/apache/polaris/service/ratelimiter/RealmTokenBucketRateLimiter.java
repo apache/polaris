@@ -21,7 +21,7 @@ package org.apache.polaris.service.ratelimiter;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 
 /**
  * Rate limiter that maps the request's realm identifier to its own TokenBucket, with its own
@@ -32,12 +32,13 @@ import org.apache.polaris.core.context.RealmId;
 public class RealmTokenBucketRateLimiter implements RateLimiter {
 
   private final TokenBucketFactory tokenBucketFactory;
-  private final RealmId realmId;
+  private final RealmContext realmContext;
 
   @Inject
-  public RealmTokenBucketRateLimiter(TokenBucketFactory tokenBucketFactory, RealmId realmId) {
+  public RealmTokenBucketRateLimiter(
+      TokenBucketFactory tokenBucketFactory, RealmContext realmContext) {
     this.tokenBucketFactory = tokenBucketFactory;
-    this.realmId = realmId;
+    this.realmContext = realmContext;
   }
 
   /**
@@ -48,6 +49,6 @@ public class RealmTokenBucketRateLimiter implements RateLimiter {
    */
   @Override
   public boolean canProceed() {
-    return tokenBucketFactory.getOrCreateTokenBucket(realmId).tryAcquire();
+    return tokenBucketFactory.getOrCreateTokenBucket(realmContext).tryAcquire();
   }
 }

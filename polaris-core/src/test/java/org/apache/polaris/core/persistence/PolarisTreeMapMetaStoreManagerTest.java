@@ -24,7 +24,6 @@ import java.time.ZoneId;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
 import org.mockito.Mockito;
 
 public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreManagerTest {
@@ -36,7 +35,7 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
         new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS, diagServices);
     return new PolarisTestMetaStoreManager(
         new PolarisMetaStoreManagerImpl(
-            RealmId.newRealmId("test"),
+            () -> "test",
             diagServices,
             new PolarisConfigurationStore() {},
             timeSource.withZone(ZoneId.systemDefault())),

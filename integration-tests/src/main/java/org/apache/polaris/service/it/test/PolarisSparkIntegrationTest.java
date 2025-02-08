@@ -58,6 +58,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.LoggerFactory;
 
+/**
+ * @implSpec This test expects the server to be configured with the following features enabled:
+ *     <ul>
+ *       <li>{@link
+ *           org.apache.polaris.core.PolarisConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:
+ *           {@code true}
+ *       <li>{@link org.apache.polaris.core.PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
+ *           {@code true}
+ *     </ul>
+ */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisSparkIntegrationTest {
 
@@ -194,7 +204,8 @@ public class PolarisSparkIntegrationTest {
             endpoints.catalogApiEndpoint().toString())
         .config(String.format("spark.sql.catalog.%s.warehouse", catalogName), catalogName)
         .config(String.format("spark.sql.catalog.%s.scope", catalogName), "PRINCIPAL_ROLE:ALL")
-        .config(String.format("spark.sql.catalog.%s.header.realm", catalogName), endpoints.realm())
+        .config(
+            String.format("spark.sql.catalog.%s.header.realm", catalogName), endpoints.realmId())
         .config(String.format("spark.sql.catalog.%s.token", catalogName), sparkToken)
         .config(String.format("spark.sql.catalog.%s.s3.access-key-id", catalogName), "fakekey")
         .config(

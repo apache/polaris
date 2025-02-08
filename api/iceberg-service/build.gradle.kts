@@ -48,7 +48,7 @@ dependencies {
 }
 
 openApiGenerate {
-  inputSpec = "$rootDir/spec/rest-catalog-open-api.yaml"
+  inputSpec = "$rootDir/spec/polaris-catalog-service.yaml"
   generatorName = "jaxrs-resteasy"
   outputDir = "$projectDir/build/generated"
   apiPackage = "org.apache.polaris.service.catalog.api"

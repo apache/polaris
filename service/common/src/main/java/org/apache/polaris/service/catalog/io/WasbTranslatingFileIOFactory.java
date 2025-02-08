@@ -19,19 +19,54 @@
 package org.apache.polaris.service.catalog.io;
 
 import io.smallrye.common.annotation.Identifier;
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.util.Map;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.iceberg.CatalogUtil;
+import java.util.Set;
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.config.RealmEntityManagerFactory;
 
 /** A {@link FileIOFactory} that translates WASB paths to ABFS ones */
 @ApplicationScoped
 @Identifier("wasb")
 public class WasbTranslatingFileIOFactory implements FileIOFactory {
+
+  private final FileIOFactory defaultFileIOFactory;
+
+  @Inject
+  public WasbTranslatingFileIOFactory(
+      RealmEntityManagerFactory realmEntityManagerFactory,
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      PolarisConfigurationStore configurationStore) {
+    defaultFileIOFactory =
+        new DefaultFileIOFactory(
+            realmEntityManagerFactory, metaStoreManagerFactory, configurationStore);
+  }
+
   @Override
-  public FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
+  public FileIO loadFileIO(
+      @Nonnull RealmContext realmContext,
+      @Nonnull String ioImplClassName,
+      @Nonnull Map<String, String> properties,
+      @Nonnull TableIdentifier identifier,
+      @Nonnull Set<String> tableLocations,
+      @Nonnull Set<PolarisStorageActions> storageActions,
+      @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
     return new WasbTranslatingFileIO(
-        CatalogUtil.loadFileIO(ioImpl, properties, new Configuration()));
+        defaultFileIOFactory.loadFileIO(
+            realmContext,
+            ioImplClassName,
+            properties,
+            identifier,
+            tableLocations,
+            storageActions,
+            resolvedEntityPath));
   }
 }

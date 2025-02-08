@@ -24,7 +24,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Map;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 
 @ApplicationScoped
 public class DefaultConfigurationStore implements PolarisConfigurationStore {
@@ -53,11 +53,13 @@ public class DefaultConfigurationStore implements PolarisConfigurationStore {
   }
 
   @Override
-  public <T> @Nullable T getConfiguration(@Nullable RealmId realmId, String configName) {
+  public <T> @Nullable T getConfiguration(@Nullable RealmContext realmContext, String configName) {
     Object rawValue = defaults.get(configName);
-    if (realmId != null) {
+    if (realmContext != null) {
       rawValue =
-          realmOverrides.getOrDefault(realmId.id(), Map.of()).getOrDefault(configName, rawValue);
+          realmOverrides
+              .getOrDefault(realmContext.getRealmIdentifier(), Map.of())
+              .getOrDefault(configName, rawValue);
     }
     @SuppressWarnings("unchecked")
     T value = (T) rawValue;

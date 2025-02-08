@@ -36,8 +36,6 @@ public class PurgeCommand extends BaseCommand {
 
   @Override
   public Integer call() {
-    warnOnInMemory();
-
     try {
       metaStoreManagerFactory.purgeRealms(realms);
       spec.commandLine().getOut().println("Purge completed successfully.");

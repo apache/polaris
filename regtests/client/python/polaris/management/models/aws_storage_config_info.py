@@ -52,6 +52,8 @@ class AwsStorageConfigInfo(StorageConfigInfo):
                                              alias="externalId")
     user_arn: Optional[StrictStr] = Field(default=None, description="the aws user arn used to assume the aws role",
                                           alias="userArn")
+    region: Optional[StrictStr] = Field(default=None, description="the aws region where data is stored",
+                                          alias="region")
     __properties: ClassVar[List[str]] = ["storageType", "allowedLocations"]
 
     model_config = ConfigDict(
@@ -110,6 +112,7 @@ class AwsStorageConfigInfo(StorageConfigInfo):
             "allowedLocations": obj.get("allowedLocations"),
             "roleArn": obj.get("roleArn"),
             "externalId": obj.get("externalId"),
-            "userArn": obj.get("userArn")
+            "userArn": obj.get("userArn"),
+            "region": obj.get("region")
         })
         return _obj
