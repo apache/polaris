@@ -26,33 +26,73 @@ release:
   namespace: polaris-ns
 
 templates:
-  - service.yaml
+  - service-extra.yaml
 
 tests:
 
+  - it: should not create extra service by default
+    asserts:
+      - containsDocument:
+          kind: Service
+          apiVersion: v1
+        not: true
+
+  - it: should fail to create extra service if suffix is not set
+    set:
+      extraServices:
+        - nameSuffix: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: "extraServices[0]: missing required nameSuffix"
+
+  - it: should fail to create extra service if suffix is invalid
+    set:
+      extraServices:
+        - nameSuffix: "mgmt"
+    asserts:
+      - failedTemplate:
+          errorMessage: "extraServices[0]: invalid nameSuffix"
+  - it: should fail to create extra service if suffix is invalid (#2)
+    set:
+      extraServices:
+        - nameSuffix: "-mgmt"
+    asserts:
+      - failedTemplate:
+          errorMessage: "extraServices[0]: invalid nameSuffix"
+
   # metadata.name
   - it: should set service name
+    set:
+      extraServices:
+        - nameSuffix: "extra"
     asserts:
       - equal:
           path: metadata.name
-          value: polaris-release
+          value: polaris-release-extra
   - it: should set service name with override
     set:
+      extraServices:
+        - nameSuffix: "extra"
       nameOverride: polaris-override
     asserts:
       - equal:
           path: metadata.name
-          value: polaris-release-polaris-override
+          value: polaris-release-polaris-override-extra
   - it: should set service name with full override
     set:
+      extraServices:
+        - nameSuffix: "extra"
       fullnameOverride: polaris-override
     asserts:
       - equal:
           path: metadata.name
-          value: polaris-override
+          value: polaris-override-extra
 
   # metadata.namespace
   - it: should set service namespace
+    set:
+      extraServices:
+        - nameSuffix: "extra"
     asserts:
       - equal:
           path: metadata.namespace
@@ -60,6 +100,9 @@ tests:
 
   # metadata.labels
   - it: should set service default labels
+    set:
+      extraServices:
+        - nameSuffix: "extra"
     asserts:
       - isSubset:
           path: metadata.labels
@@ -72,13 +115,18 @@ tests:
 
   # metadata.annotations
   - it: should not set service annotations by default
+    set:
+      extraServices:
+        - nameSuffix: "extra"
     asserts:
       - notExists:
           path: metadata.annotations
   - it: should set service annotations
     set:
-      service.annotations:
-        foo: bar
+      extraServices:
+        - nameSuffix: "extra"
+          annotations:
+            foo: bar
     asserts:
       - isSubset:
           path: metadata.annotations
@@ -87,13 +135,19 @@ tests:
 
   # spec.type
   - it: should set service default type
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+          type: ClusterIP
     asserts:
       - equal:
           path: spec.type
           value: ClusterIP
   - it: should set service type
     set:
-      service.type: NodePort
+      extraServices:
+        - nameSuffix: "extra"
+          type: NodePort
     asserts:
       - equal:
           path: spec.type
@@ -101,6 +155,9 @@ tests:
 
   # spec.selector
   - it: should set service default selector
+    set:
+      extraServices:
+        - nameSuffix: "extra"
     asserts:
       - isSubset:
           path: spec.selector
@@ -109,41 +166,19 @@ tests:
             app.kubernetes.io/instance: polaris-release
 
   # spec.ports
-  - it: should set service default ports
-    asserts:
-      - equal:
-          path: spec.ports
-          value:
-            - port: 8181
-              protocol: TCP
-              name: polaris-http
   - it: should set service ports
     set:
-      service:
-        ports:
-          - port: 18181
-            targetPort: 18181
-            name: polaris-http
-    asserts:
-      - equal:
-          path: spec.ports
-          value:
+      extraServices:
+        - nameSuffix: "extra"
+          ports:
             - port: 18181
               targetPort: 18181
-              protocol: TCP
               name: polaris-http
-  - it: should set many service ports
-    set:
-      service:
-        ports:
-          - port: 18181
-            targetPort: 18181
-            name: polaris-http
-          - port: 28181
-            targetPort: 28181
-            name: polaris-http2
-            nodePort: 28181
-            protocol: UDP
+            - port: 28181
+              targetPort: 28181
+              name: polaris-http2
+              nodePort: 28181
+              protocol: UDP
     asserts:
       - equal:
           path: spec.ports
@@ -160,12 +195,17 @@ tests:
 
   # spec.sessionAffinity
   - it: should not set service session affinity by default
+    set:
+      extraServices:
+        - nameSuffix: "extra"
     asserts:
       - notExists:
           path: spec.sessionAffinity
   - it: should set service session affinity
     set:
-      service.sessionAffinity: ClientIP
+      extraServices:
+        - nameSuffix: "extra"
+          sessionAffinity: ClientIP
     asserts:
       - equal:
           path: spec.sessionAffinity
@@ -173,55 +213,73 @@ tests:
 
   # spec.clusterIP
   - it: should not set service cluster IP by default
+    set:
+      extraServices:
+        - nameSuffix: "extra"
     asserts:
       - notExists:
           path: spec.clusterIP
   - it: should set service cluster IP
     set:
-      service.clusterIP: 1.2.3.4
+      extraServices:
+        - nameSuffix: "extra"
+          clusterIP: 1.2.3.4
     asserts:
       - equal:
           path: spec.clusterIP
           value: 1.2.3.4
 
-
   # spec.externalTrafficPolicy
   - it: should not set service external traffic policy by default
+    set:
+      extraServices:
+        - nameSuffix: "extra"
     asserts:
       - notExists:
           path: spec.externalTrafficPolicy
   - it: should set service external traffic policy if LoadBalancer
     set:
-      service.externalTrafficPolicy: Local
-      service.type: LoadBalancer
+      extraServices:
+        - nameSuffix: "extra"
+          externalTrafficPolicy: Local
+          type: LoadBalancer
     asserts:
       - equal:
           path: spec.externalTrafficPolicy
           value: Local
   - it: should set service external traffic policy if NodePort
     set:
-      service.externalTrafficPolicy: Local
-      service.type: NodePort
+      extraServices:
+        - nameSuffix: "extra"
+          externalTrafficPolicy: Local
+          type: NodePort
     asserts:
       - equal:
           path: spec.externalTrafficPolicy
           value: Local
   - it: should set service external traffic policy if ClusterIP
     set:
-      service.externalTrafficPolicy: Local
-      service.type: ClusterIP
+      extraServices:
+        - nameSuffix: "extra"
+          externalTrafficPolicy: Local
+          type: ClusterIP
     asserts:
       - notExists:
           path: spec.externalTrafficPolicy
 
   # spec.internalTrafficPolicy
   - it: should not set service internal traffic policy by default
+    set:
+      extraServices:
+        - nameSuffix: "extra"
     asserts:
       - notExists:
           path: spec.internalTrafficPolicy
   - it: should set service internal traffic policy
     set:
-      service.internalTrafficPolicy: Local
+      extraServices:
+        - nameSuffix: "extra"
+          internalTrafficPolicy: Local
     asserts:
       - equal:
           path: spec.internalTrafficPolicy
@@ -229,6 +287,9 @@ tests:
 
   # spec.trafficDistribution
   - it: should not set service traffic distribution by default
+    set:
+      extraServices:
+        - nameSuffix: "extra"
     asserts:
       - notExists:
           path: spec.trafficDistribution
@@ -237,7 +298,9 @@ tests:
       majorVersion: 1
       minorVersion: 31
     set:
-      service.trafficDistribution: Local
+      extraServices:
+        - nameSuffix: "extra"
+          trafficDistribution: Local
     asserts:
       - equal:
           path: spec.trafficDistribution
@@ -247,7 +310,40 @@ tests:
       majorVersion: 1
       minorVersion: 30
     set:
-      service.trafficDistribution: Local
+      extraServices:
+        - nameSuffix: "extra"
+          trafficDistribution: Local
     asserts:
       - notExists:
           path: spec.trafficDistribution
+
+  - it: should define many extra services
+    set:
+      extraServices:
+        - nameSuffix: "extra1"
+          annotations:
+            foo: bar
+        - nameSuffix: "extra2"
+          annotations:
+            bar: baz
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.name
+          value: polaris-release-extra1
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: polaris-release-extra2
+        documentIndex: 1
+      - equal:
+          path: metadata.annotations
+          value:
+              foo: bar
+        documentIndex: 0
+      - equal:
+          path: metadata.annotations
+          value:
+              bar: baz
+        documentIndex: 1

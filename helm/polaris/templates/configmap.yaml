@@ -28,5 +28,176 @@ metadata:
     {{- tpl (toYaml .Values.configMapLabels) . | nindent 4 }}
     {{- end }}
 data:
-  polaris-server.yml: |-
-{{ toYaml .Values.polarisServerConfig | indent 4 }}
+  application.properties: |-
+    {{- $map := dict -}}
+
+    {{- /* Realm Context */ -}}
+    {{- $_ := set $map "polaris.realm-context.type" .Values.realmContext.type -}}
+    {{- $_ =  set $map "polaris.realm-context.realms" (join "," .Values.realmContext.realms) -}}
+
+    {{- /* Features */ -}}
+    {{- range $k, $v := .Values.features.defaults -}}
+    {{- $_ = set $map (printf "polaris.features.defaults.\"%s\"" $k) (toJson $v) -}}
+    {{- end -}}
+    {{- range $realm, $overrides := .Values.features.realmOverrides -}}
+    {{- range $k, $v := $overrides -}}
+    {{- $_ = set $map (printf "polaris.config.realm-overrides.\"%s\".\"%s\"" $realm $k) (toJson $v) -}}
+    {{- end -}}
+    {{- end -}}
+
+    {{- /* Persistence */ -}}
+    {{- $_ = set $map "polaris.persistence.type" .Values.persistence.type -}}
+    {{- if and ( eq .Values.persistence.type "eclipse-link" ) .Values.persistence.eclipseLink.secret.name -}}
+    {{- $_ = set $map "polaris.persistence.eclipselink.persistence-unit" .Values.persistence.eclipseLink.persistenceUnit -}}
+    {{- $_ = set $map "polaris.persistence.eclipselink.configuration-file" (printf "%s/persistence.xml" .Values.image.configDir ) -}}
+    {{- end -}}
+
+    {{- /* File IO */ -}}
+    {{- $_ = set $map "polaris.file-io.type" .Values.fileIo.type -}}
+
+    {{- /* Storage */ -}}
+    {{- if .Values.storage.secret.gcpTokenLifespan -}}
+    {{- $_ = set $map "polaris.storage.gcp.lifespan" .Values.storage.secret.gcpTokenLifespan -}}
+    {{- end -}}
+
+    {{- /* Rate Limiter */ -}}
+    {{- $_ = set $map "polaris.rate-limiter.filter.type" .Values.rateLimiter.type -}}
+    {{- if ne .Values.rateLimiter.type "no-op" -}}
+    {{- $_ = set $map "polaris.rate-limiter.token-bucket.type" .Values.rateLimiter.tokenBucket.type -}}
+    {{- $_ = set $map "polaris.rate-limiter.token-bucket.requests-per-second" .Values.rateLimiter.tokenBucket.requestsPerSecond -}}
+    {{- $_ = set $map "polaris.rate-limiter.token-bucket.window" .Values.rateLimiter.tokenBucket.window -}}
+    {{- end -}}
+
+    {{- /* Tasks */ -}}
+    {{- if .Values.tasks.maxConcurrentTasks -}}
+    {{- $_ = set $map "polaris.tasks.max-concurrent-tasks" .Values.tasks.maxConcurrentTasks -}}
+    {{- end -}}
+    {{- if .Values.tasks.maxQueuedTasks -}}
+    {{- $_ = set $map "polaris.tasks.max-queued-tasks" .Values.tasks.maxQueuedTasks -}}
+    {{- end -}}
+
+    {{- /* Authentication */ -}}
+    {{- $_ = set $map "polaris.authentication.authenticator.type" .Values.authentication.authenticator.type -}}
+    {{- $_ = set $map "polaris.authentication.token-service.type" .Values.authentication.tokenService.type -}}
+    {{- $_ = set $map "polaris.authentication.token-broker.type" .Values.authentication.tokenBroker.type -}}
+    {{- $_ = set $map "polaris.authentication.token-broker.max-token-generation" .Values.authentication.tokenBroker.maxTokenGeneration -}}
+    {{- if .Values.authentication.tokenBroker.secret.name -}}
+    {{- if eq .Values.authentication.tokenBroker.type "rsa-key-pair" -}}
+    {{- $_ = set $map "polaris.authentication.token-broker.rsa-key-pair.public-key-file" (printf "%s/public.pem" .Values.image.configDir ) -}}
+    {{- $_ = set $map "polaris.authentication.token-broker.rsa-key-pair.private-key-file" (printf "%s/private.pem" .Values.image.configDir ) -}}
+    {{- end -}}
+    {{- if eq .Values.authentication.tokenBroker.type "symmetric-key" -}}
+    {{- $_ = set $map "polaris.authentication.token-broker.symmetric-key.file" (printf "%s/symmetric.key" .Values.image.configDir ) -}}
+    {{- end -}}
+    {{- end -}}
+
+    {{- /* HTTP ports */ -}}
+    {{- $_ = set $map "quarkus.http.port" (get (first .Values.service.ports) "port") -}}
+    {{- $_ = set $map "quarkus.management.port" (get (first .Values.managementService.ports) "port") -}}
+
+    {{- /* CORS */ -}}
+    {{- if .Values.cors.allowedOrigins -}}
+    {{- $_ = set $map "quarkus.http.cors.origins" (join "," .Values.cors.allowedOrigins) -}}
+    {{- end -}}
+    {{- if .Values.cors.allowedMethods -}}
+    {{- $_ = set $map "quarkus.http.cors.methods" (join "," .Values.cors.allowedMethods) -}}
+    {{- end -}}
+    {{- if .Values.cors.allowedHeaders -}}
+    {{- $_ = set $map "quarkus.http.cors.headers" (join "," .Values.cors.allowedHeaders) -}}
+    {{- end -}}
+    {{- if .Values.cors.exposedHeaders -}}
+    {{- $_ = set $map "quarkus.http.cors.exposed-headers" (join "," .Values.cors.exposedHeaders) -}}
+    {{- end -}}
+    {{- if .Values.cors.accessControlMaxAge -}}
+    {{- $_ = set $map "quarkus.http.cors.access-control-max-age" .Values.cors.accessControlMaxAge -}}
+    {{- end -}}
+    {{- if ne .Values.cors.accessControlAllowCredentials nil -}}
+    {{- $_ = set $map "quarkus.http.cors.access-control-allow-credentials" .Values.cors.accessControlAllowCredentials -}}
+    {{- end -}}
+
+    {{- /* Logging */ -}}
+    {{- $_ = set $map "quarkus.log.level" .Values.logging.level -}}
+    {{- if .Values.logging.console.enabled -}}
+    {{- $_ = set $map "quarkus.log.console.enable" "true" -}}
+    {{- $_ = set $map "quarkus.log.console.level" .Values.logging.console.threshold -}}
+    {{- if .Values.logging.console.json -}}
+    {{- $_ = set $map "quarkus.log.console.json" "true" -}}
+    {{- else -}}
+    {{- $_ = set $map "quarkus.log.console.format" .Values.logging.console.format -}}
+    {{- end -}}
+    {{- else -}}
+    {{- $_ = set $map "quarkus.log.console.enable" "false" -}}
+    {{- end -}}
+    {{- if .Values.logging.file.enabled -}}
+    {{- $_ = set $map "quarkus.log.file.enable" "true" -}}
+    {{- $_ = set $map "quarkus.log.file.level" .Values.logging.file.threshold -}}
+    {{- $_ = set $map "quarkus.log.file.path" (printf "%s/%s" .Values.logging.file.logsDir .Values.logging.file.fileName) -}}
+    {{- $_ = set $map "quarkus.log.file.rotation.max-file-size" (include "polaris.quantity" .Values.logging.file.rotation.maxFileSize) -}}
+    {{- $_ = set $map "quarkus.log.file.rotation.max-backup-index" .Values.logging.file.rotation.maxBackupIndex -}}
+    {{- if .Values.logging.file.rotation.fileSuffix -}}
+    {{- $_ = set $map "quarkus.log.file.rotation.file-suffix" .Values.logging.file.rotation.fileSuffix -}}
+    {{- end -}}
+    {{- if .Values.logging.file.json -}}
+    {{- $_ = set $map "quarkus.log.file.json" "true" -}}
+    {{- else -}}
+    {{- $_ = set $map "quarkus.log.file.format" .Values.logging.file.format -}}
+    {{- end -}}
+    {{- else -}}
+    {{- $_ = set $map "quarkus.log.file.enable" "false" -}}
+    {{- end -}}
+    {{- $categories := dict -}}
+    {{- list .Values.logging.categories "" $categories | include "polaris.mergeConfigTree" -}}
+    {{- range $k, $v := $categories -}}
+    {{- $_ = set $map (printf "quarkus.log.category.\"%s\".level" $k) $v -}}
+    {{- end -}}
+    {{- $_ = set $map "polaris.log.request-id-header-name" .Values.logging.requestIdHeaderName -}}
+    {{- $mdc := dict -}}
+    {{- list .Values.logging.mdc "" $mdc | include "polaris.mergeConfigTree" -}}
+    {{- range $k, $v := $mdc -}}
+    {{- $_ = set $map (printf "polaris.log.mdc.\"%s\"" $k) $v -}}
+    {{- end -}}
+
+    {{- /* Telemetry */ -}}
+    {{- if .Values.tracing.enabled -}}
+    {{- $_ = set $map "quarkus.otel.exporter.otlp.endpoint" .Values.tracing.endpoint -}}
+    {{- if .Values.tracing.attributes -}}
+    {{- $attributes := dict -}}
+    {{- list .Values.tracing.attributes "" $attributes | include "polaris.mergeConfigTree" -}}
+    {{- $i := 0 -}}
+    {{- range $k, $v := $attributes -}}
+    {{- $_ = set $map (printf "quarkus.otel.resource.attributes[%d]" $i) (printf "%s=%s" $k $v) -}}
+    {{- $i = add1 $i -}}
+    {{- end -}}
+    {{- end -}}
+    {{- if .Values.tracing.sample -}}
+    {{- $sample := toString .Values.tracing.sample -}}
+    {{ if eq $sample "all" -}}
+    {{- $_ = set $map "quarkus.otel.traces.sampler" "parentbased_always_on" -}}
+    {{- else if eq $sample "none" -}}
+    {{- $_ = set $map "quarkus.otel.traces.sampler" "always_off" -}}
+    {{- else -}}
+    {{- $_ = set $map "quarkus.otel.traces.sampler" "parentbased_traceidratio" -}}
+    {{- $_ = set $map "quarkus.otel.traces.sampler.arg" $sample -}}
+    {{- end -}}
+    {{- end -}}
+    {{- else -}}
+    {{- $_ = set $map "quarkus.otel.sdk.disabled" true -}}
+    {{- end -}}
+
+    {{- /* Metrics */ -}}
+    {{- if .Values.metrics.enabled -}}
+    {{- range $name, $value := .Values.metrics.tags -}}
+    {{- $_ = set $map (print "polaris.metrics.tags." $name) $value -}}
+    {{- end -}}
+    {{- else -}}
+    {{- $_ = set $map "quarkus.micrometer.enabled" "false" -}}
+    {{- end -}}
+
+    {{- /* Advanced Configuration (must be done last since it can override any of the settings above) */ -}}
+    {{- list .Values.advancedConfig "" $map | include "polaris.mergeConfigTree" -}}
+
+    {{- /* Print the resulting configmap; each configuration option is templatized */ -}}
+    {{- $global := . -}}
+    {{- range $k, $v := $map }}
+    {{ include "polaris.appendConfigOption" (list $k $v $global) }}
+    {{- end }}

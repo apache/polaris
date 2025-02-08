@@ -17,23 +17,11 @@
 # under the License.
 #
 
-image:
-  pullPolicy: Never
-
-authentication:
-  tokenBroker:
-    secret:
-      name: polaris-token-broker
-
-logging:
-  file:
-    enabled: true
-    json: true
-    storage:
-      size: 50Mi
-
-persistence:
-  type: eclipse-link
-  eclipseLink:
-    secret:
-      name: polaris-persistence
+apiVersion: v1
+kind: Secret
+metadata:
+  name: polaris-storage
+type: Opaque
+stringData:
+  access-key: "my-key"
+  secret-key: "my-secret"

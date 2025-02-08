@@ -26,7 +26,7 @@ release:
   namespace: polaris-ns
 
 templates:
-  - service.yaml
+  - service-mgmt.yaml
 
 tests:
 
@@ -35,21 +35,21 @@ tests:
     asserts:
       - equal:
           path: metadata.name
-          value: polaris-release
+          value: polaris-release-mgmt
   - it: should set service name with override
     set:
       nameOverride: polaris-override
     asserts:
       - equal:
           path: metadata.name
-          value: polaris-release-polaris-override
+          value: polaris-release-polaris-override-mgmt
   - it: should set service name with full override
     set:
       fullnameOverride: polaris-override
     asserts:
       - equal:
           path: metadata.name
-          value: polaris-override
+          value: polaris-override-mgmt
 
   # metadata.namespace
   - it: should set service namespace
@@ -77,7 +77,7 @@ tests:
           path: metadata.annotations
   - it: should set service annotations
     set:
-      service.annotations:
+      managementService.annotations:
         foo: bar
     asserts:
       - isSubset:
@@ -93,7 +93,7 @@ tests:
           value: ClusterIP
   - it: should set service type
     set:
-      service.type: NodePort
+      managementService.type: NodePort
     asserts:
       - equal:
           path: spec.type
@@ -114,48 +114,48 @@ tests:
       - equal:
           path: spec.ports
           value:
-            - port: 8181
+            - port: 8182
               protocol: TCP
-              name: polaris-http
+              name: polaris-mgmt
   - it: should set service ports
     set:
-      service:
+      managementService:
         ports:
-          - port: 18181
-            targetPort: 18181
-            name: polaris-http
+          - port: 18182
+            targetPort: 18182
+            name: polaris-mgmt
     asserts:
       - equal:
           path: spec.ports
           value:
-            - port: 18181
-              targetPort: 18181
+            - port: 18182
+              targetPort: 18182
               protocol: TCP
-              name: polaris-http
+              name: polaris-mgmt
   - it: should set many service ports
     set:
-      service:
+      managementService:
         ports:
-          - port: 18181
-            targetPort: 18181
-            name: polaris-http
-          - port: 28181
-            targetPort: 28181
-            name: polaris-http2
-            nodePort: 28181
+          - port: 18182
+            targetPort: 18182
+            name: polaris-mgmt
+          - port: 28182
+            targetPort: 28182
+            name: polaris-mgmt2
+            nodePort: 28182
             protocol: UDP
     asserts:
       - equal:
           path: spec.ports
           value:
-            - port: 18181
-              targetPort: 18181
+            - port: 18182
+              targetPort: 18182
               protocol: TCP
-              name: polaris-http
-            - port: 28181
-              targetPort: 28181
-              name: polaris-http2
-              nodePort: 28181
+              name: polaris-mgmt
+            - port: 28182
+              targetPort: 28182
+              name: polaris-mgmt2
+              nodePort: 28182
               protocol: UDP
 
   # spec.sessionAffinity
@@ -165,20 +165,21 @@ tests:
           path: spec.sessionAffinity
   - it: should set service session affinity
     set:
-      service.sessionAffinity: ClientIP
+      managementService.sessionAffinity: ClientIP
     asserts:
       - equal:
           path: spec.sessionAffinity
           value: ClientIP
 
   # spec.clusterIP
-  - it: should not set service cluster IP by default
+  - it: should set service cluster IP to None (headless) by default
     asserts:
-      - notExists:
+      - equal:
           path: spec.clusterIP
+          value: None
   - it: should set service cluster IP
     set:
-      service.clusterIP: 1.2.3.4
+      managementService.clusterIP: 1.2.3.4
     asserts:
       - equal:
           path: spec.clusterIP
@@ -192,24 +193,24 @@ tests:
           path: spec.externalTrafficPolicy
   - it: should set service external traffic policy if LoadBalancer
     set:
-      service.externalTrafficPolicy: Local
-      service.type: LoadBalancer
+      managementService.externalTrafficPolicy: Local
+      managementService.type: LoadBalancer
     asserts:
       - equal:
           path: spec.externalTrafficPolicy
           value: Local
   - it: should set service external traffic policy if NodePort
     set:
-      service.externalTrafficPolicy: Local
-      service.type: NodePort
+      managementService.externalTrafficPolicy: Local
+      managementService.type: NodePort
     asserts:
       - equal:
           path: spec.externalTrafficPolicy
           value: Local
   - it: should set service external traffic policy if ClusterIP
     set:
-      service.externalTrafficPolicy: Local
-      service.type: ClusterIP
+      managementService.externalTrafficPolicy: Local
+      managementService.type: ClusterIP
     asserts:
       - notExists:
           path: spec.externalTrafficPolicy
@@ -221,7 +222,7 @@ tests:
           path: spec.internalTrafficPolicy
   - it: should set service internal traffic policy
     set:
-      service.internalTrafficPolicy: Local
+      managementService.internalTrafficPolicy: Local
     asserts:
       - equal:
           path: spec.internalTrafficPolicy
@@ -237,7 +238,7 @@ tests:
       majorVersion: 1
       minorVersion: 31
     set:
-      service.trafficDistribution: Local
+      managementService.trafficDistribution: Local
     asserts:
       - equal:
           path: spec.trafficDistribution
@@ -247,7 +248,7 @@ tests:
       majorVersion: 1
       minorVersion: 30
     set:
-      service.trafficDistribution: Local
+      managementService.trafficDistribution: Local
     asserts:
       - notExists:
           path: spec.trafficDistribution
