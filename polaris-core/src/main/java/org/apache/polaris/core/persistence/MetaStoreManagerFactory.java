@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.core.persistence;
 
-import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
@@ -38,8 +37,8 @@ public interface MetaStoreManagerFactory {
   EntityCache getOrCreateEntityCache(RealmContext realmContext);
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(
-      List<String> realms, PolarisCredentialsBootstrap credentialsBootstrap);
+      Iterable<String> realms, PolarisCredentialsBootstrap credentialsBootstrap);
 
   /** Purge all metadata for the realms provided */
-  void purgeRealms(List<String> realms);
+  Map<String, BaseResult> purgeRealms(Iterable<String> realms);
 }
