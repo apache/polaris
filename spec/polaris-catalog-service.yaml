@@ -16,9 +16,6 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-# CODE_COPIED_TO_POLARIS
-
 ---
 openapi: 3.0.3
 info:
