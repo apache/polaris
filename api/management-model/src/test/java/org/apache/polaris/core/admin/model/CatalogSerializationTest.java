@@ -22,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,29 +29,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-/**
- * Test suite for Catalog JSON serialization and deserialization.
- *
- * <p>Coverage includes:
- *
- * <ul>
- *   <li>Basic serialization/deserialization of Catalog objects
- *   <li>Handling of null and empty fields
- *   <li>Special character handling in field values
- *   <li>Unicode character support
- *   <li>Whitespace preservation
- *   <li>AWS role ARN validation
- * </ul>
- *
- * Error handling coverage:
- *
- * <ul>
- *   <li>Invalid JSON input
- *   <li>Malformed JSON structure
- *   <li>Invalid enum values
- *   <li>Edge cases like very long catalog names
- * </ul>
- */
 public class CatalogSerializationTest {
 
   private ObjectMapper mapper;
@@ -63,7 +39,6 @@ public class CatalogSerializationTest {
   @BeforeEach
   public void setUp() {
     mapper = new ObjectMapper();
-    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   }
 
   /**
