@@ -300,9 +300,9 @@ spark.sql("CREATE NAMESPACE IF NOT EXISTS quickstart_namespace")
 spark.sql("CREATE NAMESPACE IF NOT EXISTS quickstart_namespace.schema")
 spark.sql("USE NAMESPACE quickstart_namespace.schema")
 spark.sql("""
-	CREATE TABLE IF NOT EXISTS quickstart_table (
-		id BIGINT, data STRING
-	)
+CREATE TABLE IF NOT EXISTS quickstart_table (
+  id BIGINT, data STRING
+)
 USING ICEBERG
 """)
 ```
