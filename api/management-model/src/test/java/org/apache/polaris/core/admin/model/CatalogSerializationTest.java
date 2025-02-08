@@ -22,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,29 +29,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-/**
- * Test suite for Catalog JSON serialization and deserialization.
- *
- * <p>Coverage includes:
- *
- * <ul>
- *   <li>Basic serialization/deserialization of Catalog objects
- *   <li>Handling of null and empty fields
- *   <li>Special character handling in field values
- *   <li>Unicode character support
- *   <li>Whitespace preservation
- *   <li>AWS role ARN validation
- * </ul>
- *
- * Error handling coverage:
- *
- * <ul>
- *   <li>Invalid JSON input
- *   <li>Malformed JSON structure
- *   <li>Invalid enum values
- *   <li>Edge cases like very long catalog names
- * </ul>
- */
 public class CatalogSerializationTest {
 
   private ObjectMapper mapper;
@@ -63,12 +39,11 @@ public class CatalogSerializationTest {
   @BeforeEach
   public void setUp() {
     mapper = new ObjectMapper();
-    mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
   }
 
   /**
-   * Helper method to verify round-trip serialization/deserialization of Catalog objects. Ensures
-   * all fields are preserved correctly through the process.
+   * Helper method to verify round-trip serialization/deserialization of Catalog
+   * objects. Ensures all fields are preserved correctly through the process.
    *
    * @param original The catalog object to test
    * @return The deserialized catalog for additional assertions if needed
@@ -101,70 +76,67 @@ public class CatalogSerializationTest {
   }
 
   private static Stream<TestCase> catalogTestCases() {
-    Stream<TestCase> basicCases =
-        Stream.of(
-            new TestCase("Basic catalog")
+    Stream<TestCase> basicCases = Stream.of(
+        new TestCase("Basic catalog")
+            .withCatalog(
+                new Catalog(
+                    Catalog.TypeEnum.INTERNAL,
+                    TEST_CATALOG_NAME,
+                    new CatalogProperties(TEST_LOCATION),
+                    new AwsStorageConfigInfo(
+                        TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3))),
+        new TestCase("Null fields")
+            .withCatalog(new Catalog(Catalog.TypeEnum.INTERNAL, null, null, null)),
+        new TestCase("Long name")
+            .withCatalog(
+                new Catalog(
+                    Catalog.TypeEnum.INTERNAL,
+                    "a".repeat(1000),
+                    new CatalogProperties(TEST_LOCATION),
+                    null)),
+        new TestCase("Unicode characters")
+            .withCatalog(
+                new Catalog(
+                    Catalog.TypeEnum.INTERNAL,
+                    "测试目录",
+                    new CatalogProperties(TEST_LOCATION),
+                    null)),
+        new TestCase("Empty strings")
+            .withCatalog(
+                new Catalog(
+                    Catalog.TypeEnum.INTERNAL,
+                    "",
+                    new CatalogProperties(""),
+                    new AwsStorageConfigInfo("", StorageConfigInfo.StorageTypeEnum.S3))),
+        new TestCase("Special characters")
+            .withCatalog(
+                new Catalog(
+                    Catalog.TypeEnum.INTERNAL,
+                    "test\"catalog",
+                    new CatalogProperties(TEST_LOCATION),
+                    new AwsStorageConfigInfo(
+                        TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3))),
+        new TestCase("Whitespace")
+            .withCatalog(
+                new Catalog(
+                    Catalog.TypeEnum.INTERNAL,
+                    "  test  catalog  ",
+                    new CatalogProperties("  " + TEST_LOCATION + "  "),
+                    null)));
+
+    Stream<TestCase> arnCases = Stream.of(
+        "arn:aws:iam::123456789012:role/test-role",
+        "arn:aws:iam::123456789012:role/service-role/test-role",
+        "arn:aws:iam::123456789012:role/path/to/role")
+        .map(
+            arn -> new TestCase("ARN: " + arn)
                 .withCatalog(
                     new Catalog(
                         Catalog.TypeEnum.INTERNAL,
                         TEST_CATALOG_NAME,
                         new CatalogProperties(TEST_LOCATION),
                         new AwsStorageConfigInfo(
-                            TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3))),
-            new TestCase("Null fields")
-                .withCatalog(new Catalog(Catalog.TypeEnum.INTERNAL, null, null, null)),
-            new TestCase("Long name")
-                .withCatalog(
-                    new Catalog(
-                        Catalog.TypeEnum.INTERNAL,
-                        "a".repeat(1000),
-                        new CatalogProperties(TEST_LOCATION),
-                        null)),
-            new TestCase("Unicode characters")
-                .withCatalog(
-                    new Catalog(
-                        Catalog.TypeEnum.INTERNAL,
-                        "测试目录",
-                        new CatalogProperties(TEST_LOCATION),
-                        null)),
-            new TestCase("Empty strings")
-                .withCatalog(
-                    new Catalog(
-                        Catalog.TypeEnum.INTERNAL,
-                        "",
-                        new CatalogProperties(""),
-                        new AwsStorageConfigInfo("", StorageConfigInfo.StorageTypeEnum.S3))),
-            new TestCase("Special characters")
-                .withCatalog(
-                    new Catalog(
-                        Catalog.TypeEnum.INTERNAL,
-                        "test\"catalog",
-                        new CatalogProperties(TEST_LOCATION),
-                        new AwsStorageConfigInfo(
-                            TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3))),
-            new TestCase("Whitespace")
-                .withCatalog(
-                    new Catalog(
-                        Catalog.TypeEnum.INTERNAL,
-                        "  test  catalog  ",
-                        new CatalogProperties("  " + TEST_LOCATION + "  "),
-                        null)));
-
-    Stream<TestCase> arnCases =
-        Stream.of(
-                "arn:aws:iam::123456789012:role/test-role",
-                "arn:aws:iam::123456789012:role/service-role/test-role",
-                "arn:aws:iam::123456789012:role/path/to/role")
-            .map(
-                arn ->
-                    new TestCase("ARN: " + arn)
-                        .withCatalog(
-                            new Catalog(
-                                Catalog.TypeEnum.INTERNAL,
-                                TEST_CATALOG_NAME,
-                                new CatalogProperties(TEST_LOCATION),
-                                new AwsStorageConfigInfo(
-                                    arn, StorageConfigInfo.StorageTypeEnum.S3))));
+                            arn, StorageConfigInfo.StorageTypeEnum.S3))));
 
     return Stream.concat(basicCases, arnCases);
   }
@@ -190,8 +162,7 @@ public class CatalogSerializationTest {
 
   @Test
   public void testMalformedJson() {
-    String json =
-        "{" + "\"type\": \"INTERNAL\"," + "\"name\": \"test-catalog\"," + "\"properties\": {" + "}";
+    String json = "{" + "\"type\": \"INTERNAL\"," + "\"name\": \"test-catalog\"," + "\"properties\": {" + "}";
     assertThrows(JsonProcessingException.class, () -> mapper.readValue(json, Catalog.class));
   }
 }

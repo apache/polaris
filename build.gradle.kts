@@ -127,8 +127,6 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("**/kotlin-compiler*")
   excludes.add("**/build-logic/.kotlin/**")
 
-  excludes.add("docs/**") // Added this line to bypass adding header in docs file
-
   excludes.addAll(
     listOf(
       "**/build/**",
