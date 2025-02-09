@@ -125,9 +125,9 @@ spark.sql(&#34;CREATE NAMESPACE IF NOT EXISTS quickstart_namespace&#34;)
 spark.sql(&#34;CREATE NAMESPACE IF NOT EXISTS quickstart_namespace.schema&#34;)
 spark.sql(&#34;USE NAMESPACE quickstart_namespace.schema&#34;)
 spark.sql(&#34;&#34;&#34;
-	CREATE TABLE IF NOT EXISTS quickstart_table (
-		id BIGINT, data STRING
-	)
+CREATE TABLE IF NOT EXISTS quickstart_table (
+  id BIGINT, data STRING
+)
 USING ICEBERG
 &#34;&#34;&#34;)
 </code></pre><p>We can now use this table like any other:</p><pre tabindex=0><code>spark.sql(&#34;INSERT INTO quickstart_table VALUES (1, &#39;some data&#39;)&#34;)
