@@ -16,11 +16,11 @@
     },
     "older_than": {
       "type": "number",
-      "description": "A Unix timestamp, indicate to remove orphan files created before this timestamp."
+      "description": "A Unix timestamp. Remove orphan files created before this timestamp."
     },
     "location": {
       "type": "string",
-      "description": "Directory to look for files in (defaults to the table's location)."
+      "description": "Customized directory other than table location to look for files in."
     },
     "config": {
       "type": "object",
@@ -37,7 +37,7 @@
       "version": "2025-02-03",
       "enable": true,
       "older_than": 1707315296,
-      "location:": "s3://my-bucket/my-table-location",
+      "location": "s3://my-bucket/my-table-location",
       "config": {
         "prefix_mismatch_mode": "ignore",
         "my_key": "my_value"
