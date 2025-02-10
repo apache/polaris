@@ -62,5 +62,3 @@ val aggregatedLicenseReportsZip by
   }
 
 tasks.register("check")
-
-tasks.register("check")
