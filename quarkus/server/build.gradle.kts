@@ -68,7 +68,12 @@ tasks.named("distTar") { dependsOn("quarkusBuild") }
 tasks.register("run") { dependsOn("quarkusRun") }
 
 tasks.named<QuarkusRun>("quarkusRun") {
-  jvmArgs = listOf("-Dpolaris.bootstrap.credentials=POLARIS,root,secret")
+  jvmArgs =
+    listOf(
+      "-Dpolaris.bootstrap.credentials=POLARIS,root,secret",
+      "-Dquarkus.console.color=true",
+      "-Dquarkus.log.file.enable=false",
+    )
 }
 
 distributions {
