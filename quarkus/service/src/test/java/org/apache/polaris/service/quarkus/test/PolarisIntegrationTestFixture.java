@@ -40,9 +40,9 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.persistence.PolarisCredentialsBootstrap;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.auth.TokenUtils;
 import org.junit.jupiter.api.TestInfo;
@@ -97,7 +97,7 @@ public class PolarisIntegrationTestFixture {
   private PolarisPrincipalSecrets fetchAdminSecrets() {
     if (!(helper.metaStoreManagerFactory instanceof InMemoryPolarisMetaStoreManagerFactory)) {
       helper.metaStoreManagerFactory.bootstrapRealms(
-          List.of(realm), PolarisCredentialsBootstrap.fromEnvironment());
+          List.of(realm), RootCredentialsSet.fromEnvironment());
     }
 
     RealmContext realmContext = () -> realm;

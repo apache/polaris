@@ -18,10 +18,11 @@
  */
 package org.apache.polaris.admintool;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
-import org.apache.polaris.core.persistence.PolarisCredentialsBootstrap;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import picocli.CommandLine;
 
 @CommandLine.Command(
@@ -30,49 +31,92 @@ import picocli.CommandLine;
     description = "Bootstraps realms and root principal credentials.")
 public class BootstrapCommand extends BaseCommand {
 
-  @CommandLine.Option(
-      names = {"-r", "--realm"},
-      paramLabel = "<realm>",
-      required = true,
-      description = "The name of a realm to bootstrap.")
-  List<String> realms;
+  @CommandLine.ArgGroup(multiplicity = "1")
+  InputOptions inputOptions;
 
-  @CommandLine.Option(
-      names = {"-c", "--credential"},
-      paramLabel = "<realm,clientId,clientSecret>",
-      description =
-          "Root principal credentials to bootstrap. Must be of the form 'realm,clientId,clientSecret'.")
-  List<String> credentials;
+  static class InputOptions {
+
+    @CommandLine.ArgGroup(multiplicity = "1", exclusive = false)
+    StandardInputOptions stdinOptions;
+
+    @CommandLine.ArgGroup(multiplicity = "1")
+    FileInputOptions fileOptions;
+
+    static class StandardInputOptions {
+
+      @CommandLine.Option(
+          names = {"-r", "--realm"},
+          paramLabel = "<realm>",
+          required = true,
+          description = "The name of a realm to bootstrap.")
+      List<String> realms;
+
+      @CommandLine.Option(
+          names = {"-c", "--credential"},
+          paramLabel = "<realm,clientId,clientSecret>",
+          description =
+              "Root principal credentials to bootstrap. Must be of the form 'realm,clientId,clientSecret'.")
+      List<String> credentials;
+    }
+
+    static class FileInputOptions {
+      @CommandLine.Option(
+          names = {"-f", "--credentials-file"},
+          paramLabel = "<file>",
+          description = "A file containing root principal credentials to bootstrap.")
+      Path file;
+    }
+  }
 
   @Override
   public Integer call() {
-    PolarisCredentialsBootstrap credentialsBootstrap =
-        credentials == null || credentials.isEmpty()
-            ? PolarisCredentialsBootstrap.EMPTY
-            : PolarisCredentialsBootstrap.fromList(credentials);
+    try {
+      RootCredentialsSet rootCredentialsSet;
+      List<String> realms; // TODO Iterable
 
-    // Execute the bootstrap
-    Map<String, PrincipalSecretsResult> results =
-        metaStoreManagerFactory.bootstrapRealms(realms, credentialsBootstrap);
-
-    // Log any errors:
-    boolean success = true;
-    for (Map.Entry<String, PrincipalSecretsResult> result : results.entrySet()) {
-      if (!result.getValue().isSuccess()) {
-        String realm = result.getKey();
-        spec.commandLine()
-            .getErr()
-            .printf(
-                "Bootstrapping '%s' failed: %s%n",
-                realm, result.getValue().getReturnStatus().toString());
-        success = false;
+      if (inputOptions.fileOptions != null) {
+        rootCredentialsSet =
+            RootCredentialsSet.fromUrl(inputOptions.fileOptions.file.toUri().toURL());
+        realms = rootCredentialsSet.credentials().keySet().stream().toList();
+      } else {
+        realms = inputOptions.stdinOptions.realms;
+        rootCredentialsSet =
+            inputOptions.stdinOptions.credentials == null
+                    || inputOptions.stdinOptions.credentials.isEmpty()
+                ? RootCredentialsSet.EMPTY
+                : RootCredentialsSet.fromList(inputOptions.stdinOptions.credentials);
       }
-    }
 
-    if (success) {
-      spec.commandLine().getOut().println("Bootstrap completed successfully.");
-      return 0;
-    } else {
+      // Execute the bootstrap
+      Map<String, PrincipalSecretsResult> results =
+          metaStoreManagerFactory.bootstrapRealms(realms, rootCredentialsSet);
+
+      // Log any errors:
+      boolean success = true;
+      for (Map.Entry<String, PrincipalSecretsResult> result : results.entrySet()) {
+        if (result.getValue().isSuccess()) {
+          String realm = result.getKey();
+          spec.commandLine().getOut().printf("Realm '%s' successfully bootstrapped.%n", realm);
+        } else {
+          String realm = result.getKey();
+          spec.commandLine()
+              .getErr()
+              .printf(
+                  "Bootstrapping '%s' failed: %s%n",
+                  realm, result.getValue().getReturnStatus().toString());
+          success = false;
+        }
+      }
+
+      if (success) {
+        spec.commandLine().getOut().println("Bootstrap completed successfully.");
+        return 0;
+      } else {
+        spec.commandLine().getErr().println("Bootstrap encountered errors during operation.");
+        return EXIT_CODE_BOOTSTRAP_ERROR;
+      }
+    } catch (Exception e) {
+      e.printStackTrace(spec.commandLine().getErr());
       spec.commandLine().getErr().println("Bootstrap encountered errors during operation.");
       return EXIT_CODE_BOOTSTRAP_ERROR;
     }
