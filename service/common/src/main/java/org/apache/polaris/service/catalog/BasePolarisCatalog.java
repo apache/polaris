@@ -309,12 +309,18 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         metadataFileLocation != null && !metadataFileLocation.isEmpty(),
         "Cannot register an empty metadata file location as a table");
 
+    int lastSlashIndex = metadataFileLocation.lastIndexOf("/");
+    Preconditions.checkArgument(
+        lastSlashIndex != -1,
+        "Invalid metadata file location: %s, must be a full path to a file",
+        metadataFileLocation);
+
     // Throw an exception if this table already exists in the catalog.
     if (tableExists(identifier)) {
       throw new AlreadyExistsException("Table already exists: %s", identifier);
     }
 
-    String locationDir = metadataFileLocation.substring(0, metadataFileLocation.lastIndexOf("/"));
+    String locationDir = metadataFileLocation.substring(0, lastSlashIndex);
 
     TableOperations ops = newTableOps(identifier);
 
