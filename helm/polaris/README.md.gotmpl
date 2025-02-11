@@ -6,9 +6,9 @@
   to you under the Apache License, Version 2.0 (the
   "License"); you may not use this file except in compliance
   with the License.  You may obtain a copy of the License at
- 
+
    http://www.apache.org/licenses/LICENSE-2.0
- 
+
   Unless required by applicable law or agreed to in writing,
   software distributed under the License is distributed on an
   "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
@@ -49,23 +49,85 @@
 
 ### Optional
 
-When using a custom `persistence.xml`, a Kubernetes Secret must be created for `.persistenceConfigSecret`. Below is a sample command:
+When using a custom `persistence.xml`, a Kubernetes Secret must be created for it. Below is a sample command:
 ```bash
 kubectl create secret generic polaris-secret -n polaris --from-file=persistence.xml
 ```
 
-### From local directory (for development purposes)
+### Running the unit tests
 
-From Polaris repo root:
+Helm unit tests do not require a Kubernetes cluster. To run the unit tests from the Polaris repo
+root:
 
 ```bash
-$ helm install polaris helm/polaris --namespace polaris --create-namespace
+helm unittest helm/polaris
+```
+
+Note: the `grep` command is used to filter out the annoying warning messages about symbolic links;
+see https://github.com/helm/helm/issues/7019.
+
+### Running locally with a Kind cluster
+
+The below instructions assume Kind and Helm are installed.
+
+Simply run the `run.sh` script from the Polaris repo root, making sure to specify the
+`--eclipse-link-deps` option:
+
+```bash
+./run.sh --eclipse-link-deps=org.postgresql:postgresql:42.7.4
+```
+
+This script will create a Kind cluster, deploy a local Docker registry, build the Polaris Docker
+images with support for Postgres and load them into the Kind cluster. (It will also create an
+example Deployment and Service with in-memory storage.)
+
+### Running locally with a Minikube cluster
+
+The below instructions assume a Minikube cluster is already running and Helm is installed.
+
+If necessary, build and load the Docker images with support for Postgres into Minikube:
+
+```bash
+eval $(minikube -p minikube docker-env)
+
+./gradlew :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
+    -Dquarkus.container-image.build=true \
+    -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
+```
+
+### Installing the chart locally
+
+The below instructions assume a local Kubernetes cluster is running and Helm is installed.
+
+Create and populate the target namespace:
+
+```bash
+kubectl create namespace polaris
+kubectl apply --namespace polaris -f helm/polaris/ci/fixtures/
+```
+
+Finally, install the chart. From Polaris repo root:
+
+```bash
+helm upgrade --install --namespace polaris \
+  --debug --values helm/polaris/ci/simple-values.yaml \
+   polaris helm/polaris
+```
+
+The `helm/polaris/ci` contains a number of values files that can be used to install the chart with
+different configurations.
+
+You can also run `ct` (chart-testing):
+
+```bash
+ct lint --charts helm/polaris
+ct install --namespace polaris --debug --charts ./helm/polaris
 ```
 
 ### Uninstalling the chart
 
 ```bash
-$ helm uninstall --namespace polaris polaris
+helm uninstall --namespace polaris polaris
 ```
 
 {{ template "chart.valuesSection" . }}

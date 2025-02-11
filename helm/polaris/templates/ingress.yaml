@@ -19,7 +19,7 @@
 
 {{- if .Values.ingress.enabled }}
 {{- $fullName := include "polaris.fullname" . }}
-{{- $svcPort := index .Values.service.ports "polaris-service" }}
+{{- $svcPort := get (first .Values.service.ports) "port" }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
