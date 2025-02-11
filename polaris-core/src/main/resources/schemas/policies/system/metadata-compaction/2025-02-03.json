@@ -30,7 +30,7 @@
       "enable": true,
       "config": {
         "spec_id": 1,
-        "my_key": "my_value"
+        "key1": "value1"
       }
     }
   ]

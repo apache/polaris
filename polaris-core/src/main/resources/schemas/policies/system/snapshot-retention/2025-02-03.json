@@ -31,7 +31,7 @@
       "config": {
         "min_snapshot_to_keep": 1,
         "max_snapshot_age_days": 2,
-        "my_key": "my_value"
+        "key1": "value1"
       }
     }
   ]

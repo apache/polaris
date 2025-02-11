@@ -14,17 +14,17 @@
       "type": "boolean",
       "description": "Enable or disable orphan file removal."
     },
-    "older_than": {
+    "max_orphan_file_age_in_days": {
       "type": "number",
-      "description": "A Unix timestamp. Remove orphan files created before this timestamp."
+      "description": "Specifies the maximum age (in days) for orphaned files before they are eligible for removal."
     },
     "location": {
       "type": "string",
-      "description": "Customized directory other than table location to look for files in."
+      "description": "Specifies a custom directory to search for files instead of the default table location. Use with caution—if set to a broad location (e.g., s3://my-bucket instead of s3://my-bucket/my-table-location), all unreferenced files in that path may be permanently deleted, including files from other tables. Following best practices, tables should be stored in separate locations to avoid accidental data loss."
     },
     "config": {
       "type": "object",
-      "description": "A map containing custom configuration properties. Please note that interoperability is not guaranteed.",
+      "description": "A map containing custom configuration properties. Note that interoperability is not guaranteed.",
       "additionalProperties": {
         "type": ["string", "number", "boolean"]
       }
@@ -36,11 +36,11 @@
     {
       "version": "2025-02-03",
       "enable": true,
-      "older_than": 1707315296,
+      "max_orphan_file_age_in_days": 30,
       "location": "s3://my-bucket/my-table-location",
       "config": {
         "prefix_mismatch_mode": "ignore",
-        "my_key": "my_value"
+        "key1": "value1"
       }
     }
   ]

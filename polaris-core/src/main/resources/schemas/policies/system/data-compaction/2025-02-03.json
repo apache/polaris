@@ -32,7 +32,7 @@
         "target_file_size_bytes": 134217728,
         "compaction_strategy": "bin-pack",
         "max-concurrent-file-group-rewrites": 5,
-        "my-key": "my-value"
+        "key1": "value1"
       }
     }
   ]
