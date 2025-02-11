@@ -29,20 +29,18 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.service.type | default "ClusterIP" }}
   selector:
     {{- include "polaris.selectorLabels" . | nindent 4 }}
   ports:
-    {{- range .Values.service.ports }}
-    - name: {{ .name }}
-      port: {{ .port }}
-      {{- if .targetPort }}
-      targetPort: {{ .targetPort }}
+    {{- range $portName, $port := .Values.service.ports }}
+    - port: {{ $port.port }}
+      targetPort: {{ $port.port }}
+      {{- if and (eq $.Values.service.type "NodePort") $port.nodePort }}
+      nodePort: {{ $port.nodePort }}
       {{- end }}
-      {{- if .nodePort }}
-      nodePort: {{ .nodePort }}
-      {{- end }}
-      protocol: {{ default "TCP" .protocol }}
+      protocol: TCP
+      name: {{ $portName }}
     {{- end }}
   {{- if .Values.service.sessionAffinity }}
   sessionAffinity: {{ .Values.service.sessionAffinity }}

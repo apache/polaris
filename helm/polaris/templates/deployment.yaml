@@ -90,11 +90,11 @@ spec:
               mountPath: {{ .Values.logging.file.logsDir }}
               readOnly: false
             {{- end }}
-            - name: temp-dir
-              mountPath: /tmp
-              readOnly: false
-            {{- if .Values.extraVolumeMounts }}
-            {{- tpl (toYaml .Values.extraVolumeMounts) . | nindent 12 }}
+          ports:
+            {{- range $portName, $port := .Values.service.ports }}
+            - name: {{ $portName }}
+              containerPort: {{ $port.port }}
+              protocol: TCP
             {{- end }}
           {{- include "polaris.containerPorts" . | trim | nindent 10 }}
           livenessProbe:
