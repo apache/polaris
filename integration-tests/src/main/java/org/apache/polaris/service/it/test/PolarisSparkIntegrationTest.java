@@ -27,10 +27,12 @@ import com.google.common.collect.ImmutableMap;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -82,7 +84,7 @@ public class PolarisSparkIntegrationTest {
   private String catalogName;
   private String externalCatalogName;
 
-  @TempDir public Path warehouseDir;
+  private URI warehouseDir;
 
   @BeforeAll
   public static void setup() throws IOException {
@@ -95,12 +97,19 @@ public class PolarisSparkIntegrationTest {
   }
 
   @BeforeEach
-  public void before(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
+  public void before(
+      PolarisApiEndpoints apiEndpoints, ClientCredentials credentials, @TempDir Path tempDir) {
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     sparkToken = client.obtainToken(credentials);
     managementApi = client.managementApi(credentials);
     catalogApi = client.catalogApi(credentials);
+
+    warehouseDir =
+        Optional.ofNullable(System.getenv("INTEGRATION_TEST_TEMP_DIR"))
+            .map(URI::create)
+            .orElse(tempDir.toUri())
+            .resolve("spark-warehouse");
 
     catalogName = client.newEntityName("spark_catalog");
     externalCatalogName = client.newEntityName("spark_ext_catalog");
