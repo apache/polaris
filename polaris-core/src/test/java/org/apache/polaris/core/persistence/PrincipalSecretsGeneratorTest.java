@@ -22,6 +22,7 @@ import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.boot
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.junit.jupiter.api.Test;
 
 class PrincipalSecretsGeneratorTest {
@@ -39,7 +40,7 @@ class PrincipalSecretsGeneratorTest {
   @Test
   void testSecretOverride() {
     PrincipalSecretsGenerator gen =
-        bootstrap("test-Realm", PolarisCredentialsBootstrap.fromString("test-Realm,client1,sec2"));
+        bootstrap("test-Realm", RootCredentialsSet.fromString("test-Realm,client1,sec2"));
     PolarisPrincipalSecrets s = gen.produceSecrets("root", 123);
     assertThat(s).isNotNull();
     assertThat(s.getPrincipalId()).isEqualTo(123);
