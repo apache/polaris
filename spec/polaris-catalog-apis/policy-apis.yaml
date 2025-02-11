@@ -67,11 +67,11 @@ paths:
         5XX:
           $ref: '../rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
-  /v1/{prefix}/namespaces/{namespace}/policies/{policy}:
+  /v1/{prefix}/namespaces/{namespace}/policies/{policyName}:
     parameters:
       - $ref: '../rest-catalog-open-api.yaml#/components/parameters/prefix'
       - $ref: '../rest-catalog-open-api.yaml#/components/parameters/namespace'
-      - $ref: '#/components/parameters/policy'
+      - $ref: '#/components/parameters/policy-name'
 
     get:
       tags:
@@ -183,11 +183,11 @@ paths:
         5XX:
           $ref: '../rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
-  /v1/{prefix}/namespaces/{namespace}/policies/{policy}/mappings:
+  /v1/{prefix}/namespaces/{namespace}/policies/{policyName}/mappings:
     parameters:
       - $ref: '../rest-catalog-open-api.yaml#/components/parameters/prefix'
       - $ref: '../rest-catalog-open-api.yaml#/components/parameters/namespace'
-      - $ref: '#/components/parameters/policy'
+      - $ref: '#/components/parameters/policy-name'
 
     put:
       tags:
@@ -287,8 +287,8 @@ paths:
 
 components:
   parameters:
-    policy:
-      name: policy
+    policy-name:
+      name: policyName
       in: path
       required: true
       schema:
