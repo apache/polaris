@@ -1404,11 +1404,11 @@ paths:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
-  /v1/{prefix}/namespaces/{namespace}/policies/{policy}:
+  /v1/{prefix}/namespaces/{namespace}/policies/{policyName}:
     parameters:
       - $ref: '#/components/parameters/prefix'
       - $ref: '#/components/parameters/namespace'
-      - $ref: '#/components/parameters/policy'
+      - $ref: '#/components/parameters/policy-name'
     get:
       tags:
         - Catalog API
@@ -1512,11 +1512,11 @@ paths:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
-  /v1/{prefix}/namespaces/{namespace}/policies/{policy}/mappings:
+  /v1/{prefix}/namespaces/{namespace}/policies/{policyName}/mappings:
     parameters:
       - $ref: '#/components/parameters/prefix'
       - $ref: '#/components/parameters/namespace'
-      - $ref: '#/components/parameters/policy'
+      - $ref: '#/components/parameters/policy-name'
     put:
       tags:
         - Catalog API
@@ -3921,8 +3921,8 @@ components:
       schema:
         type: string
       example: sales
-    policy:
-      name: policy
+    policy-name:
+      name: policyName
       in: path
       required: true
       schema:
