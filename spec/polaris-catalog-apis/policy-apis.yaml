@@ -238,7 +238,7 @@ paths:
         5XX:
           $ref: '../rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
-    delete:
+    post:
       tags:
         - Catalog API
       summary: Remove a mapping between a policy and a resource entity

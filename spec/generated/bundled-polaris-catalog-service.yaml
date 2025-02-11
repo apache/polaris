@@ -1563,7 +1563,7 @@ paths:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
-    delete:
+    post:
       tags:
         - Catalog API
       summary: Remove a mapping between a policy and a resource entity
