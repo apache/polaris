@@ -1376,9 +1376,8 @@ paths:
 
         User provides the following inputs when creating a policy
         - `name`(REQUIRED): The name of the policy.
-        - `type` (REQUIRED): The type of the policy. It can be either predefined type or custom type.
-          - **Predefined Policies:** system.compaction, system.snapshot_retention
-          - **Custom Policies:** custom.<org_name>.data_masking, custom.<user_id>.audit_policy
+        - `type` (REQUIRED): The type of the policy.
+          - **Predefined Policies:** policies have a `system.*` prefix in their type, such as `system.data_compaction`
         - `description` (OPTIONAL): Provides details about the policy's purpose and functionality
         - `content` (OPTIONAL): Defines the rules that control actions and access conditions on resources. The format can be JSON, SQL, or any other format.
 
@@ -3589,8 +3588,6 @@ components:
         The policy object includes
         - **owner-entity:** The entity that owns the policy
         - **policy-type:** The type of the policy, which determines the expected format and semantics of the policy content.
-          For example, predefined types include `system.compaction` or `system.snapshot_retention`, while custom policy types
-          follow a namespaced format like `custom.<org_name>.data_masking`.
         - **name:**  A human-readable name for the policy, which must be unique within a given namespace.
         - **description:** Detailed description of the purpose and functionalities of the policy.
         - **content:** Policy content, which can be validated against predefined schemas of a policy type.
