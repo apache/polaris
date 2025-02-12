@@ -32,7 +32,8 @@ dependencies {
 
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
-  testImplementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
+  testImplementation(platform(libs.jackson.bom))
+  testImplementation("com.fasterxml.jackson.core:jackson-databind")
 }
 
 openApiGenerate {
@@ -58,12 +59,12 @@ openApiGenerate {
   serverVariables = mapOf("basePath" to "api/v1")
 }
 
-sourceSets {
-  main { java { srcDir(project.layout.buildDirectory.dir("generated/src/main/java")) } }
-}
-
 listOf("sourcesJar", "compileJava").forEach { task ->
   tasks.named(task) { dependsOn("openApiGenerate") }
+}
+
+sourceSets {
+  main { java { srcDir(project.layout.buildDirectory.dir("generated/src/main/java")) } }
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }
