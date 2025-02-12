@@ -284,6 +284,13 @@ class TestCliParsing(unittest.TestCase):
                 (0, None): 'foo',
             })
         check_arguments(
+            mock_execute([
+                'catalogs', 'update', 'foo', '--set-property', 'key=value',
+                '--default-base-location', 'x', '--region', 'us-west-1']),
+            'get_catalog', {
+                (0, None): 'foo',
+            })
+        check_arguments(
             mock_execute(['principals', 'create', 'foo', '--property', 'key=value']),
             'create_principal', {
                 (0, 'principal.name'): 'foo',
