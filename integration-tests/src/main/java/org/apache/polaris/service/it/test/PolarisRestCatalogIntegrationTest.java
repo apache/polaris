@@ -165,16 +165,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         Optional.ofNullable(System.getenv("INTEGRATION_TEST_TEMP_DIR"))
             .map(URI::create)
             .orElse(tempDir.toUri());
-    s3BucketBase =
-        Optional.ofNullable(System.getenv("INTEGRATION_TEST_S3_PATH"))
-            .map(URI::create)
-            .orElse(testRootUri)
-            .resolve("my-bucket");
-    externalCatalogBase =
-        Optional.ofNullable(System.getenv("INTEGRATION_TEST_S3_PATH"))
-            .map(URI::create)
-            .orElse(testRootUri)
-            .resolve("external-catalog");
+    s3BucketBase = testRootUri.resolve("my-bucket");
+    externalCatalogBase = testRootUri.resolve("external-catalog");
   }
 
   @AfterAll
