@@ -134,7 +134,7 @@ You should see output for some time as Polaris builds and starts up. Eventually,
 
 ```
 realm: <realm> root principal credentials: <client-id>:<client-secret>
-INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) polaris-quarkus-service <version> on JVM (powered by Quarkus <version>) started in 2.656s. Listening on: http://localhost:8181. Management interface listening on http://0.0.0.0:8182.
+INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) polaris-quarkus-server <version> on JVM (powered by Quarkus <version>) started in 2.656s. Listening on: http://localhost:8181. Management interface listening on http://0.0.0.0:8182.
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Profile prod activated. Live Coding activated.
 INFO  [io.quarkus] [,] [,,,] (Quarkus Main Thread) Installed features: [...]
 ```

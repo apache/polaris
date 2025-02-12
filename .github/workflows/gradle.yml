@@ -86,7 +86,7 @@ jobs:
       - name: Build
         run: ./gradlew compileAll
       - name: Run selected tests
-        run: ./gradlew :polaris-quarkus-service:intTest
+        run: ./gradlew :polaris-quarkus-server:intTest
 
       - name: Archive test results
         uses: actions/upload-artifact@v4

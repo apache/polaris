@@ -48,7 +48,6 @@ Apache Polaris is organized into the following modules:
 - Service modules:
   - `polaris-service-common` - The main components of the Polaris server
 - Quarkus runtime modules:
-  - `polaris-quarkus-service` - The Quarkus-specific components of the Polaris server
   - `polaris-quarkus-defaults` - The Quarkus-specific configuration defaults
   - `polaris-quarkus-server` - The Polaris server runtime
   - `polaris-quarkus-admin-tool` - The Polaris admin & maintenance tool
