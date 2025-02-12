@@ -69,11 +69,6 @@ class CatalogsCommand(Command):
             if not self.default_base_location:
                 raise Exception(f'Missing required argument:'
                                 f' {Argument.to_flag_name(Arguments.DEFAULT_BASE_LOCATION)}')
-        if self.catalogs_subcommand == Subcommands.UPDATE:
-            if self.allowed_locations:
-                if not self.storage_type:
-                    raise Exception(f'Missing required argument when updating allowed locations for a catalog:'
-                                    f' {Argument.to_flag_name(Arguments.STORAGE_TYPE)}')
 
         if self.storage_type == StorageType.S3.value:
             if not self.role_arn:
@@ -199,12 +194,33 @@ class CatalogsCommand(Command):
                     default_base_location=new_default_base_location,
                     additional_properties=new_additional_properties
                 )
-            if (self._has_aws_storage_info() or self._has_azure_storage_info() or self._has_gcs_storage_info() or
-                    self.allowed_locations or self.default_base_location):
+
+            if (self._has_aws_storage_info() or self._has_azure_storage_info() or
+                self._has_gcs_storage_info() or self.allowed_locations):
+                # We must first reconstitute local storage-config related settings from the existing
+                # catalog to properly construct the complete updated storage-config
+                updated_storage_info = catalog.storage_config_info
+
+                # In order to apply mutations client-side, we can't just use the base
+                # _build_storage_config_info helper; instead, each allowed updatable field defined
+                # in option_tree.py should be applied individually against the existing
+                # storage_config_info here.
+                if self.allowed_locations:
+                    updated_storage_info.allowed_locations.extend(self.allowed_locations)
+
+                if self.region:
+                    # Note: We have to lowercase the returned value because the server enum
+                    # is uppercase but we defined the StorageType enums as lowercase.
+                    storage_type = updated_storage_info.storage_type
+                    if storage_type.lower() != StorageType.S3.value:
+                        raise Exception(
+                            f'--region requires S3 storage_type, got: {storage_type}')
+                    updated_storage_info.region = self.region
+
                 request = UpdateCatalogRequest(
                     current_entity_version=catalog.entity_version,
                     properties=catalog.properties.to_dict(),
-                    storage_config_info=self._build_storage_config_info()
+                    storage_config_info=updated_storage_info
                 )
             else:
                 request = UpdateCatalogRequest(
