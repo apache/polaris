@@ -67,14 +67,15 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                 new AwsCredentialsStorageIntegration(stsClientSupplier.get());
         break;
       case GCS:
-        String serviceAccount = ((GcpStorageConfigurationInfo)polarisStorageConfigurationInfo).getGcpServiceAccount();
+        String serviceAccount =
+            ((GcpStorageConfigurationInfo) polarisStorageConfigurationInfo).getGcpServiceAccount();
         storageIntegration =
-          (PolarisStorageIntegration<T>)
-                  new GcpCredentialsStorageIntegration(
-                          gcpCredsProvider.get(),
-                          ServiceOptions.getFromServiceLoader(
-                                  HttpTransportFactory.class, NetHttpTransport::new),
-                          serviceAccount);
+            (PolarisStorageIntegration<T>)
+                new GcpCredentialsStorageIntegration(
+                    gcpCredsProvider.get(),
+                    ServiceOptions.getFromServiceLoader(
+                        HttpTransportFactory.class, NetHttpTransport::new),
+                    serviceAccount);
         break;
 
       case AZURE:
