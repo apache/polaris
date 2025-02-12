@@ -312,7 +312,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     int lastSlashIndex = metadataFileLocation.lastIndexOf("/");
     Preconditions.checkArgument(
         lastSlashIndex != -1,
-        "Invalid metadata file location: %s, must be a full path to a file",
+        "Invalid metadata file location; metadata file location must be absolute and contain a '/': %s",
         metadataFileLocation);
 
     // Throw an exception if this table already exists in the catalog.
