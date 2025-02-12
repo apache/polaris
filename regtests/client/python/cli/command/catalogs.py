@@ -205,14 +205,14 @@ class CatalogsCommand(Command):
                 # _build_storage_config_info helper; instead, each allowed updatable field defined
                 # in option_tree.py should be applied individually against the existing
                 # storage_config_info here.
-                if (self.allowed_locations):
+                if self.allowed_locations:
                     updated_storage_info.allowed_locations.extend(self.allowed_locations)
 
-                if (self.region):
+                if self.region:
                     # Note: We have to lowercase the returned value because the server enum
                     # is uppercase but we defined the StorageType enums as lowercase.
                     storage_type = updated_storage_info.storage_type
-                    if (storage_type.lower() != StorageType.S3.value):
+                    if storage_type.lower() != StorageType.S3.value:
                         raise Exception(
                             f'--region requires S3 storage_type, got: {storage_type}')
                     updated_storage_info.region = self.region
