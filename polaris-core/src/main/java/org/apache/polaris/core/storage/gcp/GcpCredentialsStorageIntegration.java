@@ -25,6 +25,7 @@ import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.CredentialAccessBoundary;
 import com.google.auth.oauth2.DownscopedCredentials;
 import com.google.auth.oauth2.GoogleCredentials;
+import com.google.auth.oauth2.ImpersonatedCredentials;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
 import java.io.IOException;
@@ -60,13 +61,29 @@ public class GcpCredentialsStorageIntegration
 
   public GcpCredentialsStorageIntegration(
       GoogleCredentials sourceCredentials, HttpTransportFactory transportFactory) {
-    super(GcpCredentialsStorageIntegration.class.getName());
-    // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
-    // account key json
-    this.sourceCredentials =
-        sourceCredentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
-    this.transportFactory = transportFactory;
+    this(sourceCredentials, transportFactory, null);
   }
+
+    public GcpCredentialsStorageIntegration(
+            GoogleCredentials sourceCredentials, HttpTransportFactory transportFactory, String serviceAccount) {
+        super(GcpCredentialsStorageIntegration.class.getName());
+        // Needed for when environment variable GOOGLE_APPLICATION_CREDENTIALS points to google service
+        // account key json
+
+        if(serviceAccount == null) {
+            this.sourceCredentials =
+                    sourceCredentials.createScoped("https://www.googleapis.com/auth/cloud-platform");
+        } else {
+            GoogleCredentials scopedSourceCredentials  =
+                    sourceCredentials.createScoped("https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/iam");
+            GoogleCredentials targetCredentials = ImpersonatedCredentials.create(scopedSourceCredentials,
+                    serviceAccount , null,
+                    List.of("https://www.googleapis.com/auth/cloud-platform"), 300);
+            this.sourceCredentials = targetCredentials;
+        }
+        this.transportFactory = transportFactory;
+    }
+
 
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(

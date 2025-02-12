@@ -37,6 +37,7 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.gcp.GcpCredentialsStorageIntegration;
+import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import software.amazon.awssdk.services.sts.StsClient;
 
 public class PolarisStorageIntegrationProviderImpl implements PolarisStorageIntegrationProvider {
@@ -66,13 +67,16 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
                 new AwsCredentialsStorageIntegration(stsClientSupplier.get());
         break;
       case GCS:
+        String serviceAccount = ((GcpStorageConfigurationInfo)polarisStorageConfigurationInfo).getGcpServiceAccount();
         storageIntegration =
-            (PolarisStorageIntegration<T>)
-                new GcpCredentialsStorageIntegration(
-                    gcpCredsProvider.get(),
-                    ServiceOptions.getFromServiceLoader(
-                        HttpTransportFactory.class, NetHttpTransport::new));
+          (PolarisStorageIntegration<T>)
+                  new GcpCredentialsStorageIntegration(
+                          gcpCredsProvider.get(),
+                          ServiceOptions.getFromServiceLoader(
+                                  HttpTransportFactory.class, NetHttpTransport::new),
+                          serviceAccount);
         break;
+
       case AZURE:
         storageIntegration =
             (PolarisStorageIntegration<T>) new AzureCredentialsStorageIntegration();
