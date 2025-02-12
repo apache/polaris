@@ -103,6 +103,9 @@ public abstract class JWTBroker implements TokenBroker {
       String grantType,
       String scope,
       TokenType requestedTokenType) {
+    if (!TokenType.ACCESS_TOKEN.equals(requestedTokenType)) {
+      return new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
+    }
     if (!TokenType.ACCESS_TOKEN.equals(subjectTokenType)) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
     }
