@@ -51,6 +51,10 @@ If you plan to deploy Polaris inside [Docker](https://www.docker.com/), you'll n
 brew install --cask docker
 ```
 
+There could be a [Docker permission issues](https://github.com/apache/polaris/pull/971) related to seccomp configuration. To resolve these issues, set the `seccomp` profile to "unconfined" when running a container.
+
+Note: Setting the seccomp profile to "unconfined" disables the default system call filtering, which may pose security risks. Use this configuration with caution, especially in production environments.
+
 Once installed, make sure Docker is running.
 
 #### From Source
