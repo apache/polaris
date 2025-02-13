@@ -25,11 +25,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import java.util.List;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.function.Supplier;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
@@ -48,19 +48,17 @@ public class InMemoryPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
 
   private final PolarisStorageIntegrationProvider storageIntegration;
-  private final Set<String> bootstrappedRealms = new CopyOnWriteArraySet<>();
+  private final Set<String> bootstrappedRealms = new HashSet<>();
 
   public InMemoryPolarisMetaStoreManagerFactory() {
-    this(null, null, null, null);
+    this(null, null);
   }
 
   @Inject
   public InMemoryPolarisMetaStoreManagerFactory(
       PolarisStorageIntegrationProvider storageIntegration,
-      PolarisConfigurationStore configurationStore,
-      PolarisDiagnostics diagnostics,
-      Clock clock) {
-    super(configurationStore, diagnostics, clock);
+      PolarisDiagnostics diagnostics) {
+    super(diagnostics);
     this.storageIntegration = storageIntegration;
   }
 
@@ -82,8 +80,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
     return new PolarisTreeMapMetaStoreSessionImpl(
         store,
         storageIntegration,
-        secretsGenerator(realmContext, credentialsBootstrap),
-        diagnostics);
+        secretsGenerator(realmContext, credentialsBootstrap));
   }
 
   @Override

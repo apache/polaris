@@ -24,7 +24,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
-import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -33,7 +32,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
@@ -60,8 +59,14 @@ public class ResolverTest {
   // diag services
   private final PolarisDiagnostics diagServices;
 
+  // the entity store, use treemap implementation
+  private final PolarisTreeMapStore store;
+
   // to interact with the metastore
   private final PolarisMetaStoreSession metaStore;
+
+  // polaris call context
+  private final PolarisCallContext callCtx;
 
   // utility to bootstrap the mata store
   private final PolarisTestMetaStoreManager tm;
@@ -99,16 +104,13 @@ public class ResolverTest {
    */
   public ResolverTest() {
     diagServices = new PolarisDefaultDiagServiceImpl();
-    // the entity store, use treemap implementation
-    PolarisTreeMapStore store = new PolarisTreeMapStore(diagServices);
-    metaStore =
-        new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS, diagServices);
-    metaStoreManager =
-        new PolarisMetaStoreManagerImpl(
-            () -> "test", diagServices, new PolarisConfigurationStore() {}, Clock.systemUTC());
+    store = new PolarisTreeMapStore(diagServices);
+    metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
+    callCtx = new PolarisCallContext(metaStore, diagServices);
+    metaStoreManager = new PolarisMetaStoreManagerImpl();
 
     // bootstrap the mata store with our test schema
-    tm = new PolarisTestMetaStoreManager(metaStoreManager, metaStore, diagServices);
+    tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
     tm.testCreateTestCatalog();
 
     // principal P1
@@ -442,7 +444,7 @@ public class ResolverTest {
 
     // create a new cache if needs be
     if (cache == null) {
-      this.cache = new EntityCache(this.metaStoreManager, diagServices);
+      this.cache = new EntityCache(this.metaStoreManager);
     }
     boolean allRoles = principalRolesScope == null;
     Optional<List<PrincipalRoleEntity>> roleEntities =
@@ -453,7 +455,7 @@ public class ResolverTest {
                         .map(
                             role ->
                                 metaStoreManager.readEntityByName(
-                                    this.metaStore,
+                                    callCtx,
                                     null,
                                     PolarisEntityType.PRINCIPAL_ROLE,
                                     PolarisEntitySubType.NULL_SUBTYPE,
@@ -466,8 +468,7 @@ public class ResolverTest {
         new AuthenticatedPolarisPrincipal(
             PrincipalEntity.of(P1), Optional.ofNullable(principalRolesScope).orElse(Set.of()));
     return new Resolver(
-        this.metaStore,
-        this.diagServices,
+        this.callCtx,
         metaStoreManager,
         new SecurityContext() {
           @Override
@@ -750,7 +751,7 @@ public class ResolverTest {
         // see if the principal exists
         PolarisMetaStoreManager.EntityResult result =
             this.metaStoreManager.readEntityByName(
-                this.metaStore,
+                this.callCtx,
                 null,
                 PolarisEntityType.PRINCIPAL,
                 PolarisEntitySubType.NULL_SUBTYPE,
@@ -953,7 +954,7 @@ public class ResolverTest {
     // reload the cached entry from the backend
     CachedEntryResult refCachedEntry =
         this.metaStoreManager.loadCachedEntryById(
-            this.metaStore, refEntity.getCatalogId(), refEntity.getId());
+            this.callCtx, refEntity.getCatalogId(), refEntity.getId());
 
     // should exist
     Assertions.assertThat(refCachedEntry).isNotNull();

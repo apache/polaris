@@ -27,7 +27,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.StreamSupport;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.DataFile;
@@ -36,8 +36,6 @@ import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.ManifestReader;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.slf4j.Logger;
@@ -56,40 +54,36 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
   public static final int FILE_DELETION_RETRY_MILLIS = 100;
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ManifestFileCleanupTaskHandler.class);
-  private final BiFunction<TaskEntity, RealmContext, FileIO> fileIOSupplier;
+  private final Function<TaskEntity, FileIO> fileIOSupplier;
   private final ExecutorService executorService;
-  private final PolarisDiagnostics diagnostics;
 
   public ManifestFileCleanupTaskHandler(
-      BiFunction<TaskEntity, RealmContext, FileIO> fileIOSupplier,
-      ExecutorService executorService,
-      PolarisDiagnostics diagnostics) {
+      Function<TaskEntity, FileIO> fileIOSupplier, ExecutorService executorService) {
     this.fileIOSupplier = fileIOSupplier;
     this.executorService = executorService;
-    this.diagnostics = diagnostics;
   }
 
   @Override
   public boolean canHandleTask(TaskEntity task) {
-    return task.getTaskType(diagnostics) == AsyncTaskType.MANIFEST_FILE_CLEANUP
-        || task.getTaskType(diagnostics) == AsyncTaskType.METADATA_FILE_BATCH_CLEANUP;
+    return task.getTaskType() == AsyncTaskType.MANIFEST_FILE_CLEANUP
+        || task.getTaskType() == AsyncTaskType.METADATA_FILE_BATCH_CLEANUP;
   }
 
   @Override
-  public boolean handleTask(TaskEntity task, RealmContext realmContext) {
-    ManifestCleanupTask cleanupTask = task.readData(diagnostics, ManifestCleanupTask.class);
+  public boolean handleTask(TaskEntity task) {
+    ManifestCleanupTask cleanupTask = task.readData(ManifestCleanupTask.class);
     TableIdentifier tableId = cleanupTask.getTableId();
-    try (FileIO authorizedFileIO = fileIOSupplier.apply(task, realmContext)) {
-      if (task.getTaskType(diagnostics) == AsyncTaskType.MANIFEST_FILE_CLEANUP) {
+    try (FileIO authorizedFileIO = fileIOSupplier.apply(task)) {
+      if (task.getTaskType() == AsyncTaskType.MANIFEST_FILE_CLEANUP) {
         ManifestFile manifestFile = decodeManifestData(cleanupTask.getManifestFileData());
         return cleanUpManifestFile(manifestFile, authorizedFileIO, tableId);
-      } else if (task.getTaskType(diagnostics) == AsyncTaskType.METADATA_FILE_BATCH_CLEANUP) {
+      } else if (task.getTaskType() == AsyncTaskType.METADATA_FILE_BATCH_CLEANUP) {
         return cleanUpMetadataFiles(cleanupTask.getMetadataFiles(), authorizedFileIO, tableId);
       } else {
         LOGGER
             .atWarn()
             .addKeyValue("tableId", tableId)
-            .log("Unknown task type {}", task.getTaskType(diagnostics));
+            .log("Unknown task type {}", task.getTaskType());
         return false;
       }
     }

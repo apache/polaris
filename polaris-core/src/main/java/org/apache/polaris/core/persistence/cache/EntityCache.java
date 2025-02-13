@@ -27,11 +27,10 @@ import java.util.AbstractMap;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
 
 /** The entity cache, can be private or shared */
@@ -39,8 +38,6 @@ public class EntityCache {
 
   // cache mode
   private EntityCacheMode cacheMode;
-
-  private final PolarisDiagnostics diagServices;
 
   // the meta store manager
   private final PolarisRemoteCache polarisRemoteCache;
@@ -56,9 +53,7 @@ public class EntityCache {
    *
    * @param polarisRemoteCache the meta store manager implementation
    */
-  public EntityCache(
-      @Nonnull PolarisRemoteCache polarisRemoteCache, @Nonnull PolarisDiagnostics diagServices) {
-    this.diagServices = diagServices;
+  public EntityCache(@Nonnull PolarisRemoteCache polarisRemoteCache) {
 
     // by name cache
     this.byName = new ConcurrentHashMap<>();
@@ -246,7 +241,7 @@ public class EntityCache {
    * Refresh the cache if needs be with a version of the entity/grant records matching the minimum
    * specified version.
    *
-   * @param session the metastore session
+   * @param callContext the Polaris call context
    * @param entityToValidate copy of the entity held by the caller to validate
    * @param entityMinVersion minimum expected version. Should be reloaded if found in a cache with a
    *     version less than this one
@@ -255,7 +250,7 @@ public class EntityCache {
    * @return the cache entry for the entity or null if the specified entity does not exist
    */
   public @Nullable EntityCacheEntry getAndRefreshIfNeeded(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callContext,
       @Nonnull PolarisBaseEntity entityToValidate,
       int entityMinVersion,
       int entityGrantRecordsMinVersion) {
@@ -295,7 +290,7 @@ public class EntityCache {
       if (existingCacheEntry == null) {
         // try to load it
         refreshedCacheEntry =
-            this.polarisRemoteCache.loadCachedEntryById(session, entityCatalogId, entityId);
+            this.polarisRemoteCache.loadCachedEntryById(callContext, entityCatalogId, entityId);
         if (refreshedCacheEntry.isSuccess()) {
           entity = refreshedCacheEntry.getEntity();
           grantRecords = refreshedCacheEntry.getEntityGrantRecords();
@@ -307,7 +302,7 @@ public class EntityCache {
         // refresh it
         refreshedCacheEntry =
             this.polarisRemoteCache.refreshCachedEntity(
-                session,
+                callContext,
                 existingCacheEntry.getEntity().getEntityVersion(),
                 existingCacheEntry.getEntity().getGrantRecordsVersion(),
                 entityType,
@@ -333,14 +328,16 @@ public class EntityCache {
       }
 
       // assert that entity, grant records and version are all set
-      diagServices.checkNotNull(entity, "unexpected_null_entity");
-      diagServices.checkNotNull(grantRecords, "unexpected_null_grant_records");
-      diagServices.check(grantRecordsVersion > 0, "unexpected_null_grant_records_version");
+      callContext.getDiagServices().checkNotNull(entity, "unexpected_null_entity");
+      callContext.getDiagServices().checkNotNull(grantRecords, "unexpected_null_grant_records");
+      callContext
+          .getDiagServices()
+          .check(grantRecordsVersion > 0, "unexpected_null_grant_records_version");
 
       // create new cache entry
       newCacheEntry =
           new EntityCacheEntry(
-              diagServices,
+              callContext.getDiagServices(),
               existingCacheEntry == null
                   ? System.nanoTime()
                   : existingCacheEntry.getCreatedOnNanoTimestamp(),
@@ -362,14 +359,14 @@ public class EntityCache {
   /**
    * Get the specified entity by name and load it if it is not found.
    *
-   * @param session the metastore session
+   * @param callContext the Polaris call context
    * @param entityCatalogId id of the catalog where this entity resides or NULL_ID if top-level
    * @param entityId id of the entity to lookup
    * @return null if the entity does not exist or was dropped. Else return the entry for that
    *     entity, either as found in the cache or loaded from the backend
    */
   public @Nullable EntityCacheLookupResult getOrLoadEntityById(
-      @Nonnull PolarisMetaStoreSession session, long entityCatalogId, long entityId) {
+      @Nonnull PolarisCallContext callContext, long entityCatalogId, long entityId) {
 
     // if it exists, we are set
     EntityCacheEntry entry = this.getEntityById(entityId);
@@ -382,7 +379,7 @@ public class EntityCache {
 
       // load it
       CachedEntryResult result =
-          polarisRemoteCache.loadCachedEntryById(session, entityCatalogId, entityId);
+          polarisRemoteCache.loadCachedEntryById(callContext, entityCatalogId, entityId);
 
       // not found, exit
       if (!result.isSuccess()) {
@@ -390,12 +387,13 @@ public class EntityCache {
       }
 
       // if found, setup entry
-      diagServices.checkNotNull(result.getEntity(), "entity_should_loaded");
-      diagServices.checkNotNull(
-          result.getEntityGrantRecords(), "entity_grant_records_should_loaded");
+      callContext.getDiagServices().checkNotNull(result.getEntity(), "entity_should_loaded");
+      callContext
+          .getDiagServices()
+          .checkNotNull(result.getEntityGrantRecords(), "entity_grant_records_should_loaded");
       entry =
           new EntityCacheEntry(
-              diagServices,
+              callContext.getDiagServices(),
               System.nanoTime(),
               result.getEntity(),
               result.getEntityGrantRecords(),
@@ -414,13 +412,13 @@ public class EntityCache {
   /**
    * Get the specified entity by name and load it if it is not found.
    *
-   * @param session the metastore session
+   * @param callContext the Polaris call context
    * @param entityNameKey name of the entity to load
    * @return null if the entity does not exist or was dropped. Else return the entry for that
    *     entity, either as found in the cache or loaded from the backend
    */
   public @Nullable EntityCacheLookupResult getOrLoadEntityByName(
-      @Nonnull PolarisMetaStoreSession session, @Nonnull EntityCacheByNameKey entityNameKey) {
+      @Nonnull PolarisCallContext callContext, @Nonnull EntityCacheByNameKey entityNameKey) {
 
     // if it exists, we are set
     EntityCacheEntry entry = this.getEntityByName(entityNameKey);
@@ -434,7 +432,7 @@ public class EntityCache {
       // load it
       CachedEntryResult result =
           polarisRemoteCache.loadCachedEntryByName(
-              session,
+              callContext,
               entityNameKey.getCatalogId(),
               entityNameKey.getParentId(),
               entityNameKey.getType(),
@@ -446,14 +444,15 @@ public class EntityCache {
       }
 
       // validate return
-      diagServices.checkNotNull(result.getEntity(), "entity_should_loaded");
-      diagServices.checkNotNull(
-          result.getEntityGrantRecords(), "entity_grant_records_should_loaded");
+      callContext.getDiagServices().checkNotNull(result.getEntity(), "entity_should_loaded");
+      callContext
+          .getDiagServices()
+          .checkNotNull(result.getEntityGrantRecords(), "entity_grant_records_should_loaded");
 
       // if found, setup entry
       entry =
           new EntityCacheEntry(
-              diagServices,
+              callContext.getDiagServices(),
               System.nanoTime(),
               result.getEntity(),
               result.getEntityGrantRecords(),

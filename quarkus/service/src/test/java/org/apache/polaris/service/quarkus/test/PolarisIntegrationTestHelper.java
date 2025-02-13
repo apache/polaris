@@ -21,14 +21,22 @@ package org.apache.polaris.service.quarkus.test;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
+import java.time.Clock;
+import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.service.context.RealmContextResolver;
 import org.junit.jupiter.api.TestInfo;
 
 @Singleton
 public class PolarisIntegrationTestHelper {
 
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
+  @Inject RealmContextResolver realmContextResolver;
   @Inject ObjectMapper objectMapper;
+  @Inject PolarisDiagnostics diagServices;
+  @Inject PolarisConfigurationStore configurationStore;
+  @Inject Clock clock;
 
   public PolarisIntegrationTestFixture createFixture(TestEnvironment testEnv, TestInfo testInfo) {
     return new PolarisIntegrationTestFixture(this, testEnv, testInfo);

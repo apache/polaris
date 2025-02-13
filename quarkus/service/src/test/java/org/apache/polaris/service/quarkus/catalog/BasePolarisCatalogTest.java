@@ -20,7 +20,6 @@ package org.apache.polaris.service.quarkus.catalog;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.iceberg.types.Types.NestedField.required;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
@@ -65,6 +64,7 @@ import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.types.Types;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -73,6 +73,7 @@ import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -88,6 +89,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
+import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
@@ -151,23 +153,22 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   public static final String SESSION_TOKEN = "session_token";
 
   @Inject MetaStoreManagerFactory managerFactory;
-  @Inject RealmEntityManagerFactory entityManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
-  @Inject Clock clock;
 
   private BasePolarisCatalog catalog;
-  private RealmContext realmContext;
+  private AwsStorageConfigInfo storageConfigModel;
+  private StsClient stsClient;
+  private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
-  private PolarisMetaStoreSession metaStoreSession;
+  private PolarisCallContext polarisContext;
   private PolarisAdminService adminService;
   private PolarisEntityManager entityManager;
   private FileIOFactory fileIOFactory;
   private AuthenticatedPolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
-  private PolarisPassthroughResolutionView passthroughView;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -179,21 +180,31 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   @BeforeEach
   @SuppressWarnings("unchecked")
   public void before(TestInfo testInfo) {
-    String realmName =
+    realmName =
         "realm_%s_%s"
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
-    realmContext = () -> realmName;
+    RealmContext realmContext = () -> realmName;
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
-    metaStoreSession = managerFactory.getOrCreateSessionSupplier(realmContext).get();
-    entityManager = entityManagerFactory.getOrCreateEntityManager(realmContext);
+    polarisContext =
+        new PolarisCallContext(
+            managerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            diagServices,
+            configurationStore,
+            Clock.systemDefaultZone());
+    entityManager =
+        new PolarisEntityManager(
+            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
+
+    CallContext callContext = CallContext.of(realmContext, polarisContext);
+    CallContext.setCurrentContext(callContext);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
             PolarisEntity.of(
                 metaStoreManager
                     .readEntityByName(
-                        metaStoreSession,
+                        polarisContext,
                         null,
                         PolarisEntityType.PRINCIPAL,
                         PolarisEntitySubType.NULL_SUBTYPE,
@@ -207,17 +218,14 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     when(securityContext.isUserInRole(isA(String.class))).thenReturn(true);
     adminService =
         new PolarisAdminService(
-            realmContext,
+            callContext,
             entityManager,
             metaStoreManager,
-            metaStoreSession,
-            configurationStore,
-            diagServices,
             securityContext,
             new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
 
     String storageLocation = "s3://my-bucket/path/to/data";
-    AwsStorageConfigInfo storageConfigModel =
+    storageConfigModel =
         AwsStorageConfigInfo.builder()
             .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
             .setExternalId("externalId")
@@ -238,12 +246,14 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 .setStorageConfigurationInfo(storageConfigModel, storageLocation)
                 .build());
 
-    passthroughView =
+    PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            entityManager, metaStoreSession, securityContext, CATALOG_NAME);
+            callContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
+    RealmEntityManagerFactory realmEntityManagerFactory =
+        new RealmEntityManagerFactory(createMockMetaStoreManagerFactory());
     this.fileIOFactory =
-        new DefaultFileIOFactory(entityManagerFactory, managerFactory, configurationStore);
+        new DefaultFileIOFactory(realmEntityManagerFactory, managerFactory, configurationStore);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -257,23 +267,20 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                         .build())
                 .build());
     PolarisStorageIntegration<AwsStorageConfigurationInfo> storageIntegration =
-        new AwsCredentialsStorageIntegration(configurationStore, stsClient);
+        new AwsCredentialsStorageIntegration(stsClient);
     when(storageIntegrationProvider.getStorageIntegrationForConfig(
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
-    this.catalog =
-        new BasePolarisCatalog(
-            realmContext,
-            entityManager,
-            metaStoreManager,
-            metaStoreSession,
-            configurationStore,
-            diagServices,
-            passthroughView,
-            securityContext,
-            taskExecutor,
-            fileIOFactory);
+    this.catalog = new BasePolarisCatalog(
+        entityManager,
+        metaStoreManager,
+        callContext,
+        passthroughView,
+        securityContext,
+        authenticatedRoot,
+        taskExecutor,
+        fileIOFactory);
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -283,7 +290,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   @AfterEach
   public void after() throws IOException {
     catalog().close();
-    metaStoreManager.purge(metaStoreSession);
+    metaStoreManager.purge(polarisContext);
   }
 
   @Override
@@ -320,17 +327,17 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
       @Override
       public Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(
           RealmContext realmContext) {
-        return () -> metaStoreSession;
+        return () -> polarisContext.getMetaStore();
       }
 
       @Override
       public StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext) {
-        return new StorageCredentialCache(diagServices, configurationStore);
+        return new StorageCredentialCache();
       }
 
       @Override
       public EntityCache getOrCreateEntityCache(RealmContext realmContext) {
-        return new EntityCache(metaStoreManager, diagServices);
+        return new EntityCache(metaStoreManager);
       }
 
       @Override
@@ -500,7 +507,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   }
 
   @Test
-  public void testValidateNotificationFailToCreateFileIO() throws IOException {
+  public void testValidateNotificationFailToCreateFileIO() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
         "Only applicable if namespaces must be created before adding children");
@@ -515,24 +522,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     // filename.
     final String tableLocation = "s3://externally-owned-bucket/validate_table/";
     final String tableMetadataLocation = tableLocation + "metadata/";
-    FileIOFactory fileIoFactory =
-        spy(new DefaultFileIOFactory(entityManagerFactory, managerFactory, configurationStore));
-    BasePolarisCatalog catalog =
-        new BasePolarisCatalog(
-            realmContext,
-            entityManager,
-            metaStoreManager,
-            metaStoreSession,
-            configurationStore,
-            diagServices,
-            passthroughView,
-            securityContext,
-            Mockito.mock(),
-            fileIoFactory);
-    catalog.initialize(
-        CATALOG_NAME,
-        ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    BasePolarisCatalog catalog = catalog();
 
     Namespace namespace = Namespace.of("parent", "child1");
     TableIdentifier table = TableIdentifier.of(namespace, "table");
@@ -546,14 +537,15 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    doThrow(new ForbiddenException("Fake failure applying downscoped credentials"))
-        .when(fileIoFactory)
-        .loadFileIO(any(), any(), any(), any(), any(), any(), any());
+    MetaStoreManagerFactory metaStoreManagerFactory = createMockMetaStoreManagerFactory();
+    catalog.setFileIOFactory(new DefaultFileIOFactory(
+        new RealmEntityManagerFactory(metaStoreManagerFactory),
+        metaStoreManagerFactory,
+        configurationStore)
+    );
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Fake failure applying downscoped credentials");
-
-    catalog.close();
   }
 
   @Test
@@ -655,7 +647,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table/";
 
     metaStoreManager.updateEntityPropertiesIfNotChanged(
-        metaStoreSession,
+        polarisContext,
         List.of(PolarisEntity.toCore(catalogEntity)),
         new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
             .addProperty(
@@ -712,7 +704,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table";
 
     metaStoreManager.updateEntityPropertiesIfNotChanged(
-        metaStoreSession,
+        polarisContext,
         List.of(PolarisEntity.toCore(catalogEntity)),
         new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
             .addProperty(
@@ -766,7 +758,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     final String anotherTableLocation = "s3://my-bucket/path/to/data/another_table/";
 
     metaStoreManager.updateEntityPropertiesIfNotChanged(
-        metaStoreSession,
+        polarisContext,
         List.of(PolarisEntity.toCore(catalogEntity)),
         new CatalogEntity.Builder(CatalogEntity.of(catalogEntity))
             .addProperty(
@@ -835,26 +827,26 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     // The location of the metadata JSON file specified in the create will be forbidden.
     final String metadataLocation = "file:///etc/metadata.json/../passwd";
     String catalogWithoutStorage = "catalogWithoutStorage";
-    adminService.createCatalog(
-        new CatalogEntity.Builder()
-            .setDefaultBaseLocation("file://")
-            .setName(catalogWithoutStorage)
-            .build());
+    PolarisEntity catalogEntity =
+        adminService.createCatalog(
+            new CatalogEntity.Builder()
+                .setDefaultBaseLocation("file://")
+                .setName(catalogWithoutStorage)
+                .build());
 
+    CallContext callContext = CallContext.getCurrentContext();
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            entityManager, metaStoreSession, securityContext, catalogWithoutStorage);
+            callContext, entityManager, securityContext, catalogWithoutStorage);
     TaskExecutor taskExecutor = Mockito.mock();
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
-            realmContext,
             entityManager,
             metaStoreManager,
-            metaStoreSession,
-            configurationStore,
-            diagServices,
+            callContext,
             passthroughView,
             securityContext,
+            authenticatedRoot,
             taskExecutor,
             fileIOFactory);
     catalog.initialize(
@@ -880,8 +872,10 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         metadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
-    if (!configurationStore
-        .getConfiguration(realmContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
+    if (!polarisCallContext
+        .getConfigurationStore()
+        .getConfiguration(polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
         .contains("FILE")) {
       Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
           .isInstanceOf(ForbiddenException.class)
@@ -906,20 +900,19 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             .setName(catalogName)
             .build());
 
+    CallContext callContext = CallContext.getCurrentContext();
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            entityManager, metaStoreSession, securityContext, catalogName);
+            callContext, entityManager, securityContext, catalogName);
     TaskExecutor taskExecutor = Mockito.mock();
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
-            realmContext,
             entityManager,
             metaStoreManager,
-            metaStoreSession,
-            configurationStore,
-            diagServices,
+            callContext,
             passthroughView,
             securityContext,
+            authenticatedRoot,
             taskExecutor,
             fileIOFactory);
     catalog.initialize(
@@ -947,8 +940,10 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         metadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
-    if (!configurationStore
-        .getConfiguration(realmContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
+    if (!polarisCallContext
+        .getConfigurationStore()
+        .getConfiguration(polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
         .contains("FILE")) {
       Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
           .isInstanceOf(ForbiddenException.class)
@@ -967,8 +962,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         httpsMetadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(metadataLocation)).getBytes(UTF_8));
 
-    if (!configurationStore
-        .getConfiguration(realmContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
+    if (!polarisCallContext
+        .getConfigurationStore()
+        .getConfiguration(polarisCallContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES)
         .contains("FILE")) {
       Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, newRequest))
           .isInstanceOf(ForbiddenException.class)
@@ -1394,13 +1390,13 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         .as("Table should not exist after drop")
         .rejects(TABLE);
     List<PolarisBaseEntity> tasks =
-        metaStoreManager.loadTasks(metaStoreSession, "testExecutor", 1).getEntities();
+        metaStoreManager.loadTasks(polarisContext, "testExecutor", 1).getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
     EnumMap<PolarisCredentialProperty, String> credentials =
         metaStoreManager
             .getSubscopedCredsForEntity(
-                metaStoreSession,
+                polarisContext,
                 0,
                 taskEntity.getId(),
                 true,
@@ -1413,7 +1409,14 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, TEST_ACCESS_KEY)
         .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, SECRET_ACCESS_KEY)
         .containsEntry(PolarisCredentialProperty.AWS_TOKEN, SESSION_TOKEN);
-    FileIO fileIO = new TaskFileIOSupplier(fileIOFactory).apply(taskEntity, realmContext);
+    MetaStoreManagerFactory metaStoreManagerFactory = createMockMetaStoreManagerFactory();
+    FileIO fileIO =
+        new TaskFileIOSupplier(
+                new DefaultFileIOFactory(
+                    new RealmEntityManagerFactory(metaStoreManagerFactory),
+                    metaStoreManagerFactory,
+                    configurationStore))
+            .apply(taskEntity, () -> realmName);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(InMemoryFileIO.class);
   }
 
@@ -1440,19 +1443,19 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             .addProperty(PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
             .setStorageConfigurationInfo(noPurgeStorageConfigModel, storageLocation)
             .build());
+    RealmContext realmContext = () -> "realm";
+    CallContext callContext = CallContext.of(realmContext, polarisContext);
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            entityManager, metaStoreSession, securityContext, noPurgeCatalogName);
+            callContext, entityManager, securityContext, noPurgeCatalogName);
     BasePolarisCatalog noPurgeCatalog =
         new BasePolarisCatalog(
-            realmContext,
             entityManager,
             metaStoreManager,
-            metaStoreSession,
-            configurationStore,
-            diagServices,
+            callContext,
             passthroughView,
             securityContext,
+            authenticatedRoot,
             Mockito.mock(),
             fileIOFactory);
     noPurgeCatalog.initialize(
@@ -1522,22 +1525,24 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
   @Test
   public void testFileIOWrapper() {
+    RealmContext realmContext = () -> "realm";
+    CallContext callContext = CallContext.of(realmContext, polarisContext);
+    CallContext.setCurrentContext(callContext);
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            entityManager, metaStoreSession, securityContext, CATALOG_NAME);
+            callContext, entityManager, securityContext, CATALOG_NAME);
 
     MeasuredFileIOFactory measured =
-        new MeasuredFileIOFactory(entityManagerFactory, managerFactory, configurationStore);
+        new MeasuredFileIOFactory(new RealmEntityManagerFactory(
+            createMockMetaStoreManagerFactory()), managerFactory, configurationStore);
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
-            realmContext,
             entityManager,
             metaStoreManager,
-            metaStoreSession,
-            configurationStore,
-            diagServices,
+            callContext,
             passthroughView,
             securityContext,
+            authenticatedRoot,
             Mockito.mock(),
             measured);
     catalog.initialize(
@@ -1566,7 +1571,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     TaskEntity taskEntity =
         TaskEntity.of(
             metaStoreManager
-                .loadTasks(metaStoreSession, "testExecutor", 1)
+                .loadTasks(callContext.getPolarisCallContext(), "testExecutor", 1)
                 .getEntities()
                 .getFirst());
     Map<String, String> properties = taskEntity.getInternalPropertiesAsMap();
@@ -1576,11 +1581,21 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         new TableCleanupTaskHandler(
             Mockito.mock(),
             createMockMetaStoreManagerFactory(),
-            configurationStore,
-            diagServices,
-            new TaskFileIOSupplier(measured),
-            clock);
-    handler.handleTask(taskEntity, realmContext);
+            (task) -> measured.loadFileIO(
+                realmContext,
+                "org.apache.iceberg.inmemory.InMemoryFileIO",
+                Map.of(),
+                TABLE,
+                Set.of(table.location()),
+                Set.of(PolarisStorageActions.ALL),
+                Mockito.mock()
+                ));
+    handler.handleTask(
+        TaskEntity.of(
+            metaStoreManager
+                .loadTasks(polarisContext, "testExecutor", 1)
+                .getEntities()
+                .getFirst()));
     Assertions.assertThat(measured.getNumDeletedFiles()).as("A table was deleted").isGreaterThan(0);
   }
 }

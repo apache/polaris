@@ -28,9 +28,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,13 +59,15 @@ public class TestInlineBearerTokenPolarisAuthenticator extends BasePolarisAuthen
 
   @Inject
   public TestInlineBearerTokenPolarisAuthenticator(
-      PolarisMetaStoreManager metaStoreManager, PolarisMetaStoreSession metaStoreSession) {
-    super(metaStoreManager, metaStoreSession);
+      MetaStoreManagerFactory metaStoreManagerFactory, CallContext callContext) {
+    super(metaStoreManagerFactory, callContext);
   }
 
   @Override
   public Optional<AuthenticatedPolarisPrincipal> authenticate(String credentials) {
     Map<String, String> properties = extractPrincipal(credentials);
+    PolarisMetaStoreManager metaStoreManager =
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext());
     String principal = properties.get("principal");
 
     LOGGER.info("Checking for existence of principal {} in map {}", principal, properties);
@@ -79,7 +82,9 @@ public class TestInlineBearerTokenPolarisAuthenticator extends BasePolarisAuthen
     }
 
     PolarisPrincipalSecrets secrets =
-        metaStoreManager.loadPrincipalSecrets(metaStoreSession, principal).getPrincipalSecrets();
+        metaStoreManager
+            .loadPrincipalSecrets(callContext.getPolarisCallContext(), principal)
+            .getPrincipalSecrets();
     if (secrets == null) {
       // For test scenarios, if we're allowing short-circuiting into the bearer flow, there may
       // not be a clientId/clientSecret, and instead we'll let the BasePolarisAuthenticator
