@@ -834,11 +834,11 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       return Map.of();
     }
     return FileIOUtil.refreshCredentials(
-        realmContext,
+        callContext.getRealmContext(),
         entityManager,
         getCredentialVendor(),
-        metaStoreSession,
-        configurationStore,
+        callContext.getPolarisCallContext().getMetaStore(),
+        callContext.getPolarisCallContext().getConfigurationStore(),
         tableIdentifier,
         getLocationsAllowedToBeAccessed(tableMetadata),
         storageActions,
@@ -877,10 +877,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             ? resolvedEntityView.getResolvedPath(tableIdentifier.namespace())
             : resolvedTableEntities;
 
-<<<<<<< HEAD
     return FileIOUtil.findStorageInfoFromHierarchy(resolvedStorageEntity);
-=======
-    return findStorageInfoFromHierarchy(resolvedStorageEntity);
   }
 
   private Map<String, String> refreshCredentials(
@@ -936,7 +933,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       LOGGER.debug("No credentials found for table");
     }
     return credentialsMap;
->>>>>>> parent of b84f4624 (Remove CallContext and its ThreadLocal usage (#589))
   }
 
   /**
@@ -1616,7 +1612,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // Reload fileIO based on table specific context
     FileIO fileIO =
         fileIOFactory.loadFileIO(
-            realmContext,
+            callContext.getRealmContext(),
             ioImplClassName,
             tableProperties,
             identifier,
