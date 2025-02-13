@@ -23,10 +23,8 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import java.time.Clock;
-import java.util.List;
-import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
@@ -56,8 +54,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
 
   @Inject
   public InMemoryPolarisMetaStoreManagerFactory(
-      PolarisStorageIntegrationProvider storageIntegration,
-      PolarisDiagnostics diagnostics) {
+      PolarisStorageIntegrationProvider storageIntegration, PolarisDiagnostics diagnostics) {
     super(diagnostics);
     this.storageIntegration = storageIntegration;
   }
@@ -78,9 +75,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
       @Nullable PolarisCredentialsBootstrap credentialsBootstrap,
       @Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisTreeMapMetaStoreSessionImpl(
-        store,
-        storageIntegration,
-        secretsGenerator(realmContext, credentialsBootstrap));
+        store, storageIntegration, secretsGenerator(realmContext, credentialsBootstrap));
   }
 
   @Override

@@ -20,13 +20,11 @@ package org.apache.polaris.core.persistence;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
