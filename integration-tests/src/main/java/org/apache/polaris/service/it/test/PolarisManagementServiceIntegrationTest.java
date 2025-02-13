@@ -72,6 +72,7 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.exceptions.AuthenticationTimeoutException;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ManagementApi;
@@ -2015,8 +2016,13 @@ public class PolarisManagementServiceIntegrationTest {
             () -> {
               try (Response response =
                   client.managementApi(newToken).request("v1/principals").get()) {
+                ErrorResponse errorResponse = response.readEntity(ErrorResponse.class);
                 assertThat(response)
-                    .returns(Response.Status.UNAUTHORIZED.getStatusCode(), Response::getStatus);
+                    .returns(419, Response::getStatus)
+                    .returns(
+                        AuthenticationTimeoutException.class.getSimpleName(),
+                        resp -> errorResponse.type())
+                    .returns("Credentials have timed out", resp -> errorResponse.message());
               }
             });
   }

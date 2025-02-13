@@ -24,6 +24,7 @@ import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
+import org.apache.polaris.core.exceptions.AuthenticationTimeoutException;
 import org.apache.polaris.core.exceptions.PolarisException;
 import org.apache.polaris.service.context.UnresolvableRealmContextException;
 
@@ -34,19 +35,18 @@ import org.apache.polaris.service.context.UnresolvableRealmContextException;
 @Provider
 public class PolarisExceptionMapper implements ExceptionMapper<PolarisException> {
 
-  private Response.Status getStatus(PolarisException exception) {
-    if (exception instanceof AlreadyExistsException) {
-      return Response.Status.CONFLICT;
-    } else if (exception instanceof UnresolvableRealmContextException) {
-      return Response.Status.NOT_FOUND;
-    } else {
-      return Response.Status.INTERNAL_SERVER_ERROR;
-    }
+  private Response.StatusType getStatus(PolarisException exception) {
+    return switch (exception) {
+      case AlreadyExistsException ignored -> Response.Status.CONFLICT;
+      case AuthenticationTimeoutException ignored -> PolarisStatus.AUTHENTICATION_TIMEOUT;
+      case UnresolvableRealmContextException ignored -> Response.Status.NOT_FOUND;
+      case null, default -> Response.Status.INTERNAL_SERVER_ERROR;
+    };
   }
 
   @Override
   public Response toResponse(PolarisException exception) {
-    Response.Status status = getStatus(exception);
+    Response.StatusType status = getStatus(exception);
     ErrorResponse errorResponse =
         ErrorResponse.builder()
             .responseCode(status.getStatusCode())

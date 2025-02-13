@@ -21,6 +21,7 @@ package org.apache.polaris.service.auth;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.exceptions.TokenExpiredException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
 import java.time.Instant;
@@ -31,6 +32,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
+import org.apache.polaris.core.exceptions.AuthenticationTimeoutException;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.service.types.TokenType;
@@ -71,12 +73,12 @@ public abstract class JWTBroker implements TokenBroker {
       return new DecodedToken() {
         @Override
         public Long getPrincipalId() {
-          return decodedJWT.getClaim("principalId").asLong();
+          return decodedJWT.getClaim(CLAIM_KEY_PRINCIPAL_ID).asLong();
         }
 
         @Override
         public String getClientId() {
-          return decodedJWT.getClaim("client_id").asString();
+          return decodedJWT.getClaim(CLAIM_KEY_CLIENT_ID).asString();
         }
 
         @Override
@@ -86,10 +88,13 @@ public abstract class JWTBroker implements TokenBroker {
 
         @Override
         public String getScope() {
-          return decodedJWT.getClaim("scope").asString();
+          return decodedJWT.getClaim(CLAIM_KEY_SCOPE).asString();
         }
       };
 
+    } catch (TokenExpiredException e) {
+      LOGGER.error("Credentials have timed out with error", e);
+      throw new AuthenticationTimeoutException("Credentials have timed out");
     } catch (JWTVerificationException e) {
       LOGGER.error("Failed to verify the token with error", e);
       throw new NotAuthorizedException("Failed to verify the token");
