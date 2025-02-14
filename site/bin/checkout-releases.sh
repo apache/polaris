@@ -25,7 +25,7 @@ cd "$(dirname "$0")/.."
 git worktree prune
 
 if [[ -d content/releases ]] ; then
-  echo "Directory content/releases already exists"
+  echo "Directory content/releases already exists" > /dev/stderr
   exit 1
 fi
 
