@@ -45,6 +45,10 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
   @Inject EclipseLinkConfiguration eclipseLinkConfiguration;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
 
+  protected EclipseLinkPolarisMetaStoreManagerFactory() {
+    this(null);
+  }
+
   protected EclipseLinkPolarisMetaStoreManagerFactory(PolarisDiagnostics diagnostics) {
     super(diagnostics);
   }
