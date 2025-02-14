@@ -95,7 +95,8 @@ class TableCleanupTaskHandlerTest {
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       TableCleanupTaskHandler handler =
-          new TableCleanupTaskHandler(callCtx, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
+          new TableCleanupTaskHandler(
+              callCtx, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
       long snapshotId = 100L;
       ManifestFile manifestFile =
           TaskTestUtils.manifestFile(
@@ -178,7 +179,8 @@ class TableCleanupTaskHandlerTest {
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       TableCleanupTaskHandler handler =
-          new TableCleanupTaskHandler(callCtx, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
+          new TableCleanupTaskHandler(
+              callCtx, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
       long snapshotId = 100L;
       ManifestFile manifestFile =
           TaskTestUtils.manifestFile(
@@ -246,7 +248,8 @@ class TableCleanupTaskHandlerTest {
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       TableCleanupTaskHandler handler =
-          new TableCleanupTaskHandler(callCtx, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
+          new TableCleanupTaskHandler(
+              callCtx, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
       long snapshotId = 100L;
       ManifestFile manifestFile =
           TaskTestUtils.manifestFile(
@@ -323,7 +326,8 @@ class TableCleanupTaskHandlerTest {
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       TableCleanupTaskHandler handler =
-          new TableCleanupTaskHandler(callCtx, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
+          new TableCleanupTaskHandler(
+              callCtx, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
       long snapshotId1 = 100L;
       ManifestFile manifestFile1 =
           TaskTestUtils.manifestFile(
@@ -469,7 +473,8 @@ class TableCleanupTaskHandlerTest {
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       TableCleanupTaskHandler handler =
-          new TableCleanupTaskHandler(callCtx, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
+          new TableCleanupTaskHandler(
+              callCtx, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
       long snapshotId1 = 100L;
       ManifestFile manifestFile1 =
           TaskTestUtils.manifestFile(
