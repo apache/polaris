@@ -37,7 +37,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -81,7 +81,6 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   private final PolarisEclipseLinkStore store;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final PrincipalSecretsGenerator secretsGenerator;
-  private final PolarisDiagnostics diagnostics;
 
   /**
    * Create a meta store session against provided realm. Each realm has its own database.
@@ -98,9 +97,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       @Nonnull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName,
-      @Nonnull PrincipalSecretsGenerator secretsGenerator,
-      @Nonnull PolarisDiagnostics diagnostics) {
-    this.diagnostics = diagnostics;
+      @Nonnull PrincipalSecretsGenerator secretsGenerator) {
     LOGGER.debug(
         "Creating EclipseLink Meta Store Session for realm {}", realmContext.getRealmIdentifier());
     emf = createEntityManagerFactory(realmContext, confFile, persistenceUnitName);
@@ -146,8 +143,9 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** {@inheritDoc} */
   @Override
-  public <T> T runInTransaction(@Nonnull Supplier<T> transactionCode) {
-    diagnostics.check(localSession.get() == null, "cannot nest transaction");
+  public <T> T runInTransaction(
+      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
+    callCtx.getDiagServices().check(localSession.get() == null, "cannot nest transaction");
 
     try (EntityManager session = emf.createEntityManager()) {
       localSession.set(session);
@@ -188,8 +186,9 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** {@inheritDoc} */
   @Override
-  public void runActionInTransaction(@Nonnull Runnable transactionCode) {
-    diagnostics.check(localSession.get() == null, "cannot nest transaction");
+  public void runActionInTransaction(
+      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
+    callCtx.getDiagServices().check(localSession.get() == null, "cannot nest transaction");
 
     try (EntityManager session = emf.createEntityManager()) {
       localSession.set(session);
@@ -222,39 +221,43 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** {@inheritDoc} */
   @Override
-  public <T> T runInReadTransaction(@Nonnull Supplier<T> transactionCode) {
+  public <T> T runInReadTransaction(
+      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
     // EclipseLink doesn't support readOnly transaction
-    return runInTransaction(transactionCode);
+    return runInTransaction(callCtx, transactionCode);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void runActionInReadTransaction(@Nonnull Runnable transactionCode) {
+  public void runActionInReadTransaction(
+      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
     // EclipseLink doesn't support readOnly transaction
-    runActionInTransaction(transactionCode);
+    runActionInTransaction(callCtx, transactionCode);
   }
 
   /**
    * @return new unique entity identifier
    */
   @Override
-  public long generateNewId() {
+  public long generateNewId(@Nonnull PolarisCallContext callCtx) {
     // This function can be called within a transaction or out of transaction.
     // If called out of transaction, create a new transaction, otherwise run in current transaction
     return localSession.get() != null
         ? this.store.getNextSequence(localSession.get())
-        : runInReadTransaction(this::generateNewId);
+        : runInReadTransaction(callCtx, () -> generateNewId(callCtx));
   }
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntities(@Nonnull PolarisBaseEntity entity) {
+  public void writeToEntities(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     this.store.writeToEntities(localSession.get(), entity);
   }
 
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
+      @Nonnull PolarisCallContext callContext,
       @Nonnull PolarisBaseEntity entity,
       @Nullable PolarisStorageIntegration<T> storageIntegration) {
     // not implemented for eclipselink store
@@ -262,35 +265,40 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntitiesActive(@Nonnull PolarisBaseEntity entity) {
+  public void writeToEntitiesActive(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
     this.store.writeToEntitiesActive(localSession.get(), entity);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntitiesDropped(@Nonnull PolarisBaseEntity entity) {
+  public void writeToEntitiesDropped(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
     this.store.writeToEntitiesDropped(localSession.get(), entity);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntitiesChangeTracking(@Nonnull PolarisBaseEntity entity) {
+  public void writeToEntitiesChangeTracking(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
     this.store.writeToEntitiesChangeTracking(localSession.get(), entity);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void writeToGrantRecords(@Nonnull PolarisGrantRecord grantRec) {
+  public void writeToGrantRecords(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
     // write it
     this.store.writeToGrantRecords(localSession.get(), grantRec);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromEntities(@Nonnull PolarisEntityCore entity) {
+  public void deleteFromEntities(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
 
     // delete it
     this.store.deleteFromEntities(localSession.get(), entity.getCatalogId(), entity.getId());
@@ -298,14 +306,16 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromEntitiesActive(@Nonnull PolarisEntityCore entity) {
+  public void deleteFromEntitiesActive(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
     // delete it
     this.store.deleteFromEntitiesActive(localSession.get(), new PolarisEntitiesActiveKey(entity));
   }
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromEntitiesDropped(@Nonnull PolarisBaseEntity entity) {
+  public void deleteFromEntitiesDropped(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // delete it
     this.store.deleteFromEntitiesDropped(localSession.get(), entity.getCatalogId(), entity.getId());
   }
@@ -313,23 +323,27 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   /**
    * {@inheritDoc}
    *
+   * @param callCtx
    * @param entity entity record to delete
    */
   @Override
-  public void deleteFromEntitiesChangeTracking(@Nonnull PolarisEntityCore entity) {
+  public void deleteFromEntitiesChangeTracking(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
     // delete it
     this.store.deleteFromEntitiesChangeTracking(localSession.get(), entity);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromGrantRecords(@Nonnull PolarisGrantRecord grantRec) {
+  public void deleteFromGrantRecords(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
     this.store.deleteFromGrantRecords(localSession.get(), grantRec);
   }
 
   /** {@inheritDoc} */
   @Override
   public void deleteAllEntityGrantRecords(
+      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore entity,
       @Nonnull List<PolarisGrantRecord> grantsOnGrantee,
       @Nonnull List<PolarisGrantRecord> grantsOnSecurable) {
@@ -338,18 +352,20 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** {@inheritDoc} */
   @Override
-  public void deleteAll() {
+  public void deleteAll(@Nonnull PolarisCallContext callCtx) {
     this.store.deleteAll(localSession.get());
   }
 
   /** {@inheritDoc} */
   @Override
-  public @Nullable PolarisBaseEntity lookupEntity(long catalogId, long entityId) {
+  public @Nullable PolarisBaseEntity lookupEntity(
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
     return ModelEntity.toEntity(this.store.lookupEntity(localSession.get(), catalogId, entityId));
   }
 
   @Override
-  public @Nonnull List<PolarisBaseEntity> lookupEntities(List<PolarisEntityId> entityIds) {
+  public @Nonnull List<PolarisBaseEntity> lookupEntities(
+      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     return this.store.lookupEntities(localSession.get(), entityIds).stream()
         .map(ModelEntity::toEntity)
         .toList();
@@ -357,7 +373,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** {@inheritDoc} */
   @Override
-  public int lookupEntityVersion(long catalogId, long entityId) {
+  public int lookupEntityVersion(
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
     ModelEntity model = this.store.lookupEntity(localSession.get(), catalogId, entityId);
     return model == null ? 0 : model.getEntityVersion();
   }
@@ -365,7 +382,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   /** {@inheritDoc} */
   @Override
   public @Nonnull List<PolarisChangeTrackingVersions> lookupEntityVersions(
-      List<PolarisEntityId> entityIds) {
+      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     Map<PolarisEntityId, ModelEntity> idToEntityMap =
         this.store.lookupEntities(localSession.get(), entityIds).stream()
             .collect(
@@ -388,7 +405,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   @Override
   @Nullable
   public PolarisEntityActiveRecord lookupEntityActive(
-      @Nonnull PolarisEntitiesActiveKey entityActiveKey) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntitiesActiveKey entityActiveKey) {
     // lookup the active entity slice
     return ModelEntityActive.toEntityActive(
         this.store.lookupEntityActive(localSession.get(), entityActiveKey));
@@ -398,26 +415,34 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   @Override
   @Nonnull
   public List<PolarisEntityActiveRecord> lookupEntityActiveBatch(
+      @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntitiesActiveKey> entityActiveKeys) {
     // now build a list to quickly verify that nothing has changed
-    return entityActiveKeys.stream().map(this::lookupEntityActive).collect(Collectors.toList());
+    return entityActiveKeys.stream()
+        .map(entityActiveKey -> this.lookupEntityActive(callCtx, entityActiveKey))
+        .collect(Collectors.toList());
   }
 
   /** {@inheritDoc} */
   @Override
   public @Nonnull List<PolarisEntityActiveRecord> listActiveEntities(
-      long catalogId, long parentId, @Nonnull PolarisEntityType entityType) {
-    return listActiveEntities(catalogId, parentId, entityType, Predicates.alwaysTrue());
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType) {
+    return listActiveEntities(callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue());
   }
 
   @Override
   public @Nonnull List<PolarisEntityActiveRecord> listActiveEntities(
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter) {
     // full range scan under the parent for that type
     return listActiveEntities(
+        callCtx,
         catalogId,
         parentId,
         entityType,
@@ -435,6 +460,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   @Override
   public @Nonnull <T> List<T> listActiveEntities(
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
@@ -455,7 +481,10 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   /** {@inheritDoc} */
   @Override
   public boolean hasChildren(
-      @Nullable PolarisEntityType entityType, long catalogId, long parentId) {
+      @Nonnull PolarisCallContext callContext,
+      @Nullable PolarisEntityType entityType,
+      long catalogId,
+      long parentId) {
     // check if it has children
     return this.store.countActiveChildEntities(localSession.get(), catalogId, parentId, entityType)
         > 0;
@@ -463,7 +492,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** {@inheritDoc} */
   @Override
-  public int lookupEntityGrantRecordsVersion(long catalogId, long entityId) {
+  public int lookupEntityGrantRecordsVersion(
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
     ModelEntityChangeTracking entity =
         this.store.lookupEntityChangeTracking(localSession.get(), catalogId, entityId);
 
@@ -474,6 +504,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   /** {@inheritDoc} */
   @Override
   public @Nullable PolarisGrantRecord lookupGrantRecord(
+      @Nonnull PolarisCallContext callCtx,
       long securableCatalogId,
       long securableId,
       long granteeCatalogId,
@@ -493,7 +524,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   /** {@inheritDoc} */
   @Override
   public @Nonnull List<PolarisGrantRecord> loadAllGrantRecordsOnSecurable(
-      long securableCatalogId, long securableId) {
+      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
     // now fetch all grants for this securable
     return this.store
         .lookupAllGrantRecordsOnSecurable(localSession.get(), securableCatalogId, securableId)
@@ -505,7 +536,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   /** {@inheritDoc} */
   @Override
   public @Nonnull List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
-      long granteeCatalogId, long granteeId) {
+      @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
     // now fetch all grants assigned to this grantee
     return this.store
         .lookupGrantRecordsOnGrantee(localSession.get(), granteeCatalogId, granteeId)
@@ -516,7 +547,8 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** {@inheritDoc} */
   @Override
-  public @Nullable PolarisPrincipalSecrets loadPrincipalSecrets(@Nonnull String clientId) {
+  public @Nullable PolarisPrincipalSecrets loadPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId) {
     return ModelPrincipalSecrets.toPrincipalSecrets(
         this.store.lookupPrincipalSecrets(localSession.get(), clientId));
   }
@@ -524,7 +556,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   /** {@inheritDoc} */
   @Override
   public @Nonnull PolarisPrincipalSecrets generateNewPrincipalSecrets(
-      @Nonnull String principalName, long principalId) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull String principalName, long principalId) {
     // ensure principal client id is unique
     PolarisPrincipalSecrets principalSecrets;
     ModelPrincipalSecrets lookupPrincipalSecrets;
@@ -548,7 +580,11 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   /** {@inheritDoc} */
   @Override
   public @Nonnull PolarisPrincipalSecrets rotatePrincipalSecrets(
-      @Nonnull String clientId, long principalId, boolean reset, @Nonnull String oldSecretHash) {
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull String clientId,
+      long principalId,
+      boolean reset,
+      @Nonnull String oldSecretHash) {
 
     // load the existing secrets
     PolarisPrincipalSecrets principalSecrets =
@@ -556,20 +592,24 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
             this.store.lookupPrincipalSecrets(localSession.get(), clientId));
 
     // should be found
-    diagnostics.checkNotNull(
-        principalSecrets,
-        "cannot_find_secrets",
-        "client_id={} principalId={}",
-        clientId,
-        principalId);
+    callCtx
+        .getDiagServices()
+        .checkNotNull(
+            principalSecrets,
+            "cannot_find_secrets",
+            "client_id={} principalId={}",
+            clientId,
+            principalId);
 
     // ensure principal id is matching
-    diagnostics.check(
-        principalId == principalSecrets.getPrincipalId(),
-        "principal_id_mismatch",
-        "expectedId={} id={}",
-        principalId,
-        principalSecrets.getPrincipalId());
+    callCtx
+        .getDiagServices()
+        .check(
+            principalId == principalSecrets.getPrincipalId(),
+            "principal_id_mismatch",
+            "expectedId={} id={}",
+            principalId,
+            principalSecrets.getPrincipalId());
 
     // rotate the secrets
     principalSecrets.rotateSecrets(oldSecretHash);
@@ -586,26 +626,31 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** {@inheritDoc} */
   @Override
-  public void deletePrincipalSecrets(@Nonnull String clientId, long principalId) {
+  public void deletePrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
     // load the existing secrets
     ModelPrincipalSecrets principalSecrets =
         this.store.lookupPrincipalSecrets(localSession.get(), clientId);
 
     // should be found
-    diagnostics.checkNotNull(
-        principalSecrets,
-        "cannot_find_secrets",
-        "client_id={} principalId={}",
-        clientId,
-        principalId);
+    callCtx
+        .getDiagServices()
+        .checkNotNull(
+            principalSecrets,
+            "cannot_find_secrets",
+            "client_id={} principalId={}",
+            clientId,
+            principalId);
 
     // ensure principal id is matching
-    diagnostics.check(
-        principalId == principalSecrets.getPrincipalId(),
-        "principal_id_mismatch",
-        "expectedId={} id={}",
-        principalId,
-        principalSecrets.getPrincipalId());
+    callCtx
+        .getDiagServices()
+        .check(
+            principalId == principalSecrets.getPrincipalId(),
+            "principal_id_mismatch",
+            "expectedId={} id={}",
+            principalId,
+            principalSecrets.getPrincipalId());
 
     // delete these secrets
     this.store.deletePrincipalSecrets(localSession.get(), clientId);
@@ -615,6 +660,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   @Override
   public @Nullable <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> createStorageIntegration(
+          @Nonnull PolarisCallContext callCtx,
           long catalogId,
           long entityId,
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
@@ -626,9 +672,9 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
   @Override
   public @Nullable <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisBaseEntity entity) {
+          @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        PolarisMetaStoreManagerImpl.readStorageConfiguration(diagnostics, entity);
+        PolarisMetaStoreManagerImpl.readStorageConfiguration(callCtx, entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 

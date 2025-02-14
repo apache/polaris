@@ -40,6 +40,7 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.*;
 import org.apache.polaris.service.TestServices;
@@ -70,6 +71,7 @@ public class FileIOFactoryTest {
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
   public static final String SESSION_TOKEN = "session_token";
 
+  private CallContext callContext;
   private RealmContext realmContext;
   private StsClient stsClient;
   private TestServices testServices;
@@ -120,6 +122,8 @@ public class FileIOFactoryTest {
             .stsClient(stsClient)
             .fileIOFactorySupplier(fileIOFactorySupplier)
             .build();
+
+    callContext = Mockito.mock(CallContext.class);
   }
 
   @AfterEach
@@ -154,13 +158,7 @@ public class FileIOFactoryTest {
         testServices
             .metaStoreManagerFactory()
             .getOrCreateMetaStoreManager(realmContext)
-            .loadTasks(
-                testServices
-                    .metaStoreManagerFactory()
-                    .getOrCreateSessionSupplier(realmContext)
-                    .get(),
-                "testExecutor",
-                1)
+            .loadTasks(callContext.getPolarisCallContext(), "testExecutor", 1)
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
@@ -206,18 +204,15 @@ public class FileIOFactoryTest {
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
+            callContext,
             services.entityManagerFactory().getOrCreateEntityManager(realmContext),
-            services.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
             services.securityContext(),
             CATALOG_NAME);
     BasePolarisCatalog polarisCatalog =
         new BasePolarisCatalog(
-            services.realmContext(),
             services.entityManagerFactory().getOrCreateEntityManager(realmContext),
             services.metaStoreManagerFactory().getOrCreateMetaStoreManager(realmContext),
-            services.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
-            services.configurationStore(),
-            services.polarisDiagnostics(),
+            callContext,
             passthroughView,
             services.securityContext(),
             services.taskExecutor(),

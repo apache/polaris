@@ -23,14 +23,14 @@ import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.Optional;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 
 @RequestScoped
 @Identifier("default")
 public class DefaultPolarisAuthenticator extends BasePolarisAuthenticator {
 
-  private final TokenBroker tokenBroker;
+  private final TokenBrokerFactory tokenBrokerFactory;
 
   public DefaultPolarisAuthenticator() {
     this(null, null, null);
@@ -38,16 +38,17 @@ public class DefaultPolarisAuthenticator extends BasePolarisAuthenticator {
 
   @Inject
   public DefaultPolarisAuthenticator(
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisMetaStoreSession metaStoreSession,
-      TokenBroker tokenBroker) {
-    super(metaStoreManager, metaStoreSession);
-    this.tokenBroker = tokenBroker;
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      TokenBrokerFactory tokenBrokerFactory,
+      CallContext callContext) {
+    super(metaStoreManagerFactory, callContext);
+    this.tokenBrokerFactory = tokenBrokerFactory;
   }
 
   @Override
   public Optional<AuthenticatedPolarisPrincipal> authenticate(String credentials) {
-    DecodedToken decodedToken = tokenBroker.verify(credentials);
+    TokenBroker handler = tokenBrokerFactory.apply(callContext.getRealmContext());
+    DecodedToken decodedToken = handler.verify(credentials);
     return getPrincipal(decodedToken);
   }
 }

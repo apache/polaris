@@ -46,9 +46,7 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.polaris.core.PolarisConfiguration;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.slf4j.Logger;
@@ -62,12 +60,10 @@ public class AzureCredentialsStorageIntegration
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AzureCredentialsStorageIntegration.class);
 
-  private final PolarisConfigurationStore configurationStore;
-  private final DefaultAzureCredential defaultAzureCredential;
+  final DefaultAzureCredential defaultAzureCredential;
 
-  public AzureCredentialsStorageIntegration(PolarisConfigurationStore configurationStore) {
-    super(configurationStore, AzureCredentialsStorageIntegration.class.getName());
-    this.configurationStore = configurationStore;
+  public AzureCredentialsStorageIntegration() {
+    super(AzureCredentialsStorageIntegration.class.getName());
     // The DefaultAzureCredential will by default load the environment variables for client id,
     // client secret, tenant id
     defaultAzureCredential = new DefaultAzureCredentialBuilder().build();
@@ -75,7 +71,6 @@ public class AzureCredentialsStorageIntegration
 
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-      @Nonnull RealmContext realmContext,
       @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull AzureStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
@@ -131,8 +126,7 @@ public class AzureCredentialsStorageIntegration
     // clock skew between the client and server,
     OffsetDateTime startTime = start.truncatedTo(ChronoUnit.SECONDS).atOffset(ZoneOffset.UTC);
     int intendedDurationSeconds =
-        configurationStore.getConfiguration(
-            realmContext, PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+        PolarisConfiguration.loadConfig(PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
     OffsetDateTime intendedEndTime =
         start.plusSeconds(intendedDurationSeconds).atOffset(ZoneOffset.UTC);
     OffsetDateTime maxAllowedEndTime =

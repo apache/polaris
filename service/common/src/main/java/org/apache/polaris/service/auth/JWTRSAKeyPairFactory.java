@@ -52,7 +52,6 @@ public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
   public TokenBroker apply(RealmContext realmContext) {
     return new JWTRSAKeyPair(
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
         (int) tokenBrokerConfiguration.maxTokenGeneration().toSeconds(),
         keyPairConfiguration.publicKeyFile(),
         keyPairConfiguration.privateKeyFile());

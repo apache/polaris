@@ -23,13 +23,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.persistence.BaseResult;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 
 /**
  * Interface to the remote entity cache. This allows the local cache to detect remote entity changes
@@ -40,7 +40,7 @@ public interface PolarisRemoteCache {
    * Load change tracking information for a set of entities in one single shot and return for each
    * the version for the entity itself and the version associated to its grant records.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param entityIds list of catalog/entity pair ids for which we need to efficiently load the
    *     version information, both entity version and grant records version.
    * @return a list of version tracking information. Order in that returned list is the same as the
@@ -48,7 +48,7 @@ public interface PolarisRemoteCache {
    */
   @Nonnull
   ChangeTrackingResult loadEntitiesChangeTracking(
-      @Nonnull PolarisMetaStoreSession session, @Nonnull List<PolarisEntityId> entityIds);
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEntityId> entityIds);
 
   /**
    * Load a cached entry, i.e. an entity definition and associated grant records, from the backend
@@ -57,7 +57,7 @@ public interface PolarisRemoteCache {
    * <p>For entities that can be grantees, the associated grant records will include both the grant
    * records for this entity as a grantee and for this entity as a securable.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param entityCatalogId id of the catalog for that entity
    * @param entityId id of the entity
    * @return cached entry for this entity. Status will be ENTITY_NOT_FOUND if the entity was not
@@ -65,17 +65,17 @@ public interface PolarisRemoteCache {
    */
   @Nonnull
   CachedEntryResult loadCachedEntryById(
-      @Nonnull PolarisMetaStoreSession session, long entityCatalogId, long entityId);
+      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
 
   /**
-   * ¬ Load a cached entry, i.e. an entity definition and associated grant records, from the backend
+   * Load a cached entry, i.e. an entity definition and associated grant records, from the backend
    * store. The entity is identified by its name. Will return NULL if the entity does not exist,
    * i.e. has been purged or dropped.
    *
    * <p>For entities that can be grantees, the associated grant records will include both the grant
    * records for this entity as a grantee and for this entity as a securable.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param entityCatalogId id of the catalog for that entity
    * @param parentId the id of the parent of that entity
    * @param entityType the type of this entity
@@ -85,7 +85,7 @@ public interface PolarisRemoteCache {
    */
   @Nonnull
   CachedEntryResult loadCachedEntryByName(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       long entityCatalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
@@ -99,7 +99,7 @@ public interface PolarisRemoteCache {
    * <p>For entities that can be grantees, the associated grant records will include both the grant
    * records for this entity as a grantee and for this entity as a securable.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param entityType type of the entity whose cached entry we are refreshing
    * @param entityCatalogId id of the catalog for that entity
    * @param entityId the id of the entity to load
@@ -108,7 +108,7 @@ public interface PolarisRemoteCache {
    */
   @Nonnull
   CachedEntryResult refreshCachedEntity(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
       @Nonnull PolarisEntityType entityType,

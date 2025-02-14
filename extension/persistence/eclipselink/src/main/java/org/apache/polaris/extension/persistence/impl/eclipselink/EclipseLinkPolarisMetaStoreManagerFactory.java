@@ -24,8 +24,6 @@ import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
-import java.time.Clock;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
@@ -44,23 +42,16 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 public class EclipseLinkPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisEclipseLinkStore> {
 
-  private final EclipseLinkConfiguration eclipseLinkConfiguration;
-  private final PolarisStorageIntegrationProvider storageIntegrationProvider;
+  @Inject EclipseLinkConfiguration eclipseLinkConfiguration;
+  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
 
-  public EclipseLinkPolarisMetaStoreManagerFactory() {
-    this(null, null, null, null, null);
+  protected EclipseLinkPolarisMetaStoreManagerFactory() {
+    this(null);
   }
 
   @Inject
-  public EclipseLinkPolarisMetaStoreManagerFactory(
-      EclipseLinkConfiguration eclipseLinkConfiguration,
-      PolarisStorageIntegrationProvider storageIntegrationProvider,
-      PolarisConfigurationStore configurationStore,
-      PolarisDiagnostics diagnostics,
-      Clock clock) {
-    super(configurationStore, diagnostics, clock);
-    this.eclipseLinkConfiguration = eclipseLinkConfiguration;
-    this.storageIntegrationProvider = storageIntegrationProvider;
+  protected EclipseLinkPolarisMetaStoreManagerFactory(PolarisDiagnostics diagnostics) {
+    super(diagnostics);
   }
 
   @Override
@@ -80,8 +71,7 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
         realmContext,
         configurationFile(),
         persistenceUnitName(),
-        secretsGenerator(realmContext, rootCredentialsSet),
-        diagnostics);
+        secretsGenerator(realmContext, rootCredentialsSet));
   }
 
   private String configurationFile() {

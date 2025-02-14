@@ -31,12 +31,14 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.view.ViewCatalogTests;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -44,6 +46,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -53,7 +56,8 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
@@ -93,14 +97,14 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
   public static final String CATALOG_NAME = "polaris-catalog";
 
   @Inject MetaStoreManagerFactory managerFactory;
-  @Inject RealmEntityManagerFactory entityManagerFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisDiagnostics diagServices;
 
   private BasePolarisCatalog catalog;
 
+  private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
-  private PolarisMetaStoreSession metaStoreSession;
+  private PolarisCallContext polarisContext;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -119,21 +123,33 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
 
   @BeforeEach
   public void before(TestInfo testInfo) {
-    String realmName =
+    realmName =
         "realm_%s_%s"
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
     RealmContext realmContext = () -> realmName;
 
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
-    metaStoreSession = managerFactory.getOrCreateSessionSupplier(realmContext).get();
+    polarisContext =
+        new PolarisCallContext(
+            managerFactory.getOrCreateSessionSupplier(realmContext).get(),
+            diagServices,
+            configurationStore,
+            Clock.systemDefaultZone());
+
+    PolarisEntityManager entityManager =
+        new PolarisEntityManager(
+            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
+
+    CallContext callContext = CallContext.of(realmContext, polarisContext);
+    CallContext.setCurrentContext(callContext);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
             PolarisEntity.of(
                 metaStoreManager
                     .readEntityByName(
-                        metaStoreSession,
+                        polarisContext,
                         null,
                         PolarisEntityType.PRINCIPAL,
                         PolarisEntitySubType.NULL_SUBTYPE,
@@ -142,20 +158,14 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     AuthenticatedPolarisPrincipal authenticatedRoot =
         new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
 
-    PolarisEntityManager entityManager =
-        entityManagerFactory.getOrCreateEntityManager(realmContext);
-
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
     PolarisAdminService adminService =
         new PolarisAdminService(
-            realmContext,
+            callContext,
             entityManager,
             metaStoreManager,
-            metaStoreSession,
-            configurationStore,
-            diagServices,
             securityContext,
             new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
     adminService.createCatalog(
@@ -173,17 +183,15 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            entityManager, metaStoreSession, securityContext, CATALOG_NAME);
+            callContext, entityManager, securityContext, CATALOG_NAME);
     FileIOFactory fileIOFactory =
-        new DefaultFileIOFactory(entityManagerFactory, managerFactory, configurationStore);
+        new DefaultFileIOFactory(
+            new RealmEntityManagerFactory(managerFactory), managerFactory, configurationStore);
     this.catalog =
         new BasePolarisCatalog(
-            realmContext,
             entityManager,
             metaStoreManager,
-            metaStoreSession,
-            configurationStore,
-            diagServices,
+            callContext,
             passthroughView,
             securityContext,
             Mockito.mock(),
@@ -197,7 +205,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
   @AfterEach
   public void after() throws IOException {
     catalog().close();
-    metaStoreManager.purge(metaStoreSession);
+    metaStoreManager.purge(polarisContext);
   }
 
   @Override

@@ -20,11 +20,11 @@ package org.apache.polaris.service.auth;
 
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.service.types.TokenType;
 
 /** Generic token class intended to be extended by different token types */
@@ -49,9 +49,10 @@ public interface TokenBroker {
       final String clientId,
       final String clientSecret,
       final String grantType,
-      final String scope) {
+      final String scope,
+      PolarisCallContext polarisCallContext) {
     return generateFromClientSecrets(
-        clientId, clientSecret, grantType, scope, TokenType.ACCESS_TOKEN);
+        clientId, clientSecret, grantType, scope, polarisCallContext, TokenType.ACCESS_TOKEN);
   }
 
   /**
@@ -69,6 +70,7 @@ public interface TokenBroker {
       final String clientSecret,
       final String grantType,
       final String scope,
+      PolarisCallContext polarisCallContext,
       TokenType requestedTokenType);
 
   /**
@@ -110,12 +112,12 @@ public interface TokenBroker {
 
   static @Nonnull Optional<PrincipalEntity> findPrincipalEntity(
       PolarisMetaStoreManager metaStoreManager,
-      PolarisMetaStoreSession metaStoreSession,
       String clientId,
-      String clientSecret) {
+      String clientSecret,
+      PolarisCallContext polarisCallContext) {
     // Validate the principal is present and secrets match
     PrincipalSecretsResult principalSecrets =
-        metaStoreManager.loadPrincipalSecrets(metaStoreSession, clientId);
+        metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
     if (!principalSecrets.isSuccess()) {
       return Optional.empty();
     }
@@ -124,7 +126,7 @@ public interface TokenBroker {
     }
     PolarisMetaStoreManager.EntityResult result =
         metaStoreManager.loadEntity(
-            metaStoreSession, 0L, principalSecrets.getPrincipalSecrets().getPrincipalId());
+            polarisCallContext, 0L, principalSecrets.getPrincipalSecrets().getPrincipalId());
     if (!result.isSuccess() || result.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
       return Optional.empty();
     }

@@ -19,6 +19,7 @@
 package org.apache.polaris.service.auth;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.polaris.service.auth.TokenRequestValidator.CLIENT_CREDENTIALS;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
@@ -27,6 +28,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.types.TokenType;
@@ -46,10 +48,12 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
   private static final String BEARER = "bearer";
 
   private final TokenBrokerFactory tokenBrokerFactory;
+  private final CallContext callContext;
 
   @Inject
-  public DefaultOAuth2ApiService(TokenBrokerFactory tokenBrokerFactory) {
+  public DefaultOAuth2ApiService(TokenBrokerFactory tokenBrokerFactory, CallContext callContext) {
     this.tokenBrokerFactory = tokenBrokerFactory;
+    this.callContext = callContext;
   }
 
   @Override
@@ -95,18 +99,35 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
         return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
       }
     }
-    TokenResponse tokenResponse;
-    if (clientSecret != null) {
-      tokenResponse =
-          tokenBroker.generateFromClientSecrets(
-              clientId, clientSecret, grantType, scope, requestedTokenType);
-    } else if (subjectToken != null) {
-      tokenResponse =
-          tokenBroker.generateFromToken(
-              subjectTokenType, subjectToken, grantType, scope, requestedTokenType);
-    } else {
-      return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
-    }
+    TokenResponse tokenResponse =
+        switch (subjectTokenType) {
+          case TokenType.ID_TOKEN,
+                  TokenType.REFRESH_TOKEN,
+                  TokenType.JWT,
+                  TokenType.SAML1,
+                  TokenType.SAML2 ->
+              new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
+          case TokenType.ACCESS_TOKEN -> {
+            // token exchange with client id and client secret means the client has previously
+            // attempted to refresh
+            // an access token, but refreshing was not supported by the token broker. Accept the
+            // client id and
+            // secret and treat it as a new token request
+            if (clientId != null && clientSecret != null) {
+              yield tokenBroker.generateFromClientSecrets(
+                  clientId,
+                  clientSecret,
+                  CLIENT_CREDENTIALS,
+                  scope,
+                  callContext.getPolarisCallContext());
+            } else {
+              yield tokenBroker.generateFromToken(subjectTokenType, subjectToken, grantType, scope);
+            }
+          }
+          case null ->
+              tokenBroker.generateFromClientSecrets(
+                  clientId, clientSecret, grantType, scope, callContext.getPolarisCallContext());
+        };
     if (tokenResponse == null) {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.unsupported_grant_type);
     }

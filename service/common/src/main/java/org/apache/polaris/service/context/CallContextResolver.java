@@ -16,14 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.task;
+package org.apache.polaris.service.context;
 
+import java.util.Map;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.context.RealmContext;
 
-/**
- * Execute a task asynchronously with a provided context. The context must be cloned so that callers
- * can close their own context and closables
- */
-public interface TaskExecutor {
-  void addTaskHandlerContext(long taskEntityId, CallContext callContext);
+/** Uses the resolved RealmContext to further resolve elements of the CallContext. */
+public interface CallContextResolver {
+  CallContext resolveCallContext(
+      RealmContext realmContext, String method, String path, Map<String, String> headers);
 }
