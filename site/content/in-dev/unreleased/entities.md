@@ -36,6 +36,28 @@ All catalogs in Polaris are associated with a _storage type_. Valid Storage Type
 
 For details on how to use Storage Types in the REST API, see [the API docs]({{% github-polaris "regtests/client/python/docs/StorageConfigInfo.md" %}}).
 
+For example, to create a catalog with a storage type of FILE:
+
+```shell
+export CLIENT_ID=<client-id>
+export CLIENT_SECRET=<client-secret>
+```
+
+you can create a catalog like so:
+
+```shell
+./polaris \
+  --client-id ${CLIENT_ID} \
+  --client-secret ${CLIENT_SECRET} \
+  catalogs \
+  create \
+  --storage-type file\
+  --default-base-location ${DEFAULT_BASE_LOCATION} \
+  quickstart_catalog
+```  
+
+Note: file:///opt/tmp refers to the local /opt/tmp directory. Please replace this directory with your local storage path.
+
 ## Namespace
 
 A namespace is a logical entity that resides within a [catalog](#catalog) and can contain other entities such as [tables](#table) or [views](#view). Some other systems may refer to namespaces as _schemas_ or _databases_.
