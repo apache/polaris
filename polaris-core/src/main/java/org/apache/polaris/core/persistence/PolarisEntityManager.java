@@ -20,6 +20,7 @@ package org.apache.polaris.core.persistence;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import org.apache.polaris.core.context.CallContext;
@@ -53,6 +54,7 @@ public class PolarisEntityManager {
    * @param credentialCache the storage credential cache for the current realm
    * @param entityCache the entity cache
    */
+  @Inject
   public PolarisEntityManager(
       @Nonnull PolarisMetaStoreManager metaStoreManager,
       @Nonnull StorageCredentialCache credentialCache,

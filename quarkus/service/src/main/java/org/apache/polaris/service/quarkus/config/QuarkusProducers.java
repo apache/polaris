@@ -42,7 +42,9 @@ import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.auth.Authenticator;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
@@ -84,6 +86,12 @@ public class QuarkusProducers {
   @ApplicationScoped
   public PolarisAuthorizer polarisAuthorizer(PolarisConfigurationStore configurationStore) {
     return new PolarisAuthorizerImpl(configurationStore);
+  }
+
+  @Produces
+  @Singleton
+  public PolarisDiagnostics polarisDiagnostics() {
+    return new PolarisDefaultDiagServiceImpl();
   }
 
   // Polaris core beans - request scope
@@ -198,6 +206,27 @@ public class QuarkusProducers {
         .maxAsync(config.maxConcurrentTasks())
         .maxQueued(config.maxQueuedTasks())
         .build();
+  }
+
+  @Produces
+  @RequestScoped
+  public EntityCache entityCache(
+      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
+    return metaStoreManagerFactory.getOrCreateEntityCache(realmContext);
+  }
+
+  @Produces
+  @RequestScoped
+  public PolarisMetaStoreManager polarisMetaStoreManager(
+      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
+    return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+  }
+
+  @Produces
+  @RequestScoped
+  public PolarisMetaStoreSession polarisMetaStoreSession(
+      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
+    return metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
