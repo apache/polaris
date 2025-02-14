@@ -90,7 +90,6 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             context,
             resolvedManifest,
             securityContext,
-            authenticatedPrincipal,
             taskExecutor,
             fileIOFactory);
 

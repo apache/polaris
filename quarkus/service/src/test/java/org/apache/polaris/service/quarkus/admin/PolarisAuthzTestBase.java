@@ -433,7 +433,6 @@ public abstract class PolarisAuthzTestBase {
             callContext,
             passthroughView,
             securityContext,
-            authenticatedRoot,
             Mockito.mock(),
             fileIOFactory);
     this.baseCatalog.initialize(

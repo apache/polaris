@@ -194,7 +194,6 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             callContext,
             passthroughView,
             securityContext,
-            authenticatedRoot,
             Mockito.mock(),
             fileIOFactory);
     this.catalog.initialize(

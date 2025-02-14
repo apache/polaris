@@ -279,7 +279,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             callContext,
             passthroughView,
             securityContext,
-            authenticatedRoot,
             taskExecutor,
             fileIOFactory);
     this.catalog.initialize(
@@ -847,7 +846,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             callContext,
             passthroughView,
             securityContext,
-            authenticatedRoot,
             taskExecutor,
             fileIOFactory);
     catalog.initialize(
@@ -913,7 +911,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             callContext,
             passthroughView,
             securityContext,
-            authenticatedRoot,
             taskExecutor,
             fileIOFactory);
     catalog.initialize(
@@ -1456,7 +1453,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             callContext,
             passthroughView,
             securityContext,
-            authenticatedRoot,
             Mockito.mock(),
             fileIOFactory);
     noPurgeCatalog.initialize(
@@ -1545,7 +1541,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             callContext,
             passthroughView,
             securityContext,
-            authenticatedRoot,
             Mockito.mock(),
             measured);
     catalog.initialize(
@@ -1580,18 +1575,19 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     Map<String, String> properties = taskEntity.getInternalPropertiesAsMap();
     properties.put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO");
     taskEntity.setInternalPropertiesAsMap(properties);
-    TaskFileIOSupplier taskFileIOSupplier = new TaskFileIOSupplier(
-        new FileIOFactory() {
-          @Override
-          public FileIO loadFileIO(
-              @NotNull RealmContext realmContext,
-              @NotNull String ioImplClassName,
-              @NotNull Map<String, String> properties,
-              @NotNull TableIdentifier identifier,
-              @NotNull Set<String> tableLocations,
-              @NotNull Set<PolarisStorageActions> storageActions,
-              @NotNull PolarisResolvedPathWrapper resolvedEntityPath) {
-            return measured.loadFileIO(
+    TaskFileIOSupplier taskFileIOSupplier =
+        new TaskFileIOSupplier(
+            new FileIOFactory() {
+              @Override
+              public FileIO loadFileIO(
+                  @NotNull RealmContext realmContext,
+                  @NotNull String ioImplClassName,
+                  @NotNull Map<String, String> properties,
+                  @NotNull TableIdentifier identifier,
+                  @NotNull Set<String> tableLocations,
+                  @NotNull Set<PolarisStorageActions> storageActions,
+                  @NotNull PolarisResolvedPathWrapper resolvedEntityPath) {
+                return measured.loadFileIO(
                     realmContext,
                     "org.apache.iceberg.inmemory.InMemoryFileIO",
                     Map.of(),
@@ -1599,15 +1595,12 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                     Set.of(table.location()),
                     Set.of(PolarisStorageActions.ALL),
                     Mockito.mock());
-          }
-        });
+              }
+            });
 
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
-            callContext,
-            Mockito.mock(),
-            createMockMetaStoreManagerFactory(),
-            taskFileIOSupplier);
+            callContext, Mockito.mock(), createMockMetaStoreManagerFactory(), taskFileIOSupplier);
     handler.handleTask(
         TaskEntity.of(
             metaStoreManager

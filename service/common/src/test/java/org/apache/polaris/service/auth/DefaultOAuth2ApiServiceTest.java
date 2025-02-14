@@ -25,7 +25,6 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.nio.charset.Charset;
 import java.util.Base64;
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
-import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.types.TokenType;
@@ -54,7 +53,12 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(false);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
-            "client", "secret", CLIENT_CREDENTIALS, "scope", callContext.getPolarisCallContext(), TokenType.ACCESS_TOKEN))
+            "client",
+            "secret",
+            CLIENT_CREDENTIALS,
+            "scope",
+            callContext.getPolarisCallContext(),
+            TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -82,7 +86,12 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(false);
     when(tokenBroker.generateFromClientSecrets(
-            "client", "secret", CLIENT_CREDENTIALS, "scope", callContext.getPolarisCallContext(), TokenType.ACCESS_TOKEN))
+            "client",
+            "secret",
+            CLIENT_CREDENTIALS,
+            "scope",
+            callContext.getPolarisCallContext(),
+            TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -110,7 +119,12 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
-            null, "secret", CLIENT_CREDENTIALS, "scope", callContext.getPolarisCallContext(), TokenType.ACCESS_TOKEN))
+            null,
+            "secret",
+            CLIENT_CREDENTIALS,
+            "scope",
+            callContext.getPolarisCallContext(),
+            TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -135,7 +149,12 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsGrantType(CLIENT_CREDENTIALS)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
-            "client", "secret", CLIENT_CREDENTIALS, "scope", callContext.getPolarisCallContext(), TokenType.ACCESS_TOKEN))
+            "client",
+            "secret",
+            CLIENT_CREDENTIALS,
+            "scope",
+            callContext.getPolarisCallContext(),
+            TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -194,7 +213,12 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsGrantType(TokenRequestValidator.TOKEN_EXCHANGE)).thenReturn(true);
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
     when(tokenBroker.generateFromClientSecrets(
-            null, "secret", TokenRequestValidator.TOKEN_EXCHANGE, "scope", callContext.getPolarisCallContext(), TokenType.ACCESS_TOKEN))
+            null,
+            "secret",
+            TokenRequestValidator.TOKEN_EXCHANGE,
+            "scope",
+            callContext.getPolarisCallContext(),
+            TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()
@@ -225,7 +249,12 @@ class DefaultOAuth2ApiServiceTest {
     when(tokenBroker.supportsRequestedTokenType(TokenType.ACCESS_TOKEN)).thenReturn(true);
 
     when(tokenBroker.generateFromClientSecrets(
-            "", "secret", TokenRequestValidator.TOKEN_EXCHANGE, "scope", callContext.getPolarisCallContext(), TokenType.ACCESS_TOKEN))
+            "",
+            "secret",
+            TokenRequestValidator.TOKEN_EXCHANGE,
+            "scope",
+            callContext.getPolarisCallContext(),
+            TokenType.ACCESS_TOKEN))
         .thenReturn(new TokenResponse("token", TokenType.ACCESS_TOKEN.getValue(), 3600));
     Response response =
         new InvocationBuilder()

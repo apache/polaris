@@ -77,7 +77,6 @@ import org.apache.iceberg.view.ViewUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -156,7 +155,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private final CatalogEntity catalogEntity;
   private final TaskExecutor taskExecutor;
   private final SecurityContext securityContext;
-  private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private String ioImplClassName;
   private FileIO catalogFileIO;
   private final String catalogName;
@@ -182,7 +180,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       CallContext callContext,
       PolarisResolutionManifestCatalogView resolvedEntityView,
       SecurityContext securityContext,
-      AuthenticatedPolarisPrincipal authenticatedPrincipal,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory) {
     this.entityManager = entityManager;
@@ -191,7 +188,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     this.catalogEntity =
         CatalogEntity.of(resolvedEntityView.getResolvedReferenceCatalogEntity().getRawLeafEntity());
     this.securityContext = securityContext;
-    this.authenticatedPrincipal = authenticatedPrincipal;
     this.taskExecutor = taskExecutor;
     this.catalogId = catalogEntity.getId();
     this.catalogName = catalogEntity.getName();
