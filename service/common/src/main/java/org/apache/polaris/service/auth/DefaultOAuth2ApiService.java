@@ -43,7 +43,6 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultOAuth2ApiService.class);
 
-  private static final String CLIENT_CREDENTIALS = "client_credentials";
   private static final String BEARER = "bearer";
 
   private final TokenBrokerFactory tokenBrokerFactory;
@@ -75,43 +74,39 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
     if (!tokenBroker.supportsRequestedTokenType(requestedTokenType)) {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
     }
-    if (authHeader == null && clientId == null) {
+    if (authHeader == null && clientSecret == null) {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_client);
     }
-    if (authHeader != null && clientId == null && authHeader.startsWith("Basic ")) {
+    // token exchange with client id and client secret in the authorization header means the client
+    // has previously attempted to refresh an access token, but refreshing was not supported by the
+    // token broker. Accept the client id and secret and treat it as a new token request
+    if (authHeader != null && clientSecret == null && authHeader.startsWith("Basic ")) {
       String credentials = new String(Base64.decodeBase64(authHeader.substring(6)), UTF_8);
       if (!credentials.contains(":")) {
-        return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_client);
+        return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
       }
       LOGGER.debug("Found credentials in auth header - treating as client_credentials");
       String[] parts = credentials.split(":", 2);
-      clientId = parts[0];
-      clientSecret = parts[1];
+      if (parts.length == 2) {
+        clientId = parts[0];
+        clientSecret = parts[1];
+      } else {
+        LOGGER.debug("Don't know how to parse Basic auth header");
+        return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
+      }
     }
-    TokenResponse tokenResponse =
-        switch (subjectTokenType) {
-          case TokenType.ID_TOKEN,
-                  TokenType.REFRESH_TOKEN,
-                  TokenType.JWT,
-                  TokenType.SAML1,
-                  TokenType.SAML2 ->
-              new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
-          case TokenType.ACCESS_TOKEN -> {
-            // token exchange with client id and client secret means the client has previously
-            // attempted to refresh
-            // an access token, but refreshing was not supported by the token broker. Accept the
-            // client id and
-            // secret and treat it as a new token request
-            if (clientId != null && clientSecret != null) {
-              yield tokenBroker.generateFromClientSecrets(
-                  clientId, clientSecret, CLIENT_CREDENTIALS, scope);
-            } else {
-              yield tokenBroker.generateFromToken(subjectTokenType, subjectToken, grantType, scope);
-            }
-          }
-          case null ->
-              tokenBroker.generateFromClientSecrets(clientId, clientSecret, grantType, scope);
-        };
+    TokenResponse tokenResponse;
+    if (clientSecret != null) {
+      tokenResponse =
+          tokenBroker.generateFromClientSecrets(
+              clientId, clientSecret, grantType, scope, requestedTokenType);
+    } else if (subjectToken != null) {
+      tokenResponse =
+          tokenBroker.generateFromToken(
+              subjectTokenType, subjectToken, grantType, scope, requestedTokenType);
+    } else {
+      return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
+    }
     if (tokenResponse == null) {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.unsupported_grant_type);
     }
