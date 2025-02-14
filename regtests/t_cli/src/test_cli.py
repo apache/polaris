@@ -373,6 +373,52 @@ def test_update_catalog():
                      checker=lambda s: 'foo' not in s and 'prop2' not in s and
                                        '"prop3": "3333"' in s and '"prop4": "4444"' in s)
 
+        # Update to set a region
+        check_output(root_cli(
+            'catalogs',
+            'update',
+            f'test_cli_catalog_{SALT}',
+            '--region',
+            'new-test-region'
+        ), checker=lambda s: s == '')
+
+        # Original fake-location should still be present in storage_config_info.allowed_locations
+        check_output(root_cli('catalogs', 'get', f'test_cli_catalog_{SALT}'),
+                     checker=lambda s: 's3://fake-location-' in s and '"region": "new-test-region"' in s)
+
+        # Update to add an allowed location
+        check_output(root_cli(
+            'catalogs',
+            'update',
+            f'test_cli_catalog_{SALT}',
+            '--allowed-location',
+            f's3://extra-allowed-location-{SALT}'
+        ), checker=lambda s: s == '')
+
+        # All allowed locations present and region still present
+        check_output(root_cli('catalogs', 'get', f'test_cli_catalog_{SALT}'),
+                     checker=lambda s: 's3://fake-location-' in s and
+                                       's3://extra-allowed-location-' in s and
+                                       '"region": "new-test-region"' in s)
+
+        # Add allowed location and change region at same time
+        check_output(root_cli(
+            'catalogs',
+            'update',
+            f'test_cli_catalog_{SALT}',
+            '--allowed-location',
+            f's3://fourth-allowed-location-{SALT}',
+            '--region',
+            'us-east-2'
+        ), checker=lambda s: s == '')
+
+        # All allowed locations present and new region set
+        check_output(root_cli('catalogs', 'get', f'test_cli_catalog_{SALT}'),
+                     checker=lambda s: 's3://fake-location-' in s and
+                                       's3://extra-allowed-location-' in s and
+                                       's3://fourth-allowed-location-' in s and
+                                       '"region": "us-east-2"' in s)
+
     finally:
         sys.path.pop(0)
     pass

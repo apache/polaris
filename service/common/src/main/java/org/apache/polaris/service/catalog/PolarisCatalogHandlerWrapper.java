@@ -110,7 +110,7 @@ import org.slf4j.LoggerFactory;
  * model objects used in this layer to still benefit from the shared implementation of
  * authorization-aware catalog protocols.
  */
-public class PolarisCatalogHandlerWrapper {
+public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisCatalogHandlerWrapper.class);
 
   private final CallContext callContext;
@@ -1180,5 +1180,10 @@ public class PolarisCatalogHandlerWrapper {
       throw new BadRequestException("Cannot rename view on external catalogs.");
     }
     doCatalogOperation(() -> CatalogHandlers.renameView(viewCatalog, request));
+  }
+
+  @Override
+  public void close() throws Exception {
+
   }
 }

@@ -105,6 +105,7 @@ class OptionTree:
                     Argument(Arguments.DEFAULT_BASE_LOCATION, str, Hints.Catalogs.Update.DEFAULT_BASE_LOCATION),
                     Argument(Arguments.ALLOWED_LOCATION, str, Hints.Catalogs.Create.ALLOWED_LOCATION,
                              allow_repeats=True),
+                    Argument(Arguments.REGION, str, Hints.Catalogs.Create.REGION),
                     Argument(Arguments.SET_PROPERTY, str, Hints.SET_PROPERTY, allow_repeats=True),
                     Argument(Arguments.REMOVE_PROPERTY, str, Hints.REMOVE_PROPERTY, allow_repeats=True),
                 ], input_name=Arguments.CATALOG)

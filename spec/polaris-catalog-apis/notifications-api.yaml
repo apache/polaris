@@ -68,7 +68,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../rest-catalog-open-api.yaml#/components/responses/IcebergErrorResponse'
+                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
               examples:
                 TableToLoadDoesNotExist:
                   $ref: '../rest-catalog-open-api.yaml#/components/examples/NoSuchTableError'
@@ -79,7 +79,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../rest-catalog-open-api.yaml#/components/responses/IcebergErrorResponse'
+                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
               example:
                 $ref: '#/components/examples/OutOfOrderNotificationError'
         419:

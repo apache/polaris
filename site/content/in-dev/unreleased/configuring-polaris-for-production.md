@@ -92,7 +92,7 @@ polaris.authentication.token-broker.max-token-generation=PT1H
 Typically, in Kubernetes, you would define the keys as a `Secret` and mount them as files in the
 container.
 
-### Realm Id Resolver
+### Realm Context Resolver
 
 By default, Polaris resolves realms based on incoming request headers. You can configure the realm
 context resolver by setting the following properties in `application.properties`:

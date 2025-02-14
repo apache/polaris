@@ -34,6 +34,8 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
+
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -52,13 +54,18 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
+import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -69,6 +76,8 @@ import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * {@link IcebergRestCatalogApiService} implementation that delegates operations to {@link
@@ -78,6 +87,9 @@ import org.apache.polaris.service.types.NotificationRequest;
 @RequestScoped
 public class IcebergCatalogAdapter
     implements IcebergRestCatalogApiService, IcebergRestConfigurationApiService {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IcebergCatalogAdapter.class);
 
   private static final Set<Endpoint> DEFAULT_ENDPOINTS =
       ImmutableSet.<Endpoint>builder()
@@ -111,26 +123,62 @@ public class IcebergCatalogAdapter
           .add(Endpoint.create("POST", ResourcePaths.V1_TRANSACTIONS_COMMIT))
           .build();
 
+  private final RealmContext realmContext;
   private final CallContext callContext;
   private final CallContextCatalogFactory catalogFactory;
-  private final MetaStoreManagerFactory metaStoreManagerFactory;
-  private final RealmEntityManagerFactory entityManagerFactory;
+  private final PolarisEntityManager entityManager;
+  private final PolarisMetaStoreManager metaStoreManager;
+  private final PolarisMetaStoreSession session;
+  private final PolarisConfigurationStore configurationStore;
+  private final PolarisDiagnostics diagnostics;
   private final PolarisAuthorizer polarisAuthorizer;
+  private final IcebergCatalogPrefixParser prefixParser;
 
   @Inject
   public IcebergCatalogAdapter(
+      RealmContext realmContext,
       CallContext callContext,
       CallContextCatalogFactory catalogFactory,
-      RealmEntityManagerFactory entityManagerFactory,
-      MetaStoreManagerFactory metaStoreManagerFactory,
-      PolarisAuthorizer polarisAuthorizer) {
+      PolarisEntityManager entityManager,
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisMetaStoreSession session,
+      PolarisConfigurationStore configurationStore,
+      PolarisDiagnostics diagnostics,
+      PolarisAuthorizer polarisAuthorizer,
+      IcebergCatalogPrefixParser prefixParser) {
+    this.realmContext = realmContext;
     this.callContext = callContext;
     this.catalogFactory = catalogFactory;
-    this.entityManagerFactory = entityManagerFactory;
-    this.metaStoreManagerFactory = metaStoreManagerFactory;
+    this.entityManager = entityManager;
+    this.metaStoreManager = metaStoreManager;
+    this.session = session;
+    this.configurationStore = configurationStore;
+    this.diagnostics = diagnostics;
     this.polarisAuthorizer = polarisAuthorizer;
+    this.prefixParser = prefixParser;
+
     // FIXME: This is a hack to set the current context for downstream calls.
     CallContext.setCurrentContext(callContext);
+  }
+
+  /**
+   * Execute operations on a catalog wrapper and ensure we close the BaseCatalog afterward. This
+   * will typically ensure the underlying FileIO is closed.
+   */
+  private Response withCatalog(
+      SecurityContext securityContext,
+      String prefix,
+      Function<PolarisCatalogHandlerWrapper, Response> action) {
+    String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
+    try (PolarisCatalogHandlerWrapper wrapper = newHandlerWrapper(realmContext, securityContext, catalogName)) {
+      return action.apply(wrapper);
+    } catch (RuntimeException e) {
+      LOGGER.debug("RuntimeException while operating on catalog. Propagating to caller.", e);
+      throw e;
+    } catch (Exception e) {
+      LOGGER.error("Error while operating on catalog", e);
+      throw new RuntimeException(e);
+    }
   }
 
   private PolarisCatalogHandlerWrapper newHandlerWrapper(
@@ -141,13 +189,10 @@ public class IcebergCatalogAdapter
       throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
     }
 
-    PolarisEntityManager entityManager =
-        entityManagerFactory.getOrCreateEntityManager(realmContext);
-
     return new PolarisCatalogHandlerWrapper(
         callContext,
         entityManager,
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
+        metaStoreManager,
         securityContext,
         catalogFactory,
         catalogName,
@@ -536,8 +581,6 @@ public class IcebergCatalogAdapter
     //    the catalog being accessed.
     // TODO: Push this down into PolarisCatalogHandlerWrapper for authorizing "any" catalog
     // role in this catalog.
-    PolarisEntityManager entityManager =
-        entityManagerFactory.getOrCreateEntityManager(realmContext);
     AuthenticatedPolarisPrincipal authenticatedPrincipal =
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     if (authenticatedPrincipal == null) {
@@ -555,10 +598,11 @@ public class IcebergCatalogAdapter
     Map<String, String> properties =
         PolarisEntity.of(resolvedReferenceCatalog.getEntity()).getPropertiesAsMap();
 
+    String prefix = prefixParser.catalogNameToPrefix(realmContext, warehouse);
     return Response.ok(
             ConfigResponse.builder()
                 .withDefaults(properties) // catalog properties are defaults
-                .withOverrides(ImmutableMap.of("prefix", warehouse))
+                .withOverrides(ImmutableMap.of("prefix", prefix))
                 .withEndpoints(
                     ImmutableList.<Endpoint>builder()
                         .addAll(DEFAULT_ENDPOINTS)

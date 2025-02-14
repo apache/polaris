@@ -40,6 +40,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
+import org.apache.polaris.service.catalog.DefaultIcebergCatalogPrefixParser;
 import org.apache.polaris.service.catalog.IcebergCatalogAdapter;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApi;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
@@ -84,15 +85,15 @@ public record TestServices(
   }
 
   public static class Builder {
-    private RealmContext realm = TEST_REALM;
+    private RealmContext realmContext = TEST_REALM;
     private Map<String, Object> config = Map.of();
     private StsClient stsClient = Mockito.mock(StsClient.class);
     private FileIOFactorySupplier fileIOFactorySupplier = MeasuredFileIOFactory::new;
 
     private Builder() {}
 
-    public Builder realmId(RealmContext realmId) {
-      this.realm = realmId;
+    public Builder realmContext(RealmContext realmContext) {
+      this.realmContext = realmContext;
       return this;
     }
 
@@ -132,11 +133,11 @@ public record TestServices(
           new RealmEntityManagerFactory(metaStoreManagerFactory, polarisDiagnostics) {};
 
       PolarisEntityManager entityManager =
-          realmEntityManagerFactory.getOrCreateEntityManager(realm);
+          realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
       PolarisMetaStoreManager metaStoreManager =
-          metaStoreManagerFactory.getOrCreateMetaStoreManager(realm);
+          metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
       PolarisMetaStoreSession metaStoreSession =
-          metaStoreManagerFactory.getOrCreateSessionSupplier(realm).get();
+          metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
 
       FileIOFactory fileIOFactory =
           fileIOFactorySupplier.apply(
@@ -156,14 +157,15 @@ public record TestServices(
 
       IcebergRestCatalogApiService service =
           new IcebergCatalogAdapter(
-              realm,
+              realmContext,
               callContextFactory,
               entityManager,
               metaStoreManager,
               metaStoreSession,
               configurationStore,
               polarisDiagnostics,
-              authorizer);
+              authorizer,
+              new DefaultIcebergCatalogPrefixParser());
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
 
@@ -219,7 +221,7 @@ public record TestServices(
           polarisDiagnostics,
           realmEntityManagerFactory,
           metaStoreManagerFactory,
-          realm,
+          realmContext,
           securityContext,
           fileIOFactory,
           taskExecutor);
