@@ -2,13 +2,13 @@
   "license": "Licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)",
   "$id": "https://polaris.apache.org/schemas/policies/system/orphan-file-removal/2025-02-03.json",
   "title": "Orphan File Removal Policy",
-  "description": "Inheritable Polaris policy schema for Iceberg table orphan file removal.",
+  "description": "Inheritable Polaris policy schema for Iceberg table orphan file removal",
   "type": "object",
   "properties": {
     "version": {
       "type": "string",
       "const": "2025-02-03",
-      "description": "Schema version."
+      "description": "Schema version"
     },
     "enable": {
       "type": "boolean",
@@ -18,9 +18,12 @@
       "type": "number",
       "description": "Specifies the maximum age (in days) for orphaned files before they are eligible for removal."
     },
-    "location": {
-      "type": "string",
-      "description": "Specifies a custom directory to search for files instead of the default table location. Use with caution—if set to a broad location (e.g., s3://my-bucket instead of s3://my-bucket/my-table-location), all unreferenced files in that path may be permanently deleted, including files from other tables. Following best practices, tables should be stored in separate locations to avoid accidental data loss."
+    "locations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Specifies a list of custom directories to search for files instead of the default table location. Use with caution—if set to a broad location (e.g., s3://my-bucket instead of s3://my-bucket/my-table-location), all unreferenced files in that path may be permanently deleted, including files from other tables. Following best practices, tables should be stored in separate locations to avoid accidental data loss."
     },
     "config": {
       "type": "object",

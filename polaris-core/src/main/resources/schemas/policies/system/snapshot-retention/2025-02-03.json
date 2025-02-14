@@ -2,13 +2,13 @@
   "license": "Licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)",
   "$id": "https://polaris.apache.org/schemas/policies/system/snapshot-retention/2025-02-03.json",
   "title": "Snapshot Retention Policy",
-  "description": "Inheritable Polaris policy schema for Iceberg table snapshot retention.",
+  "description": "Inheritable Polaris policy schema for Iceberg table snapshot retention",
   "type": "object",
   "properties": {
     "version": {
       "type": "string",
       "const": "2025-02-03",
-      "description": "Schema version."
+      "description": "Schema version"
     },
     "enable": {
       "type": "boolean",
