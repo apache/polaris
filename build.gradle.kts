@@ -127,6 +127,18 @@ tasks.named<RatTask>("rat").configure {
 
   excludes.add("**/kotlin-compiler*")
   excludes.add("**/build-logic/.kotlin/**")
+
+  excludes.addAll(
+    listOf(
+      "**/build/**",
+      "**/.git/**",
+      "**/.gradle/**",
+      "**/.idea/**",
+      "**/generated/**",
+      "**/build-logic/.kotlin/**",
+      "**/kotlin-compiler*",
+    )
+  )
 }
 
 // Pass environment variables:
