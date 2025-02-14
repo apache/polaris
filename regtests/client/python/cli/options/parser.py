@@ -103,7 +103,7 @@ class Parser(object):
             if '=' not in property:
                 raise Exception(f'Could not parse property `{property}`')
             key, value = property.split('=', 1)
-            if '=' in value or not value:
+            if not value:
                 raise Exception(f'Could not parse property `{property}`')
             if key in results:
                 raise Exception(f'Duplicate property key `{key}`')
