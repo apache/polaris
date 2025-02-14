@@ -86,12 +86,6 @@ public class QuarkusProducers {
     return new PolarisAuthorizerImpl(configurationStore);
   }
 
-  @Produces
-  @ApplicationScoped
-  public PolarisDiagnostics polarisDiagnostics() {
-    return new PolarisDefaultDiagServiceImpl();
-  }
-
   // Polaris core beans - request scope
 
   @Produces

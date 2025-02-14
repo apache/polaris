@@ -49,6 +49,7 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
     this(null);
   }
 
+  @Inject
   protected EclipseLinkPolarisMetaStoreManagerFactory(PolarisDiagnostics diagnostics) {
     super(diagnostics);
   }

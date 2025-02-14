@@ -62,7 +62,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   private final PolarisDiagnostics diagnostics;
   private boolean bootstrap;
 
-  protected LocalPolarisMetaStoreManagerFactory(PolarisDiagnostics diagnostics) {
+  protected LocalPolarisMetaStoreManagerFactory(@Nonnull PolarisDiagnostics diagnostics) {
     this.diagnostics = diagnostics;
   }
 

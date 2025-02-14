@@ -19,10 +19,12 @@
 package org.apache.polaris.core;
 
 import com.google.common.base.Preconditions;
+import jakarta.inject.Singleton;
 import java.util.Arrays;
 import org.jetbrains.annotations.Contract;
 
 /** Default implementation of the PolarisDiagServices. */
+@Singleton
 public class PolarisDefaultDiagServiceImpl implements PolarisDiagnostics {
 
   /**
