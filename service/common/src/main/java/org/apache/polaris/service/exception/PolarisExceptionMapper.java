@@ -38,7 +38,7 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
   private Response.StatusType getStatus(PolarisException exception) {
     return switch (exception) {
       case AlreadyExistsException ignored -> Response.Status.CONFLICT;
-      case AuthenticationTimeoutException ignored -> PolarisStatus.AUTHENTICATION_TIMEOUT;
+      case AuthenticationTimeoutException ignored -> PolarisResponseStatus.AUTHENTICATION_TIMEOUT;
       case UnresolvableRealmContextException ignored -> Response.Status.NOT_FOUND;
       case null, default -> Response.Status.INTERNAL_SERVER_ERROR;
     };

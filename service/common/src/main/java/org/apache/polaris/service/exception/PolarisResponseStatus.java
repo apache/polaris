@@ -20,7 +20,7 @@ package org.apache.polaris.service.exception;
 
 import jakarta.ws.rs.core.Response;
 
-public enum PolarisStatus implements Response.StatusType {
+public enum PolarisResponseStatus implements Response.StatusType {
   AUTHENTICATION_TIMEOUT(419, "Authentication Timeout"),
   ;
 
@@ -28,7 +28,7 @@ public enum PolarisStatus implements Response.StatusType {
   private final String reason;
   private final Response.Status.Family family;
 
-  PolarisStatus(final int statusCode, final String reasonPhrase) {
+  PolarisResponseStatus(final int statusCode, final String reasonPhrase) {
     this.code = statusCode;
     this.reason = reasonPhrase;
     this.family = Response.Status.Family.familyOf(statusCode);
