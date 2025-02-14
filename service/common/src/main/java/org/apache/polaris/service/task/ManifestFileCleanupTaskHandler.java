@@ -27,7 +27,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
 import java.util.stream.StreamSupport;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.iceberg.DataFile;
@@ -36,6 +35,7 @@ import org.apache.iceberg.ManifestFiles;
 import org.apache.iceberg.ManifestReader;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.slf4j.Logger;
@@ -54,11 +54,13 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
   public static final int FILE_DELETION_RETRY_MILLIS = 100;
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ManifestFileCleanupTaskHandler.class);
-  private final Function<TaskEntity, FileIO> fileIOSupplier;
+  private final CallContext callContext;
+  private final TaskFileIOSupplier fileIOSupplier;
   private final ExecutorService executorService;
 
   public ManifestFileCleanupTaskHandler(
-      Function<TaskEntity, FileIO> fileIOSupplier, ExecutorService executorService) {
+      CallContext callContext, TaskFileIOSupplier fileIOSupplier, ExecutorService executorService) {
+    this.callContext = callContext;
     this.fileIOSupplier = fileIOSupplier;
     this.executorService = executorService;
   }
@@ -73,7 +75,7 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
   public boolean handleTask(TaskEntity task) {
     ManifestCleanupTask cleanupTask = task.readData(ManifestCleanupTask.class);
     TableIdentifier tableId = cleanupTask.getTableId();
-    try (FileIO authorizedFileIO = fileIOSupplier.apply(task)) {
+    try (FileIO authorizedFileIO = fileIOSupplier.apply(task, callContext.getRealmContext())) {
       if (task.getTaskType() == AsyncTaskType.MANIFEST_FILE_CLEANUP) {
         ManifestFile manifestFile = decodeManifestData(cleanupTask.getManifestFileData());
         return cleanUpManifestFile(manifestFile, authorizedFileIO, tableId);

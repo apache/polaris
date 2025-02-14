@@ -45,25 +45,29 @@ public class TaskExecutorImpl implements TaskExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(TaskExecutorImpl.class);
   private static final long TASK_RETRY_DELAY = 1000;
 
+  private final CallContext callContext;
   private final Executor executor;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final TaskFileIOSupplier fileIOSupplier;
   private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
 
   public TaskExecutorImpl(
+      CallContext callContext,
       Executor executor,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier) {
+    this.callContext = callContext;
     this.executor = executor;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOSupplier = fileIOSupplier;
   }
 
   public void init() {
-    addTaskHandler(new TableCleanupTaskHandler(this, metaStoreManagerFactory, fileIOSupplier));
+    addTaskHandler(
+        new TableCleanupTaskHandler(callContext, this, metaStoreManagerFactory, fileIOSupplier));
     addTaskHandler(
         new ManifestFileCleanupTaskHandler(
-            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+            callContext, fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
   }
 
   /**

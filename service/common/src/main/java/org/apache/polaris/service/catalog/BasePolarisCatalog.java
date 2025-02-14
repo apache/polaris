@@ -2075,7 +2075,13 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         new PolarisResolvedPathWrapper(List.of(resolvedCatalogEntity));
     Set<PolarisStorageActions> storageActions = Set.of(PolarisStorageActions.ALL);
     return fileIOFactory.loadFileIO(
-        realmContext, ioImpl, properties, identifier, locations, storageActions, resolvedPath);
+        callContext.getRealmContext(),
+        ioImpl,
+        properties,
+        identifier,
+        locations,
+        storageActions,
+        resolvedPath);
   }
 
   private void blockedUserSpecifiedWriteLocation(Map<String, String> properties) {

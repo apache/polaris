@@ -49,15 +49,18 @@ import org.slf4j.LoggerFactory;
  */
 public class TableCleanupTaskHandler implements TaskHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(TableCleanupTaskHandler.class);
+  private final CallContext callContext;
   private final TaskExecutor taskExecutor;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
-  private final Function<TaskEntity, FileIO> fileIOSupplier;
+  private final TaskFileIOSupplier fileIOSupplier;
   private static final String BATCH_SIZE_CONFIG_KEY = "TABLE_METADATA_CLEANUP_BATCH_SIZE";
 
   public TableCleanupTaskHandler(
+      CallContext callContext,
       TaskExecutor taskExecutor,
       MetaStoreManagerFactory metaStoreManagerFactory,
-      Function<TaskEntity, FileIO> fileIOSupplier) {
+      TaskFileIOSupplier fileIOSupplier) {
+    this.callContext = callContext;
     this.taskExecutor = taskExecutor;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOSupplier = fileIOSupplier;
@@ -90,7 +93,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
     // It's likely the cleanupTask has already been completed, but wasn't dropped successfully.
     // Log a
     // warning and move on
-    try (FileIO fileIO = fileIOSupplier.apply(cleanupTask)) {
+    try (FileIO fileIO = fileIOSupplier.apply(cleanupTask, callContext.getRealmContext())) {
       if (!TaskUtils.exists(tableEntity.getMetadataLocation(), fileIO)) {
         LOGGER
             .atWarn()

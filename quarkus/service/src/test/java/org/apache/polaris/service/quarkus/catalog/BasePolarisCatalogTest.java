@@ -21,8 +21,6 @@ package org.apache.polaris.service.quarkus.catalog;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.mockito.ArgumentMatchers.isA;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
@@ -86,6 +84,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
@@ -111,6 +110,7 @@ import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
 import org.assertj.core.api.Assertions;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -272,15 +272,16 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
-    this.catalog = new BasePolarisCatalog(
-        entityManager,
-        metaStoreManager,
-        callContext,
-        passthroughView,
-        securityContext,
-        authenticatedRoot,
-        taskExecutor,
-        fileIOFactory);
+    this.catalog =
+        new BasePolarisCatalog(
+            entityManager,
+            metaStoreManager,
+            callContext,
+            passthroughView,
+            securityContext,
+            authenticatedRoot,
+            taskExecutor,
+            fileIOFactory);
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -538,11 +539,11 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     request.setPayload(update);
 
     MetaStoreManagerFactory metaStoreManagerFactory = createMockMetaStoreManagerFactory();
-    catalog.setFileIOFactory(new DefaultFileIOFactory(
-        new RealmEntityManagerFactory(metaStoreManagerFactory),
-        metaStoreManagerFactory,
-        configurationStore)
-    );
+    catalog.setFileIOFactory(
+        new DefaultFileIOFactory(
+            new RealmEntityManagerFactory(metaStoreManagerFactory),
+            metaStoreManagerFactory,
+            configurationStore));
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Fake failure applying downscoped credentials");
@@ -1533,8 +1534,10 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             callContext, entityManager, securityContext, CATALOG_NAME);
 
     MeasuredFileIOFactory measured =
-        new MeasuredFileIOFactory(new RealmEntityManagerFactory(
-            createMockMetaStoreManagerFactory()), managerFactory, configurationStore);
+        new MeasuredFileIOFactory(
+            new RealmEntityManagerFactory(createMockMetaStoreManagerFactory()),
+            managerFactory,
+            configurationStore);
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
             entityManager,
@@ -1577,19 +1580,34 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     Map<String, String> properties = taskEntity.getInternalPropertiesAsMap();
     properties.put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO");
     taskEntity.setInternalPropertiesAsMap(properties);
+    TaskFileIOSupplier taskFileIOSupplier = new TaskFileIOSupplier(
+        new FileIOFactory() {
+          @Override
+          public FileIO loadFileIO(
+              @NotNull RealmContext realmContext,
+              @NotNull String ioImplClassName,
+              @NotNull Map<String, String> properties,
+              @NotNull TableIdentifier identifier,
+              @NotNull Set<String> tableLocations,
+              @NotNull Set<PolarisStorageActions> storageActions,
+              @NotNull PolarisResolvedPathWrapper resolvedEntityPath) {
+            return measured.loadFileIO(
+                    realmContext,
+                    "org.apache.iceberg.inmemory.InMemoryFileIO",
+                    Map.of(),
+                    TABLE,
+                    Set.of(table.location()),
+                    Set.of(PolarisStorageActions.ALL),
+                    Mockito.mock());
+          }
+        });
+
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
+            callContext,
             Mockito.mock(),
             createMockMetaStoreManagerFactory(),
-            (task) -> measured.loadFileIO(
-                realmContext,
-                "org.apache.iceberg.inmemory.InMemoryFileIO",
-                Map.of(),
-                TABLE,
-                Set.of(table.location()),
-                Set.of(PolarisStorageActions.ALL),
-                Mockito.mock()
-                ));
+            taskFileIOSupplier);
     handler.handleTask(
         TaskEntity.of(
             metaStoreManager

@@ -24,6 +24,7 @@ import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -86,9 +87,11 @@ public class FileIOUtil {
       Set<String> tableLocations,
       Set<PolarisStorageActions> storageActions,
       PolarisEntity entity) {
+    CallContext callContext = CallContext.getCurrentContext();
+
     boolean skipCredentialSubscopingIndirection =
         configurationStore.getConfiguration(
-            realmContext,
+            callContext.getPolarisCallContext(),
             PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
             PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
     if (skipCredentialSubscopingIndirection) {
@@ -113,7 +116,7 @@ public class FileIOUtil {
             .getCredentialCache()
             .getOrGenerateSubScopeCreds(
                 credentialVendor,
-                metaStoreSession,
+                callContext.getPolarisCallContext(),
                 entity,
                 allowList,
                 tableLocations,

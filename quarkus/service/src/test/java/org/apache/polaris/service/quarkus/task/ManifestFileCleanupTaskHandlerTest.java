@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -53,15 +54,38 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
+import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.apache.polaris.service.task.TaskUtils;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 @QuarkusTest
 class ManifestFileCleanupTaskHandlerTest {
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
 
   private final RealmContext realmContext = () -> "realmName";
+
+  private TaskFileIOSupplier buildTaskFileIOSupplier(FileIO fileIO) {
+    return new TaskFileIOSupplier(
+        new FileIOFactory() {
+          @Override
+          public FileIO loadFileIO(
+              @NotNull RealmContext realmContext,
+              @NotNull String ioImplClassName,
+              @NotNull Map<String, String> properties,
+              @NotNull TableIdentifier identifier,
+              @NotNull Set<String> tableLocations,
+              @NotNull Set<PolarisStorageActions> storageActions,
+              @NotNull PolarisResolvedPathWrapper resolvedEntityPath) {
+            return fileIO;
+          }
+        });
+  }
 
   @Test
   public void testCleanupFileNotExists() throws IOException {
@@ -74,8 +98,10 @@ class ManifestFileCleanupTaskHandlerTest {
       FileIO fileIO = new InMemoryFileIO();
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
+
       ManifestFileCleanupTaskHandler handler =
-          new ManifestFileCleanupTaskHandler((task) -> fileIO, Executors.newSingleThreadExecutor());
+          new ManifestFileCleanupTaskHandler(
+              callCtx, buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
       ManifestFile manifestFile =
           TaskTestUtils.manifestFile(
               fileIO, "manifest1.avro", 1L, "dataFile1.parquet", "dataFile2.parquet");
@@ -106,7 +132,8 @@ class ManifestFileCleanupTaskHandlerTest {
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       ManifestFileCleanupTaskHandler handler =
-          new ManifestFileCleanupTaskHandler((task) -> fileIO, Executors.newSingleThreadExecutor());
+          new ManifestFileCleanupTaskHandler(
+              callCtx, buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
       ManifestFile manifestFile =
           TaskTestUtils.manifestFile(
               fileIO, "manifest1.avro", 100L, "dataFile1.parquet", "dataFile2.parquet");
@@ -142,7 +169,8 @@ class ManifestFileCleanupTaskHandlerTest {
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       ManifestFileCleanupTaskHandler handler =
-          new ManifestFileCleanupTaskHandler((task) -> fileIO, Executors.newSingleThreadExecutor());
+          new ManifestFileCleanupTaskHandler(
+              callCtx, buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
       String dataFile1Path = "dataFile1.parquet";
       OutputFile dataFile1 = fileIO.newOutputFile(dataFile1Path);
       PositionOutputStream out1 = dataFile1.createOrOverwrite();
@@ -205,7 +233,8 @@ class ManifestFileCleanupTaskHandlerTest {
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       ManifestFileCleanupTaskHandler handler =
-          new ManifestFileCleanupTaskHandler((task) -> fileIO, Executors.newSingleThreadExecutor());
+          new ManifestFileCleanupTaskHandler(
+              callCtx, buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
       String dataFile1Path = "dataFile1.parquet";
       OutputFile dataFile1 = fileIO.newOutputFile(dataFile1Path);
       PositionOutputStream out1 = dataFile1.createOrOverwrite();
@@ -252,7 +281,8 @@ class ManifestFileCleanupTaskHandlerTest {
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       ManifestFileCleanupTaskHandler handler =
-          new ManifestFileCleanupTaskHandler((task) -> fileIO, Executors.newSingleThreadExecutor());
+          new ManifestFileCleanupTaskHandler(
+              callCtx, buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
 
       long snapshotId1 = 100L;
       ManifestFile manifestFile1 =
@@ -349,7 +379,8 @@ class ManifestFileCleanupTaskHandlerTest {
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       ManifestFileCleanupTaskHandler handler =
-          new ManifestFileCleanupTaskHandler((task) -> fileIO, Executors.newSingleThreadExecutor());
+          new ManifestFileCleanupTaskHandler(
+              callCtx, buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
       long snapshotId = 100L;
       ManifestFile manifestFile =
           TaskTestUtils.manifestFile(
@@ -413,7 +444,8 @@ class ManifestFileCleanupTaskHandlerTest {
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       ManifestFileCleanupTaskHandler handler =
-          new ManifestFileCleanupTaskHandler((task) -> fileIO, Executors.newSingleThreadExecutor());
+          new ManifestFileCleanupTaskHandler(
+              callCtx, buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
       long snapshotId = 100L;
       ManifestFile manifestFile =
           TaskTestUtils.manifestFile(
