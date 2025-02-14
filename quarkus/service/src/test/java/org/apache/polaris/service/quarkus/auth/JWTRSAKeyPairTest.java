@@ -43,6 +43,7 @@ import org.apache.polaris.service.auth.TokenBroker;
 import org.apache.polaris.service.auth.TokenRequestValidator;
 import org.apache.polaris.service.auth.TokenResponse;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
+import org.apache.polaris.service.types.TokenType;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -83,7 +84,8 @@ public class JWTRSAKeyPairTest {
             mainSecret,
             TokenRequestValidator.CLIENT_CREDENTIALS,
             scope,
-            polarisCallContext);
+            polarisCallContext,
+            TokenType.ACCESS_TOKEN);
     assertThat(token).isNotNull();
     assertThat(token.getExpiresIn()).isEqualTo(420);
 

@@ -94,8 +94,15 @@ public abstract class JWTBroker implements TokenBroker {
 
   @Override
   public TokenResponse generateFromToken(
-      TokenType tokenType, String subjectToken, String grantType, String scope) {
-    if (!TokenType.ACCESS_TOKEN.equals(tokenType)) {
+      TokenType subjectTokenType,
+      String subjectToken,
+      String grantType,
+      String scope,
+      TokenType requestedTokenType) {
+    if (!TokenType.ACCESS_TOKEN.equals(requestedTokenType)) {
+      return new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
+    }
+    if (!TokenType.ACCESS_TOKEN.equals(subjectTokenType)) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
     }
     if (StringUtils.isBlank(subjectToken)) {
@@ -124,7 +131,8 @@ public abstract class JWTBroker implements TokenBroker {
       String clientSecret,
       String grantType,
       String scope,
-      PolarisCallContext polarisCallContext) {
+      PolarisCallContext polarisCallContext,
+      TokenType requestedTokenType) {
     // Initial sanity checks
     TokenRequestValidator validator = new TokenRequestValidator();
     Optional<OAuthTokenErrorResponse.Error> initialValidationResponse =

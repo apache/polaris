@@ -47,13 +47,18 @@ public class NoneTokenBrokerFactory implements TokenBrokerFactory {
             String clientSecret,
             String grantType,
             String scope,
-            PolarisCallContext polarisCallContext) {
+            PolarisCallContext polarisCallContext,
+            TokenType requestedTokenType) {
           return null;
         }
 
         @Override
         public TokenResponse generateFromToken(
-            TokenType tokenType, String subjectToken, String grantType, String scope) {
+            TokenType subjectTokenType,
+            String subjectToken,
+            String grantType,
+            String scope,
+            TokenType requestedTokenType) {
           return null;
         }
 

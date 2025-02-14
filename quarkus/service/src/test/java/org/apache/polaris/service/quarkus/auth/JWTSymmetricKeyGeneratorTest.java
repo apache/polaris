@@ -37,6 +37,7 @@ import org.apache.polaris.service.auth.JWTSymmetricKeyBroker;
 import org.apache.polaris.service.auth.TokenBroker;
 import org.apache.polaris.service.auth.TokenRequestValidator;
 import org.apache.polaris.service.auth.TokenResponse;
+import org.apache.polaris.service.types.TokenType;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -87,7 +88,8 @@ public class JWTSymmetricKeyGeneratorTest {
             mainSecret,
             TokenRequestValidator.CLIENT_CREDENTIALS,
             "PRINCIPAL_ROLE:TEST",
-            polarisCallContext);
+            polarisCallContext,
+            TokenType.ACCESS_TOKEN);
     assertThat(token).isNotNull();
 
     JWTVerifier verifier = JWT.require(Algorithm.HMAC256("polaris")).withIssuer("polaris").build();
