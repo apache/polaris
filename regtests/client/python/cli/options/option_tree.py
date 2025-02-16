@@ -230,5 +230,12 @@ class OptionTree:
                 Option(Subcommands.GET, args=[
                     Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME)
                 ], input_name=Arguments.NAMESPACE),
+            ]),
+            Option(Commands.PROFILES, 'manage profiles', children=[
+                Option(Subcommands.CREATE, input_name=Arguments.PROFILE),
+                Option(Subcommands.DELETE, input_name=Arguments.PROFILE),
+                Option(Subcommands.UPDATE, input_name=Arguments.PROFILE),
+                Option(Subcommands.GET, input_name=Arguments.PROFILE),
+                Option(Subcommands.LIST),
             ])
         ]

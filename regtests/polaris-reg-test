@@ -53,7 +53,7 @@ fi
 # Save the current directory
 CURRENT_DIR=$(pwd)
 cd $SCRIPT_DIR > /dev/null
-PYTHONPATH=regtests/client/python ${SCRIPT_DIR}/polaris-venv/bin/python3 regtests/client/python/cli/polaris_cli.py "$@"
+PYTHONPATH=regtests/client/python SCRIPT_DIR="$SCRIPT_DIR" ${SCRIPT_DIR}/polaris-venv/bin/python3 regtests/client/python/cli/polaris_cli.py "$@"
 status=$?
 cd $CURRENT_DIR > /dev/null
 
