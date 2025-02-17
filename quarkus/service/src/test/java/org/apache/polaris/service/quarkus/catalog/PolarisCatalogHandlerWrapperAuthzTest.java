@@ -136,7 +136,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         configurationStore,
         diagServices,
         Mockito.mock(),
-        fileIOFactory);
+        fileIOFactory,
+        namespaceDao);
   }
 
   /**
@@ -1711,8 +1712,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             configurationStore,
             diagServices,
             Mockito.mock(),
-            new DefaultFileIOFactory(
-                realmEntityManagerFactory, managerFactory, configurationStore)) {
+            new DefaultFileIOFactory(realmEntityManagerFactory, managerFactory, configurationStore),
+            namespaceDao) {
           @Override
           public Catalog createCallContextCatalog(
               RealmContext realmContext,

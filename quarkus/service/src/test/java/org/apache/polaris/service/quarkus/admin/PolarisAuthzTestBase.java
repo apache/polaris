@@ -68,6 +68,7 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.dao.NamespaceDao;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
@@ -77,6 +78,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.persistence.fdb.dao.FdbNamespaceDao;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.assertj.core.api.Assertions;
@@ -177,6 +179,7 @@ public abstract class PolarisAuthzTestBase {
   protected PrincipalEntity principalEntity;
   protected RealmContext realmContext;
   protected AuthenticatedPolarisPrincipal authenticatedRoot;
+  protected NamespaceDao namespaceDao;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -194,6 +197,7 @@ public abstract class PolarisAuthzTestBase {
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     metaStoreSession = managerFactory.getOrCreateSessionSupplier(realmContext).get();
     entityManager = realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
+    namespaceDao = new FdbNamespaceDao(metaStoreManager, metaStoreSession);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -409,7 +413,8 @@ public abstract class PolarisAuthzTestBase {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            fileIOFactory);
+            fileIOFactory,
+            namespaceDao);
     this.baseCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -422,7 +427,7 @@ public abstract class PolarisAuthzTestBase {
       extends PolarisCallContextCatalogFactory {
 
     public TestPolarisCallContextCatalogFactory() {
-      super(null, null, null, null, null, null, null);
+      super(null, null, null, null, null, null, null, null);
     }
 
     @Inject
@@ -433,7 +438,8 @@ public abstract class PolarisAuthzTestBase {
         PolarisConfigurationStore configurationStore,
         PolarisDiagnostics diagnostics,
         TaskExecutor taskExecutor,
-        FileIOFactory fileIOFactory) {
+        FileIOFactory fileIOFactory,
+        NamespaceDao namespaceDao) {
       super(
           entityManager,
           metaStoreManager,
@@ -441,7 +447,8 @@ public abstract class PolarisAuthzTestBase {
           configurationStore,
           diagnostics,
           taskExecutor,
-          fileIOFactory);
+          fileIOFactory,
+          namespaceDao);
     }
 
     @Override

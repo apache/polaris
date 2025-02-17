@@ -94,6 +94,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.dao.NamespaceDao;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -165,6 +166,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private final FileIOFactory fileIOFactory;
   private final long catalogId;
   private final String catalogName;
+  private final NamespaceDao namespaceDao;
 
   private String ioImplClassName;
   private FileIO catalogFileIO;
@@ -191,7 +193,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       PolarisResolutionManifestCatalogView resolvedEntityView,
       SecurityContext securityContext,
       TaskExecutor taskExecutor,
-      FileIOFactory fileIOFactory) {
+      FileIOFactory fileIOFactory,
+      NamespaceDao namespaceDao) {
     this.realmContext = realmContext;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
@@ -208,6 +211,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     this.catalogId = catalogEntity.getId();
     this.catalogName = catalogEntity.getName();
+    this.namespaceDao = namespaceDao;
   }
 
   @Override
@@ -523,17 +527,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     } else {
       LOGGER.debug("Skipping location overlap validation for namespace '{}'", namespace);
     }
-    PolarisEntity returnedEntity =
-        PolarisEntity.of(
-            getMetaStoreManager()
-                .createEntityIfNotExists(
-                    metaStoreSession,
-                    PolarisEntity.toCoreList(resolvedParent.getRawFullPath()),
-                    entity));
-    if (returnedEntity == null) {
-      throw new AlreadyExistsException(
-          "Cannot create namespace %s. Namespace already exists", namespace);
-    }
+
+    namespaceDao.save(entity, PolarisEntity.toCoreList(resolvedParent.getRawFullPath()));
   }
 
   private String resolveNamespaceLocation(Namespace namespace, Map<String, String> properties) {
@@ -633,22 +628,15 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     PolarisEntity leafEntity = resolvedEntities.getRawLeafEntity();
 
     // drop if exists and is empty
-    PolarisMetaStoreManager.DropEntityResult dropEntityResult =
-        getMetaStoreManager()
-            .dropEntityIfExists(
-                metaStoreSession,
-                PolarisEntity.toCoreList(catalogPath),
-                leafEntity,
-                Map.of(),
-                configurationStore.getConfiguration(
-                    realmContext, PolarisConfiguration.CLEANUP_ON_NAMESPACE_DROP));
-
-    if (!dropEntityResult.isSuccess() && dropEntityResult.failedBecauseNotEmpty()) {
+    try {
+      return namespaceDao.delete(
+          PolarisEntity.toCoreList(catalogPath),
+          leafEntity,
+          configurationStore.getConfiguration(
+              realmContext, PolarisConfiguration.CLEANUP_ON_NAMESPACE_DROP));
+    } catch (NamespaceNotEmptyException e) {
       throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);
     }
-
-    // return status of drop operation
-    return dropEntityResult.isSuccess();
   }
 
   @Override
@@ -678,17 +666,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
 
     List<PolarisEntity> parentPath = resolvedEntities.getRawFullPath();
-    PolarisEntity returnedEntity =
-        Optional.ofNullable(
-                getMetaStoreManager()
-                    .updateEntityPropertiesIfNotChanged(
-                        metaStoreSession, PolarisEntity.toCoreList(parentPath), updatedEntity)
-                    .getEntity())
-            .map(PolarisEntity::new)
-            .orElse(null);
-    if (returnedEntity == null) {
-      throw new RuntimeException("Concurrent modification of namespace: " + namespace);
-    }
+    namespaceDao.update(NamespaceEntity.of(updatedEntity), PolarisEntity.toCoreList(parentPath));
     return true;
   }
 

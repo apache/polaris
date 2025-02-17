@@ -51,6 +51,7 @@ import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
+import org.apache.polaris.service.persistence.fdb.dao.FdbNamespaceDao;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.assertj.core.util.TriFunction;
@@ -153,7 +154,8 @@ public record TestServices(
               configurationStore,
               polarisDiagnostics,
               Mockito.mock(TaskExecutor.class),
-              fileIOFactory);
+              fileIOFactory,
+              new FdbNamespaceDao(metaStoreManager, metaStoreSession));
 
       IcebergRestCatalogApiService service =
           new IcebergCatalogAdapter(

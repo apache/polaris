@@ -87,6 +87,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.dao.NamespaceDao;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -101,6 +102,7 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
+import org.apache.polaris.service.persistence.fdb.dao.FdbNamespaceDao;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -161,6 +163,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   private RealmContext realmContext;
   private PolarisMetaStoreManager metaStoreManager;
   private PolarisMetaStoreSession metaStoreSession;
+  private NamespaceDao namespaceDao;
   private PolarisAdminService adminService;
   private PolarisEntityManager entityManager;
   private FileIOFactory fileIOFactory;
@@ -186,6 +189,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     realmContext = () -> realmName;
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     metaStoreSession = managerFactory.getOrCreateSessionSupplier(realmContext).get();
+    namespaceDao = new FdbNamespaceDao(metaStoreManager, metaStoreSession);
     entityManager = entityManagerFactory.getOrCreateEntityManager(realmContext);
 
     PrincipalEntity rootEntity =
@@ -273,7 +277,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            namespaceDao);
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -528,7 +533,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            fileIoFactory);
+            fileIoFactory,
+            namespaceDao);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -856,7 +862,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            namespaceDao);
     catalog.initialize(
         catalogWithoutStorage,
         ImmutableMap.of(
@@ -921,7 +928,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            namespaceDao);
     catalog.initialize(
         catalogName,
         ImmutableMap.of(
@@ -1454,7 +1462,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            fileIOFactory);
+            fileIOFactory,
+            namespaceDao);
     noPurgeCatalog.initialize(
         noPurgeCatalogName,
         ImmutableMap.of(
@@ -1539,7 +1548,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            measured);
+            measured,
+            namespaceDao);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
