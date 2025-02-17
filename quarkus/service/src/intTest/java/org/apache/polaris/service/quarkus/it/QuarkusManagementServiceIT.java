@@ -19,8 +19,24 @@
 package org.apache.polaris.service.quarkus.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
 import org.apache.polaris.service.it.test.PolarisManagementServiceIntegrationTest;
 
+import java.util.Map;
+
 @QuarkusIntegrationTest
-public class QuarkusManagementServiceIT
-    extends PolarisManagementServiceIntegrationTest {}
+@TestProfile(QuarkusManagementServiceIT.Profile.class)
+public class QuarkusManagementServiceIT extends PolarisManagementServiceIntegrationTest {
+  public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.authentication.token-broker.type",
+          "symmetric-key",
+          "polaris.authentication.token-broker.symmetric-key.secret",
+          "polaris");
+    }
+  }
+}
