@@ -21,6 +21,7 @@ package org.apache.polaris.service.quarkus.config;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.context.SmallRyeManagedExecutor;
+import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.event.Observes;
@@ -42,6 +43,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.cache.EntityCache;
@@ -227,6 +229,18 @@ public class QuarkusProducers {
   public PolarisMetaStoreSession polarisMetaStoreSession(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
     return metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
+  }
+
+  @Produces
+  @RequestScoped
+  public PolarisEntityManager polarisEntityManager(
+      PolarisMetaStoreManager polarisMetaStoreManager,
+      StorageCredentialCache credentialCache,
+      EntityCache entityCache) {
+    return new PolarisEntityManager(
+        polarisMetaStoreManager,
+        credentialCache,
+        entityCache);
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
