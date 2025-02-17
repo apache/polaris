@@ -113,7 +113,8 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     managementApi.createCatalog(principalRoleName, catalog);
 
     restCatalog =
-        IcebergHelper.restCatalog(client, endpoints, principalCredentials, catalogName, Map.of());
+        IcebergHelper.restCatalog(
+            client, endpoints, principalCredentials, catalogName, catalogName, Map.of());
   }
 
   @AfterEach

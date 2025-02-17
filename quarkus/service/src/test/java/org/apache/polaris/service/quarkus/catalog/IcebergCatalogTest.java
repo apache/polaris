@@ -266,10 +266,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                 .setStorageConfigurationInfo(storageConfigModel, storageLocation)
                 .build());
 
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            callContext, entityManager, securityContext, CATALOG_NAME);
-    TaskExecutor taskExecutor = Mockito.mock();
     RealmEntityManagerFactory realmEntityManagerFactory =
         new RealmEntityManagerFactory(createMockMetaStoreManagerFactory());
     this.fileIOFactory =
@@ -293,18 +289,10 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.catalog =
-        new IcebergCatalog(
-            entityManager,
-            metaStoreManager,
-            callContext,
-            passthroughView,
-            securityContext,
-            taskExecutor,
-            fileIOFactory);
-    this.catalog.initialize(
-        CATALOG_NAME,
-        ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+        initCatalog(
+            CATALOG_NAME,
+            ImmutableMap.of(
+                CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
   }
 
   @AfterEach
@@ -316,6 +304,26 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   @Override
   protected IcebergCatalog catalog() {
     return catalog;
+  }
+
+  @Override
+  protected IcebergCatalog initCatalog(
+      String catalogName, Map<String, String> additionalProperties) {
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            callContext, entityManager, securityContext, CATALOG_NAME);
+    TaskExecutor taskExecutor = Mockito.mock();
+    IcebergCatalog icebergCatalog =
+        new IcebergCatalog(
+            entityManager,
+            metaStoreManager,
+            callContext,
+            passthroughView,
+            securityContext,
+            taskExecutor,
+            fileIOFactory);
+    icebergCatalog.initialize(CATALOG_NAME, additionalProperties);
+    return icebergCatalog;
   }
 
   @Override
@@ -697,7 +705,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         TableMetadata.buildFromEmpty()
             .assignUUID()
             .setLocation(anotherTableLocation)
-            .addSchema(SCHEMA, 4)
+            .addSchema(SCHEMA)
             .addPartitionSpec(PartitionSpec.unpartitioned())
             .addSortOrder(SortOrder.unsorted())
             .build();
@@ -754,7 +762,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         TableMetadata.buildFromEmpty()
             .assignUUID()
             .setLocation(anotherTableLocation)
-            .addSchema(SCHEMA, 4)
+            .addSchema(SCHEMA)
             .addPartitionSpec(PartitionSpec.unpartitioned())
             .addSortOrder(SortOrder.unsorted())
             .build();
@@ -831,7 +839,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         TableMetadata.buildFromEmpty()
             .assignUUID()
             .setLocation(anotherTableLocation)
-            .addSchema(SCHEMA, 4)
+            .addSchema(SCHEMA)
             .addPartitionSpec(PartitionSpec.unpartitioned())
             .addSortOrder(SortOrder.unsorted())
             .build();
@@ -1401,7 +1409,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
   @Override
   public void testDropTableWithPurge() {
     if (this.requiresNamespaceCreate()) {
-      ((SupportsNamespaces) catalog).createNamespace(NS);
+      catalog.createNamespace(NS);
     }
 
     Assertions.assertThatPredicate(catalog::tableExists)
@@ -1497,7 +1505,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
 
     if (this.requiresNamespaceCreate()) {
-      ((SupportsNamespaces) noPurgeCatalog).createNamespace(NS);
+      noPurgeCatalog.createNamespace(NS);
     }
 
     Assertions.assertThatPredicate(noPurgeCatalog::tableExists)
