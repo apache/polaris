@@ -30,7 +30,7 @@ import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -60,7 +60,7 @@ public class AwsCredentialsStorageIntegration
   /** {@inheritDoc} */
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-      @Nonnull RealmId realmId,
+      @Nonnull RealmContext realmContext,
       @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull AwsStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
@@ -81,7 +81,7 @@ public class AwsCredentialsStorageIntegration
                         .toJson())
                 .durationSeconds(
                     configurationStore.getConfiguration(
-                        realmId, STORAGE_CREDENTIAL_DURATION_SECONDS))
+                        realmContext, STORAGE_CREDENTIAL_DURATION_SECONDS))
                 .build());
     EnumMap<PolarisCredentialProperty, String> credentialMap =
         new EnumMap<>(PolarisCredentialProperty.class);
@@ -104,7 +104,7 @@ public class AwsCredentialsStorageIntegration
   /**
    * generate an IamPolicy from the input readLocations and writeLocations, optionally with list
    * support. Credentials will be scoped to exactly the resources provided. If read and write
-   * locations are empty, a non-empty policy will be generated that grants GetObject and (optionally
+   * locations are empty, a non-empty policy will be generated that grants GetObject and optionally
    * ListBucket privileges with no resources. This prevents us from sending an empty policy to AWS
    * and just assuming the role with full privileges.
    */

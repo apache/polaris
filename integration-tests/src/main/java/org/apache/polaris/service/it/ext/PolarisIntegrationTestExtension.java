@@ -92,7 +92,8 @@ public class PolarisIntegrationTestExtension implements ParameterResolver {
 
     private Env(Server server) {
       this.server = server;
-      this.endpoints = new PolarisApiEndpoints(server.baseUri(), server.realmId());
+      this.endpoints =
+          new PolarisApiEndpoints(server.baseUri(), server.realmId(), server.realmHeaderName());
     }
 
     PolarisApiEndpoints endpoints() {

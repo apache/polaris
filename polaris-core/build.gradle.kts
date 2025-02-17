@@ -85,10 +85,10 @@ dependencies {
   implementation("com.azure:azure-identity")
   implementation("com.azure:azure-storage-file-datalake")
   constraints {
-    implementation("io.netty:netty-codec-http2:4.1.117.Final") {
+    implementation("io.netty:netty-codec-http2:4.1.118.Final") {
       because("Vulnerability detected in 4.1.72")
     }
-    implementation("io.projectreactor.netty:reactor-netty-http:1.2.2") {
+    implementation("io.projectreactor.netty:reactor-netty-http:1.2.3") {
       because("Vulnerability detected in 1.0.45")
     }
   }

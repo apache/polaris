@@ -24,7 +24,7 @@ fi
 
 . ~/polaris-venv/bin/activate
 
-pip install poetry==1.5.0
+pip install -r requirements.txt
 
 cd client/python
 python3 -m poetry install

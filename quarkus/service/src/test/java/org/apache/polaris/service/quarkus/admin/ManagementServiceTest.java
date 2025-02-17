@@ -32,15 +32,14 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
-import org.apache.polaris.service.quarkus.TestServices;
-import org.apache.polaris.service.quarkus.catalog.io.TestFileIOFactory;
+import org.apache.polaris.service.TestServices;
 import org.junit.jupiter.api.Test;
 
 public class ManagementServiceTest {
   static TestServices services =
-      TestServices.inMemory(
-          new TestFileIOFactory(),
-          Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")));
+      TestServices.builder()
+          .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
+          .build();
 
   @Test
   public void testCreateCatalogWithDisallowedStorageConfig() {
@@ -62,7 +61,7 @@ public class ManagementServiceTest {
                     .catalogsApi()
                     .createCatalog(
                         new CreateCatalogRequest(catalog),
-                        services.realmId(),
+                        services.realmContext(),
                         services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported storage type: FILE");
@@ -91,7 +90,7 @@ public class ManagementServiceTest {
             .catalogsApi()
             .createCatalog(
                 new CreateCatalogRequest(catalog),
-                services.realmId(),
+                services.realmContext(),
                 services.securityContext())) {
       assertThat(response).returns(Response.Status.CREATED.getStatusCode(), Response::getStatus);
     }
@@ -101,7 +100,7 @@ public class ManagementServiceTest {
     try (Response response =
         services
             .catalogsApi()
-            .getCatalog(catalogName, services.realmId(), services.securityContext())) {
+            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
       fetchedCatalog = (Catalog) response.getEntity();
 
@@ -127,7 +126,10 @@ public class ManagementServiceTest {
                 services
                     .catalogsApi()
                     .updateCatalog(
-                        catalogName, updateRequest, services.realmId(), services.securityContext()))
+                        catalogName,
+                        updateRequest,
+                        services.realmContext(),
+                        services.securityContext()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("Unsupported storage type: FILE");
   }

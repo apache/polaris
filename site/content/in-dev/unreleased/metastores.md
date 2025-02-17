@@ -49,6 +49,7 @@ The `configuration-file` option must point to an [EclipseLink configuration file
 `persistence.xml`, is used to set up the database connection properties, which can differ depending
 on the type of database and its configuration.
 
+> Note: You have to locate the `persistence.xml` at least two folders down to the root folder, e.g. `/deployments/config/persistence.xml` is OK, whereas `/deployments/persistence.xml` will cause an infinity loop.
 [Quarkus Configuration Reference]: https://quarkus.io/guides/config-reference
 [EclipseLink configuration file]: https://eclipse.dev/eclipselink/documentation/2.5/solutions/testingjpa002.htm
 

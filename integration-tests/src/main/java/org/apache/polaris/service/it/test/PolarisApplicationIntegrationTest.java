@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.it.test;
 
-import static org.apache.polaris.service.it.env.PolarisApiEndpoints.REALM_HEADER;
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -28,6 +27,7 @@ import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -58,12 +58,14 @@ import org.apache.iceberg.hadoop.HadoopFileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTSessionCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
+import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CatalogRole;
+import org.apache.polaris.core.admin.model.Catalogs;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
@@ -85,7 +87,23 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
+/**
+ * @implSpec This test expects the server to be configured with the following features configured:
+ *     <ul>
+ *       <li>{@link org.apache.polaris.core.PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
+ *           {@code true}
+ *       <li>{@link
+ *           org.apache.polaris.core.PolarisConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:
+ *           {@code true}
+ *     </ul>
+ *     The server must also be configured to reject request body sizes larger than 1MB (1000000
+ *     bytes).
+ *     <p>The server must also be configured with the following realms: POLARIS (default), and
+ *     OTHER.
+ */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public class PolarisApplicationIntegrationTest {
 
@@ -109,7 +127,7 @@ public class PolarisApplicationIntegrationTest {
       throws IOException {
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
-    realm = endpoints.realm();
+    realm = endpoints.realmId();
     admin = adminCredentials;
     clientCredentials = adminCredentials.credentials();
     authToken = client.obtainToken(clientCredentials);
@@ -234,7 +252,7 @@ public class PolarisApplicationIntegrationTest {
             authToken,
             "warehouse",
             catalog,
-            "header." + REALM_HEADER,
+            "header." + endpoints.realmHeaderName(),
             realm));
     return sessionCatalog;
   }
@@ -576,7 +594,7 @@ public class PolarisApplicationIntegrationTest {
                           authToken,
                           "warehouse",
                           emptyEnvironmentVariable,
-                          "header." + REALM_HEADER,
+                          "header." + endpoints.realmHeaderName(),
                           realm)))
           .isInstanceOf(BadRequestException.class)
           .hasMessage("Malformed request: Please specify a warehouse");
@@ -643,6 +661,64 @@ public class PolarisApplicationIntegrationTest {
                   // asserts that one of those things happens.
                 }
               });
+    }
+  }
+
+  @Test
+  public void testNoRealmHeader() {
+    try (Response response =
+        managementApi
+            .request(
+                "v1/catalogs", Map.of(), Map.of(), Map.of("Authorization", "Bearer " + authToken))
+            .get()) {
+      assertThat(response.getStatus()).isEqualTo(Status.OK.getStatusCode());
+      Catalogs roles = response.readEntity(Catalogs.class);
+      assertThat(roles.getCatalogs()).extracting(Catalog::getName).contains(internalCatalogName);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"POLARIS", "OTHER"})
+  public void testRealmHeaderValid(String realmId) {
+    String catalogName = client.newEntityName("testRealmHeaderValid" + realmId);
+    createCatalog(catalogName, Catalog.TypeEnum.INTERNAL, principalRoleName);
+    try (Response response =
+        managementApi
+            .request(
+                "v1/catalogs",
+                Map.of(),
+                Map.of(),
+                Map.of(
+                    "Authorization", "Bearer " + authToken, endpoints.realmHeaderName(), realmId))
+            .get()) {
+      assertThat(response.getStatus()).isEqualTo(Status.OK.getStatusCode());
+      Catalogs catalogsList = response.readEntity(Catalogs.class);
+      if ("POLARIS".equals(realmId)) {
+        assertThat(catalogsList.getCatalogs()).extracting(Catalog::getName).contains(catalogName);
+      } else {
+        assertThat(catalogsList.getCatalogs()).isEmpty();
+      }
+    }
+  }
+
+  @Test
+  public void testRealmHeaderInvalid() {
+    try (Response response =
+        managementApi
+            .request(
+                "v1/catalogs",
+                Map.of(),
+                Map.of(),
+                Map.of(
+                    "Authorization", "Bearer " + authToken, endpoints.realmHeaderName(), "INVALID"))
+            .get()) {
+      assertThat(response.getStatus()).isEqualTo(Status.NOT_FOUND.getStatusCode());
+      assertThat(response.readEntity(ErrorResponse.class))
+          .extracting(ErrorResponse::code, ErrorResponse::type, ErrorResponse::message)
+          .containsExactly(
+              Status.NOT_FOUND.getStatusCode(),
+              "UnresolvableRealmContextException",
+              "Unknown realm: INVALID");
     }
   }
 }

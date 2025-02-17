@@ -90,6 +90,7 @@ tasks.named<RatTask>("rat").configure {
 
   excludes.add("logs/**")
   excludes.add("service/common/src/**/banner.txt")
+  excludes.add("quarkus/admin/src/**/banner.txt")
 
   excludes.add("site/node_modules/**")
   excludes.add("site/layouts/robots.txt")
@@ -156,6 +157,39 @@ nexusPublishing {
       nexusUrl = URI.create("https://repository.apache.org/service/local/")
       snapshotRepositoryUrl =
         URI.create("https://repository.apache.org/content/repositories/snapshots/")
+    }
+  }
+}
+
+copiedCodeChecks {
+  addDefaultContentTypes()
+
+  licenseFile = project.layout.projectDirectory.file("LICENSE")
+
+  scanDirectories {
+    register("build-logic") { srcDir("build-logic/src") }
+    register("misc") {
+      srcDir(".github")
+      srcDir("codestyle")
+      srcDir("getting-started")
+      srcDir("k8")
+      srcDir("regtests")
+      srcDir("server-templates")
+      srcDir("spec")
+    }
+    register("gradle") {
+      srcDir("gradle")
+      exclude("wrapper/*.jar")
+      exclude("wrapper/*.sha256")
+    }
+    register("site") {
+      srcDir("site")
+      exclude("build/**")
+      exclude(".hugo_build.lock")
+    }
+    register("root") {
+      srcDir(".")
+      include("*")
     }
   }
 }

@@ -31,7 +31,7 @@ and [Apache Iceberg REST API doc](https://polaris.apache.org/index.html#tag/Conf
 [Subscribe to the dev mailing list][dev-list-subscribe] to join discussions via email or browse [the archives](https://lists.apache.org/list.html?dev@polaris.apache.org). Check out the [CONTRIBUTING guide](CONTRIBUTING.md)
 for contribution guidelines.
 
-[![Zulip](https://img.shields.io/badge/Zulip-Chat-blue?color=3d4db3&logo=zulip&style=for-the-badge&logoColor=white)](https://polaris-catalog.zulipchat.com/)
+[![Slack](https://img.shields.io/badge/chat-on%20Slack-brightgreen.svg?style=for-the-badge)](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/apache/polaris/gradle.yml?branch=main&label=Main%20CI&logo=Github&style=for-the-badge)](https://github.com/apache/polaris/actions/workflows/gradle.yml?query=branch%3Amain)
 
 [dev-list-subscribe]: mailto:dev-subscribe@polaris.apache.org
@@ -61,13 +61,8 @@ Apache Polaris is built using Gradle with Java 21+ and Docker 27+.
 - `./gradlew build` - To build and run tests. Make sure Docker is running, as the integration tests depend on it.
 - `./gradlew assemble` - To skip tests.
 - `./gradlew test` - To run unit tests and integration tests.
-- `./gradlew polarisServerRun` - To run the Polaris server locally, with profile `prod`; the server 
-  is reachable at localhost:8181.
-- `java -Dquarkus.profile=test -jar quarkus/server/build/quarkus-app/quarkus-run.jar` - To run the
-  Polaris server locally, with profile `test`. With this profile, Polaris uses the `test`
-  Authenticator and `test` TokenBroker; this configuration is suitable for running regressions
-  tests, or for connecting with Spark.
-
+- `./gradlew run` - To run the Polaris server locally; the server is reachable at 
+  localhost:8181. This is also suitable for running regression tests, or for connecting with Spark. 
 - `./regtests/run_spark_sql.sh` - To connect from Spark SQL. Here are some example commands to run in the Spark SQL shell:
 ```sql
 create database db1;
@@ -76,7 +71,7 @@ create table db1.table1 (id int, name string);
 insert into db1.table1 values (1, 'a');
 select * from db1.table1;
 ```
-
+- `env POLARIS_HOST=localhost ./regtests/run.sh` - To run regression tests locally, see more options [here](./regtests/README.md).
 ### More build and run options
 
 #### Running in Docker
@@ -84,6 +79,9 @@ select * from db1.table1;
 - `./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true` - To 
   build the image locally.
 - `docker run -p 8181:8181 -p 8182:8182 apache/polaris:latest` - To run the image.
+
+The Polaris codebase contains some docker compose examples to quickly get started with Polaris,
+using different configurations. Check the `./getting-started` directory for more information.
 
 #### Running in Kubernetes
 
@@ -98,28 +96,13 @@ select * from db1.table1;
 - `kubectl get deployment -n polaris` - To check the status of the deployment.
 - `kubectl describe deployment polaris-deployment -n polaris` - To troubleshoot if things aren't working as expected.
 
-#### Running regression tests
+#### Configuring Polaris
 
-Regression tests can be run in a local environment or in a Docker environment.
+Polaris Servers can be configured using a variety of ways.
+Please see the [Configuration Guide](site/content/in-dev/unreleased/configuration.md)
+for more information.
 
-To run regression tests locally, you need to have a Polaris server running locally, with the 
-`test` Authenticator enabled. You can do this by running Polaris as below:
-
-```shell
-java -Dquarkus.profile=test -jar quarkus/server/build/quarkus-app/quarkus-run.jar
-```
-
-Then, you can run the regression tests using the following command:
-
-```shell
-env POLARIS_HOST=localhost ./regtests/run.sh
-```
-
-To run regression tests in a Docker environment, you can use the following command:
-
-```shell
-docker compose -f regtests/docker-compose.yml up --build --exit-code-from regtest
-```
+Default configuration values can be found in `quarkus/defaults/src/main/resources/application.properties`.
 
 #### Building docs
 

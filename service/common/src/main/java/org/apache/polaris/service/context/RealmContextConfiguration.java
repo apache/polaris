@@ -33,6 +33,15 @@ public interface RealmContextConfiguration {
   /** The header name that contains the realm identifier. */
   String headerName();
 
+  /**
+   * Whether to require the realm header to be present in the request. If this is true and the realm
+   * header is not present, the request will be rejected. If this is false and the realm header is
+   * not present, the default realm will be used.
+   *
+   * <p>Note: this is actually only enforced in production setups.
+   */
+  boolean requireHeader();
+
   /** The default realm to use when no realm is specified. */
   default String defaultRealm() {
     return realms().getFirst();

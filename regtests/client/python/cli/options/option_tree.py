@@ -87,6 +87,7 @@ class OptionTree:
                     Argument(Arguments.ALLOWED_LOCATION, str, Hints.Catalogs.Create.ALLOWED_LOCATION,
                              allow_repeats=True),
                     Argument(Arguments.ROLE_ARN, str, Hints.Catalogs.Create.ROLE_ARN),
+                    Argument(Arguments.REGION, str, Hints.Catalogs.Create.REGION),
                     Argument(Arguments.EXTERNAL_ID, str, Hints.Catalogs.Create.EXTERNAL_ID),
                     Argument(Arguments.TENANT_ID, str, Hints.Catalogs.Create.TENANT_ID),
                     Argument(Arguments.MULTI_TENANT_APP_NAME, str, Hints.Catalogs.Create.MULTI_TENANT_APP_NAME),
@@ -104,6 +105,7 @@ class OptionTree:
                     Argument(Arguments.DEFAULT_BASE_LOCATION, str, Hints.Catalogs.Update.DEFAULT_BASE_LOCATION),
                     Argument(Arguments.ALLOWED_LOCATION, str, Hints.Catalogs.Create.ALLOWED_LOCATION,
                              allow_repeats=True),
+                    Argument(Arguments.REGION, str, Hints.Catalogs.Create.REGION),
                     Argument(Arguments.SET_PROPERTY, str, Hints.SET_PROPERTY, allow_repeats=True),
                     Argument(Arguments.REMOVE_PROPERTY, str, Hints.REMOVE_PROPERTY, allow_repeats=True),
                 ], input_name=Arguments.CATALOG)
@@ -228,5 +230,12 @@ class OptionTree:
                 Option(Subcommands.GET, args=[
                     Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME)
                 ], input_name=Arguments.NAMESPACE),
+            ]),
+            Option(Commands.PROFILES, 'manage profiles', children=[
+                Option(Subcommands.CREATE, input_name=Arguments.PROFILE),
+                Option(Subcommands.DELETE, input_name=Arguments.PROFILE),
+                Option(Subcommands.UPDATE, input_name=Arguments.PROFILE),
+                Option(Subcommands.GET, input_name=Arguments.PROFILE),
+                Option(Subcommands.LIST),
             ])
         ]

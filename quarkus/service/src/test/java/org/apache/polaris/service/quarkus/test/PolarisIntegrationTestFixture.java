@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.quarkus.test;
 
-import static org.apache.polaris.service.context.TestRealmIdResolver.REALM_PROPERTY_KEY;
+import static org.apache.polaris.service.context.TestRealmContextResolver.REALM_PROPERTY_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -35,14 +35,14 @@ import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.persistence.PolarisCredentialsBootstrap;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.auth.TokenUtils;
 import org.junit.jupiter.api.TestInfo;
@@ -97,15 +97,15 @@ public class PolarisIntegrationTestFixture {
   private PolarisPrincipalSecrets fetchAdminSecrets() {
     if (!(helper.metaStoreManagerFactory instanceof InMemoryPolarisMetaStoreManagerFactory)) {
       helper.metaStoreManagerFactory.bootstrapRealms(
-          List.of(realm), PolarisCredentialsBootstrap.fromEnvironment());
+          List.of(realm), RootCredentialsSet.fromEnvironment());
     }
 
-    RealmId realmId = RealmId.newRealmId(realm);
+    RealmContext realmContext = () -> realm;
 
     PolarisMetaStoreSession metaStoreSession =
-        helper.metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get();
+        helper.metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     PolarisMetaStoreManager metaStoreManager =
-        helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(realmId);
+        helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     PolarisMetaStoreManager.EntityResult principal =
         metaStoreManager.readEntityByName(
             metaStoreSession,

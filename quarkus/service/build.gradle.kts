@@ -35,9 +35,6 @@ dependencies {
   implementation("org.apache.iceberg:iceberg-core")
   implementation("org.apache.iceberg:iceberg-aws")
 
-  // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
-  implementation(platform(libs.dnsjava))
-
   implementation(platform(libs.opentelemetry.bom))
 
   implementation(platform(libs.quarkus.bom))
@@ -93,6 +90,7 @@ dependencies {
   testFixturesApi(project(":polaris-tests"))
 
   testImplementation(project(":polaris-api-management-model"))
+  testImplementation(testFixtures(project(":polaris-service-common")))
 
   testImplementation("org.apache.iceberg:iceberg-api:${libs.versions.iceberg.get()}:tests")
   testImplementation("org.apache.iceberg:iceberg-core:${libs.versions.iceberg.get()}:tests")
@@ -134,9 +132,6 @@ dependencies {
   intTestImplementation(platform(libs.quarkus.bom))
   intTestImplementation("io.quarkus:quarkus-junit5")
 
-  // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
-  intTestImplementation(platform(libs.dnsjava))
-
   // required for QuarkusSparkIT
   intTestImplementation(enforcedPlatform(libs.scala212.lang.library))
   intTestImplementation(enforcedPlatform(libs.scala212.lang.reflect))
@@ -162,6 +157,9 @@ tasks.named<Test>("test").configure { maxParallelForks = 4 }
 
 tasks.named<Test>("intTest").configure {
   maxParallelForks = 1
+  // Same issue as above: allow a java security manager after Java 21
+  // (this setting is for the application under test, while the setting above is for test code).
+  systemProperty("quarkus.test.arg-line", "-Djava.security.manager=allow")
   val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
   // delete files from previous runs
   doFirst {

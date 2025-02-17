@@ -25,7 +25,17 @@ import java.net.URI;
  * the provided admin credentials or create new principals.
  */
 public interface Server extends AutoCloseable {
-  String realmId();
+
+  String DEFAULT_REALM_HEADER = "Polaris-Realm";
+  String DEFAULT_REALM_ID = "POLARIS";
+
+  default String realmId() {
+    return DEFAULT_REALM_ID;
+  }
+
+  default String realmHeaderName() {
+    return DEFAULT_REALM_HEADER;
+  }
 
   /**
    * The base URI to all Polaris APIs (e.g. the common base of the Iceberg REST API endpoints and

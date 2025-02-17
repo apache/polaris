@@ -23,6 +23,8 @@ import static org.mockito.Mockito.when;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
+import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -30,6 +32,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
@@ -41,7 +44,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -53,7 +56,9 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
+import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
+import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.junit.jupiter.api.AfterEach;
@@ -64,7 +69,27 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 @QuarkusTest
+@TestProfile(BasePolarisCatalogViewTest.Profile.class)
 public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCatalog> {
+
+  public static class Profile implements QuarkusTestProfile {
+
+    @Override
+    public Map<String, String> getConfigOverrides() {
+      return Map.of(
+          "polaris.features.defaults.\"ALLOW_WILDCARD_LOCATION\"",
+          "true",
+          "polaris.features.defaults.\"SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION\"",
+          "true",
+          "polaris.features.defaults.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
+          "true",
+          "polaris.features.defaults.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
+          "true",
+          "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
+          "[\"FILE\"]");
+    }
+  }
+
   public static final String CATALOG_NAME = "polaris-catalog";
 
   @Inject MetaStoreManagerFactory managerFactory;
@@ -98,10 +123,10 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
         "realm_%s_%s"
             .formatted(
                 testInfo.getTestMethod().map(Method::getName).orElse("test"), System.nanoTime());
-    RealmId realmId = RealmId.newRealmId(realmName);
+    RealmContext realmContext = () -> realmName;
 
-    metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmId);
-    metaStoreSession = managerFactory.getOrCreateSessionSupplier(realmId).get();
+    metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
+    metaStoreSession = managerFactory.getOrCreateSessionSupplier(realmContext).get();
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -117,14 +142,15 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     AuthenticatedPolarisPrincipal authenticatedRoot =
         new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
 
-    PolarisEntityManager entityManager = entityManagerFactory.getOrCreateEntityManager(realmId);
+    PolarisEntityManager entityManager =
+        entityManagerFactory.getOrCreateEntityManager(realmContext);
 
     SecurityContext securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
     when(securityContext.isUserInRole(Mockito.anyString())).thenReturn(true);
     PolarisAdminService adminService =
         new PolarisAdminService(
-            realmId,
+            realmContext,
             entityManager,
             metaStoreManager,
             metaStoreSession,
@@ -148,9 +174,11 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             entityManager, metaStoreSession, securityContext, CATALOG_NAME);
+    FileIOFactory fileIOFactory =
+        new DefaultFileIOFactory(entityManagerFactory, managerFactory, configurationStore);
     this.catalog =
         new BasePolarisCatalog(
-            realmId,
+            realmContext,
             entityManager,
             metaStoreManager,
             metaStoreSession,
@@ -159,7 +187,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             passthroughView,
             securityContext,
             Mockito.mock(),
-            new DefaultFileIOFactory());
+            fileIOFactory);
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

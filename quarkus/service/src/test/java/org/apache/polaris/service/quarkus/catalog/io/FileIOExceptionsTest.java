@@ -38,7 +38,8 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.service.quarkus.TestServices;
+import org.apache.polaris.service.TestServices;
+import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -53,13 +54,13 @@ public class FileIOExceptionsTest {
   private static final String catalog = "test-catalog";
   private static final String catalogBaseLocation = "file:/tmp/buckets/my-bucket/path/to/data";
 
-  private static TestFileIOFactory ioFactory;
   private static TestServices services;
+  private static MeasuredFileIOFactory ioFactory;
 
   @BeforeAll
   public static void beforeAll() {
-    ioFactory = new TestFileIOFactory();
-    services = TestServices.inMemory(ioFactory);
+    services = TestServices.builder().build();
+    ioFactory = (MeasuredFileIOFactory) services.fileIOFactory();
 
     FileStorageConfigInfo storageConfigInfo =
         FileStorageConfigInfo.builder()
@@ -81,7 +82,7 @@ public class FileIOExceptionsTest {
             .catalogsApi()
             .createCatalog(
                 new CreateCatalogRequest(catalog),
-                services.realmId(),
+                services.realmContext(),
                 services.securityContext())) {
       assertThat(res.getStatus()).isEqualTo(201);
     }
@@ -92,7 +93,7 @@ public class FileIOExceptionsTest {
             .createNamespace(
                 FileIOExceptionsTest.catalog,
                 CreateNamespaceRequest.builder().withNamespace(Namespace.of("ns1")).build(),
-                services.realmId(),
+                services.realmContext(),
                 services.securityContext())) {
       assertThat(res.getStatus()).isEqualTo(200);
     }
@@ -112,7 +113,7 @@ public class FileIOExceptionsTest {
         services
             .restApi()
             .createTable(
-                catalog, "ns1", request, null, services.realmId(), services.securityContext());
+                catalog, "ns1", request, null, services.realmContext(), services.securityContext());
     res.close();
   }
 

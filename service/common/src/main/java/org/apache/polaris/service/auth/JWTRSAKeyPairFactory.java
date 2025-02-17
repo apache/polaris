@@ -25,18 +25,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.NoSuchAlgorithmException;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.service.auth.AuthenticationConfiguration.TokenBrokerConfiguration;
 import org.apache.polaris.service.auth.AuthenticationConfiguration.TokenBrokerConfiguration.RSAKeyPairConfiguration;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @ApplicationScoped
 @Identifier("rsa-key-pair")
 public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(JWTRSAKeyPairFactory.class);
 
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final TokenBrokerConfiguration tokenBrokerConfiguration;
@@ -53,19 +49,16 @@ public class JWTRSAKeyPairFactory implements TokenBrokerFactory {
   }
 
   @Override
-  public TokenBroker apply(RealmId realmId) {
+  public TokenBroker apply(RealmContext realmContext) {
     return new JWTRSAKeyPair(
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmId),
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get(),
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
         (int) tokenBrokerConfiguration.maxTokenGeneration().toSeconds(),
         keyPairConfiguration.publicKeyFile(),
         keyPairConfiguration.privateKeyFile());
   }
 
   private RSAKeyPairConfiguration generateKeyPair() {
-    LOGGER.warn(
-        "No public and private key files were provided; these will be generated. "
-            + "This should not be done in production!");
     try {
       Path privateFileLocation = Files.createTempFile("polaris-private", ".pem");
       Path publicFileLocation = Files.createTempFile("polaris-public", ".pem");

@@ -79,7 +79,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -93,6 +93,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -104,6 +105,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.catalog.io.FileIOUtil;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -154,7 +156,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private final PolarisMetaStoreSession metaStoreSession;
   private final PolarisConfigurationStore configurationStore;
   private final PolarisDiagnostics diagnostics;
-  private final RealmId realmId;
+  private final RealmContext realmContext;
   private final PolarisResolutionManifestCatalogView resolvedEntityView;
   private final CatalogEntity catalogEntity;
   private final TaskExecutor taskExecutor;
@@ -172,7 +174,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private Map<String, String> tableDefaultProperties;
 
   /**
-   * @param realmId the current RealmId
+   * @param realmContext the current RealmContext
    * @param entityManager provides handle to underlying PolarisMetaStoreManager with which to
    *     perform mutations on entities.
    * @param resolvedEntityView accessor to resolved entity paths that have been pre-vetted to ensure
@@ -180,7 +182,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    * @param taskExecutor Executor we use to register cleanup task handlers
    */
   public BasePolarisCatalog(
-      RealmId realmId,
+      RealmContext realmContext,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
       PolarisMetaStoreSession metaStoreSession,
@@ -190,7 +192,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       SecurityContext securityContext,
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory) {
-    this.realmId = realmId;
+    this.realmContext = realmContext;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
     this.metaStoreSession = metaStoreSession;
@@ -307,12 +309,18 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         metadataFileLocation != null && !metadataFileLocation.isEmpty(),
         "Cannot register an empty metadata file location as a table");
 
+    int lastSlashIndex = metadataFileLocation.lastIndexOf("/");
+    Preconditions.checkArgument(
+        lastSlashIndex != -1,
+        "Invalid metadata file location; metadata file location must be absolute and contain a '/': %s",
+        metadataFileLocation);
+
     // Throw an exception if this table already exists in the catalog.
     if (tableExists(identifier)) {
       throw new AlreadyExistsException("Table already exists: %s", identifier);
     }
 
-    String locationDir = metadataFileLocation.substring(0, metadataFileLocation.lastIndexOf("/"));
+    String locationDir = metadataFileLocation.substring(0, lastSlashIndex);
 
     TableOperations ops = newTableOps(identifier);
 
@@ -324,7 +332,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
     }
     FileIO fileIO =
-        refreshIOWithCredentials(
+        loadFileIOForTableLike(
             identifier,
             Set.of(locationDir),
             resolvedParent,
@@ -450,7 +458,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           "Scheduled cleanup task {} for table {}",
           dropEntityResult.getCleanupTaskId(),
           tableIdentifier);
-      taskExecutor.addTaskHandlerContext(dropEntityResult.getCleanupTaskId(), realmId);
+      taskExecutor.addTaskHandlerContext(dropEntityResult.getCleanupTaskId(), realmContext);
     }
 
     return true;
@@ -514,7 +522,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             .setBaseLocation(baseLocation)
             .build();
     if (!configurationStore.getConfiguration(
-        realmId, PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+        realmContext, PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap for {} with sibling tables or namespaces", namespace);
       validateNoLocationOverlap(
           entity.getBaseLocation(), resolvedParent.getRawFullPath(), entity.getName());
@@ -639,7 +647,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 leafEntity,
                 Map.of(),
                 configurationStore.getConfiguration(
-                    realmId, PolarisConfiguration.CLEANUP_ON_NAMESPACE_DROP));
+                    realmContext, PolarisConfiguration.CLEANUP_ON_NAMESPACE_DROP));
 
     if (!dropEntityResult.isSuccess() && dropEntityResult.failedBecauseNotEmpty()) {
       throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);
@@ -665,7 +673,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         new PolarisEntity.Builder(entity).setProperties(newProperties).build();
 
     if (!configurationStore.getConfiguration(
-        realmId, PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+        realmContext, PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
       validateNoLocationOverlap(
           NamespaceEntity.of(updatedEntity).getBaseLocation(),
@@ -818,10 +826,15 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           .log("Table entity has no storage configuration in its hierarchy");
       return Map.of();
     }
-    return refreshCredentials(
+    return FileIOUtil.refreshCredentials(
+        realmContext,
+        entityManager,
+        getCredentialVendor(),
+        metaStoreSession,
+        configurationStore,
         tableIdentifier,
-        storageActions,
         getLocationsAllowedToBeAccessed(tableMetadata),
+        storageActions,
         storageInfo.get());
   }
 
@@ -857,62 +870,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             ? resolvedEntityView.getResolvedPath(tableIdentifier.namespace())
             : resolvedTableEntities;
 
-    return findStorageInfoFromHierarchy(resolvedStorageEntity);
-  }
-
-  private Map<String, String> refreshCredentials(
-      TableIdentifier tableIdentifier,
-      Set<PolarisStorageActions> storageActions,
-      String tableLocation,
-      PolarisEntity entity) {
-    return refreshCredentials(tableIdentifier, storageActions, Set.of(tableLocation), entity);
-  }
-
-  private Map<String, String> refreshCredentials(
-      TableIdentifier tableIdentifier,
-      Set<PolarisStorageActions> storageActions,
-      Set<String> tableLocations,
-      PolarisEntity entity) {
-    Boolean skipCredentialSubscopingIndirection =
-        getBooleanContextConfiguration(
-            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
-            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
-    if (Boolean.TRUE.equals(skipCredentialSubscopingIndirection)) {
-      LOGGER
-          .atInfo()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .log("Skipping generation of subscoped creds for table");
-      return Map.of();
-    }
-
-    boolean allowList =
-        storageActions.contains(PolarisStorageActions.LIST)
-            || storageActions.contains(PolarisStorageActions.ALL);
-    Set<String> writeLocations =
-        storageActions.contains(PolarisStorageActions.WRITE)
-                || storageActions.contains(PolarisStorageActions.DELETE)
-                || storageActions.contains(PolarisStorageActions.ALL)
-            ? tableLocations
-            : Set.of();
-    Map<String, String> credentialsMap =
-        entityManager
-            .getCredentialCache()
-            .getOrGenerateSubScopeCreds(
-                getCredentialVendor(),
-                metaStoreSession,
-                entity,
-                allowList,
-                tableLocations,
-                writeLocations);
-    LOGGER
-        .atDebug()
-        .addKeyValue("tableIdentifier", tableIdentifier)
-        .addKeyValue("credentialKeys", credentialsMap.keySet())
-        .log("Loaded scoped credentials for table");
-    if (credentialsMap.isEmpty()) {
-      LOGGER.debug("No credentials found for table");
-    }
-    return credentialsMap;
+    return FileIOUtil.findStorageInfoFromHierarchy(resolvedStorageEntity);
   }
 
   /**
@@ -953,14 +911,14 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedStorageEntity) {
     Optional<PolarisStorageConfigurationInfo> optStorageConfiguration =
         PolarisStorageConfigurationInfo.forEntityPath(
-            realmId, configurationStore, diagnostics, resolvedStorageEntity.getRawFullPath());
+            realmContext, configurationStore, diagnostics, resolvedStorageEntity.getRawFullPath());
 
     optStorageConfiguration.ifPresentOrElse(
         storageConfigInfo -> {
           Map<String, Map<PolarisStorageActions, PolarisStorageIntegration.ValidationResult>>
               validationResults =
                   InMemoryStorageIntegration.validateSubpathsOfAllowedLocations(
-                      realmId,
+                      realmContext,
                       configurationStore,
                       storageConfigInfo,
                       Set.of(PolarisStorageActions.ALL),
@@ -1007,7 +965,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         () -> {
           List<String> allowedStorageTypes =
               configurationStore.getConfiguration(
-                  realmId, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+                  realmContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
           if (!allowedStorageTypes.contains(StorageConfigInfo.StorageTypeEnum.FILE.name())) {
             List<String> invalidLocations =
                 locations.stream()
@@ -1032,7 +990,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       List<PolarisEntity> resolvedNamespace,
       String location) {
     if (configurationStore.getConfiguration(
-        realmId, catalog, PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP)) {
+        realmContext, catalog, PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP)) {
       LOGGER.debug("Skipping location overlap validation for identifier '{}'", identifier);
     } else { // if (entity.getSubType().equals(PolarisEntitySubType.TABLE)) {
       // TODO - is this necessary for views? overlapping views do not expose subdirectories via the
@@ -1243,7 +1201,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               // then we should use the actual current table properties for IO refresh here
               // instead of the general tableDefaultProperties.
               FileIO fileIO =
-                  refreshIOWithCredentials(
+                  loadFileIOForTableLike(
                       tableIdentifier,
                       Set.of(latestLocationDir),
                       resolvedEntities,
@@ -1279,7 +1237,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
       // refresh credentials because we need to read the metadata file to validate its location
       tableFileIO =
-          refreshIOWithCredentials(
+          loadFileIOForTableLike(
               tableIdentifier,
               getLocationsAllowedToBeAccessed(metadata),
               resolvedStorageEntity,
@@ -1399,10 +1357,10 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       TableIdentifier identifier, TableMetadata metadata, CatalogEntity catalog) {
     boolean allowEscape =
         configurationStore.getConfiguration(
-            realmId, PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
+            realmContext, PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
     if (!allowEscape
         && !configurationStore.getConfiguration(
-            realmId, PolarisConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
+            realmContext, PolarisConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
       LOGGER.debug(
           "Validating base location {} for table {} in metadata file {}",
           metadata.location(),
@@ -1416,18 +1374,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             metadata.metadataFileLocation(), metadata.location());
       }
     }
-  }
-
-  private static @Nonnull Optional<PolarisEntity> findStorageInfoFromHierarchy(
-      PolarisResolvedPathWrapper resolvedStorageEntity) {
-    Optional<PolarisEntity> storageInfoEntity =
-        resolvedStorageEntity.getRawFullPath().reversed().stream()
-            .filter(
-                e ->
-                    e.getInternalPropertiesAsMap()
-                        .containsKey(PolarisEntityConstants.getStorageConfigInfoPropertyName()))
-            .findFirst();
-    return storageInfoEntity;
   }
 
   private class BasePolarisViewOperations extends BaseViewOperations {
@@ -1475,7 +1421,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               // then we should use the actual current table properties for IO refresh here
               // instead of the general tableDefaultProperties.
               FileIO fileIO =
-                  refreshIOWithCredentials(
+                  loadFileIOForTableLike(
                       identifier,
                       Set.of(latestLocationDir),
                       resolvedEntities,
@@ -1529,7 +1475,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       Map<String, String> tableProperties = new HashMap<>(metadata.properties());
 
       viewFileIO =
-          refreshIOWithCredentials(
+          loadFileIOForTableLike(
               identifier,
               getLocationsAllowedToBeAccessed(metadata),
               resolvedStorageEntity,
@@ -1586,27 +1532,22 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private FileIO refreshIOWithCredentials(
+  private FileIO loadFileIOForTableLike(
       TableIdentifier identifier,
       Set<String> readLocations,
       PolarisResolvedPathWrapper resolvedStorageEntity,
       Map<String, String> tableProperties,
       Set<PolarisStorageActions> storageActions) {
-    Optional<PolarisEntity> storageInfoEntity = findStorageInfoFromHierarchy(resolvedStorageEntity);
-    Map<String, String> credentialsMap =
-        storageInfoEntity
-            .map(
-                storageInfo ->
-                    refreshCredentials(identifier, storageActions, readLocations, storageInfo))
-            .orElse(Map.of());
-
-    // Update the FileIO before we write the new metadata file
-    // update with table properties in case there are table-level overrides
-    // the credentials should always override table-level properties, since
-    // storage configuration will be found at whatever entity defines it
-    tableProperties.putAll(credentialsMap);
-    FileIO fileIO = null;
-    fileIO = loadFileIO(ioImplClassName, tableProperties);
+    // Reload fileIO based on table specific context
+    FileIO fileIO =
+        fileIOFactory.loadFileIO(
+            realmContext,
+            ioImplClassName,
+            tableProperties,
+            identifier,
+            readLocations,
+            storageActions,
+            resolvedStorageEntity);
     // ensure the new fileIO is closed when the catalog is closed
     closeableGroup.addCloseable(fileIO);
     return fileIO;
@@ -1836,7 +1777,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     if (catalogPath != null && !catalogPath.isEmpty() && purge) {
       boolean dropWithPurgeEnabled =
           configurationStore.getConfiguration(
-              realmId, catalogEntity, PolarisConfiguration.DROP_WITH_PURGE_ENABLED);
+              realmContext, catalogEntity, PolarisConfiguration.DROP_WITH_PURGE_ENABLED);
       if (!dropWithPurgeEnabled) {
         throw new ForbiddenException(
             String.format(
@@ -1888,7 +1829,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                     .toArray(String[]::new));
         resolvedStorageEntity = resolvedEntityView.getResolvedPath(nsLevel);
         if (resolvedStorageEntity != null) {
-          storageInfoEntity = findStorageInfoFromHierarchy(resolvedStorageEntity);
+          storageInfoEntity = FileIOUtil.findStorageInfoFromHierarchy(resolvedStorageEntity);
           break;
         }
       }
@@ -1905,7 +1846,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
       // Validate that we can construct a FileIO
       String locationDir = metadataLocation.substring(0, metadataLocation.lastIndexOf("/"));
-      refreshIOWithCredentials(
+      loadFileIOForTableLike(
           tableIdentifier,
           Set.of(locationDir),
           resolvedStorageEntity,
@@ -1960,7 +1901,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       String locationDir = newLocation.substring(0, newLocation.lastIndexOf("/"));
 
       FileIO fileIO =
-          refreshIOWithCredentials(
+          loadFileIOForTableLike(
               tableIdentifier,
               Set.of(locationDir),
               resolvedParent,
@@ -2039,8 +1980,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    * @return FileIO object
    */
   private FileIO loadFileIO(String ioImpl, Map<String, String> properties) {
-    Map<String, String> propertiesWithS3CustomizedClientFactory = new HashMap<>(properties);
-    return fileIOFactory.loadFileIO(ioImpl, propertiesWithS3CustomizedClientFactory);
+    TableLikeEntity tableLikeEntity = TableLikeEntity.of(catalogEntity);
+    TableIdentifier identifier = tableLikeEntity.getTableIdentifier();
+    Set<String> locations = Set.of(catalogEntity.getDefaultBaseLocation());
+    ResolvedPolarisEntity resolvedCatalogEntity =
+        new ResolvedPolarisEntity(catalogEntity, List.of(), List.of());
+    PolarisResolvedPathWrapper resolvedPath =
+        new PolarisResolvedPathWrapper(List.of(resolvedCatalogEntity));
+    Set<PolarisStorageActions> storageActions = Set.of(PolarisStorageActions.ALL);
+    return fileIOFactory.loadFileIO(
+        realmContext, ioImpl, properties, identifier, locations, storageActions, resolvedPath);
   }
 
   private void blockedUserSpecifiedWriteLocation(Map<String, String> properties) {
@@ -2055,7 +2004,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
   /** Helper to retrieve dynamic context-based configuration that has a boolean value. */
   private Boolean getBooleanContextConfiguration(String configKey, boolean defaultValue) {
-    return configurationStore.getConfiguration(realmId, configKey, defaultValue);
+    return configurationStore.getConfiguration(realmContext, configKey, defaultValue);
   }
 
   /**
