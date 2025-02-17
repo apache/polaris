@@ -695,7 +695,7 @@ public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCat
         TableMetadata.buildFromEmpty()
             .assignUUID()
             .setLocation(anotherTableLocation)
-            .addSchema(SCHEMA, 4)
+            .addSchema(SCHEMA)
             .addPartitionSpec(PartitionSpec.unpartitioned())
             .addSortOrder(SortOrder.unsorted())
             .build();
@@ -752,7 +752,7 @@ public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCat
         TableMetadata.buildFromEmpty()
             .assignUUID()
             .setLocation(anotherTableLocation)
-            .addSchema(SCHEMA, 4)
+            .addSchema(SCHEMA)
             .addPartitionSpec(PartitionSpec.unpartitioned())
             .addSortOrder(SortOrder.unsorted())
             .build();
@@ -829,7 +829,7 @@ public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCat
         TableMetadata.buildFromEmpty()
             .assignUUID()
             .setLocation(anotherTableLocation)
-            .addSchema(SCHEMA, 4)
+            .addSchema(SCHEMA)
             .addPartitionSpec(PartitionSpec.unpartitioned())
             .addSortOrder(SortOrder.unsorted())
             .build();
@@ -1399,7 +1399,7 @@ public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCat
   @Override
   public void testDropTableWithPurge() {
     if (this.requiresNamespaceCreate()) {
-      ((SupportsNamespaces) catalog).createNamespace(NS);
+      catalog.createNamespace(NS);
     }
 
     Assertions.assertThatPredicate(catalog::tableExists)
@@ -1495,7 +1495,7 @@ public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCat
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
 
     if (this.requiresNamespaceCreate()) {
-      ((SupportsNamespaces) noPurgeCatalog).createNamespace(NS);
+      noPurgeCatalog.createNamespace(NS);
     }
 
     Assertions.assertThatPredicate(noPurgeCatalog::tableExists)
