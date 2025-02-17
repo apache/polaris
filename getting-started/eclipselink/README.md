@@ -25,10 +25,11 @@ This example requires `jq` to be installed on your machine.
    the Postgres JDBC driver:
 
     ```shell
-    ./gradlew :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
+    ./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
        -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
        -Dquarkus.container-image.tag=postgres-latest \
-       -Dquarkus.container-image.build=true
+       -Dquarkus.container-image.build=true \
+       --no-build-cache
     ```
 
 2. Start the docker compose group by running the following command from the root of the repository:
