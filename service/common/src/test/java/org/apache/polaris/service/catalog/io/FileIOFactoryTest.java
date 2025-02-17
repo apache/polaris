@@ -123,7 +123,7 @@ public class FileIOFactoryTest {
             .fileIOFactorySupplier(fileIOFactorySupplier)
             .build();
 
-    callContext = Mockito.mock(CallContext.class);
+    callContext = CallContext.getCurrentContext();
   }
 
   @AfterEach
