@@ -18,6 +18,7 @@
 # under the License.
 #
 # Run without args to run all tests, or single arg for single test.
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 export SPARK_VERSION=spark-3.5.3
 export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3
@@ -90,7 +91,7 @@ for TEST_FILE in ${TEST_LIST}; do
   # Special-case running all client pytests
   if [ "${TEST_FILE}" == 'client/python/test' ]; then
     loginfo "Starting pytest for entire client suite"
-    python3 -m pytest ${TEST_FILE}
+    SCRIPT_DIR="$SCRIPT_DIR" python3 -m pytest ${TEST_FILE}
     CODE=$?
     if [[ $CODE -ne 0 ]]; then
       logred "Test FAILED: ${TEST_FILE}"
@@ -110,7 +111,7 @@ for TEST_FILE in ${TEST_LIST}; do
       continue
     fi
     loginfo "Starting pytest ${TEST_SUITE}:${TEST_SHORTNAME}"
-    python3 -m pytest $TEST_FILE
+    SCRIPT_DIR="$SCRIPT_DIR" python3 -m pytest $TEST_FILE
     CODE=$?
     if [[ $CODE -ne 0 ]]; then
       logred "Test FAILED: ${TEST_SUITE}:${TEST_SHORTNAME}"

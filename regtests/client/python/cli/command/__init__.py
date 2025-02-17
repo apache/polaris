@@ -124,6 +124,13 @@ class Command(ABC):
                 location=options_get(Arguments.LOCATION),
                 properties=properties
             )
+        elif options.command == Commands.PROFILES:
+            from cli.command.profiles import ProfilesCommand
+            subcommand = options_get(f'{Commands.PROFILES}_subcommand')
+            command = ProfilesCommand(
+                subcommand,
+                profile_name=options_get(Arguments.PROFILE)
+            )
 
         if command is not None:
             command.validate()

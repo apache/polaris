@@ -1609,4 +1609,13 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 .getFirst()));
     Assertions.assertThat(measured.getNumDeletedFiles()).as("A table was deleted").isGreaterThan(0);
   }
+
+  @Test
+  public void testRegisterTableWithSlashlessMetadataLocation() {
+    BasePolarisCatalog catalog = catalog();
+    Assertions.assertThatThrownBy(
+            () -> catalog.registerTable(TABLE, "metadata_location_without_slashes"))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Invalid metadata file location");
+  }
 }
