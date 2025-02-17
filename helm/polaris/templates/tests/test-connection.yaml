@@ -32,8 +32,13 @@ metadata:
     "helm.sh/hook": test
 spec:
   containers:
-    - name: wget
+    - name: check-connection
       image: busybox
-      command: ['wget']
-      args: ['{{ include "polaris.fullname" . }}:{{ index .Values.service.ports "polaris-metrics" }}/q/health']
+      command: ['sh', '-c']
+      args:
+        - |
+          for i in $(seq 1 10); do
+            wget --spider '{{ include "polaris.fullnameWithSuffix" (list . "mgmt") }}:{{ get (first .Values.managementService.ports) "port" }}/q/health/ready' && exit 0 || sleep 3;
+          done;
+          exit 1
   restartPolicy: Never

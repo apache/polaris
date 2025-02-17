@@ -29,6 +29,9 @@ regtests/client/python/poetry.lock
 /polaris-venv/
 /pyproject.toml
 
+# Polaris CLI profile
+.polaris.json
+
 # Notebook Checkpoints
 **/.ipynb_checkpoints/
 

@@ -66,7 +66,7 @@ def catalog_client(polaris_catalog_url):
   :return:
   """
   client = CatalogApiClient(
-    Configuration(access_token=os.getenv('REGTEST_ROOT_BEARER_TOKEN', 'principal:root;realm:default-realm'),
+    Configuration(access_token=os.getenv('REGTEST_ROOT_BEARER_TOKEN'),
                   host=polaris_catalog_url))
   return IcebergCatalogAPI(client)
 
@@ -143,7 +143,7 @@ def format_namespace(namespace):
 
 @pytest.fixture
 def root_client(polaris_host, polaris_url):
-  client = ApiClient(Configuration(access_token=os.getenv('REGTEST_ROOT_BEARER_TOKEN', 'principal:root;realm:default-realm'),
+  client = ApiClient(Configuration(access_token=os.getenv('REGTEST_ROOT_BEARER_TOKEN'),
                                    host=polaris_url))
   api = PolarisDefaultApi(client)
   return api

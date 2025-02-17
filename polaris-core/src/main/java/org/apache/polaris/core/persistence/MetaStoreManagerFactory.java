@@ -22,23 +22,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /** Configuration interface for configuring the {@link PolarisMetaStoreManager}. */
 public interface MetaStoreManagerFactory {
 
-  PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmId realmId);
+  PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext);
 
-  Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(RealmId realmId);
+  Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(RealmContext realmContext);
 
-  StorageCredentialCache getOrCreateStorageCredentialCache(RealmId realmId);
+  StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext);
 
-  EntityCache getOrCreateEntityCache(RealmId realmId);
+  EntityCache getOrCreateEntityCache(RealmContext realmContext);
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(
-      List<String> realms, PolarisCredentialsBootstrap credentialsBootstrap);
+      List<String> realms, RootCredentialsSet rootCredentialsSet);
 
   /** Purge all metadata for the realms provided */
   void purgeRealms(List<String> realms);

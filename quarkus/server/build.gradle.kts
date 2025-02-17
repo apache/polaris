@@ -17,6 +17,8 @@
  * under the License.
  */
 
+import io.quarkus.gradle.tasks.QuarkusRun
+
 plugins {
   alias(libs.plugins.quarkus)
   alias(libs.plugins.jandex)
@@ -40,9 +42,6 @@ dependencies {
   // enforce the Quarkus _platform_ here, to get a consistent and validated set of dependencies
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-container-image-docker")
-
-  // override dnsjava version in dependencies due to https://github.com/dnsjava/dnsjava/issues/329
-  implementation(platform(libs.dnsjava))
 }
 
 quarkus {
@@ -66,9 +65,11 @@ tasks.named("distZip") { dependsOn("quarkusBuild") }
 
 tasks.named("distTar") { dependsOn("quarkusBuild") }
 
-tasks.withType<Javadoc> { isFailOnError = false }
+tasks.register("run") { dependsOn("quarkusRun") }
 
-tasks.register("polarisServerRun") { dependsOn("quarkusRun") }
+tasks.named<QuarkusRun>("quarkusRun") {
+  jvmArgs = listOf("-Dpolaris.bootstrap.credentials=POLARIS,root,secret")
+}
 
 distributions {
   main {

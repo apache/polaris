@@ -17,14 +17,14 @@
 # under the License.
 #
 
-FROM docker.io/apache/spark:3.5.4-python3
+FROM docker.io/apache/spark:3.5.4-java17-python3
 ARG POLARIS_HOST=polaris
 ENV POLARIS_HOST=$POLARIS_HOST
 ENV SPARK_HOME=/opt/spark
 
 USER root
 RUN apt update
-RUN apt-get install -y diffutils wget curl python3.8-venv
+RUN apt-get install -y diffutils wget curl python3.10-venv
 RUN mkdir -p /home/spark &&  \
     chown -R spark /home/spark && \
     mkdir -p /tmp/polaris-regtests && \
@@ -40,10 +40,11 @@ COPY ./setup.sh /home/spark/regtests/setup.sh
 COPY ./pyspark-setup.sh /home/spark/regtests/pyspark-setup.sh
 COPY ./client/python /home/spark/regtests/client/python
 COPY ./polaris-reg-test /home/spark/polaris
+COPY ./requirements.txt /tmp/
 
 RUN python3 -m venv /home/spark/polaris-venv && \
     . /home/spark/polaris-venv/bin/activate && \
-    pip install poetry==1.5.0 && \
+    pip install -r /tmp/requirements.txt && \
     deactivate \
 RUN ./setup.sh
 

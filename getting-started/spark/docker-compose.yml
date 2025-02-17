@@ -19,9 +19,7 @@
 
 services:
   polaris:
-    build:
-      context: ../../
-      network: host
+    image: apache/polaris:latest
     ports:
       - "8181:8181"
       - "8182"
@@ -29,7 +27,9 @@ services:
       AWS_REGION: us-west-2
       AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
       AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
-
+      POLARIS_BOOTSTRAP_CREDENTIALS: default-realm,root,s3cr3t
+      polaris.realm-context.realms: default-realm
+      quarkus.otel.sdk.disabled: "true"
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/healthcheck"]
       interval: 10s

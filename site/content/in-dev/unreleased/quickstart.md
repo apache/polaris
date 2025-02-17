@@ -51,6 +51,14 @@ If you plan to deploy Polaris inside [Docker](https://www.docker.com/), you'll n
 brew install --cask docker
 ```
 
+There could be a [Docker permission issues](https://github.com/apache/polaris/pull/971) related to seccomp configuration. To resolve these issues, set the `seccomp` profile to "unconfined" when running a container.For example:
+
+```shell
+docker run --security-opt seccomp=unconfined apache/polaris:latest
+```
+
+Note: Setting the seccomp profile to "unconfined" disables the default system call filtering, which may pose security risks. Use this configuration with caution, especially in production environments.
+
 Once installed, make sure Docker is running.
 
 #### From Source
@@ -300,9 +308,9 @@ spark.sql("CREATE NAMESPACE IF NOT EXISTS quickstart_namespace")
 spark.sql("CREATE NAMESPACE IF NOT EXISTS quickstart_namespace.schema")
 spark.sql("USE NAMESPACE quickstart_namespace.schema")
 spark.sql("""
-	CREATE TABLE IF NOT EXISTS quickstart_table (
-		id BIGINT, data STRING
-	)
+CREATE TABLE IF NOT EXISTS quickstart_table (
+  id BIGINT, data STRING
+)
 USING ICEBERG
 """)
 ```
@@ -339,5 +347,5 @@ Spark will lose access to the table:
 ```
 spark.sql("SELECT * FROM quickstart_table").show(false)
 
-org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated ids '[6, 7]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION
+org.apache.iceberg.exceptions.ForbiddenException: Forbidden: Principal 'quickstart_user' with activated PrincipalRoles '[]' and activated grants via '[quickstart_catalog_role, quickstart_user_role]' is not authorized for op LOAD_TABLE_WITH_READ_DELEGATION
 ```

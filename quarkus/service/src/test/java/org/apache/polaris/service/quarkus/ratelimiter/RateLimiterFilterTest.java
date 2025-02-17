@@ -75,7 +75,9 @@ public class RateLimiterFilterTest {
           "polaris.rate-limiter.token-bucket.window",
           WINDOW.toString(),
           "polaris.metrics.tags.environment",
-          "prod");
+          "prod",
+          "polaris.realm-context.type",
+          "test");
     }
   }
 

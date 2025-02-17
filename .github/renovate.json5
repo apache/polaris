@@ -51,10 +51,17 @@
       automerge: false, // just be explicit (false is the default)
     },
 
-    // Reduce awssdk update frequency noise (awssdk has daily releases)
+    // Reduce update frequency for a few dependencies that have a quite high release frequency.
+    //   awssdk (release frequency: daily)
     {
       matchManagers: ["gradle"],
       matchPackagePrefixes: ["software.amazon.awssdk"],
+      extends: ["schedule:weekly"],
+    },
+    //   boto3 (release frequency: multiple times per week)
+    {
+      matchManagers: ["pip_requirements", "pip_setup", "poetry"],
+      matchPackagePrefixes: ["boto3"],
       extends: ["schedule:weekly"],
     },
 
@@ -71,4 +78,7 @@
   // concurrent PRs limit.
   prConcurrentLimit: 50,
   prHourlyLimit: 5,
+
+  // add renovate-polaris label to easily filter PRs/email
+  labels: ["renovate-polaris"],
 }

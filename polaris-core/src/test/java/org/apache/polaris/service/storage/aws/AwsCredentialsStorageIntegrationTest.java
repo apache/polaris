@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Set;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
@@ -61,7 +61,7 @@ class AwsCredentialsStorageIntegrationTest {
           .build();
   public static final String AWS_PARTITION = "aws";
 
-  private static final RealmId REALM_CONTEXT = RealmId.newRealmId("realm");
+  private static final RealmContext REALM_CONTEXT = () -> "realm";
 
   @Test
   public void testGetSubscopedCreds() {

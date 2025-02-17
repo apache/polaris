@@ -79,212 +79,263 @@ tests:
           content:
             app.kubernetes.io/component: polaris
 
-  # data
-  ## there is an auto newline for logFormat in the config map
-  ## auto newline of long string is reported in https://github.com/helm/helm/issues/5568 and due to https://github.com/go-yaml/yaml/issues/166
-  - it: should set config map default data
-    asserts:
-      - equal:
-          path: data
-          value:
-            polaris-server.yml: |-
-              authenticator:
-                class: org.apache.polaris.service.auth.TestInlineBearerTokenPolarisAuthenticator
-              callContextResolver:
-                type: default
-              cors:
-                allowed-credentials: true
-                allowed-headers:
-                - '*'
-                allowed-methods:
-                - PATCH
-                - POST
-                - DELETE
-                - GET
-                - PUT
-                allowed-origins:
-                - http://localhost:8080
-                allowed-timing-origins:
-                - http://localhost:8080
-                exposed-headers:
-                - '*'
-                preflight-max-age: 600
-              defaultRealms:
-              - default-realm
-              featureConfiguration:
-                ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: false
-                SUPPORTED_CATALOG_STORAGE_TYPES:
-                - S3
-                - GCS
-                - AZURE
-                - FILE
-              io:
-                factoryType: default
-              logging:
-                appenders:
-                - logFormat: '%-5p [%d{ISO8601} - %-6r] [%t] [%X{aid}%X{sid}%X{tid}%X{wid}%X{oid}%X{srv}%X{job}%X{rid}]
-                    %c{30}: %m %kvp%n%ex'
-                  threshold: ALL
-                  type: console
-                level: INFO
-                loggers:
-                  org.apache.iceberg.rest: DEBUG
-                  org.apache.polaris: DEBUG
-              maxRequestBodyBytes: -1
-              metaStoreManager:
-                type: in-memory
-              oauth2:
-                type: test
-              rateLimiter:
-                type: no-op
-              realmContextResolver:
-                type: default
-              server:
-                adminConnectors:
-                - port: 8182
-                  type: http
-                applicationConnectors:
-                - port: 8181
-                  type: http
-                maxThreads: 200
-                minThreads: 10
-                requestLog:
-                  appenders:
-                  - type: console
-  - it: should set config map data (auto sorted)
+  - it: should configure realm context
     set:
-      polarisServerConfig:
-        server:
-          maxThreads: 200
-          minThreads: 10
-          applicationConnectors:
-          - type: http
-            port: 8181
-          adminConnectors:
-          - type: http
-            port: 8182
-          requestLog:
-            appenders:
-            - type: console
-        featureConfiguration:
-          ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: false
-          SUPPORTED_CATALOG_STORAGE_TYPES:
-          - S3
-        callContextResolver:
-          type: default
-        realmContextResolver:
-          type: default
-        defaultRealms:
-        - default-realm
-        metaStoreManager:
-          type: eclipse-link
-          persistence-unit: polaris
-          conf-file: /eclipselink-config/conf.jar!/persistence.xml
-        io:
-          factoryType: default
-        oauth2:
-          type: default
-        tokenBroker:
-          type: symmetric-key
-          secret: polaris
-        authenticator:
-          class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator
-        cors:
-          allowed-origins:
-          - http://localhost:8080
-          allowed-timing-origins:
-          - http://localhost:8080
-          allowed-methods:
-          - PATCH
-          - POST
-          - DELETE
-          - GET
-          - PUT
-          allowed-headers:
-          - "*"
-          exposed-headers:
-          - "*"
-          preflight-max-age: 600
-          allowed-credentials: true
-        logging:
-          level: INFO
-          loggers:
-            org.apache.iceberg.rest: INFO
-            org.apache.polaris: INFO
-          appenders:
-          - type: console
-            threshold: ALL
-            logFormat: "%-5p [%d{ISO8601} - %-6r] [%t] [%X{aid}%X{sid}%X{tid}%X{wid}%X{oid}%X{srv}%X{job}%X{rid}] %c{30}: %m %kvp%n%ex"
-        maxRequestBodyBytes: -1
-        rateLimiter:
-          type: no-op
+      realmContext: { type: "custom", realms: [ "realm1", "realm2" ] }
     asserts:
-      - equal:
-          path: data
-          value:
-            polaris-server.yml: |-
-              authenticator:
-                class: org.apache.polaris.service.auth.DefaultPolarisAuthenticator
-              callContextResolver:
-                type: default
-              cors:
-                allowed-credentials: true
-                allowed-headers:
-                - '*'
-                allowed-methods:
-                - PATCH
-                - POST
-                - DELETE
-                - GET
-                - PUT
-                allowed-origins:
-                - http://localhost:8080
-                allowed-timing-origins:
-                - http://localhost:8080
-                exposed-headers:
-                - '*'
-                preflight-max-age: 600
-              defaultRealms:
-              - default-realm
-              featureConfiguration:
-                ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING: false
-                SUPPORTED_CATALOG_STORAGE_TYPES:
-                - S3
-              io:
-                factoryType: default
-              logging:
-                appenders:
-                - logFormat: '%-5p [%d{ISO8601} - %-6r] [%t] [%X{aid}%X{sid}%X{tid}%X{wid}%X{oid}%X{srv}%X{job}%X{rid}]
-                    %c{30}: %m %kvp%n%ex'
-                  threshold: ALL
-                  type: console
-                level: INFO
-                loggers:
-                  org.apache.iceberg.rest: INFO
-                  org.apache.polaris: INFO
-              maxRequestBodyBytes: -1
-              metaStoreManager:
-                conf-file: /eclipselink-config/conf.jar!/persistence.xml
-                persistence-unit: polaris
-                type: eclipse-link
-              oauth2:
-                type: default
-              rateLimiter:
-                type: no-op
-              realmContextResolver:
-                type: default
-              server:
-                adminConnectors:
-                - port: 8182
-                  type: http
-                applicationConnectors:
-                - port: 8181
-                  type: http
-                maxThreads: 200
-                minThreads: 10
-                requestLog:
-                  appenders:
-                  - type: console
-              tokenBroker:
-                secret: polaris
-                type: symmetric-key
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.realm-context.type=custom" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.realm-context.realms=realm1,realm2" }
+
+  - it: should configure features
+    set:
+      features:
+        defaults:
+          feature1: true
+          feature2: 42
+        realmOverrides:
+          realm1:
+            feature1: false
+          realm2:
+            feature2: 43
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.features.defaults.\"feature1\"=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.features.defaults.\"feature2\"=42" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.config.realm-overrides.\"realm1\".\"feature1\"=false" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.config.realm-overrides.\"realm2\".\"feature2\"=43" }
+
+  - it: should configure persistence
+    set:
+      persistence: { type: "eclipse-link", eclipseLink: { persistenceUnit: "polaris", secret: { name: "polaris-persistence" } } }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.type=eclipse-link" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.eclipselink.persistence-unit=polaris" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.persistence.eclipselink.configuration-file=/deployments/config/persistence.xml" }
+
+  - it: should configure file-io
+    set:
+      fileIo.type: "custom"
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.file-io.type=custom" }
+
+  - it: should configure GCP token lifespan
+    set:
+      storage: { secret: { gcpTokenLifespan: "PT2H" } }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.storage.gcp.lifespan=PT2H" }
+
+  - it: should configure authentication with RSA key pair
+    set:
+      authentication: { authenticator: { type: custom }, tokenService: { type: custom }, tokenBroker: { type: rsa-key-pair, maxTokenGeneration: PT2H, secret: { name: polaris-auth } } }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.authenticator.type=custom" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.token-service.type=custom" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.token-broker.type=rsa-key-pair" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.token-broker.max-token-generation=PT2H" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.token-broker.rsa-key-pair.public-key-file=/deployments/config/public.pem" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.token-broker.rsa-key-pair.private-key-file=/deployments/config/private.pem" }
+
+  - it: should configure authentication with symmetric key
+    set:
+      authentication: { tokenBroker: { type: symmetric-key, secret: { name: polaris-auth } } }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.authenticator.type=default" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.token-service.type=default" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.token-broker.type=symmetric-key" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.token-broker.max-token-generation=PT1H" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.authentication.token-broker.symmetric-key.file=/deployments/config/symmetric.key" }
+
+  - it: should derive HTTP ports from service configuration
+    set:
+      service: { ports: [ { port: 8080 } ] }
+      managementService: { ports: [ { port: 8081 } ] }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.port=8080" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.management.port=8081" }
+
+  - it: should configure console logging
+    set:
+      logging: { level: DEBUG, console: { enabled: true, threshold: INFO, format: custom } }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.level=DEBUG" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.enable=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.level=INFO" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.format=custom" }
+
+  - it: should configure file logging
+    set:
+      logging: { file: { enabled: true, threshold: DEBUG, format: custom, logsDir: /mnt/logs, fileName: custom.log, rotation: { maxFileSize: 50Mi, maxBackupIndex: 2, fileSuffix: .yyyy-MM-dd } } }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.enable=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.level=DEBUG" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.path=/mnt/logs/custom.log" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.rotation.max-file-size=52428800" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.rotation.max-backup-index=2" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.rotation.file-suffix=.yyyy-MM-dd" }
+
+  - it: should disable logging
+    set:
+      logging: { file: { enabled: false }, console: { enabled: false } }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.enable=false" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.enable=false" }
+
+  - it: should enable JSON logging
+    set:
+      logging: { file: { enabled: true, json: true }, console: { enabled: true, json: true } }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.enable=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.enable=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.file.json=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.console.json=true" }
+
+  - it: should include logging categories
+    set:
+      logging:
+        categories:
+          # compact style
+          org.acme: DEBUG
+          # expanded style
+          org:
+            acme:
+              service: INFO
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.category.\"org.acme\".level=DEBUG" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.log.category.\"org.acme.service\".level=INFO" }
+
+  - it: should include MDC context
+    set:
+      logging:
+        mdc:
+          # compact style
+          org.acme: foo
+          # expanded style
+          org:
+            acme:
+              service: foo
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.log.mdc.\"org.acme\"=foo" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.log.mdc.\"org.acme.service\"=foo" }
+
+  - it: should include telemetry configuration
+    set:
+      tracing: { enabled: true, endpoint: http://custom:4317, attributes: { service.name: custom, foo: bar } }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.exporter.otlp.endpoint=http://custom:4317" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.resource.attributes\\[\\d\\]=service.name=custom" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.resource.attributes\\[\\d\\]=foo=bar" }
+
+  - it: should include set sample rate numeric
+    set:
+      tracing: { enabled: true, sample: "0.123" }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.traces.sampler=parentbased_traceidratio" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.traces.sampler.arg=0.123" }
+
+  - it: should include set sample rate "all"
+    set:
+      tracing: { enabled: true, sample: "all" }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.traces.sampler=parentbased_always_on" }
+
+  - it: should include set sample rate "none"
+    set:
+      tracing: { enabled: true, sample: "none" }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.traces.sampler=always_off" }
+
+  - it: should disable tracing by default
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.sdk.disabled=true" }
+
+  - it: should disable tracing
+    set:
+      tracing: { enabled: false }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.otel.sdk.disabled=true" }
+
+  - it: should include custom metrics
+    set:
+      metrics: { enabled: true, tags: { app: custom, foo: bar } }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.metrics.tags.app=custom" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.metrics.tags.foo=bar" }
+
+  - it: should disable metrics
+    set:
+      metrics: { enabled: false }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.micrometer.enabled=false" }
+
+  - it: should include advanced configuration
+    set:
+        advancedConfig:
+          # compact style
+          quarkus.compact.custom: true
+          # expanded style
+          quarkus:
+            expanded:
+              custom: foo
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.compact.custom=true" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.expanded.custom=foo" }
+
+  - it: should not include CORS configuration by default
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors" }
+        not: true
+
+  - it: should include CORS configuration if defined
+    set:
+      cors: { allowedOrigins: [ "http://localhost:3000", "https://localhost:4000" ], allowedMethods: [ "GET", "POST" ], allowedHeaders: [ "X-Custom1", "X-Custom2" ], exposedHeaders: [ "X-Exposed-Custom1", "X-Exposed-Custom2" ], accessControlMaxAge: "PT1H", accessControlAllowCredentials: false }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.origins=http://localhost:3000,https://localhost:4000" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.methods=GET,POST" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.headers=X-Custom1,X-Custom2" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.exposed-headers=X-Exposed-Custom1,X-Exposed-Custom2" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.access-control-max-age=PT1H" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "quarkus.http.cors.access-control-allow-credentials=false" }
+
+  - it: should configure rate-limiter with default values
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.filter.type=no-op" }
+
+  - it: should configure rate-limiter no-op
+    set:
+      rateLimiter.type: no-op
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.filter.type=no-op" }
+
+  - it: should configure rate-limiter with default token bucket values
+    set:
+      rateLimiter.type: default
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.filter.type=default" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.type=default" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.requests-per-second=9999" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.window=PT10S" }
+
+  - it: should configure rate-limiter with custom token bucket values
+    set:
+      rateLimiter:
+        type: custom
+        tokenBucket:
+          type: custom
+          requestsPerSecond: 1234
+          window: PT5S
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.filter.type=custom" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.type=custom" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.requests-per-second=1234" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.rate-limiter.token-bucket.window=PT5S" }
+
+  - it: should not include tasks configuration by default
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.tasks" }
+        not: true
+
+  - it: should include tasks configuration if defined
+    set:
+      tasks: { maxConcurrentTasks: 10, maxQueuedTasks: 20 }
+    asserts:
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.tasks.max-concurrent-tasks=10" }
+      - matchRegex: { path: 'data["application.properties"]', pattern: "polaris.tasks.max-queued-tasks=20" }

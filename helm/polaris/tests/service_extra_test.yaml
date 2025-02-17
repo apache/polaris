@@ -1,0 +1,349 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+chart:
+  version: 1.2.3
+  appVersion: 4.5.6
+
+release:
+  name: polaris-release
+  namespace: polaris-ns
+
+templates:
+  - service-extra.yaml
+
+tests:
+
+  - it: should not create extra service by default
+    asserts:
+      - containsDocument:
+          kind: Service
+          apiVersion: v1
+        not: true
+
+  - it: should fail to create extra service if suffix is not set
+    set:
+      extraServices:
+        - nameSuffix: ""
+    asserts:
+      - failedTemplate:
+          errorMessage: "extraServices[0]: missing required nameSuffix"
+
+  - it: should fail to create extra service if suffix is invalid
+    set:
+      extraServices:
+        - nameSuffix: "mgmt"
+    asserts:
+      - failedTemplate:
+          errorMessage: "extraServices[0]: invalid nameSuffix"
+  - it: should fail to create extra service if suffix is invalid (#2)
+    set:
+      extraServices:
+        - nameSuffix: "-mgmt"
+    asserts:
+      - failedTemplate:
+          errorMessage: "extraServices[0]: invalid nameSuffix"
+
+  # metadata.name
+  - it: should set service name
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-release-extra
+  - it: should set service name with override
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+      nameOverride: polaris-override
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-release-polaris-override-extra
+  - it: should set service name with full override
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+      fullnameOverride: polaris-override
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-override-extra
+
+  # metadata.namespace
+  - it: should set service namespace
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: polaris-ns
+
+  # metadata.labels
+  - it: should set service default labels
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+    asserts:
+      - isSubset:
+          path: metadata.labels
+          content:
+            app.kubernetes.io/name: polaris
+            app.kubernetes.io/instance: polaris-release
+            app.kubernetes.io/version: 4.5.6
+            app.kubernetes.io/managed-by: Helm
+            helm.sh/chart: polaris-1.2.3
+
+  # metadata.annotations
+  - it: should not set service annotations by default
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+    asserts:
+      - notExists:
+          path: metadata.annotations
+  - it: should set service annotations
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+          annotations:
+            foo: bar
+    asserts:
+      - isSubset:
+          path: metadata.annotations
+          content:
+            foo: bar
+
+  # spec.type
+  - it: should set service default type
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+          type: ClusterIP
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+  - it: should set service type
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+          type: NodePort
+    asserts:
+      - equal:
+          path: spec.type
+          value: NodePort
+
+  # spec.selector
+  - it: should set service default selector
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+    asserts:
+      - isSubset:
+          path: spec.selector
+          content:
+            app.kubernetes.io/name: polaris
+            app.kubernetes.io/instance: polaris-release
+
+  # spec.ports
+  - it: should set service ports
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+          ports:
+            - port: 18181
+              targetPort: 18181
+              name: polaris-http
+            - port: 28181
+              targetPort: 28181
+              name: polaris-http2
+              nodePort: 28181
+              protocol: UDP
+    asserts:
+      - equal:
+          path: spec.ports
+          value:
+            - port: 18181
+              targetPort: 18181
+              protocol: TCP
+              name: polaris-http
+            - port: 28181
+              targetPort: 28181
+              name: polaris-http2
+              nodePort: 28181
+              protocol: UDP
+
+  # spec.sessionAffinity
+  - it: should not set service session affinity by default
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+    asserts:
+      - notExists:
+          path: spec.sessionAffinity
+  - it: should set service session affinity
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+          sessionAffinity: ClientIP
+    asserts:
+      - equal:
+          path: spec.sessionAffinity
+          value: ClientIP
+
+  # spec.clusterIP
+  - it: should not set service cluster IP by default
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+    asserts:
+      - notExists:
+          path: spec.clusterIP
+  - it: should set service cluster IP
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+          clusterIP: 1.2.3.4
+    asserts:
+      - equal:
+          path: spec.clusterIP
+          value: 1.2.3.4
+
+  # spec.externalTrafficPolicy
+  - it: should not set service external traffic policy by default
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+    asserts:
+      - notExists:
+          path: spec.externalTrafficPolicy
+  - it: should set service external traffic policy if LoadBalancer
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+          externalTrafficPolicy: Local
+          type: LoadBalancer
+    asserts:
+      - equal:
+          path: spec.externalTrafficPolicy
+          value: Local
+  - it: should set service external traffic policy if NodePort
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+          externalTrafficPolicy: Local
+          type: NodePort
+    asserts:
+      - equal:
+          path: spec.externalTrafficPolicy
+          value: Local
+  - it: should set service external traffic policy if ClusterIP
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+          externalTrafficPolicy: Local
+          type: ClusterIP
+    asserts:
+      - notExists:
+          path: spec.externalTrafficPolicy
+
+  # spec.internalTrafficPolicy
+  - it: should not set service internal traffic policy by default
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+    asserts:
+      - notExists:
+          path: spec.internalTrafficPolicy
+  - it: should set service internal traffic policy
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+          internalTrafficPolicy: Local
+    asserts:
+      - equal:
+          path: spec.internalTrafficPolicy
+          value: Local
+
+  # spec.trafficDistribution
+  - it: should not set service traffic distribution by default
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+    asserts:
+      - notExists:
+          path: spec.trafficDistribution
+  - it: should set service traffic distribution if Kubernetes version >= 1.31
+    capabilities:
+      majorVersion: 1
+      minorVersion: 31
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+          trafficDistribution: Local
+    asserts:
+      - equal:
+          path: spec.trafficDistribution
+          value: Local
+  - it: should not set service traffic distribution if Kubernetes version < 1.31
+    capabilities:
+      majorVersion: 1
+      minorVersion: 30
+    set:
+      extraServices:
+        - nameSuffix: "extra"
+          trafficDistribution: Local
+    asserts:
+      - notExists:
+          path: spec.trafficDistribution
+
+  - it: should define many extra services
+    set:
+      extraServices:
+        - nameSuffix: "extra1"
+          annotations:
+            foo: bar
+        - nameSuffix: "extra2"
+          annotations:
+            bar: baz
+    asserts:
+      - hasDocuments:
+          count: 2
+      - equal:
+          path: metadata.name
+          value: polaris-release-extra1
+        documentIndex: 0
+      - equal:
+          path: metadata.name
+          value: polaris-release-extra2
+        documentIndex: 1
+      - equal:
+          path: metadata.annotations
+          value:
+              foo: bar
+        documentIndex: 0
+      - equal:
+          path: metadata.annotations
+          value:
+              bar: baz
+        documentIndex: 1

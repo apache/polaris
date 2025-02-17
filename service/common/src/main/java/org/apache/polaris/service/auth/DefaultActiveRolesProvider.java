@@ -28,7 +28,7 @@ import org.apache.iceberg.exceptions.NotAuthorizedException;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisGrantManager;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
 public class DefaultActiveRolesProvider implements ActiveRolesProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultActiveRolesProvider.class);
 
-  @Inject RealmId realmId;
+  @Inject RealmContext realmContext;
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   @Inject PolarisDiagnostics diagnostics;
 
@@ -57,8 +57,8 @@ public class DefaultActiveRolesProvider implements ActiveRolesProvider {
         loadActivePrincipalRoles(
             principal.getActivatedPrincipalRoleNames(),
             principal.getPrincipalEntity(),
-            metaStoreManagerFactory.getOrCreateMetaStoreManager(realmId),
-            metaStoreManagerFactory.getOrCreateSessionSupplier(realmId).get());
+            metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext),
+            metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get());
     return activeRoles.stream().map(PrincipalRoleEntity::getName).collect(Collectors.toSet());
   }
 

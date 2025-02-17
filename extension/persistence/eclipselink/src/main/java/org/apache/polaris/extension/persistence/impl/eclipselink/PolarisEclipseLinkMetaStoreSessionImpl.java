@@ -38,7 +38,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmId;
+import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
@@ -88,21 +88,22 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
    *
    * @param store Backing store of EclipseLink implementation
    * @param storageIntegrationProvider Storage integration provider
-   * @param realmId Realm context used to communicate with different database.
+   * @param realmContext Realm context used to communicate with different database.
    * @param confFile Optional EclipseLink configuration file. Default to 'META-INF/persistence.xml'.
    * @param persistenceUnitName Optional persistence-unit name in confFile. Default to 'polaris'.
    */
   public PolarisEclipseLinkMetaStoreSessionImpl(
       @Nonnull PolarisEclipseLinkStore store,
       @Nonnull PolarisStorageIntegrationProvider storageIntegrationProvider,
-      @Nonnull RealmId realmId,
+      @Nonnull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName,
       @Nonnull PrincipalSecretsGenerator secretsGenerator,
       @Nonnull PolarisDiagnostics diagnostics) {
     this.diagnostics = diagnostics;
-    LOGGER.debug("Creating EclipseLink Meta Store Session for realm {}", realmId.id());
-    emf = createEntityManagerFactory(realmId, confFile, persistenceUnitName);
+    LOGGER.debug(
+        "Creating EclipseLink Meta Store Session for realm {}", realmContext.getRealmIdentifier());
+    emf = createEntityManagerFactory(realmContext, confFile, persistenceUnitName);
 
     // init store
     this.store = store;
@@ -120,8 +121,10 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
    * realm.
    */
   private EntityManagerFactory createEntityManagerFactory(
-      @Nonnull RealmId realmId, @Nullable String confFile, @Nullable String persistenceUnitName) {
-    String realm = realmId.id();
+      @Nonnull RealmContext realmContext,
+      @Nullable String confFile,
+      @Nullable String persistenceUnitName) {
+    String realm = realmContext.getRealmIdentifier();
     return realmFactories.computeIfAbsent(
         realm,
         key -> {
@@ -129,7 +132,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
             PolarisEclipseLinkPersistenceUnit persistenceUnit =
                 PolarisEclipseLinkPersistenceUnit.locatePersistenceUnit(
                     confFile, persistenceUnitName);
-            return persistenceUnit.createEntityManagerFactory(realmId);
+            return persistenceUnit.createEntityManagerFactory(realmContext);
           } catch (IOException e) {
             throw new UncheckedIOException(e);
           }

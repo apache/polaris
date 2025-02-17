@@ -18,55 +18,43 @@
  */
 package org.apache.polaris.service.quarkus.logging;
 
-import io.quarkus.vertx.web.RouteFilter;
-import io.vertx.ext.web.RoutingContext;
+import static org.apache.polaris.service.context.RealmContextFilter.REALM_CONTEXT_KEY;
+
+import jakarta.annotation.Priority;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import org.apache.polaris.core.context.RealmId;
+import jakarta.ws.rs.container.ContainerRequestContext;
+import jakarta.ws.rs.container.ContainerRequestFilter;
+import jakarta.ws.rs.container.PreMatching;
+import jakarta.ws.rs.ext.Provider;
+import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.quarkus.config.QuarkusFilterPriorities;
 import org.slf4j.MDC;
 
+@PreMatching
 @ApplicationScoped
-public class QuarkusLoggingMDCFilter {
+@Priority(QuarkusFilterPriorities.MDC_FILTER)
+@Provider
+public class QuarkusLoggingMDCFilter implements ContainerRequestFilter {
 
-  public static final int PRIORITY = RouteFilter.DEFAULT_PRIORITY + 100;
-
-  private static final String REQUEST_ID_KEY = "requestId";
-  private static final String REALM_ID_KEY = "realmId";
-
-  @Inject RealmId realmId;
+  public static final String REALM_ID_KEY = "realmId";
+  public static final String REQUEST_ID_KEY = "requestId";
 
   @Inject QuarkusLoggingConfiguration loggingConfiguration;
 
-  public static String requestId(RoutingContext rc) {
-    return rc.get(REQUEST_ID_KEY);
-  }
-
-  public static String realmId(RoutingContext rc) {
-    return rc.get(REALM_ID_KEY);
-  }
-
-  @RouteFilter(value = PRIORITY)
-  public void applyMDCContext(RoutingContext rc) {
+  @Override
+  public void filter(ContainerRequestContext rc) {
     // The request scope is active here, so any MDC values set here will be propagated to
     // threads handling the request.
     // Also put the MDC values in the request context for use by other filters and handlers
     loggingConfiguration.mdc().forEach(MDC::put);
-    loggingConfiguration.mdc().forEach(rc::put);
-    var requestId = rc.request().getHeader(loggingConfiguration.requestIdHeaderName());
+    loggingConfiguration.mdc().forEach(rc::setProperty);
+    var requestId = rc.getHeaderString(loggingConfiguration.requestIdHeaderName());
     if (requestId != null) {
       MDC.put(REQUEST_ID_KEY, requestId);
-      rc.put(REQUEST_ID_KEY, requestId);
+      rc.setProperty(REQUEST_ID_KEY, requestId);
     }
-    MDC.put(REALM_ID_KEY, realmId.id());
-    rc.put(REALM_ID_KEY, realmId.id());
-    // Do not explicitly remove the MDC values from the request context with an end handler,
-    // as this could remove MDC context still in use in TaskExecutor threads
-    //    rc.addEndHandler(
-    //        (v) -> {
-    //          MDC.remove(REQUEST_ID_MDC_KEY);
-    //          MDC.remove(REALM_ID_MDC_KEY);
-    //          loggingConfiguration.mdc().keySet().forEach(MDC::remove);
-    //        });
-    rc.next();
+    RealmContext realmContext = (RealmContext) rc.getProperty(REALM_CONTEXT_KEY);
+    MDC.put(REALM_ID_KEY, realmContext.getRealmIdentifier());
   }
 }
