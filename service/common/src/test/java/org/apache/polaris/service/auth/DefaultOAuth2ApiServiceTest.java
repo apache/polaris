@@ -24,7 +24,9 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.nio.charset.Charset;
 import java.util.Base64;
+
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.types.TokenType;
@@ -42,6 +44,7 @@ class DefaultOAuth2ApiServiceTest {
   @BeforeEach
   void setUp() {
     callContext = Mockito.mock(CallContext.class);
+    when(callContext.getPolarisCallContext()).thenReturn(Mockito.mock(PolarisCallContext.class));
   }
 
   @Test

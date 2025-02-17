@@ -99,35 +99,18 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
         return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
       }
     }
-    TokenResponse tokenResponse =
-        switch (subjectTokenType) {
-          case TokenType.ID_TOKEN,
-                  TokenType.REFRESH_TOKEN,
-                  TokenType.JWT,
-                  TokenType.SAML1,
-                  TokenType.SAML2 ->
-              new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
-          case TokenType.ACCESS_TOKEN -> {
-            // token exchange with client id and client secret means the client has previously
-            // attempted to refresh
-            // an access token, but refreshing was not supported by the token broker. Accept the
-            // client id and
-            // secret and treat it as a new token request
-            if (clientId != null && clientSecret != null) {
-              yield tokenBroker.generateFromClientSecrets(
-                  clientId,
-                  clientSecret,
-                  CLIENT_CREDENTIALS,
-                  scope,
-                  callContext.getPolarisCallContext());
-            } else {
-              yield tokenBroker.generateFromToken(subjectTokenType, subjectToken, grantType, scope);
-            }
-          }
-          case null ->
-              tokenBroker.generateFromClientSecrets(
-                  clientId, clientSecret, grantType, scope, callContext.getPolarisCallContext());
-        };
+    TokenResponse tokenResponse;
+    if (clientSecret != null) {
+      tokenResponse =
+          tokenBroker.generateFromClientSecrets(
+              clientId, clientSecret, grantType, scope, callContext.getPolarisCallContext(), requestedTokenType);
+    } else if (subjectToken != null) {
+      tokenResponse =
+          tokenBroker.generateFromToken(
+              subjectTokenType, subjectToken, grantType, scope, requestedTokenType);
+    } else {
+      return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.invalid_request);
+    }
     if (tokenResponse == null) {
       return OAuthUtils.getResponseFromError(OAuthTokenErrorResponse.Error.unsupported_grant_type);
     }
