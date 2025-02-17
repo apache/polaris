@@ -141,7 +141,6 @@ tests:
           - port: 28181
             targetPort: 28181
             name: polaris-http2
-            nodePort: 28181
             protocol: UDP
     asserts:
       - equal:
@@ -154,7 +153,6 @@ tests:
             - port: 28181
               targetPort: 28181
               name: polaris-http2
-              nodePort: 28181
               protocol: UDP
   # node port
   - it: should set nodeport only when service type is NodePort
@@ -217,8 +215,7 @@ tests:
               protocol: TCP
               name: polaris-http
               nodePort: 30081
-  - it:
-      should not set node port if service type is NodePort and nodePort is empty
+  - it: should not set node port if service type is NodePort and nodePort is empty
     set:
       service:
         type: NodePort
