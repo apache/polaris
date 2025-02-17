@@ -21,7 +21,6 @@ package org.apache.polaris.service.quarkus.config;
 import io.quarkus.runtime.StartupEvent;
 import io.smallrye.common.annotation.Identifier;
 import io.smallrye.context.SmallRyeManagedExecutor;
-import jakarta.annotation.Nonnull;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.event.Observes;
@@ -237,10 +236,7 @@ public class QuarkusProducers {
       PolarisMetaStoreManager polarisMetaStoreManager,
       StorageCredentialCache credentialCache,
       EntityCache entityCache) {
-    return new PolarisEntityManager(
-        polarisMetaStoreManager,
-        credentialCache,
-        entityCache);
+    return new PolarisEntityManager(polarisMetaStoreManager, credentialCache, entityCache);
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
