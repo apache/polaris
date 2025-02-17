@@ -118,13 +118,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private static URI externalCatalogBase;
 
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
-  private static String principalRoleName;
   private static ClientCredentials adminCredentials;
-  private static PrincipalWithCredentials principalCredentials;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
-  private static CatalogApi catalogApi;
+  private PrincipalWithCredentials principalCredentials;
+  private CatalogApi catalogApi;
 
   private RESTCatalog restCatalog;
   private String currentCatalogName;
@@ -159,10 +158,6 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     managementApi = client.managementApi(credentials);
-    String principalName = client.newEntityName("snowman-rest");
-    principalRoleName = client.newEntityName("rest-admin");
-    principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
-    catalogApi = client.catalogApi(principalCredentials);
     URI testRootUri = IntegrationTestsHelper.getTemporaryDirectory(tempDir);
     s3BucketBase = testRootUri.resolve("my-bucket");
     externalCatalogBase = testRootUri.resolve("external-catalog");
@@ -176,9 +171,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @BeforeEach
   public void before(TestInfo testInfo) {
     String principalName = "snowman-rest-" + UUID.randomUUID();
-    principalRoleName = "rest-admin-" + UUID.randomUUID();
-    PrincipalWithCredentials principalCredentials =
-        managementApi.createPrincipalWithRole(principalName, principalRoleName);
+    String principalRoleName = "rest-admin-" + UUID.randomUUID();
+    principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
 
     catalogApi = client.catalogApi(principalCredentials);
 
@@ -235,13 +229,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
           }
         });
 
-    restCatalog =
-        IcebergHelper.restCatalog(
-            client,
-            endpoints,
-            principalCredentials,
-            currentCatalogName,
-            extraPropertiesBuilder.build());
+    restCatalog = initCatalog(currentCatalogName, extraPropertiesBuilder.build());
   }
 
   @AfterEach
@@ -252,6 +240,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @Override
   protected RESTCatalog catalog() {
     return restCatalog;
+  }
+
+  @Override
+  protected RESTCatalog initCatalog(String catalogName, Map<String, String> additionalProperties) {
+    return IcebergHelper.restCatalog(
+        client, endpoints, principalCredentials, catalogName, additionalProperties);
   }
 
   @Override
