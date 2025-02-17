@@ -22,11 +22,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.ws.rs.core.Response;
-
 import java.time.Clock;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -48,21 +46,24 @@ public class ManagementServiceTest {
   @BeforeEach
   public void setup() {
     // Used to build a `CallContext` which then gets fed into the real `TestServices`
-    TestServices fakeServices = TestServices.builder()
-        .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
-        .build();
-    PolarisCallContext polarisCallContext = new PolarisCallContext(
-        fakeServices
-            .metaStoreManagerFactory()
-            .getOrCreateSessionSupplier(fakeServices.realmContext())
-            .get(),
-        fakeServices.polarisDiagnostics(),
-        fakeServices.configurationStore(),
-        Mockito.mock(Clock.class));
+    TestServices fakeServices =
+        TestServices.builder()
+            .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
+            .build();
+    PolarisCallContext polarisCallContext =
+        new PolarisCallContext(
+            fakeServices
+                .metaStoreManagerFactory()
+                .getOrCreateSessionSupplier(fakeServices.realmContext())
+                .get(),
+            fakeServices.polarisDiagnostics(),
+            fakeServices.configurationStore(),
+            Mockito.mock(Clock.class));
     CallContext.setCurrentContext(CallContext.of(fakeServices.realmContext(), polarisCallContext));
-    services = TestServices.builder()
-        .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
-        .build();
+    services =
+        TestServices.builder()
+            .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
+            .build();
   }
 
   @Test

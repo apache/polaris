@@ -24,7 +24,6 @@ import io.quarkus.test.junit.QuarkusTest;
 import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import java.io.IOException;
-import java.time.Clock;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,8 +39,6 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
@@ -94,10 +91,7 @@ class TableCleanupTaskHandlerTest {
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
-            callContext,
-            Mockito.mock(),
-            metaStoreManagerFactory,
-            buildTaskFileIOSupplier(fileIO));
+            callContext, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
     long snapshotId = 100L;
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(
@@ -178,10 +172,7 @@ class TableCleanupTaskHandlerTest {
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
-            callContext,
-            Mockito.mock(),
-            metaStoreManagerFactory,
-            buildTaskFileIOSupplier(fileIO));
+            callContext, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
     long snapshotId = 100L;
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(
@@ -207,8 +198,7 @@ class TableCleanupTaskHandlerTest {
 
     // handle the same task twice
     // the first one should successfully delete the metadata
-    List<Boolean> results =
-        List.of(handler.handleTask(task), handler.handleTask(task));
+    List<Boolean> results = List.of(handler.handleTask(task), handler.handleTask(task));
     assertThat(results).containsExactly(true, true);
 
     // both tasks successfully executed, but only one should queue subtasks
@@ -242,10 +232,7 @@ class TableCleanupTaskHandlerTest {
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
-            callContext,
-            Mockito.mock(),
-            metaStoreManagerFactory,
-            buildTaskFileIOSupplier(fileIO));
+            callContext, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
     long snapshotId = 100L;
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(
@@ -270,8 +257,7 @@ class TableCleanupTaskHandlerTest {
 
     // handle the same task twice
     // the first one should successfully delete the metadata
-    List<Boolean> results =
-        List.of(handler.handleTask(task), handler.handleTask(task));
+    List<Boolean> results = List.of(handler.handleTask(task), handler.handleTask(task));
     assertThat(results).containsExactly(true, true);
 
     // both tasks successfully executed, but only one should queue subtasks
@@ -320,10 +306,7 @@ class TableCleanupTaskHandlerTest {
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
-            callContext,
-            Mockito.mock(),
-            metaStoreManagerFactory,
-            buildTaskFileIOSupplier(fileIO));
+            callContext, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
     long snapshotId1 = 100L;
     ManifestFile manifestFile1 =
         TaskTestUtils.manifestFile(
@@ -462,10 +445,7 @@ class TableCleanupTaskHandlerTest {
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
-            callContext,
-            Mockito.mock(),
-            metaStoreManagerFactory,
-            buildTaskFileIOSupplier(fileIO));
+            callContext, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
     long snapshotId1 = 100L;
     ManifestFile manifestFile1 =
         TaskTestUtils.manifestFile(
