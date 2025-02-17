@@ -19,7 +19,7 @@
 
 [versions]
 hadoop = "3.4.1"
-iceberg = "1.7.1"
+iceberg = "1.8.1"
 quarkus = "3.19.4"
 immutables = "2.10.1"
 picocli = "4.7.6"
