@@ -29,6 +29,9 @@ keywords = ["Polaris", "Polaris Management Service"]
 include = ["polaris.management/py.typed"]
 package-mode = true
 
+[[tool.poetry.packages]]
+include = "."
+
 [tool.poetry.dependencies]
 python = "^3.8"
 
