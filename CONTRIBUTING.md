@@ -40,7 +40,6 @@ When filing an [issue](https://github.com/apache/polaris/issues), make sure to a
 
 Troubleshooting questions should be posted on: 
 * [Slack](https://join.slack.com/t/apache-polaris/shared_invite/zt-2y3l3r0fr-VtoW42ltir~nSzCYOrQgfw)
-* [Zulip](https://polaris-catalog.zulipchat.com/)
 * [dev mailing list](mailto:dev@polaris.apache.org) (you can [subscribe](mailto:dev-subscribe@polaris.apache.org)) instead of the issue tracker. 
 
 Maintainers and community members will answer your questions there or ask you to file an issue if you’ve encountered a bug.

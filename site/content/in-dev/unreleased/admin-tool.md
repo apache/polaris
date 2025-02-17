@@ -22,16 +22,22 @@ type: docs
 weight: 300
 ---
 
-Polaris includes a tool for administrators to manage the metastore. You can download it or build it using this command: 
+Polaris includes a tool for administrators to manage the metastore.
+
+The tool must be built with the necessary JDBC drivers to access the metastore database. For
+example, to build the tool with support for Postgres, run the following:
+
 ```shell
-./gradlew :polaris-quarkus-admin:build -Dquarkus.container-image.build=true
+./gradlew clean :polaris-quarkus-admin:build \
+  -Dquarkus.container-image.build=true \
+  -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
 ```
 
 The above command will generate:
 
 - One standalone JAR in `quarkus/admin/build/polaris-quarkus-admin-*-runner.jar`
 - Two distribution archives in `quarkus/admin/build/distributions`
-- Two Docker image named `apache/polaris-admin-tool:latest` and `apache/polaris-admin-tool:<version>`
+- Two Docker images named `apache/polaris-admin-tool:latest` and `apache/polaris-admin-tool:<version>`
 
 ## Usage
 
@@ -70,9 +76,10 @@ At a minimum, it is necessary to configure the Polaris Admin Tool to connect to 
 used by the Polaris server. This can be done by setting the following system properties:
 
 ```shell
-java -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar \
-    -Dpolaris.persistence.eclipselink.configuration-file=/path/to/persistence.xml
-    -Dpolaris.persistence.eclipselink.persistence-unit=polaris
+java \
+    -Dpolaris.persistence.eclipselink.configuration-file=/path/to/persistence.xml \
+    -Dpolaris.persistence.eclipselink.persistence-unit=polaris \
+    -jar quarkus/admin/build/polaris-quarkus-admin-*-runner.jar
 ```
 
 See the [metastore documentation]({{% ref "metastores" %}}) for more information on configuring the

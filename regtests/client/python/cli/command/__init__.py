@@ -54,6 +54,7 @@ class Command(ABC):
                 role_arn=options_get(Arguments.ROLE_ARN),
                 external_id=options_get(Arguments.EXTERNAL_ID),
                 user_arn=options_get(Arguments.USER_ARN),
+                region=options_get(Arguments.REGION),
                 tenant_id=options_get(Arguments.TENANT_ID),
                 multi_tenant_app_name=options_get(Arguments.MULTI_TENANT_APP_NAME),
                 consent_url=options_get(Arguments.CONSENT_URL),
@@ -122,6 +123,13 @@ class Command(ABC):
                 parent=options_get(Arguments.PARENT, lambda s: s.split('.') if s else None),
                 location=options_get(Arguments.LOCATION),
                 properties=properties
+            )
+        elif options.command == Commands.PROFILES:
+            from cli.command.profiles import ProfilesCommand
+            subcommand = options_get(f'{Commands.PROFILES}_subcommand')
+            command = ProfilesCommand(
+                subcommand,
+                profile_name=options_get(Arguments.PROFILE)
             )
 
         if command is not None:

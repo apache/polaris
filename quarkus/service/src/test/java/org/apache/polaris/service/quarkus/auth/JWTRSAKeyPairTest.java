@@ -41,6 +41,7 @@ import org.apache.polaris.service.auth.PemUtils;
 import org.apache.polaris.service.auth.TokenBroker;
 import org.apache.polaris.service.auth.TokenRequestValidator;
 import org.apache.polaris.service.auth.TokenResponse;
+import org.apache.polaris.service.types.TokenType;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -76,7 +77,11 @@ public class JWTRSAKeyPairTest {
         new JWTRSAKeyPair(metastoreManager, session, 420, publicFileLocation, privateFileLocation);
     TokenResponse token =
         tokenBroker.generateFromClientSecrets(
-            clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, scope);
+            clientId,
+            mainSecret,
+            TokenRequestValidator.CLIENT_CREDENTIALS,
+            scope,
+            TokenType.ACCESS_TOKEN);
     assertThat(token).isNotNull();
     assertThat(token.getExpiresIn()).isEqualTo(420);
 

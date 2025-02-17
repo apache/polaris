@@ -22,7 +22,9 @@ import os
 import sys
 from json import JSONDecodeError
 
-from cli.constants import Arguments, CLIENT_ID_ENV, CLIENT_SECRET_ENV, DEFAULT_HOSTNAME, DEFAULT_PORT
+from typing import Dict
+
+from cli.constants import Arguments, Commands, CLIENT_ID_ENV, CLIENT_SECRET_ENV, CLIENT_PROFILE_ENV, DEFAULT_HOSTNAME, DEFAULT_PORT, CONFIG_FILE
 from cli.options.option_tree import Argument
 from cli.options.parser import Parser
 from polaris.management import ApiClient, Configuration
@@ -47,16 +49,21 @@ class PolarisCli:
     @staticmethod
     def execute(args=None):
         options = Parser.parse(args)
-        client_builder = PolarisCli._get_client_builder(options)
-        with client_builder() as api_client:
-            try:
-                from cli.command import Command
-                admin_api = PolarisDefaultApi(api_client)
-                command = Command.from_options(options)
-                command.execute(admin_api)
-            except Exception as e:
-                PolarisCli._try_print_exception(e)
-                sys.exit(1)
+        if options.command == Commands.PROFILES:
+            from cli.command import Command
+            command = Command.from_options(options)
+            command.execute()
+        else:
+            client_builder = PolarisCli._get_client_builder(options)
+            with client_builder() as api_client:
+                try:
+                    from cli.command import Command
+                    admin_api = PolarisDefaultApi(api_client)
+                    command = Command.from_options(options)
+                    command.execute(admin_api)
+                except Exception as e:
+                    PolarisCli._try_print_exception(e)
+                    sys.exit(1)
 
     @staticmethod
     def _try_print_exception(e):
@@ -70,6 +77,13 @@ class PolarisCli:
         except Exception as _:
             sys.stderr.write(f'Exception when communicating with the Polaris server.'
                              f' {e}{os.linesep}')
+
+    @staticmethod
+    def _load_profiles() -> Dict[str, Dict[str, str]]:
+        if not os.path.exists(CONFIG_FILE):
+            return {}
+        with open(CONFIG_FILE, "r") as f:
+            return json.load(f)
 
     @staticmethod
     def _get_token(api_client: ApiClient, catalog_url, client_id, client_secret) -> str:
@@ -90,9 +104,16 @@ class PolarisCli:
 
     @staticmethod
     def _get_client_builder(options):
+        profile = {}
+        client_profile = options.profile or os.getenv(CLIENT_PROFILE_ENV)
+        if client_profile:
+            profiles = PolarisCli._load_profiles()
+            profile = profiles.get(client_profile)
+            if not profile:
+                raise Exception(f'Polaris profile {client_profile} not found')
         # Determine which credentials to use
-        client_id = options.client_id or os.getenv(CLIENT_ID_ENV)
-        client_secret = options.client_secret or os.getenv(CLIENT_SECRET_ENV)
+        client_id = options.client_id or os.getenv(CLIENT_ID_ENV) or profile.get('client_id')
+        client_secret = options.client_secret or os.getenv(CLIENT_SECRET_ENV) or profile.get('client_secret')
         
         # Validates
         has_access_token = options.access_token is not None
@@ -117,8 +138,8 @@ class PolarisCli:
             polaris_management_url = f'{options.base_url}/api/management/v1'
             polaris_catalog_url = f'{options.base_url}/api/catalog/v1'
         else:
-            host = options.host or DEFAULT_HOSTNAME
-            port = options.port or DEFAULT_PORT
+            host = options.host or profile.get('host') or DEFAULT_HOSTNAME
+            port = options.port or profile.get('port') or DEFAULT_PORT
             polaris_management_url = f'http://{host}:{port}/api/management/v1'
             polaris_catalog_url = f'http://{host}:{port}/api/catalog/v1'
 
