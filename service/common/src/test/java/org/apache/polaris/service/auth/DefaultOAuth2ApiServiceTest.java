@@ -24,7 +24,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.nio.charset.Charset;
 import java.util.Base64;
-
 import org.apache.iceberg.rest.responses.OAuthTokenResponse;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;

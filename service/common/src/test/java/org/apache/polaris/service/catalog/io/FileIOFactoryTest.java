@@ -54,7 +54,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -126,27 +125,30 @@ public class FileIOFactoryTest {
             .fileIOFactorySupplier(fileIOFactorySupplier)
             .build();
 
-    callContext = new CallContext() {
-      @Override
-      public RealmContext getRealmContext() {
-        return testServices.realmContext();
-      }
+    callContext =
+        new CallContext() {
+          @Override
+          public RealmContext getRealmContext() {
+            return testServices.realmContext();
+          }
 
-      @Override
-      public PolarisCallContext getPolarisCallContext() {
-        return new PolarisCallContext(
-            testServices.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
-            testServices.polarisDiagnostics(),
-            testServices.configurationStore(),
-            Mockito.mock(Clock.class)
-        );
-      }
+          @Override
+          public PolarisCallContext getPolarisCallContext() {
+            return new PolarisCallContext(
+                testServices
+                    .metaStoreManagerFactory()
+                    .getOrCreateSessionSupplier(realmContext)
+                    .get(),
+                testServices.polarisDiagnostics(),
+                testServices.configurationStore(),
+                Mockito.mock(Clock.class));
+          }
 
-      @Override
-      public Map<String, Object> contextVariables() {
-        return Map.of();
-      }
-    };
+          @Override
+          public Map<String, Object> contextVariables() {
+            return Map.of();
+          }
+        };
   }
 
   @AfterEach

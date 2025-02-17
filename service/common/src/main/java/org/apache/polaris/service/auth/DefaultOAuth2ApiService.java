@@ -19,7 +19,6 @@
 package org.apache.polaris.service.auth;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.apache.polaris.service.auth.TokenRequestValidator.CLIENT_CREDENTIALS;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
@@ -103,7 +102,12 @@ public class DefaultOAuth2ApiService implements IcebergRestOAuth2ApiService {
     if (clientSecret != null) {
       tokenResponse =
           tokenBroker.generateFromClientSecrets(
-              clientId, clientSecret, grantType, scope, callContext.getPolarisCallContext(), requestedTokenType);
+              clientId,
+              clientSecret,
+              grantType,
+              scope,
+              callContext.getPolarisCallContext(),
+              requestedTokenType);
     } else if (subjectToken != null) {
       tokenResponse =
           tokenBroker.generateFromToken(
