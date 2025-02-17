@@ -184,11 +184,13 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   private PrincipalSecretsResult bootstrapServiceAndCreatePolarisPrincipalForRealm(
       RealmContext realmContext, PolarisMetaStoreManager metaStoreManager) {
     // While bootstrapping we need to act as a fake privileged context since the real
-    // CallContext hasn't even been resolved yet.
+    // CallContext may not have been resolved yet.
     PolarisCallContext polarisContext =
         new PolarisCallContext(
             sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(), diagServices);
-    CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
+    if (CallContext.getCurrentContext() == null) {
+      CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
+    }
 
     PolarisMetaStoreManager.EntityResult preliminaryRootPrincipalLookup =
         metaStoreManager.readEntityByName(
@@ -244,7 +246,9 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     PolarisCallContext polarisContext =
         new PolarisCallContext(
             sessionSupplierMap.get(realmContext.getRealmIdentifier()).get(), diagServices);
-    CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
+    if (CallContext.getCurrentContext() == null) {
+      CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
+    }
 
     PolarisMetaStoreManager.EntityResult rootPrincipalLookup =
         metaStoreManager.readEntityByName(

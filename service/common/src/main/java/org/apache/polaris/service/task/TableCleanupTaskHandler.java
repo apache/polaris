@@ -80,10 +80,9 @@ public class TableCleanupTaskHandler implements TaskHandler {
   public boolean handleTask(TaskEntity cleanupTask) {
     PolarisBaseEntity entity = cleanupTask.readData(PolarisBaseEntity.class);
     PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(
-            CallContext.getCurrentContext().getRealmContext());
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext());
     TableLikeEntity tableEntity = TableLikeEntity.of(entity);
-    PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
     LOGGER
         .atInfo()
         .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())

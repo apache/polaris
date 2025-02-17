@@ -28,6 +28,7 @@ import io.quarkus.test.junit.QuarkusTestProfile;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.context.RequestScoped;
 import jakarta.enterprise.inject.Alternative;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
@@ -171,13 +172,13 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected CallContextCatalogFactory callContextCatalogFactory;
   @Inject protected PolarisDiagnostics diagServices;
   @Inject protected Clock clock;
+  @Inject protected FileIOFactory fileIOFactory;
 
   protected BasePolarisCatalog baseCatalog;
   protected PolarisAdminService adminService;
   protected PolarisEntityManager entityManager;
   protected PolarisMetaStoreManager metaStoreManager;
   protected PolarisMetaStoreSession metaStoreSession;
-  protected FileIOFactory fileIOFactory;
   protected PolarisBaseEntity catalogEntity;
   protected PrincipalEntity principalEntity;
   protected CallContext callContext;
@@ -442,7 +443,7 @@ public abstract class PolarisAuthzTestBase {
   }
 
   @Alternative
-  @ApplicationScoped
+  @RequestScoped
   public static class TestPolarisCallContextCatalogFactory
       extends PolarisCallContextCatalogFactory {
 
