@@ -39,6 +39,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
@@ -65,11 +66,10 @@ import org.slf4j.LoggerFactory;
 @QuarkusTest
 class TableCleanupTaskHandlerTest {
   @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-  @Inject PolarisConfigurationStore configurationStore;
-  @Inject PolarisDiagnostics diagnostics;
-  @Inject CallContext callContext;
+  @Inject PolarisCallContext polarisCallContext;
 
   private final RealmContext realmContext = () -> "realmName";
+  private final CallContext callContext = CallContext.of(realmContext, polarisCallContext);
 
   private TaskFileIOSupplier buildTaskFileIOSupplier(FileIO fileIO) {
     return new TaskFileIOSupplier(
@@ -90,8 +90,6 @@ class TableCleanupTaskHandlerTest {
 
   @Test
   public void testTableCleanup() throws IOException {
-    PolarisMetaStoreSession metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
