@@ -34,7 +34,7 @@ public class PostgresNamespaceDao implements NamespaceDao {
 
   @Override
   public void update(NamespaceEntity namespace, List<PolarisEntityCore> catalogPath) {
-    // execute("INSERT INTO %s (catalog_name, namespace, property, value) VALUES (?, ?, ?, ?)");
+    // execute("update %s set ? = ?  where id = ?");
   }
 
   @Override
