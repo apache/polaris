@@ -388,7 +388,7 @@ options:
 ##### Examples
 
 ```
-polaris --profile dev principals access quickstart_user
+polaris principals access quickstart_user
 ```
 
 ### Principal Roles
