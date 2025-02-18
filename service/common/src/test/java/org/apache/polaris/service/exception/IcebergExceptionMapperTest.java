@@ -34,7 +34,6 @@ import jakarta.ws.rs.core.Response;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Stream;
-
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -105,14 +104,17 @@ public class IcebergExceptionMapperTest {
     mapper.toResponse(exception);
 
     Assertions.assertThat(
-                    listAppender.list.stream()
-                            .anyMatch(
-                                    log ->
-                                            log.getMessage().contains("Full runtimeException")
-                                                    && log.getLevel() == Level.DEBUG
-                                                    && Optional.ofNullable(log.getThrowableProxy()).map(proxy -> proxy.getCause().getMessage()).orElse("").contains(cause)))
-            .as("The exception cause should be logged")
-            .isTrue();
+            listAppender.list.stream()
+                .anyMatch(
+                    log ->
+                        log.getMessage().contains("Full runtimeException")
+                            && log.getLevel() == Level.DEBUG
+                            && Optional.ofNullable(log.getThrowableProxy())
+                                .map(proxy -> proxy.getCause().getMessage())
+                                .orElse("")
+                                .contains(cause)))
+        .as("The exception cause should be logged")
+        .isTrue();
   }
 
   /**
