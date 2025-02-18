@@ -81,6 +81,7 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
@@ -786,15 +787,44 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
         && notificationCatalog.sendNotification(identifier, request);
   }
 
-  public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.TABLE, tableIdentifier);
+  private boolean etagMatchesCurrentMetadataLocation(String etag, TableIdentifier tableIdentifier) {
+    if (etag != null) {
+      PolarisResolvedPathWrapper target = resolutionManifest
+              .getResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE, true);
 
-    return CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
+      String currentEntityMetadataVersion = target
+              .getRawLeafEntity()
+              .getInternalPropertiesAsMap()
+              .get(TableLikeEntity.METADATA_LOCATION_KEY);
+
+      if (etag.equals(currentEntityMetadataVersion)) {
+        return true;
+      }
+    }
+    return false;
   }
 
-  public LoadTableResponse loadTableWithAccessDelegation(
-      TableIdentifier tableIdentifier, String snapshots) {
+  public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
+    return loadTableFreshnessAware(tableIdentifier, null, snapshots).get();
+  }
+
+  public Optional<LoadTableResponse> loadTableFreshnessAware(TableIdentifier tableIdentifier, String etag, String snapshots) {
+      PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
+      authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.TABLE, tableIdentifier);
+
+      if (etagMatchesCurrentMetadataLocation(etag, tableIdentifier)) {
+        return Optional.empty();
+      }
+
+      return Optional.of(CatalogHandlers.loadTable(baseCatalog, tableIdentifier));
+  }
+
+  public LoadTableResponse loadTableWithAccessDelegation(TableIdentifier tableIdentifier, String snapshots) {
+    return loadTableWithAccessDelegationFreshnessAware(tableIdentifier, null, snapshots).get();
+  }
+
+  public Optional<LoadTableResponse> loadTableWithAccessDelegationFreshnessAware(
+      TableIdentifier tableIdentifier, String etag, String snapshots) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -832,6 +862,10 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
           PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
 
+    if (etagMatchesCurrentMetadataLocation(etag, tableIdentifier)) {
+      return Optional.empty();
+    }
+
     // TODO: Find a way for the configuration or caller to better express whether to fail or omit
     // when data-access is specified but access delegation grants are not found.
     Table table = baseCatalog.loadTable(tableIdentifier);
@@ -850,7 +884,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
             credentialDelegation.getCredentialConfig(
                 tableIdentifier, tableMetadata, actionsRequested));
       }
-      return responseBuilder.build();
+      return Optional.of(responseBuilder.build());
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
