@@ -61,10 +61,8 @@ class BootstrapCommandTest {
       value = {
         "bootstrap",
         "-c",
-        "["
-            + "{\"realm\":\"realm1\",\"principal\":\"root\",\"clientId\":\"root\",\"clientSecret\":\"s3cr3t\"},"
-            + "{\"realm\":\"realm2\",\"principal\":\"root\",\"clientId\":\"root2\",\"clientSecret\":\"s3cr3t2\"}"
-            + "]"
+        "{\"realm1\":{\"principal\":\"root\",\"client-id\":\"root\",\"client-secret\":\"s3cr3t\"}," +
+        "\"realm2\":{\"principal\":\"root\",\"client-id\":\"root2\",\"client-secret\":\"s3cr3t2\"}}"
       })
   public void testBootstrapFromCommandLineArguments(LaunchResult result) {
     assertThat(result.getOutput())
@@ -141,12 +139,40 @@ class BootstrapCommandTest {
       value = {
         "bootstrap",
         "-c",
-        "[{\"realm\":\"realm1\",\"principal\":\"root\",\"clientId\":\"root\",\"clientSecret\":\"s3cr3t\"}]",
+        "{\"realm1\":{\"principal\":\"root\",\"client-id\":\"root\",\"client-secret\":\"s3cr3t\"}}",
         "--print-credentials"
       })
   public void testPrintCredentials(LaunchResult result) {
     assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
     assertThat(result.getOutput()).contains("root:");
+  }
+
+  @Test
+  @Launch(
+      value = {
+          "bootstrap",
+          "-c",
+          "{\"realm1\":{\"principal\":\"root\",\"client-id\":\"root\",\"client-secret\":\"s3cr3t\"," +
+          "\"foo\":\"bar\"}}",
+          "--print-credentials"
+      })
+  public void testExtraFieldJson(LaunchResult result) {
+    assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
+    assertThat(result.getOutput()).contains("root:");
+  }
+
+  @Test
+  @Launch(
+      value = {
+          "bootstrap",
+          "-c",
+          "{\"realm1\":{\"principal\":\"not-root\",\"client-id\":\"root\",\"client-secret\":\"s3cr3t\"}}",
+          "--print-credentials"
+      },
+      exitCode = EXIT_CODE_BOOTSTRAP_ERROR)
+  public void testIllegalPrincipalName(LaunchResult result) {
+    assertThat(result.getErrorOutput()).contains("Invalid principal not-root");
+    assertThat(result.getErrorOutput()).contains("Expected root");
   }
 
   @Test

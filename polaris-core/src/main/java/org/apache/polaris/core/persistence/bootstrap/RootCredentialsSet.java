@@ -78,40 +78,60 @@ public interface RootCredentialsSet {
   }
 
   /**
-   * Parse a JSON array of credentials. Example: """ [ {"realm": "a", "principal": "root",
-   * "clientId": "abc123", "clientSecret": "xyz987"}, {"realm": "b", "principal": "boot",
-   * "clientId": "boot-id", "clientSecret": "boot-secret"}, ] """
+   * Parse a JSON object of credentials. Example:
+   * {
+   *   "realm1": {
+   *     "client-id": "client1",
+   *     "client-secret": "secret1"
+   *   },
+   *   "realm2": {
+   *     "client-id": "client2",
+   *     "client-secret": "secret2",
+   *     "extra-field": "extra-value"
+   *   }
+   * }
    */
   static RootCredentialsSet fromJson(String json) {
     ObjectMapper objectMapper = new ObjectMapper();
-    List<Map<String, String>> credentialsList = new ArrayList<>();
+    Map<String, Map<String, String>> credentialsMap;
     try {
-      credentialsList = objectMapper.readValue(json, new TypeReference<>() {});
+      credentialsMap = objectMapper.readValue(json, new TypeReference<>() {});
     } catch (Exception e) {
       throw new IllegalArgumentException("Could not parse credentials JSON: " + json, e);
     }
+
     Map<String, RootCredentials> credentials = new HashMap<>();
-    for (Map<String, String> entry : credentialsList) {
-      String realm = entry.get("realm");
-      String principal = entry.get("principal");
-      String clientId = entry.get("clientId");
-      String clientSecret = entry.get("clientSecret");
-      if (realm == null || principal == null || clientId == null || clientSecret == null) {
-        throw new IllegalArgumentException("Failed to find credentials in: " + json);
-      } else if (!principal.equals(PolarisEntityConstants.ROOT_PRINCIPAL_NAME)) {
+    for (Map.Entry<String, Map<String, String>> entry : credentialsMap.entrySet()) {
+      String realm = entry.getKey();
+      Map<String, String> values = entry.getValue();
+
+      String principal = values.get("principal");
+      String clientId = values.get("client-id");
+      String clientSecret = values.get("client-secret");
+
+      if (clientId == null) {
+        throw new IllegalArgumentException("Missing required field for realm " + realm + ": client-id");
+      }
+      if (clientSecret == null) {
+        throw new IllegalArgumentException("Missing required field for realm " + realm + ": client-secret");
+      }
+      if (principal != null && !principal.equals(PolarisEntityConstants.ROOT_PRINCIPAL_NAME)) {
         throw new IllegalArgumentException(
             String.format(
-                "Invalid principal %s. Expected %s.",
-                principal, PolarisEntityConstants.ROOT_PRINCIPAL_NAME));
+              "Invalid principal %s. Expected %s.",
+              principal, PolarisEntityConstants.ROOT_PRINCIPAL_NAME));
       }
+
       if (credentials.containsKey(realm)) {
         throw new IllegalArgumentException("Duplicate realm: " + realm);
       } else {
         credentials.put(realm, ImmutableRootCredentials.of(clientId, clientSecret));
       }
     }
+
     return credentials.isEmpty() ? EMPTY : ImmutableRootCredentialsSet.of(credentials);
   }
+
 
   /**
    * Parse a list of credentials; each element should be in the format: {@code
