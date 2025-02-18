@@ -29,7 +29,6 @@ templates:
   - service.yaml
 
 tests:
-
   # metadata.name
   - it: should set service name
     asserts:
@@ -142,7 +141,6 @@ tests:
           - port: 28181
             targetPort: 28181
             name: polaris-http2
-            nodePort: 28181
             protocol: UDP
     asserts:
       - equal:
@@ -155,8 +153,89 @@ tests:
             - port: 28181
               targetPort: 28181
               name: polaris-http2
-              nodePort: 28181
               protocol: UDP
+  # node port
+  - it: should set nodeport only when service type is NodePort
+    set:
+      service:
+        type: NodePort
+        ports:
+          - port: 18181
+            targetPort: 18181
+            nodePort: 30081
+            name: polaris-http
+    asserts:
+      - equal:
+         path: spec.type
+         value: NodePort
+      - equal:
+          path: spec.ports
+          value:
+            - port: 18181
+              targetPort: 18181
+              protocol: TCP
+              name: polaris-http
+              nodePort: 30081
+  - it: should not set nodeport type is NodePort and nodePort value is empty
+    set:
+      service:
+        type: NodePort
+        ports:
+          - port: 18181
+            targetPort: 18181
+            name: polaris-http
+    asserts:
+      - equal:
+          path: spec.type
+          value: NodePort
+      - equal:
+          path: spec.ports
+          value:
+            - port: 18181
+              targetPort: 18181
+              protocol: TCP
+              name: polaris-http
+
+  - it: should set node port only if service type is NodePort
+    set:
+      service:
+        type: NodePort
+        ports:
+          - port: 18181
+            targetPort: 18181
+            nodePort: 30081
+            name: polaris-http
+    asserts:
+      - equal:
+          path: spec.type
+          value: NodePort
+      - equal:
+          path: spec.ports
+          value:
+            - port: 18181
+              targetPort: 18181
+              protocol: TCP
+              name: polaris-http
+              nodePort: 30081
+  - it: should not set node port if service type is NodePort and nodePort is empty
+    set:
+      service:
+        type: NodePort
+        ports:
+          - port: 18181
+            targetPort: 18181
+            name: polaris-http
+    asserts:
+      - equal:
+          path: spec.type
+          value: NodePort
+      - equal:
+          path: spec.ports
+          value:
+            - port: 18181
+              targetPort: 18181
+              protocol: TCP
+              name: polaris-http
 
   # spec.sessionAffinity
   - it: should not set service session affinity by default
@@ -183,7 +262,6 @@ tests:
       - equal:
           path: spec.clusterIP
           value: 1.2.3.4
-
 
   # spec.externalTrafficPolicy
   - it: should not set service external traffic policy by default
