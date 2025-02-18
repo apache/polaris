@@ -73,8 +73,18 @@ public final class Serializers {
         throws IOException, JacksonException {
       TreeNode treeNode = p.readValueAsTree();
       if (treeNode.isObject() && ((ObjectNode) treeNode).has("catalog")) {
+        ObjectNode catalogTreeNode = (ObjectNode) treeNode;
+        JsonNode catalogNode = catalogTreeNode.get("catalog");
+        if (catalogNode.has("storageConfigInfo")) {
+          ObjectNode storageConfigNode = (ObjectNode) catalogNode.get("storageConfigInfo");
+          if (storageConfigNode.has("storageType")) {
+            String storageType = storageConfigNode.get("storageType").asText();
+            //ensure the storage type is always serialized as upper case text
+            storageConfigNode.put("storageType", storageType.toUpperCase());
+          }
+        }
         return CreateCatalogRequest.builder()
-            .setCatalog(ctxt.readTreeAsValue((JsonNode) treeNode.get("catalog"), Catalog.class))
+            .setCatalog(ctxt.readTreeAsValue(catalogNode, Catalog.class))
             .build();
       } else {
         return CreateCatalogRequest.builder()
