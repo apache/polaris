@@ -30,7 +30,6 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import com.google.common.base.Splitter;
 import jakarta.annotation.Nullable;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,18 +77,9 @@ public interface RootCredentialsSet {
   }
 
   /**
-   * Parse a JSON object of credentials. Example:
-   * {
-   *   "realm1": {
-   *     "client-id": "client1",
-   *     "client-secret": "secret1"
-   *   },
-   *   "realm2": {
-   *     "client-id": "client2",
-   *     "client-secret": "secret2",
-   *     "extra-field": "extra-value"
-   *   }
-   * }
+   * Parse a JSON object of credentials. Example: { "realm1": { "client-id": "client1",
+   * "client-secret": "secret1" }, "realm2": { "client-id": "client2", "client-secret": "secret2",
+   * "extra-field": "extra-value" } }
    */
   static RootCredentialsSet fromJson(String json) {
     ObjectMapper objectMapper = new ObjectMapper();
@@ -110,16 +100,18 @@ public interface RootCredentialsSet {
       String clientSecret = values.get("client-secret");
 
       if (clientId == null) {
-        throw new IllegalArgumentException("Missing required field for realm " + realm + ": client-id");
+        throw new IllegalArgumentException(
+            "Missing required field for realm " + realm + ": client-id");
       }
       if (clientSecret == null) {
-        throw new IllegalArgumentException("Missing required field for realm " + realm + ": client-secret");
+        throw new IllegalArgumentException(
+            "Missing required field for realm " + realm + ": client-secret");
       }
       if (principal != null && !principal.equals(PolarisEntityConstants.ROOT_PRINCIPAL_NAME)) {
         throw new IllegalArgumentException(
             String.format(
-              "Invalid principal %s. Expected %s.",
-              principal, PolarisEntityConstants.ROOT_PRINCIPAL_NAME));
+                "Invalid principal %s. Expected %s.",
+                principal, PolarisEntityConstants.ROOT_PRINCIPAL_NAME));
       }
 
       if (credentials.containsKey(realm)) {
@@ -131,7 +123,6 @@ public interface RootCredentialsSet {
 
     return credentials.isEmpty() ? EMPTY : ImmutableRootCredentialsSet.of(credentials);
   }
-
 
   /**
    * Parse a list of credentials; each element should be in the format: {@code

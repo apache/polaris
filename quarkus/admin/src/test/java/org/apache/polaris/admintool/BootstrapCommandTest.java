@@ -61,8 +61,8 @@ class BootstrapCommandTest {
       value = {
         "bootstrap",
         "-c",
-        "{\"realm1\":{\"principal\":\"root\",\"client-id\":\"root\",\"client-secret\":\"s3cr3t\"}," +
-        "\"realm2\":{\"principal\":\"root\",\"client-id\":\"root2\",\"client-secret\":\"s3cr3t2\"}}"
+        "{\"realm1\":{\"principal\":\"root\",\"client-id\":\"root\",\"client-secret\":\"s3cr3t\"},"
+            + "\"realm2\":{\"principal\":\"root\",\"client-id\":\"root2\",\"client-secret\":\"s3cr3t2\"}}"
       })
   public void testBootstrapFromCommandLineArguments(LaunchResult result) {
     assertThat(result.getOutput())
@@ -150,11 +150,11 @@ class BootstrapCommandTest {
   @Test
   @Launch(
       value = {
-          "bootstrap",
-          "-c",
-          "{\"realm1\":{\"principal\":\"root\",\"client-id\":\"root\",\"client-secret\":\"s3cr3t\"," +
-          "\"foo\":\"bar\"}}",
-          "--print-credentials"
+        "bootstrap",
+        "-c",
+        "{\"realm1\":{\"principal\":\"root\",\"client-id\":\"root\",\"client-secret\":\"s3cr3t\","
+            + "\"foo\":\"bar\"}}",
+        "--print-credentials"
       })
   public void testExtraFieldJson(LaunchResult result) {
     assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
@@ -164,10 +164,10 @@ class BootstrapCommandTest {
   @Test
   @Launch(
       value = {
-          "bootstrap",
-          "-c",
-          "{\"realm1\":{\"principal\":\"not-root\",\"client-id\":\"root\",\"client-secret\":\"s3cr3t\"}}",
-          "--print-credentials"
+        "bootstrap",
+        "-c",
+        "{\"realm1\":{\"principal\":\"not-root\",\"client-id\":\"root\",\"client-secret\":\"s3cr3t\"}}",
+        "--print-credentials"
       },
       exitCode = EXIT_CODE_BOOTSTRAP_ERROR)
   public void testIllegalPrincipalName(LaunchResult result) {
