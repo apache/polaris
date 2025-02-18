@@ -166,8 +166,6 @@ polaris catalogs create \
   --default-base-location file:///example/tmp \
   quickstart_catalog
 
-Note: file:///example/tmp refers to the local /example/tmp directory. Please replace this directory with your local storage path.
-
 ```
 
 #### delete
