@@ -62,9 +62,6 @@ root:
 helm unittest helm/polaris
 ```
 
-Note: the `grep` command is used to filter out the annoying warning messages about symbolic links;
-see https://github.com/helm/helm/issues/7019.
-
 ### Running locally with a Kind cluster
 
 The below instructions assume Kind and Helm are installed.
