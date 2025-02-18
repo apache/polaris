@@ -165,8 +165,9 @@ tests:
             nodePort: 30081
             name: polaris-http
     asserts:
-      - equal: spec.type
-        value: NodePort
+      - equal:
+         path: spec.type
+         value: NodePort
       - equal:
           path: spec.ports
           value:
@@ -184,8 +185,9 @@ tests:
             targetPort: 18181
             name: polaris-http
     asserts:
-      - equal: spec.type
-        value: NodePort
+      - equal:
+          path: spec.type
+          value: NodePort
       - equal:
           path: spec.ports
           value:
