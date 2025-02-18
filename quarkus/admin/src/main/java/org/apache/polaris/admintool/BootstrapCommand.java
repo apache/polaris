@@ -28,8 +28,9 @@ import picocli.CommandLine;
 @CommandLine.Command(
     name = "bootstrap",
     mixinStandardHelpOptions = true,
-    description = "Bootstraps realms and root principal credentials. If --credentials is not provided, root " +
-        "credentials will be randomly generated.")
+    description =
+        "Bootstraps realms and root principal credentials. If --credentials is not provided, root "
+            + "credentials will be randomly generated.")
 public class BootstrapCommand extends BaseCommand {
 
   @CommandLine.ArgGroup(multiplicity = "1")
@@ -44,26 +45,26 @@ public class BootstrapCommand extends BaseCommand {
     FileInputOptions fileOptions;
 
     static class StandardInputOptions {
-        @CommandLine.Option(
-            names = {"-c", "--credentials"},
-            description = "Principal credentials to bootstrap. If provided, must be a valid JSON array e.g. " +
-                "[{\"realm\": \"my-realm\", \"principal\": \"root\", \"clientId\": \"polaris\", \"clientSecret\": \"p4ssw0rd\"}]")
-        String credentials;
+      @CommandLine.Option(
+          names = {"-c", "--credentials"},
+          description =
+              "Principal credentials to bootstrap. If provided, must be a valid JSON array e.g. "
+                  + "[{\"realm\": \"my-realm\", \"principal\": \"root\", \"clientId\": \"polaris\", \"clientSecret\": \"p4ssw0rd\"}]")
+      String credentials;
 
-        @CommandLine.Option(
-            names = {"-p", "--print-credentials"},
-            description =
-                "Print root credentials to stdout")
-        boolean printCredentials;
+      @CommandLine.Option(
+          names = {"-p", "--print-credentials"},
+          description = "Print root credentials to stdout")
+      boolean printCredentials;
     }
 
-      static class FileInputOptions {
-          @CommandLine.Option(
-              names = {"-f", "--credentials-file"},
-              paramLabel = "<file>",
-              description = "A file containing root principal credentials to bootstrap.")
-          Path file;
-      }
+    static class FileInputOptions {
+      @CommandLine.Option(
+          names = {"-f", "--credentials-file"},
+          paramLabel = "<file>",
+          description = "A file containing root principal credentials to bootstrap.")
+      Path file;
+    }
   }
 
   @Override
@@ -75,14 +76,17 @@ public class BootstrapCommand extends BaseCommand {
       if (inputOptions.fileOptions != null) {
         rootCredentialsSet =
             RootCredentialsSet.fromUrl(inputOptions.fileOptions.file.toUri().toURL());
-        realms = rootCredentialsSet.credentials().keySet().stream().toList();
       } else {
-          if (inputOptions.stdinOptions.credentials == null || inputOptions.stdinOptions.credentials.isEmpty()) {
-              if (!inputOptions.stdinOptions.printCredentials) {
-                  spec.commandLine().getErr().println("Specify either `--credentials` or `--print-credentials` to ensure" +
-                      " the root user is accessible after bootstrapping.");
-              }
+        if (inputOptions.stdinOptions.credentials == null
+            || inputOptions.stdinOptions.credentials.isEmpty()) {
+          if (!inputOptions.stdinOptions.printCredentials) {
+            spec.commandLine()
+                .getErr()
+                .println(
+                    "Specify either `--credentials` or `--print-credentials` to ensure"
+                        + " the root user is accessible after bootstrapping.");
           }
+        }
 
         rootCredentialsSet =
             inputOptions.stdinOptions.credentials == null
@@ -101,6 +105,15 @@ public class BootstrapCommand extends BaseCommand {
         if (result.getValue().isSuccess()) {
           String realm = result.getKey();
           spec.commandLine().getOut().printf("Realm '%s' successfully bootstrapped.%n", realm);
+          if (inputOptions.stdinOptions != null && inputOptions.stdinOptions.printCredentials) {
+            String msg =
+                String.format(
+                    "realm: %1s root principal credentials: %2s:%3s",
+                    result.getKey(),
+                    result.getValue().getPrincipalSecrets().getPrincipalClientId(),
+                    result.getValue().getPrincipalSecrets().getMainSecret());
+            spec.commandLine().getOut().println(msg);
+          }
         } else {
           String realm = result.getKey();
           spec.commandLine()
@@ -113,19 +126,6 @@ public class BootstrapCommand extends BaseCommand {
       }
 
       if (success) {
-          if (inputOptions.stdinOptions.printCredentials) {
-              for (Map.Entry<String, PrincipalSecretsResult> entry : results.entrySet()) {
-                  String msg =
-                      String.format(
-                          "realm: %1s root principal credentials: %2s:%3s",
-                          entry.getKey(),
-                          entry.getValue().getPrincipalSecrets().getPrincipalClientId(),
-                          entry.getValue().getPrincipalSecrets().getMainSecret());
-                  spec.commandLine().getOut().println(msg);
-                  spec.commandLine().getOut().flush();
-              }
-          }
-
         spec.commandLine().getOut().println("Bootstrap completed successfully.");
         return 0;
       } else {

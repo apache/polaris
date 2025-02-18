@@ -61,7 +61,10 @@ class BootstrapCommandTest {
       value = {
         "bootstrap",
         "-c",
-        "[{\"realm\":\"realm1\",\"principal\":\"root\",\"clientId\":\"root\",\"clientSecret\":\"s3cr3t\"}]"
+        "["
+            + "{\"realm\":\"realm1\",\"principal\":\"root\",\"clientId\":\"root\",\"clientSecret\":\"s3cr3t\"},"
+            + "{\"realm\":\"realm2\",\"principal\":\"root\",\"clientId\":\"root2\",\"clientSecret\":\"s3cr3t2\"}"
+            + "]"
       })
   public void testBootstrapFromCommandLineArguments(LaunchResult result) {
     assertThat(result.getOutput())
@@ -74,27 +77,25 @@ class BootstrapCommandTest {
   @Launch(
       value = {
         "bootstrap",
-        "-r",
-        "realm1",
         "-c",
         "invalid syntax",
       },
       exitCode = EXIT_CODE_BOOTSTRAP_ERROR)
   public void testBootstrapInvalidCredentials(LaunchResult result) {
     assertThat(result.getErrorOutput())
-        .contains("Invalid credentials format: invalid syntax")
+        .contains("Could not parse credentials JSON: invalid syntax")
         .contains("Bootstrap encountered errors during operation.");
   }
 
   @Test
   @Launch(
-      value = {"bootstrap", "-r", "realm1", "-f", "/irrelevant"},
+      value = {"bootstrap", "-c", "{}", "-f", "/irrelevant"},
       exitCode = EXIT_CODE_USAGE)
   public void testBootstrapInvalidArguments(LaunchResult result) {
     assertThat(result.getErrorOutput())
         .contains(
-            "Error: (-r=<realm> [-r=<realm>]... [-c=<realm,clientId,clientSecret>]...) "
-                + "and -f=<file> are mutually exclusive (specify only one)");
+            "Error: ([-c=<credentials>] [-p]) and -f=<file> "
+                + "are mutually exclusive (specify only one)");
   }
 
   @Test
@@ -138,10 +139,10 @@ class BootstrapCommandTest {
   @Test
   @Launch(
       value = {
-          "bootstrap",
-          "-c",
-          "[{\"realm\":\"realm1\",\"principal\":\"root\",\"clientId\":\"root\",\"clientSecret\":\"s3cr3t\"}]",
-          "--print-credentials"
+        "bootstrap",
+        "-c",
+        "[{\"realm\":\"realm1\",\"principal\":\"root\",\"clientId\":\"root\",\"clientSecret\":\"s3cr3t\"}]",
+        "--print-credentials"
       })
   public void testPrintCredentials(LaunchResult result) {
     assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
@@ -151,12 +152,13 @@ class BootstrapCommandTest {
   @Test
   @Launch(
       value = {
-          "bootstrap",
-          "--print-credentials"
-      })
-  public void testPrintGeneratedCredentials(LaunchResult result) {
-    assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
-    assertThat(result.getOutput()).doesNotContain("root:");
-    assertThat(result.getOutput()).contains("root principal");
+        "bootstrap",
+        "--not-real-arg",
+      },
+      exitCode = EXIT_CODE_USAGE)
+  public void testBootstrapInvalidArg(LaunchResult result) {
+    assertThat(result.getErrorOutput())
+        .contains("Unknown option: '--not-real-arg'")
+        .contains("Usage:");
   }
 }
