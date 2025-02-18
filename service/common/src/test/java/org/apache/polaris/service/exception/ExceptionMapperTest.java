@@ -36,6 +36,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.LoggerFactory;
 
 public class ExceptionMapperTest {
+  private static final String MESSAGE = "this is the exception message";
   private static final String CAUSE = "this is the exception cause";
 
   @ParameterizedTest
@@ -77,13 +78,13 @@ public class ExceptionMapperTest {
     return Stream.of(
         Arguments.of(
             new IcebergExceptionMapper(),
-            new RuntimeException("message", new RuntimeException(CAUSE))),
+            new RuntimeException(MESSAGE, new RuntimeException(CAUSE))),
         Arguments.of(
             new IcebergJsonProcessingExceptionMapper(),
-            new TestJsonProcessingException("message", null, new RuntimeException(CAUSE))),
+            new TestJsonProcessingException(MESSAGE, null, new RuntimeException(CAUSE))),
         Arguments.of(
             new PolarisExceptionMapper(),
-            new AlreadyExistsException("message", new RuntimeException(CAUSE))));
+            new AlreadyExistsException(MESSAGE, new RuntimeException(CAUSE))));
   }
 
   private static class TestJsonProcessingException extends JsonProcessingException {
