@@ -82,7 +82,7 @@ testing {
       dependencies {
         implementation(project())
         implementation(testFixtures(project()))
-        runtimeOnly(
+        implementation(
           libs.findLibrary("logback-classic").orElseThrow {
             GradleException("logback-classic not declared in libs.versions.toml")
           }
