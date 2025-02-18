@@ -39,9 +39,10 @@ public interface MetaStoreManagerFactory {
 
   EntityCache getOrCreateEntityCache(RealmContext realmContext);
 
-  default Map<String, PrincipalSecretsResult> bootstrapRealms(RootCredentialsSet rootCredentialsSet) {
+  default Map<String, PrincipalSecretsResult> bootstrapRealms(
+      RootCredentialsSet rootCredentialsSet) {
     ArrayList<String> realms = new ArrayList<>();
-    for (var entry: rootCredentialsSet.credentials().entrySet()) {
+    for (var entry : rootCredentialsSet.credentials().entrySet()) {
       realms.add(entry.getKey());
     }
     return bootstrapRealms(realms, rootCredentialsSet);
