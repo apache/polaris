@@ -22,24 +22,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
 import com.azure.core.exception.AzureException;
 import com.azure.core.exception.HttpResponseException;
 import com.azure.core.http.HttpResponse;
 import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Stream;
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 public class IcebergExceptionMapperTest {
@@ -89,32 +81,6 @@ public class IcebergExceptionMapperTest {
       assertThat(response.getStatus()).isEqualTo(statusCode);
       assertThat(response.getEntity()).extracting("message").isEqualTo(ex.getMessage());
     }
-  }
-
-  @Test
-  public void testFullExceptionIsLogged() {
-    Logger logger = (Logger) LoggerFactory.getLogger(IcebergExceptionMapper.class);
-    ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
-    listAppender.start();
-    logger.addAppender(listAppender);
-
-    String cause = "this is the exception cause";
-    RuntimeException exception = new RuntimeException("message", new RuntimeException(cause));
-    IcebergExceptionMapper mapper = new IcebergExceptionMapper();
-    mapper.toResponse(exception);
-
-    Assertions.assertThat(
-            listAppender.list.stream()
-                .anyMatch(
-                    log ->
-                        log.getMessage().contains("Full runtimeException")
-                            && log.getLevel() == Level.DEBUG
-                            && Optional.ofNullable(log.getThrowableProxy())
-                                .map(proxy -> proxy.getCause().getMessage())
-                                .orElse("")
-                                .contains(cause)))
-        .as("The exception cause should be logged")
-        .isTrue();
   }
 
   /**

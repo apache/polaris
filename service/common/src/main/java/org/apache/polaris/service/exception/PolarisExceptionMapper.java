@@ -26,6 +26,8 @@ import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.exceptions.PolarisException;
 import org.apache.polaris.service.context.UnresolvableRealmContextException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * An {@link ExceptionMapper} implementation for {@link PolarisException}s modeled after {@link
@@ -33,6 +35,8 @@ import org.apache.polaris.service.context.UnresolvableRealmContextException;
  */
 @Provider
 public class PolarisExceptionMapper implements ExceptionMapper<PolarisException> {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisExceptionMapper.class);
 
   private Response.Status getStatus(PolarisException exception) {
     if (exception instanceof AlreadyExistsException) {
@@ -46,6 +50,8 @@ public class PolarisExceptionMapper implements ExceptionMapper<PolarisException>
 
   @Override
   public Response toResponse(PolarisException exception) {
+    LOGGER.debug("Full PolarisException", exception);
+
     Response.Status status = getStatus(exception);
     ErrorResponse errorResponse =
         ErrorResponse.builder()

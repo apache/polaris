@@ -24,10 +24,16 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Provider
 public class IcebergConstraintViolationExceptionMapper
     implements ExceptionMapper<ConstraintViolationException> {
+
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(IcebergConstraintViolationExceptionMapper.class);
+
   @Override
   public Response toResponse(ConstraintViolationException exception) {
     final String message = "Invalid value: " + exception.getMessage();
