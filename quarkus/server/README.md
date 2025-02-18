@@ -27,15 +27,16 @@ To also build the Docker image, you can use the following command (a running Doc
 required):
 
 ```shell
-./gradlew :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true
+./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true --no-build-cache
 ```
 
 If you need to customize the Docker image, for example to push to a local registry, you can use the
 following command:
 
 ```shell
-./gradlew :polaris-quarkus-server:build -Dquarkus.container-image.build=true \
+./gradlew clean :polaris-quarkus-server:build -Dquarkus.container-image.build=true \
   -Dquarkus.container-image.registry=localhost:5001 \
   -Dquarkus.container-image.group=apache \
-  -Dquarkus.container-image.name=polaris-local
+  -Dquarkus.container-image.name=polaris-local \
+  --no-build-cache
 ```
