@@ -62,13 +62,13 @@ public class TaskExecutorImpl implements TaskExecutor {
   private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
 
   public TaskExecutorImpl(
-          Executor executor,
-          MetaStoreManagerFactory metaStoreManagerFactory,
-          PolarisConfigurationStore configurationStore,
-          PolarisDiagnostics diagnostics,
-          TaskFileIOSupplier fileIOSupplier,
-          Clock clock,
-          PolarisEventListener polarisEventListener) {
+      Executor executor,
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      PolarisConfigurationStore configurationStore,
+      PolarisDiagnostics diagnostics,
+      TaskFileIOSupplier fileIOSupplier,
+      Clock clock,
+      PolarisEventListener polarisEventListener) {
     this.executor = executor;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.configurationStore = configurationStore;
@@ -123,7 +123,8 @@ public class TaskExecutorImpl implements TaskExecutor {
   }
 
   protected void handleTask(long taskEntityId, RealmContext realmContext, int attempt) {
-    polarisEventListener.onBeforeAttemptTask(new BeforeAttemptTaskEvent(taskEntityId, realmContext, attempt));
+    polarisEventListener.onBeforeAttemptTask(
+        new BeforeAttemptTaskEvent(taskEntityId, realmContext, attempt));
 
     boolean success = false;
     try {
@@ -166,7 +167,8 @@ public class TaskExecutorImpl implements TaskExecutor {
             .log("Unable to execute async task");
       }
     } finally {
-      polarisEventListener.onAfterAttemptTask(new AfterAttemptTaskEvent(taskEntityId, realmContext, attempt, success));
+      polarisEventListener.onAfterAttemptTask(
+          new AfterAttemptTaskEvent(taskEntityId, realmContext, attempt, success));
     }
   }
 }

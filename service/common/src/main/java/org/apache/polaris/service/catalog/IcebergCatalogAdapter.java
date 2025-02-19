@@ -69,9 +69,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
-import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.events.PolarisEventListener;
-import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -121,40 +119,40 @@ public class IcebergCatalogAdapter
           .add(Endpoint.create("POST", ResourcePaths.V1_TRANSACTIONS_COMMIT))
           .build();
 
-    private final RealmContext realmContext;
-    private final CallContextCatalogFactory catalogFactory;
-    private final PolarisMetaStoreManager metaStoreManager;
-    private final PolarisEntityManager entityManager;
-    private final PolarisMetaStoreSession session;
-    private final PolarisConfigurationStore configurationStore;
-    private final PolarisDiagnostics diagnostics;
-    private final PolarisAuthorizer polarisAuthorizer;
-    private final IcebergCatalogPrefixParser prefixParser;
-    private final PolarisEventListener polarisEventListener;
+  private final RealmContext realmContext;
+  private final CallContextCatalogFactory catalogFactory;
+  private final PolarisMetaStoreManager metaStoreManager;
+  private final PolarisEntityManager entityManager;
+  private final PolarisMetaStoreSession session;
+  private final PolarisConfigurationStore configurationStore;
+  private final PolarisDiagnostics diagnostics;
+  private final PolarisAuthorizer polarisAuthorizer;
+  private final IcebergCatalogPrefixParser prefixParser;
+  private final PolarisEventListener polarisEventListener;
 
-    @Inject
-    public IcebergCatalogAdapter(
-            RealmContext realmContext,
-            CallContextCatalogFactory catalogFactory,
-            PolarisEntityManager entityManager,
-            PolarisMetaStoreManager metaStoreManager,
-            PolarisMetaStoreSession session,
-            PolarisConfigurationStore configurationStore,
-            PolarisDiagnostics diagnostics,
-            PolarisAuthorizer polarisAuthorizer,
-            IcebergCatalogPrefixParser prefixParser,
-            PolarisEventListener polarisEventListener) {
-        this.realmContext = realmContext;
-        this.catalogFactory = catalogFactory;
-        this.entityManager = entityManager;
-        this.metaStoreManager = metaStoreManager;
-        this.session = session;
-        this.configurationStore = configurationStore;
-        this.diagnostics = diagnostics;
-        this.polarisAuthorizer = polarisAuthorizer;
-        this.prefixParser = prefixParser;
-        this.polarisEventListener = polarisEventListener;
-    }
+  @Inject
+  public IcebergCatalogAdapter(
+      RealmContext realmContext,
+      CallContextCatalogFactory catalogFactory,
+      PolarisEntityManager entityManager,
+      PolarisMetaStoreManager metaStoreManager,
+      PolarisMetaStoreSession session,
+      PolarisConfigurationStore configurationStore,
+      PolarisDiagnostics diagnostics,
+      PolarisAuthorizer polarisAuthorizer,
+      IcebergCatalogPrefixParser prefixParser,
+      PolarisEventListener polarisEventListener) {
+    this.realmContext = realmContext;
+    this.catalogFactory = catalogFactory;
+    this.entityManager = entityManager;
+    this.metaStoreManager = metaStoreManager;
+    this.session = session;
+    this.configurationStore = configurationStore;
+    this.diagnostics = diagnostics;
+    this.polarisAuthorizer = polarisAuthorizer;
+    this.prefixParser = prefixParser;
+    this.polarisEventListener = polarisEventListener;
+  }
 
   /**
    * Execute operations on a catalog wrapper and ensure we close the BaseCatalog afterward. This
@@ -195,7 +193,7 @@ public class IcebergCatalogAdapter
         catalogFactory,
         catalogName,
         polarisAuthorizer,
-            polarisEventListener);
+        polarisEventListener);
   }
 
   @Override

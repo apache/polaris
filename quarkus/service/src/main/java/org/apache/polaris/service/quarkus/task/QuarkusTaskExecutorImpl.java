@@ -48,14 +48,14 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
 
   @Inject
   public QuarkusTaskExecutorImpl(
-          @Identifier("task-executor") ExecutorService executorService,
-          MetaStoreManagerFactory metaStoreManagerFactory,
-          PolarisConfigurationStore configurationStore,
-          PolarisDiagnostics diagnostics,
-          TaskFileIOSupplier fileIOSupplier,
-          Clock clock,
-          Tracer tracer,
-          PolarisEventListener polarisEventListener) {
+      @Identifier("task-executor") ExecutorService executorService,
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      PolarisConfigurationStore configurationStore,
+      PolarisDiagnostics diagnostics,
+      TaskFileIOSupplier fileIOSupplier,
+      Clock clock,
+      Tracer tracer,
+      PolarisEventListener polarisEventListener) {
     super(
         executorService,
         metaStoreManagerFactory,
@@ -63,7 +63,7 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
         diagnostics,
         fileIOSupplier,
         clock,
-            polarisEventListener);
+        polarisEventListener);
     this.tracer = tracer;
   }
 

@@ -16,10 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.events;
 
 import org.apache.polaris.core.context.RealmContext;
 
-public record AfterAttemptTaskEvent(long taskEntityId, RealmContext realmContext, int attempt, boolean success) {
-}
+public record AfterAttemptTaskEvent(
+    long taskEntityId, RealmContext realmContext, int attempt, boolean success) {}

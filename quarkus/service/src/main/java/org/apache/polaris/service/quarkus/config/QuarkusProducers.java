@@ -159,13 +159,14 @@ public class QuarkusProducers {
 
   @Produces
   public FileIOFactory fileIOFactory(
-          QuarkusFileIOConfiguration config, @Any Instance<FileIOFactory> fileIOFactories) {
+      QuarkusFileIOConfiguration config, @Any Instance<FileIOFactory> fileIOFactories) {
     return fileIOFactories.select(Identifier.Literal.of(config.type())).get();
   }
 
   @Produces
   public PolarisEventListener polarisEventListener(
-          QuarkusPolarisEventListenerConfiguration config, @Any Instance<PolarisEventListener> polarisEventListeners) {
+      QuarkusPolarisEventListenerConfiguration config,
+      @Any Instance<PolarisEventListener> polarisEventListeners) {
     return polarisEventListeners.select(Identifier.Literal.of(config.type())).get();
   }
 

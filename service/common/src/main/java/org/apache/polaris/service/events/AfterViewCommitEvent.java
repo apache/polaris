@@ -16,10 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.events;
 
 import org.apache.iceberg.view.ViewMetadata;
 
-public record AfterViewCommitEvent(ViewMetadata base, ViewMetadata metadata, String oldLocation, String newLocation) {
-}
+public record AfterViewCommitEvent(
+    ViewMetadata base, ViewMetadata metadata, String oldLocation, String newLocation) {}

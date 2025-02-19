@@ -16,10 +16,8 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.events;
 
 import org.apache.iceberg.TableMetadata;
 
-public record BeforeTableCommitEvent(TableMetadata base, TableMetadata metadata) {
-}
+public record BeforeTableCommitEvent(TableMetadata base, TableMetadata metadata) {}

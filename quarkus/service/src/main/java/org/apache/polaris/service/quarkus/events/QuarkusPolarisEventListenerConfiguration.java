@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.quarkus.events;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
@@ -25,9 +24,9 @@ import io.smallrye.config.ConfigMapping;
 @StaticInitSafe
 @ConfigMapping(prefix = "polaris.events")
 public interface QuarkusPolarisEventListenerConfiguration {
-    /**
-     * The type of the catalog IO to use. Must be a registered {@link
-     * org.apache.polaris.service.PolarisEventListener} identifier.
-     */
-    String type();
+  /**
+   * The type of the catalog IO to use. Must be a registered {@link
+   * org.apache.polaris.service.PolarisEventListener} identifier.
+   */
+  String type();
 }

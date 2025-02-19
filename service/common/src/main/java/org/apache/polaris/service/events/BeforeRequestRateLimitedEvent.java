@@ -16,8 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.events;
 
-public record BeforeRequestRateLimitedEvent(String method, String absolutePath) {
-}
+public record BeforeRequestRateLimitedEvent(String method, String absolutePath) {}

@@ -16,29 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.events;
 
 public interface PolarisEventListener {
-    void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event);
+  void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event);
 
-    void onBeforeTableCommit(BeforeTableCommitEvent event);
+  void onBeforeTableCommit(BeforeTableCommitEvent event);
 
-    void onAfterTableCommit(AfterTableCommitEvent event);
+  void onAfterTableCommit(AfterTableCommitEvent event);
 
-    void onBeforeViewCommit(BeforeViewCommitEvent event);
+  void onBeforeViewCommit(BeforeViewCommitEvent event);
 
-    void onAfterViewCommit(AfterViewCommitEvent event);
+  void onAfterViewCommit(AfterViewCommitEvent event);
 
-    void onBeforeRefreshTable(BeforeRefreshTableEvent event);
+  void onBeforeRefreshTable(BeforeRefreshTableEvent event);
 
-    void onAfterRefreshTable(AfterRefreshTableEvent event);
+  void onAfterRefreshTable(AfterRefreshTableEvent event);
 
-    void onBeforeRefreshView(BeforeRefreshViewEvent event);
+  void onBeforeRefreshView(BeforeRefreshViewEvent event);
 
-    void onAfterRefreshView(AfterRefreshViewEvent event);
+  void onAfterRefreshView(AfterRefreshViewEvent event);
 
-    void onBeforeAttemptTask(BeforeAttemptTaskEvent event);
+  void onBeforeAttemptTask(BeforeAttemptTaskEvent event);
 
-    void onAfterAttemptTask(AfterAttemptTaskEvent event);
+  void onAfterAttemptTask(AfterAttemptTaskEvent event);
 }

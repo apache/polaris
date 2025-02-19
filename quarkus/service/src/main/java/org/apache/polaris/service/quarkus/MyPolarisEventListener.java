@@ -16,23 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.quarkus;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.iceberg.TableMetadata;
 import org.apache.polaris.service.events.BeforeTableCommitEvent;
-import org.apache.polaris.service.events.BeforeTableCommitEventResponse;
 import org.apache.polaris.service.events.DefaultPolarisEventListener;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @ApplicationScoped
 @Identifier("mylistener")
 public class MyPolarisEventListener extends DefaultPolarisEventListener {
-    @Override
-    public void onBeforeTableCommit(BeforeTableCommitEvent event) {
-    }
+  @Override
+  public void onBeforeTableCommit(BeforeTableCommitEvent event) {}
 }

@@ -16,68 +16,44 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.events;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
-import org.apache.iceberg.TableMetadata;
 
 @ApplicationScoped
 @Identifier("default")
 public class DefaultPolarisEventListener implements PolarisEventListener {
-    @Override
-    public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event) {
+  @Override
+  public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event) {}
 
-    }
+  @Override
+  public void onBeforeTableCommit(BeforeTableCommitEvent event) {}
 
-    @Override
-    public void onBeforeTableCommit(BeforeTableCommitEvent event) {
+  @Override
+  public void onAfterTableCommit(AfterTableCommitEvent event) {}
 
-    }
+  @Override
+  public void onBeforeViewCommit(BeforeViewCommitEvent event) {}
 
-    @Override
-    public void onAfterTableCommit(AfterTableCommitEvent event) {
+  @Override
+  public void onAfterViewCommit(AfterViewCommitEvent event) {}
 
-    }
+  @Override
+  public void onBeforeRefreshTable(BeforeRefreshTableEvent event) {}
 
-    @Override
-    public void onBeforeViewCommit(BeforeViewCommitEvent event) {
+  @Override
+  public void onAfterRefreshTable(AfterRefreshTableEvent event) {}
 
-    }
+  @Override
+  public void onBeforeRefreshView(BeforeRefreshViewEvent event) {}
 
-    @Override
-    public void onAfterViewCommit(AfterViewCommitEvent event) {
+  @Override
+  public void onAfterRefreshView(AfterRefreshViewEvent event) {}
 
-    }
+  @Override
+  public void onBeforeAttemptTask(BeforeAttemptTaskEvent event) {}
 
-    @Override
-    public void onBeforeRefreshTable(BeforeRefreshTableEvent event) {
-
-    }
-
-    @Override
-    public void onAfterRefreshTable(AfterRefreshTableEvent event) {
-
-    }
-
-    @Override
-    public void onBeforeRefreshView(BeforeRefreshViewEvent event) {
-
-    }
-
-    @Override
-    public void onAfterRefreshView(AfterRefreshViewEvent event) {
-
-    }
-
-    @Override
-    public void onBeforeAttemptTask(BeforeAttemptTaskEvent event) {
-
-    }
-
-    @Override
-    public void onAfterAttemptTask(AfterAttemptTaskEvent event) {
-
-    }
+  @Override
+  public void onAfterAttemptTask(AfterAttemptTaskEvent event) {}
 }

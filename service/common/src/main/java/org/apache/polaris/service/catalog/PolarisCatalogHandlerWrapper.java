@@ -147,8 +147,8 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
       CallContextCatalogFactory catalogFactory,
       String catalogName,
       PolarisAuthorizer authorizer,
-          PolarisEventListener polarisEventListener) {
-      this.realmContext = realmContext;
+      PolarisEventListener polarisEventListener) {
+    this.realmContext = realmContext;
     this.session = session;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;

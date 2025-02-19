@@ -203,7 +203,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       TaskExecutor taskExecutor,
       FileIOFactory fileIOFactory,
       PolarisEventListener polarisEventListener) {
-      this.realmContext = realmContext;
+    this.realmContext = realmContext;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
     this.metaStoreSession = metaStoreSession;
@@ -1202,7 +1202,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
-        polarisEventListener.onBeforeRefreshTable(new BeforeRefreshTableEvent(tableIdentifier, fullTableName));
+        polarisEventListener.onBeforeRefreshTable(
+            new BeforeRefreshTableEvent(tableIdentifier, fullTableName));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1222,7 +1223,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                       Set.of(PolarisStorageActions.READ));
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
-        polarisEventListener.onAfterRefreshTable(new AfterRefreshTableEvent(tableIdentifier, fullTableName));
+        polarisEventListener.onAfterRefreshTable(
+            new AfterRefreshTableEvent(tableIdentifier, fullTableName));
       }
     }
 
@@ -1357,7 +1359,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         updateTableLike(tableIdentifier, entity);
       }
 
-      polarisEventListener.onAfterTableCommit(new AfterTableCommitEvent(base, metadata, oldLocation, newLocation));
+      polarisEventListener.onAfterTableCommit(
+          new AfterTableCommitEvent(base, metadata, oldLocation, newLocation));
     }
 
     @Override
@@ -1427,7 +1430,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
-        polarisEventListener.onBeforeRefreshView(new BeforeRefreshViewEvent(identifier, fullViewName));
+        polarisEventListener.onBeforeRefreshView(
+            new BeforeRefreshViewEvent(identifier, fullViewName));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1449,7 +1453,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
               return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
             });
-        polarisEventListener.onAfterRefreshView(new AfterRefreshViewEvent(identifier, fullViewName));
+        polarisEventListener.onAfterRefreshView(
+            new AfterRefreshViewEvent(identifier, fullViewName));
       }
     }
 
@@ -1542,7 +1547,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         updateTableLike(identifier, entity);
       }
 
-      polarisEventListener.onAfterViewCommit(new AfterViewCommitEvent(base, metadata, oldLocation, newLocation));
+      polarisEventListener.onAfterViewCommit(
+          new AfterViewCommitEvent(base, metadata, oldLocation, newLocation));
     }
 
     @Override

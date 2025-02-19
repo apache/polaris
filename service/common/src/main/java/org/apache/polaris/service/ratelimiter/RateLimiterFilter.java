@@ -54,7 +54,9 @@ public class RateLimiterFilter implements ContainerRequestFilter {
   @Override
   public void filter(ContainerRequestContext ctx) throws IOException {
     if (!rateLimiter.canProceed()) {
-      polarisEventListener.onBeforeRequestRateLimited(new BeforeRequestRateLimitedEvent(ctx.getMethod(), ctx.getUriInfo().getAbsolutePath().toString()));
+      polarisEventListener.onBeforeRequestRateLimited(
+          new BeforeRequestRateLimitedEvent(
+              ctx.getMethod(), ctx.getUriInfo().getAbsolutePath().toString()));
       ctx.abortWith(Response.status(Response.Status.TOO_MANY_REQUESTS).build());
       LOGGER.atDebug().log("Rate limiting request");
     }
