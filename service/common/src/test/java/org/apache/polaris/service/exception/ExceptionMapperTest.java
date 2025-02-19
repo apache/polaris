@@ -35,13 +35,14 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.slf4j.LoggerFactory;
 
+/** Unit tests for exception mappers */
 public class ExceptionMapperTest {
   private static final String MESSAGE = "this is the exception message";
   private static final String CAUSE = "this is the exception cause";
 
   @ParameterizedTest
   @MethodSource("testFullExceptionIsLogged")
-  public void testFullExceptionIsLogged(ExceptionMapper mapper, Exception exception) {
+  public void testFullExceptionIsLogged(ExceptionMapper mapper, Exception exception, Level level) {
     Logger logger = (Logger) LoggerFactory.getLogger(mapper.getClass());
     ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
     listAppender.start();
@@ -53,7 +54,7 @@ public class ExceptionMapperTest {
             listAppender.list.stream()
                 .anyMatch(
                     log -> {
-                      if (log.getLevel() != Level.DEBUG) {
+                      if (log.getLevel() != level) {
                         return false;
                       }
 
@@ -78,13 +79,16 @@ public class ExceptionMapperTest {
     return Stream.of(
         Arguments.of(
             new IcebergExceptionMapper(),
-            new RuntimeException(MESSAGE, new RuntimeException(CAUSE))),
+            new RuntimeException(MESSAGE, new RuntimeException(CAUSE)),
+            Level.ERROR),
         Arguments.of(
             new IcebergJsonProcessingExceptionMapper(),
-            new TestJsonProcessingException(MESSAGE, null, new RuntimeException(CAUSE))),
+            new TestJsonProcessingException(MESSAGE, null, new RuntimeException(CAUSE)),
+            Level.DEBUG),
         Arguments.of(
             new PolarisExceptionMapper(),
-            new AlreadyExistsException(MESSAGE, new RuntimeException(CAUSE))));
+            new AlreadyExistsException(MESSAGE, new RuntimeException(CAUSE)),
+            Level.DEBUG));
   }
 
   private static class TestJsonProcessingException extends JsonProcessingException {
