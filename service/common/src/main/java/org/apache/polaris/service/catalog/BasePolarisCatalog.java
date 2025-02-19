@@ -106,6 +106,15 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
+import org.apache.polaris.service.events.AfterRefreshTableEvent;
+import org.apache.polaris.service.events.AfterRefreshViewEvent;
+import org.apache.polaris.service.events.AfterTableCommitEvent;
+import org.apache.polaris.service.events.AfterViewCommitEvent;
+import org.apache.polaris.service.events.BeforeRefreshTableEvent;
+import org.apache.polaris.service.events.BeforeRefreshViewEvent;
+import org.apache.polaris.service.events.BeforeTableCommitEvent;
+import org.apache.polaris.service.events.BeforeViewCommitEvent;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -165,6 +174,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   private final FileIOFactory fileIOFactory;
   private final long catalogId;
   private final String catalogName;
+  private final PolarisEventListener polarisEventListener;
 
   private String ioImplClassName;
   private FileIO catalogFileIO;
@@ -191,8 +201,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       PolarisResolutionManifestCatalogView resolvedEntityView,
       SecurityContext securityContext,
       TaskExecutor taskExecutor,
-      FileIOFactory fileIOFactory) {
-    this.realmContext = realmContext;
+      FileIOFactory fileIOFactory,
+      PolarisEventListener polarisEventListener) {
+      this.realmContext = realmContext;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
     this.metaStoreSession = metaStoreSession;
@@ -208,6 +219,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     this.catalogId = catalogEntity.getId();
     this.catalogName = catalogEntity.getName();
+    this.polarisEventListener = polarisEventListener;
   }
 
   @Override
@@ -1190,6 +1202,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
+        polarisEventListener.onBeforeRefreshTable(new BeforeRefreshTableEvent(tableIdentifier, fullTableName));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1209,11 +1222,14 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                       Set.of(PolarisStorageActions.READ));
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
+        polarisEventListener.onAfterRefreshTable(new AfterRefreshTableEvent(tableIdentifier, fullTableName));
       }
     }
 
     @Override
     public void doCommit(TableMetadata base, TableMetadata metadata) {
+      polarisEventListener.onBeforeTableCommit(new BeforeTableCommitEvent(base, metadata));
+
       LOGGER.debug(
           "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
@@ -1340,6 +1356,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       } else {
         updateTableLike(tableIdentifier, entity);
       }
+
+      polarisEventListener.onAfterTableCommit(new AfterTableCommitEvent(base, metadata, oldLocation, newLocation));
     }
 
     @Override
@@ -1409,6 +1427,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
+        polarisEventListener.onBeforeRefreshView(new BeforeRefreshViewEvent(identifier, fullViewName));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1430,11 +1449,14 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
               return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
             });
+        polarisEventListener.onAfterRefreshView(new AfterRefreshViewEvent(identifier, fullViewName));
       }
     }
 
     @Override
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
+      polarisEventListener.onBeforeViewCommit(new BeforeViewCommitEvent(base, metadata));
+
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       LOGGER.debug("doCommit for view {} with base {}, metadata {}", identifier, base, metadata);
       if (null == base && !namespaceExists(identifier.namespace())) {
@@ -1519,6 +1541,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       } else {
         updateTableLike(identifier, entity);
       }
+
+      polarisEventListener.onAfterViewCommit(new AfterViewCommitEvent(base, metadata, oldLocation, newLocation));
     }
 
     @Override
