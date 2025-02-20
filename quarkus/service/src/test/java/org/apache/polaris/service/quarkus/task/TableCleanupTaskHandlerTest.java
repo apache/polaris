@@ -20,9 +20,6 @@ package org.apache.polaris.service.quarkus.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.quarkus.arc.Arc;
-import io.quarkus.arc.ManagedContext;
-import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
@@ -47,7 +44,6 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TableLikeEntity;

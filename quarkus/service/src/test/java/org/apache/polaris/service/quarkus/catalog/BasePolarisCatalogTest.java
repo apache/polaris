@@ -529,7 +529,11 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         new PolarisPassthroughResolutionView(
             CallContext.getCurrentContext(), entityManager, securityContext, catalog().name());
     FileIOFactory fileIOFactory =
-        spy(new DefaultFileIOFactory(new RealmEntityManagerFactory(createMockMetaStoreManagerFactory()), managerFactory, configurationStore));
+        spy(
+            new DefaultFileIOFactory(
+                new RealmEntityManagerFactory(createMockMetaStoreManagerFactory()),
+                managerFactory,
+                configurationStore));
     BasePolarisCatalog catalog =
         new BasePolarisCatalog(
             entityManager,

@@ -35,7 +35,6 @@ import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -69,8 +68,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
 
   @Override
   public boolean canHandleTask(TaskEntity task) {
-    return task.getTaskType() == AsyncTaskType.ENTITY_CLEANUP_SCHEDULER
-        && taskEntityIsTable(task);
+    return task.getTaskType() == AsyncTaskType.ENTITY_CLEANUP_SCHEDULER && taskEntityIsTable(task);
   }
 
   private boolean taskEntityIsTable(TaskEntity task) {
