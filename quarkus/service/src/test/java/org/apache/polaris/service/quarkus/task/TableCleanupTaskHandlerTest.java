@@ -138,7 +138,8 @@ class TableCleanupTaskHandlerTest {
                         taskEntity2 -> taskEntity2.getTaskType(diagnostics))
                     .returns(
                         new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
-                            tableIdentifier, List.of(statisticsFile.path())),
+                            tableIdentifier,
+                            List.of(snapshot.manifestListLocation(), statisticsFile.path())),
                         entity ->
                             entity.readData(
                                 diagnostics,
@@ -200,7 +201,7 @@ class TableCleanupTaskHandlerTest {
                 .getOrCreateMetaStoreManager(realmContext)
                 .loadTasks(metaStoreSession, "test", 5)
                 .getEntities())
-        .hasSize(1);
+        .hasSize(2);
   }
 
   @Test
@@ -266,15 +267,43 @@ class TableCleanupTaskHandlerTest {
                 .getOrCreateMetaStoreManager(realmContext)
                 .loadTasks(metaStoreSession, "test", 5)
                 .getEntities())
-        .hasSize(2)
+        .hasSize(4)
         .satisfiesExactly(
             taskEntity ->
                 assertThat(taskEntity)
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        AsyncTaskType.MANIFEST_FILE_CLEANUP,
+                        AsyncTaskType.METADATA_FILE_BATCH_CLEANUP,
                         taskEntity1 -> taskEntity1.getTaskType(diagnostics))
+                    .returns(
+                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                            tableIdentifier, List.of(snapshot.manifestListLocation())),
+                        entity ->
+                            entity.readData(
+                                diagnostics,
+                                ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
+            taskEntity ->
+                assertThat(taskEntity)
+                    .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
+                    .extracting(TaskEntity::of)
+                    .returns(
+                        AsyncTaskType.METADATA_FILE_BATCH_CLEANUP,
+                        taskEntity2 -> taskEntity2.getTaskType(diagnostics))
+                    .returns(
+                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                            tableIdentifier, List.of(snapshot.manifestListLocation())),
+                        entity ->
+                            entity.readData(
+                                diagnostics,
+                                ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
+            taskEntity ->
+                assertThat(taskEntity)
+                    .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
+                    .extracting(TaskEntity::of)
+                    .returns(
+                        AsyncTaskType.MANIFEST_FILE_CLEANUP,
+                        taskEntity3 -> taskEntity3.getTaskType(diagnostics))
                     .returns(
                         new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                             tableIdentifier,
@@ -289,7 +318,7 @@ class TableCleanupTaskHandlerTest {
                     .extracting(TaskEntity::of)
                     .returns(
                         AsyncTaskType.MANIFEST_FILE_CLEANUP,
-                        taskEntity2 -> taskEntity2.getTaskType(diagnostics))
+                        taskEntity4 -> taskEntity4.getTaskType(diagnostics))
                     .returns(
                         new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                             tableIdentifier,
@@ -400,7 +429,11 @@ class TableCleanupTaskHandlerTest {
                     .returns(
                         new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                             tableIdentifier,
-                            List.of(statisticsFile1.path(), statisticsFile2.path())),
+                            List.of(
+                                snapshot.manifestListLocation(),
+                                snapshot2.manifestListLocation(),
+                                statisticsFile1.path(),
+                                statisticsFile2.path())),
                         entity ->
                             entity.readData(
                                 diagnostics,
@@ -564,7 +597,11 @@ class TableCleanupTaskHandlerTest {
                         new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                             tableIdentifier,
                             List.of(
-                                firstMetadataFile, statisticsFile1.path(), statisticsFile2.path())),
+                                firstMetadataFile,
+                                snapshot.manifestListLocation(),
+                                snapshot2.manifestListLocation(),
+                                statisticsFile1.path(),
+                                statisticsFile2.path())),
                         entity ->
                             entity.readData(
                                 diagnostics,
