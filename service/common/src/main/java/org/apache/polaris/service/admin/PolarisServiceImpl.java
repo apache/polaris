@@ -250,6 +250,13 @@ public class PolarisServiceImpl
     return Response.ok(adminService.rotateCredentials(principalName)).build();
   }
 
+  @Override
+  public Response resetCredentials(
+          String principalName, RealmContext realmContext, SecurityContext securityContext) {
+    PolarisAdminService adminService = newAdminService(realmContext, securityContext);
+    return Response.ok(adminService.resetCredentials(principalName)).build();
+  }
+
   /** From PolarisPrincipalsApiService */
   @Override
   public Response listPrincipals(RealmContext realmContext, SecurityContext securityContext) {
