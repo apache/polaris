@@ -52,6 +52,8 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -61,6 +63,7 @@ import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.apache.polaris.service.task.TaskUtils;
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -84,6 +87,12 @@ class ManifestFileCleanupTaskHandlerTest {
             return fileIO;
           }
         });
+  }
+
+  private void addTaskLocation(TaskEntity task) {
+    Map<String, String> internalPropertiesAsMap = new HashMap<>(task.getInternalPropertiesAsMap());
+    internalPropertiesAsMap.put(PolarisTaskConstants.STORAGE_LOCATION, "file:///tmp/");
+    ((PolarisBaseEntity) task).setInternalPropertiesAsMap(internalPropertiesAsMap);
   }
 
   @Test
@@ -114,6 +123,7 @@ class ManifestFileCleanupTaskHandlerTest {
                       Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
               .setName(UUID.randomUUID().toString())
               .build();
+      addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThatPredicate(handler::handleTask).accepts(task);
     }
@@ -145,6 +155,7 @@ class ManifestFileCleanupTaskHandlerTest {
                       Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
               .setName(UUID.randomUUID().toString())
               .build();
+      addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThatPredicate(handler::handleTask).accepts(task);
     }
@@ -191,6 +202,7 @@ class ManifestFileCleanupTaskHandlerTest {
                       Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
               .setName(UUID.randomUUID().toString())
               .build();
+      addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThatPredicate(handler::handleTask).accepts(task);
       assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
@@ -255,6 +267,7 @@ class ManifestFileCleanupTaskHandlerTest {
                       Base64.encodeBase64String(ManifestFiles.encode(manifestFile))))
               .setName(UUID.randomUUID().toString())
               .build();
+      addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThatPredicate(handler::handleTask).accepts(task);
       assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
@@ -353,6 +366,7 @@ class ManifestFileCleanupTaskHandlerTest {
                       tableIdentifier, cleanupFiles))
               .setName(UUID.randomUUID().toString())
               .build();
+      addTaskLocation(task);
 
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThatPredicate(handler::handleTask).accepts(task);
@@ -406,6 +420,7 @@ class ManifestFileCleanupTaskHandlerTest {
                       tableIdentifier, List.of(statisticsFile.path())))
               .setName(UUID.randomUUID().toString())
               .build();
+      addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThatPredicate(handler::handleTask).accepts(task);
     }
@@ -469,6 +484,7 @@ class ManifestFileCleanupTaskHandlerTest {
                       tableIdentifier, List.of(statisticsFile.path())))
               .setName(UUID.randomUUID().toString())
               .build();
+      addTaskLocation(task);
 
       try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
         CompletableFuture<Void> future;

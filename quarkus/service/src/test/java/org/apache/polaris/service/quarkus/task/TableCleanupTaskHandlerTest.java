@@ -20,10 +20,14 @@ package org.apache.polaris.service.quarkus.task;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.quarkus.arc.Arc;
+import io.quarkus.arc.ManagedContext;
+import io.quarkus.test.InjectMock;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -43,7 +47,9 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -56,17 +62,17 @@ import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.apache.polaris.service.task.TaskUtils;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 
 @QuarkusTest
 class TableCleanupTaskHandlerTest {
-  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
-  @Inject PolarisCallContext polarisCallContext;
+  @Inject private MetaStoreManagerFactory metaStoreManagerFactory;
+  private CallContext callContext;
 
   private final RealmContext realmContext = () -> "realmName";
-  private final CallContext callContext = CallContext.of(realmContext, polarisCallContext);
 
   private TaskFileIOSupplier buildTaskFileIOSupplier(FileIO fileIO) {
     return new TaskFileIOSupplier(
@@ -83,6 +89,18 @@ class TableCleanupTaskHandlerTest {
             return fileIO;
           }
         });
+  }
+
+  @BeforeEach
+  void setup() {
+    PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
+    callContext = CallContext.of(realmContext, polarisCallContext);
+  }
+
+  private void addTaskLocation(TaskEntity task) {
+    Map<String, String> internalPropertiesAsMap = new HashMap<>(task.getInternalPropertiesAsMap());
+    internalPropertiesAsMap.put(PolarisTaskConstants.STORAGE_LOCATION, "file:///tmp/");
+    ((PolarisBaseEntity) task).setInternalPropertiesAsMap(internalPropertiesAsMap);
   }
 
   @Test
@@ -118,6 +136,7 @@ class TableCleanupTaskHandlerTest {
                     .setCreateTimestamp(100)
                     .build())
             .build();
+    addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
     handler.handleTask(task);
@@ -194,6 +213,7 @@ class TableCleanupTaskHandlerTest {
             .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
             .withData(tableLikeEntity)
             .build();
+    addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
     // handle the same task twice
@@ -253,6 +273,7 @@ class TableCleanupTaskHandlerTest {
                     .setCreateTimestamp(100)
                     .build())
             .build();
+    addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
     // handle the same task twice
@@ -347,6 +368,7 @@ class TableCleanupTaskHandlerTest {
 
     TaskEntity task =
         new TaskEntity.Builder()
+            .setName("cleanup_" + tableIdentifier)
             .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
             .withData(
                 new TableLikeEntity.Builder(tableIdentifier, metadataFile)
@@ -355,6 +377,7 @@ class TableCleanupTaskHandlerTest {
                     .setCreateTimestamp(100)
                     .build())
             .build();
+    addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
     handler.handleTask(task);
@@ -499,6 +522,7 @@ class TableCleanupTaskHandlerTest {
 
     TaskEntity task =
         new TaskEntity.Builder()
+            .setName("cleanup_" + tableIdentifier)
             .withTaskType(AsyncTaskType.ENTITY_CLEANUP_SCHEDULER)
             .withData(
                 new TableLikeEntity.Builder(tableIdentifier, secondMetadataFile)
@@ -507,6 +531,7 @@ class TableCleanupTaskHandlerTest {
                     .setCreateTimestamp(100)
                     .build())
             .build();
+    addTaskLocation(task);
 
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 

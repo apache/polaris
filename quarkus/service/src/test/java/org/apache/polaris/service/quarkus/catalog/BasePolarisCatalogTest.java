@@ -20,7 +20,10 @@ package org.apache.polaris.service.quarkus.catalog;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.iceberg.types.Types.NestedField.required;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
@@ -522,8 +525,24 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     // filename.
     final String tableLocation = "s3://externally-owned-bucket/validate_table/";
     final String tableMetadataLocation = tableLocation + "metadata/";
-
-    BasePolarisCatalog catalog = catalog();
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            CallContext.getCurrentContext(), entityManager, securityContext, catalog().name());
+    FileIOFactory fileIOFactory =
+        spy(new DefaultFileIOFactory(new RealmEntityManagerFactory(createMockMetaStoreManagerFactory()), managerFactory, configurationStore));
+    BasePolarisCatalog catalog =
+        new BasePolarisCatalog(
+            entityManager,
+            metaStoreManager,
+            CallContext.getCurrentContext(),
+            passthroughView,
+            securityContext,
+            Mockito.mock(TaskExecutor.class),
+            fileIOFactory);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
 
     Namespace namespace = Namespace.of("parent", "child1");
     TableIdentifier table = TableIdentifier.of(namespace, "table");
@@ -537,12 +556,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    MetaStoreManagerFactory metaStoreManagerFactory = createMockMetaStoreManagerFactory();
-    catalog.setFileIOFactory(
-        new DefaultFileIOFactory(
-            new RealmEntityManagerFactory(metaStoreManagerFactory),
-            metaStoreManagerFactory,
-            configurationStore));
+    doThrow(new ForbiddenException("Fake failure applying downscoped credentials"))
+        .when(fileIOFactory)
+        .loadFileIO(any(), any(), any(), any(), any(), any(), any());
     Assertions.assertThatThrownBy(() -> catalog.sendNotification(table, request))
         .isInstanceOf(ForbiddenException.class)
         .hasMessageContaining("Fake failure applying downscoped credentials");
@@ -1601,12 +1617,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
             callContext, Mockito.mock(), createMockMetaStoreManagerFactory(), taskFileIOSupplier);
-    handler.handleTask(
-        TaskEntity.of(
-            metaStoreManager
-                .loadTasks(polarisContext, "testExecutor", 1)
-                .getEntities()
-                .getFirst()));
+    handler.handleTask(taskEntity);
     Assertions.assertThat(measured.getNumDeletedFiles()).as("A table was deleted").isGreaterThan(0);
   }
 
