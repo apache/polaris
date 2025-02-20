@@ -1,0 +1,31 @@
+services:
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "try { db.adminCommand('ping').ok } catch (error) { exit(1) }"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  dremio-polaris:
+    image: gcr.io/dremio-1093/dremio-ee-catalog-server:dremio-release-master-12071
+    environment:
+      - quarkus.mongodb.connection-string=mongodb://mongo:27017
+      - polaris.backend.name=MongoDb
+      - dremio.catalog.auth.type=noop
+      - polaris.bootstrap.credentials=dremio,root,s3cr3t
+    ports:
+      - "8181:8181"
+      - "8182:8182"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8182/q/health"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

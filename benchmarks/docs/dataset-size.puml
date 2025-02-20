@@ -1,0 +1,41 @@
+@startuml
+
+map C_0 {
+  catalogName => C_0
+  defaultBaseLocation => file:///tmp/polaris/C_0
+}
+
+json NS_4 {
+  "namespace": ["NS_0", "NS_1", "NS_4"],
+  "properties": {
+    "Attribute_0": "Value_0",
+    "Attribute_1": "Value_1",
+    "...": "...",
+    "Attribute_100": "Value_100"
+  }
+}
+
+json T_15 {
+  "name": "T_15",
+  "schema": {
+    "type": "struct",
+    "fields": [
+      {"id": 0, "name": "column0", "type": "int", "required": true},
+      {"id": 1, "name": "column1", "type": "int", "required": true},
+      "...",
+      {"id": 999, "name": "column999", "type": "int", "required": true}
+    ],
+    "identifier-field-ids": [0]
+  },
+  "properties": {
+    "Attribute_0": "Value_0",
+    "Attribute_1": "Value_1",
+    "...": "...",
+    "Attribute_59": "Value_59"
+  }
+}
+
+C_0 -[hidden]- NS_4
+NS_4 -[hidden]- T_15
+
+@enduml
