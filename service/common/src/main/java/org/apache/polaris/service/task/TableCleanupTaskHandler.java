@@ -69,8 +69,9 @@ public class TableCleanupTaskHandler implements TaskHandler {
 
   @Override
   public boolean canHandleTask(TaskEntity task) {
-    return task.getInternalPropertiesAsMap().containsKey(PolarisTaskConstants.STORAGE_LOCATION) &&
-        task.getTaskType() == AsyncTaskType.ENTITY_CLEANUP_SCHEDULER && taskEntityIsTable(task);
+    return task.getInternalPropertiesAsMap().containsKey(PolarisTaskConstants.STORAGE_LOCATION)
+        && task.getTaskType() == AsyncTaskType.ENTITY_CLEANUP_SCHEDULER
+        && taskEntityIsTable(task);
   }
 
   private boolean taskEntityIsTable(TaskEntity task) {
