@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.junit.jupiter.api.Test;
@@ -82,6 +83,7 @@ public class DefaultConfigurationStoreTest {
         defaultConfigurationStore.getConfiguration(
             realm1Ctx, "missingKeyWithDefault", "defaultValue");
     assertThat(defaultValue).isEqualTo("defaultValue");
+    CallContext.setCurrentContext(CallContext.of(() -> "realm1", realm1Ctx));
     Integer keyOneRealm1 = defaultConfigurationStore.getConfiguration(realm1Ctx, "key1");
     assertThat(keyOneRealm1).isEqualTo(realm1KeyOneValue);
     String keyTwoRealm1 = defaultConfigurationStore.getConfiguration(realm1Ctx, "key2");
@@ -92,6 +94,7 @@ public class DefaultConfigurationStoreTest {
         new PolarisCallContext(
             metastoreFactory.getOrCreateSessionSupplier(() -> "realm2").get(),
             new PolarisDefaultDiagServiceImpl());
+    CallContext.setCurrentContext(CallContext.of(() -> "realm2", realm2Ctx));
     Integer keyOneRealm2 = defaultConfigurationStore.getConfiguration(realm2Ctx, "key1");
     assertThat(keyOneRealm2).isEqualTo(realm2KeyOneValue);
     String keyTwoRealm2 = defaultConfigurationStore.getConfiguration(realm2Ctx, "key2");
@@ -102,6 +105,7 @@ public class DefaultConfigurationStoreTest {
         new PolarisCallContext(
             metastoreFactory.getOrCreateSessionSupplier(() -> "realm3").get(),
             new PolarisDefaultDiagServiceImpl());
+    CallContext.setCurrentContext(CallContext.of(() -> "realm3", realm3Ctx));
     Integer keyOneRealm3 = defaultConfigurationStore.getConfiguration(realm3Ctx, "key1");
     assertThat(keyOneRealm3).isEqualTo(defaultKeyOneValue);
     String keyTwoRealm3 = defaultConfigurationStore.getConfiguration(realm3Ctx, "key2");
