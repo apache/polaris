@@ -75,6 +75,7 @@ distributions {
   main {
     contents {
       from(project.layout.buildDirectory.dir("quarkus-app"))
+      from(project.layout.projectDirectory.dir("src/main/distribution"))
       from("../../NOTICE")
       from("../../LICENSE-BINARY-DIST").rename("LICENSE-BINARY-DIST", "LICENSE")
       exclude("lib/main/io.quarkus.quarkus-container-image*")
