@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.quarkus.admin;
 
-import static org.apache.polaris.core.PolarisConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS;
 import static org.apache.polaris.core.PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP;
 import static org.apache.polaris.core.PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION;
 import static org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase.SCHEMA;
@@ -38,8 +37,6 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.TestServices;
-import org.junit.Before;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -48,8 +45,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 public class PolarisOverlappingTableTest {
 
   private static final String namespace = "ns";
-  private static String catalog;
-  private static String baseLocation;
+  private static final String catalog = "test-catalog";
+  private static final String baseLocation = "file:///tmp/PolarisOverlappingTableTest";
 
   private int createTable(TestServices services, String location) {
     CreateTableRequest createTableRequest =
@@ -74,21 +71,12 @@ public class PolarisOverlappingTableTest {
     }
   }
 
-  @BeforeEach
-  public void setup() {
-    catalog = "test-catalog-" + UUID.randomUUID();
-    baseLocation = "file:///tmp/PolarisOverlappingTableTest/" + UUID.randomUUID();
-  }
-
   static Stream<Arguments> testTableLocationRestrictions() {
     Map<String, Object> laxServices =
-        Map.of(
-            ALLOW_UNSTRUCTURED_TABLE_LOCATION.key, "true",
-            ALLOW_TABLE_LOCATION_OVERLAP.key, "true");
+        Map.of("ALLOW_UNSTRUCTURED_TABLE_LOCATION", "true", "ALLOW_TABLE_LOCATION_OVERLAP", "true");
     Map<String, Object> strictServices =
         Map.of(
-            ALLOW_UNSTRUCTURED_TABLE_LOCATION.key, "false",
-            ALLOW_TABLE_LOCATION_OVERLAP.key, "false");
+            "ALLOW_UNSTRUCTURED_TABLE_LOCATION", "false", "ALLOW_TABLE_LOCATION_OVERLAP", "false");
     Map<String, Object> laxCatalog =
         Map.of(
             ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
