@@ -36,8 +36,8 @@ cascade:
 | link:{{% ref "meetings" %}}[Community Meetings]
 | Upcoming, live and recorded Community Meetings
 
-| link:{{% ref "proposals" %}}[Proposals]
-| Proposals about bigger topics
+| link:{{% ref "proposals" %}}[Proposals and Roadmap]
+| Proposals for important features and Polaris Roadmap
 
 | link:https://github.com/apache/polaris[GitHub]
 | Development takes place here!
