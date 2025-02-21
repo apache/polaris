@@ -105,7 +105,7 @@ class TableCleanupTaskHandlerTest {
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
-            callContext, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
+            Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
     long snapshotId = 100L;
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(
@@ -135,7 +135,7 @@ class TableCleanupTaskHandlerTest {
     addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
-    handler.handleTask(task);
+    handler.handleTask(task, callContext);
 
     assertThat(
             metaStoreManagerFactory
@@ -187,7 +187,7 @@ class TableCleanupTaskHandlerTest {
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
-            callContext, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
+            Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
     long snapshotId = 100L;
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(
@@ -214,7 +214,7 @@ class TableCleanupTaskHandlerTest {
 
     // handle the same task twice
     // the first one should successfully delete the metadata
-    List<Boolean> results = List.of(handler.handleTask(task), handler.handleTask(task));
+    List<Boolean> results = List.of(handler.handleTask(task, callContext), handler.handleTask(task, callContext));
     assertThat(results).containsExactly(true, true);
 
     // both tasks successfully executed, but only one should queue subtasks
@@ -248,7 +248,7 @@ class TableCleanupTaskHandlerTest {
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
-            callContext, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
+            Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
     long snapshotId = 100L;
     ManifestFile manifestFile =
         TaskTestUtils.manifestFile(
@@ -274,7 +274,7 @@ class TableCleanupTaskHandlerTest {
 
     // handle the same task twice
     // the first one should successfully delete the metadata
-    List<Boolean> results = List.of(handler.handleTask(task), handler.handleTask(task));
+    List<Boolean> results = List.of(handler.handleTask(task, callContext), handler.handleTask(task, callContext));
     assertThat(results).containsExactly(true, true);
 
     // both tasks successfully executed, but only one should queue subtasks
@@ -323,7 +323,7 @@ class TableCleanupTaskHandlerTest {
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
-            callContext, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
+            Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
     long snapshotId1 = 100L;
     ManifestFile manifestFile1 =
         TaskTestUtils.manifestFile(
@@ -376,7 +376,7 @@ class TableCleanupTaskHandlerTest {
     addTaskLocation(task);
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
-    handler.handleTask(task);
+    handler.handleTask(task, callContext);
 
     List<PolarisBaseEntity> entities =
         metaStoreManagerFactory
@@ -464,7 +464,7 @@ class TableCleanupTaskHandlerTest {
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
-            callContext, Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
+            Mockito.mock(), metaStoreManagerFactory, buildTaskFileIOSupplier(fileIO));
     long snapshotId1 = 100L;
     ManifestFile manifestFile1 =
         TaskTestUtils.manifestFile(
@@ -531,7 +531,7 @@ class TableCleanupTaskHandlerTest {
 
     Assertions.assertThatPredicate(handler::canHandleTask).accepts(task);
 
-    handler.handleTask(task);
+    handler.handleTask(task, callContext);
 
     List<PolarisBaseEntity> entities =
         metaStoreManagerFactory

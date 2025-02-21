@@ -1620,8 +1620,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     TableCleanupTaskHandler handler =
         new TableCleanupTaskHandler(
-            callContext, Mockito.mock(), createMockMetaStoreManagerFactory(), taskFileIOSupplier);
-    handler.handleTask(taskEntity);
+            Mockito.mock(), createMockMetaStoreManagerFactory(), taskFileIOSupplier);
+    handler.handleTask(taskEntity, callContext);
     Assertions.assertThat(measured.getNumDeletedFiles()).as("A table was deleted").isGreaterThan(0);
   }
 

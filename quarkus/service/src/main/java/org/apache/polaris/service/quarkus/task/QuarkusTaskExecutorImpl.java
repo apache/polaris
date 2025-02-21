@@ -39,17 +39,16 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
   private final Tracer tracer;
 
   public QuarkusTaskExecutorImpl() {
-    this(null, null, null, null, null);
+    this(null, null, null, null);
   }
 
   @Inject
   public QuarkusTaskExecutorImpl(
-      CallContext callContext,
       @Identifier("task-executor") ExecutorService executorService,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier,
       Tracer tracer) {
-    super(callContext, executorService, metaStoreManagerFactory, fileIOSupplier);
+    super(executorService, metaStoreManagerFactory, fileIOSupplier);
     this.tracer = tracer;
   }
 

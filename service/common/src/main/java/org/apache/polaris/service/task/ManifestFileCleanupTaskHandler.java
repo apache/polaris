@@ -54,13 +54,11 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
   public static final int FILE_DELETION_RETRY_MILLIS = 100;
   private static final Logger LOGGER =
       LoggerFactory.getLogger(ManifestFileCleanupTaskHandler.class);
-  private final CallContext callContext;
   private final TaskFileIOSupplier fileIOSupplier;
   private final ExecutorService executorService;
 
   public ManifestFileCleanupTaskHandler(
-      CallContext callContext, TaskFileIOSupplier fileIOSupplier, ExecutorService executorService) {
-    this.callContext = callContext;
+      TaskFileIOSupplier fileIOSupplier, ExecutorService executorService) {
     this.fileIOSupplier = fileIOSupplier;
     this.executorService = executorService;
   }
@@ -72,7 +70,7 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
   }
 
   @Override
-  public boolean handleTask(TaskEntity task) {
+  public boolean handleTask(TaskEntity task, CallContext callContext) {
     ManifestCleanupTask cleanupTask = task.readData(ManifestCleanupTask.class);
     TableIdentifier tableId = cleanupTask.getTableId();
     try (FileIO authorizedFileIO = fileIOSupplier.apply(task, callContext.getRealmContext())) {

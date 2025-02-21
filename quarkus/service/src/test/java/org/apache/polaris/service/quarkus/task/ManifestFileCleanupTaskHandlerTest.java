@@ -108,7 +108,7 @@ class ManifestFileCleanupTaskHandlerTest {
 
       ManifestFileCleanupTaskHandler handler =
           new ManifestFileCleanupTaskHandler(
-              callCtx, buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+              buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
       ManifestFile manifestFile =
           TaskTestUtils.manifestFile(
               fileIO, "manifest1.avro", 1L, "dataFile1.parquet", "dataFile2.parquet");
@@ -124,7 +124,7 @@ class ManifestFileCleanupTaskHandlerTest {
               .build();
       addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
-      assertThatPredicate(handler::handleTask).accepts(task);
+      assertThat(handler.handleTask(task, callCtx)).isTrue();
     }
   }
 
@@ -141,7 +141,7 @@ class ManifestFileCleanupTaskHandlerTest {
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       ManifestFileCleanupTaskHandler handler =
           new ManifestFileCleanupTaskHandler(
-              callCtx, buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+              buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
       ManifestFile manifestFile =
           TaskTestUtils.manifestFile(
               fileIO, "manifest1.avro", 100L, "dataFile1.parquet", "dataFile2.parquet");
@@ -156,7 +156,7 @@ class ManifestFileCleanupTaskHandlerTest {
               .build();
       addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
-      assertThatPredicate(handler::handleTask).accepts(task);
+      assertThat(handler.handleTask(task, callCtx)).isTrue();
     }
   }
 
@@ -179,7 +179,7 @@ class ManifestFileCleanupTaskHandlerTest {
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       ManifestFileCleanupTaskHandler handler =
           new ManifestFileCleanupTaskHandler(
-              callCtx, buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+              buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
       String dataFile1Path = "dataFile1.parquet";
       OutputFile dataFile1 = fileIO.newOutputFile(dataFile1Path);
       PositionOutputStream out1 = dataFile1.createOrOverwrite();
@@ -203,7 +203,7 @@ class ManifestFileCleanupTaskHandlerTest {
               .build();
       addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
-      assertThatPredicate(handler::handleTask).accepts(task);
+      assertThat(handler.handleTask(task, callCtx)).isTrue();
       assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
       assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
     }
@@ -244,7 +244,7 @@ class ManifestFileCleanupTaskHandlerTest {
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       ManifestFileCleanupTaskHandler handler =
           new ManifestFileCleanupTaskHandler(
-              callCtx, buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+              buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
       String dataFile1Path = "dataFile1.parquet";
       OutputFile dataFile1 = fileIO.newOutputFile(dataFile1Path);
       PositionOutputStream out1 = dataFile1.createOrOverwrite();
@@ -268,7 +268,7 @@ class ManifestFileCleanupTaskHandlerTest {
               .build();
       addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
-      assertThatPredicate(handler::handleTask).accepts(task);
+      assertThat(handler.handleTask(task, callCtx)).isTrue();
       assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile1Path);
       assertThatPredicate((String f) -> TaskUtils.exists(f, fileIO)).rejects(dataFile2Path);
     }
@@ -293,7 +293,7 @@ class ManifestFileCleanupTaskHandlerTest {
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       ManifestFileCleanupTaskHandler handler =
           new ManifestFileCleanupTaskHandler(
-              callCtx, buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+              buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
 
       long snapshotId1 = 100L;
       ManifestFile manifestFile1 =
@@ -368,7 +368,7 @@ class ManifestFileCleanupTaskHandlerTest {
       addTaskLocation(task);
 
       assertThatPredicate(handler::canHandleTask).accepts(task);
-      assertThatPredicate(handler::handleTask).accepts(task);
+      assertThat(handler.handleTask(task, callCtx)).isTrue();
 
       assertThatPredicate((String file) -> TaskUtils.exists(file, fileIO))
           .rejects(firstMetadataFile);
@@ -392,7 +392,7 @@ class ManifestFileCleanupTaskHandlerTest {
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       ManifestFileCleanupTaskHandler handler =
           new ManifestFileCleanupTaskHandler(
-              callCtx, buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+              buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
       long snapshotId = 100L;
       ManifestFile manifestFile =
           TaskTestUtils.manifestFile(
@@ -421,7 +421,7 @@ class ManifestFileCleanupTaskHandlerTest {
               .build();
       addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
-      assertThatPredicate(handler::handleTask).accepts(task);
+      assertThat(handler.handleTask(task, callCtx)).isTrue();
     }
   }
 
@@ -458,7 +458,7 @@ class ManifestFileCleanupTaskHandlerTest {
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       ManifestFileCleanupTaskHandler handler =
           new ManifestFileCleanupTaskHandler(
-              callCtx, buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+              buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
       long snapshotId = 100L;
       ManifestFile manifestFile =
           TaskTestUtils.manifestFile(
@@ -491,7 +491,7 @@ class ManifestFileCleanupTaskHandlerTest {
             CompletableFuture.runAsync(
                 () -> {
                   assertThatPredicate(handler::canHandleTask).accepts(task);
-                  handler.handleTask(task); // this will schedule the batch deletion
+                  handler.handleTask(task, callCtx); // this will schedule the batch deletion
                 },
                 executor);
         // Wait for all async tasks to finish

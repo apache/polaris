@@ -49,18 +49,15 @@ import org.slf4j.LoggerFactory;
  */
 public class TableCleanupTaskHandler implements TaskHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(TableCleanupTaskHandler.class);
-  private final CallContext callContext;
   private final TaskExecutor taskExecutor;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final TaskFileIOSupplier fileIOSupplier;
   private static final String BATCH_SIZE_CONFIG_KEY = "TABLE_METADATA_CLEANUP_BATCH_SIZE";
 
   public TableCleanupTaskHandler(
-      CallContext callContext,
       TaskExecutor taskExecutor,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier) {
-    this.callContext = callContext;
     this.taskExecutor = taskExecutor;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOSupplier = fileIOSupplier;
@@ -77,7 +74,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
   }
 
   @Override
-  public boolean handleTask(TaskEntity cleanupTask) {
+  public boolean handleTask(TaskEntity cleanupTask, CallContext callContext) {
     PolarisBaseEntity entity = cleanupTask.readData(PolarisBaseEntity.class);
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext());

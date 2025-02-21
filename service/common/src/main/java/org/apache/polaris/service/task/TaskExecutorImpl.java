@@ -45,18 +45,15 @@ public class TaskExecutorImpl implements TaskExecutor {
   private static final Logger LOGGER = LoggerFactory.getLogger(TaskExecutorImpl.class);
   private static final long TASK_RETRY_DELAY = 1000;
 
-  private final CallContext callContext;
   private final Executor executor;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
   private final TaskFileIOSupplier fileIOSupplier;
   private final List<TaskHandler> taskHandlers = new CopyOnWriteArrayList<>();
 
   public TaskExecutorImpl(
-      CallContext callContext,
       Executor executor,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskFileIOSupplier fileIOSupplier) {
-    this.callContext = callContext;
     this.executor = executor;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.fileIOSupplier = fileIOSupplier;
@@ -64,10 +61,9 @@ public class TaskExecutorImpl implements TaskExecutor {
 
   public void init() {
     addTaskHandler(
-        new TableCleanupTaskHandler(callContext, this, metaStoreManagerFactory, fileIOSupplier));
+        new TableCleanupTaskHandler(this, metaStoreManagerFactory, fileIOSupplier));
     addTaskHandler(
-        new ManifestFileCleanupTaskHandler(
-            callContext, fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+        new ManifestFileCleanupTaskHandler(fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
   }
 
   /**
@@ -134,7 +130,7 @@ public class TaskExecutorImpl implements TaskExecutor {
       return;
     }
     TaskHandler handler = handlerOpt.get();
-    boolean success = handler.handleTask(task);
+    boolean success = handler.handleTask(task, ctx);
     if (success) {
       LOGGER
           .atInfo()
