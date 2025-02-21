@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import json
 from dataclasses import dataclass
 from typing import Dict, Optional, List
 
@@ -35,6 +36,7 @@ class PrincipalsCommand(Command):
 
     Example commands:
         * ./polaris principals create user
+        * ./polaris principals access user
         * ./polaris principals list
         * ./polaris principals list --principal-role filter-to-this-role
     """
@@ -47,6 +49,22 @@ class PrincipalsCommand(Command):
     properties: Optional[Dict[str, StrictStr]]
     set_properties: Dict[str, StrictStr]
     remove_properties: List[str]
+
+    def _get_catalogs(self, api: PolarisDefaultApi):
+        for catalog in api.list_catalogs().catalogs:
+            yield catalog.to_dict()['name']
+    
+    def _get_principal_roles(self, api: PolarisDefaultApi):
+        for principal_role in api.list_principal_roles_assigned(self.principal_name).roles:
+            yield principal_role.to_dict()['name']
+    
+    def _get_catalog_roles(self, api: PolarisDefaultApi, principal_role_name: str, catalog_name: str):
+        for catalog_role in api.list_catalog_roles_for_principal_role(principal_role_name, catalog_name).roles:
+            yield catalog_role.to_dict()['name']
+    
+    def _get_privileges(self, api: PolarisDefaultApi, catalog_name: str, catalog_role_name: str):
+        for grant in api.list_grants_for_catalog_role(catalog_name, catalog_role_name).grants:
+            yield grant.to_dict()
 
     def validate(self):
         pass
@@ -93,5 +111,34 @@ class PrincipalsCommand(Command):
                 properties=new_properties
             )
             api.update_principal(self.principal_name, request)
+        elif self.principals_subcommand == Subcommands.ACCESS:
+            principal = api.get_principal(self.principal_name).to_dict()['name']
+            principal_roles = self._get_principal_roles(api)
+
+            # Initialize the result structure
+            result = {
+                'principal': principal,
+                'principal_roles': []
+            }
+            
+            # Construct the result structure for each principal role
+            for principal_role in principal_roles:
+                role_data = {
+                    'name': principal_role,
+                    'catalog_roles': []
+                }
+                # For each catalog role, get associated privileges
+                for catalog in self._get_catalogs(api):
+                    catalog_roles = self._get_catalog_roles(api, principal_role, catalog)
+                    for catalog_role in catalog_roles:
+                        catalog_data = {
+                            'name': catalog_role,
+                            'catalog': catalog,
+                            'privileges': []
+                        }
+                        catalog_data['privileges'] = list(self._get_privileges(api, catalog_data['catalog'], catalog_role))
+                        role_data['catalog_roles'].append(catalog_data)
+                result['principal_roles'].append(role_data)
+            print(json.dumps(result))
         else:
             raise Exception(f"{self.principals_subcommand} is not supported in the CLI")

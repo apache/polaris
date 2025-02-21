@@ -123,7 +123,8 @@ class OptionTree:
                 Option(Subcommands.UPDATE, args=[
                     Argument(Arguments.SET_PROPERTY, str, Hints.SET_PROPERTY, allow_repeats=True),
                     Argument(Arguments.REMOVE_PROPERTY, str, Hints.REMOVE_PROPERTY, allow_repeats=True),
-                ], input_name=Arguments.PRINCIPAL)
+                ], input_name=Arguments.PRINCIPAL),
+                Option(Subcommands.ACCESS, input_name=Arguments.PRINCIPAL),
             ]),
             Option(Commands.PRINCIPAL_ROLES, 'manage principal roles', children=[
                 Option(Subcommands.CREATE, args=[

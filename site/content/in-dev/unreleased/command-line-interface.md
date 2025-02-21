@@ -256,6 +256,7 @@ The `principals` command is used to manage principals within Polaris.
 4. list
 5. rotate-credentials
 6. update
+7. access
 
 #### create
 
@@ -370,6 +371,24 @@ options:
 polaris principals update --property key=value --property other_key=other_value some_user
 
 polaris principals update --property are_other_keys_removed=yes some_user
+```
+
+#### access
+
+The `access` subcommand retrieves entities relation about a principal.
+
+```
+input: polaris principals access --help
+options:
+  access
+    Positional arguments:
+      principal
+```
+
+##### Examples
+
+```
+polaris principals access quickstart_user
 ```
 
 ### Principal Roles
