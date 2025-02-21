@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.quarkus.admin;
 
-import static org.apache.polaris.core.PolarisConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS;
 import static org.apache.polaris.core.PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP;
 import static org.apache.polaris.core.PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION;
 import static org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase.SCHEMA;
@@ -38,7 +37,6 @@ import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.TestServices;
-import org.junit.Before;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
