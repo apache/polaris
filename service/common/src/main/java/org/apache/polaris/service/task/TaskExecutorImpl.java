@@ -60,10 +60,10 @@ public class TaskExecutorImpl implements TaskExecutor {
   }
 
   public void init() {
+    addTaskHandler(new TableCleanupTaskHandler(this, metaStoreManagerFactory, fileIOSupplier));
     addTaskHandler(
-        new TableCleanupTaskHandler(this, metaStoreManagerFactory, fileIOSupplier));
-    addTaskHandler(
-        new ManifestFileCleanupTaskHandler(fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+        new ManifestFileCleanupTaskHandler(
+            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
   }
 
   /**

@@ -137,26 +137,27 @@ public record TestServices(
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
       PolarisMetaStoreSession metaStoreSession =
           metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
-      CallContext callContext = new CallContext() {
-          @Override
-          public RealmContext getRealmContext() {
-            return realmContext;
-          }
+      CallContext callContext =
+          new CallContext() {
+            @Override
+            public RealmContext getRealmContext() {
+              return realmContext;
+            }
 
-          @Override
-          public PolarisCallContext getPolarisCallContext() {
-            return new PolarisCallContext(
-                metaStoreSession,
-                polarisDiagnostics,
-                configurationStore,
-                Mockito.mock(Clock.class));
-          }
+            @Override
+            public PolarisCallContext getPolarisCallContext() {
+              return new PolarisCallContext(
+                  metaStoreSession,
+                  polarisDiagnostics,
+                  configurationStore,
+                  Mockito.mock(Clock.class));
+            }
 
-          @Override
-          public Map<String, Object> contextVariables() {
-            return new HashMap<>();
-          }
-        };
+            @Override
+            public Map<String, Object> contextVariables() {
+              return new HashMap<>();
+            }
+          };
 
       FileIOFactory fileIOFactory =
           fileIOFactorySupplier.apply(
