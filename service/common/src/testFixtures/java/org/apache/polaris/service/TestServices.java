@@ -22,10 +22,13 @@ import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import jakarta.ws.rs.core.SecurityContext;
 import java.security.Principal;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
@@ -134,7 +137,26 @@ public record TestServices(
           metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
       PolarisMetaStoreSession metaStoreSession =
           metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
-      CallContext callContext = CallContext.getCurrentContext();
+      CallContext callContext = new CallContext() {
+          @Override
+          public RealmContext getRealmContext() {
+            return realmContext;
+          }
+
+          @Override
+          public PolarisCallContext getPolarisCallContext() {
+            return new PolarisCallContext(
+                metaStoreSession,
+                polarisDiagnostics,
+                configurationStore,
+                Mockito.mock(Clock.class));
+          }
+
+          @Override
+          public Map<String, Object> contextVariables() {
+            return new HashMap<>();
+          }
+        };
 
       FileIOFactory fileIOFactory =
           fileIOFactorySupplier.apply(
