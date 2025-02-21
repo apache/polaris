@@ -80,7 +80,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     int responseCode = mapExceptionToResponseCode(runtimeException);
     LOGGER
         .atLevel(responseCode >= 500 ? Level.INFO : Level.DEBUG)
-        .log("Full runtimeException", runtimeException);
+        .log("Full RuntimeException", runtimeException);
 
     if (responseCode == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()) {
       LOGGER.error("Unhandled exception returning INTERNAL_SERVER_ERROR", runtimeException);
