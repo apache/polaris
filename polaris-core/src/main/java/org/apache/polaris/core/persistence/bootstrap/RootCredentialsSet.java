@@ -107,12 +107,7 @@ public interface RootCredentialsSet {
         throw new IllegalArgumentException(
             "Missing required field for realm " + realm + ": client-secret");
       }
-      if (principal != null && !principal.equals(PolarisEntityConstants.ROOT_PRINCIPAL_NAME)) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Invalid principal %s. Expected %s.",
-                principal, PolarisEntityConstants.ROOT_PRINCIPAL_NAME));
-      }
+
 
       if (credentials.containsKey(realm)) {
         throw new IllegalArgumentException("Duplicate realm: " + realm);
