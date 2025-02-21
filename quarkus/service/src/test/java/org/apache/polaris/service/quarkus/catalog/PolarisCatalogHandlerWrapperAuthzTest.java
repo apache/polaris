@@ -65,6 +65,7 @@ import org.apache.polaris.service.catalog.PolarisCatalogHandlerWrapper;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.events.DefaultPolarisEventListener;
 import org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -111,7 +112,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         securityContext(authenticatedPrincipal, activatedPrincipalRoles),
         factory,
         catalogName,
-        polarisAuthorizer);
+        polarisAuthorizer,
+        polarisEventListener);
   }
 
   private PolarisCatalogHandlerWrapper newWrapper(SecurityContext securityContext) {
@@ -125,7 +127,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         securityContext,
         newCatalogFactory(),
         CATALOG_NAME,
-        polarisAuthorizer);
+        polarisAuthorizer,
+        polarisEventListener);
   }
 
   private CallContextCatalogFactory newCatalogFactory() {
@@ -136,7 +139,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         configurationStore,
         diagServices,
         Mockito.mock(),
-        fileIOFactory);
+        fileIOFactory,
+        polarisEventListener);
   }
 
   /**
@@ -1711,8 +1715,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             configurationStore,
             diagServices,
             Mockito.mock(),
-            new DefaultFileIOFactory(
-                realmEntityManagerFactory, managerFactory, configurationStore)) {
+            new DefaultFileIOFactory(realmEntityManagerFactory, managerFactory, configurationStore),
+            new DefaultPolarisEventListener()) {
           @Override
           public Catalog createCallContextCatalog(
               RealmContext realmContext,
