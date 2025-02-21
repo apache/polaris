@@ -76,6 +76,7 @@ public final class IcebergJsonProcessingExceptionMapper
      * Otherwise, it's those pesky users.
      */
     LOGGER.info("Unable to process JSON: {}", exception.getMessage());
+    LOGGER.debug("Full JsonProcessingException", exception);
 
     String messagePrefix =
         switch (exception) {

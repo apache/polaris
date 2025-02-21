@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus;
+package org.apache.polaris.service.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -29,13 +29,12 @@ import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
 import java.util.stream.Stream;
-import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
-class IcebergExceptionMapperTest {
+public class IcebergExceptionMapperTest {
 
   static Stream<Arguments> fileIOExceptionMapping() {
     Map<Integer, Integer> cloudCodeMappings =

@@ -95,6 +95,8 @@ dependencies {
   testImplementation(libs.mockito.core)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
+  testImplementation(libs.logback.classic)
+
   testFixturesImplementation(project(":polaris-core"))
   testFixturesImplementation(project(":polaris-api-management-model"))
   testFixturesImplementation(project(":polaris-api-management-service"))

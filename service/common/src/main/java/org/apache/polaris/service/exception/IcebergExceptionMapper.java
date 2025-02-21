@@ -57,6 +57,7 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 @Provider
@@ -75,7 +76,12 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   @Override
   public Response toResponse(RuntimeException runtimeException) {
     LOGGER.info("Handling runtimeException {}", runtimeException.getMessage());
+
     int responseCode = mapExceptionToResponseCode(runtimeException);
+    LOGGER
+        .atLevel(responseCode >= 500 ? Level.INFO : Level.DEBUG)
+        .log("Full RuntimeException", runtimeException);
+
     if (responseCode == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()) {
       LOGGER.error("Unhandled exception returning INTERNAL_SERVER_ERROR", runtimeException);
     }
