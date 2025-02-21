@@ -161,6 +161,11 @@ polaris catalogs create \
   --role-arn ${ROLE_ARN} \
   my_other_catalog 
 
+```
+
+Create a catalog with the FILE storage format.
+
+```
 polaris catalogs create \
   --storage-type file \
   --default-base-location file:///example/tmp \

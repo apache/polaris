@@ -36,7 +36,7 @@ All catalogs in Polaris are associated with a _storage type_. Valid Storage Type
 
 For details on how to use Storage Types in the REST API, see [the API docs]({{% github-polaris "regtests/client/python/docs/StorageConfigInfo.md" %}}).
 
-For usage examples of storage types, see [the CLI docs]({{% github-polaris "docs/command-line-interface.md" %}}).
+For usage examples of storage types, see [docs]({{% ref "command-line-interface" %}}).
 
 ## Namespace
 
