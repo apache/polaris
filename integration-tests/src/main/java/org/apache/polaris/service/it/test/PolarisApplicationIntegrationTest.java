@@ -35,7 +35,6 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.PartitionData;
@@ -75,6 +74,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ClientPrincipal;
+import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.RestApi;
@@ -133,11 +133,7 @@ public class PolarisApplicationIntegrationTest {
     clientCredentials = adminCredentials.credentials();
     authToken = client.obtainToken(clientCredentials);
     managementApi = client.managementApi(clientCredentials);
-    baseLocation =
-        Optional.ofNullable(System.getenv("INTEGRATION_TEST_TEMP_DIR"))
-            .map(URI::create)
-            .orElse(tempDir.toUri())
-            .resolve(realm + "/");
+    baseLocation = IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(realm + "/");
   }
 
   @AfterAll

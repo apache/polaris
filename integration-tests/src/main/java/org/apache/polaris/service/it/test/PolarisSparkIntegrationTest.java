@@ -32,7 +32,6 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.apache.iceberg.rest.requests.ImmutableRegisterTableRequest;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -43,6 +42,7 @@ import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
+import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
@@ -105,11 +105,7 @@ public class PolarisSparkIntegrationTest {
     managementApi = client.managementApi(credentials);
     catalogApi = client.catalogApi(credentials);
 
-    warehouseDir =
-        Optional.ofNullable(System.getenv("INTEGRATION_TEST_TEMP_DIR"))
-            .map(URI::create)
-            .orElse(tempDir.toUri())
-            .resolve("spark-warehouse");
+    warehouseDir = IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve("spark-warehouse");
 
     catalogName = client.newEntityName("spark_catalog");
     externalCatalogName = client.newEntityName("spark_ext_catalog");

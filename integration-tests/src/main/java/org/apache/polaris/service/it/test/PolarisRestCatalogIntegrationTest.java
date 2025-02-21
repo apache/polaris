@@ -81,6 +81,7 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.IcebergHelper;
+import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
@@ -161,10 +162,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     principalRoleName = client.newEntityName("rest-admin");
     principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
     catalogApi = client.catalogApi(principalCredentials);
-    URI testRootUri =
-        Optional.ofNullable(System.getenv("INTEGRATION_TEST_TEMP_DIR"))
-            .map(URI::create)
-            .orElse(tempDir.toUri());
+    URI testRootUri = IntegrationTestsHelper.getTemporaryDirectory(tempDir);
     s3BucketBase = testRootUri.resolve("my-bucket");
     externalCatalogBase = testRootUri.resolve("external-catalog");
   }
