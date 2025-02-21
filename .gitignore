@@ -92,6 +92,3 @@ hs_err_pid*
 
 # macOS
 *.DS_Store
-
-# vscode
-.vscode/settings.json
