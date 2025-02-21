@@ -242,7 +242,7 @@ paths:
     post:
       operationId: rotateCredentials
       description: Rotate a principal's credentials. The new credentials will be returned in the response. This is the only
-        API, aside from createPrincipal, that returns the user's credentials. This API is *not* idempotent.
+        API, aside from createPrincipal and resetCredentials, that returns the user's credentials. This API is *not* idempotent.
       responses:
         200:
           description: The principal details along with the newly rotated credentials
@@ -268,8 +268,10 @@ paths:
           pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
     post:
       operationId: resetCredentials
-      description: Reset a principal's credentials. The new credentials will be returned in the response. This is the only
-        API, aside from createPrincipal, that returns the user's credentials. This API is *not* idempotent.
+      description:
+        Reset a principal's credentials to a set of credentials that can only be used to rotate the principal's 
+        credentials. The new credentials will be returned in the response. This is the only API, aside from 
+        createPrincipal and rotateCredentials, that returns the user's credentials. This API is *not* idempotent.
       responses:
         200:
           description: The principal details along with the newly reset credentials
