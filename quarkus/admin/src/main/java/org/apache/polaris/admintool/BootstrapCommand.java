@@ -28,7 +28,9 @@ import picocli.CommandLine;
 @CommandLine.Command(
     name = "bootstrap",
     mixinStandardHelpOptions = true,
-    description = "Bootstraps realms and root principal credentials.")
+    description =
+        "Bootstraps realms and root principal credentials. If --credentials is not provided, root "
+            + "credentials will be randomly generated.")
 public class BootstrapCommand extends BaseCommand {
 
   @CommandLine.ArgGroup(multiplicity = "1")
@@ -43,20 +45,17 @@ public class BootstrapCommand extends BaseCommand {
     FileInputOptions fileOptions;
 
     static class StandardInputOptions {
-
       @CommandLine.Option(
-          names = {"-r", "--realm"},
-          paramLabel = "<realm>",
-          required = true,
-          description = "The name of a realm to bootstrap.")
-      List<String> realms;
-
-      @CommandLine.Option(
-          names = {"-c", "--credential"},
-          paramLabel = "<realm,clientId,clientSecret>",
+          names = {"-c", "--credentials"},
           description =
-              "Root principal credentials to bootstrap. Must be of the form 'realm,clientId,clientSecret'.")
-      List<String> credentials;
+              "Principal credentials to bootstrap. If provided, must be a valid JSON array e.g. "
+                  + "[{\"realm\": \"my-realm\", \"principal\": \"root\", \"clientId\": \"polaris\", \"clientSecret\": \"p4ssw0rd\"}]")
+      String credentials;
+
+      @CommandLine.Option(
+          names = {"-p", "--print-credentials"},
+          description = "Print root credentials to stdout")
+      boolean printCredentials;
     }
 
     static class FileInputOptions {
@@ -77,19 +76,28 @@ public class BootstrapCommand extends BaseCommand {
       if (inputOptions.fileOptions != null) {
         rootCredentialsSet =
             RootCredentialsSet.fromUrl(inputOptions.fileOptions.file.toUri().toURL());
-        realms = rootCredentialsSet.credentials().keySet().stream().toList();
       } else {
-        realms = inputOptions.stdinOptions.realms;
+        if (inputOptions.stdinOptions.credentials == null
+            || inputOptions.stdinOptions.credentials.isEmpty()) {
+          if (!inputOptions.stdinOptions.printCredentials) {
+            spec.commandLine()
+                .getErr()
+                .println(
+                    "Specify either `--credentials` or `--print-credentials` to ensure"
+                        + " the root user is accessible after bootstrapping.");
+          }
+        }
+
         rootCredentialsSet =
             inputOptions.stdinOptions.credentials == null
                     || inputOptions.stdinOptions.credentials.isEmpty()
                 ? RootCredentialsSet.EMPTY
-                : RootCredentialsSet.fromList(inputOptions.stdinOptions.credentials);
+                : RootCredentialsSet.fromJson(inputOptions.stdinOptions.credentials);
       }
 
       // Execute the bootstrap
       Map<String, PrincipalSecretsResult> results =
-          metaStoreManagerFactory.bootstrapRealms(realms, rootCredentialsSet);
+          metaStoreManagerFactory.bootstrapRealms(rootCredentialsSet);
 
       // Log any errors:
       boolean success = true;
@@ -97,6 +105,15 @@ public class BootstrapCommand extends BaseCommand {
         if (result.getValue().isSuccess()) {
           String realm = result.getKey();
           spec.commandLine().getOut().printf("Realm '%s' successfully bootstrapped.%n", realm);
+          if (inputOptions.stdinOptions != null && inputOptions.stdinOptions.printCredentials) {
+            String msg =
+                String.format(
+                    "realm: %1s root principal credentials: %2s:%3s",
+                    result.getKey(),
+                    result.getValue().getPrincipalSecrets().getPrincipalClientId(),
+                    result.getValue().getPrincipalSecrets().getMainSecret());
+            spec.commandLine().getOut().println(msg);
+          }
         } else {
           String realm = result.getKey();
           spec.commandLine()
@@ -118,6 +135,7 @@ public class BootstrapCommand extends BaseCommand {
     } catch (Exception e) {
       e.printStackTrace(spec.commandLine().getErr());
       spec.commandLine().getErr().println("Bootstrap encountered errors during operation.");
+      spec.commandLine().getErr().flush();
       return EXIT_CODE_BOOTSTRAP_ERROR;
     }
   }

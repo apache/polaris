@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -37,6 +38,15 @@ public interface MetaStoreManagerFactory {
   StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext);
 
   EntityCache getOrCreateEntityCache(RealmContext realmContext);
+
+  default Map<String, PrincipalSecretsResult> bootstrapRealms(
+      RootCredentialsSet rootCredentialsSet) {
+    ArrayList<String> realms = new ArrayList<>();
+    for (var entry : rootCredentialsSet.credentials().entrySet()) {
+      realms.add(entry.getKey());
+    }
+    return bootstrapRealms(realms, rootCredentialsSet);
+  }
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(
       List<String> realms, RootCredentialsSet rootCredentialsSet);

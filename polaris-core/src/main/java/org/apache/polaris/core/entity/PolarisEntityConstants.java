@@ -38,7 +38,7 @@ public class PolarisEntityConstants {
   private static final String ADMIN_CATALOG_ROLE_NAME = "catalog_admin";
 
   // the name of the root principal we create at bootstrap time
-  private static final String ROOT_PRINCIPAL_NAME = "root";
+  public static final String ROOT_PRINCIPAL_NAME = "root";
 
   // the name of the principal role we create to manage the entire Polaris service
   private static final String ADMIN_PRINCIPAL_ROLE_NAME = "service_admin";

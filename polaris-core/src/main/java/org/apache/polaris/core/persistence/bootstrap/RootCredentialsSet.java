@@ -22,6 +22,7 @@ import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKN
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
@@ -32,6 +33,7 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.immutables.PolarisImmutable;
 import org.immutables.value.Value;
 
@@ -72,6 +74,54 @@ public interface RootCredentialsSet {
     return credentialsString != null && !credentialsString.isBlank()
         ? fromList(Splitter.on(';').trimResults().splitToList(credentialsString))
         : EMPTY;
+  }
+
+  /**
+   * Parse a JSON object of credentials. Example: { "realm1": { "client-id": "client1",
+   * "client-secret": "secret1" }, "realm2": { "client-id": "client2", "client-secret": "secret2",
+   * "extra-field": "extra-value" } }
+   */
+  static RootCredentialsSet fromJson(String json) {
+    ObjectMapper objectMapper = new ObjectMapper();
+    Map<String, Map<String, String>> credentialsMap;
+    try {
+      credentialsMap = objectMapper.readValue(json, new TypeReference<>() {});
+    } catch (Exception e) {
+      throw new IllegalArgumentException("Could not parse credentials JSON: " + json, e);
+    }
+
+    Map<String, RootCredentials> credentials = new HashMap<>();
+    for (Map.Entry<String, Map<String, String>> entry : credentialsMap.entrySet()) {
+      String realm = entry.getKey();
+      Map<String, String> values = entry.getValue();
+
+      String principal = values.get("principal");
+      String clientId = values.get("client-id");
+      String clientSecret = values.get("client-secret");
+
+      if (clientId == null) {
+        throw new IllegalArgumentException(
+            "Missing required field for realm " + realm + ": client-id");
+      }
+      if (clientSecret == null) {
+        throw new IllegalArgumentException(
+            "Missing required field for realm " + realm + ": client-secret");
+      }
+      if (principal != null && !principal.equals(PolarisEntityConstants.ROOT_PRINCIPAL_NAME)) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Invalid principal %s. Expected %s.",
+                principal, PolarisEntityConstants.ROOT_PRINCIPAL_NAME));
+      }
+
+      if (credentials.containsKey(realm)) {
+        throw new IllegalArgumentException("Duplicate realm: " + realm);
+      } else {
+        credentials.put(realm, ImmutableRootCredentials.of(clientId, clientSecret));
+      }
+    }
+
+    return credentials.isEmpty() ? EMPTY : ImmutableRootCredentialsSet.of(credentials);
   }
 
   /**
