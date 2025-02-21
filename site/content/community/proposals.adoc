@@ -17,40 +17,20 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-linkTitle: 'Proposals'
-title: 'Apache Polaris Proposals'
+linkTitle: 'Proposals & Roadmap'
+title: 'Apache Polaris Proposals & Roadmap'
 weight: 200
 type: docs
-# TODO remove when adding the first proposal
-toc_hide: true
+toc_hide: false
 hide_summary: true
 ---
 
-== Active Proposals
+== Proposals
 
-[cols="4,2,4,4"]
-|===
-| Topic | Date Created | Proposal Document | Dev-list discussion
-
-| Sample topic placeholder
-| 2024/09/06
-| Link to Google Doc
-| Link to dev-mailing list discussion
-
-|===
+* [Active](https://github.com/apache/polaris/issues?q=is%3Aissue%20state%3Aopen%20label%3Aproposal)
+* [Past](https://github.com/apache/polaris/issues?q=is%3Aissue%20state%3Aclosed%20label%3Aproposal)
 
 
-== Previous Proposals
+== Polaris Roadmap
 
-
-[cols="4,2,4,4,2"]
-|===
-| Topic | Date Created | Proposal Document | Dev-list discussion + vote | Resolution
-
-| Sample topic placeholder
-| 2024/09/06
-| Link to Google Doc
-| Link to dev-mailing list discussion
-| Accepted
-
-|===
+* [Discussed Roadmap](https://github.com/apache/polaris/discussions/1028)
