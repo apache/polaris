@@ -24,6 +24,7 @@ import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
@@ -136,7 +137,15 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       "INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST";
   static final boolean INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST_DEFAULT = false;
 
-  private static final int MAX_RETRIES = 12;
+  @VisibleForTesting
+  public static final Set<Integer> RETRYABLE_CLOUD_EXCEPTION_CODES =
+      Set.of(
+          Response.Status.REQUEST_TIMEOUT.getStatusCode(),
+          Response.Status.TOO_MANY_REQUESTS.getStatusCode(),
+          Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+          Response.Status.SERVICE_UNAVAILABLE.getStatusCode(),
+          Response.Status.GATEWAY_TIMEOUT.getStatusCode(),
+          IcebergExceptionMapper.UNKNOWN_CLOUD_HTTP_CODE);
 
   public static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
       ex -> {
@@ -1193,7 +1202,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
-            MAX_RETRIES,
+            configurationStore.getConfiguration(
+                realmContext, PolarisConfiguration.MAX_METADATA_REFRESH_RETRIES),
             metadataLocation -> {
               String latestLocationDir =
                   latestLocation.substring(0, latestLocation.lastIndexOf('/'));
@@ -1412,7 +1422,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
-            MAX_RETRIES,
+            configurationStore.getConfiguration(
+                realmContext, PolarisConfiguration.MAX_METADATA_REFRESH_RETRIES),
             metadataLocation -> {
               String latestLocationDir =
                   latestLocation.substring(0, latestLocation.lastIndexOf('/'));
@@ -2014,6 +2025,12 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    * @return true if the exception is retryable
    */
   private static boolean isStorageProviderRetryableException(Exception ex) {
+    if (ex instanceof RuntimeException rex
+        && !RETRYABLE_CLOUD_EXCEPTION_CODES.contains(
+            IcebergExceptionMapper.extractHttpCodeFromCloudException(rex))) {
+      return false;
+    }
+
     // For S3/Azure, the exception is not wrapped, while for GCP the exception is wrapped as a
     // RuntimeException
     Throwable rootCause = ExceptionUtils.getRootCause(ex);
