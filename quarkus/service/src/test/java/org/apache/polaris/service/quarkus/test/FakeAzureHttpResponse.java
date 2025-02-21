@@ -40,6 +40,7 @@ public class FakeAzureHttpResponse extends HttpResponse {
   }
 
   @Override
+  @Deprecated
   public String getHeaderValue(String name) {
     return "";
   }
