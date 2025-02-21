@@ -62,6 +62,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 
 @Provider
 public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException> {
+  /** Signifies that we could not extract an HTTP code from a given cloud exception */
   public static final int UNKNOWN_CLOUD_HTTP_CODE = -1;
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergExceptionMapper.class);
