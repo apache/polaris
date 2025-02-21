@@ -19,16 +19,15 @@
 package org.apache.polaris.service.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.azure.core.exception.AzureException;
 import com.azure.core.exception.HttpResponseException;
-import com.azure.core.http.HttpResponse;
 import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.apache.polaris.service.exception.IcebergExceptionMapper;
+import org.apache.polaris.service.quarkus.test.FakeAzureHttpResponse;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -65,7 +64,8 @@ public class IcebergExceptionMapperTest {
                 entry ->
                     Stream.of(
                         Arguments.of(
-                            new HttpResponseException("", mockAzureResponse(entry.getKey()), ""),
+                            new HttpResponseException(
+                                "", new FakeAzureHttpResponse(entry.getKey()), ""),
                             entry.getValue()),
                         Arguments.of(
                             S3Exception.builder().message("").statusCode(entry.getKey()).build(),
@@ -81,18 +81,5 @@ public class IcebergExceptionMapperTest {
       assertThat(response.getStatus()).isEqualTo(statusCode);
       assertThat(response.getEntity()).extracting("message").isEqualTo(ex.getMessage());
     }
-  }
-
-  /**
-   * Creates a mock of the Azure-specific HttpResponse object, as it's quite difficult to construct
-   * a "real" one.
-   *
-   * @param statusCode
-   * @return
-   */
-  private static HttpResponse mockAzureResponse(int statusCode) {
-    HttpResponse res = mock(HttpResponse.class);
-    when(res.getStatusCode()).thenReturn(statusCode);
-    return res;
   }
 }

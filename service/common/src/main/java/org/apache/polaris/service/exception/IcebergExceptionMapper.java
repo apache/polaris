@@ -62,6 +62,8 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 
 @Provider
 public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException> {
+  public static final int UNKNOWN_CLOUD_HTTP_CODE = -1;
+
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergExceptionMapper.class);
 
   // Case-insensitive parts of exception messages that a request to a cloud provider was denied due
@@ -158,18 +160,25 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     };
   }
 
+  /**
+   * @return UNKNOWN_CLOUD_HTTP_CODE if the exception is not a cloud exception that we know how to
+   *     extract the code from
+   */
+  public static int extractHttpCodeFromCloudException(RuntimeException rex) {
+    return switch (rex) {
+      case S3Exception s3e -> s3e.statusCode();
+      case HttpResponseException hre -> hre.getResponse().getStatusCode();
+      case StorageException se -> se.getCode();
+      default -> UNKNOWN_CLOUD_HTTP_CODE;
+    };
+  }
+
   static int mapCloudExceptionToResponseCode(RuntimeException rex) {
     if (doesAnyThrowableContainAccessDeniedHint(rex)) {
       return Status.FORBIDDEN.getStatusCode();
     }
 
-    int httpCode =
-        switch (rex) {
-          case S3Exception s3e -> s3e.statusCode();
-          case HttpResponseException hre -> hre.getResponse().getStatusCode();
-          case StorageException se -> se.getCode();
-          default -> -1;
-        };
+    int httpCode = extractHttpCodeFromCloudException(rex);
     Status httpStatus = Status.fromStatusCode(httpCode);
     Status.Family httpFamily = Status.Family.familyOf(httpCode);
 
