@@ -26,6 +26,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.core.SecurityContext;
@@ -54,6 +56,7 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
@@ -308,9 +311,11 @@ public class IcebergCatalogAdapter
                   .build();
             }
           } else if (delegationModes.isEmpty()) {
-            return Response.ok(catalog.createTableDirect(ns, createTableRequest)).build();
+            LoadTableResponse loadTableResponse = catalog.createTableDirect(ns, createTableRequest);
+            return Response.ok(loadTableResponse).header(HttpHeaders.ETAG, loadTableResponse.metadataLocation()).build();
           } else {
-            return Response.ok(catalog.createTableDirectWithWriteDelegation(ns, createTableRequest))
+            LoadTableResponse loadTableResponse = catalog.createTableDirectWithWriteDelegation(ns, createTableRequest);
+            return Response.ok(loadTableResponse).header(HttpHeaders.ETAG, loadTableResponse.metadataLocation())
                 .build();
           }
         });
@@ -335,6 +340,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String table,
       String accessDelegationMode,
+      String etag,
       String snapshots,
       RealmContext realmContext,
       SecurityContext securityContext) {
@@ -347,9 +353,12 @@ public class IcebergCatalogAdapter
         prefix,
         catalog -> {
           if (delegationModes.isEmpty()) {
-            return Response.ok(catalog.loadTable(tableIdentifier, snapshots)).build();
+            Optional<LoadTableResponse> optionalLoadTableResponse = catalog.loadTableFreshnessAware(tableIdentifier, etag, snapshots);
+            LoadTableResponse loadTableResponse = optionalLoadTableResponse.orElseThrow(() -> new WebApplicationException(Status.NOT_MODIFIED));
+            return Response.ok(loadTableResponse).header(HttpHeaders.ETAG, loadTableResponse.metadataLocation()).build();
           } else {
-            return Response.ok(catalog.loadTableWithAccessDelegation(tableIdentifier, snapshots))
+            LoadTableResponse loadTableResponse = catalog.loadTableWithAccessDelegation(tableIdentifier, snapshots);
+            return Response.ok(loadTableResponse).header(HttpHeaders.ETAG, loadTableResponse.metadataLocation())
                 .build();
           }
         });
@@ -407,7 +416,10 @@ public class IcebergCatalogAdapter
     return withCatalog(
         securityContext,
         prefix,
-        catalog -> Response.ok(catalog.registerTable(ns, registerTableRequest)).build());
+        catalog -> {
+          LoadTableResponse loadTableResponse = catalog.registerTable(ns, registerTableRequest);
+          return Response.ok(loadTableResponse).header(HttpHeaders.ETAG, loadTableResponse.metadataLocation()).build();
+          });
   }
 
   @Override
