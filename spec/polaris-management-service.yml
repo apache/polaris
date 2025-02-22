@@ -274,13 +274,13 @@ paths:
         createPrincipal and rotateCredentials, that returns the user's credentials. This API is *not* idempotent.
       responses:
         200:
-          description: The principal details along with the newly reset credentials
+          description: The principal details along with the newly reset credentials that require rotating
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/PrincipalWithCredentials"
         403:
-          description: "The caller does not have permission to rotate credentials"
+          description: "The caller does not have permission to reset credentials"
         404:
           description: "The principal does not exist"
 
