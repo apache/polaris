@@ -35,14 +35,13 @@ import java.time.ZoneId;
 import java.util.Comparator;
 import java.util.Objects;
 import java.util.stream.Stream;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
 import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
 import org.junit.jupiter.api.AfterAll;
@@ -101,18 +100,16 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
   protected PolarisTestMetaStoreManager createPolarisTestMetaStoreManager() {
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     PolarisEclipseLinkStore store = new PolarisEclipseLinkStore(diagServices);
-    RealmContext realmContext = () -> "realm";
-    PolarisMetaStoreSession session =
+    PolarisEclipseLinkMetaStoreSessionImpl session =
         new PolarisEclipseLinkMetaStoreSessionImpl(
-            store, Mockito.mock(), realmContext, null, "polaris", RANDOM_SECRETS, diagServices);
+            store, Mockito.mock(), () -> "realm", null, "polaris", RANDOM_SECRETS);
     return new PolarisTestMetaStoreManager(
-        new PolarisMetaStoreManagerImpl(
-            realmContext,
+        new PolarisMetaStoreManagerImpl(),
+        new PolarisCallContext(
+            session,
             diagServices,
             new PolarisConfigurationStore() {},
-            timeSource.withZone(ZoneId.systemDefault())),
-        session,
-        diagServices);
+            timeSource.withZone(ZoneId.systemDefault())));
   }
 
   @ParameterizedTest
@@ -126,13 +123,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
     try {
       var session =
           new PolarisEclipseLinkMetaStoreSessionImpl(
-              store,
-              Mockito.mock(),
-              () -> "realm",
-              confFile,
-              "polaris",
-              RANDOM_SECRETS,
-              diagServices);
+              store, Mockito.mock(), () -> "realm", confFile, "polaris", RANDOM_SECRETS);
       assertNotNull(session);
       assertTrue(success);
     } catch (Exception e) {

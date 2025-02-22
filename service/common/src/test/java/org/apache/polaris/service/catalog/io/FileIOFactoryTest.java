@@ -25,6 +25,8 @@ import static org.mockito.Mockito.when;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import java.lang.reflect.Method;
+import java.time.Clock;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.iceberg.Schema;
@@ -34,12 +36,14 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
 import org.apache.iceberg.io.FileIO;
 import org.apache.iceberg.types.Types;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.*;
 import org.apache.polaris.service.TestServices;
@@ -70,6 +74,7 @@ public class FileIOFactoryTest {
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
   public static final String SESSION_TOKEN = "session_token";
 
+  private CallContext callContext;
   private RealmContext realmContext;
   private StsClient stsClient;
   private TestServices testServices;
@@ -120,6 +125,31 @@ public class FileIOFactoryTest {
             .stsClient(stsClient)
             .fileIOFactorySupplier(fileIOFactorySupplier)
             .build();
+
+    callContext =
+        new CallContext() {
+          @Override
+          public RealmContext getRealmContext() {
+            return testServices.realmContext();
+          }
+
+          @Override
+          public PolarisCallContext getPolarisCallContext() {
+            return new PolarisCallContext(
+                testServices
+                    .metaStoreManagerFactory()
+                    .getOrCreateSessionSupplier(realmContext)
+                    .get(),
+                testServices.polarisDiagnostics(),
+                testServices.configurationStore(),
+                Mockito.mock(Clock.class));
+          }
+
+          @Override
+          public Map<String, Object> contextVariables() {
+            return new HashMap<>();
+          }
+        };
   }
 
   @AfterEach
@@ -154,13 +184,7 @@ public class FileIOFactoryTest {
         testServices
             .metaStoreManagerFactory()
             .getOrCreateMetaStoreManager(realmContext)
-            .loadTasks(
-                testServices
-                    .metaStoreManagerFactory()
-                    .getOrCreateSessionSupplier(realmContext)
-                    .get(),
-                "testExecutor",
-                1)
+            .loadTasks(callContext.getPolarisCallContext(), "testExecutor", 1)
             .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
@@ -206,18 +230,15 @@ public class FileIOFactoryTest {
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
+            callContext,
             services.entityManagerFactory().getOrCreateEntityManager(realmContext),
-            services.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
             services.securityContext(),
             CATALOG_NAME);
     BasePolarisCatalog polarisCatalog =
         new BasePolarisCatalog(
-            services.realmContext(),
             services.entityManagerFactory().getOrCreateEntityManager(realmContext),
             services.metaStoreManagerFactory().getOrCreateMetaStoreManager(realmContext),
-            services.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
-            services.configurationStore(),
-            services.polarisDiagnostics(),
+            callContext,
             passthroughView,
             services.securityContext(),
             services.taskExecutor(),

@@ -26,7 +26,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
@@ -46,63 +46,65 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   private final PolarisTreeMapStore store;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final PrincipalSecretsGenerator secretsGenerator;
-  private final PolarisDiagnostics diagnostics;
 
   public PolarisTreeMapMetaStoreSessionImpl(
       @Nonnull PolarisTreeMapStore store,
       @Nonnull PolarisStorageIntegrationProvider storageIntegrationProvider,
-      @Nonnull PrincipalSecretsGenerator secretsGenerator,
-      @Nonnull PolarisDiagnostics diagnostics) {
+      @Nonnull PrincipalSecretsGenerator secretsGenerator) {
 
     // init store
     this.store = store;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.secretsGenerator = secretsGenerator;
-    this.diagnostics = diagnostics;
   }
 
   /** {@inheritDoc} */
   @Override
-  public <T> T runInTransaction(@Nonnull Supplier<T> transactionCode) {
+  public <T> T runInTransaction(
+      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
 
     // run transaction on our underlying store
-    return store.runInTransaction(transactionCode);
+    return store.runInTransaction(callCtx, transactionCode);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void runActionInTransaction(@Nonnull Runnable transactionCode) {
+  public void runActionInTransaction(
+      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
 
     // run transaction on our underlying store
-    store.runActionInTransaction(transactionCode);
+    store.runActionInTransaction(callCtx, transactionCode);
   }
 
   /** {@inheritDoc} */
   @Override
-  public <T> T runInReadTransaction(@Nonnull Supplier<T> transactionCode) {
+  public <T> T runInReadTransaction(
+      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode) {
     // run transaction on our underlying store
-    return store.runInReadTransaction(transactionCode);
+    return store.runInReadTransaction(callCtx, transactionCode);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void runActionInReadTransaction(@Nonnull Runnable transactionCode) {
+  public void runActionInReadTransaction(
+      @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode) {
 
     // run transaction on our underlying store
-    store.runActionInReadTransaction(transactionCode);
+    store.runActionInReadTransaction(callCtx, transactionCode);
   }
 
   /**
    * @return new unique entity identifier
    */
   @Override
-  public long generateNewId() {
+  public long generateNewId(@Nonnull PolarisCallContext callCtx) {
     return this.store.getNextSequence();
   }
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntities(@Nonnull PolarisBaseEntity entity) {
+  public void writeToEntities(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
     this.store.getSliceEntities().write(entity);
   }
@@ -110,6 +112,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   /** {@inheritDoc} */
   @Override
   public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
+      @Nonnull PolarisCallContext callContext,
       @Nonnull PolarisBaseEntity entity,
       @Nullable PolarisStorageIntegration<T> storageIntegration) {
     // not implemented for in-memory store
@@ -117,14 +120,16 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntitiesActive(@Nonnull PolarisBaseEntity entity) {
+  public void writeToEntitiesActive(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
     this.store.getSliceEntitiesActive().write(entity);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntitiesDropped(@Nonnull PolarisBaseEntity entity) {
+  public void writeToEntitiesDropped(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
     this.store.getSliceEntitiesDropped().write(entity);
     this.store.getSliceEntitiesDroppedToPurge().write(entity);
@@ -132,14 +137,16 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntitiesChangeTracking(@Nonnull PolarisBaseEntity entity) {
+  public void writeToEntitiesChangeTracking(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
     this.store.getSliceEntitiesChangeTracking().write(entity);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void writeToGrantRecords(@Nonnull PolarisGrantRecord grantRec) {
+  public void writeToGrantRecords(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
     // write it
     this.store.getSliceGrantRecords().write(grantRec);
     this.store.getSliceGrantRecordsByGrantee().write(grantRec);
@@ -147,7 +154,8 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromEntities(@Nonnull PolarisEntityCore entity) {
+  public void deleteFromEntities(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
 
     // delete it
     this.store.getSliceEntities().delete(this.store.buildEntitiesKey(entity));
@@ -155,14 +163,16 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromEntitiesActive(@Nonnull PolarisEntityCore entity) {
+  public void deleteFromEntitiesActive(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
     // delete it
     this.store.getSliceEntitiesActive().delete(this.store.buildEntitiesActiveKey(entity));
   }
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromEntitiesDropped(@Nonnull PolarisBaseEntity entity) {
+  public void deleteFromEntitiesDropped(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // delete it
     this.store.getSliceEntitiesDropped().delete(entity);
     this.store.getSliceEntitiesDroppedToPurge().delete(entity);
@@ -171,17 +181,20 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   /**
    * {@inheritDoc}
    *
+   * @param callCtx
    * @param entity entity record to delete
    */
   @Override
-  public void deleteFromEntitiesChangeTracking(@Nonnull PolarisEntityCore entity) {
+  public void deleteFromEntitiesChangeTracking(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
     // delete it
     this.store.getSliceEntitiesChangeTracking().delete(this.store.buildEntitiesKey(entity));
   }
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromGrantRecords(@Nonnull PolarisGrantRecord grantRec) {
+  public void deleteFromGrantRecords(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
 
     // delete it
     this.store.getSliceGrantRecords().delete(grantRec);
@@ -191,6 +204,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   /** {@inheritDoc} */
   @Override
   public void deleteAllEntityGrantRecords(
+      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore entity,
       @Nonnull List<PolarisGrantRecord> grantsOnGrantee,
       @Nonnull List<PolarisGrantRecord> grantsOnSecurable) {
@@ -208,20 +222,22 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   /** {@inheritDoc} */
   @Override
-  public void deleteAll() {
+  public void deleteAll(@Nonnull PolarisCallContext callCtx) {
     // clear all slices
     this.store.deleteAll();
   }
 
   /** {@inheritDoc} */
   @Override
-  public @Nullable PolarisBaseEntity lookupEntity(long catalogId, long entityId) {
+  public @Nullable PolarisBaseEntity lookupEntity(
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
     return this.store.getSliceEntities().read(this.store.buildKeyComposite(catalogId, entityId));
   }
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<PolarisBaseEntity> lookupEntities(List<PolarisEntityId> entityIds) {
+  public @Nonnull List<PolarisBaseEntity> lookupEntities(
+      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     // allocate return list
     return entityIds.stream()
         .map(
@@ -234,7 +250,8 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   /** {@inheritDoc} */
   @Override
-  public int lookupEntityVersion(long catalogId, long entityId) {
+  public int lookupEntityVersion(
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
     PolarisBaseEntity baseEntity =
         this.store
             .getSliceEntitiesChangeTracking()
@@ -246,7 +263,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   /** {@inheritDoc} */
   @Override
   public @Nonnull List<PolarisChangeTrackingVersions> lookupEntityVersions(
-      List<PolarisEntityId> entityIds) {
+      @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     // allocate return list
     return entityIds.stream()
         .map(
@@ -267,7 +284,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   @Override
   @Nullable
   public PolarisEntityActiveRecord lookupEntityActive(
-      @Nonnull PolarisEntitiesActiveKey entityActiveKey) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntitiesActiveKey entityActiveKey) {
     // lookup the active entity slice
     PolarisBaseEntity entity =
         this.store
@@ -295,28 +312,34 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   @Override
   @Nonnull
   public List<PolarisEntityActiveRecord> lookupEntityActiveBatch(
+      @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntitiesActiveKey> entityActiveKeys) {
     // now build a list to quickly verify that nothing has changed
     return entityActiveKeys.stream()
-        .map(entityActiveKey -> this.lookupEntityActive(entityActiveKey))
+        .map(entityActiveKey -> this.lookupEntityActive(callCtx, entityActiveKey))
         .collect(Collectors.toList());
   }
 
   /** {@inheritDoc} */
   @Override
   public @Nonnull List<PolarisEntityActiveRecord> listActiveEntities(
-      long catalogId, long parentId, @Nonnull PolarisEntityType entityType) {
-    return listActiveEntities(catalogId, parentId, entityType, Predicates.alwaysTrue());
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType) {
+    return listActiveEntities(callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue());
   }
 
   @Override
   public @Nonnull List<PolarisEntityActiveRecord> listActiveEntities(
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter) {
     // full range scan under the parent for that type
     return listActiveEntities(
+        callCtx,
         catalogId,
         parentId,
         entityType,
@@ -334,6 +357,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   @Override
   public @Nonnull <T> List<T> listActiveEntities(
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
@@ -354,7 +378,10 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   /** {@inheritDoc} */
   @Override
   public boolean hasChildren(
-      @Nullable PolarisEntityType entityType, long catalogId, long parentId) {
+      @Nonnull PolarisCallContext callContext,
+      @Nullable PolarisEntityType entityType,
+      long catalogId,
+      long parentId) {
     // determine key prefix, add type if one is passed-in
     String prefixKey =
         entityType == null
@@ -366,7 +393,8 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   /** {@inheritDoc} */
   @Override
-  public int lookupEntityGrantRecordsVersion(long catalogId, long entityId) {
+  public int lookupEntityGrantRecordsVersion(
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
     PolarisBaseEntity entity =
         this.store
             .getSliceEntitiesChangeTracking()
@@ -379,6 +407,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   /** {@inheritDoc} */
   @Override
   public @Nullable PolarisGrantRecord lookupGrantRecord(
+      @Nonnull PolarisCallContext callCtx,
       long securableCatalogId,
       long securableId,
       long granteeCatalogId,
@@ -395,7 +424,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   /** {@inheritDoc} */
   @Override
   public @Nonnull List<PolarisGrantRecord> loadAllGrantRecordsOnSecurable(
-      long securableCatalogId, long securableId) {
+      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
     // now fetch all grants for this securable
     return this.store
         .getSliceGrantRecords()
@@ -405,7 +434,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   /** {@inheritDoc} */
   @Override
   public @Nonnull List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
-      long granteeCatalogId, long granteeId) {
+      @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
     // now fetch all grants assigned to this grantee
     return this.store
         .getSliceGrantRecordsByGrantee()
@@ -414,14 +443,15 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   /** {@inheritDoc} */
   @Override
-  public @Nullable PolarisPrincipalSecrets loadPrincipalSecrets(@Nonnull String clientId) {
+  public @Nullable PolarisPrincipalSecrets loadPrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId) {
     return this.store.getSlicePrincipalSecrets().read(clientId);
   }
 
   /** {@inheritDoc} */
   @Override
   public @Nonnull PolarisPrincipalSecrets generateNewPrincipalSecrets(
-      @Nonnull String principalName, long principalId) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull String principalName, long principalId) {
     // ensure principal client id is unique
     PolarisPrincipalSecrets principalSecrets;
     PolarisPrincipalSecrets lookupPrincipalSecrets;
@@ -444,26 +474,34 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   /** {@inheritDoc} */
   @Override
   public @Nonnull PolarisPrincipalSecrets rotatePrincipalSecrets(
-      @Nonnull String clientId, long principalId, boolean reset, @Nonnull String oldSecretHash) {
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull String clientId,
+      long principalId,
+      boolean reset,
+      @Nonnull String oldSecretHash) {
 
     // load the existing secrets
     PolarisPrincipalSecrets principalSecrets = this.store.getSlicePrincipalSecrets().read(clientId);
 
     // should be found
-    diagnostics.checkNotNull(
-        principalSecrets,
-        "cannot_find_secrets",
-        "client_id={} principalId={}",
-        clientId,
-        principalId);
+    callCtx
+        .getDiagServices()
+        .checkNotNull(
+            principalSecrets,
+            "cannot_find_secrets",
+            "client_id={} principalId={}",
+            clientId,
+            principalId);
 
     // ensure principal id is matching
-    diagnostics.check(
-        principalId == principalSecrets.getPrincipalId(),
-        "principal_id_mismatch",
-        "expectedId={} id={}",
-        principalId,
-        principalSecrets.getPrincipalId());
+    callCtx
+        .getDiagServices()
+        .check(
+            principalId == principalSecrets.getPrincipalId(),
+            "principal_id_mismatch",
+            "expectedId={} id={}",
+            principalId,
+            principalSecrets.getPrincipalId());
 
     // rotate the secrets
     principalSecrets.rotateSecrets(oldSecretHash);
@@ -480,25 +518,30 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   /** {@inheritDoc} */
   @Override
-  public void deletePrincipalSecrets(@Nonnull String clientId, long principalId) {
+  public void deletePrincipalSecrets(
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
     // load the existing secrets
     PolarisPrincipalSecrets principalSecrets = this.store.getSlicePrincipalSecrets().read(clientId);
 
     // should be found
-    diagnostics.checkNotNull(
-        principalSecrets,
-        "cannot_find_secrets",
-        "client_id={} principalId={}",
-        clientId,
-        principalId);
+    callCtx
+        .getDiagServices()
+        .checkNotNull(
+            principalSecrets,
+            "cannot_find_secrets",
+            "client_id={} principalId={}",
+            clientId,
+            principalId);
 
     // ensure principal id is matching
-    diagnostics.check(
-        principalId == principalSecrets.getPrincipalId(),
-        "principal_id_mismatch",
-        "expectedId={} id={}",
-        principalId,
-        principalSecrets.getPrincipalId());
+    callCtx
+        .getDiagServices()
+        .check(
+            principalId == principalSecrets.getPrincipalId(),
+            "principal_id_mismatch",
+            "expectedId={} id={}",
+            principalId,
+            principalSecrets.getPrincipalId());
 
     // delete these secrets
     this.store.getSlicePrincipalSecrets().delete(clientId);
@@ -508,6 +551,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   @Override
   public @Nullable <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> createStorageIntegration(
+          @Nonnull PolarisCallContext callCtx,
           long catalogId,
           long entityId,
           PolarisStorageConfigurationInfo polarisStorageConfigurationInfo) {
@@ -519,9 +563,9 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   @Override
   public @Nullable <T extends PolarisStorageConfigurationInfo>
       PolarisStorageIntegration<T> loadPolarisStorageIntegration(
-          @Nonnull PolarisBaseEntity entity) {
+          @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        PolarisMetaStoreManagerImpl.readStorageConfiguration(diagnostics, entity);
+        PolarisMetaStoreManagerImpl.readStorageConfiguration(callCtx, entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 
