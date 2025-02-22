@@ -18,15 +18,18 @@
  */
 package org.apache.polaris.extension.persistence.impl.eclipselink;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.smallrye.common.annotation.Identifier;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.nio.file.Path;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
 /**
@@ -34,16 +37,22 @@ import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
  * using an EclipseLink based meta store to store and retrieve all Polaris metadata. It can be
  * configured through persistence.xml to use supported RDBMS as the meta store.
  */
+@ApplicationScoped
 @Identifier("eclipse-link")
 public class EclipseLinkPolarisMetaStoreManagerFactory
     extends LocalPolarisMetaStoreManagerFactory<PolarisEclipseLinkStore> {
-  @JsonProperty("conf-file")
-  private String confFile;
 
-  @JsonProperty("persistence-unit")
-  private String persistenceUnitName;
+  @Inject EclipseLinkConfiguration eclipseLinkConfiguration;
+  @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
 
-  @Inject protected PolarisStorageIntegrationProvider storageIntegration;
+  protected EclipseLinkPolarisMetaStoreManagerFactory() {
+    this(null);
+  }
+
+  @Inject
+  protected EclipseLinkPolarisMetaStoreManagerFactory(PolarisDiagnostics diagnostics) {
+    super(diagnostics);
+  }
 
   @Override
   protected PolarisEclipseLinkStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
@@ -52,13 +61,26 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
 
   @Override
   protected PolarisMetaStoreSession createMetaStoreSession(
-      @Nonnull PolarisEclipseLinkStore store, @Nonnull RealmContext realmContext) {
+      @Nonnull PolarisEclipseLinkStore store,
+      @Nonnull RealmContext realmContext,
+      @Nullable RootCredentialsSet rootCredentialsSet,
+      @Nonnull PolarisDiagnostics diagnostics) {
     return new PolarisEclipseLinkMetaStoreSessionImpl(
         store,
-        storageIntegration,
+        storageIntegrationProvider,
         realmContext,
-        confFile,
-        persistenceUnitName,
-        secretsGenerator(realmContext));
+        configurationFile(),
+        persistenceUnitName(),
+        secretsGenerator(realmContext, rootCredentialsSet));
+  }
+
+  private String configurationFile() {
+    return eclipseLinkConfiguration.configurationFile().map(Path::toString).orElse(null);
+  }
+
+  private String persistenceUnitName() {
+    return eclipseLinkConfiguration.configurationFile().isPresent()
+        ? eclipseLinkConfiguration.persistenceUnit()
+        : null;
   }
 }

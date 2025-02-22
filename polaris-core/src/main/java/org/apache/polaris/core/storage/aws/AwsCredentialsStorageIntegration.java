@@ -18,11 +18,15 @@
  */
 package org.apache.polaris.core.storage.aws;
 
+import static org.apache.polaris.core.PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+import static org.apache.polaris.core.PolarisConfiguration.loadConfig;
+
 import jakarta.annotation.Nonnull;
 import java.net.URI;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -69,6 +73,7 @@ public class AwsCredentialsStorageIntegration
                             allowedReadLocations,
                             allowedWriteLocations)
                         .toJson())
+                .durationSeconds(loadConfig(STORAGE_CREDENTIAL_DURATION_SECONDS))
                 .build());
     EnumMap<PolarisCredentialProperty, String> credentialMap =
         new EnumMap<>(PolarisCredentialProperty.class);
@@ -76,13 +81,22 @@ public class AwsCredentialsStorageIntegration
     credentialMap.put(
         PolarisCredentialProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
     credentialMap.put(PolarisCredentialProperty.AWS_TOKEN, response.credentials().sessionToken());
+    Optional.ofNullable(response.credentials().expiration())
+        .ifPresent(
+            i ->
+                credentialMap.put(
+                    PolarisCredentialProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli())));
+
+    if (storageConfig.getRegion() != null) {
+      credentialMap.put(PolarisCredentialProperty.CLIENT_REGION, storageConfig.getRegion());
+    }
     return credentialMap;
   }
 
   /**
    * generate an IamPolicy from the input readLocations and writeLocations, optionally with list
    * support. Credentials will be scoped to exactly the resources provided. If read and write
-   * locations are empty, a non-empty policy will be generated that grants GetObject and (optionally
+   * locations are empty, a non-empty policy will be generated that grants GetObject and optionally
    * ListBucket privileges with no resources. This prevents us from sending an empty policy to AWS
    * and just assuming the role with full privileges.
    */

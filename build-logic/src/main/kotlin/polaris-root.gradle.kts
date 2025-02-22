@@ -17,6 +17,7 @@
  * under the License.
  */
 
+import copiedcode.CopiedCodeCheckerPlugin
 import org.jetbrains.gradle.ext.copyright
 import org.jetbrains.gradle.ext.encodings
 import org.jetbrains.gradle.ext.settings
@@ -29,6 +30,8 @@ plugins {
 }
 
 apply<PublishingHelperPlugin>()
+
+apply<CopiedCodeCheckerPlugin>()
 
 spotless {
   kotlinGradle {
@@ -44,6 +47,19 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
       isDownloadJavadoc = false // was 'true', but didn't work
       isDownloadSources = false // was 'true', but didn't work
       inheritOutputDirs = true
+
+      excludeDirs =
+        excludeDirs +
+          setOf(
+            projectDir.resolve("build-logic/.kotlin"),
+            projectDir.resolve("integration-tests/build"),
+            projectDir.resolve("site/resources/_gen"),
+            projectDir.resolve("site/build"),
+            projectDir.resolve("logs"),
+            projectDir.resolve("polaris-venv"),
+            projectDir.resolve(".idea"),
+          ) +
+          allprojects.map { prj -> prj.layout.buildDirectory.asFile.get() }
     }
 
     project.settings {

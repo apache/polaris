@@ -138,6 +138,7 @@ public class CatalogEntity extends PolarisEntity {
             .setUserArn(awsConfig.getUserARN())
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(awsConfig.getAllowedLocations())
+            .setRegion(awsConfig.getRegion())
             .build();
       }
       if (configInfo instanceof AzureStorageConfigurationInfo) {
@@ -244,18 +245,19 @@ public class CatalogEntity extends PolarisEntity {
                     PolarisStorageConfigurationInfo.StorageType.S3,
                     new ArrayList<>(allowedLocations),
                     awsConfigModel.getRoleArn(),
-                    awsConfigModel.getExternalId());
+                    awsConfigModel.getExternalId(),
+                    awsConfigModel.getRegion());
             awsConfig.validateArn(awsConfigModel.getRoleArn());
             config = awsConfig;
             break;
           case AZURE:
             AzureStorageConfigInfo azureConfigModel = (AzureStorageConfigInfo) storageConfigModel;
-            AzureStorageConfigurationInfo azureconfigInfo =
+            AzureStorageConfigurationInfo azureConfigInfo =
                 new AzureStorageConfigurationInfo(
                     new ArrayList<>(allowedLocations), azureConfigModel.getTenantId());
-            azureconfigInfo.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
-            azureconfigInfo.setConsentUrl(azureConfigModel.getConsentUrl());
-            config = azureconfigInfo;
+            azureConfigInfo.setMultiTenantAppName(azureConfigModel.getMultiTenantAppName());
+            azureConfigInfo.setConsentUrl(azureConfigModel.getConsentUrl());
+            config = azureConfigInfo;
             break;
           case GCS:
             GcpStorageConfigurationInfo gcpConfig =

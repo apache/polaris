@@ -17,21 +17,19 @@
  * under the License.
  */
 
-import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
-
 plugins {
-  alias(libs.plugins.openapi.generator)
   id("polaris-client")
-  id("java-library")
-  id("java-test-fixtures")
+  alias(libs.plugins.jandex)
 }
 
 dependencies {
+  implementation(project(":polaris-api-management-model"))
+
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
   constraints {
-    implementation("io.airlift:aircompressor:0.27") { because("Vulnerability detected in 0.25") }
+    implementation("io.airlift:aircompressor:2.0.2") { because("Vulnerability detected in 0.25") }
   }
 
   implementation(platform(libs.jackson.bom))
@@ -46,29 +44,32 @@ dependencies {
   compileOnly(libs.jetbrains.annotations)
   compileOnly(libs.spotbugs.annotations)
 
+  compileOnly(project(":polaris-immutables"))
+  annotationProcessor(project(":polaris-immutables", configuration = "processor"))
+
   constraints {
-    implementation("org.xerial.snappy:snappy-java:1.1.10.4") {
+    implementation("org.xerial.snappy:snappy-java:1.1.10.7") {
       because("Vulnerability detected in 1.1.8.2")
     }
     implementation("org.codehaus.jettison:jettison:1.5.4") {
       because("Vulnerability detected in 1.1")
     }
-    implementation("org.apache.commons:commons-configuration2:2.10.1") {
+    implementation("org.apache.commons:commons-configuration2:2.11.0") {
       because("Vulnerability detected in 2.8.0")
     }
-    implementation("org.apache.commons:commons-compress:1.26.0") {
+    implementation("org.apache.commons:commons-compress:1.27.1") {
       because("Vulnerability detected in 1.21")
     }
-    implementation("com.nimbusds:nimbus-jose-jwt:9.37.2") {
+    implementation("com.nimbusds:nimbus-jose-jwt:10.0.1") {
       because("Vulnerability detected in 9.8.1")
     }
   }
 
-  implementation(libs.javax.inject)
   implementation(libs.swagger.annotations)
   implementation(libs.swagger.jaxrs)
   implementation(libs.jakarta.inject.api)
   implementation(libs.jakarta.validation.api)
+  implementation(libs.jakarta.ws.rs.api)
   implementation(libs.smallrye.common.annotation)
 
   implementation("org.apache.iceberg:iceberg-aws")
@@ -84,10 +85,10 @@ dependencies {
   implementation("com.azure:azure-identity")
   implementation("com.azure:azure-storage-file-datalake")
   constraints {
-    implementation("io.netty:netty-codec-http2:4.1.100") {
+    implementation("io.netty:netty-codec-http2:4.1.118.Final") {
       because("Vulnerability detected in 4.1.72")
     }
-    implementation("io.projectreactor.netty:reactor-netty-http:1.1.13") {
+    implementation("io.projectreactor.netty:reactor-netty-http:1.2.3") {
       because("Vulnerability detected in 1.0.45")
     }
   }
@@ -96,13 +97,6 @@ dependencies {
   implementation(platform(libs.google.cloud.storage.bom))
   implementation("com.google.cloud:google-cloud-storage")
 
-  implementation(platform(libs.micrometer.bom))
-  implementation("io.micrometer:micrometer-core")
-
-  testFixturesApi(platform(libs.junit.bom))
-  testFixturesApi("org.junit.jupiter:junit-jupiter")
-  testFixturesApi(libs.assertj.core)
-  testFixturesApi(libs.mockito.core)
   testFixturesApi("com.fasterxml.jackson.core:jackson-core")
   testFixturesApi("com.fasterxml.jackson.core:jackson-databind")
   testFixturesApi(libs.commons.lang3)
@@ -114,36 +108,4 @@ dependencies {
   compileOnly(libs.jakarta.annotation.api)
 }
 
-openApiValidate { inputSpec = "$rootDir/spec/polaris-management-service.yml" }
-
-val generatePolarisService by
-  tasks.registering(GenerateTask::class) {
-    inputSpec = "$rootDir/spec/polaris-management-service.yml"
-    generatorName = "jaxrs-resteasy"
-    outputDir = "$projectDir/build/generated"
-    modelPackage = "org.apache.polaris.core.admin.model"
-    ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
-    removeOperationIdPrefix = true
-    templateDir = "$rootDir/server-templates"
-    globalProperties.put("apis", "false")
-    globalProperties.put("models", "")
-    globalProperties.put("apiDocs", "false")
-    globalProperties.put("modelTests", "false")
-    configOptions.put("useBeanValidation", "true")
-    configOptions.put("sourceFolder", "src/main/java")
-    configOptions.put("useJakartaEe", "true")
-    configOptions.put("generateBuilders", "true")
-    configOptions.put("generateConstructorWithAllArgs", "true")
-    additionalProperties.put("apiNamePrefix", "Polaris")
-    additionalProperties.put("apiNameSuffix", "Api")
-    additionalProperties.put("metricsPrefix", "polaris")
-    serverVariables = mapOf("basePath" to "api/v1")
-  }
-
-listOf("sourcesJar", "compileJava").forEach { task ->
-  tasks.named(task) { dependsOn(generatePolarisService) }
-}
-
-sourceSets {
-  main { java { srcDir(project.layout.buildDirectory.dir("generated/src/main/java")) } }
-}
+tasks.named("javadoc") { dependsOn("jandex") }

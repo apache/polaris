@@ -107,8 +107,8 @@ internal fun configurePom(project: Project, mavenPublication: MavenPublication, 
             }
             issueManagement { url.set(projectPeople.bugDatabase) }
 
-            name.set(projectPeople.name)
-            description.set(projectPeople.description)
+            name.set(e.overrideName.orElse(projectPeople.name))
+            description.set(e.overrideDescription.orElse(projectPeople.description))
             url.set(projectPeople.website)
             inceptionYear.set(projectPeople.inceptionYear.toString())
 
@@ -169,7 +169,7 @@ fun addMissingMandatoryDependencyVersions(project: Project, projectNode: Node) {
           findDependency(
             project.configurations.findByName("testRuntimeClasspath"),
             depGroup,
-            depName
+            depName,
           )
       }
 

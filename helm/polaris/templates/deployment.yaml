@@ -49,19 +49,6 @@ spec:
         {{- tpl (toYaml .Values.podLabels) . | nindent 8 }}
         {{- end }}
     spec:
-      {{- if and .Values.persistenceConfigSecret (index .Values.polarisServerConfig.metaStoreManager "conf-file") }}
-      initContainers:
-        - name: init-config
-          image: "{{ tpl .Values.toolsImage.repository . }}:{{ tpl .Values.toolsImage.tag . }}"
-          imagePullPolicy: {{ tpl .Values.toolsImage.pullPolicy . }}
-          command: ["jar"]
-          args: ["-cf", "/eclipselink-config/conf.jar", "-C", "/secret", "persistence.xml"]
-          volumeMounts:
-            - name: eclipselink-config-volume
-              mountPath: /eclipselink-config
-            - name: secret-volume
-              mountPath: /secret
-      {{- end }}
       {{- if .Values.imagePullSecrets }}
       imagePullSecrets:
       {{- range .Values.imagePullSecrets }}
@@ -73,38 +60,47 @@ spec:
       securityContext:
         {{- tpl (toYaml .Values.podSecurityContext) . | nindent 8 }}
       {{- end }}
+      {{- if .Values.extraInitContainers }}
+      initContainers:
+        {{- tpl (toYaml .Values.extraInitContainers) . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          {{- if .Values.securityContext}}
+          {{- if .Values.containerSecurityContext }}
           securityContext:
-            {{- tpl (toYaml .Values.securityContext) . | nindent 12 }}
+            {{- tpl (toYaml .Values.containerSecurityContext) . | nindent 12 }}
           {{- end }}
           image: "{{ tpl .Values.image.repository . }}:{{ tpl .Values.image.tag . | default .Chart.Version }}"
           imagePullPolicy: {{ tpl .Values.image.pullPolicy . }}
-          command: ["/app/bin/polaris-service"]
-          args: ["server", "/app/config/polaris-server.yml"]
-          {{- if .Values.extraEnv }}
+          {{ if or .Values.storage.secret.name .Values.extraEnv -}}
           env:
-            {{- tpl (toYaml .Values.extraEnv) . | nindent 12 }}
+            {{- include "polaris.secretToEnv" (list .Values.storage.secret "awsAccessKeyId" "polaris.storage.aws.access-key") | indent 12 -}}
+            {{- include "polaris.secretToEnv" (list .Values.storage.secret "awsSecretAccessKey" "polaris.storage.aws.secret-key") | indent 12 -}}
+            {{- include "polaris.secretToEnv" (list .Values.storage.secret "gcpToken" "polaris.storage.gcp.token") | indent 12 -}}
+            {{- if .Values.extraEnv -}}
+            {{- tpl (toYaml .Values.extraEnv) . | nindent 12 -}}
+            {{- end -}}
           {{- end }}
           volumeMounts:
             - name: config-volume
-              mountPath: /app/config/polaris-server.yml
-              subPath: polaris-server.yml
-            {{- if and .Values.persistenceConfigSecret (index .Values.polarisServerConfig.metaStoreManager "conf-file") }}
-            - name: eclipselink-config-volume
-              mountPath: /eclipselink-config
+              mountPath: {{ trimSuffix "/" .Values.image.configDir }}
+              readOnly: true
+            {{- if .Values.logging.file.enabled }}
+            - name: logs-storage
+              mountPath: {{ .Values.logging.file.logsDir }}
+              readOnly: false
             {{- end }}
-          ports:
-            {{- range $portName, $portNumber := .Values.service.ports }}
-            - name: {{ $portName }}
-              containerPort: {{ $portNumber }}
-              protocol: TCP
+            - name: temp-dir
+              mountPath: /tmp
+              readOnly: false
+            {{- if .Values.extraVolumeMounts }}
+            {{- tpl (toYaml .Values.extraVolumeMounts) . | nindent 12 }}
             {{- end }}
+          {{- include "polaris.containerPorts" . | trim | nindent 10 }}
           livenessProbe:
             httpGet:
-              path: /healthcheck
-              port: "polaris-metrics"
+              path: /q/health/live
+              port: {{ get (first .Values.managementService.ports) "name" }}
               scheme: HTTP
             initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
@@ -114,8 +110,8 @@ spec:
             terminationGracePeriodSeconds: {{ .Values.livenessProbe.terminationGracePeriodSeconds }}
           readinessProbe:
             httpGet:
-              path: /healthcheck
-              port: "polaris-metrics"
+              path: /q/health/ready
+              port: {{ get (first .Values.managementService.ports) "name" }}
               scheme: HTTP
             initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
@@ -127,15 +123,16 @@ spec:
             {{- tpl (toYaml .Values.resources) . | nindent 12 }}
           {{- end }}
       volumes:
-        - name: config-volume
-          configMap:
-            name: {{ include "polaris.fullname" . }}
-        {{- if and .Values.persistenceConfigSecret (index .Values.polarisServerConfig.metaStoreManager "conf-file") }}
-        - name: eclipselink-config-volume
+        {{- include "polaris.configVolume" . | nindent 8 }}
+        {{- if .Values.logging.file.enabled }}
+        - name: logs-storage
+          persistentVolumeClaim:
+            claimName: {{ include "polaris.fullnameWithSuffix" (list . "logs") }}
+        {{- end }}
+        - name: temp-dir
           emptyDir: {}
-        - name: secret-volume
-          secret:
-            secretName: {{ .Values.persistenceConfigSecret }}
+        {{- if .Values.extraVolumes }}
+        {{- tpl (toYaml .Values.extraVolumes) . | nindent 8 }}
         {{- end }}
       {{- if .Values.nodeSelector }}
       nodeSelector:

@@ -1,0 +1,254 @@
+#
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+chart:
+  version: 1.2.3
+  appVersion: 4.5.6
+
+release:
+  name: polaris-release
+  namespace: polaris-ns
+
+templates:
+  - service-mgmt.yaml
+
+tests:
+
+  # metadata.name
+  - it: should set service name
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-release-mgmt
+  - it: should set service name with override
+    set:
+      nameOverride: polaris-override
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-release-polaris-override-mgmt
+  - it: should set service name with full override
+    set:
+      fullnameOverride: polaris-override
+    asserts:
+      - equal:
+          path: metadata.name
+          value: polaris-override-mgmt
+
+  # metadata.namespace
+  - it: should set service namespace
+    asserts:
+      - equal:
+          path: metadata.namespace
+          value: polaris-ns
+
+  # metadata.labels
+  - it: should set service default labels
+    asserts:
+      - isSubset:
+          path: metadata.labels
+          content:
+            app.kubernetes.io/name: polaris
+            app.kubernetes.io/instance: polaris-release
+            app.kubernetes.io/version: 4.5.6
+            app.kubernetes.io/managed-by: Helm
+            helm.sh/chart: polaris-1.2.3
+
+  # metadata.annotations
+  - it: should not set service annotations by default
+    asserts:
+      - notExists:
+          path: metadata.annotations
+  - it: should set service annotations
+    set:
+      managementService.annotations:
+        foo: bar
+    asserts:
+      - isSubset:
+          path: metadata.annotations
+          content:
+            foo: bar
+
+  # spec.type
+  - it: should set service default type
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+  - it: should set service type
+    set:
+      managementService.type: NodePort
+    asserts:
+      - equal:
+          path: spec.type
+          value: NodePort
+
+  # spec.selector
+  - it: should set service default selector
+    asserts:
+      - isSubset:
+          path: spec.selector
+          content:
+            app.kubernetes.io/name: polaris
+            app.kubernetes.io/instance: polaris-release
+
+  # spec.ports
+  - it: should set service default ports
+    asserts:
+      - equal:
+          path: spec.ports
+          value:
+            - port: 8182
+              protocol: TCP
+              name: polaris-mgmt
+  - it: should set service ports
+    set:
+      managementService:
+        ports:
+          - port: 18182
+            targetPort: 18182
+            name: polaris-mgmt
+    asserts:
+      - equal:
+          path: spec.ports
+          value:
+            - port: 18182
+              targetPort: 18182
+              protocol: TCP
+              name: polaris-mgmt
+  - it: should set many service ports
+    set:
+      managementService:
+        ports:
+          - port: 18182
+            targetPort: 18182
+            name: polaris-mgmt
+          - port: 28182
+            targetPort: 28182
+            name: polaris-mgmt2
+            nodePort: 28182
+            protocol: UDP
+    asserts:
+      - equal:
+          path: spec.ports
+          value:
+            - port: 18182
+              targetPort: 18182
+              protocol: TCP
+              name: polaris-mgmt
+            - port: 28182
+              targetPort: 28182
+              name: polaris-mgmt2
+              nodePort: 28182
+              protocol: UDP
+
+  # spec.sessionAffinity
+  - it: should not set service session affinity by default
+    asserts:
+      - notExists:
+          path: spec.sessionAffinity
+  - it: should set service session affinity
+    set:
+      managementService.sessionAffinity: ClientIP
+    asserts:
+      - equal:
+          path: spec.sessionAffinity
+          value: ClientIP
+
+  # spec.clusterIP
+  - it: should set service cluster IP to None (headless) by default
+    asserts:
+      - equal:
+          path: spec.clusterIP
+          value: None
+  - it: should set service cluster IP
+    set:
+      managementService.clusterIP: 1.2.3.4
+    asserts:
+      - equal:
+          path: spec.clusterIP
+          value: 1.2.3.4
+
+
+  # spec.externalTrafficPolicy
+  - it: should not set service external traffic policy by default
+    asserts:
+      - notExists:
+          path: spec.externalTrafficPolicy
+  - it: should set service external traffic policy if LoadBalancer
+    set:
+      managementService.externalTrafficPolicy: Local
+      managementService.type: LoadBalancer
+    asserts:
+      - equal:
+          path: spec.externalTrafficPolicy
+          value: Local
+  - it: should set service external traffic policy if NodePort
+    set:
+      managementService.externalTrafficPolicy: Local
+      managementService.type: NodePort
+    asserts:
+      - equal:
+          path: spec.externalTrafficPolicy
+          value: Local
+  - it: should set service external traffic policy if ClusterIP
+    set:
+      managementService.externalTrafficPolicy: Local
+      managementService.type: ClusterIP
+    asserts:
+      - notExists:
+          path: spec.externalTrafficPolicy
+
+  # spec.internalTrafficPolicy
+  - it: should not set service internal traffic policy by default
+    asserts:
+      - notExists:
+          path: spec.internalTrafficPolicy
+  - it: should set service internal traffic policy
+    set:
+      managementService.internalTrafficPolicy: Local
+    asserts:
+      - equal:
+          path: spec.internalTrafficPolicy
+          value: Local
+
+  # spec.trafficDistribution
+  - it: should not set service traffic distribution by default
+    asserts:
+      - notExists:
+          path: spec.trafficDistribution
+  - it: should set service traffic distribution if Kubernetes version >= 1.31
+    capabilities:
+      majorVersion: 1
+      minorVersion: 31
+    set:
+      managementService.trafficDistribution: Local
+    asserts:
+      - equal:
+          path: spec.trafficDistribution
+          value: Local
+  - it: should not set service traffic distribution if Kubernetes version < 1.31
+    capabilities:
+      majorVersion: 1
+      minorVersion: 30
+    set:
+      managementService.trafficDistribution: Local
+    asserts:
+      - notExists:
+          path: spec.trafficDistribution

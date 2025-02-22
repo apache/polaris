@@ -37,6 +37,8 @@ abstract class PublishingHelperExtension
 constructor(objectFactory: ObjectFactory, project: Project) {
   // the following are only relevant on the root project
   val asfProjectName = objectFactory.property<String>().convention(project.name)
+  val overrideName = objectFactory.property<String>()
+  val overrideDescription = objectFactory.property<String>()
   val baseName =
     objectFactory
       .property<String>()
