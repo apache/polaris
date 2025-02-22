@@ -75,7 +75,7 @@ services:
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
 
   postgres:
-    image: postgres:17.3
+    image: postgres:17.4
     ports:
       - "5432:5432"
     # set shared memory limit when using docker-compose
