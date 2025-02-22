@@ -159,7 +159,18 @@ polaris catalogs create \
   --allowed-location s3://example-bucket/second_location \
   --allowed-location s3://other-bucket/third_location \
   --role-arn ${ROLE_ARN} \
-  my_other_catalog
+  my_other_catalog 
+
+```
+
+Create a catalog with the FILE storage format.
+
+```
+polaris catalogs create \
+  --storage-type file \
+  --default-base-location file:///example/tmp \
+  quickstart_catalog
+
 ```
 
 #### delete
