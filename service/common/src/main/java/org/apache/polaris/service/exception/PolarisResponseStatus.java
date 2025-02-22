@@ -16,27 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.it;
+package org.apache.polaris.service.exception;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.it.test.PolarisManagementServiceIntegrationTest;
+import jakarta.ws.rs.core.Response;
 
-import java.util.Map;
+public enum PolarisResponseStatus implements Response.StatusType {
+  AUTHENTICATION_TIMEOUT(419, "Authentication Timeout"),
+  ;
 
-@QuarkusIntegrationTest
-@TestProfile(QuarkusManagementServiceIT.Profile.class)
-public class QuarkusManagementServiceIT extends PolarisManagementServiceIntegrationTest {
-  public static class Profile implements QuarkusTestProfile {
+  private final int code;
+  private final String reason;
+  private final Response.Status.Family family;
 
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.authentication.token-broker.type",
-          "symmetric-key",
-          "polaris.authentication.token-broker.symmetric-key.secret",
-          "polaris");
-    }
+  PolarisResponseStatus(final int statusCode, final String reasonPhrase) {
+    this.code = statusCode;
+    this.reason = reasonPhrase;
+    this.family = Response.Status.Family.familyOf(statusCode);
+  }
+
+  @Override
+  public int getStatusCode() {
+    return code;
+  }
+
+  @Override
+  public Response.Status.Family getFamily() {
+    return family;
+  }
+
+  @Override
+  public String getReasonPhrase() {
+    return reason;
   }
 }

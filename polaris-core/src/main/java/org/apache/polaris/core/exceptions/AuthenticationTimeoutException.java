@@ -16,27 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.it;
+package org.apache.polaris.core.exceptions;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
-import org.apache.polaris.service.it.test.PolarisManagementServiceIntegrationTest;
+/** A {@link PolarisException} implementation for when a token used for authentication expires. */
+public class AuthenticationTimeoutException extends PolarisException {
+  public AuthenticationTimeoutException(String message) {
+    super(message);
+  }
 
-import java.util.Map;
-
-@QuarkusIntegrationTest
-@TestProfile(QuarkusManagementServiceIT.Profile.class)
-public class QuarkusManagementServiceIT extends PolarisManagementServiceIntegrationTest {
-  public static class Profile implements QuarkusTestProfile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of(
-          "polaris.authentication.token-broker.type",
-          "symmetric-key",
-          "polaris.authentication.token-broker.symmetric-key.secret",
-          "polaris");
-    }
+  public AuthenticationTimeoutException(String message, Throwable cause) {
+    super(message, cause);
   }
 }
