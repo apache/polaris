@@ -53,6 +53,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.task.BatchFileCleanupTaskHandler;
 import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
@@ -163,14 +164,14 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        AsyncTaskType.METADATA_FILE_BATCH_CLEANUP,
+                        AsyncTaskType.BATCH_FILE_CLEANUP,
                         taskEntity2 -> taskEntity2.getTaskType())
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                        new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
                             tableIdentifier, List.of(statisticsFile.path())),
                         entity ->
                             entity.readData(
-                                ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
+                                    BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
   }
 
   @Test
@@ -399,7 +400,7 @@ class TableCleanupTaskHandlerTest {
             .filter(
                 entity -> {
                   AsyncTaskType taskType = TaskEntity.of(entity).getTaskType();
-                  return taskType == AsyncTaskType.METADATA_FILE_BATCH_CLEANUP;
+                  return taskType == AsyncTaskType.BATCH_FILE_CLEANUP;
                 })
             .toList();
 
@@ -411,12 +412,12 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                        new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
                             tableIdentifier,
                             List.of(statisticsFile1.path(), statisticsFile2.path())),
                         entity ->
                             entity.readData(
-                                ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
+                                    BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
 
     assertThat(manifestCleanupTasks)
         // all three manifests should be present, even though one is excluded from the latest
@@ -554,7 +555,7 @@ class TableCleanupTaskHandlerTest {
             .filter(
                 entity -> {
                   AsyncTaskType taskType = TaskEntity.of(entity).getTaskType();
-                  return taskType == AsyncTaskType.METADATA_FILE_BATCH_CLEANUP;
+                  return taskType == AsyncTaskType.BATCH_FILE_CLEANUP;
                 })
             .toList();
 
@@ -566,13 +567,13 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                        new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
                             tableIdentifier,
                             List.of(
                                 firstMetadataFile, statisticsFile1.path(), statisticsFile2.path())),
                         entity ->
                             entity.readData(
-                                ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)));
+                                    BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
 
     assertThat(manifestCleanupTasks)
         .hasSize(3)
