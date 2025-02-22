@@ -77,6 +77,8 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.events.DefaultPolarisEventListener;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.assertj.core.api.Assertions;
@@ -166,6 +168,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected RealmEntityManagerFactory realmEntityManagerFactory;
   @Inject protected PolarisConfigurationStore configurationStore;
   @Inject protected PolarisDiagnostics diagServices;
+  @Inject protected PolarisEventListener polarisEventListener;
 
   protected BasePolarisCatalog baseCatalog;
   protected PolarisAdminService adminService;
@@ -409,7 +412,8 @@ public abstract class PolarisAuthzTestBase {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            fileIOFactory);
+            fileIOFactory,
+            new DefaultPolarisEventListener());
     this.baseCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -422,7 +426,7 @@ public abstract class PolarisAuthzTestBase {
       extends PolarisCallContextCatalogFactory {
 
     public TestPolarisCallContextCatalogFactory() {
-      super(null, null, null, null, null, null, null);
+      super(null, null, null, null, null, null, null, null);
     }
 
     @Inject
@@ -433,7 +437,8 @@ public abstract class PolarisAuthzTestBase {
         PolarisConfigurationStore configurationStore,
         PolarisDiagnostics diagnostics,
         TaskExecutor taskExecutor,
-        FileIOFactory fileIOFactory) {
+        FileIOFactory fileIOFactory,
+        PolarisEventListener polarisEventListener) {
       super(
           entityManager,
           metaStoreManager,
@@ -441,7 +446,8 @@ public abstract class PolarisAuthzTestBase {
           configurationStore,
           diagnostics,
           taskExecutor,
-          fileIOFactory);
+          fileIOFactory,
+          polarisEventListener);
     }
 
     @Override

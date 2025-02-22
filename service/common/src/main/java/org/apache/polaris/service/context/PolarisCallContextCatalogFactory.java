@@ -39,6 +39,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,6 +59,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final PolarisDiagnostics diagnostics;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
+  private final PolarisEventListener polarisEventListener;
 
   @Inject
   public PolarisCallContextCatalogFactory(
@@ -67,7 +69,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
       PolarisConfigurationStore configurationStore,
       PolarisDiagnostics diagnostics,
       TaskExecutor taskExecutor,
-      FileIOFactory fileIOFactory) {
+      FileIOFactory fileIOFactory,
+      PolarisEventListener polarisEventListener) {
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
     this.metaStoreSession = metaStoreSession;
@@ -75,6 +78,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     this.diagnostics = diagnostics;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
+    this.polarisEventListener = polarisEventListener;
   }
 
   @Override
@@ -102,7 +106,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             resolvedManifest,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
 
     CatalogEntity catalog = CatalogEntity.of(baseCatalogEntity);
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());

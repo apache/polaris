@@ -32,6 +32,7 @@ import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.quarkus.tracing.QuarkusTracingFilter;
 import org.apache.polaris.service.task.TaskExecutorImpl;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
@@ -42,7 +43,7 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
   private final Tracer tracer;
 
   public QuarkusTaskExecutorImpl() {
-    this(null, null, null, null, null, null, null);
+    this(null, null, null, null, null, null, null, null);
   }
 
   @Inject
@@ -53,14 +54,16 @@ public class QuarkusTaskExecutorImpl extends TaskExecutorImpl {
       PolarisDiagnostics diagnostics,
       TaskFileIOSupplier fileIOSupplier,
       Clock clock,
-      Tracer tracer) {
+      Tracer tracer,
+      PolarisEventListener polarisEventListener) {
     super(
         executorService,
         metaStoreManagerFactory,
         configurationStore,
         diagnostics,
         fileIOSupplier,
-        clock);
+        clock,
+        polarisEventListener);
     this.tracer = tracer;
   }
 
