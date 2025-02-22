@@ -164,14 +164,13 @@ class TableCleanupTaskHandlerTest {
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
                     .returns(
-                        AsyncTaskType.BATCH_FILE_CLEANUP,
-                        taskEntity2 -> taskEntity2.getTaskType())
+                        AsyncTaskType.BATCH_FILE_CLEANUP, taskEntity2 -> taskEntity2.getTaskType())
                     .returns(
                         new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
                             tableIdentifier, List.of(statisticsFile.path())),
                         entity ->
                             entity.readData(
-                                    BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
+                                BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
   }
 
   @Test
@@ -417,7 +416,7 @@ class TableCleanupTaskHandlerTest {
                             List.of(statisticsFile1.path(), statisticsFile2.path())),
                         entity ->
                             entity.readData(
-                                    BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
+                                BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
 
     assertThat(manifestCleanupTasks)
         // all three manifests should be present, even though one is excluded from the latest
@@ -573,7 +572,7 @@ class TableCleanupTaskHandlerTest {
                                 firstMetadataFile, statisticsFile1.path(), statisticsFile2.path())),
                         entity ->
                             entity.readData(
-                                    BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
+                                BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
 
     assertThat(manifestCleanupTasks)
         .hasSize(3)
