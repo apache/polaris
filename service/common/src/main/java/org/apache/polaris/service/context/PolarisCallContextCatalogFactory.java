@@ -36,6 +36,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.dao.NamespaceDao;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -58,6 +59,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final PolarisDiagnostics diagnostics;
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
+  private final NamespaceDao namespaceDao;
 
   @Inject
   public PolarisCallContextCatalogFactory(
@@ -67,7 +69,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
       PolarisConfigurationStore configurationStore,
       PolarisDiagnostics diagnostics,
       TaskExecutor taskExecutor,
-      FileIOFactory fileIOFactory) {
+      FileIOFactory fileIOFactory,
+      NamespaceDao namespaceDao) {
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
     this.metaStoreSession = metaStoreSession;
@@ -75,6 +78,7 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     this.diagnostics = diagnostics;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
+    this.namespaceDao = namespaceDao;
   }
 
   @Override
@@ -102,7 +106,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             resolvedManifest,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            namespaceDao);
 
     CatalogEntity catalog = CatalogEntity.of(baseCatalogEntity);
     Map<String, String> catalogProperties = new HashMap<>(catalog.getPropertiesAsMap());

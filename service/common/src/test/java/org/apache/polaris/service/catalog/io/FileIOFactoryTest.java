@@ -45,6 +45,7 @@ import org.apache.polaris.core.entity.*;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
+import org.apache.polaris.service.persistence.fdb.dao.FdbNamespaceDao;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
@@ -210,6 +211,11 @@ public class FileIOFactoryTest {
             services.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get(),
             services.securityContext(),
             CATALOG_NAME);
+    var metastoreManager =
+        services.metaStoreManagerFactory().getOrCreateMetaStoreManager(realmContext);
+    var metastoreSession =
+        services.metaStoreManagerFactory().getOrCreateSessionSupplier(realmContext).get();
+    var namespaceDao = new FdbNamespaceDao(metastoreManager, metastoreSession);
     BasePolarisCatalog polarisCatalog =
         new BasePolarisCatalog(
             services.realmContext(),
@@ -221,7 +227,8 @@ public class FileIOFactoryTest {
             passthroughView,
             services.securityContext(),
             services.taskExecutor(),
-            services.fileIOFactory());
+            services.fileIOFactory(),
+            namespaceDao);
     polarisCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

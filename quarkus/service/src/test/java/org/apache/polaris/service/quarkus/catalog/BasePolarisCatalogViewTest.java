@@ -54,12 +54,14 @@ import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.dao.NamespaceDao;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.persistence.fdb.dao.FdbNamespaceDao;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -101,6 +103,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
 
   private PolarisMetaStoreManager metaStoreManager;
   private PolarisMetaStoreSession metaStoreSession;
+  private NamespaceDao namespaceDao;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -127,6 +130,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
 
     metaStoreManager = managerFactory.getOrCreateMetaStoreManager(realmContext);
     metaStoreSession = managerFactory.getOrCreateSessionSupplier(realmContext).get();
+    namespaceDao = new FdbNamespaceDao(metaStoreManager, metaStoreSession);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -187,7 +191,8 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             passthroughView,
             securityContext,
             Mockito.mock(),
-            fileIOFactory);
+            fileIOFactory,
+            namespaceDao);
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
