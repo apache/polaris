@@ -1,8 +1,8 @@
 {
   "license": "Licensed under the Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)",
-  "$id": "https://polaris.apache.org/schemas/policies/system/data-compaction/2025-02-03.json",
-  "title": "Data Compaction Policy",
-  "description": "Inheritable Polaris policy schema for Iceberg table data compaction",
+  "$id": "https://polaris.apache.org/schemas/policies/system/snapshot-retention/2025-02-03.json",
+  "title": "Snapshot Retention Policy",
+  "description": "Inheritable Polaris policy schema for Iceberg table snapshot retention",
   "type": "object",
   "properties": {
     "version": {
@@ -12,7 +12,7 @@
     },
     "enable": {
       "type": "boolean",
-      "description": "Enable or disable data compaction."
+      "description": "Enable or disable snapshot retention."
     },
     "config": {
       "type": "object",
@@ -29,9 +29,9 @@
       "version": "2025-02-03",
       "enable": true,
       "config": {
-        "target_file_size_bytes": 134217728,
-        "compaction_strategy": "bin-pack",
-        "max-concurrent-file-group-rewrites": 5,
+        "min_snapshot_to_keep": 1,
+        "max_snapshot_age_days": 2,
+        "max_ref_age_days": 3,
         "key1": "value1"
       }
     }
