@@ -114,8 +114,6 @@ tasks.named<RatTask>("rat").configure {
   excludes.add("**/*.iml")
   excludes.add("**/*.iws")
 
-  excludes.add("**/*.md")
-
   excludes.add("**/*.png")
   excludes.add("**/*.svg")
 
