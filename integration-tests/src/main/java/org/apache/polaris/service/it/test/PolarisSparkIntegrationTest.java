@@ -167,7 +167,6 @@ public class PolarisSparkIntegrationTest {
             .setName(externalCatalogName)
             .setProperties(externalProps)
             .setStorageConfigInfo(awsConfigModel)
-            .setRemoteUrl("http://dummy_url")
             .build();
 
     managementApi.createCatalog(externalCatalog);
