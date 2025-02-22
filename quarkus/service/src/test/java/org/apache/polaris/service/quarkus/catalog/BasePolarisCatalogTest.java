@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.apache.commons.lang3.NotImplementedException;
@@ -127,7 +128,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
-import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.core.exception.NonRetryableException;
+import software.amazon.awssdk.core.exception.RetryableException;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
@@ -1537,16 +1539,18 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
   static Stream<Arguments> testRetriableException() {
     Set<Integer> NON_RETRYABLE_CODES = Set.of(401, 403, 404);
+    Set<Integer> RETRYABLE_CODES = Set.of(408, 504);
 
     // Create a map of HTTP code returned from a cloud provider to whether it should be retried
     Map<Integer, Boolean> cloudCodeMappings = new HashMap<>();
     NON_RETRYABLE_CODES.forEach(code -> cloudCodeMappings.put(code, false));
-    BasePolarisCatalog.RETRYABLE_CLOUD_EXCEPTION_CODES.forEach(
-        code -> cloudCodeMappings.put(code, true));
+    RETRYABLE_CODES.forEach(code -> cloudCodeMappings.put(code, true));
 
-    return Stream.concat(
-        Stream.of(Arguments.of(new RuntimeException(new IOException("Connection reset")), true)),
-        Stream.concat(
+    return Stream.of(
+            Stream.of(
+                Arguments.of(new RuntimeException(new IOException("Connection reset")), true),
+                Arguments.of(RetryableException.builder().build(), true),
+                Arguments.of(NonRetryableException.builder().build(), false)),
             IcebergExceptionMapper.getAccessDeniedHints().stream()
                 .map(hint -> Arguments.of(new RuntimeException(hint), false)),
             cloudCodeMappings.entrySet().stream()
@@ -1558,13 +1562,14 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                                     "", new FakeAzureHttpResponse(entry.getKey()), ""),
                                 entry.getValue()),
                             Arguments.of(
-                                S3Exception.builder()
-                                    .message("")
-                                    .statusCode(entry.getKey())
-                                    .build(),
-                                entry.getValue()),
-                            Arguments.of(
-                                new StorageException(entry.getKey(), ""), entry.getValue())))));
+                                new StorageException(entry.getKey(), ""), entry.getValue()))),
+            BasePolarisCatalog.RETRYABLE_AZURE_HTTP_CODES.stream()
+                .map(
+                    code ->
+                        Arguments.of(
+                            new HttpResponseException("", new FakeAzureHttpResponse(code), ""),
+                            true)))
+        .flatMap(Function.identity());
   }
 
   @Test
