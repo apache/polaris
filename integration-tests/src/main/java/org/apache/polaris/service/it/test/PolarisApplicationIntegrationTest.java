@@ -29,13 +29,12 @@ import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
-import java.nio.file.Files;
+import java.net.URI;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
-import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.PartitionData;
@@ -75,6 +74,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.ClientPrincipal;
+import org.apache.polaris.service.it.env.IntegrationTestsHelper;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.env.RestApi;
@@ -87,6 +87,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -109,7 +110,6 @@ public class PolarisApplicationIntegrationTest {
 
   public static final String PRINCIPAL_ROLE_ALL = "PRINCIPAL_ROLE:ALL";
 
-  private static Path testDir;
   private static String realm;
 
   private static RestApi managementApi;
@@ -118,25 +118,22 @@ public class PolarisApplicationIntegrationTest {
   private static ClientCredentials clientCredentials;
   private static ClientPrincipal admin;
   private static String authToken;
+  private static URI baseLocation;
 
   private String principalRoleName;
   private String internalCatalogName;
 
   @BeforeAll
-  public static void setup(PolarisApiEndpoints apiEndpoints, ClientPrincipal adminCredentials)
-      throws IOException {
+  public static void setup(
+      PolarisApiEndpoints apiEndpoints, ClientPrincipal adminCredentials, @TempDir Path tempDir) {
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     realm = endpoints.realmId();
     admin = adminCredentials;
     clientCredentials = adminCredentials.credentials();
     authToken = client.obtainToken(clientCredentials);
-
-    testDir = Path.of("build/test_data/iceberg/" + realm);
-    FileUtils.deleteQuietly(testDir.toFile());
-    Files.createDirectories(testDir);
-
     managementApi = client.managementApi(clientCredentials);
+    baseLocation = IntegrationTestsHelper.getTemporaryDirectory(tempDir).resolve(realm + "/");
   }
 
   @AfterAll
@@ -443,9 +440,9 @@ public class PolarisApplicationIntegrationTest {
         Catalog.TypeEnum.EXTERNAL,
         principalRoleName,
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
-            .setAllowedLocations(List.of("file://" + testDir.toFile().getAbsolutePath()))
+            .setAllowedLocations(List.of(baseLocation.toString()))
             .build(),
-        "file://" + testDir.toFile().getAbsolutePath());
+        baseLocation.toString());
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName);
         HadoopFileIO fileIo = new HadoopFileIO(new Configuration())) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
@@ -453,9 +450,7 @@ public class PolarisApplicationIntegrationTest {
       sessionCatalog.createNamespace(sessionContext, ns);
       TableIdentifier tableIdentifier = TableIdentifier.of(ns, "the_table");
       String location =
-          "file://"
-              + testDir.toFile().getAbsolutePath()
-              + "/testIcebergRegisterTableInExternalCatalog";
+          baseLocation.resolve("testIcebergRegisterTableInExternalCatalog").toString();
       String metadataLocation = location + "/metadata/000001-494949494949494949.metadata.json";
 
       TableMetadata tableMetadata =
@@ -489,19 +484,16 @@ public class PolarisApplicationIntegrationTest {
         Catalog.TypeEnum.EXTERNAL,
         principalRoleName,
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
-            .setAllowedLocations(List.of("file://" + testDir.toFile().getAbsolutePath()))
+            .setAllowedLocations(List.of(baseLocation.toString()))
             .build(),
-        "file://" + testDir.toFile().getAbsolutePath());
+        baseLocation.toString());
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName);
         HadoopFileIO fileIo = new HadoopFileIO(new Configuration())) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
       sessionCatalog.createNamespace(sessionContext, ns);
       TableIdentifier tableIdentifier = TableIdentifier.of(ns, "the_table");
-      String location =
-          "file://"
-              + testDir.toFile().getAbsolutePath()
-              + "/testIcebergUpdateTableInExternalCatalog";
+      String location = baseLocation.resolve("testIcebergUpdateTableInExternalCatalog").toString();
       String metadataLocation = location + "/metadata/000001-494949494949494949.metadata.json";
 
       Types.NestedField col1 = Types.NestedField.of(1, false, "col1", Types.StringType.get());
@@ -541,20 +533,16 @@ public class PolarisApplicationIntegrationTest {
         Catalog.TypeEnum.EXTERNAL,
         principalRoleName,
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
-            .setAllowedLocations(List.of("file://" + testDir.toFile().getAbsolutePath()))
+            .setAllowedLocations(List.of(baseLocation.toString()))
             .build(),
-        "file://" + testDir.toFile().getAbsolutePath());
+        baseLocation.toString());
     try (RESTSessionCatalog sessionCatalog = newSessionCatalog(catalogName);
         HadoopFileIO fileIo = new HadoopFileIO(new Configuration())) {
       SessionCatalog.SessionContext sessionContext = SessionCatalog.SessionContext.createEmpty();
       Namespace ns = Namespace.of("db1");
       sessionCatalog.createNamespace(sessionContext, ns);
       TableIdentifier tableIdentifier = TableIdentifier.of(ns, "the_table");
-      String location =
-          "file://"
-              + testDir.toFile().getAbsolutePath()
-              + "/"
-              + "testIcebergDropTableInExternalCatalog";
+      String location = baseLocation.resolve("testIcebergDropTableInExternalCatalog").toString();
       String metadataLocation = location + "/metadata/000001-494949494949494949.metadata.json";
 
       TableMetadata tableMetadata =
