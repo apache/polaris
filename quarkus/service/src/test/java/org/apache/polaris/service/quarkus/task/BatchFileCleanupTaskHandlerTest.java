@@ -21,7 +21,8 @@ package org.apache.polaris.service.quarkus.task;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatPredicate;
 
-import com.google.inject.Inject;
+import io.quarkus.test.junit.QuarkusTest;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -45,20 +46,22 @@ import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.task.BatchFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.apache.polaris.service.task.TaskUtils;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
+@QuarkusTest
 public class BatchFileCleanupTaskHandlerTest {
-  @Inject private InMemoryPolarisMetaStoreManagerFactory metaStoreManagerFactory;
-
+  @Inject MetaStoreManagerFactory metaStoreManagerFactory;
   private final RealmContext realmContext = () -> "realmName";
 
   private TaskFileIOSupplier buildTaskFileIOSupplier(FileIO fileIO) {
@@ -76,6 +79,12 @@ public class BatchFileCleanupTaskHandlerTest {
             return fileIO;
           }
         });
+  }
+
+  private void addTaskLocation(TaskEntity task) {
+    Map<String, String> internalPropertiesAsMap = new HashMap<>(task.getInternalPropertiesAsMap());
+    internalPropertiesAsMap.put(PolarisTaskConstants.STORAGE_LOCATION, "file:///tmp/");
+    ((PolarisBaseEntity) task).setInternalPropertiesAsMap(internalPropertiesAsMap);
   }
 
   @Test
@@ -170,6 +179,7 @@ public class BatchFileCleanupTaskHandlerTest {
               .setName(UUID.randomUUID().toString())
               .build();
 
+      addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThat(handler.handleTask(task, callCtx)).isTrue();
 
@@ -222,6 +232,8 @@ public class BatchFileCleanupTaskHandlerTest {
                       tableIdentifier, List.of(statisticsFile.path())))
               .setName(UUID.randomUUID().toString())
               .build();
+
+      addTaskLocation(task);
       assertThatPredicate(handler::canHandleTask).accepts(task);
       assertThat(handler.handleTask(task, callCtx)).isTrue();
     }
@@ -289,6 +301,8 @@ public class BatchFileCleanupTaskHandlerTest {
       CompletableFuture<Void> future =
           CompletableFuture.runAsync(
               () -> {
+                CallContext.setCurrentContext(callCtx);
+                addTaskLocation(task);
                 assertThatPredicate(handler::canHandleTask).accepts(task);
                 handler.handleTask(task, callCtx); // this will schedule the batch deletion
               });
