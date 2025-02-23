@@ -120,7 +120,7 @@ menu:
       parent: "community"
       url: "/community/meetings"
       weight: 20
-    - name: "Proposals"
+    - name: "Proposals & Roadmap"
       parent: "community"
       url: "/community/proposals"
       weight: 30
