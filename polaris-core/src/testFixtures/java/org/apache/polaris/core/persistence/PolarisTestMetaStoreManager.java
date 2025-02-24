@@ -43,7 +43,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
-import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager.ResolvedEntityResult;
 import org.assertj.core.api.Assertions;
 
 /** Test the Polaris persistence layer */
@@ -1226,7 +1226,7 @@ public class PolarisTestMetaStoreManager {
    *
    * @param cacheEntry the cached entity to validate
    */
-  private void validateCacheEntryLoad(CachedEntryResult cacheEntry) {
+  private void validateCacheEntryLoad(ResolvedEntityResult cacheEntry) {
 
     // cannot be null
     Assertions.assertThat(cacheEntry).isNotNull();
@@ -1287,7 +1287,7 @@ public class PolarisTestMetaStoreManager {
    * @param cacheEntry the cached entity to validate
    */
   private void validateCacheEntryRefresh(
-      CachedEntryResult cacheEntry,
+      ResolvedEntityResult cacheEntry,
       long catalogId,
       long entityId,
       int entityVersion,
@@ -1362,8 +1362,8 @@ public class PolarisTestMetaStoreManager {
       @Nonnull String entityName,
       boolean expectExists) {
     // load cached entry
-    CachedEntryResult cacheEntry =
-        this.polarisMetaStoreManager.loadCachedEntryByName(
+    ResolvedEntityResult cacheEntry =
+        this.polarisMetaStoreManager.loadResolvedEntityByName(
             this.polarisCallContext, entityCatalogId, parentId, entityType, entityName);
 
     // if null, validate that indeed the entry does not exist
@@ -1408,8 +1408,8 @@ public class PolarisTestMetaStoreManager {
   private PolarisBaseEntity loadCacheEntryById(
       long entityCatalogId, long entityId, boolean expectExists) {
     // load cached entry
-    CachedEntryResult cacheEntry =
-        this.polarisMetaStoreManager.loadCachedEntryById(
+    ResolvedEntityResult cacheEntry =
+        this.polarisMetaStoreManager.loadResolvedEntityById(
             this.polarisCallContext, entityCatalogId, entityId);
 
     // if null, validate that indeed the entry does not exist
@@ -1455,8 +1455,8 @@ public class PolarisTestMetaStoreManager {
       long entityId,
       boolean expectExists) {
     // load cached entry
-    CachedEntryResult cacheEntry =
-        this.polarisMetaStoreManager.refreshCachedEntity(
+    ResolvedEntityResult cacheEntry =
+        this.polarisMetaStoreManager.refreshResolvedEntity(
             this.polarisCallContext,
             entityVersion,
             entityGrantRecordsVersion,
@@ -2087,8 +2087,8 @@ public class PolarisTestMetaStoreManager {
     // the renamed entity
     PolarisEntity renamedEntityInput = new PolarisEntity(entity);
     renamedEntityInput.setName(newName);
-    String updatedInternalPropertiesString = "updatedDataForInternalProperties1234";
-    String updatedPropertiesString = "updatedDataForProperties9876";
+    String updatedInternalPropertiesString = "{\"key1\": \"updatedDataForInternalProperties1234\"}";
+    String updatedPropertiesString = "{\"key1\": \"updatedDataForProperties9876\"}";
 
     // this is to test that properties are also updated during the rename operation
     renamedEntityInput.setInternalProperties(updatedInternalPropertiesString);

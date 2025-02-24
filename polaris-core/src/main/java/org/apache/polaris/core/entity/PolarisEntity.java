@@ -25,12 +25,23 @@ import jakarta.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 
+/**
+ * For legacy reasons, this class is only a thin facade over PolarisBaseEntity's members/methods. No
+ * direct members should be added to this class; rather, they should reside in the PolarisBaseEntity
+ * and this class should just contain the relevant builder methods, etc. The intention when using
+ * this class is to use "immutable" semantics as much as possible, for example constructing new
+ * copies with the Builder pattern when "mutating" fields rather than ever chaing fields in-place.
+ * Currently, code that intends to operate directly on a PolarisBaseEntity may not adhere to
+ * immutability semantics, and may modify the entity in-place.
+ *
+ * <p>TODO: Combine this fully into PolarisBaseEntity, refactor all callsites to use strict
+ * immutability semantics, and remove all mutator methods from PolarisBaseEntity.
+ */
 public class PolarisEntity extends PolarisBaseEntity {
 
   public static class NameAndId {
@@ -227,41 +238,18 @@ public class PolarisEntity extends PolarisBaseEntity {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof PolarisEntity)) return false;
-    PolarisEntity that = (PolarisEntity) o;
-    return catalogId == that.catalogId
-        && id == that.id
-        && parentId == that.parentId
-        && createTimestamp == that.createTimestamp
-        && dropTimestamp == that.dropTimestamp
-        && purgeTimestamp == that.purgeTimestamp
-        && lastUpdateTimestamp == that.lastUpdateTimestamp
-        && entityVersion == that.entityVersion
-        && grantRecordsVersion == that.grantRecordsVersion
-        && typeCode == that.typeCode
-        && subTypeCode == that.subTypeCode
-        && Objects.equals(name, that.name)
-        && Objects.equals(properties, that.properties)
-        && Objects.equals(internalProperties, that.internalProperties);
+    // Note: Keeping this here explicitly instead silently inheriting super.equals as a more
+    // prominent warning that the data members of this class *must not* diverge from those of
+    // PolarisBaseEntity.
+    return super.equals(o);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(
-        typeCode,
-        subTypeCode,
-        catalogId,
-        id,
-        parentId,
-        name,
-        createTimestamp,
-        dropTimestamp,
-        purgeTimestamp,
-        lastUpdateTimestamp,
-        properties,
-        internalProperties,
-        entityVersion,
-        grantRecordsVersion);
+    // Note: Keeping this here explicitly instead silently inheriting super.hashCode as a more
+    // prominent warning that the data members of this class *must not* diverge from those of
+    // PolarisBaseEntity.
+    return super.hashCode();
   }
 
   public static class Builder extends BaseBuilder<PolarisEntity, Builder> {

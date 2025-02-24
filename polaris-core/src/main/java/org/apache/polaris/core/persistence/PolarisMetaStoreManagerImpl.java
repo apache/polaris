@@ -2211,8 +2211,8 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     return deserializeProperties(callCtx, internalPropStr);
   }
 
-  /** {@link #loadCachedEntryById(PolarisCallContext, long, long)} */
-  private @Nonnull CachedEntryResult loadCachedEntryById(
+  /** {@link #loadResolvedEntityById(PolarisCallContext, long, long)} */
+  private @Nonnull ResolvedEntityResult loadResolvedEntityById(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisMetaStoreSession ms,
       long entityCatalogId,
@@ -2223,7 +2223,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // if entity not found, return null
     if (entity == null) {
-      return new CachedEntryResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new ResolvedEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     // load the grant records
@@ -2237,23 +2237,23 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     }
 
     // return the result
-    return new CachedEntryResult(entity, entity.getGrantRecordsVersion(), grantRecords);
+    return new ResolvedEntityResult(entity, entity.getGrantRecordsVersion(), grantRecords);
   }
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull CachedEntryResult loadCachedEntryById(
+  public @Nonnull ResolvedEntityResult loadResolvedEntityById(
       @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
     // get metastore we should be using
     PolarisMetaStoreSession ms = callCtx.getMetaStore();
 
     // need to run inside a read transaction
     return ms.runInReadTransaction(
-        callCtx, () -> this.loadCachedEntryById(callCtx, ms, entityCatalogId, entityId));
+        callCtx, () -> this.loadResolvedEntityById(callCtx, ms, entityCatalogId, entityId));
   }
 
-  /** {@link #loadCachedEntryById(PolarisCallContext, long, long)} */
-  private @Nonnull CachedEntryResult loadCachedEntryByName(
+  /** {@link #loadResolvedEntityById(PolarisCallContext, long, long)} */
+  private @Nonnull ResolvedEntityResult loadResolvedEntityByName(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisMetaStoreSession ms,
       long entityCatalogId,
@@ -2268,7 +2268,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // null if entity not found
     if (entity == null) {
-      return new CachedEntryResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new ResolvedEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     // load the grant records
@@ -2284,12 +2284,12 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     }
 
     // return the result
-    return new CachedEntryResult(entity, entity.getGrantRecordsVersion(), grantRecords);
+    return new ResolvedEntityResult(entity, entity.getGrantRecordsVersion(), grantRecords);
   }
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull CachedEntryResult loadCachedEntryByName(
+  public @Nonnull ResolvedEntityResult loadResolvedEntityByName(
       @Nonnull PolarisCallContext callCtx,
       long entityCatalogId,
       long parentId,
@@ -2299,11 +2299,11 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     PolarisMetaStoreSession ms = callCtx.getMetaStore();
 
     // need to run inside a read transaction
-    CachedEntryResult result =
+    ResolvedEntityResult result =
         ms.runInReadTransaction(
             callCtx,
             () ->
-                this.loadCachedEntryByName(
+                this.loadResolvedEntityByName(
                     callCtx, ms, entityCatalogId, parentId, entityType, entityName));
     if (PolarisEntityConstants.getRootContainerName().equals(entityName)
         && entityType == PolarisEntityType.ROOT
@@ -2347,14 +2347,14 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
           ms.runInReadTransaction(
               callCtx,
               () ->
-                  this.loadCachedEntryByName(
+                  this.loadResolvedEntityByName(
                       callCtx, ms, entityCatalogId, parentId, entityType, entityName));
     }
     return result;
   }
 
   /** {@inheritDoc} */
-  private @Nonnull CachedEntryResult refreshCachedEntity(
+  private @Nonnull ResolvedEntityResult refreshResolvedEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisMetaStoreSession ms,
       int entityVersion,
@@ -2370,7 +2370,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // if null, the entity has been purged
     if (entityVersions == null) {
-      return new CachedEntryResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new ResolvedEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     // load the entity if something changed
@@ -2380,7 +2380,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
       // if not found, return null
       if (entity == null) {
-        return new CachedEntryResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+        return new ResolvedEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
       }
     } else {
       // entity has not changed, no need to reload it
@@ -2402,12 +2402,12 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     }
 
     // return the result
-    return new CachedEntryResult(entity, entityVersions.getGrantRecordsVersion(), grantRecords);
+    return new ResolvedEntityResult(entity, entityVersions.getGrantRecordsVersion(), grantRecords);
   }
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull CachedEntryResult refreshCachedEntity(
+  public @Nonnull ResolvedEntityResult refreshResolvedEntity(
       @Nonnull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
@@ -2421,7 +2421,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
     return ms.runInReadTransaction(
         callCtx,
         () ->
-            this.refreshCachedEntity(
+            this.refreshResolvedEntity(
                 callCtx,
                 ms,
                 entityVersion,
