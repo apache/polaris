@@ -90,6 +90,13 @@ public class AwsCredentialsStorageIntegration
     if (storageConfig.getRegion() != null) {
       credentialMap.put(PolarisCredentialProperty.CLIENT_REGION, storageConfig.getRegion());
     }
+
+    if (!storageConfig.getAwsPartition().equals("aws")
+            && credentialMap.get(PolarisCredentialProperty.CLIENT_REGION) == null) {
+      throw new IllegalArgumentException(
+              String.format("AWS region must be set when using partition %s", storageConfig.getAwsPartition()));
+    }
+
     return credentialMap;
   }
 
@@ -119,7 +126,6 @@ public class AwsCredentialsStorageIntegration
             location -> {
               URI uri = URI.create(location);
               allowGetObjectStatementBuilder.addResource(
-                  // TODO add support for CN and GOV
                   IamResource.create(
                       arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
               final var bucket = arnPrefix + StorageUtil.getBucket(uri);
@@ -155,7 +161,6 @@ public class AwsCredentialsStorageIntegration
       writeLocations.forEach(
           location -> {
             URI uri = URI.create(location);
-            // TODO add support for CN and GOV
             allowPutObjectStatementBuilder.addResource(
                 IamResource.create(
                     arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
