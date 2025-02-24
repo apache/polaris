@@ -73,7 +73,7 @@ public class ManifestFileCleanupTaskHandler implements TaskHandler {
   public boolean handleTask(TaskEntity task, CallContext callContext) {
     ManifestCleanupTask cleanupTask = task.readData(ManifestCleanupTask.class);
     TableIdentifier tableId = cleanupTask.getTableId();
-    try (FileIO authorizedFileIO = fileIOSupplier.apply(task, callContext.getRealmContext())) {
+    try (FileIO authorizedFileIO = fileIOSupplier.apply(task, callContext)) {
       if (task.getTaskType() == AsyncTaskType.MANIFEST_FILE_CLEANUP) {
         ManifestFile manifestFile = decodeManifestData(cleanupTask.getManifestFileData());
         return cleanUpManifestFile(manifestFile, authorizedFileIO, tableId);

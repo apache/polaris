@@ -25,11 +25,9 @@ import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -78,16 +76,14 @@ public class FileIOUtil {
    * </ul>
    */
   public static Map<String, String> refreshCredentials(
-      RealmContext realmContext,
+      CallContext callContext,
       PolarisEntityManager entityManager,
       PolarisCredentialVendor credentialVendor,
-      PolarisMetaStoreSession metaStoreSession,
       PolarisConfigurationStore configurationStore,
       TableIdentifier tableIdentifier,
       Set<String> tableLocations,
       Set<PolarisStorageActions> storageActions,
       PolarisEntity entity) {
-    CallContext callContext = CallContext.getCurrentContext();
 
     boolean skipCredentialSubscopingIndirection =
         configurationStore.getConfiguration(
