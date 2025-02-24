@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.test;
+package org.apache.polaris.service.exception;
 
 import com.azure.core.http.HttpHeaders;
 import com.azure.core.http.HttpResponse;

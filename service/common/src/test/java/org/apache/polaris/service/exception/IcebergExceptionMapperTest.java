@@ -26,8 +26,6 @@ import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.core.Response;
 import java.util.Map;
 import java.util.stream.Stream;
-import org.apache.polaris.service.exception.IcebergExceptionMapper;
-import org.apache.polaris.service.quarkus.test.FakeAzureHttpResponse;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
