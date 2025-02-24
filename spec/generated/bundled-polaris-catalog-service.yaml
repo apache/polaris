@@ -1411,10 +1411,10 @@ paths:
     get:
       tags:
         - Catalog API
-      summary: Get a policy
-      operationId: getPolicy
+      summary: Load a policy
+      operationId: loadPolicy
       description: |
-        Get a policy from the catalog
+        Load a policy from the catalog
 
         The response contains the policy's metadata and content. For more details, refer to the definition of the `Policy` model.
       responses:
@@ -1484,8 +1484,8 @@ paths:
     delete:
       tags:
         - Catalog API
-      summary: Delete a policy from the catalog
-      operationId: deletePolicy
+      summary: Drop a policy from the catalog
+      operationId: dropPolicy
       description: Remove a policy from the catalog
       responses:
         '204':
@@ -3522,6 +3522,56 @@ components:
           type: string
         content:
           type: string
+    Policy:
+      type: object
+      description: |
+        A policy in Apache Polaris defines a set of rules for governing access, data usage, and operational consistency across various catalog resources. 
+        Policies are stored within Polaris and can be applied to catalogs, namespaces, tables, views, and other table-like entities.
+        For example, they can be used for fine-grained control over who can perform specific actions on certain resources.
+
+        The policy object includes
+        - **policy-type:** The type of the policy, which determines the expected format and semantics of the policy content.
+        - **name:**  A human-readable name for the policy, which must be unique within a given namespace.
+        - **description:** Detailed description of the purpose and functionalities of the policy.
+        - **content:** Policy content, which can be validated against predefined schemas of a policy type.
+        - **version:** Indicates the current version of the policy. Versions increased monotonically, the default value is 0
+        - **created_at:** A timestamp (in milliseconds) indicating when the policy was created.
+        - **updated_at:** A timestamp (in milliseconds) indicating the last update time of the policy.
+
+        Policies stored in Polaris serve as the persistent definition for access control and governance rules.
+      required:
+        - policy-type
+        - name
+        - version
+      properties:
+        policy-type:
+          type: string
+        name:
+          $ref: '#/components/schemas/PolicyName'
+        description:
+          type: string
+        content:
+          type: string
+        version:
+          type: integer
+        created-at-ms:
+          type: integer
+          format: int64
+        updated-at-ms:
+          type: integer
+          format: int64
+    LoadPolicyResult:
+      type: object
+      properties:
+        policy:
+          $ref: '#/components/schemas/Policy'
+    UpdatePolicyRequest:
+      type: object
+      properties:
+        description:
+          type: string
+        content:
+          type: string
     EntityIdentifier:
       type: object
       discriminator:
@@ -3578,60 +3628,6 @@ components:
             name:
               type: string
               nullable: false
-    Policy:
-      type: object
-      description: |
-        A policy in Apache Polaris defines a set of rules for governing access, data usage, and operational consistency across various catalog resources. 
-        Policies are stored within Polaris and can be applied to catalogs, namespaces, tables, views, and other table-like entities.
-        For example, they can be used for fine-grained control over who can perform specific actions on certain resources.
-
-        The policy object includes
-        - **owner-entity:** The entity that owns the policy
-        - **policy-type:** The type of the policy, which determines the expected format and semantics of the policy content.
-        - **name:**  A human-readable name for the policy, which must be unique within a given namespace.
-        - **description:** Detailed description of the purpose and functionalities of the policy.
-        - **content:** Policy content, which can be validated against predefined schemas of a policy type.
-        - **version:** Indicates the current version of the policy. Versions increased monotonically, the default value is 0
-        - **created_at:** A timestamp (in milliseconds) indicating when the policy was created.
-        - **updated_at:** A timestamp (in milliseconds) indicating the last update time of the policy.
-
-        Policies stored in Polaris serve as the persistent definition for access control and governance rules.
-      required:
-        - owner-entity
-        - policy-type
-        - name
-        - version
-      properties:
-        owner-entity:
-          $ref: '#/components/schemas/EntityIdentifier'
-        policy-type:
-          type: string
-        name:
-          $ref: '#/components/schemas/PolicyName'
-        description:
-          type: string
-        content:
-          type: string
-        version:
-          type: integer
-        created-at-ms:
-          type: integer
-          format: int64
-        updated-at-ms:
-          type: integer
-          format: int64
-    LoadPolicyResult:
-      type: object
-      properties:
-        policy:
-          $ref: '#/components/schemas/Policy'
-    UpdatePolicyRequest:
-      type: object
-      properties:
-        description:
-          type: string
-        content:
-          type: string
     SetPolicyRequest:
       type: object
       required:
