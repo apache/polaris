@@ -490,7 +490,7 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
                               Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/data/')
     assert objects is not None
     assert 'Contents' in objects
-    assert len(objects['Contents']) >= 4  # idk, it varies - at least one file for each inser and one for the update
+    assert len(objects['Contents']) >= 4  # it varies - at least one file for each insert and one for the update
     print(f"Found {len(objects['Contents'])} data files in S3 before drop")
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
@@ -603,13 +603,18 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
 
     print(f"Found common prefixes in S3 {objects['CommonPrefixes']}")
     objs_to_delete = []
+
     for prefix in objects['CommonPrefixes']:
-      data_objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                                     Prefix=f'{prefix["Prefix"]}schema/{table_name}/')
+      # Don't utilize delimiter so all files (recursive) are returned
+      data_objects = s3.list_objects(Bucket=test_bucket,
+                            Prefix=f'polaris_test/snowflake_catalog/{table_name}data/')
       assert data_objects is not None
       print(data_objects)
       assert 'Contents' in data_objects
-      objs_to_delete.extend([{'Key': obj['Key']} for obj in data_objects['Contents']])
+      for obj in data_objects['Contents']:
+          filePathMap = {'Key': obj['Key']}
+          assert f'/schema/{table_name}/' in filePathMap['Key']
+          objs_to_delete.append(filePathMap)
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
                               Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/metadata/')
@@ -702,7 +707,9 @@ def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalo
     print(f"Found common prefixes in S3 {objects['CommonPrefixes']}")
     objs_to_delete = []
     for prefix in objects['CommonPrefixes']:
-      data_objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
+      # Files may be under further subdirectories, so omit the
+      # delimiter so that all files (recursive) are returned.
+      data_objects = s3.list_objects(Bucket=test_bucket,
                                      Prefix=f'{prefix["Prefix"]}')
       assert data_objects is not None
       print(data_objects)
