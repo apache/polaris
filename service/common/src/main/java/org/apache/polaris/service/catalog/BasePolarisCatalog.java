@@ -836,10 +836,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       return Map.of();
     }
     return FileIOUtil.refreshCredentials(
-        callContext.getRealmContext(),
+        callContext,
         entityManager,
         getCredentialVendor(),
-        callContext.getPolarisCallContext().getMetaStore(),
         callContext.getPolarisCallContext().getConfigurationStore(),
         tableIdentifier,
         getLocationsAllowedToBeAccessed(tableMetadata),
@@ -1614,7 +1613,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     // Reload fileIO based on table specific context
     FileIO fileIO =
         fileIOFactory.loadFileIO(
-            callContext.getRealmContext(),
+            callContext,
             ioImplClassName,
             tableProperties,
             identifier,
@@ -2077,13 +2076,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         new PolarisResolvedPathWrapper(List.of(resolvedCatalogEntity));
     Set<PolarisStorageActions> storageActions = Set.of(PolarisStorageActions.ALL);
     return fileIOFactory.loadFileIO(
-        callContext.getRealmContext(),
-        ioImpl,
-        properties,
-        identifier,
-        locations,
-        storageActions,
-        resolvedPath);
+        callContext, ioImpl, properties, identifier, locations, storageActions, resolvedPath);
   }
 
   private void blockedUserSpecifiedWriteLocation(Map<String, String> properties) {
