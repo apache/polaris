@@ -335,16 +335,16 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public CachedEntryResult loadCachedEntryById(
+  public ResolvedEntityResult loadResolvedEntityById(
       @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
     callCtx
         .getDiagServices()
-        .fail("illegal_method_in_transaction_workspace", "loadCachedEntryById");
+        .fail("illegal_method_in_transaction_workspace", "loadResolvedEntityById");
     return null;
   }
 
   @Override
-  public CachedEntryResult loadCachedEntryByName(
+  public ResolvedEntityResult loadResolvedEntityByName(
       @Nonnull PolarisCallContext callCtx,
       long entityCatalogId,
       long parentId,
@@ -352,12 +352,12 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @Nonnull String entityName) {
     callCtx
         .getDiagServices()
-        .fail("illegal_method_in_transaction_workspace", "loadCachedEntryByName");
+        .fail("illegal_method_in_transaction_workspace", "loadResolvedEntityByName");
     return null;
   }
 
   @Override
-  public CachedEntryResult refreshCachedEntity(
+  public ResolvedEntityResult refreshResolvedEntity(
       @Nonnull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
@@ -366,7 +366,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       long entityId) {
     callCtx
         .getDiagServices()
-        .fail("illegal_method_in_transaction_workspace", "refreshCachedEntity");
+        .fail("illegal_method_in_transaction_workspace", "refreshResolvedEntity");
     return null;
   }
 }

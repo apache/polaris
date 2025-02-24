@@ -31,7 +31,9 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
-import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 
 /** The entity cache, can be private or shared */
 public class EntityCache {
@@ -40,26 +42,26 @@ public class EntityCache {
   private EntityCacheMode cacheMode;
 
   // the meta store manager
-  private final PolarisRemoteCache polarisRemoteCache;
+  private final PolarisMetaStoreManager polarisMetaStoreManager;
 
   // Caffeine cache to keep entries by id
-  private final Cache<Long, EntityCacheEntry> byId;
+  private final Cache<Long, ResolvedPolarisEntity> byId;
 
   // index by name
-  private final AbstractMap<EntityCacheByNameKey, EntityCacheEntry> byName;
+  private final AbstractMap<EntityCacheByNameKey, ResolvedPolarisEntity> byName;
 
   /**
    * Constructor. Cache can be private or shared
    *
-   * @param polarisRemoteCache the meta store manager implementation
+   * @param polarisMetaStoreManager the meta store manager implementation
    */
-  public EntityCache(@Nonnull PolarisRemoteCache polarisRemoteCache) {
+  public EntityCache(@Nonnull PolarisMetaStoreManager polarisMetaStoreManager) {
 
     // by name cache
     this.byName = new ConcurrentHashMap<>();
 
     // When an entry is removed, we simply remove it from the byName map
-    RemovalListener<Long, EntityCacheEntry> removalListener =
+    RemovalListener<Long, ResolvedPolarisEntity> removalListener =
         (key, value, cause) -> {
           if (value != null) {
             // compute name key
@@ -80,7 +82,7 @@ public class EntityCache {
             .build();
 
     // remember the meta store manager
-    this.polarisRemoteCache = polarisRemoteCache;
+    this.polarisMetaStoreManager = polarisMetaStoreManager;
 
     // enabled by default
     this.cacheMode = EntityCacheMode.ENABLE;
@@ -91,7 +93,7 @@ public class EntityCache {
    *
    * @param cacheEntry cache entry to remove
    */
-  public void removeCacheEntry(@Nonnull EntityCacheEntry cacheEntry) {
+  public void removeCacheEntry(@Nonnull ResolvedPolarisEntity cacheEntry) {
     // compute name key
     EntityCacheByNameKey nameKey = new EntityCacheByNameKey(cacheEntry.getEntity());
 
@@ -107,13 +109,13 @@ public class EntityCache {
    *
    * @param cacheEntry new cache entry
    */
-  private void cacheNewEntry(@Nonnull EntityCacheEntry cacheEntry) {
+  private void cacheNewEntry(@Nonnull ResolvedPolarisEntity cacheEntry) {
 
     // compute name key
     EntityCacheByNameKey nameKey = new EntityCacheByNameKey(cacheEntry.getEntity());
 
     // get old value if one exist
-    EntityCacheEntry oldCacheEntry = this.byId.getIfPresent(cacheEntry.getEntity().getId());
+    ResolvedPolarisEntity oldCacheEntry = this.byId.getIfPresent(cacheEntry.getEntity().getId());
 
     // put new entry, only if really newer one
     this.byId
@@ -147,7 +149,7 @@ public class EntityCache {
    * @param oldValue old cache entry
    * @return true if the newer cache entry
    */
-  private boolean isNewer(EntityCacheEntry newValue, EntityCacheEntry oldValue) {
+  private boolean isNewer(ResolvedPolarisEntity newValue, ResolvedPolarisEntity oldValue) {
     return (newValue.getEntity().getEntityVersion() > oldValue.getEntity().getEntityVersion()
         || newValue.getEntity().getGrantRecordsVersion()
             > oldValue.getEntity().getGrantRecordsVersion());
@@ -160,7 +162,7 @@ public class EntityCache {
    * @param newCacheEntry new entry
    */
   private void replaceCacheEntry(
-      @Nullable EntityCacheEntry oldCacheEntry, @Nonnull EntityCacheEntry newCacheEntry) {
+      @Nullable ResolvedPolarisEntity oldCacheEntry, @Nonnull ResolvedPolarisEntity newCacheEntry) {
 
     // need to remove old?
     if (oldCacheEntry != null) {
@@ -175,8 +177,6 @@ public class EntityCache {
 
         // delete the old one assuming it has not been replaced by the above new entry
         this.removeCacheEntry(oldCacheEntry);
-      } else {
-        oldCacheEntry.updateLastAccess();
       }
     } else {
       // write new one
@@ -223,7 +223,7 @@ public class EntityCache {
    * @param entityId entity id
    * @return the cache entry or null if not found
    */
-  public @Nullable EntityCacheEntry getEntityById(long entityId) {
+  public @Nullable ResolvedPolarisEntity getEntityById(long entityId) {
     return byId.getIfPresent(entityId);
   }
 
@@ -233,7 +233,8 @@ public class EntityCache {
    * @param entityNameKey entity name key
    * @return the cache entry or null if not found
    */
-  public @Nullable EntityCacheEntry getEntityByName(@Nonnull EntityCacheByNameKey entityNameKey) {
+  public @Nullable ResolvedPolarisEntity getEntityByName(
+      @Nonnull EntityCacheByNameKey entityNameKey) {
     return byName.get(entityNameKey);
   }
 
@@ -249,7 +250,7 @@ public class EntityCache {
    *     records should be reloaded if needed
    * @return the cache entry for the entity or null if the specified entity does not exist
    */
-  public @Nullable EntityCacheEntry getAndRefreshIfNeeded(
+  public @Nullable ResolvedPolarisEntity getAndRefreshIfNeeded(
       @Nonnull PolarisCallContext callContext,
       @Nonnull PolarisBaseEntity entityToValidate,
       int entityMinVersion,
@@ -259,13 +260,13 @@ public class EntityCache {
     PolarisEntityType entityType = entityToValidate.getType();
 
     // first lookup the cache to find the existing cache entry
-    EntityCacheEntry existingCacheEntry = this.getEntityById(entityId);
+    ResolvedPolarisEntity existingCacheEntry = this.getEntityById(entityId);
 
     // the caller's fetched entity may have come from a stale lookup byName; we should consider
     // the existingCacheEntry to be the older of the two for purposes of invalidation to make
     // sure when we replaceCacheEntry we're also removing the old name if it's no longer valid
     EntityCacheByNameKey nameKey = new EntityCacheByNameKey(entityToValidate);
-    EntityCacheEntry existingCacheEntryByName = this.getEntityByName(nameKey);
+    ResolvedPolarisEntity existingCacheEntryByName = this.getEntityByName(nameKey);
     if (existingCacheEntryByName != null
         && existingCacheEntry != null
         && isNewer(existingCacheEntry, existingCacheEntryByName)) {
@@ -273,7 +274,7 @@ public class EntityCache {
     }
 
     // the new one to be returned
-    final EntityCacheEntry newCacheEntry;
+    final ResolvedPolarisEntity newCacheEntry;
 
     // see if we need to load or refresh that entity
     if (existingCacheEntry == null
@@ -281,7 +282,7 @@ public class EntityCache {
         || existingCacheEntry.getEntity().getGrantRecordsVersion() < entityGrantRecordsMinVersion) {
 
       // the refreshed entity
-      final CachedEntryResult refreshedCacheEntry;
+      final ResolvedEntityResult refreshedCacheEntry;
 
       // was not found in the cache?
       final PolarisBaseEntity entity;
@@ -290,7 +291,8 @@ public class EntityCache {
       if (existingCacheEntry == null) {
         // try to load it
         refreshedCacheEntry =
-            this.polarisRemoteCache.loadCachedEntryById(callContext, entityCatalogId, entityId);
+            this.polarisMetaStoreManager.loadResolvedEntityById(
+                callContext, entityCatalogId, entityId);
         if (refreshedCacheEntry.isSuccess()) {
           entity = refreshedCacheEntry.getEntity();
           grantRecords = refreshedCacheEntry.getEntityGrantRecords();
@@ -301,7 +303,7 @@ public class EntityCache {
       } else {
         // refresh it
         refreshedCacheEntry =
-            this.polarisRemoteCache.refreshCachedEntity(
+            this.polarisMetaStoreManager.refreshResolvedEntity(
                 callContext,
                 existingCacheEntry.getEntity().getEntityVersion(),
                 existingCacheEntry.getEntity().getGrantRecordsVersion(),
@@ -336,20 +338,13 @@ public class EntityCache {
 
       // create new cache entry
       newCacheEntry =
-          new EntityCacheEntry(
-              callContext.getDiagServices(),
-              existingCacheEntry == null
-                  ? System.nanoTime()
-                  : existingCacheEntry.getCreatedOnNanoTimestamp(),
-              entity,
-              grantRecords,
-              grantRecordsVersion);
+          new ResolvedPolarisEntity(
+              callContext.getDiagServices(), entity, grantRecords, grantRecordsVersion);
 
       // insert cache entry
       this.replaceCacheEntry(existingCacheEntry, newCacheEntry);
     } else {
       // found it in the cache and it is up-to-date, simply return it
-      existingCacheEntry.updateLastAccess();
       newCacheEntry = existingCacheEntry;
     }
 
@@ -369,7 +364,7 @@ public class EntityCache {
       @Nonnull PolarisCallContext callContext, long entityCatalogId, long entityId) {
 
     // if it exists, we are set
-    EntityCacheEntry entry = this.getEntityById(entityId);
+    ResolvedPolarisEntity entry = this.getEntityById(entityId);
     final boolean cacheHit;
 
     // we need to load it if it does not exist
@@ -378,8 +373,8 @@ public class EntityCache {
       cacheHit = false;
 
       // load it
-      CachedEntryResult result =
-          polarisRemoteCache.loadCachedEntryById(callContext, entityCatalogId, entityId);
+      ResolvedEntityResult result =
+          polarisMetaStoreManager.loadResolvedEntityById(callContext, entityCatalogId, entityId);
 
       // not found, exit
       if (!result.isSuccess()) {
@@ -392,9 +387,8 @@ public class EntityCache {
           .getDiagServices()
           .checkNotNull(result.getEntityGrantRecords(), "entity_grant_records_should_loaded");
       entry =
-          new EntityCacheEntry(
+          new ResolvedPolarisEntity(
               callContext.getDiagServices(),
-              System.nanoTime(),
               result.getEntity(),
               result.getEntityGrantRecords(),
               result.getGrantRecordsVersion());
@@ -421,7 +415,7 @@ public class EntityCache {
       @Nonnull PolarisCallContext callContext, @Nonnull EntityCacheByNameKey entityNameKey) {
 
     // if it exists, we are set
-    EntityCacheEntry entry = this.getEntityByName(entityNameKey);
+    ResolvedPolarisEntity entry = this.getEntityByName(entityNameKey);
     final boolean cacheHit;
 
     // we need to load it if it does not exist
@@ -430,8 +424,8 @@ public class EntityCache {
       cacheHit = false;
 
       // load it
-      CachedEntryResult result =
-          polarisRemoteCache.loadCachedEntryByName(
+      ResolvedEntityResult result =
+          polarisMetaStoreManager.loadResolvedEntityByName(
               callContext,
               entityNameKey.getCatalogId(),
               entityNameKey.getParentId(),
@@ -451,9 +445,8 @@ public class EntityCache {
 
       // if found, setup entry
       entry =
-          new EntityCacheEntry(
+          new ResolvedPolarisEntity(
               callContext.getDiagServices(),
-              System.nanoTime(),
               result.getEntity(),
               result.getEntityGrantRecords(),
               result.getGrantRecordsVersion());
