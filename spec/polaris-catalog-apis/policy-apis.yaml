@@ -297,7 +297,7 @@ components:
     PolicyName:
       type: string
       description:
-        A policy name. A valid policy name should only consist of uppercase and lowercase letters (A-Z, a-z), 
+        A policy name. A valid policy name should only consist of uppercase and lowercase letters (A-Z, a-z),
         digits (0-9), hyphens (-), underscores (_).
       pattern: '^[A-Za-z0-9\-_]+$'
       example: 'compaction'
@@ -310,7 +310,6 @@ components:
         For example, they can be used for fine-grained control over who can perform specific actions on certain resources.
 
         The policy object includes
-        - **owner-entity:** The entity that owns the policy
         - **policy-type:** The type of the policy, which determines the expected format and semantics of the policy content.
         - **name:**  A human-readable name for the policy, which must be unique within a given namespace.
         - **description:** Detailed description of the purpose and functionalities of the policy.
@@ -321,13 +320,10 @@ components:
 
         Policies stored in Polaris serve as the persistent definition for access control and governance rules.
       required:
-        - owner-entity
         - policy-type
         - name
         - version
       properties:
-        owner-entity:
-          $ref: '#/components/schemas/EntityIdentifier'
         policy-type:
           type: string
         name:
