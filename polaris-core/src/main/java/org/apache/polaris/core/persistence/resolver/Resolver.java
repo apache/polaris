@@ -42,6 +42,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager.ChangeTrackingResult;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.EntityCacheByNameKey;
@@ -137,7 +138,6 @@ public class Resolver {
     this.diagnostics.checkNotNull(polarisCallContext, "unexpected_null_polarisCallContext");
     this.diagnostics.checkNotNull(
         polarisMetaStoreManager, "unexpected_null_polarisMetaStoreManager");
-    this.diagnostics.checkNotNull(cache, "unexpected_null_cache");
     this.diagnostics.checkNotNull(securityContext, "security_context_must_be_specified");
     this.diagnostics.checkNotNull(
         securityContext.getUserPrincipal(), "principal_must_be_specified");
@@ -560,16 +560,41 @@ public class Resolver {
           // if null version we need to invalidate the cached entry since it has probably been
           // dropped
           if (versions == null) {
-            this.cache.removeCacheEntry(resolvedEntity);
+            if (this.cache != null) {
+              this.cache.removeCacheEntry(resolvedEntity);
+            }
             refreshedResolvedEntity = null;
           } else {
             // refresh that entity. If versions is null, it has been dropped
-            refreshedResolvedEntity =
-                this.cache.getAndRefreshIfNeeded(
-                    this.polarisCallContext,
-                    entity,
-                    versions.getEntityVersion(),
-                    versions.getGrantRecordsVersion());
+            if (this.cache != null) {
+              refreshedResolvedEntity =
+                  this.cache.getAndRefreshIfNeeded(
+                      this.polarisCallContext,
+                      entity,
+                      versions.getEntityVersion(),
+                      versions.getGrantRecordsVersion());
+            } else {
+              ResolvedEntityResult result =
+                  this.polarisMetaStoreManager.refreshResolvedEntity(
+                      this.polarisCallContext,
+                      entity.getEntityVersion(),
+                      entity.getGrantRecordsVersion(),
+                      entity.getType(),
+                      entity.getCatalogId(),
+                      entity.getId());
+              refreshedResolvedEntity =
+                  result.isSuccess()
+                      ? new ResolvedPolarisEntity(
+                          this.polarisCallContext.getDiagServices(),
+                          result.getEntity() != null ? result.getEntity() : entity,
+                          result.getEntityGrantRecords() != null
+                              ? result.getEntityGrantRecords()
+                              : resolvedEntity.getAllGrantRecords(),
+                          result.getEntityGrantRecords() != null
+                              ? result.getGrantRecordsVersion()
+                              : entity.getGrantRecordsVersion())
+                      : null;
+            }
           }
 
           // get the refreshed entity
@@ -941,27 +966,47 @@ public class Resolver {
     }
 
     // get or load by name
-    EntityCacheLookupResult lookupResult =
-        this.cache.getOrLoadEntityByName(
-            this.polarisCallContext,
-            new EntityCacheByNameKey(catalogId, parentId, entityType, entityName));
+    if (this.cache != null) {
+      EntityCacheLookupResult lookupResult =
+          this.cache.getOrLoadEntityByName(
+              this.polarisCallContext,
+              new EntityCacheByNameKey(catalogId, parentId, entityType, entityName));
 
-    // if not found
-    if (lookupResult == null) {
-      // not found
-      return null;
-    } else if (lookupResult.isCacheHit()) {
-      // found in the cache, we will have to validate this entity
-      toValidate.add(lookupResult.getCacheEntry());
+      // if not found
+      if (lookupResult == null) {
+        // not found
+        return null;
+      } else if (lookupResult.isCacheHit()) {
+        // found in the cache, we will have to validate this entity
+        toValidate.add(lookupResult.getCacheEntry());
+      } else {
+        // entry cannot be null
+        this.diagnostics.checkNotNull(lookupResult.getCacheEntry(), "cache_entry_is_null");
+        // if not found in cache, it was loaded from backend, hence it has been resolved
+        this.addToResolved(lookupResult.getCacheEntry());
+      }
+
+      // return the cache entry
+      return lookupResult.getCacheEntry();
     } else {
-      // entry cannot be null
-      this.diagnostics.checkNotNull(lookupResult.getCacheEntry(), "cache_entry_is_null");
-      // if not found in cache, it was loaded from backend, hence it has been resolved
-      this.addToResolved(lookupResult.getCacheEntry());
-    }
+      // If no cache, load directly from metastore manager.
+      ResolvedEntityResult result =
+          this.polarisMetaStoreManager.loadResolvedEntityByName(
+              this.polarisCallContext, catalogId, parentId, entityType, entityName);
+      if (!result.isSuccess()) {
+        // not found
+        return null;
+      }
 
-    // return the cache entry
-    return lookupResult.getCacheEntry();
+      resolvedEntity =
+          new ResolvedPolarisEntity(
+              this.polarisCallContext.getDiagServices(),
+              result.getEntity(),
+              result.getEntityGrantRecords(),
+              result.getGrantRecordsVersion());
+      this.addToResolved(resolvedEntity);
+      return resolvedEntity;
+    }
   }
 
   /**
@@ -979,25 +1024,45 @@ public class Resolver {
       @Nonnull PolarisEntityType entityType,
       long catalogId,
       long entityId) {
-    // get or load by name
-    EntityCacheLookupResult lookupResult =
-        this.cache.getOrLoadEntityById(this.polarisCallContext, catalogId, entityId);
+    if (this.cache != null) {
+      // get or load by name
+      EntityCacheLookupResult lookupResult =
+          this.cache.getOrLoadEntityById(this.polarisCallContext, catalogId, entityId);
 
-    // if not found, return null
-    if (lookupResult == null) {
-      return null;
-    } else if (lookupResult.isCacheHit()) {
-      // found in the cache, we will have to validate this entity
-      toValidate.add(lookupResult.getCacheEntry());
+      // if not found, return null
+      if (lookupResult == null) {
+        return null;
+      } else if (lookupResult.isCacheHit()) {
+        // found in the cache, we will have to validate this entity
+        toValidate.add(lookupResult.getCacheEntry());
+      } else {
+        // entry cannot be null
+        this.diagnostics.checkNotNull(lookupResult.getCacheEntry(), "cache_entry_is_null");
+
+        // if not found in cache, it was loaded from backend, hence it has been resolved
+        this.addToResolved(lookupResult.getCacheEntry());
+      }
+
+      // return the cache entry
+      return lookupResult.getCacheEntry();
     } else {
-      // entry cannot be null
-      this.diagnostics.checkNotNull(lookupResult.getCacheEntry(), "cache_entry_is_null");
+      // If no cache, load directly from metastore manager.
+      ResolvedEntityResult result =
+          polarisMetaStoreManager.loadResolvedEntityById(
+              this.polarisCallContext, catalogId, entityId);
+      if (!result.isSuccess()) {
+        // not found
+        return null;
+      }
 
-      // if not found in cache, it was loaded from backend, hence it has been resolved
-      this.addToResolved(lookupResult.getCacheEntry());
+      ResolvedPolarisEntity resolvedEntity =
+          new ResolvedPolarisEntity(
+              this.polarisCallContext.getDiagServices(),
+              result.getEntity(),
+              result.getEntityGrantRecords(),
+              result.getGrantRecordsVersion());
+      this.addToResolved(resolvedEntity);
+      return resolvedEntity;
     }
-
-    // return the cache entry
-    return lookupResult.getCacheEntry();
   }
 }

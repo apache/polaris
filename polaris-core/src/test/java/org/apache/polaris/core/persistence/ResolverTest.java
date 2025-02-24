@@ -50,7 +50,8 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 public class ResolverTest {
@@ -78,6 +79,12 @@ public class ResolverTest {
 
   // cache we are using
   private EntityCache cache;
+
+  // whenever constructing a new Resolver instance, if false, disable cache for that Resolver
+  // instance by giving it a null cache regardless of the current state of the test-level
+  // cache instance; use a boolean for this instead of just modifying the test member 'cache'
+  // so that we can potentially alternate between using cache and not using cache
+  private boolean shouldUseCache;
 
   /**
    * Initialize and create the test metadata
@@ -117,8 +124,10 @@ public class ResolverTest {
   }
 
   /** This test resolver for a create-principal scenario */
-  @Test
-  void testResolvePrincipal() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testResolvePrincipal(boolean useCache) {
+    this.shouldUseCache = useCache;
 
     // resolve a principal which does not exist, but make it optional so will succeed
     this.resolveDriver(null, null, "P3", true, null, null);
@@ -144,8 +153,10 @@ public class ResolverTest {
   }
 
   /** Test that we can specify a subset of principal role names */
-  @Test
-  void testScopedPrincipalRole() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testScopedPrincipalRole(boolean useCache) {
+    this.shouldUseCache = useCache;
 
     // start without a scope
     this.resolveDriver(null, null, "P2", false, "PR1", null);
@@ -163,8 +174,10 @@ public class ResolverTest {
    * Test that the set of catalog roles being activated is correctly inferred, based of a set of
    * principal roles
    */
-  @Test
-  void testCatalogRolesActivation() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testCatalogRolesActivation(boolean useCache) {
+    this.shouldUseCache = useCache;
 
     // start simple, with both PR1 and PR2, you get R1 and R2
     this.resolveDriver(null, Set.of("PR1", "PR2"), "test", Set.of("R1", "R2"));
@@ -180,8 +193,11 @@ public class ResolverTest {
   }
 
   /** Test that paths, one or more, are properly resolved */
-  @Test
-  void testResolvePath() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testResolvePath(boolean useCache) {
+    this.shouldUseCache = useCache;
+
     // N1 which exists
     ResolverPath N1 = new ResolverPath(List.of("N1"), PolarisEntityType.NAMESPACE);
     this.resolveDriver(null, "test", N1, null, null);
@@ -255,8 +271,10 @@ public class ResolverTest {
    * Ensure that if data changes while entities are cached, we will always resolve to the latest
    * version
    */
-  @Test
-  void testConsistency() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testConsistency(boolean useCache) {
+    this.shouldUseCache = useCache;
 
     // resolve principal "P2"
     this.resolveDriver(null, null, "P2", false, null, null);
@@ -315,8 +333,11 @@ public class ResolverTest {
   }
 
   /** Check resolve paths when cache is inconsistent */
-  @Test
-  void testPathConsistency() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testPathConsistency(boolean useCache) {
+    this.shouldUseCache = useCache;
+
     // resolve few paths path
     ResolverPath N1_PATH = new ResolverPath(List.of("N1"), PolarisEntityType.NAMESPACE);
     this.resolveDriver(null, "test", N1_PATH, null, null);
@@ -362,8 +383,10 @@ public class ResolverTest {
   }
 
   /** Resolve catalog roles */
-  @Test
-  void testResolveCatalogRole() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testResolveCatalogRole(boolean useCache) {
+    this.shouldUseCache = useCache;
 
     // resolve catalog role
     this.resolveDriver(null, "test", "R1", null);
@@ -492,7 +515,7 @@ public class ResolverTest {
             return "";
           }
         },
-        this.cache,
+        this.shouldUseCache ? this.cache : null,
         referenceCatalogName);
   }
 
