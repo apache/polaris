@@ -58,6 +58,16 @@ def aws_role_arn():
   return os.getenv('AWS_ROLE_ARN')
 
 @pytest.fixture
+def aws_bucket_base_location_prefix():
+  """
+  :return: Base location prefix for tests, excluding leading and trailing '/'
+    Provides a default if null or empty
+  """
+  default_val = 'polaris_test'
+  bucket_prefix = os.getenv('AWS_BUCKET_BASE_LOCATION_PREFIX',default_val)
+  return default_val if bucket_prefix == '' else bucket_prefix
+
+@pytest.fixture
 def catalog_client(polaris_catalog_url):
   """
   Create an iceberg catalog client with root credentials
@@ -72,13 +82,13 @@ def catalog_client(polaris_catalog_url):
 
 
 @pytest.fixture
-def snowflake_catalog(root_client, catalog_client, test_bucket, aws_role_arn):
+def snowflake_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aws_bucket_base_location_prefix):
   storage_conf = AwsStorageConfigInfo(storage_type="S3",
-                                      allowed_locations=[f"s3://{test_bucket}/polaris_test/"],
+                                      allowed_locations=[f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/"],
                                       role_arn=aws_role_arn)
   catalog_name = 'snowflake'
   catalog = Catalog(name=catalog_name, type='INTERNAL', properties={
-    "default-base-location": f"s3://{test_bucket}/polaris_test/snowflake_catalog",
+    "default-base-location": f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/snowflake_catalog",
     "client.credentials-provider": "software.amazon.awssdk.auth.credentials.SystemPropertyCredentialsProvider"
   },
                     storage_config_info=storage_conf)

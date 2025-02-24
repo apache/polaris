@@ -426,7 +426,7 @@ def test_spark_cannot_create_view_overlapping_table(root_client, snowflake_catal
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
                     reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog, polaris_catalog_url, snowman,
-                                                  snowman_catalog_client, test_bucket):
+                                                  snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
   Using snowman, create namespaces and a table. Insert into the table in multiple operations and update existing records
   to generate multiple metadata.json files and manfiests. Drop the table with purge=true. Poll S3 and validate all of
@@ -487,14 +487,14 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
                       aws_session_token=response.config['s3.session-token'])
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/data/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/data/')
     assert objects is not None
     assert 'Contents' in objects
     assert len(objects['Contents']) >= 4  # it varies - at least one file for each insert and one for the update
     print(f"Found {len(objects['Contents'])} data files in S3 before drop")
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/metadata/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/metadata/')
     assert objects is not None
     assert 'Contents' in objects
     assert len(objects['Contents']) == 15  # 5 metadata.json files, 4 manifest lists, and 6 manifests
@@ -514,14 +514,14 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
     while 'Contents' in objects and len(objects['Contents']) > 0 and attempts < 60:
       time.sleep(1)  # seconds, not milliseconds ;)
       objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                                Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/data/')
+                                Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/data/')
       attempts = attempts + 1
 
     if 'Contents' in objects and len(objects['Contents']) > 0:
       pytest.fail(f"Expected all data to be deleted, but found metadata files {objects['Contents']}")
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/data/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/data/')
     if 'Contents' in objects and len(objects['Contents']) > 0:
       pytest.fail(f"Expected all data to be deleted, but found data files {objects['Contents']}")
 
@@ -529,7 +529,7 @@ def test_spark_credentials_can_delete_after_purge(root_client, snowflake_catalog
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
                     reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_catalog, polaris_catalog_url, snowman,
-                                                        snowman_catalog_client, test_bucket):
+                                                        snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
   Update the catalog configuration to support unstructured table locations. Using snowman, create namespaces and a
   table configured to use object-store layout in a folder under the catalog root, outside of the default table
@@ -559,7 +559,7 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
     spark.sql('SHOW NAMESPACES')
     spark.sql('USE db1.schema')
     spark.sql(
-      f"CREATE TABLE {table_name} (col1 int, col2 string) TBLPROPERTIES ('write.object-storage.enabled'='true','write.data.path'='s3://{test_bucket}/polaris_test/snowflake_catalog/{table_name}data')")
+      f"CREATE TABLE {table_name} (col1 int, col2 string) TBLPROPERTIES ('write.object-storage.enabled'='true','write.data.path'='s3://{test_bucket}/{aws_bucket_base_location_prefix}/snowflake_catalog/{table_name}data')")
     spark.sql('SHOW TABLES')
 
     # several inserts and an update, which should cause earlier files to show up as deleted in the later manifests
@@ -597,7 +597,7 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
                       aws_session_token=response.config['s3.session-token'])
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'polaris_test/snowflake_catalog/{table_name}data/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/{table_name}data/')
     assert objects is not None
     assert len(objects['CommonPrefixes']) >= 3
 
@@ -607,7 +607,7 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
     for prefix in objects['CommonPrefixes']:
       # Don't utilize delimiter so all files (recursive) are returned
       data_objects = s3.list_objects(Bucket=test_bucket,
-                            Prefix=f'polaris_test/snowflake_catalog/{table_name}data/')
+                            Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/{table_name}data/')
       assert data_objects is not None
       print(data_objects)
       assert 'Contents' in data_objects
@@ -617,7 +617,7 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
           objs_to_delete.append(filePathMap)
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/metadata/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/metadata/')
     assert objects is not None
     assert 'Contents' in objects
     assert len(objects['Contents']) == 15  # 5 metadata.json files, 4 manifest lists, and 6 manifests
@@ -636,7 +636,7 @@ def test_spark_credentials_can_write_with_random_prefix(root_client, snowflake_c
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
                     reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalog, polaris_catalog_url, snowman,
-                                                   snowman_catalog_client, test_bucket):
+                                                   snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
   Using snowman, create namespaces and a table configured to use object-store layout, using a folder under the default
   table directory structure. Insert into the table in multiple operations and update existing records
@@ -660,7 +660,7 @@ def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalo
     spark.sql('CREATE NAMESPACE db1.schema')
     spark.sql('SHOW NAMESPACES')
     spark.sql('USE db1.schema')
-    table_base_dir = f'polaris_test/snowflake_catalog/db1/schema/{table_name}/obj_layout/'
+    table_base_dir = f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/obj_layout/'
     spark.sql(
       f"CREATE TABLE {table_name} (col1 int, col2 string) TBLPROPERTIES ('write.object-storage.enabled'='true','write.data.path'='s3://{test_bucket}/{table_base_dir}')")
     spark.sql('SHOW TABLES')
@@ -717,7 +717,7 @@ def test_spark_object_store_layout_under_table_dir(root_client, snowflake_catalo
       objs_to_delete.extend([{'Key': obj['Key']} for obj in data_objects['Contents']])
 
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix=f'polaris_test/snowflake_catalog/db1/schema/{table_name}/metadata/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/{table_name}/metadata/')
     assert objects is not None
     assert 'Contents' in objects
     assert len(objects['Contents']) == 15  # 5 metadata.json files, 4 manifest lists, and 6 manifests
@@ -794,7 +794,7 @@ def test_spark_credentials_can_create_views(snowflake_catalog, polaris_catalog_u
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
                     reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, polaris_catalog_url,
-                                                snowman, snowman_catalog_client, test_bucket):
+                                                snowman, snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
   Create two tables using Spark. Then call the loadTable api directly with snowman token to fetch the vended credentials
   for the first table.
@@ -833,13 +833,13 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
                     aws_session_token=response.config['s3.session-token'])
 
   objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                            Prefix='polaris_test/snowflake_catalog/db1/schema/iceberg_table/')
+                            Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table/')
   assert objects is not None
   assert 'CommonPrefixes' in objects
   assert len(objects['CommonPrefixes']) > 0
 
   objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                            Prefix='polaris_test/snowflake_catalog/db1/schema/iceberg_table/metadata/')
+                            Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table/metadata/')
   assert objects is not None
   assert 'Contents' in objects
   assert len(objects['Contents']) > 0
@@ -860,7 +860,7 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
   # list files in the other table's directory. The access policy should restrict this
   try:
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix='polaris_test/snowflake_catalog/db1/schema/iceberg_table_2/metadata/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table_2/metadata/')
     pytest.fail('Expected exception listing file outside of table directory')
   except botocore.exceptions.ClientError as error:
     print(error)
@@ -886,7 +886,7 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'false').lower() != 'true',
                     reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalog, polaris_catalog_url,
-                                                   snowman, reader_catalog_client, test_bucket):
+                                                   snowman, reader_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
   Create two tables using Spark. Then call the loadTable api directly with test_reader token to fetch the vended
   credentials for the first table.
@@ -927,7 +927,7 @@ def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalo
                     aws_session_token=response.config['s3.session-token'])
 
   objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                            Prefix='polaris_test/snowflake_catalog/db1/schema/iceberg_table/metadata/')
+                            Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table/metadata/')
   assert objects is not None
   assert 'Contents' in objects
   assert len(objects['Contents']) > 0
@@ -950,7 +950,7 @@ def test_spark_credentials_s3_direct_without_write(root_client, snowflake_catalo
   # list files in the other table's directory. The access policy should restrict this
   try:
     objects = s3.list_objects(Bucket=test_bucket, Delimiter='/',
-                              Prefix='polaris_test/snowflake_catalog/db1/schema/iceberg_table_2/metadata/')
+                              Prefix=f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table_2/metadata/')
     pytest.fail('Expected exception listing file outside of table directory')
   except botocore.exceptions.ClientError as error:
     print(error)
@@ -1039,7 +1039,7 @@ def create_principal(polaris_url, polaris_catalog_url, api, principal_name):
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
                     reason='AWS_TEST_ENABLED is not set or is false')
 def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, snowflake_catalog, polaris_catalog_url,
-                                                                snowman, snowman_catalog_client, test_bucket):
+                                                                snowman, snowman_catalog_client, test_bucket, aws_bucket_base_location_prefix):
   """
   Create a table using Spark. Then call the loadTable api directly with snowman token to fetch the vended credentials
   for the table.
@@ -1060,10 +1060,10 @@ def test_spark_credentials_s3_scoped_to_metadata_data_locations(root_client, sno
     spark.sql('USE db1.schema')
     spark.sql('CREATE TABLE iceberg_table_scope_loc(col1 int, col2 string)')
     spark.sql(
-      f'''CREATE TABLE iceberg_table_scope_loc_slashes (col1 int, col2 string) LOCATION \'s3://{test_bucket}/polaris_test/snowflake_catalog/db1/schema/iceberg_table_scope_loc_slashes/path_with_slashes///////\'''')
+      f'''CREATE TABLE iceberg_table_scope_loc_slashes (col1 int, col2 string) LOCATION \'s3://{test_bucket}/{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table_scope_loc_slashes/path_with_slashes///////\'''')
 
-  prefix1 = 'polaris_test/snowflake_catalog/db1/schema/iceberg_table_scope_loc'
-  prefix2 = 'polaris_test/snowflake_catalog/db1/schema/iceberg_table_scope_loc_slashes/path_with_slashes'
+  prefix1 = f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table_scope_loc'
+  prefix2 = f'{aws_bucket_base_location_prefix}/snowflake_catalog/db1/schema/iceberg_table_scope_loc_slashes/path_with_slashes'
   response1 = snowman_catalog_client.load_table(snowflake_catalog.name, unquote('db1%1Fschema'),
                                                 "iceberg_table_scope_loc",
                                                 "vended-credentials")
