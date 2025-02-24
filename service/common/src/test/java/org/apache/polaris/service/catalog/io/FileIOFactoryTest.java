@@ -189,7 +189,7 @@ public class FileIOFactoryTest {
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
     FileIO fileIO =
-        new TaskFileIOSupplier(testServices.fileIOFactory()).apply(taskEntity, realmContext);
+        new TaskFileIOSupplier(testServices.fileIOFactory()).apply(taskEntity, callContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(InMemoryFileIO.class);
 
     // 1. BasePolarisCatalog:doCommit: for writing the table during the creation

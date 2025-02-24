@@ -75,7 +75,7 @@ class TableCleanupTaskHandlerTest {
         new FileIOFactory() {
           @Override
           public FileIO loadFileIO(
-              @Nonnull RealmContext realmContext,
+              @Nonnull CallContext callContext,
               @Nonnull String ioImplClassName,
               @Nonnull Map<String, String> properties,
               @Nonnull TableIdentifier identifier,
