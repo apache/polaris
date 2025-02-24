@@ -497,30 +497,30 @@ class AwsCredentialsStorageIntegrationTest {
               return ASSUME_ROLE_RESPONSE;
             });
     switch (awsPartition) {
-        case AWS_PARTITION:
-        case "aws-cn":
-        case "aws-us-gov":
-            EnumMap<PolarisCredentialProperty, String> credentials =
-                    new AwsCredentialsStorageIntegration(stsClient)
-                            .getSubscopedCreds(
-                                    Mockito.mock(PolarisDiagnostics.class),
-                                    new AwsStorageConfigurationInfo(
-                                            PolarisStorageConfigurationInfo.StorageType.S3,
-                                            List.of(s3Path(bucket, warehouseKeyPrefix)),
-                                            roleARN,
-                                            externalId,
-                                            clientRegion),
-                                    true, /* allowList = true */
-                                    Set.of(),
-                                    Set.of());
-            assertThat(credentials)
-                    .isNotEmpty()
-                    .containsEntry(PolarisCredentialProperty.CLIENT_REGION, clientRegion);
-            break;
-        default:
-            throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
-
-    };
+      case AWS_PARTITION:
+      case "aws-cn":
+      case "aws-us-gov":
+        EnumMap<PolarisCredentialProperty, String> credentials =
+            new AwsCredentialsStorageIntegration(stsClient)
+                .getSubscopedCreds(
+                    Mockito.mock(PolarisDiagnostics.class),
+                    new AwsStorageConfigurationInfo(
+                        PolarisStorageConfigurationInfo.StorageType.S3,
+                        List.of(s3Path(bucket, warehouseKeyPrefix)),
+                        roleARN,
+                        externalId,
+                        clientRegion),
+                    true, /* allowList = true */
+                    Set.of(),
+                    Set.of());
+        assertThat(credentials)
+            .isNotEmpty()
+            .containsEntry(PolarisCredentialProperty.CLIENT_REGION, clientRegion);
+        break;
+      default:
+        throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
+    }
+    ;
   }
 
   @ParameterizedTest
@@ -536,43 +536,47 @@ class AwsCredentialsStorageIntegrationTest {
             invocation -> {
               return ASSUME_ROLE_RESPONSE;
             });
-      switch (awsPartition) {
-          case AWS_PARTITION:
-              EnumMap<PolarisCredentialProperty, String> credentials =
-                      new AwsCredentialsStorageIntegration(stsClient)
-                              .getSubscopedCreds(
-                                      Mockito.mock(PolarisDiagnostics.class),
-                                      new AwsStorageConfigurationInfo(
-                                              PolarisStorageConfigurationInfo.StorageType.S3,
-                                              List.of(s3Path(bucket, warehouseKeyPrefix)),
-                                              roleARN,
-                                              externalId,
-                                              null),
-                                      true, /* allowList = true */
-                                      Set.of(),
-                                      Set.of());
-              assertThat(credentials).isNotEmpty().doesNotContainKey(PolarisCredentialProperty.CLIENT_REGION);
-              break;
-          case "aws-cn":
-          case "aws-us-gov":
-              Assertions.assertThatThrownBy( () ->
-                      new AwsCredentialsStorageIntegration(stsClient)
-                              .getSubscopedCreds(
-                                      Mockito.mock(PolarisDiagnostics.class),
-                                      new AwsStorageConfigurationInfo(
-                                              PolarisStorageConfigurationInfo.StorageType.S3,
-                                              List.of(s3Path(bucket, warehouseKeyPrefix)),
-                                              roleARN,
-                                              externalId,
-                                              null),
-                                      true, /* allowList = true */
-                                      Set.of(),
-                                      Set.of())).isInstanceOf(IllegalArgumentException.class);
-              break;
-          default:
-              throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
-
-      };
+    switch (awsPartition) {
+      case AWS_PARTITION:
+        EnumMap<PolarisCredentialProperty, String> credentials =
+            new AwsCredentialsStorageIntegration(stsClient)
+                .getSubscopedCreds(
+                    Mockito.mock(PolarisDiagnostics.class),
+                    new AwsStorageConfigurationInfo(
+                        PolarisStorageConfigurationInfo.StorageType.S3,
+                        List.of(s3Path(bucket, warehouseKeyPrefix)),
+                        roleARN,
+                        externalId,
+                        null),
+                    true, /* allowList = true */
+                    Set.of(),
+                    Set.of());
+        assertThat(credentials)
+            .isNotEmpty()
+            .doesNotContainKey(PolarisCredentialProperty.CLIENT_REGION);
+        break;
+      case "aws-cn":
+      case "aws-us-gov":
+        Assertions.assertThatThrownBy(
+                () ->
+                    new AwsCredentialsStorageIntegration(stsClient)
+                        .getSubscopedCreds(
+                            Mockito.mock(PolarisDiagnostics.class),
+                            new AwsStorageConfigurationInfo(
+                                PolarisStorageConfigurationInfo.StorageType.S3,
+                                List.of(s3Path(bucket, warehouseKeyPrefix)),
+                                roleARN,
+                                externalId,
+                                null),
+                            true, /* allowList = true */
+                            Set.of(),
+                            Set.of()))
+            .isInstanceOf(IllegalArgumentException.class);
+        break;
+      default:
+        throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
+    }
+    ;
   }
 
   private static @Nonnull String s3Arn(String partition, String bucket, String keyPrefix) {
