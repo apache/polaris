@@ -75,10 +75,10 @@ paths:
     get:
       tags:
         - Catalog API
-      summary: 'Get a policy'
-      operationId: getPolicy
+      summary: 'Load a policy'
+      operationId: loadPolicy
       description: |
-        Get a policy from the catalog
+        Load a policy from the catalog
         
         The response contains the policy's metadata and content. For more details, refer to the definition of the `Policy` model.
       responses:
@@ -153,8 +153,8 @@ paths:
     delete:
       tags:
         - Catalog API
-      summary: Delete a policy from the catalog
-      operationId: deletePolicy
+      summary: Drop a policy from the catalog
+      operationId: dropPolicy
       description: Remove a policy from the catalog
       responses:
         204:
