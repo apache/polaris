@@ -565,7 +565,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
       PolarisStorageIntegration<T> loadPolarisStorageIntegration(
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        PolarisMetaStoreManagerImpl.readStorageConfiguration(callCtx, entity);
+        BaseMetaStoreManager.extractStorageConfiguration(callCtx, entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 

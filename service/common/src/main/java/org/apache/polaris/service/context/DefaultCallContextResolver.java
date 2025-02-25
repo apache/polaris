@@ -60,6 +60,10 @@ public class DefaultCallContextResolver implements CallContextResolver {
         .addKeyValue("headers", headers)
         .log("Resolving CallContext");
 
+    // TODO: Once we have non-transactional-database persistence stores, this should be
+    // pushed down for the metaStoreManagerFactory to inject Transactional-DB specific things
+    // (including the MetaStoreSession" into the PolarisCallContext. The non-transactional
+    // factories would then inject something else instead if needed.
     PolarisMetaStoreSession metaStoreSession =
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     PolarisCallContext polarisContext =

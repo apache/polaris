@@ -63,7 +63,7 @@ import org.slf4j.LoggerFactory;
  * and retrieve all Polaris metadata
  */
 @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE")
-public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
+public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisMetaStoreManagerImpl.class);
 
   /** mapper, allows to serialize/deserialize properties to/from JSON */
@@ -2107,7 +2107,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
             entityId);
 
     PolarisStorageConfigurationInfo storageConfigurationInfo =
-        readStorageConfiguration(callCtx, reloadedEntity.getEntity());
+        BaseMetaStoreManager.extractStorageConfiguration(callCtx, reloadedEntity.getEntity());
     try {
       EnumMap<PolarisCredentialProperty, String> creds =
           storageIntegration.getSubscopedCreds(
@@ -2159,7 +2159,7 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // validate access
     PolarisStorageConfigurationInfo storageConfigurationInfo =
-        readStorageConfiguration(callCtx, reloadedEntity.getEntity());
+        BaseMetaStoreManager.extractStorageConfiguration(callCtx, reloadedEntity.getEntity());
     Map<String, String> validateLocationAccess =
         storageIntegration
             .validateAccessToLocations(storageConfigurationInfo, actions, locations)
@@ -2172,26 +2172,6 @@ public class PolarisMetaStoreManagerImpl implements PolarisMetaStoreManager {
 
     // done, return result
     return new ValidateAccessResult(validateLocationAccess);
-  }
-
-  public static PolarisStorageConfigurationInfo readStorageConfiguration(
-      @Nonnull PolarisCallContext callCtx, PolarisBaseEntity reloadedEntity) {
-    Map<String, String> propMap =
-        PolarisObjectMapperUtil.deserializeProperties(
-            callCtx, reloadedEntity.getInternalProperties());
-    String storageConfigInfoStr =
-        propMap.get(PolarisEntityConstants.getStorageConfigInfoPropertyName());
-
-    callCtx
-        .getDiagServices()
-        .check(
-            storageConfigInfoStr != null,
-            "missing_storage_configuration_info",
-            "catalogId={}, entityId={}",
-            reloadedEntity.getCatalogId(),
-            reloadedEntity.getId());
-    return PolarisStorageConfigurationInfo.deserialize(
-        callCtx.getDiagServices(), storageConfigInfoStr);
   }
 
   /**

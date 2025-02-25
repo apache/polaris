@@ -39,7 +39,6 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.BaseResult;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 import org.apache.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
@@ -70,7 +69,7 @@ public class StorageCredentialCacheTest {
     PolarisMetaStoreSession metaStore =
         new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(metaStore, diagServices);
-    metaStoreManager = Mockito.mock(PolarisMetaStoreManagerImpl.class);
+    metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     storageCredentialCache = new StorageCredentialCache();
   }
 
