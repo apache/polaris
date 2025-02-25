@@ -44,14 +44,14 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.cache.EntityCache;
-import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
-import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.CachedEntryResult;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 public class ResolverTest {
@@ -79,6 +79,12 @@ public class ResolverTest {
 
   // cache we are using
   private EntityCache cache;
+
+  // whenever constructing a new Resolver instance, if false, disable cache for that Resolver
+  // instance by giving it a null cache regardless of the current state of the test-level
+  // cache instance; use a boolean for this instead of just modifying the test member 'cache'
+  // so that we can potentially alternate between using cache and not using cache
+  private boolean shouldUseCache;
 
   /**
    * Initialize and create the test metadata
@@ -118,8 +124,10 @@ public class ResolverTest {
   }
 
   /** This test resolver for a create-principal scenario */
-  @Test
-  void testResolvePrincipal() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testResolvePrincipal(boolean useCache) {
+    this.shouldUseCache = useCache;
 
     // resolve a principal which does not exist, but make it optional so will succeed
     this.resolveDriver(null, null, "P3", true, null, null);
@@ -145,8 +153,10 @@ public class ResolverTest {
   }
 
   /** Test that we can specify a subset of principal role names */
-  @Test
-  void testScopedPrincipalRole() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testScopedPrincipalRole(boolean useCache) {
+    this.shouldUseCache = useCache;
 
     // start without a scope
     this.resolveDriver(null, null, "P2", false, "PR1", null);
@@ -164,8 +174,10 @@ public class ResolverTest {
    * Test that the set of catalog roles being activated is correctly inferred, based of a set of
    * principal roles
    */
-  @Test
-  void testCatalogRolesActivation() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testCatalogRolesActivation(boolean useCache) {
+    this.shouldUseCache = useCache;
 
     // start simple, with both PR1 and PR2, you get R1 and R2
     this.resolveDriver(null, Set.of("PR1", "PR2"), "test", Set.of("R1", "R2"));
@@ -181,8 +193,11 @@ public class ResolverTest {
   }
 
   /** Test that paths, one or more, are properly resolved */
-  @Test
-  void testResolvePath() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testResolvePath(boolean useCache) {
+    this.shouldUseCache = useCache;
+
     // N1 which exists
     ResolverPath N1 = new ResolverPath(List.of("N1"), PolarisEntityType.NAMESPACE);
     this.resolveDriver(null, "test", N1, null, null);
@@ -245,7 +260,7 @@ public class ResolverTest {
     Resolver resolver =
         this.resolveDriver(this.cache, "test", null, List.of(N1, N5_N6_T8, N5_N6_T5, N1_N2), null);
     // get all the resolved paths
-    List<List<EntityCacheEntry>> resolvedPath = resolver.getResolvedPaths();
+    List<List<ResolvedPolarisEntity>> resolvedPath = resolver.getResolvedPaths();
     Assertions.assertThat(resolvedPath.get(0)).hasSize(1);
     Assertions.assertThat(resolvedPath.get(1)).hasSize(2);
     Assertions.assertThat(resolvedPath.get(2)).hasSize(3);
@@ -256,8 +271,10 @@ public class ResolverTest {
    * Ensure that if data changes while entities are cached, we will always resolve to the latest
    * version
    */
-  @Test
-  void testConsistency() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testConsistency(boolean useCache) {
+    this.shouldUseCache = useCache;
 
     // resolve principal "P2"
     this.resolveDriver(null, null, "P2", false, null, null);
@@ -316,8 +333,11 @@ public class ResolverTest {
   }
 
   /** Check resolve paths when cache is inconsistent */
-  @Test
-  void testPathConsistency() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testPathConsistency(boolean useCache) {
+    this.shouldUseCache = useCache;
+
     // resolve few paths path
     ResolverPath N1_PATH = new ResolverPath(List.of("N1"), PolarisEntityType.NAMESPACE);
     this.resolveDriver(null, "test", N1_PATH, null, null);
@@ -363,8 +383,10 @@ public class ResolverTest {
   }
 
   /** Resolve catalog roles */
-  @Test
-  void testResolveCatalogRole() {
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void testResolveCatalogRole(boolean useCache) {
+    this.shouldUseCache = useCache;
 
     // resolve catalog role
     this.resolveDriver(null, "test", "R1", null);
@@ -493,7 +515,7 @@ public class ResolverTest {
             return "";
           }
         },
-        this.cache,
+        this.shouldUseCache ? this.cache : null,
         referenceCatalogName);
   }
 
@@ -541,7 +563,7 @@ public class ResolverTest {
     this.ensureResolved(resolver.getResolvedCallerPrincipal(), PolarisEntityType.PRINCIPAL, "P1");
 
     // validate that the two principal roles have been activated
-    List<EntityCacheEntry> principalRolesResolved = resolver.getResolvedCallerPrincipalRoles();
+    List<ResolvedPolarisEntity> principalRolesResolved = resolver.getResolvedCallerPrincipalRoles();
 
     // expect two principal roles
     Assertions.assertThat(principalRolesResolved).hasSize(2);
@@ -774,7 +796,8 @@ public class ResolverTest {
       }
 
       // validate that the correct set if principal roles have been activated
-      List<EntityCacheEntry> principalRolesResolved = resolver.getResolvedCallerPrincipalRoles();
+      List<ResolvedPolarisEntity> principalRolesResolved =
+          resolver.getResolvedCallerPrincipalRoles();
       principalRolesResolved.sort(Comparator.comparing(p -> p.getEntity().getName()));
 
       // expect two principal roles if not scoped
@@ -795,7 +818,7 @@ public class ResolverTest {
       Assertions.assertThat(principalRolesResolved).hasSize(expectedSize);
 
       // expect either PR1 and PR2
-      for (EntityCacheEntry principalRoleResolved : principalRolesResolved) {
+      for (ResolvedPolarisEntity principalRoleResolved : principalRolesResolved) {
         Assertions.assertThat(principalRoleResolved).isNotNull();
         Assertions.assertThat(principalRoleResolved.getEntity()).isNotNull();
         String roleName = principalRoleResolved.getEntity().getName();
@@ -817,14 +840,14 @@ public class ResolverTest {
 
       // if a catalog was passed-in, ensure it exists
       if (catalogName != null) {
-        EntityCacheEntry catalogEntry =
+        ResolvedPolarisEntity catalogEntry =
             resolver.getResolvedEntity(PolarisEntityType.CATALOG, catalogName);
         Assertions.assertThat(catalogEntry).isNotNull();
         this.ensureResolved(catalogEntry, PolarisEntityType.CATALOG, catalogName);
 
         // if a catalog role was passed-in, ensure that it was properly resolved
         if (catalogRoleName != null) {
-          EntityCacheEntry catalogRoleEntry =
+          ResolvedPolarisEntity catalogRoleEntry =
               resolver.getResolvedEntity(PolarisEntityType.CATALOG_ROLE, catalogRoleName);
           this.ensureResolved(
               catalogRoleEntry,
@@ -834,7 +857,7 @@ public class ResolverTest {
         }
 
         // validate activated catalog roles
-        Map<Long, EntityCacheEntry> activatedCatalogs = resolver.getResolvedCatalogRoles();
+        Map<Long, ResolvedPolarisEntity> activatedCatalogs = resolver.getResolvedCatalogRoles();
 
         // if there is an expected set, ensure we have the same set
         if (expectedActivatedCatalogRoles != null) {
@@ -842,7 +865,7 @@ public class ResolverTest {
         }
 
         // process each of those
-        for (EntityCacheEntry resolvedActivatedCatalogEntry : activatedCatalogs.values()) {
+        for (ResolvedPolarisEntity resolvedActivatedCatalogEntry : activatedCatalogs.values()) {
           // must be in the expected list
           Assertions.assertThat(resolvedActivatedCatalogEntry).isNotNull();
           PolarisBaseEntity activatedCatalogRole = resolvedActivatedCatalogEntry.getEntity();
@@ -867,7 +890,7 @@ public class ResolverTest {
           List<ResolverPath> allPathsToCheck = (paths == null) ? List.of(path) : paths;
 
           // all resolved path
-          List<List<EntityCacheEntry>> allResolvedPaths = resolver.getResolvedPaths();
+          List<List<ResolvedPolarisEntity>> allResolvedPaths = resolver.getResolvedPaths();
 
           // same size
           Assertions.assertThat(allResolvedPaths).hasSameSizeAs(allPathsToCheck);
@@ -875,7 +898,7 @@ public class ResolverTest {
           // check that each path was properly resolved
           int pathCount = 0;
           Iterator<ResolverPath> allPathsToCheckIt = allPathsToCheck.iterator();
-          for (List<EntityCacheEntry> resolvedPath : allResolvedPaths) {
+          for (List<ResolvedPolarisEntity> resolvedPath : allResolvedPaths) {
             this.ensurePathResolved(
                 pathCount++, catalogEntry.getEntity(), allPathsToCheckIt.next(), resolvedPath);
           }
@@ -897,7 +920,7 @@ public class ResolverTest {
       int pathCount,
       PolarisBaseEntity catalog,
       ResolverPath pathToResolve,
-      List<EntityCacheEntry> resolvedPath) {
+      List<ResolvedPolarisEntity> resolvedPath) {
 
     // ensure same cardinality
     if (!pathToResolve.isOptional()) {
@@ -910,7 +933,7 @@ public class ResolverTest {
 
     // loop and validate each element
     for (int index = 0; index < resolvedPath.size(); index++) {
-      EntityCacheEntry cacheEntry = resolvedPath.get(index);
+      ResolvedPolarisEntity cacheEntry = resolvedPath.get(index);
       String entityName = pathToResolve.getEntityNames().get(index);
       PolarisEntityType entityType =
           (index == pathToResolve.getEntityNames().size() - 1)
@@ -934,7 +957,7 @@ public class ResolverTest {
    * @param entityName entity name
    */
   private void ensureResolved(
-      EntityCacheEntry cacheEntry,
+      ResolvedPolarisEntity cacheEntry,
       List<PolarisEntityCore> catalogPath,
       PolarisEntityType entityType,
       String entityName) {
@@ -952,16 +975,16 @@ public class ResolverTest {
     Assertions.assertThat(refEntity).isNotNull();
 
     // reload the cached entry from the backend
-    CachedEntryResult refCachedEntry =
-        this.metaStoreManager.loadCachedEntryById(
+    ResolvedEntityResult refResolvedEntity =
+        this.metaStoreManager.loadResolvedEntityById(
             this.callCtx, refEntity.getCatalogId(), refEntity.getId());
 
     // should exist
-    Assertions.assertThat(refCachedEntry).isNotNull();
+    Assertions.assertThat(refResolvedEntity).isNotNull();
 
     // ensure same entity
-    refEntity = refCachedEntry.getEntity();
-    List<PolarisGrantRecord> refGrantRecords = refCachedEntry.getEntityGrantRecords();
+    refEntity = refResolvedEntity.getEntity();
+    List<PolarisGrantRecord> refGrantRecords = refResolvedEntity.getEntityGrantRecords();
     Assertions.assertThat(refEntity).isNotNull();
     Assertions.assertThat(refGrantRecords).isNotNull();
     Assertions.assertThat(entity).isEqualTo(refEntity);
@@ -989,7 +1012,7 @@ public class ResolverTest {
    * @param entityName entity name
    */
   private void ensureResolved(
-      EntityCacheEntry cacheEntry, PolarisEntityType entityType, String entityName) {
+      ResolvedPolarisEntity cacheEntry, PolarisEntityType entityType, String entityName) {
     this.ensureResolved(cacheEntry, null, entityType, entityName);
   }
 }

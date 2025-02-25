@@ -18,12 +18,14 @@
  */
 package org.apache.polaris.core.persistence;
 
-import com.google.common.collect.ImmutableList;
 import jakarta.annotation.Nonnull;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
-import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
 
 public class ResolvedPolarisEntity {
   private final PolarisEntity entity;
@@ -37,6 +39,56 @@ public class ResolvedPolarisEntity {
   // these are the grants like TABLE_READ_PROPERTIES, NAMESPACE_LIST, etc.
   private final List<PolarisGrantRecord> grantRecordsAsSecurable;
 
+  /**
+   * Constructor used when an entry is initially created after loading the entity and its grants
+   * from the backend.
+   *
+   * @param diagnostics diagnostic services
+   * @param entity the entity which has just been loaded
+   * @param grantRecords associated grant records, including grants for this entity as a securable
+   *     as well as grants for this entity as a grantee if applicable
+   * @param grantsVersion version of the grants when they were loaded
+   */
+  public ResolvedPolarisEntity(
+      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull PolarisBaseEntity entity,
+      @Nonnull List<PolarisGrantRecord> grantRecords,
+      int grantsVersion) {
+    // validate not null
+    diagnostics.checkNotNull(entity, "entity_null");
+    diagnostics.checkNotNull(grantRecords, "grant_records_null");
+
+    // we copy all attributes of the entity to avoid any contamination
+    this.entity = PolarisEntity.of(entity);
+
+    // if only the grant records have been reloaded because they were changed, the entity will
+    // have an old version for those. Patch the entity if this is the case, as if we had reloaded it
+    if (this.entity.getGrantRecordsVersion() != grantsVersion) {
+      // remember the grants versions. For now grants should be loaded after the entity, so expect
+      // grants version to be same or higher
+      diagnostics.check(
+          this.entity.getGrantRecordsVersion() <= grantsVersion,
+          "grants_version_going_backward",
+          "entity={} grantsVersion={}",
+          entity,
+          grantsVersion);
+
+      // patch grant records version
+      this.entity.setGrantRecordsVersion(grantsVersion);
+    }
+
+    // Split the combined list of grant records into grantee vs securable grants since the main
+    // usage pattern is to get the two lists separately.
+    this.grantRecordsAsGrantee =
+        grantRecords.stream()
+            .filter(record -> record.getGranteeId() == entity.getId())
+            .collect(Collectors.toList());
+    this.grantRecordsAsSecurable =
+        grantRecords.stream()
+            .filter(record -> record.getSecurableId() == entity.getId())
+            .collect(Collectors.toList());
+  }
+
   public ResolvedPolarisEntity(
       PolarisEntity entity,
       List<PolarisGrantRecord> grantRecordsAsGrantee,
@@ -48,14 +100,13 @@ public class ResolvedPolarisEntity {
     this.grantRecordsAsSecurable = grantRecordsAsSecurable;
   }
 
-  public ResolvedPolarisEntity(@Nonnull EntityCacheEntry cacheEntry) {
-    this.entity = PolarisEntity.of(cacheEntry.getEntity());
-    this.grantRecordsAsGrantee = ImmutableList.copyOf(cacheEntry.getGrantRecordsAsGrantee());
-    this.grantRecordsAsSecurable = ImmutableList.copyOf(cacheEntry.getGrantRecordsAsSecurable());
-  }
-
   public PolarisEntity getEntity() {
     return entity;
+  }
+
+  public @Nonnull List<PolarisGrantRecord> getAllGrantRecords() {
+    return Stream.concat(grantRecordsAsGrantee.stream(), grantRecordsAsSecurable.stream())
+        .collect(Collectors.toList());
   }
 
   /** The grant records associated with this entity being the grantee of the record. */

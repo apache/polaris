@@ -25,6 +25,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.iceberg.ManifestFile;
+import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
@@ -89,7 +90,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
     // It's likely the cleanupTask has already been completed, but wasn't dropped successfully.
     // Log a
     // warning and move on
-    try (FileIO fileIO = fileIOSupplier.apply(cleanupTask, callContext.getRealmContext())) {
+    try (FileIO fileIO = fileIOSupplier.apply(cleanupTask, callContext)) {
       if (!TaskUtils.exists(tableEntity.getMetadataLocation(), fileIO)) {
         LOGGER
             .atWarn()
@@ -243,7 +244,10 @@ public class TableCleanupTaskHandler implements TaskHandler {
     List<List<String>> result = new ArrayList<>();
     List<String> metadataFiles =
         Stream.concat(
-                tableMetadata.previousFiles().stream().map(TableMetadata.MetadataLogEntry::file),
+                Stream.concat(
+                    tableMetadata.previousFiles().stream()
+                        .map(TableMetadata.MetadataLogEntry::file),
+                    tableMetadata.snapshots().stream().map(Snapshot::manifestListLocation)),
                 tableMetadata.statisticsFiles().stream().map(StatisticsFile::path))
             .toList();
 
