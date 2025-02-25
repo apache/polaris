@@ -17,7 +17,7 @@
 # under the License.
 #
 
-FROM jupyter/all-spark-notebook:spark-3.5.4
+FROM jupyter/all-spark-notebook:spark-3.5.0
 
 COPY --chown=jovyan regtests/client /home/jovyan/client
 COPY --chown=jovyan regtests/requirements.txt /tmp
