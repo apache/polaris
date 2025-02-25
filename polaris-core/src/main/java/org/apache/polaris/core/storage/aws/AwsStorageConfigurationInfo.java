@@ -36,8 +36,9 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   // for allowed read and write locations for subscoping creds.
   @JsonIgnore private static final int MAX_ALLOWED_LOCATIONS = 5;
 
-  // AWS ROLE ARN pattern
-  @JsonIgnore public static final String ROLE_ARN_PATTERN = "^arn:(aws|aws-cn|aws-us-gov):iam::(\\d{12}):role/.+$";
+  // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$,
+  @JsonIgnore
+  public static final String ROLE_ARN_PATTERN = "^arn:(aws|aws-us-gov):iam::(\\d{12}):role/.+$";
 
   // AWS role to be assumed
   private final @Nonnull String roleARN;
@@ -85,6 +86,10 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   public static void validateArn(String arn) {
     if (arn == null || arn.isEmpty()) {
       throw new IllegalArgumentException("ARN cannot be null or empty");
+    }
+    // specifically throw errors for China
+    if (arn.contains("aws-cn")) {
+      throw new IllegalArgumentException("AWS China is temporarily not supported");
     }
     if (!Pattern.matches(ROLE_ARN_PATTERN, arn)) {
       throw new IllegalArgumentException("Invalid role ARN format");

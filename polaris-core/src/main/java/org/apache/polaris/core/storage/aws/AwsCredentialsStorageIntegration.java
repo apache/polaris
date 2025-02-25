@@ -91,10 +91,11 @@ public class AwsCredentialsStorageIntegration
       credentialMap.put(PolarisCredentialProperty.CLIENT_REGION, storageConfig.getRegion());
     }
 
-    if (!storageConfig.getAwsPartition().equals("aws")
-            && credentialMap.get(PolarisCredentialProperty.CLIENT_REGION) == null) {
+    if (storageConfig.getAwsPartition().equals("aws-us-gov")
+        && credentialMap.get(PolarisCredentialProperty.CLIENT_REGION) == null) {
       throw new IllegalArgumentException(
-              String.format("AWS region must be set when using partition %s", storageConfig.getAwsPartition()));
+          String.format(
+              "AWS region must be set when using partition %s", storageConfig.getAwsPartition()));
     }
 
     return credentialMap;
