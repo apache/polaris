@@ -51,7 +51,7 @@ If you plan to deploy Polaris inside [Docker](https://www.docker.com/), you'll n
 brew install --cask docker
 ```
 
-There could be a [Docker permission issues](https://github.com/apache/polaris/pull/971) related to seccomp configuration. To resolve these issues, set the `seccomp` profile to "unconfined" when running a container.For example:
+There could be a [Docker permission issues](https://github.com/apache/polaris/pull/971) related to seccomp configuration. To resolve these issues, set the `seccomp` profile to "unconfined" when running a container. For example:
 
 ```shell
 docker run --security-opt seccomp=unconfined apache/polaris:latest
