@@ -264,4 +264,12 @@ public class PolarisConfiguration<T> {
                   + STORAGE_CREDENTIAL_DURATION_SECONDS.key)
           .defaultValue(30 * 60) // 30 minutes
           .build();
+
+  public static final PolarisConfiguration<Integer> STORAGE_CONFIGURATION_MAX_LOCATIONS =
+      PolarisConfiguration.<Integer>builder()
+          .key("STORAGE_CONFIGURATION_MAX_LOCATIONS")
+          .description(
+              "How many locations can be associated with a storage configuration")
+          .defaultValue(20)
+          .build();
 }
