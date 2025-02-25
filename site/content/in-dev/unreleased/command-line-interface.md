@@ -162,6 +162,15 @@ polaris catalogs create \
   my_other_catalog
 ```
 
+Create a catalog with the FILE storage format.
+
+```
+polaris catalogs create \
+  --storage-type file \
+  --default-base-location file:///example/tmp \
+  quickstart_catalog
+```
+
 #### delete
 
 The `delete` subcommand is used to delete a catalog.
