@@ -273,14 +273,6 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntitiesDropped(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    // write it
-    this.store.writeToEntitiesDropped(localSession.get(), entity);
-  }
-
-  /** {@inheritDoc} */
-  @Override
   public void writeToEntitiesChangeTracking(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
@@ -310,14 +302,6 @@ public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreS
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
     // delete it
     this.store.deleteFromEntitiesActive(localSession.get(), new PolarisEntitiesActiveKey(entity));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public void deleteFromEntitiesDropped(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    // delete it
-    this.store.deleteFromEntitiesDropped(localSession.get(), entity.getCatalogId(), entity.getId());
   }
 
   /**

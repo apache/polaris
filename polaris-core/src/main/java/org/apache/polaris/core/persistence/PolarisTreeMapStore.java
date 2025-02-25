@@ -194,16 +194,10 @@ public class PolarisTreeMapStore {
   // all entities
   private final Slice<PolarisBaseEntity> sliceEntities;
 
-  // all entities
+  // all entities by-name
   private final Slice<PolarisBaseEntity> sliceEntitiesActive;
 
-  // all entities dropped
-  private final Slice<PolarisBaseEntity> sliceEntitiesDropped;
-
-  // all entities dropped
-  private final Slice<PolarisBaseEntity> sliceEntitiesDroppedToPurge;
-
-  // all entities dropped
+  // all entities just holding their entityVersions and grantVersions
   private final Slice<PolarisBaseEntity> sliceEntitiesChangeTracking;
 
   // all grant records indexed by securable
@@ -231,31 +225,8 @@ public class PolarisTreeMapStore {
             entity -> String.format("%d::%d", entity.getCatalogId(), entity.getId()),
             PolarisBaseEntity::new);
 
-    // the entities active slice
+    // the entities active slice; simply acts as a name-based index into the entities slice
     this.sliceEntitiesActive = new Slice<>(this::buildEntitiesActiveKey, PolarisBaseEntity::new);
-
-    // the entities active slice
-    this.sliceEntitiesDropped =
-        new Slice<>(
-            entity ->
-                String.format(
-                    "%d::%d::%s::%d::%d::%d",
-                    entity.getCatalogId(),
-                    entity.getParentId(),
-                    entity.getName(),
-                    entity.getTypeCode(),
-                    entity.getSubTypeCode(),
-                    entity.getDropTimestamp()),
-            PolarisBaseEntity::new);
-
-    // the entities active slice
-    this.sliceEntitiesDroppedToPurge =
-        new Slice<>(
-            entity ->
-                String.format(
-                    "%d::%d::%s",
-                    entity.getToPurgeTimestamp(), entity.getCatalogId(), entity.getId()),
-            PolarisBaseEntity::new);
 
     // change tracking
     this.sliceEntitiesChangeTracking =
@@ -370,8 +341,6 @@ public class PolarisTreeMapStore {
     this.tr = new Transaction(true);
     this.sliceEntities.startWriteTransaction();
     this.sliceEntitiesActive.startWriteTransaction();
-    this.sliceEntitiesDropped.startWriteTransaction();
-    this.sliceEntitiesDroppedToPurge.startWriteTransaction();
     this.sliceEntitiesChangeTracking.startWriteTransaction();
     this.sliceGrantRecords.startWriteTransaction();
     this.sliceGrantRecordsByGrantee.startWriteTransaction();
@@ -382,8 +351,6 @@ public class PolarisTreeMapStore {
   void rollback() {
     this.sliceEntities.rollback();
     this.sliceEntitiesActive.rollback();
-    this.sliceEntitiesDropped.rollback();
-    this.sliceEntitiesDroppedToPurge.rollback();
     this.sliceEntitiesChangeTracking.rollback();
     this.sliceGrantRecords.rollback();
     this.sliceGrantRecordsByGrantee.rollback();
@@ -510,14 +477,6 @@ public class PolarisTreeMapStore {
     return sliceEntitiesActive;
   }
 
-  public Slice<PolarisBaseEntity> getSliceEntitiesDropped() {
-    return sliceEntitiesDropped;
-  }
-
-  public Slice<PolarisBaseEntity> getSliceEntitiesDroppedToPurge() {
-    return sliceEntitiesDroppedToPurge;
-  }
-
   public Slice<PolarisBaseEntity> getSliceEntitiesChangeTracking() {
     return sliceEntitiesChangeTracking;
   }
@@ -548,8 +507,6 @@ public class PolarisTreeMapStore {
     this.ensureReadWriteTr();
     this.sliceEntities.deleteAll();
     this.sliceEntitiesActive.deleteAll();
-    this.sliceEntitiesDropped.deleteAll();
-    this.sliceEntitiesDroppedToPurge.deleteAll();
     this.sliceEntitiesChangeTracking.deleteAll();
     this.sliceGrantRecordsByGrantee.deleteAll();
     this.sliceGrantRecords.deleteAll();

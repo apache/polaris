@@ -69,9 +69,6 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** mapper, allows to serialize/deserialize properties to/from JSON */
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
-  /** use synchronous drop for entities */
-  private static final boolean USE_SYNCHRONOUS_DROP = true;
-
   /**
    * Lookup an entity by its name
    *
@@ -280,74 +277,53 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     // delete it from active slice
     ms.deleteFromEntitiesActive(callCtx, entity);
 
-    // for now drop all entities synchronously
-    if (USE_SYNCHRONOUS_DROP) {
-      // use synchronous drop
+    // for now drop all associated grants, etc. synchronously
+    // delete ALL grant records to (if the entity is a grantee) and from that entity
+    final List<PolarisGrantRecord> grantsOnGrantee =
+        (entity.getType().isGrantee())
+            ? ms.loadAllGrantRecordsOnGrantee(callCtx, entity.getCatalogId(), entity.getId())
+            : List.of();
+    final List<PolarisGrantRecord> grantsOnSecurable =
+        ms.loadAllGrantRecordsOnSecurable(callCtx, entity.getCatalogId(), entity.getId());
+    ms.deleteAllEntityGrantRecords(callCtx, entity, grantsOnGrantee, grantsOnSecurable);
 
-      // delete ALL grant records to (if the entity is a grantee) and from that entity
-      final List<PolarisGrantRecord> grantsOnGrantee =
-          (entity.getType().isGrantee())
-              ? ms.loadAllGrantRecordsOnGrantee(callCtx, entity.getCatalogId(), entity.getId())
-              : List.of();
-      final List<PolarisGrantRecord> grantsOnSecurable =
-          ms.loadAllGrantRecordsOnSecurable(callCtx, entity.getCatalogId(), entity.getId());
-      ms.deleteAllEntityGrantRecords(callCtx, entity, grantsOnGrantee, grantsOnSecurable);
+    // Now determine the set of entities on the other side of the grants we just removed. Grants
+    // from/to these entities has been removed, hence we need to update the grant version of
+    // each entity. Collect the id of each.
+    Set<PolarisEntityId> entityIdsGrantChanged = new HashSet<>();
+    grantsOnGrantee.forEach(
+        gr ->
+            entityIdsGrantChanged.add(
+                new PolarisEntityId(gr.getSecurableCatalogId(), gr.getSecurableId())));
+    grantsOnSecurable.forEach(
+        gr ->
+            entityIdsGrantChanged.add(
+                new PolarisEntityId(gr.getGranteeCatalogId(), gr.getGranteeId())));
 
-      // Now determine the set of entities on the other side of the grants we just removed. Grants
-      // from/to these entities has been removed, hence we need to update the grant version of
-      // each entity. Collect the id of each.
-      Set<PolarisEntityId> entityIdsGrantChanged = new HashSet<>();
-      grantsOnGrantee.forEach(
-          gr ->
-              entityIdsGrantChanged.add(
-                  new PolarisEntityId(gr.getSecurableCatalogId(), gr.getSecurableId())));
-      grantsOnSecurable.forEach(
-          gr ->
-              entityIdsGrantChanged.add(
-                  new PolarisEntityId(gr.getGranteeCatalogId(), gr.getGranteeId())));
+    // Bump up the grant version of these entities
+    List<PolarisBaseEntity> entities =
+        ms.lookupEntities(callCtx, new ArrayList<>(entityIdsGrantChanged));
+    for (PolarisBaseEntity entityGrantChanged : entities) {
+      entityGrantChanged.setGrantRecordsVersion(entityGrantChanged.getGrantRecordsVersion() + 1);
+      ms.writeToEntities(callCtx, entityGrantChanged);
+      ms.writeToEntitiesChangeTracking(callCtx, entityGrantChanged);
+    }
 
-      // Bump up the grant version of these entities
-      List<PolarisBaseEntity> entities =
-          ms.lookupEntities(callCtx, new ArrayList<>(entityIdsGrantChanged));
-      for (PolarisBaseEntity entityGrantChanged : entities) {
-        entityGrantChanged.setGrantRecordsVersion(entityGrantChanged.getGrantRecordsVersion() + 1);
-        ms.writeToEntities(callCtx, entityGrantChanged);
-        ms.writeToEntitiesChangeTracking(callCtx, entityGrantChanged);
-      }
+    // remove the entity being dropped now
+    ms.deleteFromEntities(callCtx, entity);
+    ms.deleteFromEntitiesChangeTracking(callCtx, entity);
 
-      // remove the entity being dropped now
-      ms.deleteFromEntities(callCtx, entity);
-      ms.deleteFromEntitiesChangeTracking(callCtx, entity);
+    // if it is a principal, we also need to drop the secrets
+    if (entity.getType() == PolarisEntityType.PRINCIPAL) {
+      // get internal properties
+      Map<String, String> properties =
+          this.deserializeProperties(callCtx, entity.getInternalProperties());
 
-      // if it is a principal, we also need to drop the secrets
-      if (entity.getType() == PolarisEntityType.PRINCIPAL) {
-        // get internal properties
-        Map<String, String> properties =
-            this.deserializeProperties(callCtx, entity.getInternalProperties());
+      // get client_id
+      String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
 
-        // get client_id
-        String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
-
-        // delete it from the secret slice
-        ms.deletePrincipalSecrets(callCtx, clientId, entity.getId());
-      }
-    } else {
-
-      // update the entity to indicate it has been dropped
-      final long now = System.currentTimeMillis();
-      entity.setDropTimestamp(now);
-      entity.setLastUpdateTimestamp(now);
-
-      // schedule purge
-      entity.setToPurgeTimestamp(now + PolarisEntityConstants.getRetentionTimeInMs());
-
-      // increment version
-      entity.setEntityVersion(entity.getEntityVersion() + 1);
-
-      // write to the dropped slice and to purge slice
-      ms.writeToEntities(callCtx, entity);
-      ms.writeToEntitiesDropped(callCtx, entity);
-      ms.writeToEntitiesChangeTracking(callCtx, entity);
+      // delete it from the secret slice
+      ms.deletePrincipalSecrets(callCtx, clientId, entity.getId());
     }
   }
 

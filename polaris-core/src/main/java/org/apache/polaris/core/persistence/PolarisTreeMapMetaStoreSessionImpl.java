@@ -128,15 +128,6 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntitiesDropped(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    // write it
-    this.store.getSliceEntitiesDropped().write(entity);
-    this.store.getSliceEntitiesDroppedToPurge().write(entity);
-  }
-
-  /** {@inheritDoc} */
-  @Override
   public void writeToEntitiesChangeTracking(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
@@ -167,15 +158,6 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
     // delete it
     this.store.getSliceEntitiesActive().delete(this.store.buildEntitiesActiveKey(entity));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public void deleteFromEntitiesDropped(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    // delete it
-    this.store.getSliceEntitiesDropped().delete(entity);
-    this.store.getSliceEntitiesDroppedToPurge().delete(entity);
   }
 
   /**

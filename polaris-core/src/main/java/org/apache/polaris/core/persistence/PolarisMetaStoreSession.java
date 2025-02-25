@@ -123,17 +123,6 @@ public interface PolarisMetaStoreSession {
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   /**
-   * Write the base entity to the entities_dropped table. If there is a conflict (existing record
-   * with the same PK), all attributes of the new record will replace the existing one.
-   *
-   * @param callCtx call context
-   * @param entity entity record to write, potentially replacing an existing entity record with the
-   *     same key
-   */
-  void writeToEntitiesDropped(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
-
-  /**
    * Write the base entity to the entities change tracking table. If there is a conflict (existing
    * record with the same id), all attributes of the new record will replace the existing one.
    *
@@ -171,15 +160,6 @@ public interface PolarisMetaStoreSession {
    */
   void deleteFromEntitiesActive(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity);
-
-  /**
-   * Delete the base entity to the entities_dropped table
-   *
-   * @param callCtx call context
-   * @param entity entity record to delete
-   */
-  void deleteFromEntitiesDropped(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   /**
    * Delete the base entity from the entities change tracking table
