@@ -19,14 +19,12 @@
 package org.apache.polaris.core.storage.azure;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
-
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -53,10 +51,13 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
     super(StorageType.AZURE, allowedLocations);
     this.tenantId = tenantId;
     CallContext callContext = CallContext.getCurrentContext();
-    validateMaxAllowedLocations(callContext.getPolarisCallContext().getConfigurationStore().getConfiguration(
-        callContext.getPolarisCallContext(),
-        PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS
-    ));
+    validateMaxAllowedLocations(
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(),
+                PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
   }
 
   @Override
