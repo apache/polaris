@@ -26,8 +26,9 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
+import com.azure.core.exception.HttpResponseException;
+import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Iterators;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
@@ -39,12 +40,14 @@ import java.lang.reflect.Method;
 import java.time.Clock;
 import java.util.Arrays;
 import java.util.EnumMap;
-import java.util.Iterator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.iceberg.BaseTable;
 import org.apache.iceberg.CatalogProperties;
@@ -104,6 +107,7 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
@@ -120,7 +124,12 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
+import software.amazon.awssdk.core.exception.NonRetryableException;
+import software.amazon.awssdk.core.exception.RetryableException;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
@@ -1517,23 +1526,46 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     }
   }
 
-  @Test
-  public void testRetriableException() {
-    Iterator<String> accessDeniedHint =
-        Iterators.cycle(IcebergExceptionMapper.getAccessDeniedHints());
-    RuntimeException s3Exception = new RuntimeException(accessDeniedHint.next());
-    RuntimeException azureBlobStorageException = new RuntimeException(accessDeniedHint.next());
-    RuntimeException gcsException = new RuntimeException(accessDeniedHint.next());
-    RuntimeException otherException = new RuntimeException(new IOException("Connection reset"));
-    Assertions.assertThat(BasePolarisCatalog.SHOULD_RETRY_REFRESH_PREDICATE.test(s3Exception))
-        .isFalse();
-    Assertions.assertThat(
-            BasePolarisCatalog.SHOULD_RETRY_REFRESH_PREDICATE.test(azureBlobStorageException))
-        .isFalse();
-    Assertions.assertThat(BasePolarisCatalog.SHOULD_RETRY_REFRESH_PREDICATE.test(gcsException))
-        .isFalse();
-    Assertions.assertThat(BasePolarisCatalog.SHOULD_RETRY_REFRESH_PREDICATE.test(otherException))
-        .isTrue();
+  @ParameterizedTest
+  @MethodSource
+  public void testRetriableException(Exception exception, boolean shouldRetry) {
+    Assertions.assertThat(BasePolarisCatalog.SHOULD_RETRY_REFRESH_PREDICATE.test(exception))
+        .isEqualTo(shouldRetry);
+  }
+
+  static Stream<Arguments> testRetriableException() {
+    Set<Integer> NON_RETRYABLE_CODES = Set.of(401, 403, 404);
+    Set<Integer> RETRYABLE_CODES = Set.of(408, 504);
+
+    // Create a map of HTTP code returned from a cloud provider to whether it should be retried
+    Map<Integer, Boolean> cloudCodeMappings = new HashMap<>();
+    NON_RETRYABLE_CODES.forEach(code -> cloudCodeMappings.put(code, false));
+    RETRYABLE_CODES.forEach(code -> cloudCodeMappings.put(code, true));
+
+    return Stream.of(
+            Stream.of(
+                Arguments.of(new RuntimeException(new IOException("Connection reset")), true),
+                Arguments.of(RetryableException.builder().build(), true),
+                Arguments.of(NonRetryableException.builder().build(), false)),
+            IcebergExceptionMapper.getAccessDeniedHints().stream()
+                .map(hint -> Arguments.of(new RuntimeException(hint), false)),
+            cloudCodeMappings.entrySet().stream()
+                .flatMap(
+                    entry ->
+                        Stream.of(
+                            Arguments.of(
+                                new HttpResponseException(
+                                    "", new FakeAzureHttpResponse(entry.getKey()), ""),
+                                entry.getValue()),
+                            Arguments.of(
+                                new StorageException(entry.getKey(), ""), entry.getValue()))),
+            IcebergExceptionMapper.RETRYABLE_AZURE_HTTP_CODES.stream()
+                .map(
+                    code ->
+                        Arguments.of(
+                            new HttpResponseException("", new FakeAzureHttpResponse(code), ""),
+                            true)))
+        .flatMap(Function.identity());
   }
 
   @Test

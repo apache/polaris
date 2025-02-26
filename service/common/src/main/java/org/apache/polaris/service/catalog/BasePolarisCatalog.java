@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog;
 
+import static org.apache.polaris.service.exception.IcebergExceptionMapper.isStorageProviderRetryableException;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
@@ -104,13 +106,11 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
-import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.exception.SdkException;
 
 /** Defines the relationship between PolarisEntities and Iceberg's business logic. */
 public class BasePolarisCatalog extends BaseMetastoreViewCatalog
@@ -134,8 +134,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       "INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST";
   static final boolean INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST_DEFAULT = false;
 
-  private static final int MAX_RETRIES = 12;
-
   public static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
       ex -> {
         // Default arguments from BaseMetastoreTableOperation only stop retries on
@@ -146,7 +144,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             && !(ex instanceof AlreadyExistsException)
             && !(ex instanceof ForbiddenException)
             && !(ex instanceof UnprocessableEntityException)
-            && isStorageProviderRetryableException(ex);
+            && (isStorageProviderRetryableException(ex)
+                || isStorageProviderRetryableException(ExceptionUtils.getRootCause(ex)));
       };
 
   private final PolarisEntityManager entityManager;
@@ -1258,7 +1257,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
-            MAX_RETRIES,
+            getMaxMetadataRefreshRetries(),
             metadataLocation -> {
               String latestLocationDir =
                   latestLocation.substring(0, latestLocation.lastIndexOf('/'));
@@ -1483,7 +1482,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
-            MAX_RETRIES,
+            getMaxMetadataRefreshRetries(),
             metadataLocation -> {
               String latestLocationDir =
                   latestLocation.substring(0, latestLocation.lastIndexOf('/'));
@@ -2097,37 +2096,11 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .getConfiguration(callContext.getPolarisCallContext(), configKey, defaultValue);
   }
 
-  /**
-   * Check if the exception is retryable for the storage provider
-   *
-   * @param ex exception
-   * @return true if the exception is retryable
-   */
-  private static boolean isStorageProviderRetryableException(Exception ex) {
-    // For S3/Azure, the exception is not wrapped, while for GCP the exception is wrapped as a
-    // RuntimeException
-    Throwable rootCause = ExceptionUtils.getRootCause(ex);
-    if (rootCause == null) {
-      // no root cause, let it retry
-      return true;
-    }
-    // only S3 SdkException has this retryable property
-    if (rootCause instanceof SdkException && ((SdkException) rootCause).retryable()) {
-      return true;
-    }
-    // add more cases here if needed
-    // AccessDenied is not retryable
-    return !isAccessDenied(rootCause.getMessage());
-  }
-
-  private static boolean isAccessDenied(String errorMsg) {
-    // Corresponding error messages for storage providers Aws/Azure/Gcp
-    boolean isAccessDenied =
-        errorMsg != null && IcebergExceptionMapper.containsAnyAccessDeniedHint(errorMsg);
-    if (isAccessDenied) {
-      LOGGER.debug("Access Denied or Forbidden error: {}", errorMsg);
-      return true;
-    }
-    return false;
+  private int getMaxMetadataRefreshRetries() {
+    return callContext
+        .getPolarisCallContext()
+        .getConfigurationStore()
+        .getConfiguration(
+            callContext.getPolarisCallContext(), PolarisConfiguration.MAX_METADATA_REFRESH_RETRIES);
   }
 }

@@ -121,6 +121,11 @@ dependencies {
   testFixturesImplementation("software.amazon.awssdk:sts")
   testFixturesImplementation("software.amazon.awssdk:iam-policy-builder")
   testFixturesImplementation("software.amazon.awssdk:s3")
+
+  testFixturesImplementation(platform(libs.azuresdk.bom))
+  testFixturesImplementation("com.azure:azure-core")
+  testFixturesImplementation("com.azure:azure-storage-blob")
+  testFixturesImplementation("com.azure:azure-storage-file-datalake")
 }
 
 tasks.named("javadoc") { dependsOn("jandex") }
