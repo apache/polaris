@@ -379,6 +379,27 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   }
 
   @Test
+  @Override
+  public void createAndDropEmptyNamespace() {
+    Assumptions.assumeTrue(supportsEmptyNamespace());
+    super.createAndDropEmptyNamespace();
+  }
+
+  @Test
+  @Override
+  public void namespacePropertiesOnEmptyNamespace() {
+    Assumptions.assumeTrue(supportsEmptyNamespace());
+    super.namespacePropertiesOnEmptyNamespace();
+  }
+
+  @Test
+  @Override
+  public void listTablesInEmptyNamespace() {
+    Assumptions.assumeTrue(supportsEmptyNamespace());
+    super.listTablesInEmptyNamespace();
+  }
+
+  @Test
   public void testRenameTableMissingDestinationNamespace() {
     Assumptions.assumeTrue(
         requiresNamespaceCreate(),
