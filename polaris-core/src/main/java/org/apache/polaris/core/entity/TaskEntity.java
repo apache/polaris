@@ -18,7 +18,8 @@
  */
 package org.apache.polaris.core.entity;
 
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
 
 /**
@@ -38,14 +39,18 @@ public class TaskEntity extends PolarisEntity {
     }
   }
 
-  public <T> T readData(PolarisDiagnostics diagnostics, Class<T> klass) {
+  public <T> T readData(Class<T> klass) {
+    PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
     return PolarisObjectMapperUtil.deserialize(
-        diagnostics, getPropertiesAsMap().get(PolarisTaskConstants.TASK_DATA), klass);
+        polarisCallContext, getPropertiesAsMap().get(PolarisTaskConstants.TASK_DATA), klass);
   }
 
-  public AsyncTaskType getTaskType(PolarisDiagnostics diagnostics) {
+  public AsyncTaskType getTaskType() {
+    PolarisCallContext polarisCallContext = CallContext.getCurrentContext().getPolarisCallContext();
     return PolarisObjectMapperUtil.deserialize(
-        diagnostics, getPropertiesAsMap().get(PolarisTaskConstants.TASK_TYPE), AsyncTaskType.class);
+        polarisCallContext,
+        getPropertiesAsMap().get(PolarisTaskConstants.TASK_TYPE),
+        AsyncTaskType.class);
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<TaskEntity, TaskEntity.Builder> {
@@ -60,15 +65,21 @@ public class TaskEntity extends PolarisEntity {
       super(original);
     }
 
-    public Builder withTaskType(PolarisDiagnostics diagnostics, AsyncTaskType taskType) {
+    public Builder withTaskType(AsyncTaskType taskType) {
+      PolarisCallContext polarisCallContext =
+          CallContext.getCurrentContext().getPolarisCallContext();
       properties.put(
-          PolarisTaskConstants.TASK_TYPE, PolarisObjectMapperUtil.serialize(diagnostics, taskType));
+          PolarisTaskConstants.TASK_TYPE,
+          PolarisObjectMapperUtil.serialize(polarisCallContext, taskType));
       return this;
     }
 
-    public Builder withData(PolarisDiagnostics diagnostics, Object data) {
+    public Builder withData(Object data) {
+      PolarisCallContext polarisCallContext =
+          CallContext.getCurrentContext().getPolarisCallContext();
       properties.put(
-          PolarisTaskConstants.TASK_DATA, PolarisObjectMapperUtil.serialize(diagnostics, data));
+          PolarisTaskConstants.TASK_DATA,
+          PolarisObjectMapperUtil.serialize(polarisCallContext, data));
       return this;
     }
 

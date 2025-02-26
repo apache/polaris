@@ -20,10 +20,9 @@ package org.apache.polaris.core.persistence;
 
 import static org.apache.polaris.core.persistence.PrincipalSecretsGenerator.RANDOM_SECRETS;
 
-import java.time.Clock;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -33,7 +32,6 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.EntityCacheByNameKey;
-import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
 import org.apache.polaris.core.persistence.cache.EntityCacheLookupResult;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -45,8 +43,14 @@ public class EntityCacheTest {
   // diag services
   private final PolarisDiagnostics diagServices;
 
+  // the entity store, use treemap implementation
+  private final PolarisTreeMapStore store;
+
   // to interact with the metastore
   private final PolarisMetaStoreSession metaStore;
+
+  // polaris call context
+  private final PolarisCallContext callCtx;
 
   // utility to bootstrap the mata store
   private final PolarisTestMetaStoreManager tm;
@@ -78,16 +82,13 @@ public class EntityCacheTest {
    */
   public EntityCacheTest() {
     diagServices = new PolarisDefaultDiagServiceImpl();
-    // the entity store, use treemap implementation
-    PolarisTreeMapStore store = new PolarisTreeMapStore(diagServices);
-    metaStore =
-        new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS, diagServices);
-    metaStoreManager =
-        new PolarisMetaStoreManagerImpl(
-            () -> "test", diagServices, new PolarisConfigurationStore() {}, Clock.systemUTC());
+    store = new PolarisTreeMapStore(diagServices);
+    metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
+    callCtx = new PolarisCallContext(metaStore, diagServices);
+    metaStoreManager = new PolarisMetaStoreManagerImpl();
 
     // bootstrap the mata store with our test schema
-    tm = new PolarisTestMetaStoreManager(metaStoreManager, metaStore, diagServices);
+    tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
     tm.testCreateTestCatalog();
   }
 
@@ -95,7 +96,7 @@ public class EntityCacheTest {
    * @return new cache for the entity store
    */
   EntityCache allocateNewCache() {
-    return new EntityCache(this.metaStoreManager, diagServices);
+    return new EntityCache(this.metaStoreManager);
   }
 
   @Test
@@ -106,7 +107,7 @@ public class EntityCacheTest {
     // should exist and no cache hit
     EntityCacheLookupResult lookup =
         cache.getOrLoadEntityByName(
-            metaStore, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
+            this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
     Assertions.assertThat(lookup).isNotNull();
     Assertions.assertThat(lookup.isCacheHit()).isFalse();
     Assertions.assertThat(lookup.getCacheEntry()).isNotNull();
@@ -119,12 +120,12 @@ public class EntityCacheTest {
     // do it again, should be found in the cache
     lookup =
         cache.getOrLoadEntityByName(
-            metaStore, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
+            this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
     Assertions.assertThat(lookup).isNotNull();
     Assertions.assertThat(lookup.isCacheHit()).isTrue();
 
     // do it again by id, should be found in the cache
-    lookup = cache.getOrLoadEntityById(metaStore, catalog.getCatalogId(), catalog.getId());
+    lookup = cache.getOrLoadEntityById(this.callCtx, catalog.getCatalogId(), catalog.getId());
     Assertions.assertThat(lookup).isNotNull();
     Assertions.assertThat(lookup.isCacheHit()).isTrue();
     Assertions.assertThat(lookup.getCacheEntry()).isNotNull();
@@ -139,11 +140,11 @@ public class EntityCacheTest {
     EntityCacheByNameKey N1_name =
         new EntityCacheByNameKey(
             catalog.getId(), catalog.getId(), PolarisEntityType.NAMESPACE, "N1");
-    EntityCacheEntry cacheEntry = cache.getEntityByName(N1_name);
+    ResolvedPolarisEntity cacheEntry = cache.getEntityByName(N1_name);
     Assertions.assertThat(cacheEntry).isNull();
 
     // try to find it in the cache by id. Should not be there, i.e. no cache hit
-    lookup = cache.getOrLoadEntityById(metaStore, N1.getCatalogId(), N1.getId());
+    lookup = cache.getOrLoadEntityById(this.callCtx, N1.getCatalogId(), N1.getId());
     Assertions.assertThat(lookup).isNotNull();
     Assertions.assertThat(lookup.isCacheHit()).isFalse();
 
@@ -160,25 +161,26 @@ public class EntityCacheTest {
     Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).isNotNull();
 
     // lookup N1
-    EntityCacheEntry N1_entry = cache.getEntityById(N1.getId());
+    ResolvedPolarisEntity N1_entry = cache.getEntityById(N1.getId());
     Assertions.assertThat(N1_entry).isNotNull();
     Assertions.assertThat(N1_entry.getEntity()).isNotNull();
     Assertions.assertThat(N1_entry.getGrantRecordsAsSecurable()).isNotNull();
 
     // negative tests, load an entity which does not exist
-    lookup = cache.getOrLoadEntityById(metaStore, N1.getCatalogId(), 10000);
+    lookup = cache.getOrLoadEntityById(this.callCtx, N1.getCatalogId(), 10000);
     Assertions.assertThat(lookup).isNull();
     lookup =
         cache.getOrLoadEntityByName(
-            metaStore, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "non_existant_catalog"));
+            this.callCtx,
+            new EntityCacheByNameKey(PolarisEntityType.CATALOG, "non_existant_catalog"));
     Assertions.assertThat(lookup).isNull();
 
     // lookup N2 to validate grants
     EntityCacheByNameKey N2_name =
         new EntityCacheByNameKey(catalog.getId(), N1.getId(), PolarisEntityType.NAMESPACE, "N2");
-    lookup = cache.getOrLoadEntityByName(metaStore, N2_name);
+    lookup = cache.getOrLoadEntityByName(callCtx, N2_name);
     Assertions.assertThat(lookup).isNotNull();
-    EntityCacheEntry cacheEntry_N1 = lookup.getCacheEntry();
+    ResolvedPolarisEntity cacheEntry_N1 = lookup.getCacheEntry();
     Assertions.assertThat(cacheEntry_N1).isNotNull();
     Assertions.assertThat(cacheEntry_N1.getEntity()).isNotNull();
     Assertions.assertThat(cacheEntry_N1.getGrantRecordsAsSecurable()).isNotNull();
@@ -187,9 +189,9 @@ public class EntityCacheTest {
     EntityCacheByNameKey R1_name =
         new EntityCacheByNameKey(
             catalog.getId(), catalog.getId(), PolarisEntityType.CATALOG_ROLE, "R1");
-    lookup = cache.getOrLoadEntityByName(metaStore, R1_name);
+    lookup = cache.getOrLoadEntityByName(callCtx, R1_name);
     Assertions.assertThat(lookup).isNotNull();
-    EntityCacheEntry cacheEntry_R1 = lookup.getCacheEntry();
+    ResolvedPolarisEntity cacheEntry_R1 = lookup.getCacheEntry();
     Assertions.assertThat(cacheEntry_R1).isNotNull();
     Assertions.assertThat(cacheEntry_R1.getEntity()).isNotNull();
     Assertions.assertThat(cacheEntry_R1.getGrantRecordsAsSecurable()).isNotNull();
@@ -231,9 +233,9 @@ public class EntityCacheTest {
     // lookup principal role PR1
     EntityCacheByNameKey PR1_name =
         new EntityCacheByNameKey(PolarisEntityType.PRINCIPAL_ROLE, "PR1");
-    lookup = cache.getOrLoadEntityByName(metaStore, PR1_name);
+    lookup = cache.getOrLoadEntityByName(callCtx, PR1_name);
     Assertions.assertThat(lookup).isNotNull();
-    EntityCacheEntry cacheEntry_PR1 = lookup.getCacheEntry();
+    ResolvedPolarisEntity cacheEntry_PR1 = lookup.getCacheEntry();
     Assertions.assertThat(cacheEntry_PR1).isNotNull();
     Assertions.assertThat(cacheEntry_PR1.getEntity()).isNotNull();
     Assertions.assertThat(cacheEntry_PR1.getGrantRecordsAsSecurable()).isNotNull();
@@ -272,7 +274,7 @@ public class EntityCacheTest {
     // should exist and no cache hit
     EntityCacheLookupResult lookup =
         cache.getOrLoadEntityByName(
-            metaStore, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
+            this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
     Assertions.assertThat(lookup).isNotNull();
     Assertions.assertThat(lookup.isCacheHit()).isFalse();
 
@@ -296,13 +298,13 @@ public class EntityCacheTest {
     Assertions.assertThat(T6v1).isNotNull();
 
     // that table is not in the cache
-    EntityCacheEntry cacheEntry = cache.getEntityById(T6v1.getId());
+    ResolvedPolarisEntity cacheEntry = cache.getEntityById(T6v1.getId());
     Assertions.assertThat(cacheEntry).isNull();
 
     // now load that table in the cache
     cacheEntry =
         cache.getAndRefreshIfNeeded(
-            metaStore, T6v1, T6v1.getEntityVersion(), T6v1.getGrantRecordsVersion());
+            this.callCtx, T6v1, T6v1.getEntityVersion(), T6v1.getGrantRecordsVersion());
     Assertions.assertThat(cacheEntry).isNotNull();
     Assertions.assertThat(cacheEntry.getEntity()).isNotNull();
     Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).isNotNull();
@@ -323,7 +325,7 @@ public class EntityCacheTest {
     // now refresh that entity. But because we don't change the versions, nothing should be reloaded
     cacheEntry =
         cache.getAndRefreshIfNeeded(
-            metaStore, T6v1, T6v1.getEntityVersion(), T6v1.getGrantRecordsVersion());
+            this.callCtx, T6v1, T6v1.getEntityVersion(), T6v1.getGrantRecordsVersion());
     Assertions.assertThat(cacheEntry).isNotNull();
     Assertions.assertThat(cacheEntry.getEntity()).isNotNull();
     Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).isNotNull();
@@ -335,7 +337,7 @@ public class EntityCacheTest {
     // now refresh again, this time with the new versions. Should be reloaded
     cacheEntry =
         cache.getAndRefreshIfNeeded(
-            metaStore, T6v2, T6v2.getEntityVersion(), T6v2.getGrantRecordsVersion());
+            this.callCtx, T6v2, T6v2.getEntityVersion(), T6v2.getGrantRecordsVersion());
     Assertions.assertThat(cacheEntry).isNotNull();
     Assertions.assertThat(cacheEntry.getEntity()).isNotNull();
     Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).isNotNull();
@@ -364,7 +366,7 @@ public class EntityCacheTest {
     // load that namespace
     cacheEntry =
         cache.getAndRefreshIfNeeded(
-            metaStore, N2, N2.getEntityVersion(), N2.getGrantRecordsVersion());
+            this.callCtx, N2, N2.getEntityVersion(), N2.getGrantRecordsVersion());
 
     // should have one single grant
     Assertions.assertThat(cacheEntry).isNotNull();
@@ -385,7 +387,7 @@ public class EntityCacheTest {
     // the cache is outdated now
     lookup =
         cache.getOrLoadEntityByName(
-            metaStore,
+            this.callCtx,
             new EntityCacheByNameKey(
                 catalog.getId(), N1.getId(), PolarisEntityType.NAMESPACE, "N2"));
     Assertions.assertThat(lookup).isNotNull();
@@ -400,7 +402,7 @@ public class EntityCacheTest {
     // now refresh
     cacheEntry =
         cache.getAndRefreshIfNeeded(
-            metaStore, N2, N2v2.getEntityVersion(), N2v2.getGrantRecordsVersion());
+            this.callCtx, N2, N2v2.getEntityVersion(), N2v2.getGrantRecordsVersion());
     Assertions.assertThat(cacheEntry).isNotNull();
     Assertions.assertThat(cacheEntry.getEntity()).isNotNull();
     Assertions.assertThat(cacheEntry.getGrantRecordsAsSecurable()).isNotNull();
@@ -416,21 +418,21 @@ public class EntityCacheTest {
 
     EntityCacheLookupResult lookup =
         cache.getOrLoadEntityByName(
-            metaStore, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
+            this.callCtx, new EntityCacheByNameKey(PolarisEntityType.CATALOG, "test"));
     Assertions.assertThat(lookup).isNotNull();
     Assertions.assertThat(lookup.getCacheEntry()).isNotNull();
     PolarisBaseEntity catalog = lookup.getCacheEntry().getEntity();
 
     PolarisBaseEntity N1 =
         this.tm.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
-    lookup = cache.getOrLoadEntityById(metaStore, N1.getCatalogId(), N1.getId());
+    lookup = cache.getOrLoadEntityById(this.callCtx, N1.getCatalogId(), N1.getId());
     Assertions.assertThat(lookup).isNotNull();
 
     EntityCacheByNameKey T4_name =
         new EntityCacheByNameKey(N1.getCatalogId(), N1.getId(), PolarisEntityType.TABLE_LIKE, "T4");
-    lookup = cache.getOrLoadEntityByName(metaStore, T4_name);
+    lookup = cache.getOrLoadEntityByName(callCtx, T4_name);
     Assertions.assertThat(lookup).isNotNull();
-    EntityCacheEntry cacheEntry_T4 = lookup.getCacheEntry();
+    ResolvedPolarisEntity cacheEntry_T4 = lookup.getCacheEntry();
     Assertions.assertThat(cacheEntry_T4).isNotNull();
     Assertions.assertThat(cacheEntry_T4.getEntity()).isNotNull();
     Assertions.assertThat(cacheEntry_T4.getGrantRecordsAsSecurable()).isNotNull();
@@ -443,31 +445,31 @@ public class EntityCacheTest {
     EntityCacheByNameKey T4_renamed =
         new EntityCacheByNameKey(
             N1.getCatalogId(), N1.getId(), PolarisEntityType.TABLE_LIKE, "T4_renamed");
-    lookup = cache.getOrLoadEntityByName(metaStore, T4_renamed);
+    lookup = cache.getOrLoadEntityByName(callCtx, T4_renamed);
     Assertions.assertThat(lookup).isNotNull();
-    EntityCacheEntry cacheEntry_T4_renamed = lookup.getCacheEntry();
+    ResolvedPolarisEntity cacheEntry_T4_renamed = lookup.getCacheEntry();
     Assertions.assertThat(cacheEntry_T4_renamed).isNotNull();
     PolarisBaseEntity T4_renamed_entity = cacheEntry_T4_renamed.getEntity();
 
     // new entry if lookup by id
     EntityCacheLookupResult lookupResult =
-        cache.getOrLoadEntityById(metaStore, T4.getCatalogId(), T4.getId());
+        cache.getOrLoadEntityById(callCtx, T4.getCatalogId(), T4.getId());
     Assertions.assertThat(lookupResult).isNotNull();
     Assertions.assertThat(lookupResult.getCacheEntry()).isNotNull();
     Assertions.assertThat(lookupResult.getCacheEntry().getEntity().getName())
         .isEqualTo("T4_renamed");
 
     // old name is gone, replaced by new name
-    // Assertions.assertNull(cache.getOrLoadEntityByName(metaStore, T4_name));
+    // Assertions.assertNull(cache.getOrLoadEntityByName(callCtx, T4_name));
 
     // refreshing should return null since our current held T4 is outdated
     cache.getAndRefreshIfNeeded(
-        metaStore,
+        callCtx,
         T4,
         T4_renamed_entity.getEntityVersion(),
         T4_renamed_entity.getGrantRecordsVersion());
 
     // now the loading by the old name should return null
-    Assertions.assertThat(cache.getOrLoadEntityByName(metaStore, T4_name)).isNull();
+    Assertions.assertThat(cache.getOrLoadEntityByName(callCtx, T4_name)).isNull();
   }
 }

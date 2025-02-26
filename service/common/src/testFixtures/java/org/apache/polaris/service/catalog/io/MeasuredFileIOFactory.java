@@ -30,7 +30,7 @@ import java.util.function.Supplier;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -64,7 +64,7 @@ public class MeasuredFileIOFactory implements FileIOFactory {
 
   @Override
   public FileIO loadFileIO(
-      @Nonnull RealmContext realmContext,
+      @Nonnull CallContext callContext,
       @Nonnull String ioImplClassName,
       @Nonnull Map<String, String> properties,
       @Nonnull TableIdentifier identifier,
@@ -79,7 +79,7 @@ public class MeasuredFileIOFactory implements FileIOFactory {
     MeasuredFileIO wrapped =
         new MeasuredFileIO(
             defaultFileIOFactory.loadFileIO(
-                realmContext,
+                callContext,
                 ioImplClassName,
                 properties,
                 identifier,

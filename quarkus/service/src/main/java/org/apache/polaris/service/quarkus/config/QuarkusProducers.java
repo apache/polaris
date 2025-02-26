@@ -32,12 +32,14 @@ import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import java.time.Clock;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
@@ -46,11 +48,9 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.auth.Authenticator;
-import org.apache.polaris.service.auth.TokenBroker;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
@@ -79,9 +79,8 @@ public class QuarkusProducers {
 
   @Produces
   @ApplicationScoped
-  public StorageCredentialCache storageCredentialCache(
-      PolarisDiagnostics diagnostics, PolarisConfigurationStore configurationStore) {
-    return new StorageCredentialCache(diagnostics, configurationStore);
+  public StorageCredentialCache storageCredentialCache() {
+    return new StorageCredentialCache();
   }
 
   @Produces
@@ -91,7 +90,7 @@ public class QuarkusProducers {
   }
 
   @Produces
-  @ApplicationScoped
+  @Singleton
   public PolarisDiagnostics polarisDiagnostics() {
     return new PolarisDefaultDiagServiceImpl();
   }
@@ -106,44 +105,25 @@ public class QuarkusProducers {
 
   @Produces
   @RequestScoped
-  public PolarisMetaStoreSession metaStoreSession(
-      MetaStoreManagerFactory metaStoreManagerFactory, RealmContext realmContext) {
-    return metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
+  public PolarisCallContext polarisCallContext(
+      RealmContext realmContext,
+      PolarisDiagnostics diagServices,
+      PolarisConfigurationStore configurationStore,
+      MetaStoreManagerFactory metaStoreManagerFactory,
+      Clock clock) {
+    PolarisMetaStoreSession metaStoreSession =
+        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
+    return new PolarisCallContext(metaStoreSession, diagServices, configurationStore, clock);
   }
 
   @Produces
   @RequestScoped
-  // TODO break into separate beans
-  public PolarisMetaStoreManager polarisMetaStoreManager(
-      MetaStoreManagerFactory metaStoreManagerFactory, RealmContext realmContext) {
-    return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+  public CallContext callContext(RealmContext realmContext, PolarisCallContext polarisCallContext) {
+    return CallContext.of(realmContext, polarisCallContext);
   }
 
-  @Produces
-  @RequestScoped
-  public StorageCredentialCache storageCredentialCache(
-      MetaStoreManagerFactory metaStoreManagerFactory, RealmContext realmContext) {
-    return metaStoreManagerFactory.getOrCreateStorageCredentialCache(realmContext);
-  }
-
-  @Produces
-  @RequestScoped
-  public EntityCache entityCache(
-      MetaStoreManagerFactory metaStoreManagerFactory, RealmContext realmContext) {
-    return metaStoreManagerFactory.getOrCreateEntityCache(realmContext);
-  }
-
-  @Produces
-  @RequestScoped
-  public PolarisEntityManager polarisEntityManager(
-      RealmEntityManagerFactory realmEntityManagerFactory, RealmContext realmContext) {
-    return realmEntityManagerFactory.getOrCreateEntityManager(realmContext);
-  }
-
-  @Produces
-  @RequestScoped
-  public TokenBroker tokenBroker(TokenBrokerFactory tokenBrokerFactory, RealmContext realmContext) {
-    return tokenBrokerFactory.apply(realmContext);
+  public void closeCallContext(@Disposes CallContext callContext) {
+    callContext.close();
   }
 
   // Polaris service beans - selected from @Identifier-annotated beans
@@ -227,6 +207,36 @@ public class QuarkusProducers {
         .maxAsync(config.maxConcurrentTasks())
         .maxQueued(config.maxQueuedTasks())
         .build();
+  }
+
+  @Produces
+  @RequestScoped
+  public EntityCache entityCache(
+      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
+    return metaStoreManagerFactory.getOrCreateEntityCache(realmContext);
+  }
+
+  @Produces
+  @RequestScoped
+  public PolarisMetaStoreManager polarisMetaStoreManager(
+      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
+    return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
+  }
+
+  @Produces
+  @RequestScoped
+  public PolarisMetaStoreSession polarisMetaStoreSession(
+      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
+    return metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
+  }
+
+  @Produces
+  @RequestScoped
+  public PolarisEntityManager polarisEntityManager(
+      PolarisMetaStoreManager polarisMetaStoreManager,
+      StorageCredentialCache credentialCache,
+      EntityCache entityCache) {
+    return new PolarisEntityManager(polarisMetaStoreManager, credentialCache, entityCache);
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {

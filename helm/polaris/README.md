@@ -62,9 +62,6 @@ root:
 helm unittest helm/polaris
 ```
 
-Note: the `grep` command is used to filter out the annoying warning messages about symbolic links;
-see https://github.com/helm/helm/issues/7019.
-
 ### Running locally with a Kind cluster
 
 The below instructions assume Kind and Helm are installed.
@@ -89,9 +86,10 @@ If necessary, build and load the Docker images with support for Postgres into Mi
 ```bash
 eval $(minikube -p minikube docker-env)
 
-./gradlew :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
+./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
     -Dquarkus.container-image.build=true \
-    -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
+    -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
+    --no-build-cache
 ```
 
 ### Installing the chart locally

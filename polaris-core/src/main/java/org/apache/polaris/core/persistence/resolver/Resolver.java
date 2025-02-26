@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -39,13 +40,13 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager.ChangeTrackingResult;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.EntityCacheByNameKey;
-import org.apache.polaris.core.persistence.cache.EntityCacheEntry;
 import org.apache.polaris.core.persistence.cache.EntityCacheLookupResult;
-import org.apache.polaris.core.persistence.cache.PolarisRemoteCache;
-import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.ChangeTrackingResult;
 
 /**
  * REST request resolver, allows to resolve all entities referenced directly or indirectly by in
@@ -53,13 +54,14 @@ import org.apache.polaris.core.persistence.cache.PolarisRemoteCache.ChangeTracki
  */
 public class Resolver {
 
-  private final @Nonnull PolarisMetaStoreSession metaStoreSession;
+  // we stash the Polaris call context here
+  private final @Nonnull PolarisCallContext polarisCallContext;
 
   // the diagnostic services
   private final @Nonnull PolarisDiagnostics diagnostics;
 
   // the polaris metastore manager
-  private final @Nonnull PolarisRemoteCache polarisRemoteCache;
+  private final @Nonnull PolarisMetaStoreManager polarisMetaStoreManager;
 
   // the cache of entities
   private final @Nonnull EntityCache cache;
@@ -80,34 +82,35 @@ public class Resolver {
   private final List<ResolverPath> pathsToResolve;
 
   // caller principal
-  private EntityCacheEntry resolvedCallerPrincipal;
+  private ResolvedPolarisEntity resolvedCallerPrincipal;
 
   // all principal roles which have been resolved
-  private List<EntityCacheEntry> resolvedCallerPrincipalRoles;
+  private List<ResolvedPolarisEntity> resolvedCallerPrincipalRoles;
 
   // catalog to use as the reference catalog for role activation
-  private EntityCacheEntry resolvedReferenceCatalog;
+  private ResolvedPolarisEntity resolvedReferenceCatalog;
 
   // all catalog roles which have been activated
-  private final Map<Long, EntityCacheEntry> resolvedCatalogRoles;
+  private final Map<Long, ResolvedPolarisEntity> resolvedCatalogRoles;
 
   // all resolved paths
-  private List<List<EntityCacheEntry>> resolvedPaths;
+  private List<List<ResolvedPolarisEntity>> resolvedPaths;
 
-  // all entities which have been successfully resolved, by name
-  private final Map<EntityCacheByNameKey, EntityCacheEntry> resolvedEntriesByName;
+  // all entities which have been successfully resolved, by name. The entries may or may not
+  // have come from a cache, but we use the EntityCacheByNameKey anyways as a convenient
+  // canonical by-name key.
+  private final Map<EntityCacheByNameKey, ResolvedPolarisEntity> resolvedEntriesByName;
 
   // all entities which have been fully resolved, by id
-  private final Map<Long, EntityCacheEntry> resolvedEntriesById;
+  private final Map<Long, ResolvedPolarisEntity> resolvedEntriesById;
 
   private ResolverStatus resolverStatus;
 
   /**
    * Constructor, effectively starts an entity resolver session
    *
-   * @param metaStoreSession the meta store session
-   * @param diagnostics the diagnostics service
-   * @param polarisRemoteCache meta store manager
+   * @param polarisCallContext the polaris call context
+   * @param polarisMetaStoreManager meta store manager
    * @param securityContext The {@link AuthenticatedPolarisPrincipal} for the current request
    * @param cache shared entity cache
    * @param referenceCatalogName if not null, specifies the name of the reference catalog. The
@@ -119,21 +122,22 @@ public class Resolver {
    *     service admin should use null for that parameter.
    */
   public Resolver(
-      @Nonnull PolarisMetaStoreSession metaStoreSession,
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull PolarisRemoteCache polarisRemoteCache,
+      @Nonnull PolarisCallContext polarisCallContext,
+      @Nonnull PolarisMetaStoreManager polarisMetaStoreManager,
       @Nonnull SecurityContext securityContext,
       @Nonnull EntityCache cache,
       @Nullable String referenceCatalogName) {
-    this.metaStoreSession = metaStoreSession;
-    this.diagnostics = diagnostics;
-    this.polarisRemoteCache = polarisRemoteCache;
+    this.polarisCallContext = polarisCallContext;
+    this.diagnostics = polarisCallContext.getDiagServices();
+    this.polarisMetaStoreManager = polarisMetaStoreManager;
     this.cache = cache;
     this.securityContext = securityContext;
     this.referenceCatalogName = referenceCatalogName;
 
     // validate inputs
-    this.diagnostics.checkNotNull(cache, "unexpected_null_cache");
+    this.diagnostics.checkNotNull(polarisCallContext, "unexpected_null_polarisCallContext");
+    this.diagnostics.checkNotNull(
+        polarisMetaStoreManager, "unexpected_null_polarisMetaStoreManager");
     this.diagnostics.checkNotNull(securityContext, "security_context_must_be_specified");
     this.diagnostics.checkNotNull(
         securityContext.getUserPrincipal(), "principal_must_be_specified");
@@ -263,7 +267,7 @@ public class Resolver {
   /**
    * @return the principal we resolved
    */
-  public @Nonnull EntityCacheEntry getResolvedCallerPrincipal() {
+  public @Nonnull ResolvedPolarisEntity getResolvedCallerPrincipal() {
     // can only be called if the resolver has been called and was success
     this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
     this.diagnostics.check(
@@ -276,7 +280,7 @@ public class Resolver {
   /**
    * @return all principal roles which were activated. The list can be empty
    */
-  public @Nonnull List<EntityCacheEntry> getResolvedCallerPrincipalRoles() {
+  public @Nonnull List<ResolvedPolarisEntity> getResolvedCallerPrincipalRoles() {
     // can only be called if the resolver has been called and was success
     this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
     this.diagnostics.check(
@@ -290,7 +294,7 @@ public class Resolver {
    * @return the reference catalog which has been resolved. Will be null if null was passed in for
    *     the parameter referenceCatalogName when the Resolver was constructed.
    */
-  public @Nullable EntityCacheEntry getResolvedReferenceCatalog() {
+  public @Nullable ResolvedPolarisEntity getResolvedReferenceCatalog() {
     // can only be called if the resolver has been called and was success
     this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
     this.diagnostics.check(
@@ -306,7 +310,7 @@ public class Resolver {
    *
    * @return map of activated catalog roles or null if no referenceCatalogName was specified
    */
-  public @Nullable Map<Long, EntityCacheEntry> getResolvedCatalogRoles() {
+  public @Nullable Map<Long, ResolvedPolarisEntity> getResolvedCatalogRoles() {
     // can only be called if the resolver has been called and was success
     this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
     this.diagnostics.check(
@@ -323,7 +327,7 @@ public class Resolver {
    *
    * @return single resolved path
    */
-  public @Nonnull List<EntityCacheEntry> getResolvedPath() {
+  public @Nonnull List<ResolvedPolarisEntity> getResolvedPath() {
     // can only be called if the resolver has been called and was success
     this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
     this.diagnostics.check(
@@ -339,7 +343,7 @@ public class Resolver {
    *
    * @return list of resolved path
    */
-  public @Nonnull List<List<EntityCacheEntry>> getResolvedPaths() {
+  public @Nonnull List<List<ResolvedPolarisEntity>> getResolvedPaths() {
     // can only be called if the resolver has been called and was success
     this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
     this.diagnostics.check(
@@ -359,7 +363,7 @@ public class Resolver {
    * @param entityName name of the entity.
    * @return the entity which has been resolved or null if that entity does not exist
    */
-  public @Nullable EntityCacheEntry getResolvedEntity(
+  public @Nullable ResolvedPolarisEntity getResolvedEntity(
       @Nonnull PolarisEntityType entityType, @Nonnull String entityName) {
     // can only be called if the resolver has been called and was success
     this.diagnostics.checkNotNull(resolverStatus, "resolver_must_be_called_first");
@@ -399,8 +403,9 @@ public class Resolver {
     this.resolvedCallerPrincipalRoles.clear();
     this.resolvedPaths.clear();
 
-    // all entries we found in the cache but that we need to validate since they might be stale
-    List<EntityCacheEntry> toValidate = new ArrayList<>();
+    // all entries we found in the cache or resolved hierarchically but that we need to validate
+    // since they might be stale
+    List<ResolvedPolarisEntity> toValidate = new ArrayList<>();
 
     // first resolve the principal and determine the set of activated principal roles
     ResolverStatus status = this.resolveCallerPrincipalAndPrincipalRoles(toValidate);
@@ -427,9 +432,10 @@ public class Resolver {
     }
 
     // all the above resolution was optimistic i.e. when we probe the cache and find an entity, we
-    // don't validate if this entity has been changed in the backend. So validate now all these
-    // entities in one single
-    // go,
+    // don't validate if this entity has been changed in the backend. Also, hierarchical entities
+    // were resolved incrementally and may have changed in ways that impact the behavior of
+    // resolved child entities. So validate now all these entities in one single go, which ensures
+    // happens-before semantics.
     boolean validationSuccess = this.bulkValidate(toValidate);
 
     if (validationSuccess) {
@@ -447,36 +453,37 @@ public class Resolver {
 
     // if success, we need to get the validated entries
     // we will resolve those again
-    this.resolvedCallerPrincipal = this.getResolved(this.resolvedCallerPrincipal);
+    this.resolvedCallerPrincipal = this.getFreshlyResolved(this.resolvedCallerPrincipal);
 
     // update all principal roles with latest
     if (!this.resolvedCallerPrincipalRoles.isEmpty()) {
-      List<EntityCacheEntry> refreshedResolvedCallerPrincipalRoles =
+      List<ResolvedPolarisEntity> refreshedResolvedCallerPrincipalRoles =
           new ArrayList<>(this.resolvedCallerPrincipalRoles.size());
       this.resolvedCallerPrincipalRoles.forEach(
-          ce -> refreshedResolvedCallerPrincipalRoles.add(this.getResolved(ce)));
+          ce -> refreshedResolvedCallerPrincipalRoles.add(this.getFreshlyResolved(ce)));
       this.resolvedCallerPrincipalRoles = refreshedResolvedCallerPrincipalRoles;
     }
 
     // update referenced catalog
-    this.resolvedReferenceCatalog = this.getResolved(this.resolvedReferenceCatalog);
+    this.resolvedReferenceCatalog = this.getFreshlyResolved(this.resolvedReferenceCatalog);
 
     // update all resolved catalog roles
     if (this.resolvedCatalogRoles != null) {
-      for (EntityCacheEntry catalogCacheEntry : this.resolvedCatalogRoles.values()) {
+      for (ResolvedPolarisEntity catalogResolvedEntity : this.resolvedCatalogRoles.values()) {
         this.resolvedCatalogRoles.put(
-            catalogCacheEntry.getEntity().getId(), this.getResolved(catalogCacheEntry));
+            catalogResolvedEntity.getEntity().getId(),
+            this.getFreshlyResolved(catalogResolvedEntity));
       }
     }
 
     // update all resolved paths
     if (!this.resolvedPaths.isEmpty()) {
-      List<List<EntityCacheEntry>> refreshedResolvedPaths =
+      List<List<ResolvedPolarisEntity>> refreshedResolvedPaths =
           new ArrayList<>(this.resolvedPaths.size());
       this.resolvedPaths.forEach(
           rp -> {
-            List<EntityCacheEntry> refreshedRp = new ArrayList<>(rp.size());
-            rp.forEach(ce -> refreshedRp.add(this.getResolved(ce)));
+            List<ResolvedPolarisEntity> refreshedRp = new ArrayList<>(rp.size());
+            rp.forEach(ce -> refreshedRp.add(this.getFreshlyResolved(ce)));
             refreshedResolvedPaths.add(refreshedRp);
           });
       this.resolvedPaths = refreshedResolvedPaths;
@@ -484,86 +491,115 @@ public class Resolver {
   }
 
   /**
-   * Get the fully resolved cache entry for the specified cache entry
+   * Exchange a possibly-stale entity for the latest resolved version of that entity
    *
-   * @param cacheEntry input cache entry
-   * @return the fully resolved cached entry which will often be the same
+   * @param originalEntity original resolved entity for which to get the latest resolved version
+   * @return the fully resolved entry which will often be the same
    */
-  private EntityCacheEntry getResolved(EntityCacheEntry cacheEntry) {
-    final EntityCacheEntry refreshedEntry;
-    if (cacheEntry == null) {
+  private ResolvedPolarisEntity getFreshlyResolved(ResolvedPolarisEntity originalEntity) {
+    final ResolvedPolarisEntity refreshedEntry;
+    if (originalEntity == null) {
       refreshedEntry = null;
     } else {
       // the latest refreshed entry
-      refreshedEntry = this.resolvedEntriesById.get(cacheEntry.getEntity().getId());
+      refreshedEntry = this.resolvedEntriesById.get(originalEntity.getEntity().getId());
       this.diagnostics.checkNotNull(
-          refreshedEntry, "cache_entry_should_be_resolved", "entity={}", cacheEntry.getEntity());
+          refreshedEntry, "_entry_should_be_resolved", "entity={}", originalEntity.getEntity());
     }
     return refreshedEntry;
   }
 
   /**
    * Bulk validate now the set of entities we didn't validate when we were accessing the entity
-   * cache
+   * cache or incrementally resolving
    *
    * @param toValidate entities to validate
-   * @return true if none of the entities in the cache has changed
+   * @return true if none of the entities has changed
    */
-  private boolean bulkValidate(List<EntityCacheEntry> toValidate) {
+  private boolean bulkValidate(List<ResolvedPolarisEntity> toValidate) {
     // assume everything is good
     boolean validationStatus = true;
 
     // bulk validate
     if (!toValidate.isEmpty()) {
+      // TODO: Provide configurable option to enforce bulk validation of *all* entities in a
+      // resolution pass, instead of only validating ones on "cache hit"; this would allow the same
+      // semantics as the transactional validation performed for methods like readEntityByName
+      // when PolarisMetaStoreManagerImpl uses PolarisEntityResolver in a read transaction.
       List<PolarisEntityId> entityIds =
           toValidate.stream()
               .map(
-                  cacheEntry ->
+                  resolvedEntity ->
                       new PolarisEntityId(
-                          cacheEntry.getEntity().getCatalogId(), cacheEntry.getEntity().getId()))
+                          resolvedEntity.getEntity().getCatalogId(),
+                          resolvedEntity.getEntity().getId()))
               .collect(Collectors.toList());
 
       // now get the current backend versions of all these entities
       ChangeTrackingResult changeTrackingResult =
-          this.polarisRemoteCache.loadEntitiesChangeTracking(metaStoreSession, entityIds);
+          this.polarisMetaStoreManager.loadEntitiesChangeTracking(
+              this.polarisCallContext, entityIds);
 
       // refresh any entity which is not fresh. If an entity is missing, reload it
-      Iterator<EntityCacheEntry> entityIterator = toValidate.iterator();
+      Iterator<ResolvedPolarisEntity> entityIterator = toValidate.iterator();
       Iterator<PolarisChangeTrackingVersions> versionIterator =
           changeTrackingResult.getChangeTrackingVersions().iterator();
 
       // determine the ones we need to reload or refresh and the ones which are up-to-date
       while (entityIterator.hasNext()) {
-        // get cache entry and associated versions
-        EntityCacheEntry cacheEntry = entityIterator.next();
+        // get resolved entity and associated versions
+        ResolvedPolarisEntity resolvedEntity = entityIterator.next();
         PolarisChangeTrackingVersions versions = versionIterator.next();
+        PolarisBaseEntity entity = resolvedEntity.getEntity();
 
-        // entity we found in the cache
-        PolarisBaseEntity entity = cacheEntry.getEntity();
-
-        // refresh cache entry if the entity or grant records version is different
-        final EntityCacheEntry refreshedCacheEntry;
+        // refresh the resolved entity if the entity or grant records version is different
+        final ResolvedPolarisEntity refreshedResolvedEntity;
         if (versions == null
             || entity.getEntityVersion() != versions.getEntityVersion()
             || entity.getGrantRecordsVersion() != versions.getGrantRecordsVersion()) {
           // if null version we need to invalidate the cached entry since it has probably been
           // dropped
           if (versions == null) {
-            this.cache.removeCacheEntry(cacheEntry);
-            refreshedCacheEntry = null;
+            if (this.cache != null) {
+              this.cache.removeCacheEntry(resolvedEntity);
+            }
+            refreshedResolvedEntity = null;
           } else {
             // refresh that entity. If versions is null, it has been dropped
-            refreshedCacheEntry =
-                this.cache.getAndRefreshIfNeeded(
-                    metaStoreSession,
-                    entity,
-                    versions.getEntityVersion(),
-                    versions.getGrantRecordsVersion());
+            if (this.cache != null) {
+              refreshedResolvedEntity =
+                  this.cache.getAndRefreshIfNeeded(
+                      this.polarisCallContext,
+                      entity,
+                      versions.getEntityVersion(),
+                      versions.getGrantRecordsVersion());
+            } else {
+              ResolvedEntityResult result =
+                  this.polarisMetaStoreManager.refreshResolvedEntity(
+                      this.polarisCallContext,
+                      entity.getEntityVersion(),
+                      entity.getGrantRecordsVersion(),
+                      entity.getType(),
+                      entity.getCatalogId(),
+                      entity.getId());
+              refreshedResolvedEntity =
+                  result.isSuccess()
+                      ? new ResolvedPolarisEntity(
+                          this.polarisCallContext.getDiagServices(),
+                          result.getEntity() != null ? result.getEntity() : entity,
+                          result.getEntityGrantRecords() != null
+                              ? result.getEntityGrantRecords()
+                              : resolvedEntity.getAllGrantRecords(),
+                          result.getEntityGrantRecords() != null
+                              ? result.getGrantRecordsVersion()
+                              : entity.getGrantRecordsVersion())
+                      : null;
+            }
           }
 
           // get the refreshed entity
           PolarisBaseEntity refreshedEntity =
-              (refreshedCacheEntry == null) ? null : refreshedCacheEntry.getEntity();
+              (refreshedResolvedEntity == null) ? null : refreshedResolvedEntity.getEntity();
 
           // if the entity has been removed, or its name has changed, or it was re-parented, or it
           // was dropped, we will have to perform another pass
@@ -583,13 +619,13 @@ public class Resolver {
           }
         } else {
           // no need to refresh, it is up-to-date
-          refreshedCacheEntry = cacheEntry;
+          refreshedResolvedEntity = resolvedEntity;
         }
 
         // if it was found, it has been resolved, so if there is another pass, we will not have to
         // resolve it again
-        if (refreshedCacheEntry != null) {
-          this.addToResolved(refreshedCacheEntry);
+        if (refreshedResolvedEntity != null) {
+          this.addToResolved(refreshedResolvedEntity);
         }
       }
     }
@@ -601,17 +637,18 @@ public class Resolver {
   /**
    * Resolve a set of top-level service or catalog entities
    *
-   * @param toValidate all entities we have resolved from the cache, hence we will have to verify
-   *     that these entities have not changed in the backend
+   * @param toValidate all entities we have resolved incrementally, possibly with some entries
+   *     coming from cache, hence we will have to verify that these entities have not changed in the
+   *     backend
    * @param entitiesToResolve the set of entities to resolve
    * @return the status of resolution
    */
   private ResolverStatus resolveEntities(
-      List<EntityCacheEntry> toValidate, AbstractSet<ResolverEntityName> entitiesToResolve) {
+      List<ResolvedPolarisEntity> toValidate, AbstractSet<ResolverEntityName> entitiesToResolve) {
     // resolve each
     for (ResolverEntityName entityName : entitiesToResolve) {
       // resolve that entity
-      EntityCacheEntry resolvedEntity =
+      ResolvedPolarisEntity resolvedEntity =
           this.resolveByName(toValidate, entityName.getEntityType(), entityName.getEntityName());
 
       // if not found, we can exit unless the entity is optional
@@ -628,13 +665,14 @@ public class Resolver {
   /**
    * Resolve a set of path inside the referenced catalog
    *
-   * @param toValidate all entities we have resolved from the cache, hence we will have to verify
-   *     that these entities have not changed in the backend
+   * @param toValidate all entities we have resolved incrementally, possibly with some entries
+   *     coming from cache, hence we will have to verify that these entities have not changed in the
+   *     backend
    * @param pathsToResolve the set of paths to resolve
    * @return the status of resolution
    */
   private ResolverStatus resolvePaths(
-      List<EntityCacheEntry> toValidate, List<ResolverPath> pathsToResolve) {
+      List<ResolvedPolarisEntity> toValidate, List<ResolverPath> pathsToResolve) {
 
     // id of the catalog for all these paths
     final long catalogId = this.resolvedReferenceCatalog.getEntity().getId();
@@ -643,7 +681,7 @@ public class Resolver {
     for (ResolverPath path : pathsToResolve) {
 
       // path we are resolving
-      List<EntityCacheEntry> resolvedPath = new ArrayList<>();
+      List<ResolvedPolarisEntity> resolvedPath = new ArrayList<>();
 
       // initial parent id is the catalog itself
       long parentId = catalogId;
@@ -659,7 +697,7 @@ public class Resolver {
             pathIt.hasNext() ? PolarisEntityType.NAMESPACE : path.getLastEntityType();
 
         // resolve that entity
-        EntityCacheEntry segment =
+        ResolvedPolarisEntity segment =
             this.resolveByName(toValidate, catalogId, segmentType, parentId, segmentName);
 
         // if not found, abort
@@ -690,12 +728,13 @@ public class Resolver {
   /**
    * Resolve the principal and determine which principal roles are activated. Resolved those.
    *
-   * @param toValidate all entities we have resolved from the cache, hence we will have to verify
-   *     that these entities have not changed in the backend
+   * @param toValidate all entities we have resolved incrementally, possibly with some entries
+   *     coming from cache, hence we will have to verify that these entities have not changed in the
+   *     backend
    * @return the status of resolution
    */
   private ResolverStatus resolveCallerPrincipalAndPrincipalRoles(
-      List<EntityCacheEntry> toValidate) {
+      List<ResolvedPolarisEntity> toValidate) {
 
     // resolve the principal, by name or id
     this.resolvedCallerPrincipal =
@@ -729,8 +768,8 @@ public class Resolver {
    * @param resolvedCallerPrincipal1
    * @return the list of resolved principal roles the principal has grants for
    */
-  private List<EntityCacheEntry> resolveAllPrincipalRoles(
-      List<EntityCacheEntry> toValidate, EntityCacheEntry resolvedCallerPrincipal1) {
+  private List<ResolvedPolarisEntity> resolveAllPrincipalRoles(
+      List<ResolvedPolarisEntity> toValidate, ResolvedPolarisEntity resolvedCallerPrincipal1) {
     return resolvedCallerPrincipal1.getGrantRecordsAsGrantee().stream()
         .filter(gr -> gr.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode())
         .map(
@@ -751,8 +790,8 @@ public class Resolver {
    * @param roleNames
    * @return the filtered list of resolved principal roles
    */
-  private List<EntityCacheEntry> resolvePrincipalRolesByName(
-      List<EntityCacheEntry> toValidate, Set<String> roleNames) {
+  private List<ResolvedPolarisEntity> resolvePrincipalRolesByName(
+      List<ResolvedPolarisEntity> toValidate, Set<String> roleNames) {
     return roleNames.stream()
         .filter(securityContext::isUserInRole)
         .map(roleName -> resolveByName(toValidate, PolarisEntityType.PRINCIPAL_ROLE, roleName))
@@ -763,14 +802,15 @@ public class Resolver {
    * Resolve the reference catalog and determine all activated role. The principal and principal
    * roles should have already been resolved
    *
-   * @param toValidate all entities we have resolved from the cache, hence we will have to verify
-   *     that these entities have not changed in the backend
+   * @param toValidate all entities we have resolved incrementally, possibly with some entries
+   *     coming from cache, hence we will have to verify that these entities have not changed in the
+   *     backend
    * @param referenceCatalogName name of the reference catalog to resolve, along with all catalog
    *     roles which are activated
    * @return the status of resolution
    */
   private ResolverStatus resolveReferenceCatalog(
-      @Nonnull List<EntityCacheEntry> toValidate, @Nonnull String referenceCatalogName) {
+      @Nonnull List<ResolvedPolarisEntity> toValidate, @Nonnull String referenceCatalogName) {
     // resolve the catalog
     this.resolvedReferenceCatalog =
         this.resolveByName(toValidate, PolarisEntityType.CATALOG, referenceCatalogName);
@@ -783,7 +823,7 @@ public class Resolver {
 
     // determine the set of catalog roles which have been activated
     long catalogId = this.resolvedReferenceCatalog.getEntity().getId();
-    for (EntityCacheEntry principalRole : resolvedCallerPrincipalRoles) {
+    for (ResolvedPolarisEntity principalRole : resolvedCallerPrincipalRoles) {
       for (PolarisGrantRecord grantRecord : principalRole.getGrantRecordsAsGrantee()) {
         // the securable is a catalog role belonging to
         if (grantRecord.getPrivilegeCode() == PolarisPrivilege.CATALOG_ROLE_USAGE.getCode()
@@ -794,7 +834,7 @@ public class Resolver {
           // skip if it has already been added
           if (!this.resolvedCatalogRoles.containsKey(catalogRoleId)) {
             // see if this catalog can be resolved
-            EntityCacheEntry catalogRole =
+            ResolvedPolarisEntity catalogRole =
                 this.resolveById(
                     toValidate, PolarisEntityType.CATALOG_ROLE, catalogId, catalogRoleId);
 
@@ -812,23 +852,23 @@ public class Resolver {
   }
 
   /**
-   * Add a cache entry to the set of resolved entities
+   * Add a resolved entity to the current resolution collection's set of resolved entities
    *
-   * @param refreshedCacheEntry refreshed cache entry
+   * @param refreshedResolvedEntity refreshed resolved entity
    */
-  private void addToResolved(EntityCacheEntry refreshedCacheEntry) {
+  private void addToResolved(ResolvedPolarisEntity refreshedResolvedEntity) {
     // underlying entity
-    PolarisBaseEntity entity = refreshedCacheEntry.getEntity();
+    PolarisBaseEntity entity = refreshedResolvedEntity.getEntity();
 
     // add it by ID
-    this.resolvedEntriesById.put(entity.getId(), refreshedCacheEntry);
+    this.resolvedEntriesById.put(entity.getId(), refreshedResolvedEntity);
 
     // in the by name map, only add it if it has not been dropped
     if (!entity.isDropped()) {
       this.resolvedEntriesByName.put(
           new EntityCacheByNameKey(
               entity.getCatalogId(), entity.getParentId(), entity.getType(), entity.getName()),
-          refreshedCacheEntry);
+          refreshedResolvedEntity);
     }
   }
 
@@ -868,10 +908,10 @@ public class Resolver {
    * @param toValidate set of entries we will have to validate
    * @param entityType entity type
    * @param entityName name of the entity to resolve
-   * @return cache entry created for that entity
+   * @return resolved entity
    */
-  private EntityCacheEntry resolveByName(
-      List<EntityCacheEntry> toValidate, PolarisEntityType entityType, String entityName) {
+  private ResolvedPolarisEntity resolveByName(
+      List<ResolvedPolarisEntity> toValidate, PolarisEntityType entityType, String entityName) {
     if (entityType.isTopLevel()) {
       return this.resolveByName(
           toValidate,
@@ -896,8 +936,8 @@ public class Resolver {
    * @return the resolve entity. Potentially update the toValidate list if we will have to validate
    *     that this entity is up-to-date
    */
-  private EntityCacheEntry resolveByName(
-      @Nonnull List<EntityCacheEntry> toValidate,
+  private ResolvedPolarisEntity resolveByName(
+      @Nonnull List<ResolvedPolarisEntity> toValidate,
       long catalogId,
       @Nonnull PolarisEntityType entityType,
       long parentId,
@@ -908,14 +948,14 @@ public class Resolver {
         new EntityCacheByNameKey(catalogId, parentId, entityType, entityName);
 
     // first check if this entity has not yet been resolved
-    EntityCacheEntry cacheEntry = this.resolvedEntriesByName.get(nameKey);
-    if (cacheEntry != null) {
-      return cacheEntry;
+    ResolvedPolarisEntity resolvedEntity = this.resolvedEntriesByName.get(nameKey);
+    if (resolvedEntity != null) {
+      return resolvedEntity;
     }
 
     // then check if it does not exist in the toValidate list. The same entity might be resolved
     // several times with multi-path resolution
-    for (EntityCacheEntry ce : toValidate) {
+    for (ResolvedPolarisEntity ce : toValidate) {
       PolarisBaseEntity entity = ce.getEntity();
       if (entity.getCatalogId() == catalogId
           && entity.getParentId() == parentId
@@ -926,27 +966,47 @@ public class Resolver {
     }
 
     // get or load by name
-    EntityCacheLookupResult lookupResult =
-        this.cache.getOrLoadEntityByName(
-            metaStoreSession,
-            new EntityCacheByNameKey(catalogId, parentId, entityType, entityName));
+    if (this.cache != null) {
+      EntityCacheLookupResult lookupResult =
+          this.cache.getOrLoadEntityByName(
+              this.polarisCallContext,
+              new EntityCacheByNameKey(catalogId, parentId, entityType, entityName));
 
-    // if not found
-    if (lookupResult == null) {
-      // not found
-      return null;
-    } else if (lookupResult.isCacheHit()) {
-      // found in the cache, we will have to validate this entity
-      toValidate.add(lookupResult.getCacheEntry());
+      // if not found
+      if (lookupResult == null) {
+        // not found
+        return null;
+      } else if (lookupResult.isCacheHit()) {
+        // found in the cache, we will have to validate this entity
+        toValidate.add(lookupResult.getCacheEntry());
+      } else {
+        // entry cannot be null
+        this.diagnostics.checkNotNull(lookupResult.getCacheEntry(), "cache_entry_is_null");
+        // if not found in cache, it was loaded from backend, hence it has been resolved
+        this.addToResolved(lookupResult.getCacheEntry());
+      }
+
+      // return the cache entry
+      return lookupResult.getCacheEntry();
     } else {
-      // entry cannot be null
-      this.diagnostics.checkNotNull(lookupResult.getCacheEntry(), "cache_entry_is_null");
-      // if not found in cache, it was loaded from backend, hence it has been resolved
-      this.addToResolved(lookupResult.getCacheEntry());
-    }
+      // If no cache, load directly from metastore manager.
+      ResolvedEntityResult result =
+          this.polarisMetaStoreManager.loadResolvedEntityByName(
+              this.polarisCallContext, catalogId, parentId, entityType, entityName);
+      if (!result.isSuccess()) {
+        // not found
+        return null;
+      }
 
-    // return the cache entry
-    return lookupResult.getCacheEntry();
+      resolvedEntity =
+          new ResolvedPolarisEntity(
+              this.polarisCallContext.getDiagServices(),
+              result.getEntity(),
+              result.getEntityGrantRecords(),
+              result.getGrantRecordsVersion());
+      this.addToResolved(resolvedEntity);
+      return resolvedEntity;
+    }
   }
 
   /**
@@ -959,30 +1019,50 @@ public class Resolver {
    * @return the resolve entity. Potentially update the toValidate list if we will have to validate
    *     that this entity is up-to-date
    */
-  private EntityCacheEntry resolveById(
-      @Nonnull List<EntityCacheEntry> toValidate,
+  private ResolvedPolarisEntity resolveById(
+      @Nonnull List<ResolvedPolarisEntity> toValidate,
       @Nonnull PolarisEntityType entityType,
       long catalogId,
       long entityId) {
-    // get or load by name
-    EntityCacheLookupResult lookupResult =
-        this.cache.getOrLoadEntityById(metaStoreSession, catalogId, entityId);
+    if (this.cache != null) {
+      // get or load by name
+      EntityCacheLookupResult lookupResult =
+          this.cache.getOrLoadEntityById(this.polarisCallContext, catalogId, entityId);
 
-    // if not found, return null
-    if (lookupResult == null) {
-      return null;
-    } else if (lookupResult.isCacheHit()) {
-      // found in the cache, we will have to validate this entity
-      toValidate.add(lookupResult.getCacheEntry());
+      // if not found, return null
+      if (lookupResult == null) {
+        return null;
+      } else if (lookupResult.isCacheHit()) {
+        // found in the cache, we will have to validate this entity
+        toValidate.add(lookupResult.getCacheEntry());
+      } else {
+        // entry cannot be null
+        this.diagnostics.checkNotNull(lookupResult.getCacheEntry(), "cache_entry_is_null");
+
+        // if not found in cache, it was loaded from backend, hence it has been resolved
+        this.addToResolved(lookupResult.getCacheEntry());
+      }
+
+      // return the cache entry
+      return lookupResult.getCacheEntry();
     } else {
-      // entry cannot be null
-      this.diagnostics.checkNotNull(lookupResult.getCacheEntry(), "cache_entry_is_null");
+      // If no cache, load directly from metastore manager.
+      ResolvedEntityResult result =
+          polarisMetaStoreManager.loadResolvedEntityById(
+              this.polarisCallContext, catalogId, entityId);
+      if (!result.isSuccess()) {
+        // not found
+        return null;
+      }
 
-      // if not found in cache, it was loaded from backend, hence it has been resolved
-      this.addToResolved(lookupResult.getCacheEntry());
+      ResolvedPolarisEntity resolvedEntity =
+          new ResolvedPolarisEntity(
+              this.polarisCallContext.getDiagServices(),
+              result.getEntity(),
+              result.getEntityGrantRecords(),
+              result.getGrantRecordsVersion());
+      this.addToResolved(resolvedEntity);
+      return resolvedEntity;
     }
-
-    // return the cache entry
-    return lookupResult.getCacheEntry();
   }
 }
