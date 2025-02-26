@@ -68,7 +68,7 @@ import org.slf4j.LoggerFactory;
  * EclipseLink implementation of a Polaris metadata store supporting persisting and retrieving all
  * Polaris metadata from/to the configured database systems.
  */
-public class PolarisEclipseLinkMetaStoreSessionImpl implements PolarisMetaStoreSession {
+public class PolarisEclipseLinkMetaStoreSessionImpl extends PolarisMetaStoreSession {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisEclipseLinkMetaStoreSessionImpl.class);
 

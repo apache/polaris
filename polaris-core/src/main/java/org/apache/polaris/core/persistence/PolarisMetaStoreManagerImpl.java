@@ -39,7 +39,6 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
-import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -499,16 +498,14 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // check that a catalog with the same name does not exist already
-    PolarisEntitiesActiveKey catalogNameKey =
-        new PolarisEntitiesActiveKey(
+    // if it exists, this is an error, the client should retry
+    if (ms.lookupEntityIdAndSubTypeByName(
+            callCtx,
             PolarisEntityConstants.getNullId(),
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityType.CATALOG.getCode(),
-            catalog.getName());
-    PolarisEntityActiveRecord otherCatalogRecord = ms.lookupEntityActive(callCtx, catalogNameKey);
-
-    // if it exists, this is an error, the client should retry
-    if (otherCatalogRecord != null) {
+            catalog.getName())
+        != null) {
       return new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null);
     }
 
@@ -886,17 +883,14 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // check that a principal with the same name does not exist already
-    PolarisEntitiesActiveKey principalNameKey =
-        new PolarisEntitiesActiveKey(
+    // if it exists, this is an error, the client should retry
+    if (ms.lookupEntityIdAndSubTypeByName(
+            callCtx,
             PolarisEntityConstants.getNullId(),
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityType.PRINCIPAL.getCode(),
-            principal.getName());
-    PolarisEntityActiveRecord otherPrincipalRecord =
-        ms.lookupEntityActive(callCtx, principalNameKey);
-
-    // if it exists, this is an error, the client should retry
-    if (otherPrincipalRecord != null) {
+            principal.getName())
+        != null) {
       return new CreatePrincipalResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null);
     }
 
@@ -1087,13 +1081,13 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // check if an entity does not already exist with the same name. If true, this is an error
-    PolarisEntitiesActiveKey entityActiveKey =
-        new PolarisEntitiesActiveKey(
+    PolarisEntityActiveRecord entityActiveRecord =
+        ms.lookupEntityIdAndSubTypeByName(
+            callCtx,
             entity.getCatalogId(),
             entity.getParentId(),
             entity.getType().getCode(),
             entity.getName());
-    PolarisEntityActiveRecord entityActiveRecord = ms.lookupEntityActive(callCtx, entityActiveKey);
     if (entityActiveRecord != null) {
       return new EntityResult(
           BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, entityActiveRecord.getSubTypeCode());
@@ -1317,14 +1311,14 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // ensure that nothing exists where we create that entity
-    PolarisEntitiesActiveKey entityActiveKey =
-        new PolarisEntitiesActiveKey(
+    // if this entity already exists, this is an error
+    PolarisEntityActiveRecord entityActiveRecord =
+        ms.lookupEntityIdAndSubTypeByName(
+            callCtx,
             resolver.getCatalogIdOrNull(),
             resolver.getParentId(),
             refreshEntityToRename.getTypeCode(),
             renamedEntity.getName());
-    // if this entity already exists, this is an error
-    PolarisEntityActiveRecord entityActiveRecord = ms.lookupEntityActive(callCtx, entityActiveKey);
     if (entityActiveRecord != null) {
       return new EntityResult(
           BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, entityActiveRecord.getSubTypeCode());

@@ -30,9 +30,10 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 
 /**
  * Extends BasePersistence to express a more "transaction-oriented" control flow for backing stores
- * which can support a runInTransaction semantic.
+ * which can support a runInTransaction semantic, while providing default implementations of some of
+ * the BasePersistence methods in terms of lower-level methods that subclasses must implement.
  */
-public interface PolarisMetaStoreSession extends BasePersistence {
+public abstract class PolarisMetaStoreSession implements BasePersistence {
 
   /**
    * Run the specified transaction code (a Supplier lambda type) in a database read/write
@@ -44,7 +45,8 @@ public interface PolarisMetaStoreSession extends BasePersistence {
    * @param callCtx call context
    * @param transactionCode code of the transaction being executed, a supplier lambda
    */
-  <T> T runInTransaction(@Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode);
+  public abstract <T> T runInTransaction(
+      @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode);
 
   /**
    * Run the specified transaction code (a runnable lambda type) in a database read/write
@@ -55,7 +57,7 @@ public interface PolarisMetaStoreSession extends BasePersistence {
    * @param callCtx call context
    * @param transactionCode code of the transaction being executed, a runnable lambda
    */
-  void runActionInTransaction(
+  public abstract void runActionInTransaction(
       @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode);
 
   /**
@@ -67,7 +69,7 @@ public interface PolarisMetaStoreSession extends BasePersistence {
    * @param callCtx call context
    * @param transactionCode code of the transaction being executed, a supplier lambda
    */
-  <T> T runInReadTransaction(
+  public abstract <T> T runInReadTransaction(
       @Nonnull PolarisCallContext callCtx, @Nonnull Supplier<T> transactionCode);
 
   /**
@@ -78,12 +80,12 @@ public interface PolarisMetaStoreSession extends BasePersistence {
    * @param callCtx call context
    * @param transactionCode code of the transaction being executed, a runnable lambda
    */
-  void runActionInReadTransaction(
+  public abstract void runActionInReadTransaction(
       @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode);
 
   /** {@inheritDoc} */
   @Override
-  default PolarisBaseEntity lookupEntityByName(
+  public PolarisBaseEntity lookupEntityByName(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -112,6 +114,19 @@ public interface PolarisMetaStoreSession extends BasePersistence {
     return entity;
   }
 
+  /** {@inheritDoc} */
+  @Override
+  public PolarisEntityActiveRecord lookupEntityIdAndSubTypeByName(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      int typeCode,
+      @Nonnull String name) {
+    PolarisEntitiesActiveKey entityActiveKey =
+        new PolarisEntitiesActiveKey(catalogId, parentId, typeCode, name);
+    return lookupEntityActive(callCtx, entityActiveKey);
+  }
+
   /**
    * Lookup an entity by entityActiveKey
    *
@@ -120,7 +135,7 @@ public interface PolarisMetaStoreSession extends BasePersistence {
    * @return null if the specified entity does not exist or has been dropped.
    */
   @Nullable
-  PolarisEntityActiveRecord lookupEntityActive(
+  protected abstract PolarisEntityActiveRecord lookupEntityActive(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntitiesActiveKey entityActiveKey);
 
   /**
@@ -130,7 +145,7 @@ public interface PolarisMetaStoreSession extends BasePersistence {
    * @return the list of entityActiveKeys for the specified lookup operation
    */
   @Nonnull
-  List<PolarisEntityActiveRecord> lookupEntityActiveBatch(
+  public abstract List<PolarisEntityActiveRecord> lookupEntityActiveBatch(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntitiesActiveKey> entityActiveKeys);
 
   /**
@@ -141,7 +156,7 @@ public interface PolarisMetaStoreSession extends BasePersistence {
    * @param entity entity record to write, potentially replacing an existing entity record with the
    *     same key
    */
-  void writeToEntitiesActive(
+  public abstract void writeToEntitiesActive(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   /**
@@ -152,7 +167,7 @@ public interface PolarisMetaStoreSession extends BasePersistence {
    * @param entity entity record to write, potentially replacing an existing entity record with the
    *     same key
    */
-  void writeToEntitiesChangeTracking(
+  public abstract void writeToEntitiesChangeTracking(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   /**
@@ -161,7 +176,7 @@ public interface PolarisMetaStoreSession extends BasePersistence {
    * @param callCtx call context
    * @param entity entity record to delete
    */
-  void deleteFromEntitiesActive(
+  public abstract void deleteFromEntitiesActive(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity);
 
   /**
@@ -170,9 +185,9 @@ public interface PolarisMetaStoreSession extends BasePersistence {
    * @param callCtx call context
    * @param entity entity record to delete
    */
-  void deleteFromEntitiesChangeTracking(
+  public abstract void deleteFromEntitiesChangeTracking(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity);
 
   /** Rollback the current transaction */
-  void rollback();
+  public abstract void rollback();
 }

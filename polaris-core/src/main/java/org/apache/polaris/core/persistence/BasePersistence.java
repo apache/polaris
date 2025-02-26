@@ -146,6 +146,29 @@ public interface BasePersistence {
       @Nonnull String name);
 
   /**
+   * Looks up just the entity's subType and id given it catalogId, parentId, typeCode, and name.
+   *
+   * @param callCtx call context
+   * @param catalogId catalog id or NULL_ID
+   * @param parentId id of the parent, either a namespace or a catalog
+   * @param typeCode the PolarisEntityType code of the entity to lookup
+   * @param name the name of the entity
+   * @return null if the specified entity does not exist
+   */
+  default PolarisEntityActiveRecord lookupEntityIdAndSubTypeByName(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      int typeCode,
+      @Nonnull String name) {
+    PolarisBaseEntity baseEntity = lookupEntityByName(callCtx, catalogId, parentId, typeCode, name);
+    if (baseEntity == null) {
+      return null;
+    }
+    return new PolarisEntityActiveRecord(baseEntity);
+  }
+
+  /**
    * Lookup a set of entities given their catalog id/entity id unique identifier
    *
    * @param callCtx call context
