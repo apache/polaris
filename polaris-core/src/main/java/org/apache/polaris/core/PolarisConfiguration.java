@@ -265,12 +265,11 @@ public class PolarisConfiguration<T> {
           .defaultValue(30 * 60) // 30 minutes
           .build();
 
-  // The default value is kept at 12 for backward compatibility
   public static final PolarisConfiguration<Integer> MAX_METADATA_REFRESH_RETRIES =
       PolarisConfiguration.<Integer>builder()
           .key("MAX_METADATA_REFRESH_RETRIES")
           .description(
               "How many times to retry refreshing metadata when the previous error was retryable")
-          .defaultValue(12)
+          .defaultValue(2)
           .build();
 }
