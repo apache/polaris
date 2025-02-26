@@ -161,6 +161,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   @Inject PolarisDiagnostics diagServices;
 
   private BasePolarisCatalog catalog;
+  private CallContext callContext;
   private AwsStorageConfigInfo storageConfigModel;
   private StsClient stsClient;
   private String realmName;
@@ -199,8 +200,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         new PolarisEntityManager(
             metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
 
-    CallContext callContext = CallContext.of(realmContext, polarisContext);
-    CallContext.setCurrentContext(callContext);
+    callContext = CallContext.of(realmContext, polarisContext);
 
     PrincipalEntity rootEntity =
         new PrincipalEntity(
@@ -527,7 +527,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     final String tableMetadataLocation = tableLocation + "metadata/";
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            CallContext.getCurrentContext(), entityManager, securityContext, catalog().name());
+            callContext, entityManager, securityContext, catalog().name());
     FileIOFactory fileIOFactory =
         spy(
             new DefaultFileIOFactory(
@@ -538,7 +538,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         new BasePolarisCatalog(
             entityManager,
             metaStoreManager,
-            CallContext.getCurrentContext(),
+            callContext,
             passthroughView,
             securityContext,
             Mockito.mock(TaskExecutor.class),
@@ -854,7 +854,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 .setName(catalogWithoutStorage)
                 .build());
 
-    CallContext callContext = CallContext.getCurrentContext();
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, catalogWithoutStorage);
@@ -919,7 +918,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             .setName(catalogName)
             .build());
 
-    CallContext callContext = CallContext.getCurrentContext();
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, catalogName);
@@ -1434,7 +1432,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                     new RealmEntityManagerFactory(metaStoreManagerFactory),
                     metaStoreManagerFactory,
                     configurationStore))
-            .apply(taskEntity, () -> realmName);
+            .apply(taskEntity, callContext);
     Assertions.assertThat(fileIO).isNotNull().isInstanceOf(InMemoryFileIO.class);
   }
 
@@ -1461,8 +1459,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             .addProperty(PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
             .setStorageConfigurationInfo(noPurgeStorageConfigModel, storageLocation)
             .build());
-    RealmContext realmContext = () -> "realm";
-    CallContext callContext = CallContext.of(realmContext, polarisContext);
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, noPurgeCatalogName);
@@ -1542,9 +1538,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
   @Test
   public void testFileIOWrapper() {
-    RealmContext realmContext = () -> "realm";
-    CallContext callContext = CallContext.of(realmContext, polarisContext);
-    CallContext.setCurrentContext(callContext);
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, CATALOG_NAME);
@@ -1600,7 +1593,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             new FileIOFactory() {
               @Override
               public FileIO loadFileIO(
-                  @NotNull RealmContext realmContext,
+                  @NotNull CallContext callContext,
                   @NotNull String ioImplClassName,
                   @NotNull Map<String, String> properties,
                   @NotNull TableIdentifier identifier,
@@ -1608,7 +1601,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                   @NotNull Set<PolarisStorageActions> storageActions,
                   @NotNull PolarisResolvedPathWrapper resolvedEntityPath) {
                 return measured.loadFileIO(
-                    realmContext,
+                    callContext,
                     "org.apache.iceberg.inmemory.InMemoryFileIO",
                     Map.of(),
                     TABLE,

@@ -69,7 +69,7 @@ class ManifestFileCleanupTaskHandlerTest {
         new FileIOFactory() {
           @Override
           public FileIO loadFileIO(
-              @NotNull RealmContext realmContext,
+              @NotNull CallContext callContext,
               @NotNull String ioImplClassName,
               @NotNull Map<String, String> properties,
               @NotNull TableIdentifier identifier,
