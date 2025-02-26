@@ -19,9 +19,12 @@
 
 # CODE_COPIED_TO_POLARIS
 
+# From Apache Iceberg Version: 1.7.1
+
 ---
 paths:
-  # The /v1/oauth/tokens endpoint is sourced from iceberg-rest-catalog-open-api.yaml
+  # The /v1/oauth/tokens endpoint is copied from iceberg-rest-catalog-open-api.yaml,
+  # ensuring that its deprecation and removal schedule is independent of the Iceberg release cycle.
   /v1/oauth/tokens:
 
     post:
