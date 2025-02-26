@@ -64,7 +64,7 @@ def aws_bucket_base_location_prefix():
     Provides a default if null or empty
   """
   default_val = 'polaris_test'
-  bucket_prefix = os.getenv('AWS_BUCKET_BASE_LOCATION_PREFIX',default_val)
+  bucket_prefix = os.getenv('AWS_BUCKET_BASE_LOCATION_PREFIX', default_val)
   return default_val if bucket_prefix == '' else bucket_prefix
 
 @pytest.fixture
