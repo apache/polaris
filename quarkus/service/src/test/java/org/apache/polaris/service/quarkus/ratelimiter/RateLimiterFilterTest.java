@@ -31,6 +31,9 @@ import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import org.apache.polaris.service.events.BeforeRequestRateLimitedEvent;
+import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.quarkus.ratelimiter.RateLimiterFilterTest.Profile;
 import org.apache.polaris.service.quarkus.test.PolarisIntegrationTestFixture;
 import org.apache.polaris.service.quarkus.test.PolarisIntegrationTestHelper;
@@ -77,6 +80,8 @@ public class RateLimiterFilterTest {
           "polaris.metrics.tags.environment",
           "prod",
           "polaris.realm-context.type",
+          "test",
+          "polaris.events.type",
           "test");
     }
   }
@@ -86,7 +91,9 @@ public class RateLimiterFilterTest {
 
   @Inject PolarisIntegrationTestHelper helper;
   @Inject MeterRegistry meterRegistry;
+  @Inject PolarisEventListener polarisEventListener;
 
+  private TestPolarisEventListener testPolarisEventListener;
   private TestEnvironment testEnv;
   private PolarisIntegrationTestFixture fixture;
 
@@ -106,6 +113,7 @@ public class RateLimiterFilterTest {
   @BeforeEach
   @AfterEach
   public void resetRateLimiter() {
+    testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     MockTokenBucketFactory.CLOCK.add(
         WINDOW.multipliedBy(2)); // Clear any counters from before/after this test
   }
@@ -140,6 +148,10 @@ public class RateLimiterFilterTest {
       requestAsserter.accept(Status.OK);
     }
     requestAsserter.accept(Status.TOO_MANY_REQUESTS);
+
+    BeforeRequestRateLimitedEvent event =
+        testPolarisEventListener.getLatest(BeforeRequestRateLimitedEvent.class);
+    assertThat(event.method()).isEqualTo("GET");
 
     // Examples of expected metrics:
     // http_server_requests_seconds_count{application="Polaris",environment="prod",method="GET",outcome="CLIENT_ERROR",realm_id="org_apache_polaris_service_ratelimiter_RateLimiterFilterTest",status="429",uri="/api/management/v1/principal-roles"} 1.0
