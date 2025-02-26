@@ -306,12 +306,12 @@ public class IcebergCatalogAdapter
     } else if (delegationModes.isEmpty()) {
       ETaggedResponse<LoadTableResponse> createResult = newHandlerWrapper(realmContext, securityContext, prefix)
               .createTableDirect(ns, createTableRequest);
-      return Response.ok(createResult).header(HttpHeaders.ETAG, createResult.getETag())
+      return Response.ok(createResult.getResponse()).header(HttpHeaders.ETAG, createResult.getETag())
           .build();
     } else {
       ETaggedResponse<LoadTableResponse> createResult = newHandlerWrapper(realmContext, securityContext, prefix)
               .createTableDirectWithWriteDelegation(ns, createTableRequest);
-      return Response.ok(createResult).header(HttpHeaders.ETAG, createResult.getETag())
+      return Response.ok(createResult.getResponse()).header(HttpHeaders.ETAG, createResult.getETag())
               .build();
     }
   }
@@ -353,7 +353,7 @@ public class IcebergCatalogAdapter
                   .loadTableWithAccessDelegationIfStale(tableIdentifier, etag, snapshots)
                   .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
       }
-      return Response.ok(loadTableResult).header(HttpHeaders.ETAG, loadTableResult.getETag())
+      return Response.ok(loadTableResult.getResponse()).header(HttpHeaders.ETAG, loadTableResult.getETag())
           .build();
   }
 
