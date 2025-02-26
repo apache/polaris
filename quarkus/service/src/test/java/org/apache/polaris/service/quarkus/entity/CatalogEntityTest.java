@@ -185,7 +185,7 @@ public class CatalogEntityTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"", "arn:aws:iam::0123456:role/jdoe", "aws-cn", "aws-us-gov"})
+  @ValueSource(strings = {"", "arn:aws:iam::0123456:role/jdoe", "aws-cn"})
   public void testInvalidArn(String roleArn) {
     String basedLocation = "s3://externally-owned-bucket";
     AwsStorageConfigInfo awsStorageConfigModel =
@@ -210,8 +210,7 @@ public class CatalogEntityTest {
         expectedMessage = "ARN cannot be null or empty";
         break;
       case "aws-cn":
-      case "aws-us-gov":
-        expectedMessage = "AWS China or Gov Cloud are temporarily not supported";
+        expectedMessage = "AWS China is temporarily not supported";
         break;
       default:
         expectedMessage = "Invalid role ARN format";
