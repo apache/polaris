@@ -62,6 +62,7 @@ dependencies {
 
   implementation(platform(libs.junit.bom))
   implementation("org.junit.jupiter:junit-jupiter")
+  implementation("org.junit.jupiter:junit-jupiter-api")
   compileOnly("org.junit.jupiter:junit-jupiter-engine")
   implementation(libs.assertj.core)
   implementation(libs.mockito.core)
