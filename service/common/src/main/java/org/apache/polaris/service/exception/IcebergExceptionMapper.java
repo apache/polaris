@@ -20,6 +20,7 @@ package org.apache.polaris.service.exception;
 
 import com.azure.core.exception.AzureException;
 import com.azure.core.exception.HttpResponseException;
+import com.google.cloud.BaseServiceException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
@@ -58,12 +59,23 @@ import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 @Provider
 public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException> {
   /** Signifies that we could not extract an HTTP code from a given cloud exception */
   public static final int UNKNOWN_CLOUD_HTTP_CODE = -1;
+
+  @VisibleForTesting
+  public static final Set<Integer> RETRYABLE_AZURE_HTTP_CODES =
+      Set.of(
+          Response.Status.REQUEST_TIMEOUT.getStatusCode(),
+          Response.Status.TOO_MANY_REQUESTS.getStatusCode(),
+          Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+          Response.Status.SERVICE_UNAVAILABLE.getStatusCode(),
+          Response.Status.GATEWAY_TIMEOUT.getStatusCode(),
+          IcebergExceptionMapper.UNKNOWN_CLOUD_HTTP_CODE);
 
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergExceptionMapper.class);
 
@@ -118,6 +130,36 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     return ACCESS_DENIED_HINTS.stream().anyMatch(messageLower::contains);
   }
 
+  /**
+   * Check if the exception is retryable for the storage provider
+   *
+   * @param ex exception
+   * @return true if the exception is retryable
+   */
+  public static boolean isStorageProviderRetryableException(Throwable ex) {
+    if (ex == null) {
+      return false;
+    }
+
+    if (ex.getMessage() != null && containsAnyAccessDeniedHint(ex.getMessage())) {
+      return false;
+    }
+
+    return switch (ex) {
+      // GCS
+      case BaseServiceException bse -> bse.isRetryable();
+
+      // S3
+      case SdkException se -> se.retryable();
+
+      // Azure exceptions don't have a retryable property so we just check the HTTP code
+      case HttpResponseException hre ->
+          RETRYABLE_AZURE_HTTP_CODES.contains(
+              IcebergExceptionMapper.extractHttpCodeFromCloudException(hre));
+      default -> true;
+    };
+  }
+
   @VisibleForTesting
   public static Collection<String> getAccessDeniedHints() {
     return ImmutableSet.copyOf(ACCESS_DENIED_HINTS);
@@ -162,6 +204,10 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   }
 
   /**
+   * We typically call cloud providers over HTTP, so when there's an exception there's typically an
+   * associated HTTP code. This extracts the HTTP code if possible.
+   *
+   * @param rex The cloud provider exception
    * @return UNKNOWN_CLOUD_HTTP_CODE if the exception is not a cloud exception that we know how to
    *     extract the code from
    */

@@ -1563,7 +1563,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                                 entry.getValue()),
                             Arguments.of(
                                 new StorageException(entry.getKey(), ""), entry.getValue()))),
-            BasePolarisCatalog.RETRYABLE_AZURE_HTTP_CODES.stream()
+            IcebergExceptionMapper.RETRYABLE_AZURE_HTTP_CODES.stream()
                 .map(
                     code ->
                         Arguments.of(

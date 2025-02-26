@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.service.catalog;
 
-import com.azure.core.exception.HttpResponseException;
-import com.google.cloud.BaseServiceException;
+import static org.apache.polaris.service.exception.IcebergExceptionMapper.isStorageProviderRetryableException;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
@@ -27,7 +27,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
@@ -107,13 +106,11 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
-import org.apache.polaris.service.exception.IcebergExceptionMapper;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.exception.SdkException;
 
 /** Defines the relationship between PolarisEntities and Iceberg's business logic. */
 public class BasePolarisCatalog extends BaseMetastoreViewCatalog
@@ -136,16 +133,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
   static final String INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST =
       "INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST";
   static final boolean INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST_DEFAULT = false;
-
-  @VisibleForTesting
-  public static final Set<Integer> RETRYABLE_AZURE_HTTP_CODES =
-      Set.of(
-          Response.Status.REQUEST_TIMEOUT.getStatusCode(),
-          Response.Status.TOO_MANY_REQUESTS.getStatusCode(),
-          Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
-          Response.Status.SERVICE_UNAVAILABLE.getStatusCode(),
-          Response.Status.GATEWAY_TIMEOUT.getStatusCode(),
-          IcebergExceptionMapper.UNKNOWN_CLOUD_HTTP_CODE);
 
   public static final Predicate<Exception> SHOULD_RETRY_REFRESH_PREDICATE =
       ex -> {
@@ -1271,12 +1258,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
-            callContext
-                .getPolarisCallContext()
-                .getConfigurationStore()
-                .getConfiguration(
-                    callContext.getPolarisCallContext(),
-                    PolarisConfiguration.MAX_METADATA_REFRESH_RETRIES),
+            getMaxMetadataRefreshRetries(),
             metadataLocation -> {
               String latestLocationDir =
                   latestLocation.substring(0, latestLocation.lastIndexOf('/'));
@@ -1501,12 +1483,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
-            callContext
-                .getPolarisCallContext()
-                .getConfigurationStore()
-                .getConfiguration(
-                    callContext.getPolarisCallContext(),
-                    PolarisConfiguration.MAX_METADATA_REFRESH_RETRIES),
+            getMaxMetadataRefreshRetries(),
             metadataLocation -> {
               String latestLocationDir =
                   latestLocation.substring(0, latestLocation.lastIndexOf('/'));
@@ -2126,44 +2103,12 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .getConfiguration(callContext.getPolarisCallContext(), configKey, defaultValue);
   }
 
-  /**
-   * Check if the exception is retryable for the storage provider
-   *
-   * @param ex exception
-   * @return true if the exception is retryable
-   */
-  private static boolean isStorageProviderRetryableException(Throwable ex) {
-    if (ex == null) {
-      return false;
-    }
-
-    if (isAccessDenied(ex.getMessage())) {
-      return false;
-    }
-
-    return switch (ex) {
-      // GCS
-      case BaseServiceException bse -> bse.isRetryable();
-
-      // S3
-      case SdkException se -> se.retryable();
-
-      // Azure exceptions don't have a retryable property so we just check the HTTP code
-      case HttpResponseException hre ->
-          RETRYABLE_AZURE_HTTP_CODES.contains(
-              IcebergExceptionMapper.extractHttpCodeFromCloudException(hre));
-      default -> true;
-    };
-  }
-
-  private static boolean isAccessDenied(String errorMsg) {
-    // Corresponding error messages for storage providers Aws/Azure/Gcp
-    boolean isAccessDenied =
-        errorMsg != null && IcebergExceptionMapper.containsAnyAccessDeniedHint(errorMsg);
-    if (isAccessDenied) {
-      LOGGER.debug("Access Denied or Forbidden error: {}", errorMsg);
-      return true;
-    }
-    return false;
+  /** Helper to retrieve the max number of metadata refresh retries */
+  private int getMaxMetadataRefreshRetries() {
+    return callContext
+        .getPolarisCallContext()
+        .getConfigurationStore()
+        .getConfiguration(
+            callContext.getPolarisCallContext(), PolarisConfiguration.MAX_METADATA_REFRESH_RETRIES);
   }
 }
