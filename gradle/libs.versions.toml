@@ -72,7 +72,7 @@ jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
 jetbrains-annotations = { module = "org.jetbrains:annotations", version = "26.0.2" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.12.0" }
-logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.16" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.17" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.14.4" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.15.2" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.15.2" }
