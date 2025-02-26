@@ -33,7 +33,7 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
  * which can support a runInTransaction semantic, while providing default implementations of some of
  * the BasePersistence methods in terms of lower-level methods that subclasses must implement.
  */
-public abstract class PolarisMetaStoreSession implements BasePersistence {
+public abstract class PolarisMetaStoreSession implements BasePersistence, IntegrationPersistence {
 
   /**
    * Run the specified transaction code (a Supplier lambda type) in a database read/write
