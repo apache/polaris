@@ -52,14 +52,16 @@ public interface BasePersistence {
   long generateNewId(@Nonnull PolarisCallContext callCtx);
 
   /**
-   * Write the base entity to the entities table. If there is a conflict (existing record with the
-   * same id), all attributes of the new record will replace the existing one.
+   * Write this entity to the meta store.
    *
    * @param callCtx call context
-   * @param entity entity record to write, potentially replacing an existing entity record with the
-   *     same key
+   * @param entity entity to persist
+   * @param nameOrParentChanged if true, also write it to by-name lookups if applicable
    */
-  void writeToEntities(@Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
+  void writeEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity entity,
+      boolean nameOrParentChanged);
 
   /**
    * Write the specified grantRecord to the grant_records table. If there is a conflict (existing

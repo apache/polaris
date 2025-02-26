@@ -91,6 +91,10 @@ public abstract class PolarisMetaStoreSession implements BasePersistence {
       long parentId,
       int typeCode,
       @Nonnull String name) {
+    // TODO: Consistently pull down the runInTransaction logic without running into conflicting
+    // nested transactions into here so that instead of having the caller be responsible for
+    // initiating the runInReadTransaction, we make this method call inherently safe to do
+    // the two-phase lookup.
     PolarisEntitiesActiveKey entityActiveKey =
         new PolarisEntitiesActiveKey(catalogId, parentId, typeCode, name);
 
@@ -148,6 +152,31 @@ public abstract class PolarisMetaStoreSession implements BasePersistence {
   public abstract List<PolarisEntityActiveRecord> lookupEntityActiveBatch(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntitiesActiveKey> entityActiveKeys);
 
+  /** {@inheritDoc} */
+  @Override
+  public void writeEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity entity,
+      boolean nameOrParentChanged) {
+    writeToEntities(callCtx, entity);
+    writeToEntitiesChangeTracking(callCtx, entity);
+
+    if (nameOrParentChanged) {
+      writeToEntitiesActive(callCtx, entity);
+    }
+  }
+
+  /**
+   * Write the base entity to the entities table. If there is a conflict (existing record with the
+   * same id), all attributes of the new record will replace the existing one.
+   *
+   * @param callCtx call context
+   * @param entity entity record to write, potentially replacing an existing entity record with the
+   *     same key
+   */
+  protected abstract void writeToEntities(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
+
   /**
    * Write the base entity to the entities_active table. If there is a conflict (existing record
    * with the same PK), all attributes of the new record will replace the existing one.
@@ -156,7 +185,7 @@ public abstract class PolarisMetaStoreSession implements BasePersistence {
    * @param entity entity record to write, potentially replacing an existing entity record with the
    *     same key
    */
-  public abstract void writeToEntitiesActive(
+  protected abstract void writeToEntitiesActive(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   /**
@@ -167,7 +196,7 @@ public abstract class PolarisMetaStoreSession implements BasePersistence {
    * @param entity entity record to write, potentially replacing an existing entity record with the
    *     same key
    */
-  public abstract void writeToEntitiesChangeTracking(
+  protected abstract void writeToEntitiesChangeTracking(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   /**
