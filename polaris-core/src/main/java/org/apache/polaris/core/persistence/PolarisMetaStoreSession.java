@@ -157,11 +157,20 @@ public abstract class PolarisMetaStoreSession implements BasePersistence {
   public void writeEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisBaseEntity entity,
-      boolean nameOrParentChanged) {
+      boolean nameOrParentChanged,
+      @Nullable PolarisBaseEntity originalEntity) {
+    // TODO: Pull down relevant compare-and-swap semantics from PolarisMetaStoreManagerImpl
+    // into this layer.
     writeToEntities(callCtx, entity);
     writeToEntitiesChangeTracking(callCtx, entity);
 
     if (nameOrParentChanged) {
+      if (originalEntity != null) {
+        // In our case, rename isn't automatically handled when the main "entities" slice
+        // is updated; instead we must explicitly remove from the old entitiesActive
+        // key as well.
+        deleteFromEntitiesActive(callCtx, originalEntity);
+      }
       writeToEntitiesActive(callCtx, entity);
     }
   }
@@ -199,13 +208,30 @@ public abstract class PolarisMetaStoreSession implements BasePersistence {
   protected abstract void writeToEntitiesChangeTracking(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
+  /** {@inheritDoc} */
+  @Override
+  public void deleteEntity(@Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
+    deleteFromEntitiesActive(callCtx, entity);
+    deleteFromEntities(callCtx, entity);
+    deleteFromEntitiesChangeTracking(callCtx, entity);
+  }
+
+  /**
+   * Delete the base entity from the entities table.
+   *
+   * @param callCtx call context
+   * @param entity entity record to delete
+   */
+  protected abstract void deleteFromEntities(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity);
+
   /**
    * Delete the base entity from the entities_active table.
    *
    * @param callCtx call context
    * @param entity entity record to delete
    */
-  public abstract void deleteFromEntitiesActive(
+  protected abstract void deleteFromEntitiesActive(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity);
 
   /**
@@ -214,7 +240,7 @@ public abstract class PolarisMetaStoreSession implements BasePersistence {
    * @param callCtx call context
    * @param entity entity record to delete
    */
-  public abstract void deleteFromEntitiesChangeTracking(
+  protected abstract void deleteFromEntitiesChangeTracking(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity);
 
   /** Rollback the current transaction */

@@ -57,11 +57,14 @@ public interface BasePersistence {
    * @param callCtx call context
    * @param entity entity to persist
    * @param nameOrParentChanged if true, also write it to by-name lookups if applicable
+   * @param originalEntity original state of the entity to use for compare-and-swap purposes, or
+   *     null if this is expected to be a brand-new entity
    */
   void writeEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisBaseEntity entity,
-      boolean nameOrParentChanged);
+      boolean nameOrParentChanged,
+      @Nullable PolarisBaseEntity originalEntity);
 
   /**
    * Write the specified grantRecord to the grant_records table. If there is a conflict (existing
@@ -75,12 +78,12 @@ public interface BasePersistence {
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec);
 
   /**
-   * Delete the base entity from the entities table.
+   * Delete this entity from the meta store.
    *
    * @param callCtx call context
-   * @param entity entity record to delete
+   * @param entity entity to delete
    */
-  void deleteFromEntities(@Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity);
+  void deleteEntity(@Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   /**
    * Delete the specified grantRecord to the grant_records table.

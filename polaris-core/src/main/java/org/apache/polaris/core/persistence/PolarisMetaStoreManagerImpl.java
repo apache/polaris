@@ -129,7 +129,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     entity.setToPurgeTimestamp(0);
 
     // write it
-    ms.writeEntity(callCtx, entity, true);
+    ms.writeEntity(callCtx, entity, true, null);
   }
 
   /**
@@ -141,13 +141,15 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    * @param ms meta store
    * @param entity the entity which has been changed
    * @param nameOrParentChanged indicates if parent or name changed
+   * @param originalEntity the original state of the entity before changes
    * @return the entity with its version and lastUpdateTimestamp updated
    */
   private @Nonnull PolarisBaseEntity persistEntityAfterChange(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisMetaStoreSession ms,
       @Nonnull PolarisBaseEntity entity,
-      boolean nameOrParentChanged) {
+      boolean nameOrParentChanged,
+      @Nonnull PolarisBaseEntity originalEntity) {
 
     // validate the entity type and subtype
     callCtx.getDiagServices().checkNotNull(entity, "unexpected_null_entity");
@@ -190,7 +192,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     entity.setEntityVersion(entity.getEntityVersion() + 1);
 
     // persist it to the various slices
-    ms.writeEntity(callCtx, entity, nameOrParentChanged);
+    ms.writeEntity(callCtx, entity, nameOrParentChanged, originalEntity);
 
     // return it
     return entity;
@@ -222,9 +224,6 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     // creation timestamp must be filled
     callCtx.getDiagServices().check(entity.getDropTimestamp() == 0, "already_dropped");
 
-    // delete it from active slice
-    ms.deleteFromEntitiesActive(callCtx, entity);
-
     // for now drop all associated grants, etc. synchronously
     // delete ALL grant records to (if the entity is a grantee) and from that entity
     final List<PolarisGrantRecord> grantsOnGrantee =
@@ -252,13 +251,13 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     List<PolarisBaseEntity> entities =
         ms.lookupEntities(callCtx, new ArrayList<>(entityIdsGrantChanged));
     for (PolarisBaseEntity entityGrantChanged : entities) {
+      PolarisBaseEntity originalEntity = new PolarisBaseEntity(entityGrantChanged);
       entityGrantChanged.setGrantRecordsVersion(entityGrantChanged.getGrantRecordsVersion() + 1);
-      ms.writeEntity(callCtx, entityGrantChanged, false);
+      ms.writeEntity(callCtx, entityGrantChanged, false, originalEntity);
     }
 
     // remove the entity being dropped now
-    ms.deleteFromEntities(callCtx, entity);
-    ms.deleteFromEntitiesChangeTracking(callCtx, entity);
+    ms.deleteEntity(callCtx, entity);
 
     // if it is a principal, we also need to drop the secrets
     if (entity.getType() == PolarisEntityType.PRINCIPAL) {
@@ -321,10 +320,11 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     callCtx
         .getDiagServices()
         .checkNotNull(granteeEntity, "grantee_not_found", "grantee={}", grantee);
+    PolarisBaseEntity originalGranteeEntity = new PolarisBaseEntity(granteeEntity);
 
     // grants have changed, we need to bump-up the grants version
     granteeEntity.setGrantRecordsVersion(granteeEntity.getGrantRecordsVersion() + 1);
-    ms.writeEntity(callCtx, granteeEntity, false);
+    ms.writeEntity(callCtx, granteeEntity, false, originalGranteeEntity);
 
     // we also need to invalidate the grants on that securable so that we can reload them.
     // load the securable and increment its grants version
@@ -333,10 +333,11 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     callCtx
         .getDiagServices()
         .checkNotNull(securableEntity, "securable_not_found", "securable={}", securable);
+    PolarisBaseEntity originalSecurableEntity = new PolarisBaseEntity(securableEntity);
 
     // grants have changed, we need to bump-up the grants version
     securableEntity.setGrantRecordsVersion(securableEntity.getGrantRecordsVersion() + 1);
-    ms.writeEntity(callCtx, securableEntity, false);
+    ms.writeEntity(callCtx, securableEntity, false, originalSecurableEntity);
 
     // done, return the new grant record
     return grantRecord;
@@ -396,10 +397,11 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
         .getDiagServices()
         .checkNotNull(
             refreshGrantee, "missing_grantee", "grantRecord={} grantee={}", grantRecord, grantee);
+    PolarisBaseEntity originalRefreshGrantee = new PolarisBaseEntity(refreshGrantee);
 
     // grants have changed, we need to bump-up the grants version
     refreshGrantee.setGrantRecordsVersion(refreshGrantee.getGrantRecordsVersion() + 1);
-    ms.writeEntity(callCtx, refreshGrantee, false);
+    ms.writeEntity(callCtx, refreshGrantee, false, originalRefreshGrantee);
 
     // we also need to invalidate the grants on that securable so that we can reload them.
     // load the securable and increment its grants version
@@ -413,10 +415,11 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
             "grantRecord={} securable={}",
             grantRecord,
             securable);
+    PolarisBaseEntity originalRefreshSecurable = new PolarisBaseEntity(refreshSecurable);
 
     // grants have changed, we need to bump-up the grants version
     refreshSecurable.setGrantRecordsVersion(refreshSecurable.getGrantRecordsVersion() + 1);
-    ms.writeEntity(callCtx, refreshSecurable, false);
+    ms.writeEntity(callCtx, refreshSecurable, false, originalRefreshSecurable);
   }
 
   /**
@@ -942,6 +945,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     PolarisBaseEntity principal = loadEntityResult.getEntity();
+    PolarisBaseEntity originalPrincipal = new PolarisBaseEntity(principal);
     Map<String, String> internalProps =
         PolarisObjectMapperUtil.deserializeProperties(
             callCtx,
@@ -963,14 +967,14 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       principal.setInternalProperties(
           PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
       principal.setEntityVersion(principal.getEntityVersion() + 1);
-      ms.writeEntity(callCtx, principal, true);
+      ms.writeEntity(callCtx, principal, true, originalPrincipal);
     } else if (internalProps.containsKey(
         PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)) {
       internalProps.remove(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE);
       principal.setInternalProperties(
           PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
       principal.setEntityVersion(principal.getEntityVersion() + 1);
-      ms.writeEntity(callCtx, principal, true);
+      ms.writeEntity(callCtx, principal, true, originalPrincipal);
     }
     return secrets;
   }
@@ -1153,6 +1157,8 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       return new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
     }
 
+    PolarisBaseEntity originalEntity = new PolarisBaseEntity(entityRefreshed);
+
     // update the two properties
     entityRefreshed.setInternalProperties(entity.getInternalProperties());
     entityRefreshed.setProperties(entity.getProperties());
@@ -1160,7 +1166,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     // persist this entity after changing it. This will update the version and update the last
     // updated time. Because the entity version is changed, we will update the change tracking table
     PolarisBaseEntity persistedEntity =
-        this.persistEntityAfterChange(callCtx, ms, entityRefreshed, false);
+        this.persistEntityAfterChange(callCtx, ms, entityRefreshed, false, originalEntity);
     return new EntityResult(persistedEntity);
   }
 
@@ -1305,8 +1311,9 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
           BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, entityActiveRecord.getSubTypeCode());
     }
 
-    // all good, delete the existing entity from the active slice
-    ms.deleteFromEntitiesActive(callCtx, refreshEntityToRename);
+    // Create a copy of the original before we change its fields so that we can pass in the
+    // old version for the persistence layer to work out whether to unlink previous name-lookups
+    PolarisBaseEntity originalEntity = new PolarisBaseEntity(refreshEntityToRename);
 
     // change its name now
     refreshEntityToRename.setName(renamedEntity.getName());
@@ -1322,7 +1329,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     // version. Indicate that the nameOrParent changed, so so that we also update any by-name
     // lookups if applicable
     PolarisBaseEntity renamedEntityToReturn =
-        this.persistEntityAfterChange(callCtx, ms, refreshEntityToRename, true);
+        this.persistEntityAfterChange(callCtx, ms, refreshEntityToRename, true, originalEntity);
     return new EntityResult(renamedEntityToReturn);
   }
 
@@ -1961,6 +1968,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     availableTasks.forEach(
         task -> {
+          PolarisBaseEntity originalTask = new PolarisBaseEntity(task);
           Map<String, String> properties =
               PolarisObjectMapperUtil.deserializeProperties(callCtx, task.getProperties());
           properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
@@ -1974,7 +1982,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
                       + 1));
           task.setEntityVersion(task.getEntityVersion() + 1);
           task.setProperties(PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
-          ms.writeEntity(callCtx, task, false);
+          ms.writeEntity(callCtx, task, false, originalTask);
         });
     return new EntitiesResult(availableTasks);
   }
