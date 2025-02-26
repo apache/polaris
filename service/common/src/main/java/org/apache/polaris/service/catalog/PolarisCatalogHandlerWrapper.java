@@ -91,6 +91,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.catalog.response.ETaggedResponse;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
@@ -563,10 +564,17 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     return CatalogHandlers.listTables(baseCatalog, namespace);
   }
 
-  public LoadTableResponse createTableDirect(Namespace namespace, CreateTableRequest request) {
+  /**
+   * Create a table.
+   * @param namespace the namespace to create the table in
+   * @param request the table creation request
+   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
+   */
+  public ETaggedResponse<LoadTableResponse> createTableDirect(Namespace namespace, CreateTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
+    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+        op, identifier);
 
     CatalogEntity catalog =
         CatalogEntity.of(
@@ -577,10 +585,17 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot create table on external catalogs.");
     }
-    return CatalogHandlers.createTable(baseCatalog, namespace, request);
+
+    return new ETaggedResponse<>(CatalogHandlers.createTable(baseCatalog, namespace, request), getTableEntity(identifier).getETag());
   }
 
-  public LoadTableResponse createTableDirectWithWriteDelegation(
+  /**
+   * Create a table.
+   * @param namespace the namespace to create the table in
+   * @param request the table creation request
+   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
+   */
+  public ETaggedResponse<LoadTableResponse> createTableDirectWithWriteDelegation(
       Namespace namespace, CreateTableRequest request) {
     PolarisAuthorizableOperation op =
         PolarisAuthorizableOperation.CREATE_TABLE_DIRECT_WITH_WRITE_DELEGATION;
@@ -635,7 +650,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                     PolarisStorageActions.WRITE,
                     PolarisStorageActions.LIST)));
       }
-      return responseBuilder.build();
+      return new ETaggedResponse<>(responseBuilder.build(), getTableEntity(tableIdentifier).getETag());
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
@@ -741,12 +756,21 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     return responseBuilder.build();
   }
 
-  public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
+  /**
+   * Register a table.
+   * @param namespace The namespace to register the table in
+   * @param request the register table request
+   * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
+   */
+  public ETaggedResponse<LoadTableResponse> registerTable(Namespace namespace, RegisterTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, TableIdentifier.of(namespace, request.name()));
+    TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
 
-    return CatalogHandlers.registerTable(baseCatalog, namespace, request);
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
+        op, identifier);
+
+    LoadTableResponse registerTableResponse = CatalogHandlers.registerTable(baseCatalog, namespace, request);
+    return new ETaggedResponse<>(registerTableResponse, getTableEntity(identifier).getETag());
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {
@@ -787,43 +811,54 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
         && notificationCatalog.sendNotification(identifier, request);
   }
 
-  private boolean etagMatchesCurrentMetadataLocation(String etag, TableIdentifier tableIdentifier) {
-    if (etag != null) {
-      PolarisResolvedPathWrapper target = resolutionManifest
-              .getResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE, true);
+  /**
+   * Fetch the metastore table entity for the given table identifier
+   * @param tableIdentifier The identifier of the table
+   * @return the Polaris table entity for the table
+   */
+  private TableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
+    PolarisResolvedPathWrapper target = resolutionManifest.getPassthroughResolvedPath(tableIdentifier);
 
-      String currentEntityMetadataVersion = target
-              .getRawLeafEntity()
-              .getInternalPropertiesAsMap()
-              .get(TableLikeEntity.METADATA_LOCATION_KEY);
-
-      if (etag.equals(currentEntityMetadataVersion)) {
-        return true;
-      }
-    }
-    return false;
+    return TableLikeEntity.of(target.getRawLeafEntity());
   }
 
   public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
-    return loadTableFreshnessAware(tableIdentifier, null, snapshots).get();
+    return loadTableIfStale(tableIdentifier, null, snapshots).get().getResponse();
   }
 
-  public Optional<LoadTableResponse> loadTableFreshnessAware(TableIdentifier tableIdentifier, String etag, String snapshots) {
+  /**
+   * Attempt to perform a loadTable operation only when the specified etag does not match the current state of the table.
+   * @param tableIdentifier The identifier of the table to load
+   * @param etag The ETag which identifies the metadata currently known
+   * @param snapshots
+   * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the load table response, otherwise
+   */
+  public Optional<ETaggedResponse<LoadTableResponse>> loadTableIfStale(TableIdentifier tableIdentifier, String etag, String snapshots) {
       PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
       authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.TABLE, tableIdentifier);
 
-      if (etagMatchesCurrentMetadataLocation(etag, tableIdentifier)) {
+      TableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+
+      if (tableEntity.isCurrent(etag)) {
         return Optional.empty();
       }
 
-      return Optional.of(CatalogHandlers.loadTable(baseCatalog, tableIdentifier));
+      return Optional.of(new ETaggedResponse<>(
+              CatalogHandlers.loadTable(baseCatalog, tableIdentifier), tableEntity.getETag()));
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(TableIdentifier tableIdentifier, String snapshots) {
-    return loadTableWithAccessDelegationFreshnessAware(tableIdentifier, null, snapshots).get();
+    return loadTableWithAccessDelegationIfStale(tableIdentifier, null, snapshots).get().getResponse();
   }
 
-  public Optional<LoadTableResponse> loadTableWithAccessDelegationFreshnessAware(
+  /**
+   * Attempt to perform a loadTable operation with access delegation only when the specified etag does not match the current state of the table.
+   * @param tableIdentifier The identifier of the table to load
+   * @param etag The ETag which identifies the metadata currently known
+   * @param snapshots
+   * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the load table response, otherwise
+   */
+  public Optional<ETaggedResponse<LoadTableResponse>> loadTableWithAccessDelegationIfStale(
       TableIdentifier tableIdentifier, String etag, String snapshots) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
@@ -862,7 +897,9 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
           PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
 
-    if (etagMatchesCurrentMetadataLocation(etag, tableIdentifier)) {
+    TableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+
+    if (tableEntity.isCurrent(etag)) {
       return Optional.empty();
     }
 
@@ -884,7 +921,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
             credentialDelegation.getCredentialConfig(
                 tableIdentifier, tableMetadata, actionsRequested));
       }
-      return Optional.of(responseBuilder.build());
+      return Optional.of(new ETaggedResponse<>(responseBuilder.build(), tableEntity.getETag()));
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());

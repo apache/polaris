@@ -71,6 +71,7 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
+import org.apache.polaris.service.catalog.response.ETaggedResponse;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
@@ -311,11 +312,11 @@ public class IcebergCatalogAdapter
                   .build();
             }
           } else if (delegationModes.isEmpty()) {
-            LoadTableResponse loadTableResponse = catalog.createTableDirect(ns, createTableRequest);
-            return Response.ok(loadTableResponse).header(HttpHeaders.ETAG, loadTableResponse.metadataLocation()).build();
+            ETaggedResponse<LoadTableResponse> createTableResult = catalog.createTableDirect(ns, createTableRequest);
+            return Response.ok(createTableResult.getResponse()).header(HttpHeaders.ETAG, createTableResult.getETag()).build();
           } else {
-            LoadTableResponse loadTableResponse = catalog.createTableDirectWithWriteDelegation(ns, createTableRequest);
-            return Response.ok(loadTableResponse).header(HttpHeaders.ETAG, loadTableResponse.metadataLocation())
+            ETaggedResponse<LoadTableResponse> createTableResult = catalog.createTableDirectWithWriteDelegation(ns, createTableRequest);
+            return Response.ok(createTableResult.getResponse()).header(HttpHeaders.ETAG, createTableResult.getETag())
                 .build();
           }
         });
@@ -352,15 +353,15 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          if (delegationModes.isEmpty()) {
-            Optional<LoadTableResponse> optionalLoadTableResponse = catalog.loadTableFreshnessAware(tableIdentifier, etag, snapshots);
-            LoadTableResponse loadTableResponse = optionalLoadTableResponse.orElseThrow(() -> new WebApplicationException(Status.NOT_MODIFIED));
-            return Response.ok(loadTableResponse).header(HttpHeaders.ETAG, loadTableResponse.metadataLocation()).build();
-          } else {
-            LoadTableResponse loadTableResponse = catalog.loadTableWithAccessDelegation(tableIdentifier, snapshots);
-            return Response.ok(loadTableResponse).header(HttpHeaders.ETAG, loadTableResponse.metadataLocation())
-                .build();
-          }
+            ETaggedResponse<LoadTableResponse> loadTableResult;
+            if (delegationModes.isEmpty()) {
+                loadTableResult = catalog.loadTableIfStale(tableIdentifier, etag, snapshots)
+                        .orElseThrow(() -> new WebApplicationException(Status.NOT_MODIFIED));
+            } else {
+                loadTableResult = catalog.loadTableWithAccessDelegationIfStale(tableIdentifier, etag, snapshots)
+                        .orElseThrow(() -> new WebApplicationException(Status.NOT_MODIFIED));
+            }
+            return Response.ok(loadTableResult.getResponse()).header(HttpHeaders.ETAG, loadTableResult.getETag()).build();
         });
   }
 
@@ -417,8 +418,8 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-          LoadTableResponse loadTableResponse = catalog.registerTable(ns, registerTableRequest);
-          return Response.ok(loadTableResponse).header(HttpHeaders.ETAG, loadTableResponse.metadataLocation()).build();
+          ETaggedResponse<LoadTableResponse> registerTableResult = catalog.registerTable(ns, registerTableRequest);
+          return Response.ok(registerTableResult.getResponse()).header(HttpHeaders.ETAG, registerTableResult.getETag()).build();
           });
   }
 
