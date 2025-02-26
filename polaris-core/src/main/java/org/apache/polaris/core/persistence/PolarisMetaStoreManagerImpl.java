@@ -70,38 +70,6 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   /**
-   * Lookup an entity by its name
-   *
-   * @param callCtx call context
-   * @param ms meta store
-   * @param entityActiveKey lookup key
-   * @return the entity if it exists, null otherwise
-   */
-  private @Nullable PolarisBaseEntity lookupEntityByName(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
-      @Nonnull PolarisEntitiesActiveKey entityActiveKey) {
-    // ensure that the entity exists
-    PolarisEntityActiveRecord entityActiveRecord = ms.lookupEntityActive(callCtx, entityActiveKey);
-
-    // if not found, return null
-    if (entityActiveRecord == null) {
-      return null;
-    }
-
-    // lookup the entity, should be there
-    PolarisBaseEntity entity =
-        ms.lookupEntity(callCtx, entityActiveRecord.getCatalogId(), entityActiveRecord.getId());
-    callCtx
-        .getDiagServices()
-        .checkNotNull(
-            entity, "unexpected_not_found_entity", "entityActiveRecord={}", entityActiveRecord);
-
-    // return it now
-    return entity;
-  }
-
-  /**
    * Write this entity to the meta store.
    *
    * @param callCtx call context
@@ -512,13 +480,13 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
               catalog);
 
       // lookup catalog admin role, should exist
-      PolarisEntitiesActiveKey adminRoleKey =
-          new PolarisEntitiesActiveKey(
+      PolarisBaseEntity catalogAdminRole =
+          ms.lookupEntityByName(
+              callCtx,
               refreshCatalog.getId(),
               refreshCatalog.getId(),
               PolarisEntityType.CATALOG_ROLE.getCode(),
               PolarisEntityConstants.getNameOfCatalogAdminRole());
-      PolarisBaseEntity catalogAdminRole = this.lookupEntityByName(callCtx, ms, adminRoleKey);
 
       // if found, ensure not null
       callCtx
@@ -573,14 +541,13 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     // immediately assign its catalog_admin role
     if (principalRoles.isEmpty()) {
       // lookup service admin role, should exist
-      PolarisEntitiesActiveKey serviceAdminRoleKey =
-          new PolarisEntitiesActiveKey(
+      PolarisBaseEntity serviceAdminRole =
+          ms.lookupEntityByName(
+              callCtx,
               PolarisEntityConstants.getNullId(),
               PolarisEntityConstants.getRootEntityId(),
               PolarisEntityType.PRINCIPAL_ROLE.getCode(),
               PolarisEntityConstants.getNameOfPrincipalServiceAdminRole());
-      PolarisBaseEntity serviceAdminRole =
-          this.lookupEntityByName(callCtx, ms, serviceAdminRoleKey);
       callCtx.getDiagServices().checkNotNull(serviceAdminRole, "missing_service_admin_role");
       this.persistNewGrantRecord(
           callCtx, ms, adminRole, serviceAdminRole, PolarisPrivilege.CATALOG_ROLE_USAGE);
@@ -719,10 +686,13 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // now looking the entity by name
-    PolarisEntitiesActiveKey entityActiveKey =
-        new PolarisEntitiesActiveKey(
-            resolver.getCatalogIdOrNull(), resolver.getParentId(), entityType.getCode(), name);
-    PolarisBaseEntity entity = this.lookupEntityByName(callCtx, ms, entityActiveKey);
+    PolarisBaseEntity entity =
+        ms.lookupEntityByName(
+            callCtx,
+            resolver.getCatalogIdOrNull(),
+            resolver.getParentId(),
+            entityType.getCode(),
+            name);
 
     // if found, check if subType really matches
     if (entity != null
@@ -2218,9 +2188,8 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull String entityName) {
 
     // load that entity
-    PolarisEntitiesActiveKey entityActiveKey =
-        new PolarisEntitiesActiveKey(entityCatalogId, parentId, entityType.getCode(), entityName);
-    PolarisBaseEntity entity = this.lookupEntityByName(callCtx, ms, entityActiveKey);
+    PolarisBaseEntity entity =
+        ms.lookupEntityByName(callCtx, entityCatalogId, parentId, entityType.getCode(), entityName);
 
     // null if entity not found
     if (entity == null) {
@@ -2279,14 +2248,13 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
             EntityResult backfillResult =
                 this.createEntityIfNotExists(callCtx, ms, null, rootContainer);
             if (backfillResult.isSuccess()) {
-              PolarisEntitiesActiveKey serviceAdminRoleKey =
-                  new PolarisEntitiesActiveKey(
+              PolarisBaseEntity serviceAdminRole =
+                  ms.lookupEntityByName(
+                      callCtx,
                       0L,
                       0L,
                       PolarisEntityType.PRINCIPAL_ROLE.getCode(),
                       PolarisEntityConstants.getNameOfPrincipalServiceAdminRole());
-              PolarisBaseEntity serviceAdminRole =
-                  this.lookupEntityByName(callCtx, ms, serviceAdminRoleKey);
               if (serviceAdminRole != null) {
                 this.persistNewGrantRecord(
                     callCtx,

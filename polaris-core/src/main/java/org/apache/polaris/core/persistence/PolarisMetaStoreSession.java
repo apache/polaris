@@ -19,9 +19,13 @@
 package org.apache.polaris.core.persistence;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import java.util.List;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
+import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 
 /**
@@ -76,6 +80,58 @@ public interface PolarisMetaStoreSession extends BasePersistence {
    */
   void runActionInReadTransaction(
       @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode);
+
+  /** {@inheritDoc} */
+  @Override
+  default PolarisBaseEntity lookupEntityByName(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      int typeCode,
+      @Nonnull String name) {
+    PolarisEntitiesActiveKey entityActiveKey =
+        new PolarisEntitiesActiveKey(catalogId, parentId, typeCode, name);
+
+    // ensure that the entity exists
+    PolarisEntityActiveRecord entityActiveRecord = lookupEntityActive(callCtx, entityActiveKey);
+
+    // if not found, return null
+    if (entityActiveRecord == null) {
+      return null;
+    }
+
+    // lookup the entity, should be there
+    PolarisBaseEntity entity =
+        lookupEntity(callCtx, entityActiveRecord.getCatalogId(), entityActiveRecord.getId());
+    callCtx
+        .getDiagServices()
+        .checkNotNull(
+            entity, "unexpected_not_found_entity", "entityActiveRecord={}", entityActiveRecord);
+
+    // return it now
+    return entity;
+  }
+
+  /**
+   * Lookup an entity by entityActiveKey
+   *
+   * @param callCtx call context
+   * @param entityActiveKey key by name
+   * @return null if the specified entity does not exist or has been dropped.
+   */
+  @Nullable
+  PolarisEntityActiveRecord lookupEntityActive(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntitiesActiveKey entityActiveKey);
+
+  /**
+   * Lookup the specified set of entities by entityActiveKeys Return the result, a parallel list of
+   * active records. A record in that list will be null if its associated lookup failed
+   *
+   * @return the list of entityActiveKeys for the specified lookup operation
+   */
+  @Nonnull
+  List<PolarisEntityActiveRecord> lookupEntityActiveBatch(
+      @Nonnull PolarisCallContext callCtx, List<PolarisEntitiesActiveKey> entityActiveKeys);
 
   /**
    * Write the base entity to the entities_active table. If there is a conflict (existing record

@@ -26,7 +26,6 @@ import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
-import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
 import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
@@ -129,6 +128,24 @@ public interface BasePersistence {
       @Nonnull PolarisCallContext callCtx, long catalogId, long entityId);
 
   /**
+   * Lookup an entity given its catalogId, parentId, typeCode, and name.
+   *
+   * @param callCtx call context
+   * @param catalogId catalog id or NULL_ID
+   * @param parentId id of the parent, either a namespace or a catalog
+   * @param typeCode the PolarisEntityType code of the entity to lookup
+   * @param name the name of the entity
+   * @return null if the specified entity does not exist
+   */
+  @Nullable
+  PolarisBaseEntity lookupEntityByName(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      int typeCode,
+      @Nonnull String name);
+
+  /**
    * Lookup a set of entities given their catalog id/entity id unique identifier
    *
    * @param callCtx call context
@@ -162,27 +179,6 @@ public interface BasePersistence {
   @Nonnull
   List<PolarisChangeTrackingVersions> lookupEntityVersions(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
-
-  /**
-   * Lookup an entity by entityActiveKey
-   *
-   * @param callCtx call context
-   * @param entityActiveKey key by name
-   * @return null if the specified entity does not exist or has been dropped.
-   */
-  @Nullable
-  PolarisEntityActiveRecord lookupEntityActive(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntitiesActiveKey entityActiveKey);
-
-  /**
-   * Lookup the specified set of entities by entityActiveKeys Return the result, a parallel list of
-   * active records. A record in that list will be null if its associated lookup failed
-   *
-   * @return the list of entityActiveKeys for the specified lookup operation
-   */
-  @Nonnull
-  List<PolarisEntityActiveRecord> lookupEntityActiveBatch(
-      @Nonnull PolarisCallContext callCtx, List<PolarisEntitiesActiveKey> entityActiveKeys);
 
   /**
    * List all active entities of the specified type which are child entities of the specified parent
