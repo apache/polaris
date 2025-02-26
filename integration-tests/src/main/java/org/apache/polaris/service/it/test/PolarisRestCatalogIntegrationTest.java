@@ -123,11 +123,12 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
+
   private PrincipalWithCredentials principalCredentials;
   private CatalogApi catalogApi;
-
   private RESTCatalog restCatalog;
   private String currentCatalogName;
+  private TestInfo testInfo;
 
   private final String catalogBaseLocation =
       s3BucketBase + "/" + System.getenv("USER") + "/path/to/data";
@@ -171,6 +172,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   @BeforeEach
   public void before(TestInfo testInfo) {
+    this.testInfo = testInfo;
     String principalName = "snowman-rest-" + UUID.randomUUID();
     String principalRoleName = "rest-admin-" + UUID.randomUUID();
     principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
@@ -214,6 +216,21 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
     managementApi.createCatalog(principalRoleName, catalog);
 
+    restCatalog = initCatalog(currentCatalogName, ImmutableMap.of());
+  }
+
+  @AfterEach
+  public void cleanUp() {
+    client.cleanUp(adminCredentials);
+  }
+
+  @Override
+  protected RESTCatalog catalog() {
+    return restCatalog;
+  }
+
+  @Override
+  protected RESTCatalog initCatalog(String catalogName, Map<String, String> additionalProperties) {
     Optional<PolarisRestCatalogIntegrationTest.RestCatalogConfig> restCatalogConfig =
         testInfo
             .getTestMethod()
@@ -229,24 +246,14 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             extraPropertiesBuilder.put(config.value()[i], config.value()[i + 1]);
           }
         });
-
-    restCatalog = initCatalog(currentCatalogName, extraPropertiesBuilder.build());
-  }
-
-  @AfterEach
-  public void cleanUp() {
-    client.cleanUp(adminCredentials);
-  }
-
-  @Override
-  protected RESTCatalog catalog() {
-    return restCatalog;
-  }
-
-  @Override
-  protected RESTCatalog initCatalog(String catalogName, Map<String, String> additionalProperties) {
+    extraPropertiesBuilder.putAll(additionalProperties);
     return IcebergHelper.restCatalog(
-        client, endpoints, principalCredentials, catalogName, additionalProperties);
+        client,
+        endpoints,
+        principalCredentials,
+        catalogName,
+        currentCatalogName,
+        extraPropertiesBuilder.buildKeepingLast());
   }
 
   @Override
