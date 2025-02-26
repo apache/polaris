@@ -91,6 +91,7 @@ import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -273,6 +274,27 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @Override
   protected boolean overridesRequestedLocation() {
     return true;
+  }
+
+  @Test
+  @Override
+  public void createAndDropEmptyNamespace() {
+    Assumptions.assumeTrue(supportsEmptyNamespace());
+    super.createAndDropEmptyNamespace();
+  }
+
+  @Test
+  @Override
+  public void namespacePropertiesOnEmptyNamespace() {
+    Assumptions.assumeTrue(supportsEmptyNamespace());
+    super.namespacePropertiesOnEmptyNamespace();
+  }
+
+  @Test
+  @Override
+  public void listTablesInEmptyNamespace() {
+    Assumptions.assumeTrue(supportsEmptyNamespace());
+    super.listTablesInEmptyNamespace();
   }
 
   @Test
