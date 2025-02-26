@@ -149,9 +149,7 @@ class TableCleanupTaskHandlerTest {
                 assertThat(taskEntity)
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
-                    .returns(
-                        AsyncTaskType.MANIFEST_FILE_CLEANUP,
-                        taskEntity1 -> taskEntity1.getTaskType())
+                    .returns(AsyncTaskType.MANIFEST_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
                         new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                             tableIdentifier,
@@ -167,7 +165,8 @@ class TableCleanupTaskHandlerTest {
                         AsyncTaskType.BATCH_FILE_CLEANUP, taskEntity2 -> taskEntity2.getTaskType())
                     .returns(
                         new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
-                            tableIdentifier, List.of(statisticsFile.path())),
+                            tableIdentifier,
+                            List.of(snapshot.manifestListLocation(), statisticsFile.path())),
                         entity ->
                             entity.readData(
                                 BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)));
@@ -291,35 +290,29 @@ class TableCleanupTaskHandlerTest {
                 assertThat(taskEntity)
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
+                    .returns(AsyncTaskType.BATCH_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
-                        AsyncTaskType.METADATA_FILE_BATCH_CLEANUP,
-                        taskEntity1 -> taskEntity1.getTaskType())
-                    .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                        new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
                             tableIdentifier, List.of(snapshot.manifestListLocation())),
                         entity ->
                             entity.readData(
-                                ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
+                                BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)),
             taskEntity ->
                 assertThat(taskEntity)
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
+                    .returns(AsyncTaskType.BATCH_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
-                        AsyncTaskType.METADATA_FILE_BATCH_CLEANUP,
-                        taskEntity2 -> taskEntity2.getTaskType())
-                    .returns(
-                        new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                        new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
                             tableIdentifier, List.of(snapshot.manifestListLocation())),
                         entity ->
                             entity.readData(
-                                ManifestFileCleanupTaskHandler.ManifestCleanupTask.class)),
+                                BatchFileCleanupTaskHandler.BatchFileCleanupTask.class)),
             taskEntity ->
                 assertThat(taskEntity)
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
                     .extracting(TaskEntity::of)
-                    .returns(
-                        AsyncTaskType.MANIFEST_FILE_CLEANUP,
-                        taskEntity3 -> taskEntity3.getTaskType())
+                    .returns(AsyncTaskType.MANIFEST_FILE_CLEANUP, TaskEntity::getTaskType)
                     .returns(
                         new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                             tableIdentifier,

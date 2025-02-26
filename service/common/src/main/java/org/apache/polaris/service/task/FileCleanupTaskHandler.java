@@ -39,8 +39,7 @@ public abstract class FileCleanupTaskHandler implements TaskHandler {
   public static final int FILE_DELETION_RETRY_MILLIS = 100;
   public final TaskFileIOSupplier fileIOSupplier;
   public final ExecutorService executorService;
-  private static final Logger LOGGER =
-      LoggerFactory.getLogger(ManifestFileCleanupTaskHandler.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(FileCleanupTaskHandler.class);
 
   public FileCleanupTaskHandler(
       TaskFileIOSupplier fileIOSupplier, ExecutorService executorService) {
