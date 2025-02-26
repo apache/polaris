@@ -93,7 +93,6 @@ public class RateLimiterFilterTest {
   @Inject MeterRegistry meterRegistry;
   @Inject PolarisEventListener polarisEventListener;
 
-  private TestPolarisEventListener testPolarisEventListener;
   private TestEnvironment testEnv;
   private PolarisIntegrationTestFixture fixture;
 
@@ -113,7 +112,6 @@ public class RateLimiterFilterTest {
   @BeforeEach
   @AfterEach
   public void resetRateLimiter() {
-    testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     MockTokenBucketFactory.CLOCK.add(
         WINDOW.multipliedBy(2)); // Clear any counters from before/after this test
   }
@@ -150,7 +148,8 @@ public class RateLimiterFilterTest {
     requestAsserter.accept(Status.TOO_MANY_REQUESTS);
 
     BeforeRequestRateLimitedEvent event =
-        testPolarisEventListener.getLatest(BeforeRequestRateLimitedEvent.class);
+        ((TestPolarisEventListener) polarisEventListener)
+            .getLatest(BeforeRequestRateLimitedEvent.class);
     assertThat(event.method()).isEqualTo("GET");
 
     // Examples of expected metrics:

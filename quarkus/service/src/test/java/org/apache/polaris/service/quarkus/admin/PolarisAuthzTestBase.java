@@ -81,7 +81,6 @@ import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
-import org.apache.polaris.service.events.DefaultPolarisEventListener;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -438,7 +437,7 @@ public abstract class PolarisAuthzTestBase {
             securityContext,
             Mockito.mock(),
             fileIOFactory,
-            new DefaultPolarisEventListener());
+            polarisEventListener);
     this.baseCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

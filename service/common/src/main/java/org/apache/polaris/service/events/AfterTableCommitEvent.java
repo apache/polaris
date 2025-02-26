@@ -27,5 +27,4 @@ import org.apache.iceberg.TableMetadata;
  * @param base The old metadata.
  * @param metadata The new metadata.
  */
-public record AfterTableCommitEvent(
-    TableMetadata base, TableMetadata metadata, String oldLocation, String newLocation) {}
+public record AfterTableCommitEvent(TableMetadata base, TableMetadata metadata) {}

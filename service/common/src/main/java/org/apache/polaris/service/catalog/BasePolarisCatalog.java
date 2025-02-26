@@ -1423,8 +1423,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         updateTableLike(tableIdentifier, entity);
       }
 
-      polarisEventListener.onAfterTableCommit(
-          new AfterTableCommitEvent(base, metadata, oldLocation, newLocation));
+      polarisEventListener.onAfterTableCommit(new AfterTableCommitEvent(base, metadata));
     }
 
     @Override

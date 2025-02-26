@@ -19,7 +19,9 @@
 package org.apache.polaris.service.task;
 
 import java.time.Clock;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -53,12 +55,17 @@ public class TaskExecutorImplTest {
     PolarisDiagnostics diagnostics = testServices.polarisDiagnostics();
     Clock clock = Clock.systemUTC();
 
+    PolarisCallContext polarisCallCtx = new PolarisCallContext(metaStoreSession, diagnostics);
+    CallContext callContext = CallContext.of(realmContext, polarisCallCtx);
+
+    // This task doesn't have a type so it won't be handle-able by a real handler. We register a
+    // test TaskHandler below that can handle any task.
     TaskEntity taskEntity =
         new TaskEntity.Builder()
             .setName("mytask")
-            .setId(metaStoreManager.generateNewEntityId(metaStoreSession).getId())
+            .setId(metaStoreManager.generateNewEntityId(polarisCallCtx).getId())
             .build();
-    metaStoreManager.createEntityIfNotExists(metaStoreSession, null, taskEntity);
+    metaStoreManager.createEntityIfNotExists(polarisCallCtx, null, taskEntity);
 
     int attempt = 1;
 
@@ -66,10 +73,7 @@ public class TaskExecutorImplTest {
         new TaskExecutorImpl(
             Runnable::run,
             testServices.metaStoreManagerFactory(),
-            testServices.configurationStore(),
-            diagnostics,
             new TaskFileIOSupplier(testServices.fileIOFactory()),
-            clock,
             testServices.polarisEventListener());
     executor.addTaskHandler(
         new TaskHandler() {
@@ -79,22 +83,22 @@ public class TaskExecutorImplTest {
           }
 
           @Override
-          public boolean handleTask(TaskEntity task, RealmContext realmContext) {
+          public boolean handleTask(TaskEntity task, CallContext callContext) {
             BeforeAttemptTaskEvent beforeAttemptTaskEvent =
                 testPolarisEventListener.getLatest(BeforeAttemptTaskEvent.class);
             Assertions.assertEquals(taskEntity.getId(), beforeAttemptTaskEvent.taskEntityId());
-            Assertions.assertEquals(realmContext, beforeAttemptTaskEvent.realmContext());
+            Assertions.assertEquals(callContext, beforeAttemptTaskEvent.callContext());
             Assertions.assertEquals(attempt, beforeAttemptTaskEvent.attempt());
             return true;
           }
         });
 
-    executor.handleTask(taskEntity.getId(), realmContext, attempt);
+    executor.handleTask(taskEntity.getId(), callContext, attempt);
 
     AfterAttemptTaskEvent afterAttemptTaskEvent =
         testPolarisEventListener.getLatest(AfterAttemptTaskEvent.class);
     Assertions.assertEquals(taskEntity.getId(), afterAttemptTaskEvent.taskEntityId());
-    Assertions.assertEquals(realmContext, afterAttemptTaskEvent.realmContext());
+    Assertions.assertEquals(callContext, afterAttemptTaskEvent.callContext());
     Assertions.assertEquals(attempt, afterAttemptTaskEvent.attempt());
     Assertions.assertTrue(afterAttemptTaskEvent.success());
   }
