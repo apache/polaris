@@ -2103,7 +2103,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .getConfiguration(callContext.getPolarisCallContext(), configKey, defaultValue);
   }
 
-  /** Helper to retrieve the max number of metadata refresh retries */
   private int getMaxMetadataRefreshRetries() {
     return callContext
         .getPolarisCallContext()

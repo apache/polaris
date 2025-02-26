@@ -67,7 +67,6 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   /** Signifies that we could not extract an HTTP code from a given cloud exception */
   public static final int UNKNOWN_CLOUD_HTTP_CODE = -1;
 
-  @VisibleForTesting
   public static final Set<Integer> RETRYABLE_AZURE_HTTP_CODES =
       Set.of(
           Response.Status.REQUEST_TIMEOUT.getStatusCode(),
