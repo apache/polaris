@@ -69,6 +69,7 @@ services:
       AWS_ROLE_FOR_CROSS_REGION_BUCKET: $AWS_ROLE_FOR_CROSS_REGION_BUCKET
       AWS_REGION_FOR_CROSS_REGION_TEST: $AWS_REGION_FOR_CROSS_REGION_TEST
       REGTEST_ROOT_BEARER_TOKEN: $REGTEST_ROOT_BEARER_TOKEN
+      POLARIS_PATH_PREFIX: $POLARIS_PATH_PREFIX
     volumes:
       - ./output:/tmp/polaris-regtests/
       - ./credentials:/tmp/credentials/

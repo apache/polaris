@@ -39,15 +39,22 @@ def polaris_host():
 def polaris_port():
   return int(os.getenv('POLARIS_PORT', '8181'))
 
+@pytest.fixture
+def polaris_path_prefix():
+  """
+  Used to provide a path prefix between the port number and the standard polaris endpoint paths
+  :return:
+  """
+  return os.getenv('POLARIS_PATH_PREFIX', '')
 
 @pytest.fixture
-def polaris_url(polaris_host, polaris_port):
-  return f"http://{polaris_host}:{polaris_port}/api/management/v1"
+def polaris_url(polaris_host, polaris_port, polaris_path_prefix):
+  return f"http://{polaris_host}:{polaris_port}{polaris_path_prefix}/api/management/v1"
 
 
 @pytest.fixture
-def polaris_catalog_url(polaris_host, polaris_port):
-  return f"http://{polaris_host}:{polaris_port}/api/catalog"
+def polaris_catalog_url(polaris_host, polaris_port, polaris_path_prefix):
+  return f"http://{polaris_host}:{polaris_port}{polaris_path_prefix}/api/catalog"
 
 @pytest.fixture
 def test_bucket():
