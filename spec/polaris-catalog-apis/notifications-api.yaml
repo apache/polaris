@@ -21,9 +21,9 @@
 paths:
   /v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications:
     parameters:
-      - $ref: '../rest-catalog-open-api.yaml#/components/parameters/prefix'
-      - $ref: '../rest-catalog-open-api.yaml#/components/parameters/namespace'
-      - $ref: '../rest-catalog-open-api.yaml#/components/parameters/table'
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/namespace'
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/table'
 
     post:
       tags:
@@ -57,21 +57,21 @@ paths:
         204:
           description: Success, no content
         400:
-          $ref: '../rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
         401:
-          $ref: '../rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
         403:
-          $ref: '../rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
         404:
           description:
             Not Found - NoSuchTableException, table to load does not exist
           content:
             application/json:
               schema:
-                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
               examples:
                 TableToLoadDoesNotExist:
-                  $ref: '../rest-catalog-open-api.yaml#/components/examples/NoSuchTableError'
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchTableError'
         409:
           description:
             Conflict - The timestamp of the received notification is older than or equal to the 
@@ -79,15 +79,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
               example:
                 $ref: '#/components/examples/OutOfOrderNotificationError'
         419:
-          $ref: '../rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
         503:
-          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
         5XX:
-          $ref: '../rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
 components:
   schemas:
@@ -128,7 +128,7 @@ components:
         metadata-location:
           type: string
         metadata:
-          $ref: '../rest-catalog-open-api.yaml#/components/schemas/TableMetadata'
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/TableMetadata'
 
   examples:
     OutOfOrderNotificationError:
