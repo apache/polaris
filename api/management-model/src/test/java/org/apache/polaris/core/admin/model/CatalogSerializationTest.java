@@ -104,7 +104,26 @@ public class CatalogSerializationTest {
                     "  test  catalog  ",
                     new CatalogProperties("  " + TEST_LOCATION + "  "),
                     null)));
-
+    Arguments.of(
+        "Type field serialization",
+        new Catalog(
+            Catalog.TypeEnum.INTERNAL,
+            TEST_CATALOG_NAME,
+            new CatalogProperties(TEST_LOCATION),
+            new AwsStorageConfigInfo(TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3)) {
+          @Override
+          public boolean equals(Object o) {
+            if (!super.equals(o)) return false;
+            // Verify type field serialization
+            try {
+              String json = new ObjectMapper().writeValueAsString(this);
+              int typeFieldCount = json.split("\"type\"").length - 1;
+              return typeFieldCount == 1;
+            } catch (JsonProcessingException e) {
+              return false;
+            }
+          }
+        });
     Stream<Arguments> arnCases =
         Stream.of(
                 "arn:aws:iam::123456789012:role/test-role",
