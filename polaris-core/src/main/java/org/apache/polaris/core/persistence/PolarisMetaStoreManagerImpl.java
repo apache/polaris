@@ -37,10 +37,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
@@ -721,9 +721,8 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // return list of active entities
-    List<PolarisEntityActiveRecord> toreturnList =
-        ms.listActiveEntities(
-            callCtx, resolver.getCatalogIdOrNull(), resolver.getParentId(), entityType);
+    List<EntityNameLookupRecord> toreturnList =
+        ms.listEntities(callCtx, resolver.getCatalogIdOrNull(), resolver.getParentId(), entityType);
 
     // prune the returned list with only entities matching the entity subtype
     if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
@@ -1065,7 +1064,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // check if an entity does not already exist with the same name. If true, this is an error
-    PolarisEntityActiveRecord entityActiveRecord =
+    EntityNameLookupRecord entityActiveRecord =
         ms.lookupEntityIdAndSubTypeByName(
             callCtx,
             entity.getCatalogId(),
@@ -1299,7 +1298,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // ensure that nothing exists where we create that entity
     // if this entity already exists, this is an error
-    PolarisEntityActiveRecord entityActiveRecord =
+    EntityNameLookupRecord entityActiveRecord =
         ms.lookupEntityIdAndSubTypeByName(
             callCtx,
             resolver.getCatalogIdOrNull(),
@@ -1403,7 +1402,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
 
       // get the list of catalog roles, at most 2
       List<PolarisBaseEntity> catalogRoles =
-          ms.listActiveEntities(
+          ms.listEntities(
               callCtx,
               catalogId,
               catalogId,
@@ -1944,7 +1943,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // find all available tasks
     List<PolarisBaseEntity> availableTasks =
-        ms.listActiveEntities(
+        ms.listEntities(
             callCtx,
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootEntityId(),

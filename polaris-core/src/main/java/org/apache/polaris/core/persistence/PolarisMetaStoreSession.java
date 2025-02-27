@@ -23,9 +23,9 @@ import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
-import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 
 /**
@@ -85,6 +85,15 @@ public abstract class PolarisMetaStoreSession implements BasePersistence, Integr
 
   /** {@inheritDoc} */
   @Override
+  public void writeEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<PolarisBaseEntity> entities,
+      @Nullable List<PolarisBaseEntity> originalEntities) {
+    throw new UnsupportedOperationException("Not yet implemented");
+  }
+
+  /** {@inheritDoc} */
+  @Override
   public PolarisBaseEntity lookupEntityByName(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
@@ -99,7 +108,7 @@ public abstract class PolarisMetaStoreSession implements BasePersistence, Integr
         new PolarisEntitiesActiveKey(catalogId, parentId, typeCode, name);
 
     // ensure that the entity exists
-    PolarisEntityActiveRecord entityActiveRecord = lookupEntityActive(callCtx, entityActiveKey);
+    EntityNameLookupRecord entityActiveRecord = lookupEntityActive(callCtx, entityActiveKey);
 
     // if not found, return null
     if (entityActiveRecord == null) {
@@ -120,7 +129,7 @@ public abstract class PolarisMetaStoreSession implements BasePersistence, Integr
 
   /** {@inheritDoc} */
   @Override
-  public PolarisEntityActiveRecord lookupEntityIdAndSubTypeByName(
+  public EntityNameLookupRecord lookupEntityIdAndSubTypeByName(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -139,7 +148,7 @@ public abstract class PolarisMetaStoreSession implements BasePersistence, Integr
    * @return null if the specified entity does not exist or has been dropped.
    */
   @Nullable
-  protected abstract PolarisEntityActiveRecord lookupEntityActive(
+  protected abstract EntityNameLookupRecord lookupEntityActive(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntitiesActiveKey entityActiveKey);
 
   /**
@@ -149,7 +158,7 @@ public abstract class PolarisMetaStoreSession implements BasePersistence, Integr
    * @return the list of entityActiveKeys for the specified lookup operation
    */
   @Nonnull
-  public abstract List<PolarisEntityActiveRecord> lookupEntityActiveBatch(
+  public abstract List<EntityNameLookupRecord> lookupEntityActiveBatch(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntitiesActiveKey> entityActiveKeys);
 
   /** {@inheritDoc} */

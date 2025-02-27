@@ -27,9 +27,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
-import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -99,7 +99,7 @@ public class PolarisEclipseLinkStore {
 
     ModelEntityActive model = lookupEntityActive(session, new PolarisEntitiesActiveKey(entity));
     if (model == null) {
-      session.persist(ModelEntityActive.fromEntityActive(new PolarisEntityActiveRecord(entity)));
+      session.persist(ModelEntityActive.fromEntityActive(new EntityNameLookupRecord(entity)));
     }
   }
 

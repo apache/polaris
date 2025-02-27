@@ -24,18 +24,18 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
-import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 
 /**
- * Interface to the Polaris metadata store, allows to persist and retrieve all Polaris metadata like
- * metadata for Polaris entities and metadata about grants between these entities which is the
- * foundation of our role base access control model.
+ * Interface to the Polaris persistence backend, with which to persist and retrieve all the data
+ * defining the internal data model for Polaris, and which defines the basis for the RBAC model
+ * provided by Polaris.
  *
  * <p>Note that APIs to the actual persistence store are very basic, often point read or write to
  * the underlying data store. The goal is to make it really easy to back this using databases like
@@ -43,13 +43,22 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
  */
 public interface BasePersistence {
   /**
+   * The returned id must be fully unique within a realm and never reused once generated, whether or
+   * not anything ends up committing an entity with the generated id.
+   *
    * @param callCtx call context
    * @return new unique entity identifier
    */
   long generateNewId(@Nonnull PolarisCallContext callCtx);
 
   /**
-   * Write this entity to the meta store.
+   * Write this entity to the persistence backend. If successful, the write must be durable and
+   * visible to any other reader.
+   *
+   * <p>TODO: Either standardize the expected system of exceptions to throw for various concurrency
+   * errors (entity not found when originalEntity != null, entity changed from originalEntity, etc)
+   * or push down the return status enums from PolarisMetaStoreManager into this layer and document
+   * accordingly.
    *
    * @param callCtx call context
    * @param entity entity to persist
@@ -62,6 +71,27 @@ public interface BasePersistence {
       @Nonnull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
       @Nullable PolarisBaseEntity originalEntity);
+
+  /**
+   * Atomically write a batch of entities to the persistence backend conditional on *every* member
+   * of originalEntities matching the existing persistent state. After this commit, *every* member
+   * of entities must be committed durably.
+   *
+   * <p>TODO: Push down the multi-entity commit from PolarisMetaStoreManagerImpl to use this instead
+   * of running single writeEntity actions within a transaction.
+   *
+   * @param callCtx call context
+   * @param entities entities to persist
+   * @param nameOrParentChanged if true, also write it to by-name lookups if applicable
+   * @param originalEntities original states of the entity to use for compare-and-swap purposes, or
+   *     null if this is expected to be a brand-new entity; must contain exactly as many elements as
+   *     {@code entities} where each item corresponds to the element of {@code entities} in the same
+   *     index as this list.
+   */
+  void writeEntities(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<PolarisBaseEntity> entities,
+      @Nullable List<PolarisBaseEntity> originalEntities);
 
   /**
    * Write the specified grantRecord to the grant_records table. If there is a conflict (existing
@@ -109,21 +139,22 @@ public interface BasePersistence {
       @Nonnull List<PolarisGrantRecord> grantsOnSecurable);
 
   /**
-   * Delete Polaris entity and grant record metadata from all tables. This is used during metadata
-   * bootstrap to reset all tables to their original state
+   * Delete Polaris entity and grant record metadata from all tables within the realm defined by the
+   * contents of the {@code callCtx}
    *
    * @param callCtx call context
    */
   void deleteAll(@Nonnull PolarisCallContext callCtx);
 
   /**
-   * Lookup an entity given its catalog id (which can be NULL_ID for top-level entities) and its
-   * unique id.
+   * Lookup an entity given its catalog id (which can be {@link
+   * org.apache.polaris.core.entity.PolarisEntityConstants#NULL_ID} for top-level entities) and its
+   * entityId.
    *
    * @param callCtx call context
    * @param catalogId catalog id or NULL_ID
-   * @param entityId unique entity id
-   * @return NULL if the entity was not found, else the base entity.
+   * @param entityId entity id
+   * @return null if the entity was not found, else the retrieved entity.
    */
   @Nullable
   PolarisBaseEntity lookupEntity(
@@ -133,8 +164,12 @@ public interface BasePersistence {
    * Lookup an entity given its catalogId, parentId, typeCode, and name.
    *
    * @param callCtx call context
-   * @param catalogId catalog id or NULL_ID
-   * @param parentId id of the parent, either a namespace or a catalog
+   * @param catalogId catalog id or {@link
+   *     org.apache.polaris.core.entity.PolarisEntityConstants#NULL_ID} for top-level entities like
+   *     CATALOG, PRINCIPAL and PRINCIPAL_ROLE. Note that by convention, a catalog itself has
+   *     NULL_ID for its catalogId since the catalog is not "nested" under itself or any other
+   *     catalog.
+   * @param parentId id of the parent
    * @param typeCode the PolarisEntityType code of the entity to lookup
    * @param name the name of the entity
    * @return null if the specified entity does not exist
@@ -152,12 +187,12 @@ public interface BasePersistence {
    *
    * @param callCtx call context
    * @param catalogId catalog id or NULL_ID
-   * @param parentId id of the parent, either a namespace or a catalog
+   * @param parentId id of the parent
    * @param typeCode the PolarisEntityType code of the entity to lookup
    * @param name the name of the entity
    * @return null if the specified entity does not exist
    */
-  default PolarisEntityActiveRecord lookupEntityIdAndSubTypeByName(
+  default EntityNameLookupRecord lookupEntityIdAndSubTypeByName(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -167,7 +202,7 @@ public interface BasePersistence {
     if (baseEntity == null) {
       return null;
     }
-    return new PolarisEntityActiveRecord(baseEntity);
+    return new EntityNameLookupRecord(baseEntity);
   }
 
   /**
@@ -183,17 +218,6 @@ public interface BasePersistence {
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
 
   /**
-   * Lookup the current entityVersion of an entity given its catalog id (which can be NULL_ID for
-   * top-level entities) and its unique id. Will return 0 if the entity does not exist.
-   *
-   * @param callCtx call context
-   * @param catalogId catalog id or NULL_ID
-   * @param entityId unique entity id
-   * @return current version for that entity or 0 if entity was not found.
-   */
-  int lookupEntityVersion(@Nonnull PolarisCallContext callCtx, long catalogId, long entityId);
-
-  /**
    * Get change tracking versions for all specified entity ids.
    *
    * @param callCtx call context
@@ -206,23 +230,23 @@ public interface BasePersistence {
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
 
   /**
-   * List all active entities of the specified type which are child entities of the specified parent
+   * List all entities of the specified type which are child entities of the specified parent
    *
    * @param callCtx call context
    * @param catalogId catalog id for that entity, NULL_ID if the entity is top-level
    * @param parentId id of the parent, can be the special 0 value representing the root entity
    * @param entityType type of entities to list
-   * @return the list of entities_active records for the specified list operation
+   * @return the list of entities for the specified list operation
    */
   @Nonnull
-  List<PolarisEntityActiveRecord> listActiveEntities(
+  List<EntityNameLookupRecord> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType);
 
   /**
-   * List active entities where some predicate returns true
+   * List entities where some predicate returns true
    *
    * @param callCtx call context
    * @param catalogId catalog id for that entity, NULL_ID if the entity is top-level
@@ -233,7 +257,7 @@ public interface BasePersistence {
    * @return the list of entities for which the predicate returns true
    */
   @Nonnull
-  List<PolarisEntityActiveRecord> listActiveEntities(
+  List<EntityNameLookupRecord> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -241,8 +265,7 @@ public interface BasePersistence {
       @Nonnull Predicate<PolarisBaseEntity> entityFilter);
 
   /**
-   * List active entities where some predicate returns true and transform the entities with a
-   * function
+   * List entities where some predicate returns true and transform the entities with a function
    *
    * @param callCtx call context
    * @param catalogId catalog id for that entity, NULL_ID if the entity is top-level
@@ -256,7 +279,7 @@ public interface BasePersistence {
    * @return the list of entities for which the predicate returns true
    */
   @Nonnull
-  <T> List<T> listActiveEntities(
+  <T> List<T> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -326,11 +349,13 @@ public interface BasePersistence {
   /**
    * Check if the specified parent entity has children.
    *
+   * <p>TODO: Figure out if this is needed vs listEntities with limit.
+   *
    * @param callContext the polaris call context
    * @param optionalEntityType if not null, only check for the specified type, else check for all
    *     types of children entities
    * @param catalogId id of the catalog
-   * @param parentId id of the parent, either a namespace or a catalog
+   * @param parentId id of the parent
    * @return true if the parent entity has children
    */
   boolean hasChildren(

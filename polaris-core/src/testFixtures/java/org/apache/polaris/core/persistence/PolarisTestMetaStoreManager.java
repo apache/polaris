@@ -30,10 +30,10 @@ import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager.LoadGrantsResult;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
@@ -657,7 +657,7 @@ public class PolarisTestMetaStoreManager {
         path.add(entityToDrop);
 
         // get all children, cannot be null
-        List<PolarisEntityActiveRecord> children =
+        List<EntityNameLookupRecord> children =
             polarisMetaStoreManager
                 .listEntities(
                     this.polarisCallContext,
@@ -1189,7 +1189,7 @@ public class PolarisTestMetaStoreManager {
       List<ImmutablePair<String, PolarisEntitySubType>> expectedResult) {
 
     // list the entities under the specified path
-    List<PolarisEntityActiveRecord> result =
+    List<EntityNameLookupRecord> result =
         polarisMetaStoreManager
             .listEntities(this.polarisCallContext, path, entityType, entitySubType)
             .getEntities();
@@ -1201,7 +1201,7 @@ public class PolarisTestMetaStoreManager {
     // ensure all elements are found
     for (Pair<String, PolarisEntitySubType> expected : expectedResult) {
       boolean found = false;
-      for (PolarisEntityActiveRecord res : result) {
+      for (EntityNameLookupRecord res : result) {
         if (res.getName().equals(expected.getLeft())
             && expected.getRight().getCode() == res.getSubTypeCode()) {
           found = true;
@@ -1498,7 +1498,7 @@ public class PolarisTestMetaStoreManager {
   /** validate that the root catalog was properly constructed */
   void validateBootstrap() {
     // load all principals
-    List<PolarisEntityActiveRecord> principals =
+    List<EntityNameLookupRecord> principals =
         polarisMetaStoreManager
             .listEntities(
                 this.polarisCallContext,
@@ -1511,7 +1511,7 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(principals).isNotNull().hasSize(1);
 
     // get catalog list information
-    PolarisEntityActiveRecord principalListInfo = principals.get(0);
+    EntityNameLookupRecord principalListInfo = principals.get(0);
 
     // now make sure this principal was properly persisted
     PolarisBaseEntity principal =
@@ -1524,7 +1524,7 @@ public class PolarisTestMetaStoreManager {
             PolarisEntitySubType.NULL_SUBTYPE);
 
     // load all principal roles
-    List<PolarisEntityActiveRecord> principalRoles =
+    List<EntityNameLookupRecord> principalRoles =
         polarisMetaStoreManager
             .listEntities(
                 this.polarisCallContext,
@@ -1537,7 +1537,7 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(principalRoles).isNotNull().hasSize(1);
 
     // get catalog list information
-    PolarisEntityActiveRecord roleListInfo = principalRoles.get(0);
+    EntityNameLookupRecord roleListInfo = principalRoles.get(0);
 
     // now make sure this principal role was properly persisted
     PolarisBaseEntity principalRole =
