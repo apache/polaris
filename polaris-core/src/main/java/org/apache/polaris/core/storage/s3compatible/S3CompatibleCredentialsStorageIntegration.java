@@ -21,12 +21,10 @@ package org.apache.polaris.core.storage.s3compatible;
 import static org.apache.polaris.core.PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 
 import jakarta.annotation.Nonnull;
+import jakarta.ws.rs.NotAuthorizedException;
 import java.net.URI;
 import java.util.EnumMap;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Set;
-import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
@@ -36,12 +34,9 @@ import org.apache.polaris.core.storage.StorageUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.policybuilder.iam.IamConditionOperator;
-import software.amazon.awssdk.policybuilder.iam.IamEffect;
-import software.amazon.awssdk.policybuilder.iam.IamPolicy;
-import software.amazon.awssdk.policybuilder.iam.IamResource;
-import software.amazon.awssdk.policybuilder.iam.IamStatement;
+import software.amazon.awssdk.profiles.ProfileFileSupplier;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.StsClientBuilder;
 import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
@@ -60,7 +55,6 @@ public class S3CompatibleCredentialsStorageIntegration
     this.configurationStore = configurationStore;
   }
 
-  /** {@inheritDoc} */
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
       @Nonnull RealmContext realmContext,
@@ -70,7 +64,6 @@ public class S3CompatibleCredentialsStorageIntegration
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
 
-    StsClient stsClient;
     String caI = System.getenv(storageConfig.getS3CredentialsCatalogAccessKeyId());
     String caS = System.getenv(storageConfig.getS3CredentialsCatalogSecretAccessKey());
 
@@ -85,136 +78,51 @@ public class S3CompatibleCredentialsStorageIntegration
     }
 
     LOGGER.debug("S3Compatible - createStsClient()");
-    try {
-      StsClientBuilder stsBuilder = software.amazon.awssdk.services.sts.StsClient.builder();
-      stsBuilder.endpointOverride(URI.create(storageConfig.getS3Endpoint()));
-      if (caI != null && caS != null) {
-        // else default provider build credentials from profile or standard AWS env var
-        stsBuilder.credentialsProvider(
-            StaticCredentialsProvider.create(AwsBasicCredentials.create(caI, caS)));
-        LOGGER.debug(
-            "S3Compatible - stsClient using keys from catalog settings - overiding default constructor");
-      }
-      stsClient = stsBuilder.build();
+    StsClientBuilder stsBuilder = software.amazon.awssdk.services.sts.StsClient.builder();
+    stsBuilder.endpointOverride(URI.create(storageConfig.getS3Endpoint()));
+    if (storageConfig.getS3ProfileName() != null) {
+      stsBuilder.credentialsProvider(
+          ProfileCredentialsProvider.builder()
+              .profileFile(ProfileFileSupplier.defaultSupplier())
+              .profileName(storageConfig.getS3ProfileName())
+              .build());
+      LOGGER.debug("S3Compatible - stsClient using profile from catalog settings");
+    } else if (caI != null && caS != null) {
+      stsBuilder.credentialsProvider(
+          StaticCredentialsProvider.create(AwsBasicCredentials.create(caI, caS)));
+      LOGGER.debug("S3Compatible - stsClient using keys from catalog settings");
+    }
+    try (StsClient stsClient = stsBuilder.build()) {
       LOGGER.debug("S3Compatible - stsClient successfully built");
       AssumeRoleResponse response =
           stsClient.assumeRole(
               AssumeRoleRequest.builder()
                   .roleSessionName("PolarisCredentialsSTS")
-                  .roleArn(
-                      (storageConfig.getS3RoleArn() == null) ? "" : storageConfig.getS3RoleArn())
+                  .roleArn(storageConfig.getS3RoleArn())
                   .policy(
-                      policyString(allowListOperation, allowedReadLocations, allowedWriteLocations)
+                      StorageUtil.policyString(
+                              storageConfig.getS3RoleArn(),
+                              allowListOperation,
+                              allowedReadLocations,
+                              allowedWriteLocations)
                           .toJson())
                   .durationSeconds(
                       configurationStore.getConfiguration(
                           realmContext, STORAGE_CREDENTIAL_DURATION_SECONDS))
                   .build());
+
       propertiesMap.put(PolarisCredentialProperty.AWS_KEY_ID, response.credentials().accessKeyId());
       propertiesMap.put(
           PolarisCredentialProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
       propertiesMap.put(PolarisCredentialProperty.AWS_TOKEN, response.credentials().sessionToken());
       LOGGER.debug(
-          "S3Compatible - assumeRole - Token Expiration at : {}",
+          "S3Compatible - assumeRole - Obtained token expiration : {}",
           response.credentials().expiration().toString());
-
     } catch (Exception e) {
-      System.err.println("S3Compatible - stsClient - build failure : " + e.getMessage());
+      throw new NotAuthorizedException(
+          "Unable to build S3 Security Token Service client - " + e.getMessage());
     }
 
     return propertiesMap;
-  }
-
-  /*
-   * function from AwsCredentialsStorageIntegration but without roleArn parameter
-   */
-  private IamPolicy policyString(
-      boolean allowList, Set<String> readLocations, Set<String> writeLocations) {
-    IamPolicy.Builder policyBuilder = IamPolicy.builder();
-    IamStatement.Builder allowGetObjectStatementBuilder =
-        IamStatement.builder()
-            .effect(IamEffect.ALLOW)
-            .addAction("s3:GetObject")
-            .addAction("s3:GetObjectVersion");
-    Map<String, IamStatement.Builder> bucketListStatementBuilder = new HashMap<>();
-    Map<String, IamStatement.Builder> bucketGetLocationStatementBuilder = new HashMap<>();
-
-    String arnPrefix = "arn:aws:s3:::";
-    Stream.concat(readLocations.stream(), writeLocations.stream())
-        .distinct()
-        .forEach(
-            location -> {
-              URI uri = URI.create(location);
-              allowGetObjectStatementBuilder.addResource(
-                  IamResource.create(
-                      arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
-              final var bucket = arnPrefix + StorageUtil.getBucket(uri);
-              if (allowList) {
-                bucketListStatementBuilder
-                    .computeIfAbsent(
-                        bucket,
-                        (String key) ->
-                            IamStatement.builder()
-                                .effect(IamEffect.ALLOW)
-                                .addAction("s3:ListBucket")
-                                .addResource(key))
-                    .addCondition(
-                        IamConditionOperator.STRING_LIKE,
-                        "s3:prefix",
-                        StorageUtil.concatFilePrefixes(trimLeadingSlash(uri.getPath()), "*", "/"));
-              }
-              bucketGetLocationStatementBuilder.computeIfAbsent(
-                  bucket,
-                  key ->
-                      IamStatement.builder()
-                          .effect(IamEffect.ALLOW)
-                          .addAction("s3:GetBucketLocation")
-                          .addResource(key));
-            });
-
-    if (!writeLocations.isEmpty()) {
-      IamStatement.Builder allowPutObjectStatementBuilder =
-          IamStatement.builder()
-              .effect(IamEffect.ALLOW)
-              .addAction("s3:PutObject")
-              .addAction("s3:DeleteObject");
-      writeLocations.forEach(
-          location -> {
-            URI uri = URI.create(location);
-            allowPutObjectStatementBuilder.addResource(
-                IamResource.create(
-                    arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
-          });
-      policyBuilder.addStatement(allowPutObjectStatementBuilder.build());
-    }
-    if (!bucketListStatementBuilder.isEmpty()) {
-      bucketListStatementBuilder
-          .values()
-          .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
-    } else if (allowList) {
-      // add list privilege with 0 resources
-      policyBuilder.addStatement(
-          IamStatement.builder().effect(IamEffect.ALLOW).addAction("s3:ListBucket").build());
-    }
-
-    bucketGetLocationStatementBuilder
-        .values()
-        .forEach(statementBuilder -> policyBuilder.addStatement(statementBuilder.build()));
-    return policyBuilder.addStatement(allowGetObjectStatementBuilder.build()).build();
-  }
-
-  /* function from AwsCredentialsStorageIntegration */
-  private static @Nonnull String parseS3Path(URI uri) {
-    String bucket = StorageUtil.getBucket(uri);
-    String path = trimLeadingSlash(uri.getPath());
-    return String.join("/", bucket, path);
-  }
-
-  /* function from AwsCredentialsStorageIntegration */
-  private static @Nonnull String trimLeadingSlash(String path) {
-    if (path.startsWith("/")) {
-      path = path.substring(1);
-    }
-    return path;
   }
 }

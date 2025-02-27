@@ -21,7 +21,7 @@
 # Purpose: Launch the Spark SQL shell to interact with Polaris and do NRT.
 # -----------------------------------------------------------------------------
 #
-# Prequisite:
+# Requisite:
 # This script use a MinIO with TLS.
 # Please follow instructions in regtests/minio/Readme.md and update your 
 # java cacerts with self-signed certificate
@@ -40,6 +40,7 @@
 
 
 clear
+
 if [ $# -ne 0 ] && [ $# -ne 1 ]; then
   echo "run_spark_sql_s3compatible.sh only accepts 1 or 0 argument, argument is the the bucket, by default it will be s3://warehouse/polaris"
   echo "Usage: ./run_spark_sql.sh [S3-location]"
@@ -63,18 +64,20 @@ fi
 # Second location for testing catalog update
 S3_LOCATION_2="s3://warehouse2/polaris/"
 
+# If Polaris run inMemory classic mode, principal credentials are : root:secret
+# If Polaris run inMemory DEBUG mode, principal credentials are to retrieve from service log within this pattern: 522f251cc2b9c121:6eff0915385979684d575fa1d3f18e2b
 
 # SPARK_BEARER_TOKEN
 if ! output=$(curl -s -X POST -H "Polaris-Realm: POLARIS" "http://${POLARIS_HOST:-localhost}:8181/api/catalog/v1/oauth/tokens" \
-  -d "grant_type=client_credentials" \
-  -d "client_id=root" \
-  -d "client_secret=secret" \
-  -d "scope=PRINCIPAL_ROLE:ALL"); then
+                -d "grant_type=client_credentials" \
+                -d "client_id=root" \
+                -d "client_secret=secret" \
+                -d "scope=PRINCIPAL_ROLE:ALL"); then
   echo "Error: Failed to retrieve bearer token"
   exit 1
 fi
 SPARK_BEARER_TOKEN=$(echo "$output" | awk -F\" '{print $4}')
-if [ "SPARK_BEARER_TOKEN" == "unauthorized_client" ]; then
+if [ "$SPARK_BEARER_TOKEN" == "unauthorized_client" ]; then
   echo "Error: Failed to retrieve bearer token"
   exit 1
 fi
@@ -101,54 +104,54 @@ echo -e "\n\n-------\n\n"
 echo "Start a minio with secured self-signed buckets s3://warehouse and users, wait a moment please..."
 docker-compose --progress tty --project-name polaris-minio --project-directory minio/ -f minio/docker-compose.yml up -d minio-configured
 
-echo "minio brower is availaible during this test in https://localhost:9001 admin/password (please accept the self signed certificate)"
+echo "minio browser is available during this test in https://localhost:9001 admin/password (please accept the self signed certificate)"
 echo -e "\n\n-------\n\n"
 
 # spark setup
-export SPARK_VERSION=spark-3.5.2
-export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3
-
 echo "Doing spark setup... wait a moment"
+export SPARK_VERSION=spark-3.5.4
+export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3
+export SPARK_LOCAL_HOSTNAME=localhost # avoid VPN messing up driver local IP address binding
 ./setup.sh > /dev/null 2>&1
-
-if [ -z "${SPARK_HOME}"]; then
+if [ -z "${SPARK_HOME}" ]; then
   export SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
 fi
 
 
-
-
-# start of tests
-
-# creation of catalog
-
 echo """
-These environnement variables have to be available to Polaris service :
-CATALOG_S3_KEY_ID     = minio-user-catalog
-CATALOG_S3_KEY_SECRET = 12345678-minio-catalog
+These environment variables have to be available to Polaris service or as keys in the aws profile, and the name of this profile provided to the catalog as parameter :
 export CATALOG_S3_KEY_ID=minio-user-catalog
 export CATALOG_S3_KEY_SECRET=12345678-minio-catalog
 """
+echo Add minio-catalog-1 section in aws profile
+cat >>~/.aws/credentials <<EOF
+[minio-catalog-1]
+aws_access_key_id = minio-user-catalog
+aws_secret_access_key = 12345678-minio-catalog
+EOF
+echo Done.
 
-echo -e "\n----\nCREATE Catalog with few parameters \n"
+echo -e "\n---- CREATE Catalog with few parameters\n"
 response_catalog=$(curl  --output /dev/null -w "%{http_code}" -s -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
       http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
-      -d "{
-            \"name\": \"manual_spark\",
-            \"id\": 100,
-            \"type\": \"INTERNAL\",
-            \"readOnly\": false,
-            \"properties\": {
-              \"default-base-location\": \"${S3_LOCATION}\"
-            },
-            \"storageConfigInfo\": {
-              \"storageType\": \"S3_COMPATIBLE\",
-              \"allowedLocations\": [\"${S3_LOCATION}/\"],
-              \"s3.endpoint\": \"https://localhost:9000\"
-            }
-          }"
+      --data @- << EOFJSON
+      {
+        "name": "manual_spark",
+        "id": 100,
+        "type": "INTERNAL",
+        "readOnly": false,
+        "properties": {
+          "default-base-location": "${S3_LOCATION}"
+        },
+        "storageConfigInfo": {
+          "storageType": "S3_COMPATIBLE",
+          "allowedLocations": ["${S3_LOCATION}/"],
+          "s3.endpoint": "https://localhost:9000"
+        }
+      }
+EOFJSON
 )
 
 echo -e "Catalog creation - response API http code : $response_catalog \n"
@@ -157,50 +160,51 @@ if [ $response_catalog -ne 201 ] && [ $response_catalog -ne 409 ]; then
   exit 1
 fi
 
-
 echo -e "Get the catalog created : \n"
 curl -s -i -X GET -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
       http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/manual_spark
 
-# Update the catalog
-echo -e "\n----\nUPDATE the catalog v1, - adding a second bucket in the alllowed locations\n"
+echo -e "\n\n---- UPDATE the catalog v1, - adding a second bucket in the allowed locations\n"
 curl -s -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" \
       -H 'Accept: application/json' \
       -H 'Content-Type: application/json' \
       http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/manual_spark \
-      -d "{
-            \"currentEntityVersion\":1,
-            \"properties\": {
-              \"default-base-location\": \"${S3_LOCATION}\"
-            },
-            \"storageConfigInfo\": {
-              \"storageType\": \"S3_COMPATIBLE\",
-              \"allowedLocations\": [\"${S3_LOCATION}/\",\"${S3_LOCATION_2}/\"],
-              \"s3.endpoint\": \"https://localhost:9000\",
-              \"s3.region\": \"region-1\",
-              \"s3.pathStyleAccess\": true,
-              \"s3.credentials.catalog.accessKeyEnvVar\": \"CATALOG_S3_KEY_ID\",
-              \"s3.credentials.catalog.secretAccessKeyEnvVar\": \"CATALOG_S3_KEY_SECRET\",
-              \"s3.roleArn\": \"arn:xxx:xxx:xxx:xxxx\"
-            }
-          }"
+      --data @- << EOFJSON
+      {
+        "currentEntityVersion":1,
+        "properties": {
+          "default-base-location": "${S3_LOCATION}"
+        },
+        "storageConfigInfo": {
+          "storageType": "S3_COMPATIBLE",
+          "allowedLocations": ["${S3_LOCATION}/","${S3_LOCATION_2}/"],
+          "s3.endpoint": "https://localhost:9000",
+          "s3.profileName": "minio-catalog-1",
+          "s3.region": "region-1",
+          "s3.pathStyleAccess": true,
+          "s3.roleArn": "arn:xxx:xxx:xxx:xxx:xxx"
+        }
+      }
+EOFJSON
 
+#"s3.credentials.catalog.accessKeyEnvVar": "CATALOG_S3_KEY_ID",
+#"s3.credentials.catalog.secretAccessKeyEnvVar": "CATALOG_S3_KEY_SECRET",
 
-echo -e "\n----\nAdd TABLE_WRITE_DATA to the catalog's catalog_admin role since by default it can only manage access and metadata\n"
+echo -e "\n\n---- Add TABLE_WRITE_DATA to the catalog's catalog_admin role since by default it can only manage access and metadata\n"
 curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs/manual_spark/catalog-roles/catalog_admin/grants \
   -d '{"type": "catalog", "privilege": "TABLE_WRITE_DATA"}' > /dev/stderr
 
 
-echo -e "\n----\nAssign the catalog_admin to the service_admin.\n"
+echo -e "\n\n---- Assign the catalog_admin to the service_admin.\n"
 curl -i -X PUT -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/principal-roles/service_admin/catalog-roles/manual_spark \
   -d '{"name": "catalog_admin"}' > /dev/stderr
 
 
-echo -e "\n----\nStart Spark-sql to test Polaris catalog with queries\n"
+echo -e "\n\n---- Start Spark-sql to test Polaris catalog with queries\n"
 ${SPARK_HOME}/bin/spark-sql --verbose \
   --conf spark.sql.extensions=org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions \
   --conf spark.sql.catalog.polaris.token="${SPARK_BEARER_TOKEN}" \
@@ -210,9 +214,13 @@ ${SPARK_HOME}/bin/spark-sql --verbose \
   -f "minio/queries-for-spark.sql"
 
 
+echo Remove minio-catalog-1 section from aws profile
+sed -i '/\[minio-catalog-1\]/,${/\[minio-catalog-1\]/d; d}' ~/.aws/credentials
+echo Done.
 
-echo -e "\n\n\nEnd of tests, a table and a view data with displayed should be visible in log above"
-echo "Minio stopping, bucket browser will be shutdown, volume data of the bucket remains in 'regtests/minio/miniodata'"
-echo ":-)"
-echo ""
-docker-compose --progress quiet --project-name polaris-minio --project-directory minio/ -f minio/docker-compose.yml down
+echo
+echo End of tests, a table and a view data with displayed should be visible in log above
+echo Minio stopping, bucket browser will be shutdown, volume data of the bucket remains in 'regtests/minio/miniodata'
+echo ':-)'
+
+docker-compose --project-name polaris-minio --project-directory minio/ -f minio/docker-compose.yml down
