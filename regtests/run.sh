@@ -68,7 +68,7 @@ export AWS_ACCESS_KEY_ID=''
 export AWS_SECRET_ACCESS_KEY=''
 
 # Allow bearer token to be provided if desired
-if [[-n "$REGTEST_ROOT_BEARER_TOKEN"]]; then
+if [[ -z "$REGTEST_ROOT_BEARER_TOKEN" ]]; then
   if ! output=$(curl -X POST -H "Polaris-Realm: POLARIS" "http://${POLARIS_HOST:-localhost}:8181/api/catalog/v1/oauth/tokens" \
     -d "grant_type=client_credentials" \
     -d "client_id=root" \
