@@ -49,6 +49,8 @@ import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.persistence.transactional.PolarisTreeMapMetaStoreSessionImpl;
+import org.apache.polaris.core.persistence.transactional.PolarisTreeMapStore;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
