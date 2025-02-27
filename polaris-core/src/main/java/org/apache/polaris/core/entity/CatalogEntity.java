@@ -149,6 +149,7 @@ public class CatalogEntity extends PolarisEntity {
         return S3CompatibleStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3_COMPATIBLE)
             .setS3Endpoint(s3Config.getS3Endpoint())
+            .setS3ProfileName(s3Config.getS3ProfileName())
             .setS3PathStyleAccess(s3Config.getS3PathStyleAccess())
             .setAllowedLocations(s3Config.getAllowedLocations())
             .setS3CredentialsCatalogAccessKeyEnvVar(s3Config.getS3CredentialsCatalogAccessKeyId())
@@ -275,6 +276,7 @@ public class CatalogEntity extends PolarisEntity {
                 new S3CompatibleStorageConfigurationInfo(
                     PolarisStorageConfigurationInfo.StorageType.S3_COMPATIBLE,
                     s3ConfigModel.getS3Endpoint(),
+                    s3ConfigModel.getS3ProfileName(),
                     s3ConfigModel.getS3CredentialsCatalogAccessKeyEnvVar(),
                     s3ConfigModel.getS3CredentialsCatalogSecretAccessKeyEnvVar(),
                     s3ConfigModel.getS3PathStyleAccess(),

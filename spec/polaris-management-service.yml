@@ -915,28 +915,33 @@ components:
       properties:
         s3.endpoint:
           type: string
-          description: the S3 endpoint
+          description: S3 endpoint
           example: "http[s]://host:port"
+        s3.profileName:
+          type: string
+          description: optional - S3 profile name (credentials) used by this catalog to communicate with S3
+          example: "default or minio-storage-catalog-1 or ceph-storage-catalog-2"
         s3.credentials.catalog.accessKeyEnvVar:
           type: string
-          description: Default to AWS credentials, otherwise set the environment variable name for the 'ACCESS_KEY_ID' used by the catalog to communicate with S3
+          description: optional - environment variable name for the 'ACCESS_KEY_ID' used by this catalog to communicate with S3
           example: "CATALOG_1_ACCESS_KEY_ENV_VARIABLE_NAME or AWS_ACCESS_KEY_ID"
         s3.credentials.catalog.secretAccessKeyEnvVar:
           type: string
-          description: Default to AWS credentials, otherwise set the environment variable name for the 'SECRET_ACCESS_KEY' used by the catalog to communicate with S3
+          description: optional - environment variable name for the 'SECRET_ACCESS_KEY' used by this catalog to communicate with S3
           example: "CATALOG_1_SECRET_KEY_ENV_VARIABLE_NAME or AWS_SECRET_ACCESS_KEY"
         s3.pathStyleAccess:
           type: boolean
-          description: Whether or not to use path-style access
+          description: optional - whether or not to use path-style access
           default: false
         s3.region:
           type: string
-          description: Optional - the s3 region where data is stored
+          description: optional - s3 region where data is stored
           example: "rack-1 or us-east-1"
         s3.roleArn:
           type: string
-          description: Optional - a s3 role arn
-          example: "arn:aws:iam::123456789001:principal/abc1-b-self1234"        
+          description: optional - s3 role arn, used with assumeRole to obtain a Security Token Service
+          pattern: '^([u|a]rn:\S*:\S*:\S*:\S*:\S*).*$'
+          example: "arn:aws:iam::123456789001:principal/abc1-b-self1234 or urn:ecs:iam::namespace:user/role"
       required:
         - s3.endpoint
 

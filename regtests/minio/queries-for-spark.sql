@@ -29,14 +29,10 @@ SELECT * FROM db1.ns2.view1;
 INSERT INTO db1.ns1.table1 VALUES (13, 23);
 SELECT * FROM db1.ns2.view1;
 
-CREATE DATABASE IF NOT EXISTS db1;
-CREATE OR REPLACE TABLE db1.table1 ( f1 int, f2 int );
-INSERT INTO db1.ns1.table1 VALUES (3, 2);
-
 -- Test the second bucket allowed in the catalog
-CREATE DATABASE IF NOT EXISTS db2 LOCATION 's3://warehouse2/polaris/';
-CREATE OR REPLACE TABLE db2.table1 ( f1 int, f2 int );
-INSERT INTO db2.table1 VALUES (01, 02);
-SELECT * FROM db2.table1;
+CREATE DATABASE IF NOT EXISTS wh2 LOCATION 's3://warehouse2/polaris';
+CREATE OR REPLACE TABLE wh2.table1 ( f1 int, f2 int );
+INSERT INTO wh2.table1 VALUES (01, 02);
+SELECT * FROM wh2.table1;
 
 quit;
