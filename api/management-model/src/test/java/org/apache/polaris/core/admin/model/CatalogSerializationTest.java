@@ -24,11 +24,41 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 public class CatalogSerializationTest {
+
+  @Test
+  public void testJsonFormat() throws JsonProcessingException {
+    Catalog catalog =
+        new Catalog(
+            Catalog.TypeEnum.INTERNAL,
+            TEST_CATALOG_NAME,
+            new CatalogProperties(TEST_LOCATION),
+            new AwsStorageConfigInfo(TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3));
+
+    String json = mapper.writeValueAsString(catalog);
+
+    assertThat(json)
+        .isEqualTo(
+            "{\"type\":\"INTERNAL\","
+                + "\"name\":\"test-catalog\","
+                + "\"properties\":{\"default-base-location\":\"s3://test/\"},"
+                + "\"createTimestamp\":null,"
+                + "\"lastUpdateTimestamp\":null,"
+                + "\"entityVersion\":null,"
+                + "\"storageConfigInfo\":{"
+                + "\"roleArn\":\"arn:aws:iam::123456789012:role/test-role\","
+                + "\"externalId\":null,"
+                + "\"userArn\":null,"
+                + "\"region\":null,"
+                + "\"storageType\":\"S3\","
+                + "\"allowedLocations\":[]"
+                + "}}");
+  }
 
   private ObjectMapper mapper;
   private static final String TEST_LOCATION = "s3://test/";
@@ -40,25 +70,13 @@ public class CatalogSerializationTest {
     mapper = new ObjectMapper();
   }
 
-  /**
-   * Helper method to verify round-trip serialization/deserialization of Catalog objects. Ensures
-   * all fields are preserved correctly through the process.
-   *
-   * @param original The catalog object to test
-   * @return The deserialized catalog for additional assertions if needed
-   */
-  private Catalog verifyRoundTrip(Catalog original) throws JsonProcessingException {
-    String json = mapper.writeValueAsString(original);
-    Catalog deserialized = mapper.readValue(json, Catalog.class);
-    assertThat(deserialized).usingRecursiveComparison().isEqualTo(original);
-    return deserialized;
-  }
-
   @ParameterizedTest(name = "{0}")
   @MethodSource("catalogTestCases")
   public void testCatalogSerialization(String description, Catalog catalog)
       throws JsonProcessingException {
-    verifyRoundTrip(catalog);
+    String json = mapper.writeValueAsString(catalog);
+    Catalog deserialized = mapper.readValue(json, Catalog.class);
+    assertThat(deserialized).usingRecursiveComparison().isEqualTo(catalog);
   }
 
   private static Stream<Arguments> catalogTestCases() {
