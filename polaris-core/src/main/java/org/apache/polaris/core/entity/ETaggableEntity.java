@@ -19,6 +19,8 @@
 
 package org.apache.polaris.core.entity;
 
+import net.minidev.json.annotate.JsonIgnore;
+
 /**
  * Entities that can expose an ETag that can uniquely identify their current state.
  */
@@ -28,6 +30,7 @@ public interface ETaggableEntity {
      * Obtain an ETag that uniquely identifies the current state of the entity.
      * @return the ETag
      */
+    @JsonIgnore
     String getETag();
 
     /**
@@ -35,6 +38,9 @@ public interface ETaggableEntity {
      * @param etag The etag to compare the entity against
      * @return true if the etag identifies the current state of the entity, false otherwise
      */
-    boolean isCurrent(String etag);
+    @JsonIgnore
+    default boolean isCurrent(String etag) {
+        return getETag().equals(etag);
+    }
 
 }

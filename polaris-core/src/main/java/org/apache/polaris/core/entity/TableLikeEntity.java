@@ -85,12 +85,6 @@ public class TableLikeEntity extends PolarisEntity implements ETaggableEntity {
     return id + ":" + entityVersion;
   }
 
-  @Override
-  @JsonIgnore
-  public boolean isCurrent(String etag) {
-    return getETag().equals(etag);
-  }
-
   public static class Builder extends PolarisEntity.BaseBuilder<TableLikeEntity, Builder> {
     public Builder(TableIdentifier identifier, String metadataLocation) {
       super();

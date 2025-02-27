@@ -846,7 +846,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   }
 
   public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
-    return loadTableIfStale(tableIdentifier, null, snapshots).get().getResponse();
+    return loadTableIfStale(tableIdentifier, null, snapshots).get().response();
   }
 
   /**
@@ -873,7 +873,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(TableIdentifier tableIdentifier, String snapshots) {
-    return loadTableWithAccessDelegationIfStale(tableIdentifier, null, snapshots).get().getResponse();
+    return loadTableWithAccessDelegationIfStale(tableIdentifier, null, snapshots).get().response();
   }
 
   /**

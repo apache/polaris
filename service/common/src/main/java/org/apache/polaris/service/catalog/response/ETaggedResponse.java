@@ -19,28 +19,11 @@
 
 package org.apache.polaris.service.catalog.response;
 
+import jakarta.annotation.Nonnull;
+
 /**
  * Allows Iceberg response types to be wrapped alongside an ETag that
  * can be unwrapped into the HTTP ETag header.
  * @param <T> The type of the encapsulated response object
  */
-public class ETaggedResponse<T> {
-
-    private final T response;
-
-    private final String etag;
-
-    public ETaggedResponse(T response, String etag) {
-        this.response = response;
-        this.etag = etag;
-    }
-
-    public T getResponse() {
-        return response;
-    }
-
-    public String getETag() {
-        return etag;
-    }
-
-}
+public record ETaggedResponse<T> (@Nonnull T response, @Nonnull String etag) {}
