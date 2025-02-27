@@ -151,6 +151,8 @@ public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCat
           "true",
           "polaris.features.defaults.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
           "true",
+          "polaris.features.defaults.\"ALLOW_OVERLAPPING_CATALOG_URLS\"",
+          "true",
           "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\"]");
     }
@@ -242,28 +244,6 @@ public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCat
             securityContext,
             new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
 
-    String storageLocation = "s3://my-bucket/path/to/data";
-    storageConfigModel =
-        AwsStorageConfigInfo.builder()
-            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
-            .setExternalId("externalId")
-            .setUserArn("aws::a:user:arn")
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
-            .build();
-    catalogEntity =
-        adminService.createCatalog(
-            new CatalogEntity.Builder()
-                .setName(CATALOG_NAME)
-                .setDefaultBaseLocation(storageLocation)
-                .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
-                .build());
-
     RealmEntityManagerFactory realmEntityManagerFactory =
         new RealmEntityManagerFactory(createMockMetaStoreManagerFactory());
     this.fileIOFactory =
@@ -286,11 +266,7 @@ public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCat
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
-    this.catalog =
-        initCatalog(
-            CATALOG_NAME,
-            ImmutableMap.of(
-                CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    this.catalog = initCatalog(CATALOG_NAME, ImmutableMap.of());
   }
 
   @AfterEach
@@ -307,9 +283,30 @@ public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCat
   @Override
   protected BasePolarisCatalog initCatalog(
       String catalogName, Map<String, String> additionalProperties) {
+    String storageLocation = "s3://my-bucket/path/to/data";
+    storageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setExternalId("externalId")
+            .setUserArn("aws::a:user:arn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
+            .build();
+    catalogEntity =
+        adminService.createCatalog(
+            new CatalogEntity.Builder()
+                .setName(catalogName)
+                .setDefaultBaseLocation(storageLocation)
+                .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+                .addProperty(
+                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                .addProperty(
+                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                .build());
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, entityManager, securityContext, CATALOG_NAME);
+            callContext, entityManager, securityContext, catalogName);
     TaskExecutor taskExecutor = Mockito.mock();
     BasePolarisCatalog basePolarisCatalog =
         new BasePolarisCatalog(
@@ -320,7 +317,12 @@ public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCat
             securityContext,
             taskExecutor,
             fileIOFactory);
-    basePolarisCatalog.initialize(CATALOG_NAME, additionalProperties);
+
+    ImmutableMap.Builder<String, String> propertiesBuilder =
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .putAll(additionalProperties);
+    basePolarisCatalog.initialize(catalogName, propertiesBuilder.buildKeepingLast());
     return basePolarisCatalog;
   }
 
