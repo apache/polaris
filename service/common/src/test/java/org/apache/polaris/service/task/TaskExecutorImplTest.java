@@ -18,9 +18,7 @@
  */
 package org.apache.polaris.service.task;
 
-import java.time.Clock;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -52,10 +50,8 @@ public class TaskExecutorImplTest {
     PolarisMetaStoreSession metaStoreSession =
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
 
-    PolarisDiagnostics diagnostics = testServices.polarisDiagnostics();
-    Clock clock = Clock.systemUTC();
-
-    PolarisCallContext polarisCallCtx = new PolarisCallContext(metaStoreSession, diagnostics);
+    PolarisCallContext polarisCallCtx =
+        new PolarisCallContext(metaStoreSession, testServices.polarisDiagnostics());
     CallContext callContext = CallContext.of(realmContext, polarisCallCtx);
 
     // This task doesn't have a type so it won't be handle-able by a real handler. We register a
