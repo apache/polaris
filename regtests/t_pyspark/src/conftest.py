@@ -19,6 +19,7 @@
 
 import codecs
 import os
+import uuid
 from typing import List
 
 import pytest
@@ -48,13 +49,21 @@ def polaris_path_prefix():
   return os.getenv('POLARIS_PATH_PREFIX', '')
 
 @pytest.fixture
-def polaris_url(polaris_host, polaris_port, polaris_path_prefix):
-  return f"http://{polaris_host}:{polaris_port}{polaris_path_prefix}/api/management/v1"
+def polaris_url_scheme():
+  """
+  Used to provide a path prefix between the port number and the standard polaris endpoint paths
+  :return:
+  """
+  return os.getenv('POLARIS_URL_SCHEME', 'http://')
+
+@pytest.fixture
+def polaris_url(polaris_url_scheme, polaris_host, polaris_port, polaris_path_prefix):
+  return f"{polaris_url_scheme}{polaris_host}:{polaris_port}{polaris_path_prefix}/api/management/v1"
 
 
 @pytest.fixture
-def polaris_catalog_url(polaris_host, polaris_port, polaris_path_prefix):
-  return f"http://{polaris_host}:{polaris_port}{polaris_path_prefix}/api/catalog"
+def polaris_catalog_url(polaris_url_scheme, polaris_host, polaris_port, polaris_path_prefix):
+  return f"{polaris_url_scheme}{polaris_host}:{polaris_port}{polaris_path_prefix}/api/catalog"
 
 @pytest.fixture
 def test_bucket():
@@ -93,7 +102,7 @@ def snowflake_catalog(root_client, catalog_client, test_bucket, aws_role_arn, aw
   storage_conf = AwsStorageConfigInfo(storage_type="S3",
                                       allowed_locations=[f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/"],
                                       role_arn=aws_role_arn)
-  catalog_name = 'snowflake'
+  catalog_name = f'snowflake_{str(uuid.uuid4())[-10:]}'
   catalog = Catalog(name=catalog_name, type='INTERNAL', properties={
     "default-base-location": f"s3://{test_bucket}/{aws_bucket_base_location_prefix}/snowflake_catalog",
     "client.credentials-provider": "software.amazon.awssdk.auth.credentials.SystemPropertyCredentialsProvider"

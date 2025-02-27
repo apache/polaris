@@ -50,8 +50,8 @@ def snowman(polaris_url, polaris_catalog_url, root_client, snowflake_catalog):
   :param snowflake_catalog:
   :return:
   """
-  snowman_name = "snowman"
-  table_writer_rolename = "table_writer"
+  snowman_name = f"snowman_{str(uuid.uuid4())[-10:]}"
+  table_writer_rolename = f"table_writer_{str(uuid.uuid4())[-10:]}"
   snowflake_writer_rolename = "snowflake_writer"
   try:
     snowman = create_principal(polaris_url, polaris_catalog_url, root_client, snowman_name)
@@ -1012,28 +1012,22 @@ def test_spark_credentials_s3_direct_without_read(
 
 def create_principal(polaris_url, polaris_catalog_url, api, principal_name):
   principal = Principal(name=principal_name, type="SERVICE")
-  try:
-    principal_result = api.create_principal(CreatePrincipalRequest(principal=principal))
+  principal_result = api.create_principal(CreatePrincipalRequest(principal=principal))
 
-    token_client = CatalogApiClient(Configuration(username=principal_result.principal.client_id,
+  token_client = CatalogApiClient(Configuration(username=principal_result.principal.client_id,
                                                   password=principal_result.credentials.client_secret,
                                                   host=polaris_catalog_url))
-    oauth_api = IcebergOAuth2API(token_client)
-    token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=principal_result.principal.client_id,
+  oauth_api = IcebergOAuth2API(token_client)
+  token = oauth_api.get_token(scope='PRINCIPAL_ROLE:ALL', client_id=principal_result.principal.client_id,
                                 client_secret=principal_result.credentials.client_secret,
                                 grant_type='client_credentials',
                                 _headers={'realm': 'POLARIS'})
-    rotate_client = ManagementApiClient(Configuration(access_token=token.access_token,
+  rotate_client = ManagementApiClient(Configuration(access_token=token.access_token,
                                                       host=polaris_url))
-    rotate_api = PolarisDefaultApi(rotate_client)
+  rotate_api = PolarisDefaultApi(rotate_client)
 
-    rotate_credentials = rotate_api.rotate_credentials(principal_name=principal_name)
-    return rotate_credentials
-  except ApiException as e:
-    if e.status == 409:
-      return rotate_api.rotate_credentials(principal_name=principal_name)
-    else:
-      raise e
+  rotate_credentials = rotate_api.rotate_credentials(principal_name=principal_name)
+  return rotate_credentials
 
 
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
