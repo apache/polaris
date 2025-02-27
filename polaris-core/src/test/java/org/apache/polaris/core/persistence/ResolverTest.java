@@ -49,6 +49,7 @@ import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -63,7 +64,7 @@ public class ResolverTest {
   private final PolarisTreeMapStore store;
 
   // to interact with the metastore
-  private final PolarisMetaStoreSession metaStore;
+  private final TransactionalPersistence metaStore;
 
   // polaris call context
   private final PolarisCallContext callCtx;

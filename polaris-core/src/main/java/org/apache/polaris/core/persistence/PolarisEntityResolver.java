@@ -32,6 +32,7 @@ import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 
 /**
  * Utility class used by the meta store manager to ensure that all entities which had been resolved
@@ -78,7 +79,7 @@ public class PolarisEntityResolver {
    */
   PolarisEntityResolver(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nullable PolarisEntityCore resolvedEntity,
       @Nullable List<PolarisEntityCore> otherTopLevelEntities) {
@@ -157,7 +158,7 @@ public class PolarisEntityResolver {
    */
   PolarisEntityResolver(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath) {
     this(callCtx, ms, catalogPath, null, null);
   }
@@ -173,7 +174,7 @@ public class PolarisEntityResolver {
    */
   PolarisEntityResolver(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       PolarisEntityCore resolvedEntityDto) {
     this(callCtx, ms, catalogPath, resolvedEntityDto, null);
@@ -190,7 +191,7 @@ public class PolarisEntityResolver {
    */
   PolarisEntityResolver(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity) {
     this(callCtx, ms, catalogPath, new PolarisEntityCore(entity), null);
@@ -239,7 +240,7 @@ public class PolarisEntityResolver {
    */
   private boolean resolveEntitiesIfNeeded(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nullable PolarisEntityCore resolvedEntity,
       @Nullable List<PolarisEntityCore> otherTopLevelEntities) {

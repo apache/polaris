@@ -71,8 +71,8 @@ import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
@@ -177,7 +177,7 @@ public abstract class PolarisAuthzTestBase {
   protected PolarisAdminService adminService;
   protected PolarisEntityManager entityManager;
   protected PolarisMetaStoreManager metaStoreManager;
-  protected PolarisMetaStoreSession metaStoreSession;
+  protected TransactionalPersistence metaStoreSession;
   protected PolarisBaseEntity catalogEntity;
   protected PrincipalEntity principalEntity;
   protected CallContext callContext;

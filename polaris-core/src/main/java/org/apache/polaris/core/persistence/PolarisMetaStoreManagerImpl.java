@@ -50,6 +50,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
@@ -78,7 +79,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private void persistNewEntity(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisBaseEntity entity) {
 
     // validate the entity type and subtype
@@ -146,7 +147,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private @Nonnull PolarisBaseEntity persistEntityAfterChange(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
       @Nonnull PolarisBaseEntity originalEntity) {
@@ -214,7 +215,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private void dropEntity(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisBaseEntity entity) {
 
     // validate the entity type and subtype
@@ -286,7 +287,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private @Nonnull PolarisGrantRecord persistNewGrantRecord(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisEntityCore securable,
       @Nonnull PolarisEntityCore grantee,
       @Nonnull PolarisPrivilege priv) {
@@ -355,7 +356,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private void revokeGrantRecord(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisEntityCore securable,
       @Nonnull PolarisEntityCore grantee,
       @Nonnull PolarisGrantRecord grantRecord) {
@@ -439,7 +440,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private @Nonnull CreateCatalogResult createCatalog(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisBaseEntity catalog,
       @Nullable PolarisStorageIntegration<?> integration,
       @Nonnull List<PolarisEntityCore> principalRoles) {
@@ -561,7 +562,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    * @param ms meta store in read/write mode
    */
   private void bootstrapPolarisService(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisMetaStoreSession ms) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull TransactionalPersistence ms) {
 
     // Create a root container entity that can represent the securable for any top-level grants.
     PolarisBaseEntity rootContainer =
@@ -623,7 +624,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   @Override
   public @Nonnull BaseResult bootstrapPolarisService(@Nonnull PolarisCallContext callCtx) {
     // get meta store we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // run operation in a read/write transaction
     ms.runActionInTransaction(callCtx, () -> this.bootstrapPolarisService(callCtx, ms));
@@ -635,7 +636,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   @Override
   public @Nonnull BaseResult purge(@Nonnull PolarisCallContext callCtx) {
     // get meta store we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // run operation in a read/write transaction
     LOGGER.warn("Deleting all metadata in the metastore...");
@@ -652,7 +653,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private @Nonnull PolarisMetaStoreManager.EntityResult readEntityByName(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType,
@@ -696,7 +697,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull String name) {
     // get meta store we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // run operation in a read/write transaction
     return ms.runInReadTransaction(
@@ -708,7 +709,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private @Nonnull ListEntitiesResult listEntities(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType) {
@@ -744,7 +745,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisEntityType entityType,
       @Nonnull PolarisEntitySubType entitySubType) {
     // get meta store we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // run operation in a read transaction
     return ms.runInReadTransaction(
@@ -755,7 +756,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   @Override
   public @Nonnull GenerateEntityIdResult generateNewEntityId(@Nonnull PolarisCallContext callCtx) {
     // get meta store we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     return new GenerateEntityIdResult(ms.generateNewId(callCtx));
   }
@@ -803,7 +804,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** {@link #createPrincipal(PolarisCallContext, PolarisBaseEntity)} */
   private @Nonnull CreatePrincipalResult createPrincipal(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisBaseEntity principal) {
     // validate input
     callCtx.getDiagServices().checkNotNull(principal, "unexpected_null_principal");
@@ -900,7 +901,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   public @Nonnull CreatePrincipalResult createPrincipal(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity principal) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read/write transaction
     return ms.runInTransaction(callCtx, () -> this.createPrincipal(callCtx, ms, principal));
@@ -908,7 +909,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
 
   /** See {@link #loadPrincipalSecrets(PolarisCallContext, String)} */
   private @Nullable PolarisPrincipalSecrets loadPrincipalSecrets(
-      @Nonnull PolarisCallContext callCtx, PolarisMetaStoreSession ms, @Nonnull String clientId) {
+      @Nonnull PolarisCallContext callCtx, TransactionalPersistence ms, @Nonnull String clientId) {
     return ms.loadPrincipalSecrets(callCtx, clientId);
   }
 
@@ -917,7 +918,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   public @Nonnull PrincipalSecretsResult loadPrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read/write transaction
     PolarisPrincipalSecrets secrets =
@@ -931,7 +932,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** See {@link #} */
   private @Nullable PolarisPrincipalSecrets rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nonnull String clientId,
       long principalId,
       boolean reset,
@@ -987,7 +988,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       boolean reset,
       @Nonnull String oldSecretHash) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read/write transaction
     PolarisPrincipalSecrets secrets =
@@ -1009,7 +1010,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisBaseEntity catalog,
       @Nonnull List<PolarisEntityCore> principalRoles) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     Map<String, String> internalProp = getInternalPropertyMap(callCtx, catalog);
     String integrationIdentifierOrId =
@@ -1038,7 +1039,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** {@link #createEntityIfNotExists(PolarisCallContext, List, PolarisBaseEntity)} */
   private @Nonnull EntityResult createEntityIfNotExists(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity) {
 
@@ -1090,7 +1091,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read/write transaction
     return ms.runInTransaction(
@@ -1103,7 +1104,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull List<? extends PolarisBaseEntity> entities) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read/write transaction
     return ms.runInTransaction(
@@ -1130,7 +1131,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private @Nonnull EntityResult updateEntityPropertiesIfNotChanged(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity) {
     // entity cannot be null
@@ -1176,7 +1177,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read/write transaction
     return ms.runInTransaction(
@@ -1186,7 +1187,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** See {@link #updateEntitiesPropertiesIfNotChanged(PolarisCallContext, List)} */
   private @Nonnull EntitiesResult updateEntitiesPropertiesIfNotChanged(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nonnull List<EntityWithPath> entities) {
     // ensure that the entities list is not null
     callCtx.getDiagServices().checkNotNull(entities, "unexpected_null_entities");
@@ -1221,7 +1222,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   public @Nonnull EntitiesResult updateEntitiesPropertiesIfNotChanged(
       @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityWithPath> entities) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read/write transaction
     return ms.runInTransaction(
@@ -1234,7 +1235,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private @Nonnull EntityResult renameEntity(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
@@ -1341,7 +1342,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nullable List<PolarisEntityCore> newCatalogPath,
       @Nonnull PolarisEntity renamedEntity) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read/write transaction
     return ms.runInTransaction(
@@ -1358,7 +1359,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private @Nonnull DropEntityResult dropEntityIfExists(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
@@ -1473,7 +1474,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read/write transaction
     return ms.runInTransaction(
@@ -1497,7 +1498,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private @Nonnull PolarisEntityResolver resolveRoleToGranteeUsageGrant(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable PolarisEntityCore catalog,
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee) {
@@ -1547,7 +1548,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private PolarisEntityResolver resolveSecurableToRoleGrant(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore securable) {
@@ -1574,7 +1575,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private @Nonnull PrivilegeResult grantUsageOnRoleToGrantee(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable PolarisEntityCore catalog,
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee) {
@@ -1611,7 +1612,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read/write transaction
     return ms.runInTransaction(
@@ -1624,7 +1625,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private @Nonnull PrivilegeResult revokeUsageOnRoleFromGrantee(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable PolarisEntityCore catalog,
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee) {
@@ -1673,7 +1674,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read/write transaction
     return ms.runInTransaction(
@@ -1686,7 +1687,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private @Nonnull PrivilegeResult grantPrivilegeOnSecurableToRole(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore securable,
@@ -1716,7 +1717,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisEntityCore securable,
       @Nonnull PolarisPrivilege privilege) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read/write transaction
     return ms.runInTransaction(
@@ -1732,7 +1733,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    */
   private @Nonnull PrivilegeResult revokePrivilegeOnSecurableFromRole(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore securable,
@@ -1778,7 +1779,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisEntityCore securable,
       @Nonnull PolarisPrivilege privilege) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read/write transaction
     return ms.runInTransaction(
@@ -1791,7 +1792,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** {@link #loadGrantsOnSecurable(PolarisCallContext, long, long)} */
   private @Nonnull LoadGrantsResult loadGrantsOnSecurable(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       long securableCatalogId,
       long securableId) {
 
@@ -1831,7 +1832,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   public @Nonnull LoadGrantsResult loadGrantsOnSecurable(
       @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read transaction
     return ms.runInReadTransaction(
@@ -1841,7 +1842,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** {@link #loadGrantsToGrantee(PolarisCallContext, long, long)} */
   public @Nonnull LoadGrantsResult loadGrantsToGrantee(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       long granteeCatalogId,
       long granteeId) {
 
@@ -1880,7 +1881,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   public @Nonnull LoadGrantsResult loadGrantsToGrantee(
       @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read transaction
     return ms.runInReadTransaction(
@@ -1890,7 +1891,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** {@link PolarisMetaStoreManager#loadEntitiesChangeTracking(PolarisCallContext, List)} */
   private @Nonnull ChangeTrackingResult loadEntitiesChangeTracking(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nonnull List<PolarisEntityId> entityIds) {
     List<PolarisChangeTrackingVersions> changeTracking =
         ms.lookupEntityVersions(callCtx, entityIds);
@@ -1902,7 +1903,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   public @Nonnull ChangeTrackingResult loadEntitiesChangeTracking(
       @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEntityId> entityIds) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read transaction
     return ms.runInReadTransaction(
@@ -1912,7 +1913,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** Refer to {@link #loadEntity(PolarisCallContext, long, long)} */
   private @Nonnull EntityResult loadEntity(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       long entityCatalogId,
       long entityId) {
     // this is an easy one
@@ -1927,7 +1928,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   public @Nonnull EntityResult loadEntity(
       @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read transaction
     return ms.runInReadTransaction(
@@ -1937,7 +1938,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** Refer to {@link #loadTasks(PolarisCallContext, String, int)} */
   private @Nonnull EntitiesResult loadTasks(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       String executorId,
       int limit) {
 
@@ -1989,7 +1990,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   @Override
   public @Nonnull EntitiesResult loadTasks(
       @Nonnull PolarisCallContext callCtx, String executorId, int limit) {
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
     return ms.runInTransaction(callCtx, () -> this.loadTasks(callCtx, ms, executorId, limit));
   }
 
@@ -2004,7 +2005,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull Set<String> allowedWriteLocations) {
 
     // get meta store session we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
     callCtx
         .getDiagServices()
         .check(
@@ -2058,7 +2059,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull Set<PolarisStorageActions> actions,
       @Nonnull Set<String> locations) {
     // get meta store we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
     callCtx
         .getDiagServices()
         .check(
@@ -2120,7 +2121,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** {@link #loadResolvedEntityById(PolarisCallContext, long, long)} */
   private @Nonnull ResolvedEntityResult loadResolvedEntityById(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       long entityCatalogId,
       long entityId) {
 
@@ -2151,7 +2152,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   public @Nonnull ResolvedEntityResult loadResolvedEntityById(
       @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read transaction
     return ms.runInReadTransaction(
@@ -2161,7 +2162,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** {@link #loadResolvedEntityById(PolarisCallContext, long, long)} */
   private @Nonnull ResolvedEntityResult loadResolvedEntityByName(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       long entityCatalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
@@ -2201,7 +2202,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisEntityType entityType,
       @Nonnull String entityName) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read transaction
     ResolvedEntityResult result =
@@ -2260,7 +2261,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   /** {@inheritDoc} */
   private @Nonnull ResolvedEntityResult refreshResolvedEntity(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       int entityVersion,
       int entityGrantRecordsVersion,
       @Nonnull PolarisEntityType entityType,
@@ -2319,7 +2320,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       long entityCatalogId,
       long entityId) {
     // get metastore we should be using
-    PolarisMetaStoreSession ms = callCtx.getMetaStore();
+    TransactionalPersistence ms = callCtx.getMetaStore();
 
     // need to run inside a read transaction
     return ms.runInReadTransaction(

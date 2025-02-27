@@ -50,9 +50,9 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -68,7 +68,7 @@ import org.slf4j.LoggerFactory;
  * EclipseLink implementation of a Polaris metadata store supporting persisting and retrieving all
  * Polaris metadata from/to the configured database systems.
  */
-public class PolarisEclipseLinkMetaStoreSessionImpl extends PolarisMetaStoreSession {
+public class PolarisEclipseLinkMetaStoreSessionImpl extends TransactionalPersistence {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisEclipseLinkMetaStoreSessionImpl.class);
 

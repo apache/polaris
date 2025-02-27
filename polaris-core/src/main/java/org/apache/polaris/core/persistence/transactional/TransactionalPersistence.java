@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence;
+package org.apache.polaris.core.persistence.transactional;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -27,13 +27,15 @@ import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
 import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.persistence.BasePersistence;
+import org.apache.polaris.core.persistence.IntegrationPersistence;
 
 /**
  * Extends BasePersistence to express a more "transaction-oriented" control flow for backing stores
  * which can support a runInTransaction semantic, while providing default implementations of some of
  * the BasePersistence methods in terms of lower-level methods that subclasses must implement.
  */
-public abstract class PolarisMetaStoreSession implements BasePersistence, IntegrationPersistence {
+public abstract class TransactionalPersistence implements BasePersistence, IntegrationPersistence {
 
   /**
    * Run the specified transaction code (a Supplier lambda type) in a database read/write
