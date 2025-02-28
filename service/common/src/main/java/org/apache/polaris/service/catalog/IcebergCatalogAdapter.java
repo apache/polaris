@@ -73,6 +73,7 @@ import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.catalog.response.ETaggedResponse;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
+import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -335,7 +336,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String table,
       String accessDelegationMode,
-      String etag,
+      String ifNoneMatchHeader,
       String snapshots,
       RealmContext realmContext,
       SecurityContext securityContext) {
@@ -344,13 +345,16 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
       ETaggedResponse<LoadTableResponse> loadTableResult;
+
+    IfNoneMatch ifNoneMatch = new IfNoneMatch(ifNoneMatchHeader);
+
       if (delegationModes.isEmpty()) {
           loadTableResult = newHandlerWrapper(realmContext, securityContext, prefix)
-                  .loadTableIfStale(tableIdentifier, etag, snapshots)
+                  .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
                   .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
       } else {
           loadTableResult = newHandlerWrapper(realmContext, securityContext, prefix)
-                  .loadTableWithAccessDelegationIfStale(tableIdentifier, etag, snapshots)
+                  .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
                   .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
       }
       return Response.ok(loadTableResult.response()).header(HttpHeaders.ETAG, loadTableResult.etag())

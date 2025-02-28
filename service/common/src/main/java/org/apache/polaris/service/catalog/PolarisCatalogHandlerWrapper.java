@@ -93,6 +93,8 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.response.ETaggedResponse;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
+import org.apache.polaris.service.http.ETag;
+import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -596,7 +598,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     }
     return new ETaggedResponse<>(
             doCatalogOperation(() -> CatalogHandlers.createTable(baseCatalog, namespace, request)),
-            getTableEntity(identifier).getETag()
+            generateETagForTable(getTableEntity(identifier))
     );
   }
 
@@ -664,7 +666,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                           PolarisStorageActions.WRITE,
                           PolarisStorageActions.LIST)));
             }
-            return new ETaggedResponse<>(responseBuilder.build(), getTableEntity(tableIdentifier).getETag());
+            return new ETaggedResponse<>(responseBuilder.build(), generateETagForTable(getTableEntity(tableIdentifier)));
           } else if (table instanceof BaseMetadataTable) {
             // metadata tables are loaded on the client side, return NoSuchTableException for now
             throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
@@ -792,7 +794,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
 
     return new ETaggedResponse<>(
             doCatalogOperation(() -> CatalogHandlers.registerTable(baseCatalog, namespace, request)),
-            getTableEntity(identifier).getETag()
+            generateETagForTable(getTableEntity(identifier))
     );
   }
 
@@ -845,30 +847,42 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     return TableLikeEntity.of(target.getRawLeafEntity());
   }
 
+  /**
+   * Generate an ETag for a table entity
+   * @param tableLikeEntity the table to generate the ETag for
+   * @return the generated ETag
+   */
+  private ETag generateETagForTable(TableLikeEntity tableLikeEntity) {
+    return new ETag(true, tableLikeEntity.getId() + ":" + tableLikeEntity.getEntityVersion());
+  }
+
   public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
     return loadTableIfStale(tableIdentifier, null, snapshots).get().response();
   }
 
   /**
-   * Attempt to perform a loadTable operation only when the specified etag does not match the current state of the table.
+   * Attempt to perform a loadTable operation only when the specified set of etags do not match the current state
+   * of the table metadata.
    * @param tableIdentifier The identifier of the table to load
-   * @param etag The ETag which identifies the metadata currently known
+   * @param ifNoneMatch  set of entity-tags to check the metadata against for staleness
    * @param snapshots
    * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the load table response, otherwise
    */
-  public Optional<ETaggedResponse<LoadTableResponse>> loadTableIfStale(TableIdentifier tableIdentifier, String etag, String snapshots) {
+  public Optional<ETaggedResponse<LoadTableResponse>> loadTableIfStale(
+          TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
       PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
       authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.TABLE, tableIdentifier);
 
       TableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+      ETag tableEntityTag = generateETagForTable(tableEntity);
 
-      if (tableEntity.isCurrent(etag)) {
+      if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableEntityTag)) {
         return Optional.empty();
       }
 
     return Optional.of(new ETaggedResponse<>(
             doCatalogOperation(() -> CatalogHandlers.loadTable(baseCatalog, tableIdentifier)),
-            tableEntity.getETag()
+            tableEntityTag
     ));
   }
 
@@ -877,14 +891,15 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   }
 
   /**
-   * Attempt to perform a loadTable operation with access delegation only when the specified etag does not match the current state of the table.
+   * Attempt to perform a loadTable operation with access delegation only when the if none of the provided etags
+   * match the current state of the table metadata.
    * @param tableIdentifier The identifier of the table to load
-   * @param etag The ETag which identifies the metadata currently known
+   * @param ifNoneMatch set of entity-tags to check the metadata against for staleness
    * @param snapshots
    * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the load table response, otherwise
    */
   public Optional<ETaggedResponse<LoadTableResponse>> loadTableWithAccessDelegationIfStale(
-      TableIdentifier tableIdentifier, String etag, String snapshots) {
+          TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -928,8 +943,9 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     }
 
     TableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+    ETag tableETag = generateETagForTable(tableEntity);
 
-    if (tableEntity.isCurrent(etag)) {
+    if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableETag)) {
       return Optional.empty();
     }
 
@@ -953,7 +969,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                   credentialDelegation.getCredentialConfig(
                       tableIdentifier, tableMetadata, actionsRequested));
             }
-            return new ETaggedResponse<>(responseBuilder.build(), tableEntity.getETag());
+            return new ETaggedResponse<>(responseBuilder.build(), generateETagForTable(tableEntity));
           } else if (table instanceof BaseMetadataTable) {
             // metadata tables are loaded on the client side, return NoSuchTableException for now
             throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());

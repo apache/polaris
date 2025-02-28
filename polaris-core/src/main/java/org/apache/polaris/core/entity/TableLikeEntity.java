@@ -24,7 +24,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
 
-public class TableLikeEntity extends PolarisEntity implements ETaggableEntity {
+public class TableLikeEntity extends PolarisEntity {
   // For applicable types, this key on the "internalProperties" map will return the location
   // of the internalProperties JSON file.
   public static final String METADATA_LOCATION_KEY = "metadata-location";
@@ -77,12 +77,6 @@ public class TableLikeEntity extends PolarisEntity implements ETaggableEntity {
   @JsonIgnore
   public String getBaseLocation() {
     return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
-  }
-
-  @Override
-  @JsonIgnore
-  public String getETag() {
-    return id + ":" + entityVersion;
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<TableLikeEntity, Builder> {
