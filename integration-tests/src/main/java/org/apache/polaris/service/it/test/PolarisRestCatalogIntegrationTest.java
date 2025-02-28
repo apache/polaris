@@ -279,6 +279,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @Test
   @Override
   public void createAndDropEmptyNamespace() {
+    // Skip this test because AssertJ's Assumptions.assumeThat() is not compatible with Quarkus.
+    // This test can be removed once Quarkus supports AssertJ.
     Assumptions.assumeTrue(supportsEmptyNamespace());
     super.createAndDropEmptyNamespace();
   }
@@ -286,6 +288,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @Test
   @Override
   public void namespacePropertiesOnEmptyNamespace() {
+    // Skip this test because AssertJ's Assumptions.assumeThat() is not compatible with Quarkus.
+    // This test can be removed once Quarkus supports AssertJ.
     Assumptions.assumeTrue(supportsEmptyNamespace());
     super.namespacePropertiesOnEmptyNamespace();
   }
@@ -293,6 +297,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @Test
   @Override
   public void listTablesInEmptyNamespace() {
+    // Skip this test because AssertJ's Assumptions.assumeThat() is not compatible with Quarkus.
+    // This test can be removed once Quarkus supports AssertJ.
     Assumptions.assumeTrue(supportsEmptyNamespace());
     super.listTablesInEmptyNamespace();
   }
