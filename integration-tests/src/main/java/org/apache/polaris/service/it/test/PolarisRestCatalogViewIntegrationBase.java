@@ -42,6 +42,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -114,7 +115,16 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
     restCatalog =
         IcebergHelper.restCatalog(
-            client, endpoints, principalCredentials, catalogName, catalogName, Map.of());
+            client,
+            endpoints,
+            principalCredentials,
+            catalogName,
+            catalogName,
+            Map.of(
+                org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key1",
+                "catalog-default-key1",
+                org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key2",
+                "catalog-default-key2"));
   }
 
   @AfterEach
@@ -156,5 +166,14 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
   @Override
   protected boolean overridesRequestedLocation() {
     return true;
+  }
+
+  @Test
+  @Override
+  public void listViewsInEmptyNamespace() {
+    // Skip this test because AssertJ's Assumptions.assumeThat() is not compatible with Quarkus.
+    // This test can be removed once Quarkus supports AssertJ or Polaris supports empty namespaces.
+    Assumptions.assumeTrue(supportsEmptyNamespace());
+    super.listViewsInEmptyNamespace();
   }
 }
