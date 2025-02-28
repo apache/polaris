@@ -82,4 +82,17 @@ class DefaultRealmContextResolverTest {
         .isInstanceOf(UnresolvableRealmContextException.class)
         .hasMessage("Missing required realm header: Polaris-Header");
   }
+
+  @Test
+  void headerCaseInsensitive() {
+    DefaultRealmContextResolver resolver = new DefaultRealmContextResolver(config);
+    RealmContext RealmContext1 =
+        resolver.resolveRealmContext(
+            "requestURL", "method", "path", Map.of("POLARIS-HEADER", "realm1"));
+    assertThat(RealmContext1.getRealmIdentifier()).isEqualTo("realm1");
+    RealmContext RealmContext2 =
+        resolver.resolveRealmContext(
+            "requestURL", "method", "path", Map.of("polaris-header", "realm2"));
+    assertThat(RealmContext2.getRealmIdentifier()).isEqualTo("realm2");
+  }
 }
