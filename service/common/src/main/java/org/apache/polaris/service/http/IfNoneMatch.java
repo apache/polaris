@@ -49,25 +49,32 @@ public class IfNoneMatch {
                 .collect(Collectors.toList());
     }
 
-    public IfNoneMatch(String rawValue) {
+    public IfNoneMatch(boolean wildcard) {
+        this.wildcard = wildcard;
+        this.etags = new ArrayList<>();
+    }
+
+    public IfNoneMatch(List<ETag> etags) {
+        this.wildcard = false;
+        this.etags = new ArrayList<>(etags);
+    }
+
+    public static IfNoneMatch fromHeader(String rawValue) {
         if (rawValue == null) {
-            this.wildcard = false;
-            this.etags = new ArrayList<>();
+            return new IfNoneMatch(false);
+        }
+
+        rawValue = rawValue.trim();
+        if (rawValue.equals("*")) {
+            return new IfNoneMatch(true);
         } else {
-            rawValue = rawValue.trim();
-            if (rawValue.equals("*")) {
-                this.wildcard = true;
-                this.etags = new ArrayList<>();
-            } else {
-                this.wildcard = false;
-                List<String> parts = parseHeaderIntoParts(rawValue);
-                this.etags = parts.stream().map(ETag::new).toList();
+            List<String> parts = parseHeaderIntoParts(rawValue);
+            List<ETag> etags = parts.stream().map(ETag::fromHeader).toList();
 
-                if (!this.wildcard && this.etags.isEmpty() && !rawValue.isEmpty()) {
-                    throw new IllegalArgumentException("Invalid representation for If-None-Match header.");
-                }
+            if (etags.isEmpty() && !rawValue.isEmpty()) {
+                throw new IllegalArgumentException("Invalid representation for If-None-Match header.");
             }
-
+            return new IfNoneMatch(etags);
         }
     }
 

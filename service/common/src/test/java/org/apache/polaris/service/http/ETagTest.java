@@ -27,7 +27,7 @@ public class ETagTest {
     @Test
     public void validStrongETagRepresentationIsCorrect() {
         String rawValue = "\"strong-etag\"";
-        ETag eTag = new ETag(rawValue);
+        ETag eTag = ETag.fromHeader(rawValue);
 
         Assertions.assertFalse(eTag.isWeak());
         Assertions.assertEquals(rawValue, eTag.toString());
@@ -37,7 +37,7 @@ public class ETagTest {
     @Test
     public void validWeakETagRepresentationIsCorrect() {
         String rawValue = "W/\"weak-etag\"";
-        ETag eTag = new ETag(rawValue);
+        ETag eTag = ETag.fromHeader(rawValue);
 
         Assertions.assertTrue(eTag.isWeak());
         Assertions.assertEquals(rawValue, eTag.toString());
@@ -47,13 +47,13 @@ public class ETagTest {
     @Test
     public void invalidETagRepresentationThrowsException() {
         String rawValue = "clearly_invalid_etag";
-        Assertions.assertThrows(IllegalArgumentException.class, () -> new ETag(rawValue));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> ETag.fromHeader(rawValue));
     }
 
     @Test
     public void eTagWithQuotesInValueThrowsException() {
         String rawValue = "W/\"etag\"with_quote\"";
-        Assertions.assertThrows(IllegalArgumentException.class, () -> new ETag(rawValue));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> ETag.fromHeader(rawValue));
     }
 
 }

@@ -876,7 +876,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
                     PolarisPrivilege.TABLE_WRITE_DATA,
                     PolarisPrivilege.TABLE_FULL_METADATA,
                     PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-            () -> newWrapper().loadTableIfStale(TABLE_NS1A_2, new IfNoneMatch("W/\"0:0\""), "all"),
+            () -> newWrapper().loadTableIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"),
             null /* cleanupAction */);
   }
 
@@ -889,7 +889,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
                     PolarisPrivilege.TABLE_CREATE,
                     PolarisPrivilege.TABLE_LIST,
                     PolarisPrivilege.TABLE_DROP),
-            () -> newWrapper().loadTableIfStale(TABLE_NS1A_2, new IfNoneMatch("W/\"0:0\""), "all"));
+            () -> newWrapper().loadTableIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"));
   }
 
   @Test
@@ -954,7 +954,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
                     PolarisPrivilege.TABLE_READ_DATA,
                     PolarisPrivilege.TABLE_WRITE_DATA,
                     PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-            () -> newWrapper().loadTableWithAccessDelegationIfStale(TABLE_NS1A_2, new IfNoneMatch("W/\"0:0\""), "all"),
+            () -> newWrapper().loadTableWithAccessDelegationIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"),
             null /* cleanupAction */);
   }
 
@@ -970,7 +970,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
                     PolarisPrivilege.TABLE_CREATE,
                     PolarisPrivilege.TABLE_LIST,
                     PolarisPrivilege.TABLE_DROP),
-            () -> newWrapper().loadTableWithAccessDelegationIfStale(TABLE_NS1A_2, new IfNoneMatch("W/\"0:0\""), "all"));
+            () -> newWrapper().loadTableWithAccessDelegationIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"));
   }
 
   @Test
@@ -983,7 +983,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
                     PolarisPrivilege.TABLE_READ_DATA,
                     PolarisPrivilege.TABLE_WRITE_DATA,
                     PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-            () -> newWrapper().loadTableWithAccessDelegationIfStale(TABLE_NS1A_2, new IfNoneMatch("W/\"0:0\""), "all"),
+            () -> newWrapper().loadTableWithAccessDelegationIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"),
             null /* cleanupAction */);
   }
 
@@ -999,7 +999,7 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
                     PolarisPrivilege.TABLE_CREATE,
                     PolarisPrivilege.TABLE_LIST,
                     PolarisPrivilege.TABLE_DROP),
-            () -> newWrapper().loadTableWithAccessDelegationIfStale(TABLE_NS1A_2, new IfNoneMatch("W/\"0:0\""), "all"));
+            () -> newWrapper().loadTableWithAccessDelegationIfStale(TABLE_NS1A_2, IfNoneMatch.fromHeader("W/\"0:0\""), "all"));
   }
 
   @Test

@@ -346,7 +346,7 @@ public class IcebergCatalogAdapter
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
       ETaggedResponse<LoadTableResponse> loadTableResult;
 
-    IfNoneMatch ifNoneMatch = new IfNoneMatch(ifNoneMatchHeader);
+    IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(ifNoneMatchHeader);
 
       if (delegationModes.isEmpty()) {
           loadTableResult = newHandlerWrapper(realmContext, securityContext, prefix)

@@ -27,7 +27,7 @@ public class IfNoneMatchTest {
     @Test
     public void validSingleETag() {
         String header = "W/\"value\"";
-        IfNoneMatch ifNoneMatch = new IfNoneMatch(header);
+        IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(header);
 
         ETag parsedETag = ifNoneMatch.getEtags().getFirst();
 
@@ -42,7 +42,7 @@ public class IfNoneMatchTest {
         String etagValue3 = "W/\"etag3\"";
 
         String header = etagValue1 + ", " + etagValue2 + ", " + etagValue3;
-        IfNoneMatch ifNoneMatch = new IfNoneMatch(header);
+        IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(header);
 
         Assertions.assertEquals(3, ifNoneMatch.getEtags().size());
 
@@ -57,51 +57,51 @@ public class IfNoneMatchTest {
 
     @Test
     public void validWildcardIfNoneMatch() {
-        IfNoneMatch ifNoneMatch = new IfNoneMatch("*");
+        IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader("*");
         Assertions.assertTrue(ifNoneMatch.isWildcard());
         Assertions.assertTrue(ifNoneMatch.getEtags().isEmpty());
     }
 
     @Test
     public void nullIfNoneMatchIsValid() {
-        IfNoneMatch nullIfNoneMatch = new IfNoneMatch(null);
+        IfNoneMatch nullIfNoneMatch = IfNoneMatch.fromHeader(null);
         Assertions.assertTrue(nullIfNoneMatch.getEtags().isEmpty());
     }
 
     @Test
     public void invalidETagThrowsException() {
         String header = "wrong_value";
-        Assertions.assertThrows(IllegalArgumentException.class, () -> new IfNoneMatch(header));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> IfNoneMatch.fromHeader(header));
     }
 
     @Test
     public void etagsMatch() {
-        ETag weakETag = new ETag("W/\"weak\"");
-        ETag strongETag = new ETag("\"strong\"");
-        IfNoneMatch ifNoneMatch = new IfNoneMatch("W/\"weak\", \"strong\"");
+        ETag weakETag = ETag.fromHeader("W/\"weak\"");
+        ETag strongETag = ETag.fromHeader("\"strong\"");
+        IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader("W/\"weak\", \"strong\"");
         Assertions.assertTrue(ifNoneMatch.anyMatch(weakETag));
         Assertions.assertTrue(ifNoneMatch.anyMatch(strongETag));
     }
 
     @Test
     public void weakETagOnlyMatchesWeak() {
-        ETag weakETag = new ETag("W/\"etag\"");
-        IfNoneMatch ifNoneMatch = new IfNoneMatch("\"etag\"");
+        ETag weakETag = ETag.fromHeader("W/\"etag\"");
+        IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader("\"etag\"");
         Assertions.assertFalse(ifNoneMatch.anyMatch(weakETag));
     }
 
     @Test
     public void strongETagOnlyMatchesStrong() {
-        ETag strongETag = new ETag("\"etag\"");
-        IfNoneMatch ifNoneMatch = new IfNoneMatch("W/\"etag\"");
+        ETag strongETag = ETag.fromHeader("\"etag\"");
+        IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader("W/\"etag\"");
         Assertions.assertFalse(ifNoneMatch.anyMatch(strongETag));
     }
 
     @Test
     public void wildCardMatchesEverything() {
-        ETag strongETag = new ETag("\"etag\"");
-        ETag weakETag = new ETag("W/\"etag\"");
-        IfNoneMatch ifNoneMatch = new IfNoneMatch("*");
+        ETag strongETag = ETag.fromHeader("\"etag\"");
+        ETag weakETag = ETag.fromHeader("W/\"etag\"");
+        IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader("*");
         Assertions.assertTrue(ifNoneMatch.anyMatch(strongETag));
         Assertions.assertTrue(ifNoneMatch.anyMatch(weakETag));
     }
