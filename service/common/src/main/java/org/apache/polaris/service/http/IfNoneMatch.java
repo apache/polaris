@@ -49,33 +49,49 @@ public class IfNoneMatch {
                 .collect(Collectors.toList());
     }
 
-    public IfNoneMatch(boolean wildcard) {
-        this.wildcard = wildcard;
-        this.etags = new ArrayList<>();
-    }
-
-    public IfNoneMatch(List<ETag> etags) {
-        this.wildcard = false;
-        this.etags = new ArrayList<>(etags);
-    }
-
+    /**
+     * Parses the raw content of an If-None-Match header into the logical representation
+     * @param rawValue The raw value of the If-None-Match header
+     * @return A logically equivalent representation of the raw header content
+     */
     public static IfNoneMatch fromHeader(String rawValue) {
+        // parse null header as an empty header
         if (rawValue == null) {
-            return new IfNoneMatch(false);
+            return new IfNoneMatch(List.of());
         }
 
         rawValue = rawValue.trim();
         if (rawValue.equals("*")) {
-            return new IfNoneMatch(true);
+            return IfNoneMatch.wildcard();
         } else {
             List<String> parts = parseHeaderIntoParts(rawValue);
             List<ETag> etags = parts.stream().map(ETag::fromHeader).toList();
 
+            // If we have no etags parsed, but the raw value of the header contained some content,
+            // that means there were one or more invalid parts in the header
             if (etags.isEmpty() && !rawValue.isEmpty()) {
                 throw new IllegalArgumentException("Invalid representation for If-None-Match header.");
             }
             return new IfNoneMatch(etags);
         }
+    }
+
+    /**
+     * Constructs a new wildcard If-None-Match header
+     * @return
+     */
+    public static IfNoneMatch wildcard() {
+        return new IfNoneMatch(true, List.of());
+    }
+
+    private IfNoneMatch(boolean wildcard, List<ETag> etags) {
+        this.wildcard = wildcard;
+        this.etags = etags;
+    }
+
+    public IfNoneMatch(List<ETag> etags) {
+        this.wildcard = false;
+        this.etags = new ArrayList<>(etags);
     }
 
     public boolean isWildcard() {

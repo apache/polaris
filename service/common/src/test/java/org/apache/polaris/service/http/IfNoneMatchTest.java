@@ -104,6 +104,10 @@ public class IfNoneMatchTest {
         IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader("*");
         Assertions.assertTrue(ifNoneMatch.anyMatch(strongETag));
         Assertions.assertTrue(ifNoneMatch.anyMatch(weakETag));
+
+        IfNoneMatch canonicallyBuiltWildcard = IfNoneMatch.wildcard();
+        Assertions.assertTrue(canonicallyBuiltWildcard.anyMatch(strongETag));
+        Assertions.assertTrue(canonicallyBuiltWildcard.anyMatch(weakETag));
     }
 
 
