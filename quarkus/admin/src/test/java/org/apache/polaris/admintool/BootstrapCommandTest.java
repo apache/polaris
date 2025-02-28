@@ -99,7 +99,7 @@ class BootstrapCommandTest {
   public void testBootstrapInvalidArguments(LaunchResult result) {
     assertThat(result.getErrorOutput())
         .contains(
-            "Error: (-r=<realm> [-r=<realm>]... [-c=<realm,clientId,clientSecret>]...) "
+            "Error: (-r=<realm> [-r=<realm>]... [-c=<realm,clientId,clientSecret>]... [-p]) "
                 + "and -f=<file> are mutually exclusive (specify only one)");
   }
 
@@ -130,6 +130,62 @@ class BootstrapCommandTest {
     assertThat(result.getErrorOutput())
         .contains("Failed to read credentials file: file:/non/existing/file")
         .contains("Bootstrap encountered errors during operation.");
+  }
+
+  @Test
+  @Launch(
+      value = {
+          "bootstrap",
+          "-r",
+          "realm1",
+          "-c",
+          "realm1,client1d,s3cr3t",
+          "--print-credentials"
+      })
+  public void testPrintCredentials(LaunchResult result) {
+    assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
+    assertThat(result.getOutput()).contains("realm: realm1 root principal credentials: client1d:");
+  }
+
+  @Test
+  @Launch(
+      value = {
+          "bootstrap",
+          "-r",
+          "realm1",
+          "--print-credentials"
+      })
+  public void testPrintCredentialsSystemGenerated(LaunchResult result) {
+    assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
+    assertThat(result.getOutput()).contains("realm: realm1 root principal credentials: ");
+  }
+
+  @Test
+  @Launch(
+      value = {
+          "bootstrap",
+          "-r",
+          "realm1"
+      },
+      exitCode = EXIT_CODE_BOOTSTRAP_ERROR)
+  public void testNoPrintCredentialsSystemGenerated(LaunchResult result) {
+    assertThat(result.getErrorOutput()).contains("--credentials");
+    assertThat(result.getErrorOutput()).contains("--print-credentials");
+  }
+
+  @Test
+  @Launch(
+      value = {
+          "bootstrap",
+          "-r",
+          "realm1",
+          "--not-real-arg",
+      },
+      exitCode = EXIT_CODE_USAGE)
+  public void testBootstrapInvalidArg(LaunchResult result) {
+    assertThat(result.getErrorOutput())
+        .contains("Unknown option: '--not-real-arg'")
+        .contains("Usage:");
   }
 
   private static Path copyResource(Path temp, String resource) throws IOException {

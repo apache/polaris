@@ -57,6 +57,11 @@ public class BootstrapCommand extends BaseCommand {
           description =
               "Root principal credentials to bootstrap. Must be of the form 'realm,clientId,clientSecret'.")
       List<String> credentials;
+
+      @CommandLine.Option(
+          names = {"-p", "--print-credentials"},
+          description = "Print root credentials to stdout")
+      boolean printCredentials;
     }
 
     static class FileInputOptions {
@@ -85,6 +90,17 @@ public class BootstrapCommand extends BaseCommand {
                     || inputOptions.stdinOptions.credentials.isEmpty()
                 ? RootCredentialsSet.EMPTY
                 : RootCredentialsSet.fromList(inputOptions.stdinOptions.credentials);
+        if (inputOptions.stdinOptions.credentials == null
+            || inputOptions.stdinOptions.credentials.isEmpty()) {
+          if (!inputOptions.stdinOptions.printCredentials) {
+            spec.commandLine()
+                .getErr()
+                .println(
+                    "Specify either `--credentials` or `--print-credentials` to ensure"
+                        + " the root user is accessible after bootstrapping.");
+            return EXIT_CODE_BOOTSTRAP_ERROR;
+          }
+        }
       }
 
       // Execute the bootstrap
@@ -97,6 +113,15 @@ public class BootstrapCommand extends BaseCommand {
         if (result.getValue().isSuccess()) {
           String realm = result.getKey();
           spec.commandLine().getOut().printf("Realm '%s' successfully bootstrapped.%n", realm);
+          if (inputOptions.stdinOptions != null && inputOptions.stdinOptions.printCredentials) {
+            String msg =
+                String.format(
+                    "realm: %1s root principal credentials: %2s:%3s",
+                    result.getKey(),
+                    result.getValue().getPrincipalSecrets().getPrincipalClientId(),
+                    result.getValue().getPrincipalSecrets().getMainSecret());
+            spec.commandLine().getOut().println(msg);
+          }
         } else {
           String realm = result.getKey();
           spec.commandLine()
