@@ -31,6 +31,25 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 public class CatalogSerializationTest {
 
+  private ObjectMapper mapper;
+  private static final String TEST_LOCATION = "s3://test/";
+  private static final String TEST_CATALOG_NAME = "test-catalog";
+  private static final String TEST_ROLE_ARN = "arn:aws:iam::123456789012:role/test-role";
+
+  @BeforeEach
+  public void setUp() {
+    mapper = new ObjectMapper();
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("catalogTestCases")
+  public void testCatalogSerialization(String description, Catalog catalog)
+      throws JsonProcessingException {
+    String json = mapper.writeValueAsString(catalog);
+    Catalog deserialized = mapper.readValue(json, Catalog.class);
+    assertThat(deserialized).usingRecursiveComparison().isEqualTo(catalog);
+  }
+
   @Test
   public void testJsonFormat() throws JsonProcessingException {
     Catalog catalog =
@@ -58,25 +77,6 @@ public class CatalogSerializationTest {
                 + "\"storageType\":\"S3\","
                 + "\"allowedLocations\":[]"
                 + "}}");
-  }
-
-  private ObjectMapper mapper;
-  private static final String TEST_LOCATION = "s3://test/";
-  private static final String TEST_CATALOG_NAME = "test-catalog";
-  private static final String TEST_ROLE_ARN = "arn:aws:iam::123456789012:role/test-role";
-
-  @BeforeEach
-  public void setUp() {
-    mapper = new ObjectMapper();
-  }
-
-  @ParameterizedTest(name = "{0}")
-  @MethodSource("catalogTestCases")
-  public void testCatalogSerialization(String description, Catalog catalog)
-      throws JsonProcessingException {
-    String json = mapper.writeValueAsString(catalog);
-    Catalog deserialized = mapper.readValue(json, Catalog.class);
-    assertThat(deserialized).usingRecursiveComparison().isEqualTo(catalog);
   }
 
   private static Stream<Arguments> catalogTestCases() {
@@ -122,26 +122,7 @@ public class CatalogSerializationTest {
                     "  test  catalog  ",
                     new CatalogProperties("  " + TEST_LOCATION + "  "),
                     null)));
-    Arguments.of(
-        "Type field serialization",
-        new Catalog(
-            Catalog.TypeEnum.INTERNAL,
-            TEST_CATALOG_NAME,
-            new CatalogProperties(TEST_LOCATION),
-            new AwsStorageConfigInfo(TEST_ROLE_ARN, StorageConfigInfo.StorageTypeEnum.S3)) {
-          @Override
-          public boolean equals(Object o) {
-            if (!super.equals(o)) return false;
-            // Verify type field serialization
-            try {
-              String json = new ObjectMapper().writeValueAsString(this);
-              int typeFieldCount = json.split("\"type\"").length - 1;
-              return typeFieldCount == 1;
-            } catch (JsonProcessingException e) {
-              return false;
-            }
-          }
-        });
+
     Stream<Arguments> arnCases =
         Stream.of(
                 "arn:aws:iam::123456789012:role/test-role",
