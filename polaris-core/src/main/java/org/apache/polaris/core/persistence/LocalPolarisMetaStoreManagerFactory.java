@@ -21,7 +21,6 @@ package org.apache.polaris.core.persistence;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
@@ -97,7 +96,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
   @Override
   public synchronized Map<String, PrincipalSecretsResult> bootstrapRealms(
-      List<String> realms, RootCredentialsSet rootCredentialsSet) {
+      Iterable<String> realms, RootCredentialsSet rootCredentialsSet) {
     Map<String, PrincipalSecretsResult> results = new HashMap<>();
 
     for (String realm : realms) {
@@ -111,23 +110,28 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       }
     }
 
-    return results;
+    return Map.copyOf(results);
   }
 
   @Override
-  public void purgeRealms(List<String> realms) {
+  public Map<String, BaseResult> purgeRealms(Iterable<String> realms) {
+    Map<String, BaseResult> results = new HashMap<>();
+
     for (String realm : realms) {
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(() -> realm);
       PolarisMetaStoreSession session = getOrCreateSessionSupplier(() -> realm).get();
 
       PolarisCallContext callContext = new PolarisCallContext(session, diagServices);
-      metaStoreManager.purge(callContext);
+      BaseResult result = metaStoreManager.purge(callContext);
+      results.put(realm, result);
 
       storageCredentialCacheMap.remove(realm);
       backingStoreMap.remove(realm);
       sessionSupplierMap.remove(realm);
       metaStoreManagerMap.remove(realm);
     }
+
+    return Map.copyOf(results);
   }
 
   @Override
