@@ -134,27 +134,14 @@ class BootstrapCommandTest {
 
   @Test
   @Launch(
-      value = {
-          "bootstrap",
-          "-r",
-          "realm1",
-          "-c",
-          "realm1,client1d,s3cr3t",
-          "--print-credentials"
-      })
+      value = {"bootstrap", "-r", "realm1", "-c", "realm1,client1d,s3cr3t", "--print-credentials"})
   public void testPrintCredentials(LaunchResult result) {
     assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
     assertThat(result.getOutput()).contains("realm: realm1 root principal credentials: client1d:");
   }
 
   @Test
-  @Launch(
-      value = {
-          "bootstrap",
-          "-r",
-          "realm1",
-          "--print-credentials"
-      })
+  @Launch(value = {"bootstrap", "-r", "realm1", "--print-credentials"})
   public void testPrintCredentialsSystemGenerated(LaunchResult result) {
     assertThat(result.getOutput()).contains("Bootstrap completed successfully.");
     assertThat(result.getOutput()).contains("realm: realm1 root principal credentials: ");
@@ -162,11 +149,7 @@ class BootstrapCommandTest {
 
   @Test
   @Launch(
-      value = {
-          "bootstrap",
-          "-r",
-          "realm1"
-      },
+      value = {"bootstrap", "-r", "realm1"},
       exitCode = EXIT_CODE_BOOTSTRAP_ERROR)
   public void testNoPrintCredentialsSystemGenerated(LaunchResult result) {
     assertThat(result.getErrorOutput()).contains("--credentials");
@@ -176,10 +159,10 @@ class BootstrapCommandTest {
   @Test
   @Launch(
       value = {
-          "bootstrap",
-          "-r",
-          "realm1",
-          "--not-real-arg",
+        "bootstrap",
+        "-r",
+        "realm1",
+        "--not-real-arg",
       },
       exitCode = EXIT_CODE_USAGE)
   public void testBootstrapInvalidArg(LaunchResult result) {
