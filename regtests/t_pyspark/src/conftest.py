@@ -43,7 +43,8 @@ def polaris_port():
 @pytest.fixture
 def polaris_path_prefix():
   """
-  Used to provide a path prefix between the port number and the standard polaris endpoint paths
+  Used to provide a path prefix between the port number and the standard polaris endpoint paths.
+  No leading or trailing /
   :return:
   """
   return os.getenv('POLARIS_PATH_PREFIX', '')
@@ -51,19 +52,21 @@ def polaris_path_prefix():
 @pytest.fixture
 def polaris_url_scheme():
   """
-  Used to provide a path prefix between the port number and the standard polaris endpoint paths
+  The URL Schema - either http or https - no : or trailing /
   :return:
   """
-  return os.getenv('POLARIS_URL_SCHEME', 'http://')
+  return os.getenv('POLARIS_URL_SCHEME', 'http')
 
 @pytest.fixture
 def polaris_url(polaris_url_scheme, polaris_host, polaris_port, polaris_path_prefix):
-  return f"{polaris_url_scheme}{polaris_host}:{polaris_port}{polaris_path_prefix}/api/management/v1"
+  polaris_path_prefix = polaris_path_prefix if len(polaris_path_prefix) == 0 else '/' + polaris_path_prefix
+  return f"{polaris_url_scheme}://{polaris_host}:{polaris_port}{polaris_path_prefix}/api/management/v1"
 
 
 @pytest.fixture
 def polaris_catalog_url(polaris_url_scheme, polaris_host, polaris_port, polaris_path_prefix):
-  return f"{polaris_url_scheme}{polaris_host}:{polaris_port}{polaris_path_prefix}/api/catalog"
+  polaris_path_prefix = polaris_path_prefix if len(polaris_path_prefix) == 0 else '/' + polaris_path_prefix
+  return f"{polaris_url_scheme}://{polaris_host}:{polaris_port}{polaris_path_prefix}/api/catalog"
 
 @pytest.fixture
 def test_bucket():
