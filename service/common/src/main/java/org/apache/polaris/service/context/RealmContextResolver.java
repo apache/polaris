@@ -20,6 +20,7 @@ package org.apache.polaris.service.context;
 
 import java.util.Map;
 import java.util.function.Function;
+import org.apache.commons.collections.map.CaseInsensitiveMap;
 import org.apache.polaris.core.context.RealmContext;
 
 public interface RealmContextResolver {
@@ -35,6 +36,8 @@ public interface RealmContextResolver {
 
   default RealmContext resolveRealmContext(
       String requestURL, String method, String path, Map<String, String> headers) {
-    return resolveRealmContext(requestURL, method, path, headers::get);
+    CaseInsensitiveMap caseInsensitiveMap = new CaseInsensitiveMap(headers);
+    return resolveRealmContext(
+        requestURL, method, path, (key) -> (String) caseInsensitiveMap.get(key));
   }
 }
