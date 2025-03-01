@@ -307,12 +307,12 @@ public class IcebergCatalogAdapter
     } else if (delegationModes.isEmpty()) {
       ETaggedResponse<LoadTableResponse> createResult = newHandlerWrapper(realmContext, securityContext, prefix)
               .createTableDirect(ns, createTableRequest);
-      return Response.ok(createResult.response()).header(HttpHeaders.ETAG, createResult.etag())
+      return Response.ok(createResult.response()).header(HttpHeaders.ETAG, createResult.eTag())
           .build();
     } else {
       ETaggedResponse<LoadTableResponse> createResult = newHandlerWrapper(realmContext, securityContext, prefix)
               .createTableDirectWithWriteDelegation(ns, createTableRequest);
-      return Response.ok(createResult.response()).header(HttpHeaders.ETAG, createResult.etag())
+      return Response.ok(createResult.response()).header(HttpHeaders.ETAG, createResult.eTag())
               .build();
     }
   }
@@ -348,6 +348,9 @@ public class IcebergCatalogAdapter
 
     IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(ifNoneMatchHeader);
 
+    if (ifNoneMatch.isWildcard())
+      throw new BadRequestException("If-None-Match may not take the value of '*'");
+
       if (delegationModes.isEmpty()) {
           loadTableResult = newHandlerWrapper(realmContext, securityContext, prefix)
                   .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
@@ -357,7 +360,7 @@ public class IcebergCatalogAdapter
                   .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
                   .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
       }
-      return Response.ok(loadTableResult.response()).header(HttpHeaders.ETAG, loadTableResult.etag())
+      return Response.ok(loadTableResult.response()).header(HttpHeaders.ETAG, loadTableResult.eTag())
           .build();
   }
 
@@ -404,7 +407,7 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     ETaggedResponse<LoadTableResponse> registerTableResult = newHandlerWrapper(realmContext, securityContext, prefix)
             .registerTable(ns, registerTableRequest);
-    return Response.ok(registerTableResult.response()).header(HttpHeaders.ETAG, registerTableResult.etag())
+    return Response.ok(registerTableResult.response()).header(HttpHeaders.ETAG, registerTableResult.eTag())
         .build();
   }
 

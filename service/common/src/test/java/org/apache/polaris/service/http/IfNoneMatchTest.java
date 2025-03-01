@@ -22,6 +22,8 @@ package org.apache.polaris.service.http;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 public class IfNoneMatchTest {
 
     @Test
@@ -29,10 +31,9 @@ public class IfNoneMatchTest {
         String header = "W/\"value\"";
         IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(header);
 
-        ETag parsedETag = ifNoneMatch.getEtags().getFirst();
+        String parsedETag = ifNoneMatch.eTags().getFirst();
 
-        Assertions.assertEquals("value", parsedETag.value());
-        Assertions.assertTrue(parsedETag.isWeak());
+        Assertions.assertEquals(header, parsedETag);
     }
 
     @Test
@@ -44,28 +45,31 @@ public class IfNoneMatchTest {
         String header = etagValue1 + ", " + etagValue2 + ", " + etagValue3;
         IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(header);
 
-        Assertions.assertEquals(3, ifNoneMatch.getEtags().size());
+        Assertions.assertEquals(3, ifNoneMatch.eTags().size());
 
-        ETag etag1 = ifNoneMatch.getEtags().get(0);
-        ETag etag2 = ifNoneMatch.getEtags().get(1);
-        ETag etag3 = ifNoneMatch.getEtags().get(2);
+        String etag1 = ifNoneMatch.eTags().get(0);
+        String etag2 = ifNoneMatch.eTags().get(1);
+        String etag3 = ifNoneMatch.eTags().get(2);
 
-        Assertions.assertEquals(etagValue1, etag1.toString());
-        Assertions.assertEquals(etagValue2, etag2.toString());
-        Assertions.assertEquals(etagValue3, etag3.toString());
+        Assertions.assertEquals(etagValue1, etag1);
+        Assertions.assertEquals(etagValue2, etag2);
+        Assertions.assertEquals(etagValue3, etag3);
     }
 
     @Test
     public void validWildcardIfNoneMatch() {
         IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader("*");
         Assertions.assertTrue(ifNoneMatch.isWildcard());
-        Assertions.assertTrue(ifNoneMatch.getEtags().isEmpty());
+        Assertions.assertTrue(ifNoneMatch.eTags().isEmpty());
     }
 
     @Test
-    public void nullIfNoneMatchIsValid() {
+    public void nullIfNoneMatchIsValidAndMapsToEmptyETags() {
+        // this test is important because we may not know what the representation of
+        // the header will be if it is not provided. If it is null, then we should default
+        // to an empty list of etags, as that has no footprint for logical decisions to be made
         IfNoneMatch nullIfNoneMatch = IfNoneMatch.fromHeader(null);
-        Assertions.assertTrue(nullIfNoneMatch.getEtags().isEmpty());
+        Assertions.assertTrue(nullIfNoneMatch.eTags().isEmpty());
     }
 
     @Test
@@ -76,8 +80,8 @@ public class IfNoneMatchTest {
 
     @Test
     public void etagsMatch() {
-        ETag weakETag = ETag.fromHeader("W/\"weak\"");
-        ETag strongETag = ETag.fromHeader("\"strong\"");
+        String weakETag = "W/\"weak\"";
+        String strongETag = "\"strong\"";
         IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader("W/\"weak\", \"strong\"");
         Assertions.assertTrue(ifNoneMatch.anyMatch(weakETag));
         Assertions.assertTrue(ifNoneMatch.anyMatch(strongETag));
@@ -85,22 +89,22 @@ public class IfNoneMatchTest {
 
     @Test
     public void weakETagOnlyMatchesWeak() {
-        ETag weakETag = ETag.fromHeader("W/\"etag\"");
+        String weakETag = "W/\"etag\"";
         IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader("\"etag\"");
         Assertions.assertFalse(ifNoneMatch.anyMatch(weakETag));
     }
 
     @Test
     public void strongETagOnlyMatchesStrong() {
-        ETag strongETag = ETag.fromHeader("\"etag\"");
+        String strongETag = "\"etag\"";
         IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader("W/\"etag\"");
         Assertions.assertFalse(ifNoneMatch.anyMatch(strongETag));
     }
 
     @Test
     public void wildCardMatchesEverything() {
-        ETag strongETag = ETag.fromHeader("\"etag\"");
-        ETag weakETag = ETag.fromHeader("W/\"etag\"");
+        String strongETag = "\"etag\"";
+        String weakETag = "W/\"etag\"";
         IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader("*");
         Assertions.assertTrue(ifNoneMatch.anyMatch(strongETag));
         Assertions.assertTrue(ifNoneMatch.anyMatch(weakETag));
@@ -110,5 +114,15 @@ public class IfNoneMatchTest {
         Assertions.assertTrue(canonicallyBuiltWildcard.anyMatch(weakETag));
     }
 
+    @Test
+    public void cantConstructHeaderWithWildcardAndNonEmptyETag() {
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new IfNoneMatch(true, List.of("\"etag\"")));
+    }
+
+    @Test
+    public void cantConstructHeaderWithOneValidAndOneInvalidPart() {
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> IfNoneMatch.fromHeader("W/\"etag\" W/invalid-etag"));
+    }
 
 }

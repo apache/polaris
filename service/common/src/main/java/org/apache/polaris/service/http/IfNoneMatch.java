@@ -19,34 +19,41 @@
 
 package org.apache.polaris.service.http;
 
-import com.google.common.collect.ImmutableList;
+import jakarta.annotation.Nonnull;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
  * Logical representation of an HTTP compliant If-None-Match header.
  */
-public class IfNoneMatch {
+public record IfNoneMatch(boolean isWildcard, @Nonnull List<String> eTags) {
 
-    private final boolean wildcard;
+    protected static Pattern ETAG_PATTERN = Pattern.compile("(W/)?\"([^\"]*)\"");
 
-    private final List<ETag> etags;
+    public IfNoneMatch(List<String> etags) {
+        this(false, etags);
+    }
 
-    /**
-     * Parses a non wildcard If-None-Match header value into ETags
-     * @param header the header to parse, eg `W\"etag1", "etag2,with,comma", W\"etag3"`
-     * @return the header parsed into raw string etag values. For the example given, ["W\"etag1"", ""etag2,with,comma"", "W\"etag3""]
-     */
-    private static List<String> parseHeaderIntoParts(String header) {
-        header = header.trim();
-        Matcher matcher = ETag.ETAG_PATTERN.matcher(header);
+    public IfNoneMatch {
+        if (isWildcard && !eTags.isEmpty()) {
+            // if the header is a wildcard, it must not be constructed with
+            // any etags, if it is not a wildcard, it can still contain no ETags, so
+            // the converse is not true
+            throw new IllegalArgumentException(
+                    "Invalid representation for If-None-Match header. If-None-Match cannot contain ETags if it takes " +
+                            "the wildcard value '*'");
+        }
 
-        return matcher.results()
-                .map(result -> result.group(0))
-                .collect(Collectors.toList());
+        for (String etag : eTags) {
+            Matcher matcher = ETAG_PATTERN.matcher(etag);
+
+            if (!matcher.matches()) {
+                throw new IllegalArgumentException("Invalid ETag representation: " + etag);
+            }
+        }
     }
 
     /**
@@ -64,53 +71,42 @@ public class IfNoneMatch {
         if (rawValue.equals("*")) {
             return IfNoneMatch.wildcard();
         } else {
-            List<String> parts = parseHeaderIntoParts(rawValue);
-            List<ETag> etags = parts.stream().map(ETag::fromHeader).toList();
 
-            // If we have no etags parsed, but the raw value of the header contained some content,
-            // that means there were one or more invalid parts in the header
-            if (etags.isEmpty() && !rawValue.isEmpty()) {
-                throw new IllegalArgumentException("Invalid representation for If-None-Match header.");
+            List<String> parts = Stream.of(rawValue.split("\\s+")) // Tokenizes string , eg. we will now have [`W/"etag1",`, `W/"etag2"`]
+                    .map(s -> s.endsWith(",") ? s.substring(0, s.length() - 1) : s) // Remove trailing comma from each part, so we now have [`W/"etag1"`, `W/"etag2"`]
+                    .toList();
+
+            // ensure all of the individual tags are valid
+            boolean allValid = parts.stream().allMatch(s -> {
+                Matcher matcher = ETAG_PATTERN.matcher(s);
+                return matcher.matches();
+            });
+
+            if (!allValid) {
+                throw new IllegalArgumentException("Invalid If-None-Match value provided: " + rawValue);
             }
-            return new IfNoneMatch(etags);
+
+            return new IfNoneMatch(parts);
         }
     }
 
     /**
-     * Constructs a new wildcard If-None-Match header
+     * Constructs a new wildcard If-None-Match header *
      * @return
      */
     public static IfNoneMatch wildcard() {
         return new IfNoneMatch(true, List.of());
     }
 
-    private IfNoneMatch(boolean wildcard, List<ETag> etags) {
-        this.wildcard = wildcard;
-        this.etags = etags;
-    }
-
-    public IfNoneMatch(List<ETag> etags) {
-        this.wildcard = false;
-        this.etags = new ArrayList<>(etags);
-    }
-
-    public boolean isWildcard() {
-        return wildcard;
-    }
-
-    public List<ETag> getEtags() {
-        return ImmutableList.copyOf(etags);
-    }
-
     /**
      * If any contained ETag matches the provided etag or the header is a wildcard.
-     * Only matches weak etags to weak etags and strong etags to strong etags.
-     * @param etag the etag to compare against.
+     * Only matches weak eTags to weak eTags and strong eTags to strong eTags.
+     * @param eTag the etag to compare against.
      * @return true if any of the contained ETags match the provided etag
      */
-    public boolean anyMatch(ETag etag) {
-        if (wildcard) return true;
-        return etags.contains(etag);
+    public boolean anyMatch(String eTag) {
+        if (this.isWildcard) return true;
+        return eTags.contains(eTag);
     }
 
 }

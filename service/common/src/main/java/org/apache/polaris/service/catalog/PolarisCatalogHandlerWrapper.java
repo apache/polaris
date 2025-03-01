@@ -93,7 +93,6 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.response.ETaggedResponse;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
-import org.apache.polaris.service.http.ETag;
 import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
@@ -598,7 +597,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     }
     return new ETaggedResponse<>(
             doCatalogOperation(() -> CatalogHandlers.createTable(baseCatalog, namespace, request)),
-            generateETagForTable(getTableEntity(identifier))
+            generateETagValueForTable(getTableEntity(identifier))
     );
   }
 
@@ -666,7 +665,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                           PolarisStorageActions.WRITE,
                           PolarisStorageActions.LIST)));
             }
-            return new ETaggedResponse<>(responseBuilder.build(), generateETagForTable(getTableEntity(tableIdentifier)));
+            return new ETaggedResponse<>(responseBuilder.build(), generateETagValueForTable(getTableEntity(tableIdentifier)));
           } else if (table instanceof BaseMetadataTable) {
             // metadata tables are loaded on the client side, return NoSuchTableException for now
             throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
@@ -794,7 +793,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
 
     return new ETaggedResponse<>(
             doCatalogOperation(() -> CatalogHandlers.registerTable(baseCatalog, namespace, request)),
-            generateETagForTable(getTableEntity(identifier))
+            generateETagValueForTable(getTableEntity(identifier))
     );
   }
 
@@ -852,8 +851,9 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
    * @param tableLikeEntity the table to generate the ETag for
    * @return the generated ETag
    */
-  private ETag generateETagForTable(TableLikeEntity tableLikeEntity) {
-    return new ETag(true, tableLikeEntity.getId() + ":" + tableLikeEntity.getEntityVersion());
+  private String generateETagValueForTable(TableLikeEntity tableLikeEntity) {
+    // always issue a weak ETag since we never do a byte by byte comparisomn
+    return "W/\"" + tableLikeEntity.getId() + ":" + tableLikeEntity.getEntityVersion() + "\"";
   }
 
   public LoadTableResponse loadTable(TableIdentifier tableIdentifier, String snapshots) {
@@ -861,7 +861,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   }
 
   /**
-   * Attempt to perform a loadTable operation only when the specified set of etags do not match the current state
+   * Attempt to perform a loadTable operation only when the specified set of eTags do not match the current state
    * of the table metadata.
    * @param tableIdentifier The identifier of the table to load
    * @param ifNoneMatch  set of entity-tags to check the metadata against for staleness
@@ -874,7 +874,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
       authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.TABLE, tableIdentifier);
 
       TableLikeEntity tableEntity = getTableEntity(tableIdentifier);
-      ETag tableEntityTag = generateETagForTable(tableEntity);
+      String tableEntityTag = generateETagValueForTable(tableEntity);
 
       if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableEntityTag)) {
         return Optional.empty();
@@ -891,7 +891,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   }
 
   /**
-   * Attempt to perform a loadTable operation with access delegation only when the if none of the provided etags
+   * Attempt to perform a loadTable operation with access delegation only when the if none of the provided eTags
    * match the current state of the table metadata.
    * @param tableIdentifier The identifier of the table to load
    * @param ifNoneMatch set of entity-tags to check the metadata against for staleness
@@ -943,7 +943,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     }
 
     TableLikeEntity tableEntity = getTableEntity(tableIdentifier);
-    ETag tableETag = generateETagForTable(tableEntity);
+    String tableETag = generateETagValueForTable(tableEntity);
 
     if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableETag)) {
       return Optional.empty();
@@ -969,7 +969,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                   credentialDelegation.getCredentialConfig(
                       tableIdentifier, tableMetadata, actionsRequested));
             }
-            return new ETaggedResponse<>(responseBuilder.build(), generateETagForTable(tableEntity));
+            return new ETaggedResponse<>(responseBuilder.build(), generateETagValueForTable(tableEntity));
           } else if (table instanceof BaseMetadataTable) {
             // metadata tables are loaded on the client side, return NoSuchTableException for now
             throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
