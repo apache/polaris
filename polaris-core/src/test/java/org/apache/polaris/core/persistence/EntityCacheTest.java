@@ -33,6 +33,10 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.EntityCacheByNameKey;
 import org.apache.polaris.core.persistence.cache.EntityCacheLookupResult;
+import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
+import org.apache.polaris.core.persistence.transactional.PolarisTreeMapMetaStoreSessionImpl;
+import org.apache.polaris.core.persistence.transactional.PolarisTreeMapStore;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -47,7 +51,7 @@ public class EntityCacheTest {
   private final PolarisTreeMapStore store;
 
   // to interact with the metastore
-  private final PolarisMetaStoreSession metaStore;
+  private final TransactionalPersistence metaStore;
 
   // polaris call context
   private final PolarisCallContext callCtx;

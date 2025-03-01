@@ -36,6 +36,8 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +54,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   final Map<String, StorageCredentialCache> storageCredentialCacheMap = new HashMap<>();
   final Map<String, EntityCache> entityCacheMap = new HashMap<>();
   final Map<String, StoreType> backingStoreMap = new HashMap<>();
-  final Map<String, Supplier<PolarisMetaStoreSession>> sessionSupplierMap = new HashMap<>();
+  final Map<String, Supplier<TransactionalPersistence>> sessionSupplierMap = new HashMap<>();
   protected final PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
 
   private static final Logger LOGGER =
@@ -67,7 +69,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
   protected abstract StoreType createBackingStore(@Nonnull PolarisDiagnostics diagnostics);
 
-  protected abstract PolarisMetaStoreSession createMetaStoreSession(
+  protected abstract TransactionalPersistence createMetaStoreSession(
       @Nonnull StoreType store,
       @Nonnull RealmContext realmContext,
       @Nullable RootCredentialsSet rootCredentialsSet,
@@ -119,7 +121,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
     for (String realm : realms) {
       PolarisMetaStoreManager metaStoreManager = getOrCreateMetaStoreManager(() -> realm);
-      PolarisMetaStoreSession session = getOrCreateSessionSupplier(() -> realm).get();
+      TransactionalPersistence session = getOrCreateSessionSupplier(() -> realm).get();
 
       PolarisCallContext callContext = new PolarisCallContext(session, diagServices);
       BaseResult result = metaStoreManager.purge(callContext);
@@ -146,7 +148,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
   }
 
   @Override
-  public synchronized Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(
+  public synchronized Supplier<TransactionalPersistence> getOrCreateSessionSupplier(
       RealmContext realmContext) {
     if (!sessionSupplierMap.containsKey(realmContext.getRealmIdentifier())) {
       initializeForRealm(realmContext, null);

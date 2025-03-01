@@ -43,8 +43,8 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.auth.TokenUtils;
 import org.junit.jupiter.api.TestInfo;
@@ -106,7 +106,7 @@ public class PolarisIntegrationTestFixture {
         helper.realmContextResolver.resolveRealmContext(
             baseUri.toString(), "GET", "/", Map.of(REALM_PROPERTY_KEY, realm));
 
-    PolarisMetaStoreSession metaStoreSession =
+    TransactionalPersistence metaStoreSession =
         helper.metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     PolarisCallContext polarisContext =
         new PolarisCallContext(

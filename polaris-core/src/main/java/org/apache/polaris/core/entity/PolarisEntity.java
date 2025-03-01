@@ -172,7 +172,7 @@ public class PolarisEntity extends PolarisBaseEntity {
         .orElse(null);
   }
 
-  public static List<NameAndId> toNameAndIdList(List<PolarisEntityActiveRecord> entities) {
+  public static List<NameAndId> toNameAndIdList(List<EntityNameLookupRecord> entities) {
     return Optional.ofNullable(entities)
         .map(
             list ->

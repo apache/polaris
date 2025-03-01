@@ -21,7 +21,7 @@ package org.apache.polaris.jpa.models;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
@@ -128,7 +128,7 @@ public class ModelEntityActive {
     }
   }
 
-  public static ModelEntityActive fromEntityActive(PolarisEntityActiveRecord record) {
+  public static ModelEntityActive fromEntityActive(EntityNameLookupRecord record) {
     return ModelEntityActive.builder()
         .catalogId(record.getCatalogId())
         .id(record.getId())
@@ -139,12 +139,12 @@ public class ModelEntityActive {
         .build();
   }
 
-  public static PolarisEntityActiveRecord toEntityActive(ModelEntityActive model) {
+  public static EntityNameLookupRecord toEntityActive(ModelEntityActive model) {
     if (model == null) {
       return null;
     }
 
-    return new PolarisEntityActiveRecord(
+    return new EntityNameLookupRecord(
         model.catalogId, model.id, model.parentId, model.name, model.typeCode, model.subTypeCode);
   }
 }

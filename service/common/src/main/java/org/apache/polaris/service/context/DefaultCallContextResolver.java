@@ -29,7 +29,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +60,11 @@ public class DefaultCallContextResolver implements CallContextResolver {
         .addKeyValue("headers", headers)
         .log("Resolving CallContext");
 
-    PolarisMetaStoreSession metaStoreSession =
+    // TODO: Once we have non-transactional-database persistence stores, this should be
+    // pushed down for the metaStoreManagerFactory to inject Transactional-DB specific things
+    // (including the MetaStoreSession" into the PolarisCallContext. The non-transactional
+    // factories would then inject something else instead if needed.
+    TransactionalPersistence metaStoreSession =
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     PolarisCallContext polarisContext =
         new PolarisCallContext(metaStoreSession, diagnostics, configurationStore, clock);
