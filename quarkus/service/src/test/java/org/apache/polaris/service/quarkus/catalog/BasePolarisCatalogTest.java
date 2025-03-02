@@ -22,6 +22,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
@@ -57,12 +58,14 @@ import org.apache.iceberg.SortOrder;
 import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
+import org.apache.iceberg.UpdateSchema;
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
+import org.apache.iceberg.exceptions.CommitFailedException;
 import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.inmemory.InMemoryFileIO;
@@ -1658,5 +1661,105 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             () -> catalog.registerTable(TABLE, "metadata_location_without_slashes"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid metadata file location");
+  }
+
+  @Test
+  public void testConcurrencyConflictCreateTableUpdatedDuringFinalTransaction() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+
+    final String tableLocation = "s3://externally-owned-bucket/table/";
+    final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
+
+    // Use a spy so that non-transactional pre-requisites succeed normally, but we inject
+    // a concurrency failure at final commit.
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            callContext, entityManager, securityContext, CATALOG_NAME);
+    final BasePolarisCatalog catalog =
+        new BasePolarisCatalog(
+            entityManager,
+            spyMetaStore,
+            callContext,
+            passthroughView,
+            securityContext,
+            Mockito.mock(TaskExecutor.class),
+            fileIOFactory);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+
+    Namespace namespace = Namespace.of("parent", "child1");
+
+    createNonExistingNamespaces(namespace);
+
+    final TableIdentifier table = TableIdentifier.of(namespace, "conflict_table");
+
+    doReturn(
+            new PolarisMetaStoreManager.EntityResult(
+                BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
+                PolarisEntitySubType.TABLE.getCode()))
+        .when(spyMetaStore)
+        .createEntityIfNotExists(any(), any(), any());
+    Assertions.assertThatThrownBy(() -> catalog.createTable(table, SCHEMA))
+        .isInstanceOf(AlreadyExistsException.class)
+        .hasMessageContaining("conflict_table");
+  }
+
+  @Test
+  public void testConcurrencyConflictUpdateTableDuringFinalTransaction() {
+    Assumptions.assumeTrue(
+        requiresNamespaceCreate(),
+        "Only applicable if namespaces must be created before adding children");
+    Assumptions.assumeTrue(
+        supportsNestedNamespaces(), "Only applicable if nested namespaces are supported");
+
+    final String tableLocation = "s3://externally-owned-bucket/table/";
+    final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
+
+    // Use a spy so that non-transactional pre-requisites succeed normally, but we inject
+    // a concurrency failure at final commit.
+    PolarisMetaStoreManager spyMetaStore = spy(metaStoreManager);
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            callContext, entityManager, securityContext, CATALOG_NAME);
+    final BasePolarisCatalog catalog =
+        new BasePolarisCatalog(
+            entityManager,
+            spyMetaStore,
+            callContext,
+            passthroughView,
+            securityContext,
+            Mockito.mock(TaskExecutor.class),
+            fileIOFactory);
+    catalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    Namespace namespace = Namespace.of("parent", "child1");
+
+    createNonExistingNamespaces(namespace);
+
+    final TableIdentifier tableId = TableIdentifier.of(namespace, "conflict_table");
+
+    Table table = catalog.buildTable(tableId, SCHEMA).create();
+
+    doReturn(
+            new PolarisMetaStoreManager.EntityResult(
+                BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
+        .when(spyMetaStore)
+        .updateEntityPropertiesIfNotChanged(any(), any(), any());
+
+    UpdateSchema update = table.updateSchema().addColumn("new_col", Types.LongType.get());
+    Schema expected = update.apply();
+
+    Assertions.assertThatThrownBy(() -> update.commit())
+        .isInstanceOf(CommitFailedException.class)
+        .hasMessageContaining("conflict_table");
   }
 }
