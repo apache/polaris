@@ -163,7 +163,11 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends TransactionalPersist
 
         return result;
       } catch (Exception e) {
-        tr.rollback();
+        // For some transaction conflict errors, the transaction will already no longer be active;
+        // if it's still active, explicitly rollback.
+        if (tr.isActive()) {
+          tr.rollback();
+        }
         LOGGER.debug("transaction rolled back", e);
 
         if (e instanceof OptimisticLockException
@@ -205,7 +209,11 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends TransactionalPersist
         }
       } catch (Exception e) {
         LOGGER.debug("Rolling back transaction due to an error", e);
-        tr.rollback();
+        // For some transaction conflict errors, the transaction will already no longer be active;
+        // if it's still active, explicitly rollback.
+        if (tr.isActive()) {
+          tr.rollback();
+        }
 
         if (e instanceof OptimisticLockException
             || e.getCause() instanceof OptimisticLockException) {
