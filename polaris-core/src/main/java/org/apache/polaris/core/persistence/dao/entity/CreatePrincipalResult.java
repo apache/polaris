@@ -24,7 +24,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.persistence.BaseResult;
 
 /** the return the result of a create-principal method */
 public class CreatePrincipalResult extends BaseResult {

@@ -24,7 +24,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.persistence.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 
 /** Manages secrets for Polaris principals. */
 public interface PolarisSecretsManager {

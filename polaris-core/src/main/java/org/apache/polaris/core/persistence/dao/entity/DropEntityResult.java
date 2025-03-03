@@ -23,7 +23,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import org.apache.polaris.core.persistence.BaseResult;
 
 // the return the result of a drop entity
 public class DropEntityResult extends BaseResult {

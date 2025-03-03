@@ -22,7 +22,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import org.apache.polaris.core.persistence.BaseResult;
 
 /** the return for a generate new entity id */
 public class GenerateEntityIdResult extends BaseResult {

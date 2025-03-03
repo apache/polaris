@@ -24,7 +24,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
-import org.apache.polaris.core.persistence.BaseResult;
 
 /** Result of a loadEntitiesChangeTracking call */
 public class ChangeTrackingResult extends BaseResult {

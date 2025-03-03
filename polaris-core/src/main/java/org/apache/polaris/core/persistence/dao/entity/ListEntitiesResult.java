@@ -24,7 +24,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
-import org.apache.polaris.core.persistence.BaseResult;
 
 /** the return the result for a list entities call */
 public class ListEntitiesResult extends BaseResult {

@@ -26,7 +26,7 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.persistence.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 
 /** Manage credentials for storage locations. */
 public interface PolarisCredentialVendor {

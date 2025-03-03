@@ -23,7 +23,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.persistence.BaseResult;
 
 /** the return the result of a create-catalog method */
 public class CreateCatalogResult extends BaseResult {

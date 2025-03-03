@@ -25,7 +25,6 @@ import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
-import org.apache.polaris.core.persistence.BaseResult;
 
 /**
  * Represents an entity with its grants. If we "refresh" a previously fetched entity, we will only

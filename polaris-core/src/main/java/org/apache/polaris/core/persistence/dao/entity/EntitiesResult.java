@@ -24,7 +24,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.persistence.BaseResult;
 
 /** a set of returned entities result */
 public class EntitiesResult extends BaseResult {
