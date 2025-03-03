@@ -19,7 +19,6 @@
 package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
@@ -56,7 +55,6 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.iceberg.rest.CatalogHandlers;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTCatalog;
-import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.requests.CommitTransactionRequest;
 import org.apache.iceberg.rest.requests.CreateNamespaceRequest;
 import org.apache.iceberg.rest.requests.CreateTableRequest;
@@ -76,6 +74,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.connection.PolarisConnectionConfigurationInfo;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -161,37 +160,34 @@ public class IcebergCatalogHandler extends CatalogHandler implements AutoCloseab
   protected void initializeCatalog() {
     CatalogEntity resolvedCatalogEntity =
         CatalogEntity.of(resolutionManifest.getResolvedReferenceCatalogEntity().getRawLeafEntity());
-    if (resolvedCatalogEntity.getConnectionRemoteUri() != null) {
+    PolarisConnectionConfigurationInfo connectionConfigurationInfo =
+        resolvedCatalogEntity.getConnectionConfigurationInfo();
+    if (connectionConfigurationInfo != null) {
       LOGGER
           .atInfo()
-          .addKeyValue("remoteUrl", resolvedCatalogEntity.getConnectionRemoteUri())
+          .addKeyValue("remoteUrl", connectionConfigurationInfo.getRemoteUri())
           .log("Initializing federated catalog");
 
-      SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
-      RESTCatalog restCatalog =
-          new RESTCatalog(
-              context,
-              (config) ->
-                  HTTPClient.builder(config)
-                      .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
-                      .build());
-
-      ImmutableMap.Builder<String, String> propertiesBuilder =
-          ImmutableMap.<String, String>builder()
-              .put(
-                  org.apache.iceberg.CatalogProperties.URI,
-                  resolvedCatalogEntity.getConnectionRemoteUri())
-              .put(
-                  OAuth2Properties.CREDENTIAL,
-                  resolvedCatalogEntity.getConnectionClientId()
-                      + ":"
-                      + resolvedCatalogEntity.getConnectionClientSecret())
-              .put(OAuth2Properties.SCOPE, resolvedCatalogEntity.getConnectionScopes())
-              .put("warehouse", resolvedCatalogEntity.getConnectionCatalogName());
-
-      restCatalog.initialize(
-          resolvedCatalogEntity.getConnectionCatalogName(), propertiesBuilder.buildKeepingLast());
-      this.baseCatalog = restCatalog;
+      Catalog federatedCatalog;
+      switch (connectionConfigurationInfo.getConnectionType()) {
+        case ICEBERG_REST:
+          SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
+          federatedCatalog =
+              new RESTCatalog(
+                  context,
+                  (config) ->
+                      HTTPClient.builder(config)
+                          .uri(config.get(org.apache.iceberg.CatalogProperties.URI))
+                          .build());
+          break;
+        default:
+          throw new UnsupportedOperationException(
+              "Connection type not supported: " + connectionConfigurationInfo.getConnectionType());
+      }
+      federatedCatalog.initialize(
+          resolvedCatalogEntity.getConnectionCatalogName(),
+          connectionConfigurationInfo.asIcebergCatalogProperties());
+      this.baseCatalog = federatedCatalog;
     } else {
       LOGGER.atInfo().log("Initializing non-federated catalog");
       this.baseCatalog =

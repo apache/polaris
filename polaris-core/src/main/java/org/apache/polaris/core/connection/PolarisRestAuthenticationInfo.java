@@ -22,13 +22,18 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.annotation.Nonnull;
+import java.util.Map;
+import org.apache.polaris.core.admin.model.BearerRestAuthenticationInfo;
+import org.apache.polaris.core.admin.model.OauthRestAuthenticationInfo;
+import org.apache.polaris.core.admin.model.RestAuthenticationInfo;
+import org.jetbrains.annotations.NotNull;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "restAuthenticationType", visible = true)
 @JsonSubTypes({
   @JsonSubTypes.Type(value = PolarisOauthRestAuthenticationInfo.class, name = "OAUTH"),
   @JsonSubTypes.Type(value = PolarisBearerRestAuthenticationInfo.class, name = "BEARER"),
 })
-public abstract class PolarisRestAuthenticationInfo {
+public abstract class PolarisRestAuthenticationInfo implements IcebergCatalogPropertiesProvider {
 
   @JsonProperty(value = "restAuthenticationType")
   private final RestAuthenticationType restAuthenticationType;
@@ -41,5 +46,40 @@ public abstract class PolarisRestAuthenticationInfo {
 
   public @Nonnull RestAuthenticationType getRestAuthenticationType() {
     return restAuthenticationType;
+  }
+
+  @Override
+  public abstract @NotNull Map<String, String> asIcebergCatalogProperties();
+
+  public abstract RestAuthenticationInfo asRestAuthenticationInfoModel();
+
+  public static PolarisRestAuthenticationInfo fromRestAuthenticationInfoModel(
+      RestAuthenticationInfo restAuthenticationInfo) {
+    PolarisRestAuthenticationInfo config = null;
+    switch (restAuthenticationInfo.getRestAuthenticationType()) {
+      case OAUTH:
+        OauthRestAuthenticationInfo oauthRestAuthenticationModel =
+            (OauthRestAuthenticationInfo) restAuthenticationInfo;
+        config =
+            new PolarisOauthRestAuthenticationInfo(
+                RestAuthenticationType.OAUTH,
+                oauthRestAuthenticationModel.getTokenUri(),
+                oauthRestAuthenticationModel.getClientId(),
+                oauthRestAuthenticationModel.getClientSecret(),
+                oauthRestAuthenticationModel.getScopes());
+        break;
+      case BEARER:
+        BearerRestAuthenticationInfo bearerRestAuthenticationModel =
+            (BearerRestAuthenticationInfo) restAuthenticationInfo;
+        config =
+            new PolarisBearerRestAuthenticationInfo(
+                RestAuthenticationType.BEARER, bearerRestAuthenticationModel.getBearerToken());
+        break;
+      default:
+        throw new IllegalStateException(
+            "Unsupported authentication type: "
+                + restAuthenticationInfo.getRestAuthenticationType());
+    }
+    return config;
   }
 }

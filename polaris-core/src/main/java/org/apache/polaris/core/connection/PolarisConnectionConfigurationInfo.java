@@ -30,6 +30,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,7 +38,8 @@ import org.slf4j.LoggerFactory;
 @JsonSubTypes({
   @JsonSubTypes.Type(value = IcebergRestConnectionConfigurationInfo.class, name = "ICEBERG_REST"),
 })
-public abstract class PolarisConnectionConfigurationInfo {
+public abstract class PolarisConnectionConfigurationInfo
+    implements IcebergCatalogPropertiesProvider {
   private static final Logger logger =
       LoggerFactory.getLogger(PolarisConnectionConfigurationInfo.class);
 
@@ -107,4 +109,6 @@ public abstract class PolarisConnectionConfigurationInfo {
       throw new IllegalArgumentException("Invalid remote URI: " + remoteUri, e);
     }
   }
+
+  public abstract ConnectionConfigInfo asConnectionConfigInfoModel();
 }

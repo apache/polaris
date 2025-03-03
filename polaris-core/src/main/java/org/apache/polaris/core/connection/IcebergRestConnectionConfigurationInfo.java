@@ -22,8 +22,15 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.HashMap;
+import java.util.Map;
+import org.apache.iceberg.CatalogProperties;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
+import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
+import org.jetbrains.annotations.NotNull;
 
-public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionConfigurationInfo {
+public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionConfigurationInfo
+    implements IcebergCatalogPropertiesProvider {
 
   private final String remoteCatalogName;
 
@@ -48,6 +55,27 @@ public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionCon
 
   public PolarisRestAuthenticationInfo getRestAuthentication() {
     return restAuthentication;
+  }
+
+  @Override
+  public @NotNull Map<String, String> asIcebergCatalogProperties() {
+    HashMap<String, String> properties = new HashMap<>();
+    properties.put(CatalogProperties.URI, getRemoteUri());
+    if (getRemoteCatalogName() != null) {
+      properties.put(CatalogProperties.WAREHOUSE_LOCATION, getRemoteCatalogName());
+    }
+    properties.putAll(restAuthentication.asIcebergCatalogProperties());
+    return properties;
+  }
+
+  @Override
+  public ConnectionConfigInfo asConnectionConfigInfoModel() {
+    return IcebergRestConnectionConfigInfo.builder()
+        .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
+        .setRemoteUri(getRemoteUri())
+        .setRemoteCatalogName(getRemoteCatalogName())
+        .setRestAuthentication(restAuthentication.asRestAuthenticationInfoModel())
+        .build();
   }
 
   @Override

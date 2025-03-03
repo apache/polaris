@@ -21,6 +21,11 @@ package org.apache.polaris.core.connection;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
+import java.util.Map;
+import org.apache.iceberg.rest.auth.OAuth2Properties;
+import org.apache.polaris.core.admin.model.BearerRestAuthenticationInfo;
+import org.apache.polaris.core.admin.model.RestAuthenticationInfo;
+import org.jetbrains.annotations.NotNull;
 
 public class PolarisBearerRestAuthenticationInfo extends PolarisRestAuthenticationInfo {
 
@@ -37,6 +42,20 @@ public class PolarisBearerRestAuthenticationInfo extends PolarisRestAuthenticati
 
   public @Nonnull String getBearerToken() {
     return bearerToken;
+  }
+
+  @Override
+  public @NotNull Map<String, String> asIcebergCatalogProperties() {
+    return Map.of(OAuth2Properties.TOKEN, getBearerToken());
+  }
+
+  @Override
+  public RestAuthenticationInfo asRestAuthenticationInfoModel() {
+    // TODO: redact secrets from the model
+    return BearerRestAuthenticationInfo.builder()
+        .setRestAuthenticationType(RestAuthenticationInfo.RestAuthenticationTypeEnum.BEARER)
+        .setBearerToken(getBearerToken())
+        .build();
   }
 
   @Override

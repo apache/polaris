@@ -20,18 +20,27 @@ package org.apache.polaris.core.connection;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.base.Joiner;
 import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.auth.OAuth2Util;
+import org.apache.polaris.core.admin.model.OauthRestAuthenticationInfo;
+import org.apache.polaris.core.admin.model.RestAuthenticationInfo;
+import org.jetbrains.annotations.NotNull;
 
 public class PolarisOauthRestAuthenticationInfo extends PolarisRestAuthenticationInfo {
+
+  private static final Joiner COLON_JOINER = Joiner.on(":");
+
   @JsonProperty(value = "tokenUri")
   private final String tokenUri;
 
@@ -61,7 +70,7 @@ public class PolarisOauthRestAuthenticationInfo extends PolarisRestAuthenticatio
     validateTokenUri(tokenUri);
   }
 
-  public @Nonnull String getTokenUri() {
+  public @Nullable String getTokenUri() {
     return tokenUri;
   }
 
@@ -78,9 +87,37 @@ public class PolarisOauthRestAuthenticationInfo extends PolarisRestAuthenticatio
   }
 
   @JsonIgnore
+  public @Nonnull String getCredential() {
+    return COLON_JOINER.join(clientId, clientSecret);
+  }
+
+  @JsonIgnore
   public @Nonnull String getScopesAsString() {
     return OAuth2Util.toScope(
         Objects.requireNonNullElse(scopes, List.of(OAuth2Properties.CATALOG_SCOPE)));
+  }
+
+  @Override
+  public @NotNull Map<String, String> asIcebergCatalogProperties() {
+    HashMap<String, String> properties = new HashMap<>();
+    if (getTokenUri() != null) {
+      properties.put(OAuth2Properties.OAUTH2_SERVER_URI, getTokenUri());
+    }
+    properties.put(OAuth2Properties.CREDENTIAL, getCredential());
+    properties.put(OAuth2Properties.SCOPE, getScopesAsString());
+    return properties;
+  }
+
+  @Override
+  public RestAuthenticationInfo asRestAuthenticationInfoModel() {
+    // TODO: redact secrets from the model
+    return OauthRestAuthenticationInfo.builder()
+        .setRestAuthenticationType(RestAuthenticationInfo.RestAuthenticationTypeEnum.OAUTH)
+        .setTokenUri(getTokenUri())
+        .setClientId(getClientId())
+        .setClientSecret(getClientSecret())
+        .setScopes(getScopes())
+        .build();
   }
 
   /** Validates the token URI. */
