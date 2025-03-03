@@ -850,9 +850,92 @@ components:
         - $ref: "#/components/schemas/Catalog"
         - type: object
           properties:
-            remoteUrl:
-              type: string
-              description: URL to the remote catalog API
+            connectionConfigInfo:
+              $ref: "#/components/schemas/ConnectionConfigInfo"
+
+    ConnectionConfigInfo:
+      type: object
+      description: A connection configuration representing a remote catalog service
+      properties:
+        connectionType:
+          type: string
+          enum:
+            - ICEBERG_REST
+          description: The type of remote catalog service represented by this connection
+        remoteUri:
+          type: string
+          description: URI to the remote catalog service
+      required:
+        - connectionType
+      discriminator:
+        propertyName: connectionType
+        mapping:
+          ICEBERG_REST: "#/components/schemas/IcebergRestConnectionConfigInfo"
+
+    IcebergRestConnectionConfigInfo:
+      type: object
+      description: Configuration necessary for connecting to an Iceberg REST Catalog
+      allOf:
+        - $ref: '#/components/schemas/ConnectionConfigInfo'
+      properties:
+        remoteCatalogName:
+          type: string
+          description: The name of a remote catalog instance within the remote catalog service; in some older systems
+            this is specified as the 'warehouse' when multiple logical catalogs are served under the same base
+            remoteUri, and often translates into a 'prefix' added to all REST resource paths
+        restAuthentication:
+          $ref: "#/components/schemas/RestAuthenticationInfo"
+
+    RestAuthenticationInfo:
+      type: object
+      description: Authentication-specific information for a REST connection
+      properties:
+        restAuthenticationType:
+          type: string
+          enum:
+            - OAUTH
+            - BEARER
+          description: The type of authentication to use when connecting to the remote rest service
+      required:
+        - restAuthenticationType
+      discriminator:
+        propertyName: restAuthenticationType
+        mapping:
+          OAUTH: "#/components/schemas/OauthRestAuthenticationInfo"
+          BEARER: "#/components/schemas/BearerRestAuthenticationInfo"
+
+    OauthRestAuthenticationInfo:
+      type: object
+      description: OAuth authentication based on client_id/client_secret
+      allOf:
+        - $ref: '#/components/schemas/RestAuthenticationInfo'
+      properties:
+        tokenUri:
+          type: string
+          description: Token server URI
+        clientId:
+          type: string
+          description: oauth client id
+        clientSecret:
+          type: string
+          format: password
+          description: oauth client secret (input-only)
+        scopes:
+          type: array
+          items:
+            type: string
+          description: oauth scopes to specify when exchanging for a short-lived access token
+
+    BearerRestAuthenticationInfo:
+      type: object
+      description: Bearer authentication directly embedded in request auth headers
+      allOf:
+        - $ref: '#/components/schemas/RestAuthenticationInfo'
+      properties:
+        bearerToken:
+          type: string
+          format: password
+          description: Bearer token (input-only)
 
     StorageConfigInfo:
       type: object
