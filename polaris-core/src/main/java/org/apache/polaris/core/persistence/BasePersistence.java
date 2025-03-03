@@ -82,7 +82,6 @@ public interface BasePersistence {
    *
    * @param callCtx call context
    * @param entities entities to persist
-   * @param nameOrParentChanged if true, also write it to by-name lookups if applicable
    * @param originalEntities original states of the entity to use for compare-and-swap purposes, or
    *     null if this is expected to be a brand-new entity; must contain exactly as many elements as
    *     {@code entities} where each item corresponds to the element of {@code entities} in the same
