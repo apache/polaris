@@ -276,7 +276,9 @@ public class PolarisConfiguration<T> {
   public static final PolarisConfiguration<Integer> STORAGE_CONFIGURATION_MAX_LOCATIONS =
       PolarisConfiguration.<Integer>builder()
           .key("STORAGE_CONFIGURATION_MAX_LOCATIONS")
-          .description("How many locations can be associated with a storage configuration")
+          .catalogConfig("max.locations")
+          .description("How many locations can be associated with a storage configuration, or -1 for" +
+              " unlimited locations")
           .defaultValue(20)
           .build();
 }
