@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Azure storage configuration information. */
@@ -52,7 +51,8 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
     super(StorageType.AZURE, allowedLocations);
     this.tenantId = tenantId;
     validateMaxAllowedLocations(
-        PolarisConfigurationStore.getConfiguration(PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
+        PolarisConfigurationStore.getConfiguration(
+            PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
   }
 
   @Override

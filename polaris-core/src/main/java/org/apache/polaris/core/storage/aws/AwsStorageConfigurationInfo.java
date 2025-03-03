@@ -29,7 +29,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Aws Polaris Storage Configuration information */
@@ -75,7 +74,8 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     this.externalId = externalId;
     this.region = region;
     validateMaxAllowedLocations(
-        PolarisConfigurationStore.getConfiguration(PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
+        PolarisConfigurationStore.getConfiguration(
+            PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
   }
 
   @Override
