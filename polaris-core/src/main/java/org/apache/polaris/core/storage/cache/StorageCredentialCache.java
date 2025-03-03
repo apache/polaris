@@ -32,6 +32,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.slf4j.Logger;
@@ -143,7 +144,7 @@ public class StorageCredentialCache {
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {
           LOGGER.atDebug().log("StorageCredentialCache::load");
-          PolarisCredentialVendor.ScopedCredentialsResult scopedCredentialsResult =
+          ScopedCredentialsResult scopedCredentialsResult =
               credentialVendor.getSubscopedCredsForEntity(
                   k.getCallContext(),
                   k.getCatalogId(),
