@@ -52,6 +52,7 @@ import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.persistence.transactional.AbstractTransactionalPersistence;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -60,6 +61,7 @@ import org.apache.polaris.jpa.models.ModelEntity;
 import org.apache.polaris.jpa.models.ModelEntityActive;
 import org.apache.polaris.jpa.models.ModelEntityChangeTracking;
 import org.apache.polaris.jpa.models.ModelGrantRecord;
+import org.apache.polaris.jpa.models.ModelPolicyMappingRecord;
 import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -526,6 +528,90 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
         .lookupGrantRecordsOnGrantee(localSession.get(), granteeCatalogId, granteeId)
         .stream()
         .map(ModelGrantRecord::toGrantRecord)
+        .toList();
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void writeToPolicyMappingRecords(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+
+    this.store.writeToPolicyMappingRecords(localSession.get(), record);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteFromPolicyMappingRecords(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+    this.store.deleteFromPolicyMappingRecords(localSession.get(), record);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteAllEntityPolicyMappingRecords(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore entity,
+      @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
+      @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
+    this.store.deleteAllEntityPolicyMappingRecords(localSession.get(), entity);
+  }
+
+  /** {@inheritDoc} */
+  @Nullable
+  @Override
+  public PolarisPolicyMappingRecord lookupPolicyMappingRecord(
+      @Nonnull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode,
+      long policyCatalogId,
+      long policyId) {
+    return ModelPolicyMappingRecord.toPolicyMappingRecord(
+        this.store.lookupPolicyMappingRecord(
+            localSession.get(),
+            targetCatalogId,
+            targetId,
+            policyTypeCode,
+            policyCatalogId,
+            policyId));
+  }
+
+  /** {@inheritDoc} */
+  @Nonnull
+  @Override
+  public List<PolarisPolicyMappingRecord> loadPoliciesOnTargetByType(
+      @Nonnull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode) {
+    return this.store
+        .loadPoliciesOnTargetByType(localSession.get(), targetCatalogId, targetId, policyTypeCode)
+        .stream()
+        .map(ModelPolicyMappingRecord::toPolicyMappingRecord)
+        .toList();
+  }
+
+  /** {@inheritDoc} */
+  @Nonnull
+  @Override
+  public List<PolarisPolicyMappingRecord> loadAllPoliciesOnTarget(
+      @Nonnull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
+    return this.store
+        .loadAllPoliciesOnTarget(localSession.get(), targetCatalogId, targetId)
+        .stream()
+        .map(ModelPolicyMappingRecord::toPolicyMappingRecord)
+        .toList();
+  }
+
+  /** {@inheritDoc} */
+  @Nonnull
+  @Override
+  public List<PolarisPolicyMappingRecord> loadAllPoliciesOnPolicy(
+      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
+    return this.store
+        .loadAllPoliciesOnPolicy(localSession.get(), policyCatalogId, policyId)
+        .stream()
+        .map(ModelPolicyMappingRecord::toPolicyMappingRecord)
         .toList();
   }
 
