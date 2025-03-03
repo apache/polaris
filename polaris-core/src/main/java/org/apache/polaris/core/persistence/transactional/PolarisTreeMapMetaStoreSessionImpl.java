@@ -42,7 +42,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
-public class PolarisTreeMapMetaStoreSessionImpl extends TransactionalPersistence {
+public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPersistence {
 
   // the TreeMap store to use
   private final PolarisTreeMapStore store;
