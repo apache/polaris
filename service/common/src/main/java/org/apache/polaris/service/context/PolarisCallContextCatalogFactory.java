@@ -37,6 +37,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,17 +54,20 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
   private final TaskExecutor taskExecutor;
   private final FileIOFactory fileIOFactory;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final PolarisEventListener polarisEventListener;
 
   @Inject
   public PolarisCallContextCatalogFactory(
       RealmEntityManagerFactory entityManagerFactory,
       MetaStoreManagerFactory metaStoreManagerFactory,
       TaskExecutor taskExecutor,
-      FileIOFactory fileIOFactory) {
+      FileIOFactory fileIOFactory,
+      PolarisEventListener polarisEventListener) {
     this.entityManagerFactory = entityManagerFactory;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.taskExecutor = taskExecutor;
     this.fileIOFactory = fileIOFactory;
+    this.polarisEventListener = polarisEventListener;
   }
 
   @Override
@@ -91,7 +95,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
             resolvedManifest,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
 
     context.contextVariables().put(CallContext.REQUEST_PATH_CATALOG_INSTANCE_KEY, catalogInstance);
 

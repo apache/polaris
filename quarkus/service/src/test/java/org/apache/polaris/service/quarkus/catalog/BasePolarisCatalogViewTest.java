@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.Catalog;
+import org.apache.iceberg.view.View;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfiguration;
@@ -64,10 +65,19 @@ import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.events.AfterViewCommitEvent;
+import org.apache.polaris.service.events.AfterViewRefreshEvent;
+import org.apache.polaris.service.events.BeforeViewCommitEvent;
+import org.apache.polaris.service.events.BeforeViewRefreshEvent;
+import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.TestPolarisEventListener;
+import org.apache.polaris.service.quarkus.test.TestData;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
@@ -90,7 +100,9 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
           "polaris.features.defaults.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
           "true",
           "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]");
+          "[\"FILE\"]",
+          "polaris.events.type",
+          "test");
     }
   }
 
@@ -99,12 +111,15 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
   @Inject MetaStoreManagerFactory managerFactory;
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisDiagnostics diagServices;
+  @Inject PolarisEventListener polarisEventListener;
 
   private BasePolarisCatalog catalog;
 
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
   private PolarisCallContext polarisContext;
+
+  private TestPolarisEventListener testPolarisEventListener;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -187,6 +202,8 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     FileIOFactory fileIOFactory =
         new DefaultFileIOFactory(
             new RealmEntityManagerFactory(managerFactory), managerFactory, configurationStore);
+
+    testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
     this.catalog =
         new BasePolarisCatalog(
             entityManager,
@@ -195,7 +212,8 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
             passthroughView,
             securityContext,
             Mockito.mock(),
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -221,5 +239,42 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
   @Override
   protected boolean requiresNamespaceCreate() {
     return true;
+  }
+
+  @Test
+  public void testEventsAreEmitted() {
+    BasePolarisCatalog catalog = catalog();
+    catalog.createNamespace(TestData.NAMESPACE);
+    View view =
+        catalog
+            .buildView(TestData.TABLE)
+            .withDefaultNamespace(TestData.NAMESPACE)
+            .withSchema(TestData.SCHEMA)
+            .withQuery("a", "b")
+            .create();
+
+    String key = "foo";
+    String valOld = "bar1";
+    String valNew = "bar2";
+    view.updateProperties().set(key, valOld).commit();
+    view.updateProperties().set(key, valNew).commit();
+
+    BeforeViewRefreshEvent beforeRefreshEvent =
+        testPolarisEventListener.getLatest(BeforeViewRefreshEvent.class);
+    Assertions.assertThat(beforeRefreshEvent.viewIdentifier()).isEqualTo(TestData.TABLE);
+
+    AfterViewRefreshEvent afterRefreshEvent =
+        testPolarisEventListener.getLatest(AfterViewRefreshEvent.class);
+    Assertions.assertThat(afterRefreshEvent.viewIdentifier()).isEqualTo(TestData.TABLE);
+
+    BeforeViewCommitEvent beforeCommitEvent =
+        testPolarisEventListener.getLatest(BeforeViewCommitEvent.class);
+    Assertions.assertThat(beforeCommitEvent.base().properties().get(key)).isEqualTo(valOld);
+    Assertions.assertThat(beforeCommitEvent.metadata().properties().get(key)).isEqualTo(valNew);
+
+    AfterViewCommitEvent afterCommitEvent =
+        testPolarisEventListener.getLatest(AfterViewCommitEvent.class);
+    Assertions.assertThat(afterCommitEvent.base().properties().get(key)).isEqualTo(valOld);
+    Assertions.assertThat(afterCommitEvent.metadata().properties().get(key)).isEqualTo(valNew);
   }
 }

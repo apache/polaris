@@ -19,7 +19,6 @@
 package org.apache.polaris.service.quarkus.catalog;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doThrow;
@@ -108,8 +107,15 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
+import org.apache.polaris.service.events.AfterTableCommitEvent;
+import org.apache.polaris.service.events.AfterTableRefreshEvent;
+import org.apache.polaris.service.events.BeforeTableCommitEvent;
+import org.apache.polaris.service.events.BeforeTableRefreshEvent;
+import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
 import org.apache.polaris.service.exception.IcebergExceptionMapper;
+import org.apache.polaris.service.quarkus.test.TestData;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TableCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -150,16 +156,12 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
           "polaris.features.defaults.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
           "true",
           "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
-          "[\"FILE\"]");
+          "[\"FILE\"]",
+          "polaris.events.type",
+          "test");
     }
   }
 
-  protected static final Namespace NS = Namespace.of("newdb");
-  protected static final TableIdentifier TABLE = TableIdentifier.of(NS, "table");
-  protected static final Schema SCHEMA =
-      new Schema(
-          required(3, "id", Types.IntegerType.get(), "unique ID 🤪"),
-          required(4, "data", Types.StringType.get()));
   public static final String CATALOG_NAME = "polaris-catalog";
   public static final String TEST_ACCESS_KEY = "test_access_key";
   public static final String SECRET_ACCESS_KEY = "secret_access_key";
@@ -169,6 +171,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
+  @Inject PolarisEventListener polarisEventListener;
 
   private BasePolarisCatalog catalog;
   private CallContext callContext;
@@ -183,6 +186,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   private AuthenticatedPolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
+  private TestPolarisEventListener testPolarisEventListener;
 
   @BeforeAll
   public static void setUpMocks() {
@@ -285,6 +289,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
+    testPolarisEventListener = (TestPolarisEventListener) polarisEventListener;
+
     this.catalog =
         new BasePolarisCatalog(
             entityManager,
@@ -293,7 +299,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -552,7 +559,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(TaskExecutor.class),
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -876,7 +884,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     catalog.initialize(
         catalogWithoutStorage,
         ImmutableMap.of(
@@ -940,7 +949,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             taskExecutor,
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     catalog.initialize(
         catalogName,
         ImmutableMap.of(
@@ -1480,7 +1490,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     noPurgeCatalog.initialize(
         noPurgeCatalogName,
         ImmutableMap.of(
@@ -1588,7 +1599,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            measured);
+            measured,
+            polarisEventListener);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -1598,8 +1610,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         .as("Nothing was created yet")
         .isEqualTo(0);
 
-    catalog.createNamespace(NS);
-    Table table = catalog.buildTable(TABLE, SCHEMA).create();
+    catalog.createNamespace(TestData.NAMESPACE);
+    Table table = catalog.buildTable(TestData.TABLE, TestData.SCHEMA).create();
 
     // Asserting greaterThan 0 is sufficient for validating that the wrapper works without making
     // assumptions about the
@@ -1658,5 +1670,36 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             () -> catalog.registerTable(TABLE, "metadata_location_without_slashes"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Invalid metadata file location");
+  }
+
+  @Test
+  public void testEventsAreEmitted() {
+    BasePolarisCatalog catalog = catalog();
+    catalog.createNamespace(TestData.NAMESPACE);
+    Table table = catalog.buildTable(TestData.TABLE, TestData.SCHEMA).create();
+
+    String key = "foo";
+    String valOld = "bar1";
+    String valNew = "bar2";
+    table.updateProperties().set(key, valOld).commit();
+    table.updateProperties().set(key, valNew).commit();
+
+    BeforeTableRefreshEvent beforeRefreshEvent =
+        testPolarisEventListener.getLatest(BeforeTableRefreshEvent.class);
+    Assertions.assertThat(beforeRefreshEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
+
+    AfterTableRefreshEvent afterRefreshEvent =
+        testPolarisEventListener.getLatest(AfterTableRefreshEvent.class);
+    Assertions.assertThat(afterRefreshEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
+
+    BeforeTableCommitEvent beforeTableEvent =
+        testPolarisEventListener.getLatest(BeforeTableCommitEvent.class);
+    Assertions.assertThat(beforeTableEvent.base().properties().get(key)).isEqualTo(valOld);
+    Assertions.assertThat(beforeTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
+
+    AfterTableCommitEvent afterTableEvent =
+        testPolarisEventListener.getLatest(AfterTableCommitEvent.class);
+    Assertions.assertThat(afterTableEvent.base().properties().get(key)).isEqualTo(valOld);
+    Assertions.assertThat(afterTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
   }
 }
