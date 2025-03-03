@@ -96,6 +96,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -1701,7 +1702,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     final TableIdentifier table = TableIdentifier.of(namespace, "conflict_table");
 
     doReturn(
-            new PolarisMetaStoreManager.EntityResult(
+            new EntityResult(
                 BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
                 PolarisEntitySubType.TABLE.getCode()))
         .when(spyMetaStore)
@@ -1749,9 +1750,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     Table table = catalog.buildTable(tableId, SCHEMA).create();
 
-    doReturn(
-            new PolarisMetaStoreManager.EntityResult(
-                BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
+    doReturn(new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null))
         .when(spyMetaStore)
         .updateEntityPropertiesIfNotChanged(any(), any(), any());
 
