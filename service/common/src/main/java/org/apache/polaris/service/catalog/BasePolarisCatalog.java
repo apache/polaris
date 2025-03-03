@@ -1801,7 +1801,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     entity =
         new PolarisEntity.Builder(entity).setCreateTimestamp(System.currentTimeMillis()).build();
 
-    PolarisMetaStoreManager.EntityResult res =
+    EntityResult res =
         getMetaStoreManager()
             .createEntityIfNotExists(
                 getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity);
@@ -1838,7 +1838,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     validateLocationForTableLike(identifier, metadataLocation, resolvedEntities);
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
-    PolarisMetaStoreManager.EntityResult res =
+    EntityResult res =
         getMetaStoreManager()
             .updateEntityPropertiesIfNotChanged(
                 getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity);
