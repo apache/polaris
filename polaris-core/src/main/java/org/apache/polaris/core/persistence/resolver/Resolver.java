@@ -64,7 +64,7 @@ public class Resolver {
   private final @Nonnull PolarisMetaStoreManager polarisMetaStoreManager;
 
   // the cache of entities
-  private final @Nonnull EntityCache cache;
+  private final EntityCache cache;
 
   // the id of the principal making the call or 0 if unknown
   private final @Nonnull AuthenticatedPolarisPrincipal polarisPrincipal;
@@ -125,7 +125,7 @@ public class Resolver {
       @Nonnull PolarisCallContext polarisCallContext,
       @Nonnull PolarisMetaStoreManager polarisMetaStoreManager,
       @Nonnull SecurityContext securityContext,
-      @Nonnull EntityCache cache,
+      @Nullable EntityCache cache,
       @Nullable String referenceCatalogName) {
     this.polarisCallContext = polarisCallContext;
     this.diagnostics = polarisCallContext.getDiagServices();
