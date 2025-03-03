@@ -84,6 +84,9 @@ import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
+import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -572,7 +575,7 @@ public class PolarisAdminService {
             .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
             .setCreateTimestamp(System.currentTimeMillis())
             .build();
-    PolarisMetaStoreManager.CreateCatalogResult catalogResult =
+    CreateCatalogResult catalogResult =
         metaStoreManager.createCatalog(getCurrentPolarisContext(), polarisEntity, List.of());
     if (catalogResult.alreadyExists()) {
       throw new AlreadyExistsException(
@@ -595,7 +598,7 @@ public class PolarisAdminService {
         polarisCallContext
             .getConfigurationStore()
             .getConfiguration(polarisCallContext, PolarisConfiguration.CLEANUP_ON_CATALOG_DROP);
-    PolarisMetaStoreManager.DropEntityResult dropEntityResult =
+    DropEntityResult dropEntityResult =
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), cleanup);
 
@@ -768,7 +771,7 @@ public class PolarisAdminService {
 
     checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
 
-    PolarisMetaStoreManager.CreatePrincipalResult principalResult =
+    CreatePrincipalResult principalResult =
         metaStoreManager.createPrincipal(
             getCurrentPolarisContext(),
             new PolarisEntity.Builder(entity)
@@ -795,7 +798,7 @@ public class PolarisAdminService {
         findPrincipalByName(name)
             .orElseThrow(() -> new NotFoundException("Principal %s not found", name));
     // TODO: Handle return value in case of concurrent modification
-    PolarisMetaStoreManager.DropEntityResult dropEntityResult =
+    DropEntityResult dropEntityResult =
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), false);
 
@@ -955,7 +958,7 @@ public class PolarisAdminService {
         findPrincipalRoleByName(name)
             .orElseThrow(() -> new NotFoundException("PrincipalRole %s not found", name));
     // TODO: Handle return value in case of concurrent modification
-    PolarisMetaStoreManager.DropEntityResult dropEntityResult =
+    DropEntityResult dropEntityResult =
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), true); // cleanup grants
 
@@ -1070,7 +1073,7 @@ public class PolarisAdminService {
       throw new NotFoundException("CatalogRole %s not found in catalog %s", name, catalogName);
     }
     // TODO: Handle return value in case of concurrent modification
-    PolarisMetaStoreManager.DropEntityResult dropEntityResult =
+    DropEntityResult dropEntityResult =
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(),
             PolarisEntity.toCoreList(resolvedCatalogRoleEntity.getRawParentPath()),

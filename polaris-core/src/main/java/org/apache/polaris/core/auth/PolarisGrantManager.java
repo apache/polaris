@@ -31,7 +31,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.core.persistence.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 
 /** Manage grants for Polaris entities. */
 public interface PolarisGrantManager {

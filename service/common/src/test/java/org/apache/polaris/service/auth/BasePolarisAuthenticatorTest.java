@@ -27,9 +27,10 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
-import org.apache.polaris.core.persistence.BaseResult;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -80,8 +81,7 @@ public class BasePolarisAuthenticatorTest {
     when(token.getPrincipalId()).thenReturn(principalId);
     when(token.getClientId()).thenReturn("abc");
     when(metaStoreManager.loadEntity(polarisCallContext, 0L, principalId))
-        .thenReturn(
-            new PolarisMetaStoreManager.EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, ""));
+        .thenReturn(new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, ""));
 
     Assertions.assertThatThrownBy(() -> authenticator.getPrincipal(token))
         .isInstanceOf(NotAuthorizedException.class)

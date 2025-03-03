@@ -35,6 +35,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
@@ -88,7 +89,7 @@ public class TestOAuth2ApiService implements IcebergRestOAuth2ApiService {
         metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
     if (secretsResult.isSuccess()) {
       LOGGER.debug("Found principal secrets for client id {}", clientId);
-      PolarisMetaStoreManager.EntityResult principalResult =
+      EntityResult principalResult =
           metaStoreManager.loadEntity(
               polarisCallContext, 0L, secretsResult.getPrincipalSecrets().getPrincipalId());
       if (!principalResult.isSuccess()) {
@@ -98,7 +99,7 @@ public class TestOAuth2ApiService implements IcebergRestOAuth2ApiService {
     } else {
       LOGGER.debug(
           "Unable to find principal secrets for client id {} - trying as principal name", clientId);
-      PolarisMetaStoreManager.EntityResult principalResult =
+      EntityResult principalResult =
           metaStoreManager.readEntityByName(
               polarisCallContext,
               null,

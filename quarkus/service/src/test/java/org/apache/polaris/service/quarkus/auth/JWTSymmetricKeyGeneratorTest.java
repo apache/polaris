@@ -33,6 +33,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.service.auth.JWTSymmetricKeyBroker;
 import org.apache.polaris.service.auth.TokenBroker;
 import org.apache.polaris.service.auth.TokenRequestValidator;
@@ -80,7 +81,7 @@ public class JWTSymmetricKeyGeneratorTest {
             0L,
             "principal");
     Mockito.when(metastoreManager.loadEntity(polarisCallContext, 0L, 1L))
-        .thenReturn(new PolarisMetaStoreManager.EntityResult(principal));
+        .thenReturn(new EntityResult(principal));
     TokenBroker generator = new JWTSymmetricKeyBroker(metastoreManager, 666, () -> "polaris");
     TokenResponse token =
         generator.generateFromClientSecrets(

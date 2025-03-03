@@ -24,6 +24,7 @@ import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 

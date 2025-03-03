@@ -36,6 +36,7 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.service.auth.JWTRSAKeyPair;
 import org.apache.polaris.service.auth.LocalRSAKeyProvider;
 import org.apache.polaris.service.auth.PemUtils;
@@ -75,7 +76,7 @@ public class JWTRSAKeyPairTest {
             0L,
             "principal");
     Mockito.when(metastoreManager.loadEntity(polarisCallContext, 0L, 1L))
-        .thenReturn(new PolarisMetaStoreManager.EntityResult(principal));
+        .thenReturn(new EntityResult(principal));
     TokenBroker tokenBroker =
         new JWTRSAKeyPair(metastoreManager, 420, publicFileLocation, privateFileLocation);
     TokenResponse token =
