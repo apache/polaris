@@ -19,6 +19,7 @@
 package org.apache.polaris.core.entity;
 
 import org.apache.iceberg.catalog.Namespace;
+import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyType;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
