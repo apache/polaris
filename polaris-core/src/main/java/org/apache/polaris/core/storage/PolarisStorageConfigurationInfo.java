@@ -232,7 +232,7 @@ public abstract class PolarisStorageConfigurationInfo {
 
   /** Validate the number of allowed locations not exceeding the max value. */
   public void validateMaxAllowedLocations(int maxAllowedLocations) {
-    if (allowedLocations.size() > maxAllowedLocations) {
+    if (maxAllowedLocations != -1 && allowedLocations.size() > maxAllowedLocations) {
       throw new IllegalArgumentException(
           "Number of allowed locations exceeds " + maxAllowedLocations);
     }
