@@ -23,7 +23,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 
@@ -128,9 +127,7 @@ public interface PolarisConfigurationStore {
       return callContext
           .getPolarisCallContext()
           .getConfigurationStore()
-          .getConfiguration(
-              callContext.getPolarisCallContext(),
-              configuration);
+          .getConfiguration(callContext.getPolarisCallContext(), configuration);
     }
   }
 }
