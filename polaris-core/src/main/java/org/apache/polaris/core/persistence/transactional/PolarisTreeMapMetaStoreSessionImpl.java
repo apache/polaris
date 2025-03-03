@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence;
+package org.apache.polaris.core.persistence.transactional;
 
 import com.google.common.base.Predicates;
 import jakarta.annotation.Nonnull;
@@ -27,20 +27,22 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
-import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.BaseMetaStoreManager;
+import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 
-public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSession {
+public class PolarisTreeMapMetaStoreSessionImpl extends TransactionalPersistence {
 
   // the TreeMap store to use
   private final PolarisTreeMapStore store;
@@ -128,15 +130,6 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntitiesDropped(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    // write it
-    this.store.getSliceEntitiesDropped().write(entity);
-    this.store.getSliceEntitiesDroppedToPurge().write(entity);
-  }
-
-  /** {@inheritDoc} */
-  @Override
   public void writeToEntitiesChangeTracking(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
@@ -167,15 +160,6 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
     // delete it
     this.store.getSliceEntitiesActive().delete(this.store.buildEntitiesActiveKey(entity));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public void deleteFromEntitiesDropped(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    // delete it
-    this.store.getSliceEntitiesDropped().delete(entity);
-    this.store.getSliceEntitiesDroppedToPurge().delete(entity);
   }
 
   /**
@@ -250,18 +234,6 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   /** {@inheritDoc} */
   @Override
-  public int lookupEntityVersion(
-      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
-    PolarisBaseEntity baseEntity =
-        this.store
-            .getSliceEntitiesChangeTracking()
-            .read(this.store.buildKeyComposite(catalogId, entityId));
-
-    return baseEntity == null ? 0 : baseEntity.getEntityVersion();
-  }
-
-  /** {@inheritDoc} */
-  @Override
   public @Nonnull List<PolarisChangeTrackingVersions> lookupEntityVersions(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     // allocate return list
@@ -283,7 +255,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   /** {@inheritDoc} */
   @Override
   @Nullable
-  public PolarisEntityActiveRecord lookupEntityActive(
+  public EntityNameLookupRecord lookupEntityActive(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntitiesActiveKey entityActiveKey) {
     // lookup the active entity slice
     PolarisBaseEntity entity =
@@ -299,7 +271,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
     // return record
     return (entity == null)
         ? null
-        : new PolarisEntityActiveRecord(
+        : new EntityNameLookupRecord(
             entity.getCatalogId(),
             entity.getId(),
             entity.getParentId(),
@@ -311,7 +283,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public List<PolarisEntityActiveRecord> lookupEntityActiveBatch(
+  public List<EntityNameLookupRecord> lookupEntityActiveBatch(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntitiesActiveKey> entityActiveKeys) {
     // now build a list to quickly verify that nothing has changed
@@ -322,23 +294,23 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<PolarisEntityActiveRecord> listActiveEntities(
+  public @Nonnull List<EntityNameLookupRecord> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType) {
-    return listActiveEntities(callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue());
+    return listEntities(callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue());
   }
 
   @Override
-  public @Nonnull List<PolarisEntityActiveRecord> listActiveEntities(
+  public @Nonnull List<EntityNameLookupRecord> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter) {
     // full range scan under the parent for that type
-    return listActiveEntities(
+    return listEntities(
         callCtx,
         catalogId,
         parentId,
@@ -346,7 +318,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
         Integer.MAX_VALUE,
         entityFilter,
         entity ->
-            new PolarisEntityActiveRecord(
+            new EntityNameLookupRecord(
                 entity.getCatalogId(),
                 entity.getId(),
                 entity.getParentId(),
@@ -356,7 +328,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
   }
 
   @Override
-  public @Nonnull <T> List<T> listActiveEntities(
+  public @Nonnull <T> List<T> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -565,7 +537,7 @@ public class PolarisTreeMapMetaStoreSessionImpl implements PolarisMetaStoreSessi
       PolarisStorageIntegration<T> loadPolarisStorageIntegration(
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
-        PolarisMetaStoreManagerImpl.readStorageConfiguration(callCtx, entity);
+        BaseMetaStoreManager.extractStorageConfiguration(callCtx, entity);
     return storageIntegrationProvider.getStorageIntegrationForConfig(storageConfig);
   }
 

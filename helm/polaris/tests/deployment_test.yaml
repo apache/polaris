@@ -232,19 +232,23 @@ tests:
           value: polaris-sa
 
   # spec.template.spec.securityContext
-  - it: should not set securityContext by default
-    asserts:
-      - notExists:
-          path: spec.template.spec.securityContext
-  - it: should set securityContext
-    set:
-      podSecurityContext:
-        runAsUser: 1000
+  - it: should set securityContext by default
     asserts:
       - isSubset:
           path: spec.template.spec.securityContext
           content:
-            runAsUser: 1000
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+  - it: should set custom securityContext
+    set:
+      podSecurityContext:
+        fsGroup: 1234
+    asserts:
+      - isSubset:
+          path: spec.template.spec.securityContext
+          content:
+            fsGroup: 1234
 
   # spec.template.spec.containers
   - it: should set container name
@@ -254,19 +258,31 @@ tests:
           value: polaris
 
   # spec.template.spec.containers[0].securityContext
-  - it: should not set container securityContext by default
-    asserts:
-      - notExists:
-          path: spec.template.spec.containers[0].securityContext
-  - it: should set container securityContext
-    set:
-      containerSecurityContext:
-        runAsUser: 1000
+  - it: should set container securityContext by default
     asserts:
       - isSubset:
           path: spec.template.spec.containers[0].securityContext
           content:
-            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 10000
+            capabilities:
+              drop: [ "ALL" ]
+            seccompProfile:
+              type: RuntimeDefault
+  - it: should set custom container securityContext
+    set:
+      containerSecurityContext:
+        allowPrivilegeEscalation: true
+        runAsNonRoot: false
+        runAsUser: 1234
+    asserts:
+      - isSubset:
+          path: spec.template.spec.containers[0].securityContext
+          content:
+            allowPrivilegeEscalation: true
+            runAsNonRoot: false
+            runAsUser: 1234
 
   # spec.template.spec.containers[0].image
   - it: should set container image

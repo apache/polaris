@@ -22,7 +22,7 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 
-public class PolarisEntityActiveRecord {
+public class EntityNameLookupRecord {
   // entity catalog id
   private final long catalogId;
 
@@ -74,7 +74,7 @@ public class PolarisEntityActiveRecord {
   }
 
   @JsonCreator
-  public PolarisEntityActiveRecord(
+  public EntityNameLookupRecord(
       @JsonProperty("catalogId") long catalogId,
       @JsonProperty("id") long id,
       @JsonProperty("parentId") long parentId,
@@ -90,7 +90,7 @@ public class PolarisEntityActiveRecord {
   }
 
   /** Constructor to create the object with provided entity */
-  public PolarisEntityActiveRecord(PolarisBaseEntity entity) {
+  public EntityNameLookupRecord(PolarisBaseEntity entity) {
     this.catalogId = entity.getCatalogId();
     this.id = entity.getId();
     this.parentId = entity.getParentId();
@@ -102,8 +102,8 @@ public class PolarisEntityActiveRecord {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof PolarisEntityActiveRecord)) return false;
-    PolarisEntityActiveRecord that = (PolarisEntityActiveRecord) o;
+    if (!(o instanceof EntityNameLookupRecord)) return false;
+    EntityNameLookupRecord that = (EntityNameLookupRecord) o;
     return catalogId == that.catalogId
         && id == that.id
         && parentId == that.parentId

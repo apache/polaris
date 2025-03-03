@@ -28,10 +28,10 @@ import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -175,7 +175,7 @@ public interface PolarisMetaStoreManager
   class ListEntitiesResult extends BaseResult {
 
     // null if not success. Else the list of entities being returned
-    private final List<PolarisEntityActiveRecord> entities;
+    private final List<EntityNameLookupRecord> entities;
 
     /**
      * Constructor for an error
@@ -194,7 +194,7 @@ public interface PolarisMetaStoreManager
      *
      * @param entities list of entities being returned, implies success
      */
-    public ListEntitiesResult(@Nonnull List<PolarisEntityActiveRecord> entities) {
+    public ListEntitiesResult(@Nonnull List<EntityNameLookupRecord> entities) {
       super(ReturnStatus.SUCCESS);
       this.entities = entities;
     }
@@ -203,12 +203,12 @@ public interface PolarisMetaStoreManager
     private ListEntitiesResult(
         @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
         @JsonProperty("extraInformation") String extraInformation,
-        @JsonProperty("entities") List<PolarisEntityActiveRecord> entities) {
+        @JsonProperty("entities") List<EntityNameLookupRecord> entities) {
       super(returnStatus, extraInformation);
       this.entities = entities;
     }
 
-    public List<PolarisEntityActiveRecord> getEntities() {
+    public List<EntityNameLookupRecord> getEntities() {
       return entities;
     }
   }

@@ -35,7 +35,8 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
   // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$,
-  @JsonIgnore public static final String ROLE_ARN_PATTERN = "^arn:aws:iam::(\\d{12}):role/.+$";
+  @JsonIgnore
+  public static final String ROLE_ARN_PATTERN = "^arn:(aws|aws-us-gov):iam::(\\d{12}):role/.+$";
 
   // AWS role to be assumed
   private final @Nonnull String roleARN;
@@ -91,9 +92,9 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     if (arn == null || arn.isEmpty()) {
       throw new IllegalArgumentException("ARN cannot be null or empty");
     }
-    // specifically throw errors for China and Gov
-    if (arn.contains("aws-cn") || arn.contains("aws-us-gov")) {
-      throw new IllegalArgumentException("AWS China or Gov Cloud are temporarily not supported");
+    // specifically throw errors for China
+    if (arn.contains("aws-cn")) {
+      throw new IllegalArgumentException("AWS China is temporarily not supported");
     }
     if (!Pattern.matches(ROLE_ARN_PATTERN, arn)) {
       throw new IllegalArgumentException("Invalid role ARN format");
@@ -133,7 +134,23 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     return parseAwsAccountId(roleARN);
   }
 
+  @JsonIgnore
+  public String getAwsPartition() {
+    return parseAwsPartition(roleARN);
+  }
+
   private static String parseAwsAccountId(String arn) {
+    validateArn(arn);
+    Pattern pattern = Pattern.compile(ROLE_ARN_PATTERN);
+    Matcher matcher = pattern.matcher(arn);
+    if (matcher.matches()) {
+      return matcher.group(2);
+    } else {
+      throw new IllegalArgumentException("ARN does not match the expected role ARN pattern");
+    }
+  }
+
+  private static String parseAwsPartition(String arn) {
     validateArn(arn);
     Pattern pattern = Pattern.compile(ROLE_ARN_PATTERN);
     Matcher matcher = pattern.matcher(arn);

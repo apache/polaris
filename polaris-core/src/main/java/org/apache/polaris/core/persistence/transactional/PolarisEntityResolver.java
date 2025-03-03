@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence;
+package org.apache.polaris.core.persistence.transactional;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -26,9 +26,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
-import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -78,7 +78,7 @@ public class PolarisEntityResolver {
    */
   PolarisEntityResolver(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nullable PolarisEntityCore resolvedEntity,
       @Nullable List<PolarisEntityCore> otherTopLevelEntities) {
@@ -157,7 +157,7 @@ public class PolarisEntityResolver {
    */
   PolarisEntityResolver(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath) {
     this(callCtx, ms, catalogPath, null, null);
   }
@@ -173,7 +173,7 @@ public class PolarisEntityResolver {
    */
   PolarisEntityResolver(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       PolarisEntityCore resolvedEntityDto) {
     this(callCtx, ms, catalogPath, resolvedEntityDto, null);
@@ -190,7 +190,7 @@ public class PolarisEntityResolver {
    */
   PolarisEntityResolver(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity) {
     this(callCtx, ms, catalogPath, new PolarisEntityCore(entity), null);
@@ -239,7 +239,7 @@ public class PolarisEntityResolver {
    */
   private boolean resolveEntitiesIfNeeded(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nullable PolarisEntityCore resolvedEntity,
       @Nullable List<PolarisEntityCore> otherTopLevelEntities) {
@@ -282,13 +282,13 @@ public class PolarisEntityResolver {
             .collect(Collectors.toList());
 
     // now lookup all these entities by name
-    Iterator<PolarisEntityActiveRecord> activeRecordIt =
+    Iterator<EntityNameLookupRecord> activeRecordIt =
         ms.lookupEntityActiveBatch(callCtx, entityActiveKeys).iterator();
 
     // now validate if there was a change and if yes, re-resolve again
     for (PolarisEntityCore resolveEntity : toResolve) {
       // get associate active record
-      PolarisEntityActiveRecord activeEntityRecord = activeRecordIt.next();
+      EntityNameLookupRecord activeEntityRecord = activeRecordIt.next();
 
       // if this entity has been dropped (null) or replaced (<> ids), then fail validation
       if (activeEntityRecord == null || activeEntityRecord.getId() != resolveEntity.getId()) {

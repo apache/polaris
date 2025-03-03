@@ -37,9 +37,9 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -122,7 +122,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
           .extracting(PolarisEntity::toCore)
           .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
 
-      List<PolarisEntityActiveRecord> listedEntities =
+      List<EntityNameLookupRecord> listedEntities =
           metaStoreManager
               .listEntities(
                   polarisTestMetaStoreManager.polarisCallContext,
@@ -134,14 +134,14 @@ public abstract class BasePolarisMetaStoreManagerTest {
           .isNotNull()
           .hasSize(2)
           .containsExactly(
-              new PolarisEntityActiveRecord(
+              new EntityNameLookupRecord(
                   task1.getCatalogId(),
                   task1.getId(),
                   task1.getParentId(),
                   task1.getName(),
                   task1.getTypeCode(),
                   task1.getSubTypeCode()),
-              new PolarisEntityActiveRecord(
+              new EntityNameLookupRecord(
                   task2.getCatalogId(),
                   task2.getId(),
                   task2.getParentId(),

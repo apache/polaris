@@ -36,6 +36,8 @@ All catalogs in Polaris are associated with a _storage type_. Valid Storage Type
 
 For details on how to use Storage Types in the REST API, see [the API docs]({{% github-polaris "regtests/client/python/docs/StorageConfigInfo.md" %}}).
 
+For usage examples of storage types, see [docs]({{% ref "command-line-interface" %}}).
+
 ## Namespace
 
 A namespace is a logical entity that resides within a [catalog](#catalog) and can contain other entities such as [tables](#table) or [views](#view). Some other systems may refer to namespaces as _schemas_ or _databases_.
