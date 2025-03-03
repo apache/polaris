@@ -119,7 +119,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
    * @return whether any throwable in the exception chain case-insensitive-contains the given
    *     message
    */
-  static boolean doesAnyThrowableContainAccessDeniedHint(Exception e) {
+  static boolean doesAnyThrowableContainAccessDeniedHint(Throwable e) {
     return Arrays.stream(ExceptionUtils.getThrowables(e))
         .anyMatch(t -> containsAnyAccessDeniedHint(t.getMessage()));
   }
@@ -166,10 +166,13 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
 
   static int mapExceptionToResponseCode(RuntimeException rex) {
     // Cloud exceptions
-    if (rex instanceof S3Exception
-        || rex instanceof AzureException
-        || rex instanceof StorageException) {
+    if (isCloudException(rex)) {
       return mapCloudExceptionToResponseCode(rex);
+    }
+
+    Throwable rootCause = ExceptionUtils.getRootCause(rex);
+    if (isCloudException(rootCause)) {
+      return mapCloudExceptionToResponseCode(rootCause);
     }
 
     // Non-cloud exceptions
@@ -202,6 +205,12 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     };
   }
 
+  private static boolean isCloudException(Throwable rex) {
+    return rex instanceof S3Exception
+        || rex instanceof AzureException
+        || rex instanceof StorageException;
+  }
+
   /**
    * We typically call cloud providers over HTTP, so when there's an exception there's typically an
    * associated HTTP code. This extracts the HTTP code if possible.
@@ -210,7 +219,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
    * @return UNKNOWN_CLOUD_HTTP_CODE if the exception is not a cloud exception that we know how to
    *     extract the code from
    */
-  public static int extractHttpCodeFromCloudException(RuntimeException rex) {
+  public static int extractHttpCodeFromCloudException(Throwable rex) {
     return switch (rex) {
       case S3Exception s3e -> s3e.statusCode();
       case HttpResponseException hre -> hre.getResponse().getStatusCode();
@@ -219,7 +228,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     };
   }
 
-  static int mapCloudExceptionToResponseCode(RuntimeException rex) {
+  static int mapCloudExceptionToResponseCode(Throwable rex) {
     if (doesAnyThrowableContainAccessDeniedHint(rex)) {
       return Status.FORBIDDEN.getStatusCode();
     }
