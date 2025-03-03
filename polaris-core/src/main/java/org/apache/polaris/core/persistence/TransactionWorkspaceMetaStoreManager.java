@@ -33,6 +33,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
+import org.apache.polaris.core.persistence.dao.entity.*;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 
 /**
@@ -85,7 +86,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public PolarisMetaStoreManager.EntityResult readEntityByName(
+  public EntityResult readEntityByName(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityType entityType,

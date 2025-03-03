@@ -41,12 +41,12 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager.ChangeTrackingResult;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.EntityCacheByNameKey;
 import org.apache.polaris.core.persistence.cache.EntityCacheLookupResult;
+import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
+import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 
 /**
  * REST request resolver, allows to resolve all entities referenced directly or indirectly by in

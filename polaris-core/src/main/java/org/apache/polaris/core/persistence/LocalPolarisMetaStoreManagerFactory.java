@@ -36,6 +36,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
@@ -198,7 +199,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
     }
 
-    PolarisMetaStoreManager.EntityResult preliminaryRootPrincipalLookup =
+    EntityResult preliminaryRootPrincipalLookup =
         metaStoreManager.readEntityByName(
             polarisContext,
             null,
@@ -215,7 +216,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
 
     metaStoreManager.bootstrapPolarisService(polarisContext);
 
-    PolarisMetaStoreManager.EntityResult rootPrincipalLookup =
+    EntityResult rootPrincipalLookup =
         metaStoreManager.readEntityByName(
             polarisContext,
             null,
@@ -256,7 +257,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
       CallContext.setCurrentContext(CallContext.of(realmContext, polarisContext));
     }
 
-    PolarisMetaStoreManager.EntityResult rootPrincipalLookup =
+    EntityResult rootPrincipalLookup =
         metaStoreManager.readEntityByName(
             polarisContext,
             null,

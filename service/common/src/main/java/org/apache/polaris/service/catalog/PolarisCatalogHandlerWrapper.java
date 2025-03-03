@@ -86,6 +86,8 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.TransactionWorkspaceMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -1089,9 +1091,8 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
             });
 
     // Commit the collected updates in a single atomic operation
-    List<PolarisMetaStoreManager.EntityWithPath> pendingUpdates =
-        transactionMetaStoreManager.getPendingUpdates();
-    PolarisMetaStoreManager.EntitiesResult result =
+    List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
+    EntitiesResult result =
         metaStoreManager.updateEntitiesPropertiesIfNotChanged(
             callContext.getPolarisCallContext(), pendingUpdates);
     if (!result.isSuccess()) {

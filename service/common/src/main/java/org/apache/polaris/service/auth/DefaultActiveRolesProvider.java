@@ -34,6 +34,7 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,8 +89,8 @@ public class DefaultActiveRolesProvider implements ActiveRolesProvider {
                 gr ->
                     metaStoreManager.loadEntity(
                         polarisContext, gr.getSecurableCatalogId(), gr.getSecurableId()))
-            .filter(PolarisMetaStoreManager.EntityResult::isSuccess)
-            .map(PolarisMetaStoreManager.EntityResult::getEntity)
+            .filter(EntityResult::isSuccess)
+            .map(EntityResult::getEntity)
             .map(PrincipalRoleEntity::of)
             .filter(includeRoleFilter)
             .toList();
