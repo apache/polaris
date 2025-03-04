@@ -22,16 +22,32 @@ package org.apache.polaris.service.http;
 import jakarta.annotation.Nonnull;
 
 import java.util.List;
+import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 /**
  * Logical representation of an HTTP compliant If-None-Match header.
  */
 public record IfNoneMatch(boolean isWildcard, @Nonnull List<String> eTags) {
 
-    protected static Pattern ETAG_PATTERN = Pattern.compile("(W/)?\"([^\"]*)\"");
+    private static final String WILDCARD_HEADER_VALUE = "*";
+
+    // Matches but does not capture any content of an ETag
+    private static final String ETAG_REGEX= "(?:W/)?\"(?:[^\"]*)\"";
+
+    // Builds comma separated list of ETags and disallows trailing comma
+    private static final String IF_NONE_MATCH_REGEX = String.format("(?:%s, )*%s", ETAG_REGEX, ETAG_REGEX);
+
+    // Wraps pattern in capture group to capture entire ETag
+    private static final Pattern ETAG_PATTERN = Pattern.compile(String.format("(%s)", ETAG_REGEX));
+
+    // Used to validate entire header pattern
+    private static final Pattern IF_NONE_MATCH_PATTERN = Pattern.compile(IF_NONE_MATCH_REGEX);
+
+    public static final IfNoneMatch EMPTY = new IfNoneMatch(List.of());
+
+    public static final IfNoneMatch WILDCARD = new IfNoneMatch(true, List.of());
 
     public IfNoneMatch(List<String> etags) {
         this(false, etags);
@@ -64,38 +80,24 @@ public record IfNoneMatch(boolean isWildcard, @Nonnull List<String> eTags) {
     public static IfNoneMatch fromHeader(String rawValue) {
         // parse null header as an empty header
         if (rawValue == null) {
-            return new IfNoneMatch(List.of());
+            return EMPTY;
         }
 
         rawValue = rawValue.trim();
-        if (rawValue.equals("*")) {
-            return IfNoneMatch.wildcard();
+        if (rawValue.equals(WILDCARD_HEADER_VALUE)) {
+            return WILDCARD;
         } else {
 
-            List<String> parts = Stream.of(rawValue.split("\\s+")) // Tokenizes string , eg. we will now have [`W/"etag1",`, `W/"etag2"`]
-                    .map(s -> s.endsWith(",") ? s.substring(0, s.length() - 1) : s) // Remove trailing comma from each part, so we now have [`W/"etag1"`, `W/"etag2"`]
-                    .toList();
-
-            // ensure all of the individual tags are valid
-            boolean allValid = parts.stream().allMatch(s -> {
-                Matcher matcher = ETAG_PATTERN.matcher(s);
-                return matcher.matches();
-            });
-
-            if (!allValid) {
-                throw new IllegalArgumentException("Invalid If-None-Match value provided: " + rawValue);
+            // ensure entire header matches expected pattern
+            if (!IF_NONE_MATCH_PATTERN.matcher(rawValue).matches()) {
+                throw new IllegalArgumentException("Invalid If-None-Match header: " + rawValue);
             }
 
-            return new IfNoneMatch(parts);
-        }
-    }
+            // extract out ETags using the capture group
+            List<String> etags = ETAG_PATTERN.matcher(rawValue).results().map(MatchResult::group).toList();
 
-    /**
-     * Constructs a new wildcard If-None-Match header *
-     * @return
-     */
-    public static IfNoneMatch wildcard() {
-        return new IfNoneMatch(true, List.of());
+            return new IfNoneMatch(etags);
+        }
     }
 
     /**

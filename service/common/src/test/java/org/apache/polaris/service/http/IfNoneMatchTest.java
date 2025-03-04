@@ -109,7 +109,7 @@ public class IfNoneMatchTest {
         Assertions.assertTrue(ifNoneMatch.anyMatch(strongETag));
         Assertions.assertTrue(ifNoneMatch.anyMatch(weakETag));
 
-        IfNoneMatch canonicallyBuiltWildcard = IfNoneMatch.wildcard();
+        IfNoneMatch canonicallyBuiltWildcard = IfNoneMatch.WILDCARD;
         Assertions.assertTrue(canonicallyBuiltWildcard.anyMatch(strongETag));
         Assertions.assertTrue(canonicallyBuiltWildcard.anyMatch(weakETag));
     }
@@ -122,7 +122,13 @@ public class IfNoneMatchTest {
     @Test
     public void cantConstructHeaderWithOneValidAndOneInvalidPart() {
         Assertions.assertThrows(IllegalArgumentException.class,
-                () -> IfNoneMatch.fromHeader("W/\"etag\" W/invalid-etag"));
+                () -> IfNoneMatch.fromHeader("W/\"etag\", W/invalid-etag"));
+    }
+
+    @Test
+    public void invalidHeaderWithOnlyWhitespacesBetween() {
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> IfNoneMatch.fromHeader("W/\"etag\" \"valid-etag\""));
     }
 
 }
