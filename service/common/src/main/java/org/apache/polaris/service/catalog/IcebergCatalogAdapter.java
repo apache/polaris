@@ -472,7 +472,7 @@ public class IcebergCatalogAdapter
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
     LoadTableResponse loadTableResponse =
         newHandlerWrapper(realmContext, securityContext, prefix)
-            .loadTableWithAccessDelegation(tableIdentifier, "ALL");
+            .loadTableWithAccessDelegation(tableIdentifier, "all");
     return Response.ok(
             ImmutableLoadCredentialsResponse.builder()
                 .credentials(loadTableResponse.credentials())
