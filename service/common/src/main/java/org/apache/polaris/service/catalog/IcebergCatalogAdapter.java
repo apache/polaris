@@ -53,6 +53,9 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
+import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
+import org.apache.iceberg.rest.responses.LoadCredentialsResponse;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
@@ -456,6 +459,22 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     return Response.ok(newHandlerWrapper(realmContext, securityContext, prefix).listViews(ns))
+        .build();
+  }
+
+  @Override
+  public Response loadCredentials(
+      String prefix,
+      String namespace,
+      String table,
+      RealmContext realmContext,
+      SecurityContext securityContext) {
+      Namespace ns = decodeNamespace(namespace);
+      TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
+      LoadTableResponse loadTableResponse = newHandlerWrapper(realmContext, securityContext, prefix)
+          .loadTable(tableIdentifier, "ALL");
+    return Response.ok(
+        ImmutableLoadCredentialsResponse.builder().credentials(loadTableResponse.credentials()).build())
         .build();
   }
 
