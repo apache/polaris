@@ -471,7 +471,8 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
     LoadTableResponse loadTableResponse =
-        newHandlerWrapper(realmContext, securityContext, prefix).loadTableWithAccessDelegation(tableIdentifier, "ALL");
+        newHandlerWrapper(realmContext, securityContext, prefix)
+            .loadTableWithAccessDelegation(tableIdentifier, "ALL");
     return Response.ok(
             ImmutableLoadCredentialsResponse.builder()
                 .credentials(loadTableResponse.credentials())
