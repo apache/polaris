@@ -33,6 +33,7 @@ import jakarta.ws.rs.ext.Provider;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -116,12 +117,11 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   }
 
   /**
-   * @return whether any throwable in the exception chain case-insensitive-contains the given
-   *     message
+   * @return whether any throwable in the chain case-insensitive-contains the given message
    */
-  static boolean doesAnyThrowableContainAccessDeniedHint(Exception e) {
-    return Arrays.stream(ExceptionUtils.getThrowables(e))
-        .anyMatch(t -> containsAnyAccessDeniedHint(t.getMessage()));
+  static boolean doesAnyThrowableContainAccessDeniedHint(Throwable t) {
+    return Arrays.stream(ExceptionUtils.getThrowables(t))
+        .anyMatch(th -> containsAnyAccessDeniedHint(th.getMessage()));
   }
 
   public static boolean containsAnyAccessDeniedHint(String message) {
@@ -130,21 +130,21 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   }
 
   /**
-   * Check if the exception is retryable for the storage provider
+   * Check if the Throwable is retryable for the storage provider
    *
-   * @param ex exception
-   * @return true if the exception is retryable
+   * @param t the Throwable
+   * @return true if the Throwable is retryable
    */
-  public static boolean isStorageProviderRetryableException(Throwable ex) {
-    if (ex == null) {
+  public static boolean isStorageProviderRetryableException(Throwable t) {
+    if (t == null) {
       return false;
     }
 
-    if (ex.getMessage() != null && containsAnyAccessDeniedHint(ex.getMessage())) {
+    if (t.getMessage() != null && containsAnyAccessDeniedHint(t.getMessage())) {
       return false;
     }
 
-    return switch (ex) {
+    return switch (t) {
       // GCS
       case BaseServiceException bse -> bse.isRetryable();
 
@@ -165,14 +165,14 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   }
 
   static int mapExceptionToResponseCode(RuntimeException rex) {
-    // Cloud exceptions
-    if (rex instanceof S3Exception
-        || rex instanceof AzureException
-        || rex instanceof StorageException) {
-      return mapCloudExceptionToResponseCode(rex);
+    Optional<Throwable> cloudException =
+        Arrays.stream(ExceptionUtils.getThrowables(rex))
+            .filter(IcebergExceptionMapper::isCloudException)
+            .findAny();
+    if (cloudException.isPresent()) {
+      return mapCloudExceptionToResponseCode(cloudException.get());
     }
 
-    // Non-cloud exceptions
     return switch (rex) {
       case NoSuchNamespaceException e -> Status.NOT_FOUND.getStatusCode();
       case NoSuchIcebergTableException e -> Status.NOT_FOUND.getStatusCode();
@@ -202,16 +202,20 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     };
   }
 
+  private static boolean isCloudException(Throwable t) {
+    return t instanceof S3Exception || t instanceof AzureException || t instanceof StorageException;
+  }
+
   /**
    * We typically call cloud providers over HTTP, so when there's an exception there's typically an
    * associated HTTP code. This extracts the HTTP code if possible.
    *
-   * @param rex The cloud provider exception
-   * @return UNKNOWN_CLOUD_HTTP_CODE if the exception is not a cloud exception that we know how to
+   * @param t The cloud provider throwable
+   * @return UNKNOWN_CLOUD_HTTP_CODE if the throwable is not a cloud exception that we know how to
    *     extract the code from
    */
-  public static int extractHttpCodeFromCloudException(RuntimeException rex) {
-    return switch (rex) {
+  public static int extractHttpCodeFromCloudException(Throwable t) {
+    return switch (t) {
       case S3Exception s3e -> s3e.statusCode();
       case HttpResponseException hre -> hre.getResponse().getStatusCode();
       case StorageException se -> se.getCode();
@@ -219,12 +223,12 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     };
   }
 
-  static int mapCloudExceptionToResponseCode(RuntimeException rex) {
-    if (doesAnyThrowableContainAccessDeniedHint(rex)) {
+  static int mapCloudExceptionToResponseCode(Throwable t) {
+    if (doesAnyThrowableContainAccessDeniedHint(t)) {
       return Status.FORBIDDEN.getStatusCode();
     }
 
-    int httpCode = extractHttpCodeFromCloudException(rex);
+    int httpCode = extractHttpCodeFromCloudException(t);
     Status httpStatus = Status.fromStatusCode(httpCode);
     Status.Family httpFamily = Status.Family.familyOf(httpCode);
 
