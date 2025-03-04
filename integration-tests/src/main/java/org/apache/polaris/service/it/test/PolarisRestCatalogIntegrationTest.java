@@ -1026,11 +1026,11 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     catalog().buildTable(identifier, SCHEMA).create();
 
     try (Response response =
-             catalogApi
-                 .request(
-                     "v1/{cat}/namespaces/{ns}/tables/{table}/credentials",
-                     Map.of("cat", currentCatalogName, "ns", namespace.toString(), "table", tableName))
-                 .head()) {
+        catalogApi
+            .request(
+                "v1/{cat}/namespaces/{ns}/tables/{table}/credentials",
+                Map.of("cat", currentCatalogName, "ns", namespace.toString(), "table", tableName))
+            .head()) {
       assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
     }
   }
