@@ -123,7 +123,8 @@ public class CatalogEntityTest {
             .setProperties(prop)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    Assertions.assertThatCode(() -> CatalogEntity.fromCatalog(awsCatalog)).doesNotThrowAnyException();
+    Assertions.assertThatCode(() -> CatalogEntity.fromCatalog(awsCatalog))
+        .doesNotThrowAnyException();
   }
 
   @Test
