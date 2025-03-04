@@ -123,9 +123,8 @@ public class CatalogEntityTest {
             .setProperties(prop)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(awsCatalog))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Number of allowed locations exceeds 5");
+    Assertions.assertThatCode(() -> CatalogEntity.fromCatalog(awsCatalog))
+        .doesNotThrowAnyException();
   }
 
   @Test

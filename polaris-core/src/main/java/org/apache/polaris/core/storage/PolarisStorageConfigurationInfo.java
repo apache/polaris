@@ -230,14 +230,6 @@ public abstract class PolarisStorageConfigurationInfo {
     }
   }
 
-  /** Validate the number of allowed locations not exceeding the max value. */
-  public void validateMaxAllowedLocations(int maxAllowedLocations) {
-    if (allowedLocations.size() > maxAllowedLocations) {
-      throw new IllegalArgumentException(
-          "Number of allowed locations exceeds " + maxAllowedLocations);
-    }
-  }
-
   /** Polaris' storage type, each has a fixed prefix for its location */
   public enum StorageType {
     S3("s3://"),
