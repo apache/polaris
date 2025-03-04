@@ -46,6 +46,7 @@ requires-poetry = ">=2.1"
 packages = [{ include = "polaris" }]
 
 [tool.poetry.group.test.dependencies]
+flake8 = ">=4.0.0"
 pytest = ">=7.2.1"
 
 [build-system]
