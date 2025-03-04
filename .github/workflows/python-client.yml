@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.9", "3.10", "3.11"]
 
     steps:
       - name: Checkout Polaris project
@@ -65,7 +65,7 @@ jobs:
       - name: Install Poetry
         if: steps.cache-poetry.outputs.cache-hit != 'true'
         run: |
-          curl -sSL https://install.python-poetry.org | python3 -
+          curl -sSL https://install.python-poetry.org | python3 - --version 1.8.5
           export PATH="$HOME/.local/bin:$PATH"
 
       - name: Install dependencies
