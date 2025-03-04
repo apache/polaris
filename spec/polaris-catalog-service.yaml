@@ -18,7 +18,7 @@
 #
 
 ---
-openapi: 3.0.3
+openapi: 3.0.3 
 info:
   title: Apache Polaris and Apache Iceberg REST Catalog API
   license:
@@ -133,6 +133,15 @@ paths:
 
   /v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications:
     $ref: './polaris-catalog-apis/notifications-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1notifications'
+
+  /v1/{prefix}/namespaces/{namespace}/policies:
+    $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies'
+
+  /v1/{prefix}/namespaces/{namespace}/policies/{policyName}:
+    $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policyName}'
+
+  /v1/{prefix}/namespaces/{namespace}/policies/{policyName}/mappings:
+    $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policyName}~1mappings'
 
 
 components:
