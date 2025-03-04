@@ -21,11 +21,11 @@ package org.apache.polaris.service.auth;
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.types.TokenType;
 
 /** Generic token class intended to be extended by different token types */

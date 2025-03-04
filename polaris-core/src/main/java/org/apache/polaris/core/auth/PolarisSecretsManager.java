@@ -18,13 +18,9 @@
  */
 package org.apache.polaris.core.auth;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
-import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 
 /** Manages secrets for Polaris principals. */
 public interface PolarisSecretsManager {
@@ -58,46 +54,4 @@ public interface PolarisSecretsManager {
       long principalId,
       boolean reset,
       @Nonnull String oldSecretHash);
-
-  /** the result of load/rotate principal secrets */
-  class PrincipalSecretsResult extends BaseResult {
-
-    // principal client identifier and associated secrets. Null if error
-    private final PolarisPrincipalSecrets principalSecrets;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public PrincipalSecretsResult(
-        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.principalSecrets = null;
-    }
-
-    /**
-     * Constructor for success
-     *
-     * @param principalSecrets and associated secret information
-     */
-    public PrincipalSecretsResult(@Nonnull PolarisPrincipalSecrets principalSecrets) {
-      super(BaseResult.ReturnStatus.SUCCESS);
-      this.principalSecrets = principalSecrets;
-    }
-
-    @JsonCreator
-    private PrincipalSecretsResult(
-        @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") @Nullable String extraInformation,
-        @JsonProperty("principalSecrets") @Nonnull PolarisPrincipalSecrets principalSecrets) {
-      super(returnStatus, extraInformation);
-      this.principalSecrets = principalSecrets;
-    }
-
-    public PolarisPrincipalSecrets getPrincipalSecrets() {
-      return principalSecrets;
-    }
-  }
 }
