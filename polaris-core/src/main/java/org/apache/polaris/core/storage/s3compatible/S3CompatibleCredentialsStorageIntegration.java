@@ -19,18 +19,17 @@
 package org.apache.polaris.core.storage.s3compatible;
 
 import static org.apache.polaris.core.PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+import static org.apache.polaris.core.PolarisConfiguration.loadConfig;
 
-import jakarta.annotation.Nonnull;
 import jakarta.ws.rs.NotAuthorizedException;
 import java.net.URI;
 import java.util.EnumMap;
 import java.util.Set;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.StorageUtil;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -48,21 +47,18 @@ public class S3CompatibleCredentialsStorageIntegration
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(S3CompatibleCredentialsStorageIntegration.class);
-  private final PolarisConfigurationStore configurationStore;
 
-  public S3CompatibleCredentialsStorageIntegration(PolarisConfigurationStore configurationStore) {
-    super(configurationStore, S3CompatibleCredentialsStorageIntegration.class.getName());
-    this.configurationStore = configurationStore;
+  public S3CompatibleCredentialsStorageIntegration() {
+    super(S3CompatibleCredentialsStorageIntegration.class.getName());
   }
 
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-      @Nonnull RealmContext realmContext,
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull S3CompatibleStorageConfigurationInfo storageConfig,
+      @NotNull PolarisDiagnostics diagnostics,
+      @NotNull S3CompatibleStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
-      @Nonnull Set<String> allowedReadLocations,
-      @Nonnull Set<String> allowedWriteLocations) {
+      @NotNull Set<String> allowedReadLocations,
+      @NotNull Set<String> allowedWriteLocations) {
 
     String caI = System.getenv(storageConfig.getS3CredentialsCatalogAccessKeyId());
     String caS = System.getenv(storageConfig.getS3CredentialsCatalogSecretAccessKey());
@@ -106,9 +102,7 @@ public class S3CompatibleCredentialsStorageIntegration
                               allowedReadLocations,
                               allowedWriteLocations)
                           .toJson())
-                  .durationSeconds(
-                      configurationStore.getConfiguration(
-                          realmContext, STORAGE_CREDENTIAL_DURATION_SECONDS))
+                  .durationSeconds(loadConfig(STORAGE_CREDENTIAL_DURATION_SECONDS))
                   .build());
 
       propertiesMap.put(PolarisCredentialProperty.AWS_KEY_ID, response.credentials().accessKeyId());
