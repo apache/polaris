@@ -1031,7 +1031,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                      "v1/{cat}/namespaces/{ns}/tables/{table}/credentials",
                      Map.of("cat", currentCatalogName, "ns", namespace.toString(), "table", tableName))
                  .head()) {
-      assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
     }
   }
 }
