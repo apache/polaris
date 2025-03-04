@@ -28,7 +28,7 @@ import java.util.List;
 @ApplicationScoped
 @Identifier("test")
 public class TestPolarisEventListener implements PolarisEventListener {
-  private final List<Object> history = new ArrayList<>();
+  private final List<PolarisEvent> history = new ArrayList<>();
 
   public <T> T getLatest(Class<T> type) {
     return (T) Streams.findLast(history.stream().filter(type::isInstance)).orElseThrow();

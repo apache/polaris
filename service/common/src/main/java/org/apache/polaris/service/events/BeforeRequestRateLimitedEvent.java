@@ -24,4 +24,4 @@ package org.apache.polaris.service.events;
  * @param method The request's HTTP method
  * @param absolutePath The request's absolute path
  */
-public record BeforeRequestRateLimitedEvent(String method, String absolutePath) {}
+public record BeforeRequestRateLimitedEvent(String method, String absolutePath) implements PolarisEvent {}

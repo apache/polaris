@@ -28,4 +28,4 @@ import org.apache.iceberg.view.ViewMetadata;
  * @param base The old metadata.
  * @param metadata The new metadata.
  */
-public record BeforeViewCommitEvent(ViewMetadata base, ViewMetadata metadata) {}
+public record BeforeViewCommitEvent(ViewMetadata base, ViewMetadata metadata) implements PolarisEvent {}

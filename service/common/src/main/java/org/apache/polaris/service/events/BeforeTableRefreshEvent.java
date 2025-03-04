@@ -26,4 +26,4 @@ import org.apache.iceberg.catalog.TableIdentifier;
  *
  * @param tableIdentifier The identifier of the table being refreshed.
  */
-public record BeforeTableRefreshEvent(TableIdentifier tableIdentifier) {}
+public record BeforeTableRefreshEvent(TableIdentifier tableIdentifier) implements PolarisEvent {}

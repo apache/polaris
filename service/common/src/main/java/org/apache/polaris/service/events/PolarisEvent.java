@@ -16,16 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+
 package org.apache.polaris.service.events;
 
-import org.apache.polaris.core.context.CallContext;
-
-/**
- * Emitted before an attempt of an async task, such as manifest file cleanup, begins.
- *
- * @param taskEntityId The ID of the TaskEntity
- * @param callContext The CallContext the task is being executed under.
- * @param attempt The attempt number. Each retry of the task will have its own attempt number. The
- *     initial (non-retried) attempt starts counting from 1.
- */
-public record BeforeAttemptTaskEvent(long taskEntityId, CallContext callContext, int attempt) implements PolarisEvent {}
+/** Represents an event emitted by Polaris. Currently there's no common data across events, hence the interface being empty, but all events still implement this interface. **/
+public interface PolarisEvent {
+}

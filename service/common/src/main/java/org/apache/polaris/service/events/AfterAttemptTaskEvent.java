@@ -30,4 +30,4 @@ import org.apache.polaris.core.context.CallContext;
  * @param success Whether or not the attempt succeeded.
  */
 public record AfterAttemptTaskEvent(
-    long taskEntityId, CallContext callContext, int attempt, boolean success) {}
+    long taskEntityId, CallContext callContext, int attempt, boolean success) implements PolarisEvent {}

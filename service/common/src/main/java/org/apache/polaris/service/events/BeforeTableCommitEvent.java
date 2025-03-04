@@ -28,4 +28,4 @@ import org.apache.iceberg.TableMetadata;
  * @param base The old metadata.
  * @param metadata The new metadata.
  */
-public record BeforeTableCommitEvent(TableMetadata base, TableMetadata metadata) {}
+public record BeforeTableCommitEvent(TableMetadata base, TableMetadata metadata) implements PolarisEvent {}

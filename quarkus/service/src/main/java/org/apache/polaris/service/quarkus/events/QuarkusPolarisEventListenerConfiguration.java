@@ -22,7 +22,7 @@ import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 
 @StaticInitSafe
-@ConfigMapping(prefix = "polaris.events")
+@ConfigMapping(prefix = "polaris.event-listener")
 public interface QuarkusPolarisEventListenerConfiguration {
   /**
    * The type of the event listener to use. Must be a registered {@link
