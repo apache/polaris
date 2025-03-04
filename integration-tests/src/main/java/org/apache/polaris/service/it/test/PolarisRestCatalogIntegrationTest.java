@@ -1019,10 +1019,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     Namespace namespace = Namespace.of("ns1");
     TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
 
-    if (requiresNamespaceCreate()) {
-      catalog().createNamespace(namespace);
-    }
-
+    catalog().createNamespace(namespace);
     catalog().buildTable(identifier, SCHEMA).create();
 
     try (Response response =
