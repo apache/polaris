@@ -81,73 +81,31 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   /**
-   * Persist the specified new entity. Persist will write this entity in the ENTITIES, in the
-   * ENTITIES_ACTIVE and finally in the ENTITIES_CHANGE_TRACKING tables
+   * A version of BaseMetaStoreManager::persistNewEntity but instead of calling the one-shot
+   * immediate-peristence APIs of BasePersistence, expects to be run under an outer
+   * runInTransaction, and calls through to analogous versions of *InOuterTransaction methods of
+   * TransactionalPersistence.
    *
    * @param callCtx call context
    * @param ms meta store in read/write mode
-   * @param entity entity we need a DPO for
+   * @param entity entity we need a new persisted record for
    */
-  private void persistNewEntity(
+  protected void persistNewEntityInOuterTransaction(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisBaseEntity entity) {
-
-    // validate the entity type and subtype
-    callCtx.getDiagServices().checkNotNull(entity, "unexpected_null_entity");
-    callCtx
-        .getDiagServices()
-        .checkNotNull(entity.getName(), "unexpected_null_name", "entity={}", entity);
-    PolarisEntityType type = PolarisEntityType.fromCode(entity.getTypeCode());
-    callCtx.getDiagServices().checkNotNull(type, "unknown_type", "entity={}", entity);
-    PolarisEntitySubType subType = PolarisEntitySubType.fromCode(entity.getSubTypeCode());
-    callCtx.getDiagServices().checkNotNull(subType, "unexpected_null_subType", "entity={}", entity);
-    callCtx
-        .getDiagServices()
-        .check(
-            subType.getParentType() == null || subType.getParentType() == type,
-            "invalid_subtype",
-            "type={} subType={}",
-            type,
-            subType);
-
-    // if top-level entity, its parent should be the account
-    callCtx
-        .getDiagServices()
-        .check(
-            !type.isTopLevel() || entity.getParentId() == PolarisEntityConstants.getRootEntityId(),
-            "top_level_parent_should_be_account",
-            "entity={}",
-            entity);
-
-    // id should not be null
-    callCtx
-        .getDiagServices()
-        .check(
-            entity.getId() != 0 || type == PolarisEntityType.ROOT,
-            "id_not_set",
-            "entity={}",
-            entity);
-
-    // creation timestamp must be filled
-    callCtx.getDiagServices().check(entity.getCreateTimestamp() != 0, "null_create_timestamp");
-
-    // this is the first change
-    entity.setLastUpdateTimestamp(entity.getCreateTimestamp());
-
-    // set all other timestamps to 0
-    entity.setDropTimestamp(0);
-    entity.setPurgeTimestamp(0);
-    entity.setToPurgeTimestamp(0);
+    // Invoke shared logic for validation and filling out remaining fields.
+    entity = prepareToPersistNewEntity(callCtx, ms, entity);
 
     // write it
-    ms.writeEntity(callCtx, entity, true, null);
+    ms.writeEntityInOuterTransaction(callCtx, entity, true, null);
   }
 
   /**
-   * Persist the specified entity after it has been changed. We will update the last changed time,
-   * increment the entity version and persist it back to the ENTITIES and ENTITIES_CHANGE_TRACKING
-   * tables
+   * A version of BaseMetaStoreManager::persistEntityAfterChange but instead of calling the one-shot
+   * immediate-peristence APIs of BasePersistence, expects to be run under an outer
+   * runInTransaction, and calls through to analogous versions of *InOuterTransaction methods of
+   * TransactionalPersistence.
    *
    * @param callCtx call context
    * @param ms meta store
@@ -156,55 +114,19 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
    * @param originalEntity the original state of the entity before changes
    * @return the entity with its version and lastUpdateTimestamp updated
    */
-  private @Nonnull PolarisBaseEntity persistEntityAfterChange(
+  private @Nonnull PolarisBaseEntity persistEntityAfterChangeInOuterTransaction(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
       @Nonnull PolarisBaseEntity originalEntity) {
+    // Invoke shared logic for validation and updating expected fields.
+    entity =
+        prepareToPersistEntityAfterChange(callCtx, ms, entity, nameOrParentChanged, originalEntity);
 
-    // validate the entity type and subtype
-    callCtx.getDiagServices().checkNotNull(entity, "unexpected_null_entity");
-    callCtx
-        .getDiagServices()
-        .checkNotNull(entity.getName(), "unexpected_null_name", "entity={}", entity);
-    PolarisEntityType type = entity.getType();
-    callCtx.getDiagServices().checkNotNull(type, "unexpected_null_type", "entity={}", entity);
-    PolarisEntitySubType subType = entity.getSubType();
-    callCtx.getDiagServices().checkNotNull(subType, "unexpected_null_subType", "entity={}", entity);
-    callCtx
-        .getDiagServices()
-        .check(
-            subType.getParentType() == null || subType.getParentType() == type,
-            "invalid_subtype",
-            "type={} subType={} entity={}",
-            type,
-            subType,
-            entity);
-
-    // entity should not have been dropped
-    callCtx
-        .getDiagServices()
-        .check(entity.getDropTimestamp() == 0, "entity_dropped", "entity={}", entity);
-
-    // creation timestamp must be filled
-    long createTimestamp = entity.getCreateTimestamp();
-    callCtx
-        .getDiagServices()
-        .check(createTimestamp != 0, "null_create_timestamp", "entity={}", entity);
-
-    // ensure time is not moving backward...
-    long now = System.currentTimeMillis();
-    if (now < entity.getCreateTimestamp()) {
-      now = entity.getCreateTimestamp() + 1;
-    }
-
-    // update last update timestamp and increment entity version
-    entity.setLastUpdateTimestamp(now);
-    entity.setEntityVersion(entity.getEntityVersion() + 1);
-
-    // persist it to the various slices
-    ms.writeEntity(callCtx, entity, nameOrParentChanged, originalEntity);
+    // Use the write method defined in TransactionalPersistence which expects an
+    // existing runInTransaction to already be in-place.
+    ms.writeEntityInOuterTransaction(callCtx, entity, nameOrParentChanged, originalEntity);
 
     // return it
     return entity;
@@ -265,7 +187,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     for (PolarisBaseEntity entityGrantChanged : entities) {
       PolarisBaseEntity originalEntity = new PolarisBaseEntity(entityGrantChanged);
       entityGrantChanged.setGrantRecordsVersion(entityGrantChanged.getGrantRecordsVersion() + 1);
-      ms.writeEntity(callCtx, entityGrantChanged, false, originalEntity);
+      ms.writeEntityInOuterTransaction(callCtx, entityGrantChanged, false, originalEntity);
     }
 
     // remove the entity being dropped now
@@ -336,7 +258,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // grants have changed, we need to bump-up the grants version
     granteeEntity.setGrantRecordsVersion(granteeEntity.getGrantRecordsVersion() + 1);
-    ms.writeEntity(callCtx, granteeEntity, false, originalGranteeEntity);
+    ms.writeEntityInOuterTransaction(callCtx, granteeEntity, false, originalGranteeEntity);
 
     // we also need to invalidate the grants on that securable so that we can reload them.
     // load the securable and increment its grants version
@@ -349,7 +271,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // grants have changed, we need to bump-up the grants version
     securableEntity.setGrantRecordsVersion(securableEntity.getGrantRecordsVersion() + 1);
-    ms.writeEntity(callCtx, securableEntity, false, originalSecurableEntity);
+    ms.writeEntityInOuterTransaction(callCtx, securableEntity, false, originalSecurableEntity);
 
     // done, return the new grant record
     return grantRecord;
@@ -413,7 +335,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // grants have changed, we need to bump-up the grants version
     refreshGrantee.setGrantRecordsVersion(refreshGrantee.getGrantRecordsVersion() + 1);
-    ms.writeEntity(callCtx, refreshGrantee, false, originalRefreshGrantee);
+    ms.writeEntityInOuterTransaction(callCtx, refreshGrantee, false, originalRefreshGrantee);
 
     // we also need to invalidate the grants on that securable so that we can reload them.
     // load the securable and increment its grants version
@@ -431,7 +353,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // grants have changed, we need to bump-up the grants version
     refreshSecurable.setGrantRecordsVersion(refreshSecurable.getGrantRecordsVersion() + 1);
-    ms.writeEntity(callCtx, refreshSecurable, false, originalRefreshSecurable);
+    ms.writeEntityInOuterTransaction(callCtx, refreshSecurable, false, originalRefreshSecurable);
   }
 
   /**
@@ -507,7 +429,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     ms.persistStorageIntegrationIfNeeded(callCtx, catalog, integration);
 
     // now create and persist new catalog entity
-    this.persistNewEntity(callCtx, ms, catalog);
+    this.persistNewEntityInOuterTransaction(callCtx, ms, catalog);
 
     // create the catalog admin role for this new catalog
     long adminRoleId = ms.generateNewId(callCtx);
@@ -519,7 +441,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
             PolarisEntitySubType.NULL_SUBTYPE,
             catalog.getId(),
             PolarisEntityConstants.getNameOfCatalogAdminRole());
-    this.persistNewEntity(callCtx, ms, adminRole);
+    this.persistNewEntityInOuterTransaction(callCtx, ms, adminRole);
 
     // grant the catalog admin role access-management on the catalog
     this.persistNewGrantRecord(
@@ -584,7 +506,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
             PolarisEntitySubType.NULL_SUBTYPE,
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootContainerName());
-    this.persistNewEntity(callCtx, ms, rootContainer);
+    this.persistNewEntityInOuterTransaction(callCtx, ms, rootContainer);
 
     // Now bootstrap the service by creating the root principal and the service_admin principal
     // role. The principal role will be granted to that root principal and the root catalog admin
@@ -612,7 +534,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
             PolarisEntitySubType.NULL_SUBTYPE,
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getNameOfPrincipalServiceAdminRole());
-    this.persistNewEntity(callCtx, ms, serviceAdminPrincipalRole);
+    this.persistNewEntityInOuterTransaction(callCtx, ms, serviceAdminPrincipalRole);
 
     // we also need to grant usage on the account-admin principal to the principal
     this.persistNewGrantRecord(
@@ -901,7 +823,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     principal.setInternalProperties(this.serializeProperties(callCtx, internalProperties));
 
     // now create and persist new catalog entity
-    this.persistNewEntity(callCtx, ms, principal);
+    this.persistNewEntityInOuterTransaction(callCtx, ms, principal);
 
     // success, return the two entities
     return new CreatePrincipalResult(principal, principalSecrets);
@@ -978,14 +900,14 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       principal.setInternalProperties(
           PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
       principal.setEntityVersion(principal.getEntityVersion() + 1);
-      ms.writeEntity(callCtx, principal, true, originalPrincipal);
+      ms.writeEntityInOuterTransaction(callCtx, principal, true, originalPrincipal);
     } else if (internalProps.containsKey(
         PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)) {
       internalProps.remove(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE);
       principal.setInternalProperties(
           PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
       principal.setEntityVersion(principal.getEntityVersion() + 1);
-      ms.writeEntity(callCtx, principal, true, originalPrincipal);
+      ms.writeEntityInOuterTransaction(callCtx, principal, true, originalPrincipal);
     }
     return secrets;
   }
@@ -1089,7 +1011,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     }
 
     // persist that new entity
-    this.persistNewEntity(callCtx, ms, entity);
+    this.persistNewEntityInOuterTransaction(callCtx, ms, entity);
 
     // done, return that newly created entity
     return new EntityResult(entity);
@@ -1177,7 +1099,8 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     // persist this entity after changing it. This will update the version and update the last
     // updated time. Because the entity version is changed, we will update the change tracking table
     PolarisBaseEntity persistedEntity =
-        this.persistEntityAfterChange(callCtx, ms, entityRefreshed, false, originalEntity);
+        this.persistEntityAfterChangeInOuterTransaction(
+            callCtx, ms, entityRefreshed, false, originalEntity);
     return new EntityResult(persistedEntity);
   }
 
@@ -1340,7 +1263,8 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     // version. Indicate that the nameOrParent changed, so so that we also update any by-name
     // lookups if applicable
     PolarisBaseEntity renamedEntityToReturn =
-        this.persistEntityAfterChange(callCtx, ms, refreshEntityToRename, true, originalEntity);
+        this.persistEntityAfterChangeInOuterTransaction(
+            callCtx, ms, refreshEntityToRename, true, originalEntity);
     return new EntityResult(renamedEntityToReturn);
   }
 
@@ -1993,7 +1917,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
                       + 1));
           task.setEntityVersion(task.getEntityVersion() + 1);
           task.setProperties(PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
-          ms.writeEntity(callCtx, task, false, originalTask);
+          ms.writeEntityInOuterTransaction(callCtx, task, false, originalTask);
         });
     return new EntitiesResult(availableTasks);
   }

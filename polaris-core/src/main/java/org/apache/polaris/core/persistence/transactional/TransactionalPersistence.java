@@ -19,10 +19,12 @@
 package org.apache.polaris.core.persistence.transactional;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
@@ -80,6 +82,23 @@ public interface TransactionalPersistence extends BasePersistence, IntegrationPe
    */
   void runActionInReadTransaction(
       @Nonnull PolarisCallContext callCtx, @Nonnull Runnable transactionCode);
+
+  /**
+   * Same as {@link org.apache.polaris.core.persistence.BasePersistence#writeEntity}, except expects
+   * to be run as part of a larger caller-defined transactional action, and so doesn't use
+   * transactions internally.
+   *
+   * @param callCtx call context
+   * @param entity entity to persist
+   * @param nameOrParentChanged if true, also write it to by-name lookups if applicable
+   * @param originalEntity original state of the entity to use for compare-and-swap purposes, or
+   *     null if this is expected to be a brand-new entity
+   */
+  void writeEntityInOuterTransaction(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity entity,
+      boolean nameOrParentChanged,
+      @Nullable PolarisBaseEntity originalEntity);
 
   /**
    * Lookup the specified set of entities by entityActiveKeys Return the result, a parallel list of

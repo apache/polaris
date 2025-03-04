@@ -104,7 +104,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   /** {@inheritDoc} */
   @Override
-  public void writeEntity(
+  public void writeEntityInOuterTransaction(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
@@ -123,6 +123,20 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       }
       writeToEntitiesActive(callCtx, entity);
     }
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void writeEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity entity,
+      boolean nameOrParentChanged,
+      @Nullable PolarisBaseEntity originalEntity) {
+    runActionInTransaction(
+        callCtx,
+        () ->
+            this.writeEntityInOuterTransaction(
+                callCtx, entity, nameOrParentChanged, originalEntity));
   }
 
   /**
