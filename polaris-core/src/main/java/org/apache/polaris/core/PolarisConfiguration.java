@@ -272,14 +272,4 @@ public class PolarisConfiguration<T> {
               "How many times to retry refreshing metadata when the previous error was retryable")
           .defaultValue(2)
           .build();
-
-  public static final PolarisConfiguration<Integer> STORAGE_CONFIGURATION_MAX_LOCATIONS =
-      PolarisConfiguration.<Integer>builder()
-          .key("STORAGE_CONFIGURATION_MAX_LOCATIONS")
-          .catalogConfig("max.locations")
-          .description(
-              "How many locations can be associated with a storage configuration, or -1 for"
-                  + " unlimited locations")
-          .defaultValue(20)
-          .build();
 }

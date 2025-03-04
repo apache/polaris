@@ -27,8 +27,6 @@ import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import org.apache.polaris.core.PolarisConfiguration;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Aws Polaris Storage Configuration information */
@@ -73,9 +71,6 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     this.roleARN = roleARN;
     this.externalId = externalId;
     this.region = region;
-    validateMaxAllowedLocations(
-        PolarisConfigurationStore.getConfiguration(
-            PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
   }
 
   @Override
