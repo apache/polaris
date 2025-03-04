@@ -77,7 +77,7 @@ public class PolarisStorageIntegrationProviderImpl implements PolarisStorageInte
       case S3_COMPATIBLE:
         storageIntegration =
             (PolarisStorageIntegration<T>)
-                new S3CompatibleCredentialsStorageIntegration(configurationStore);
+                new S3CompatibleCredentialsStorageIntegration();
         break;
       case GCS:
         storageIntegration =
