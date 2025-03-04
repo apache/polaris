@@ -117,8 +117,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   }
 
   /**
-   * @return whether any throwable in the exception chain case-insensitive-contains the given
-   *     message
+   * @return whether any throwable in the chain case-insensitive-contains the given message
    */
   static boolean doesAnyThrowableContainAccessDeniedHint(Throwable t) {
     return Arrays.stream(ExceptionUtils.getThrowables(t))
@@ -131,10 +130,10 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   }
 
   /**
-   * Check if the exception is retryable for the storage provider
+   * Check if the Throwable is retryable for the storage provider
    *
-   * @param t exception
-   * @return true if the exception is retryable
+   * @param t the Throwable
+   * @return true if the Throwable is retryable
    */
   public static boolean isStorageProviderRetryableException(Throwable t) {
     if (t == null) {
@@ -211,8 +210,8 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
    * We typically call cloud providers over HTTP, so when there's an exception there's typically an
    * associated HTTP code. This extracts the HTTP code if possible.
    *
-   * @param t The cloud provider exception
-   * @return UNKNOWN_CLOUD_HTTP_CODE if the exception is not a cloud exception that we know how to
+   * @param t The cloud provider throwable
+   * @return UNKNOWN_CLOUD_HTTP_CODE if the throwable is not a cloud exception that we know how to
    *     extract the code from
    */
   public static int extractHttpCodeFromCloudException(Throwable t) {
