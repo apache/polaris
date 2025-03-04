@@ -26,6 +26,8 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
+import jakarta.ws.rs.WebApplicationException;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.net.URLEncoder;
@@ -53,6 +55,7 @@ import org.apache.iceberg.rest.requests.RenameTableRequest;
 import org.apache.iceberg.rest.requests.ReportMetricsRequest;
 import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
+import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
@@ -68,7 +71,9 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
+import org.apache.polaris.service.catalog.response.ETaggedResponse;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
+import org.apache.polaris.service.http.IfNoneMatch;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -300,15 +305,15 @@ public class IcebergCatalogAdapter
             .build();
       }
     } else if (delegationModes.isEmpty()) {
-      return Response.ok(
-              newHandlerWrapper(realmContext, securityContext, prefix)
-                  .createTableDirect(ns, createTableRequest))
+      ETaggedResponse<LoadTableResponse> createResult = newHandlerWrapper(realmContext, securityContext, prefix)
+              .createTableDirect(ns, createTableRequest);
+      return Response.ok(createResult.response()).header(HttpHeaders.ETAG, createResult.eTag())
           .build();
     } else {
-      return Response.ok(
-              newHandlerWrapper(realmContext, securityContext, prefix)
-                  .createTableDirectWithWriteDelegation(ns, createTableRequest))
-          .build();
+      ETaggedResponse<LoadTableResponse> createResult = newHandlerWrapper(realmContext, securityContext, prefix)
+              .createTableDirectWithWriteDelegation(ns, createTableRequest);
+      return Response.ok(createResult.response()).header(HttpHeaders.ETAG, createResult.eTag())
+              .build();
     }
   }
 
@@ -331,6 +336,7 @@ public class IcebergCatalogAdapter
       String namespace,
       String table,
       String accessDelegationMode,
+      String ifNoneMatchHeader,
       String snapshots,
       RealmContext realmContext,
       SecurityContext securityContext) {
@@ -338,17 +344,24 @@ public class IcebergCatalogAdapter
         parseAccessDelegationModes(accessDelegationMode);
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
-    if (delegationModes.isEmpty()) {
-      return Response.ok(
-              newHandlerWrapper(realmContext, securityContext, prefix)
-                  .loadTable(tableIdentifier, snapshots))
+      ETaggedResponse<LoadTableResponse> loadTableResult;
+
+    IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(ifNoneMatchHeader);
+
+    if (ifNoneMatch.isWildcard())
+      throw new BadRequestException("If-None-Match may not take the value of '*'");
+
+      if (delegationModes.isEmpty()) {
+          loadTableResult = newHandlerWrapper(realmContext, securityContext, prefix)
+                  .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
+                  .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
+      } else {
+          loadTableResult = newHandlerWrapper(realmContext, securityContext, prefix)
+                  .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
+                  .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
+      }
+      return Response.ok(loadTableResult.response()).header(HttpHeaders.ETAG, loadTableResult.eTag())
           .build();
-    } else {
-      return Response.ok(
-              newHandlerWrapper(realmContext, securityContext, prefix)
-                  .loadTableWithAccessDelegation(tableIdentifier, snapshots))
-          .build();
-    }
   }
 
   @Override
@@ -392,9 +405,9 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    return Response.ok(
-            newHandlerWrapper(realmContext, securityContext, prefix)
-                .registerTable(ns, registerTableRequest))
+    ETaggedResponse<LoadTableResponse> registerTableResult = newHandlerWrapper(realmContext, securityContext, prefix)
+            .registerTable(ns, registerTableRequest);
+    return Response.ok(registerTableResult.response()).header(HttpHeaders.ETAG, registerTableResult.eTag())
         .build();
   }
 
