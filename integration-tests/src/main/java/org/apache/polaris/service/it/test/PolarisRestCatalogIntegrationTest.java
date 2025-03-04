@@ -1012,4 +1012,23 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
       assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
     }
   }
+
+  @Test
+  public void testLoadCredentials() {
+    String tableName = "tbl1";
+    Namespace namespace = Namespace.of("ns1");
+    TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
+
+    catalog().createNamespace(namespace);
+    catalog().buildTable(identifier, SCHEMA).create();
+
+    try (Response response =
+        catalogApi
+            .request(
+                "v1/{cat}/namespaces/{ns}/tables/{table}/credentials",
+                Map.of("cat", currentCatalogName, "ns", namespace.toString(), "table", tableName))
+            .head()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+    }
+  }
 }
