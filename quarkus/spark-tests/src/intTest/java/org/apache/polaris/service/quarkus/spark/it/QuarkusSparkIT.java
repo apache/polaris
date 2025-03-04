@@ -16,12 +16,9 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.it;
+package org.apache.polaris.service.quarkus.spark.it;
 
 import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
-import java.util.Map;
 import org.apache.polaris.service.it.test.PolarisSparkIntegrationTest;
 
 @QuarkusIntegrationTest
