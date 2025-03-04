@@ -20,6 +20,7 @@ package org.apache.polaris.service.exception;
 
 import com.azure.core.exception.AzureException;
 import com.azure.core.exception.HttpResponseException;
+import com.google.cloud.BaseServiceException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
@@ -57,10 +58,24 @@ import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
+import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
 @Provider
 public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException> {
+  /** Signifies that we could not extract an HTTP code from a given cloud exception */
+  public static final int UNKNOWN_CLOUD_HTTP_CODE = -1;
+
+  public static final Set<Integer> RETRYABLE_AZURE_HTTP_CODES =
+      Set.of(
+          Response.Status.REQUEST_TIMEOUT.getStatusCode(),
+          Response.Status.TOO_MANY_REQUESTS.getStatusCode(),
+          Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(),
+          Response.Status.SERVICE_UNAVAILABLE.getStatusCode(),
+          Response.Status.GATEWAY_TIMEOUT.getStatusCode(),
+          IcebergExceptionMapper.UNKNOWN_CLOUD_HTTP_CODE);
+
   private static final Logger LOGGER = LoggerFactory.getLogger(IcebergExceptionMapper.class);
 
   // Case-insensitive parts of exception messages that a request to a cloud provider was denied due
@@ -75,7 +90,12 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   @Override
   public Response toResponse(RuntimeException runtimeException) {
     LOGGER.info("Handling runtimeException {}", runtimeException.getMessage());
+
     int responseCode = mapExceptionToResponseCode(runtimeException);
+    LOGGER
+        .atLevel(responseCode >= 500 ? Level.INFO : Level.DEBUG)
+        .log("Full RuntimeException", runtimeException);
+
     if (responseCode == Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()) {
       LOGGER.error("Unhandled exception returning INTERNAL_SERVER_ERROR", runtimeException);
     }
@@ -107,6 +127,36 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   public static boolean containsAnyAccessDeniedHint(String message) {
     String messageLower = message.toLowerCase(Locale.ENGLISH);
     return ACCESS_DENIED_HINTS.stream().anyMatch(messageLower::contains);
+  }
+
+  /**
+   * Check if the exception is retryable for the storage provider
+   *
+   * @param ex exception
+   * @return true if the exception is retryable
+   */
+  public static boolean isStorageProviderRetryableException(Throwable ex) {
+    if (ex == null) {
+      return false;
+    }
+
+    if (ex.getMessage() != null && containsAnyAccessDeniedHint(ex.getMessage())) {
+      return false;
+    }
+
+    return switch (ex) {
+      // GCS
+      case BaseServiceException bse -> bse.isRetryable();
+
+      // S3
+      case SdkException se -> se.retryable();
+
+      // Azure exceptions don't have a retryable property so we just check the HTTP code
+      case HttpResponseException hre ->
+          RETRYABLE_AZURE_HTTP_CODES.contains(
+              IcebergExceptionMapper.extractHttpCodeFromCloudException(hre));
+      default -> true;
+    };
   }
 
   @VisibleForTesting
@@ -152,18 +202,29 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     };
   }
 
+  /**
+   * We typically call cloud providers over HTTP, so when there's an exception there's typically an
+   * associated HTTP code. This extracts the HTTP code if possible.
+   *
+   * @param rex The cloud provider exception
+   * @return UNKNOWN_CLOUD_HTTP_CODE if the exception is not a cloud exception that we know how to
+   *     extract the code from
+   */
+  public static int extractHttpCodeFromCloudException(RuntimeException rex) {
+    return switch (rex) {
+      case S3Exception s3e -> s3e.statusCode();
+      case HttpResponseException hre -> hre.getResponse().getStatusCode();
+      case StorageException se -> se.getCode();
+      default -> UNKNOWN_CLOUD_HTTP_CODE;
+    };
+  }
+
   static int mapCloudExceptionToResponseCode(RuntimeException rex) {
     if (doesAnyThrowableContainAccessDeniedHint(rex)) {
       return Status.FORBIDDEN.getStatusCode();
     }
 
-    int httpCode =
-        switch (rex) {
-          case S3Exception s3e -> s3e.statusCode();
-          case HttpResponseException hre -> hre.getResponse().getStatusCode();
-          case StorageException se -> se.getCode();
-          default -> -1;
-        };
+    int httpCode = extractHttpCodeFromCloudException(rex);
     Status httpStatus = Status.fromStatusCode(httpCode);
     Status.Family httpFamily = Status.Family.familyOf(httpCode);
 

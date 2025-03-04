@@ -26,12 +26,12 @@ import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.core.persistence.BaseResult;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 
 /** Manage grants for Polaris entities. */
 public interface PolarisGrantManager {
@@ -39,7 +39,7 @@ public interface PolarisGrantManager {
    * Grant usage on a role to a grantee, for example granting usage on a catalog role to a principal
    * role or granting a principal role to a principal.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param catalog if the role is a catalog role, the caller needs to pass-in the catalog entity
    *     which was used to resolve that granted. Else null.
    * @param role resolved catalog or principal role
@@ -49,7 +49,7 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   PrivilegeResult grantUsageOnRoleToGrantee(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee);
@@ -58,7 +58,7 @@ public interface PolarisGrantManager {
    * Revoke usage on a role (a catalog or a principal role) from a grantee (e.g. a principal role or
    * a principal).
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param catalog if the granted is a catalog role, the caller needs to pass-in the catalog entity
    *     which was used to resolve that role. Else null should be passed-in.
    * @param role a catalog/principal role as resolved by the caller
@@ -69,7 +69,7 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   PrivilegeResult revokeUsageOnRoleFromGrantee(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee);
@@ -77,7 +77,7 @@ public interface PolarisGrantManager {
   /**
    * Grant a privilege on a catalog securable to a grantee.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param grantee resolved role, the grantee
    * @param catalogPath path to that entity, cannot be null or empty unless securable is top-level
    * @param securable securable entity, must have been resolved by the client. Can be the catalog
@@ -88,7 +88,7 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   PrivilegeResult grantPrivilegeOnSecurableToRole(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore securable,
@@ -97,7 +97,7 @@ public interface PolarisGrantManager {
   /**
    * Revoke a privilege on a catalog securable from a grantee.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param grantee resolved role, the grantee
    * @param catalogPath path to that entity, cannot be null or empty unless securable is top-level
    * @param securable securable entity, must have been resolved by the client. Can be the catalog
@@ -109,7 +109,7 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   PrivilegeResult revokePrivilegeOnSecurableFromRole(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore securable,
@@ -118,21 +118,21 @@ public interface PolarisGrantManager {
   /**
    * This method should be used by the Polaris app to cache all grant records on a securable.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param securable the securable entity
    * @return the list of grants and the version of the grant records. We will return
    *     ENTITY_NOT_FOUND if the securable cannot be found
    */
   @Nonnull
   default LoadGrantsResult loadGrantsOnSecurable(
-      @Nonnull PolarisMetaStoreSession session, PolarisBaseEntity securable) {
-    return loadGrantsOnSecurable(session, securable.getCatalogId(), securable.getId());
+      @Nonnull PolarisCallContext callCtx, PolarisBaseEntity securable) {
+    return loadGrantsOnSecurable(callCtx, securable.getCatalogId(), securable.getId());
   }
 
   /**
    * This method should be used by the Polaris app to cache all grant records on a securable.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param securableCatalogId id of the catalog this securable belongs to
    * @param securableId id of the securable
    * @return the list of grants and the version of the grant records. We will return
@@ -140,28 +140,28 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   LoadGrantsResult loadGrantsOnSecurable(
-      @Nonnull PolarisMetaStoreSession session, long securableCatalogId, long securableId);
+      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId);
 
   /**
    * This method should be used by the Polaris app to load all grants made to a grantee, either a
    * role or a principal.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param grantee the grantee entity
    * @return the list of grants and the version of the grant records. We will return NULL if the
    *     grantee does not exist
    */
   @Nonnull
   default LoadGrantsResult loadGrantsToGrantee(
-      @Nonnull PolarisMetaStoreSession session, PolarisBaseEntity grantee) {
-    return loadGrantsToGrantee(session, grantee.getCatalogId(), grantee.getId());
+      @Nonnull PolarisCallContext callCtx, PolarisBaseEntity grantee) {
+    return loadGrantsToGrantee(callCtx, grantee.getCatalogId(), grantee.getId());
   }
 
   /**
    * This method should be used by the Polaris app to load all grants made to a grantee, either a
    * role or a principal.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param granteeCatalogId id of the catalog this grantee belongs to
    * @param granteeId id of the grantee
    * @return the list of grants and the version of the grant records. We will return NULL if the
@@ -169,7 +169,7 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   LoadGrantsResult loadGrantsToGrantee(
-      @Nonnull PolarisMetaStoreSession session, long granteeCatalogId, long granteeId);
+      PolarisCallContext callCtx, long granteeCatalogId, long granteeId);
 
   /** Result of a grant/revoke privilege call */
   class PrivilegeResult extends BaseResult {

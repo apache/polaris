@@ -17,7 +17,10 @@
  * under the License.
  */
 
-plugins { id("polaris-server") }
+plugins {
+  alias(libs.plugins.jandex)
+  id("polaris-server")
+}
 
 dependencies {
   implementation(libs.slf4j.api)

@@ -274,6 +274,11 @@ class TestCliParsing(unittest.TestCase):
                 (0, None): 'foo',
             })
         check_arguments(
+            mock_execute(['catalogs', 'update', 'foo', '--set-property', 'listkey=k1=v1,k2=v2']),
+            'get_catalog', {
+                (0, None): 'foo',
+            })
+        check_arguments(
             mock_execute(['catalogs', 'update', 'foo', '--remove-property', 'key']),
             'get_catalog', {
                 (0, None): 'foo',

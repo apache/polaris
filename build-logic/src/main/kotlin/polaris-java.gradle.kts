@@ -41,6 +41,8 @@ tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
   options.errorprone.disableAllWarnings = true
   options.errorprone.disableWarningsInGeneratedCode = true
+  options.errorprone.excludedPaths =
+    ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated/.*"
   options.errorprone.error(
     "DefaultCharset",
     "FallThrough",
@@ -204,6 +206,9 @@ tasks.withType<Javadoc>().configureEach {
   val opt = options as CoreJavadocOptions
   // don't spam log w/ "warning: no @param/@return"
   opt.addStringOption("Xdoclint:-reference", "-quiet")
+  if (plugins.hasPlugin("org.kordamp.gradle.jandex")) {
+    dependsOn("jandex")
+  }
 }
 
 tasks.register("printRuntimeClasspath").configure {

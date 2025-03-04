@@ -18,22 +18,20 @@
  */
 package org.apache.polaris.service.task;
 
-import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.iceberg.ManifestFile;
+import org.apache.iceberg.Snapshot;
 import org.apache.iceberg.StatisticsFile;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -42,7 +40,6 @@ import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,50 +50,37 @@ import org.slf4j.LoggerFactory;
  */
 public class TableCleanupTaskHandler implements TaskHandler {
   private static final Logger LOGGER = LoggerFactory.getLogger(TableCleanupTaskHandler.class);
-  private static final String BATCH_SIZE_CONFIG_KEY = "TABLE_METADATA_CLEANUP_BATCH_SIZE";
-
   private final TaskExecutor taskExecutor;
   private final MetaStoreManagerFactory metaStoreManagerFactory;
-  private final PolarisConfigurationStore configurationStore;
-  private final PolarisDiagnostics diagnostics;
-  private final BiFunction<TaskEntity, RealmContext, FileIO> fileIOSupplier;
-  private final Clock clock;
+  private final TaskFileIOSupplier fileIOSupplier;
+  private static final String BATCH_SIZE_CONFIG_KEY = "TABLE_METADATA_CLEANUP_BATCH_SIZE";
 
   public TableCleanupTaskHandler(
       TaskExecutor taskExecutor,
       MetaStoreManagerFactory metaStoreManagerFactory,
-      PolarisConfigurationStore configurationStore,
-      PolarisDiagnostics diagnostics,
-      BiFunction<TaskEntity, RealmContext, FileIO> fileIOSupplier,
-      Clock clock) {
+      TaskFileIOSupplier fileIOSupplier) {
     this.taskExecutor = taskExecutor;
     this.metaStoreManagerFactory = metaStoreManagerFactory;
-    this.configurationStore = configurationStore;
-    this.diagnostics = diagnostics;
     this.fileIOSupplier = fileIOSupplier;
-    this.clock = clock;
   }
 
   @Override
   public boolean canHandleTask(TaskEntity task) {
-    return task.getTaskType(diagnostics) == AsyncTaskType.ENTITY_CLEANUP_SCHEDULER
-        && taskEntityIsTable(task);
+    return task.getTaskType() == AsyncTaskType.ENTITY_CLEANUP_SCHEDULER && taskEntityIsTable(task);
   }
 
   private boolean taskEntityIsTable(TaskEntity task) {
-    PolarisEntity entity = PolarisEntity.of((task.readData(diagnostics, PolarisBaseEntity.class)));
+    PolarisEntity entity = PolarisEntity.of((task.readData(PolarisBaseEntity.class)));
     return entity.getType().equals(PolarisEntityType.TABLE_LIKE);
   }
 
   @Override
-  public boolean handleTask(TaskEntity cleanupTask, RealmContext realmContext) {
-    PolarisBaseEntity entity = cleanupTask.readData(diagnostics, PolarisBaseEntity.class);
+  public boolean handleTask(TaskEntity cleanupTask, CallContext callContext) {
+    PolarisBaseEntity entity = cleanupTask.readData(PolarisBaseEntity.class);
     PolarisMetaStoreManager metaStoreManager =
-        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    PolarisMetaStoreSession metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
-
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext());
     TableLikeEntity tableEntity = TableLikeEntity.of(entity);
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
     LOGGER
         .atInfo()
         .addKeyValue("tableIdentifier", tableEntity.getTableIdentifier())
@@ -106,7 +90,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
     // It's likely the cleanupTask has already been completed, but wasn't dropped successfully.
     // Log a
     // warning and move on
-    try (FileIO fileIO = fileIOSupplier.apply(cleanupTask, realmContext)) {
+    try (FileIO fileIO = fileIOSupplier.apply(cleanupTask, callContext)) {
       if (!TaskUtils.exists(tableEntity.getMetadataLocation(), fileIO)) {
         LOGGER
             .atWarn()
@@ -126,27 +110,24 @@ public class TableCleanupTaskHandler implements TaskHandler {
               fileIO,
               tableEntity,
               metaStoreManager,
-              metaStoreSession,
-              clock);
+              polarisCallContext);
 
       // TODO: handle partition statistics files
       Stream<TaskEntity> metadataFileCleanupTasks =
           getMetadataTaskStream(
-              realmContext,
               cleanupTask,
               tableMetadata,
+              fileIO,
               tableEntity,
               metaStoreManager,
-              metaStoreSession,
-              configurationStore,
-              clock);
+              polarisCallContext);
 
       List<TaskEntity> taskEntities =
           Stream.concat(manifestCleanupTasks, metadataFileCleanupTasks).toList();
 
       List<PolarisBaseEntity> createdTasks =
           metaStoreManager
-              .createEntitiesIfNotExist(metaStoreSession, null, taskEntities)
+              .createEntitiesIfNotExist(polarisCallContext, null, taskEntities)
               .getEntities();
       if (createdTasks != null) {
         LOGGER
@@ -157,7 +138,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
             .log(
                 "Successfully queued tasks to delete manifests, previous metadata, and statistics files - deleting table metadata file");
         for (PolarisBaseEntity createdTask : createdTasks) {
-          taskExecutor.addTaskHandlerContext(createdTask.getId(), realmContext);
+          taskExecutor.addTaskHandlerContext(createdTask.getId(), CallContext.getCurrentContext());
         }
 
         fileIO.deleteFile(tableEntity.getMetadataLocation());
@@ -174,8 +155,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
       FileIO fileIO,
       TableLikeEntity tableEntity,
       PolarisMetaStoreManager metaStoreManager,
-      PolarisMetaStoreSession metaStoreSession,
-      Clock clock) {
+      PolarisCallContext polarisCallContext) {
     // read the manifest list for each snapshot. dedupe the manifest files and schedule a
     // cleanupTask
     // for each manifest file and its data files to be deleted
@@ -207,14 +187,13 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .log("Queueing task to delete manifest file");
               return new TaskEntity.Builder()
                   .setName(taskName)
-                  .setId(metaStoreManager.generateNewEntityId(metaStoreSession).getId())
-                  .setCreateTimestamp(clock.millis())
-                  .withTaskType(diagnostics, AsyncTaskType.MANIFEST_FILE_CLEANUP)
+                  .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
+                  .setCreateTimestamp(polarisCallContext.getClock().millis())
+                  .withTaskType(AsyncTaskType.MANIFEST_FILE_CLEANUP)
                   .withData(
-                      diagnostics,
                       new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                           tableEntity.getTableIdentifier(), TaskUtils.encodeManifestFile(mf)))
-                  .setId(metaStoreManager.generateNewEntityId(metaStoreSession).getId())
+                  .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
                   // copy the internal properties, which will have storage info
                   .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
                   .build();
@@ -222,15 +201,16 @@ public class TableCleanupTaskHandler implements TaskHandler {
   }
 
   private Stream<TaskEntity> getMetadataTaskStream(
-      RealmContext realmContext,
       TaskEntity cleanupTask,
       TableMetadata tableMetadata,
+      FileIO fileIO,
       TableLikeEntity tableEntity,
       PolarisMetaStoreManager metaStoreManager,
-      PolarisMetaStoreSession metaStoreSession,
-      PolarisConfigurationStore configurationStore,
-      Clock clock) {
-    int batchSize = configurationStore.getConfiguration(realmContext, BATCH_SIZE_CONFIG_KEY, 10);
+      PolarisCallContext polarisCallContext) {
+    int batchSize =
+        polarisCallContext
+            .getConfigurationStore()
+            .getConfiguration(polarisCallContext, BATCH_SIZE_CONFIG_KEY, 10);
     return getMetadataFileBatches(tableMetadata, batchSize).stream()
         .map(
             metadataBatch -> {
@@ -249,11 +229,10 @@ public class TableCleanupTaskHandler implements TaskHandler {
                       "Queueing task to delete metadata files (prev metadata and statistics files)");
               return new TaskEntity.Builder()
                   .setName(taskName)
-                  .setId(metaStoreManager.generateNewEntityId(metaStoreSession).getId())
-                  .setCreateTimestamp(clock.millis())
-                  .withTaskType(diagnostics, AsyncTaskType.METADATA_FILE_BATCH_CLEANUP)
+                  .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
+                  .setCreateTimestamp(polarisCallContext.getClock().millis())
+                  .withTaskType(AsyncTaskType.METADATA_FILE_BATCH_CLEANUP)
                   .withData(
-                      diagnostics,
                       new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
                           tableEntity.getTableIdentifier(), metadataBatch))
                   .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
@@ -265,7 +244,10 @@ public class TableCleanupTaskHandler implements TaskHandler {
     List<List<String>> result = new ArrayList<>();
     List<String> metadataFiles =
         Stream.concat(
-                tableMetadata.previousFiles().stream().map(TableMetadata.MetadataLogEntry::file),
+                Stream.concat(
+                    tableMetadata.previousFiles().stream()
+                        .map(TableMetadata.MetadataLogEntry::file),
+                    tableMetadata.snapshots().stream().map(Snapshot::manifestListLocation)),
                 tableMetadata.statisticsFiles().stream().map(StatisticsFile::path))
             .toList();
 

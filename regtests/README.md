@@ -39,7 +39,7 @@ Tests can be run with docker-compose using the provided `./regtests/docker-compo
 follows:
 
 ```shell
-./gradlew :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true
+./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true --no-build-cache
 docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
 ```
 
@@ -186,7 +186,7 @@ docker run --rm \
 # generate the iceberg rest client
 docker run --rm \
   -v ${PWD}:/local openapitools/openapi-generator-cli generate \
-  -i /local/spec/rest-catalog-open-api.yaml \
+  -i /local/spec/polaris-catalog-service.yaml \
   -g python \
   -o /local/regtests/client/python --additional-properties=packageName=polaris.catalog --additional-properties=apiNameSuffix="" --additional-properties=apiNamePrefix=Iceberg
 ```

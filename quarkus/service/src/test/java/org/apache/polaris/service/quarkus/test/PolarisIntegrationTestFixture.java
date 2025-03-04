@@ -31,18 +31,21 @@ import jakarta.ws.rs.core.Response;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.GrantPrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.Principal;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.auth.TokenUtils;
 import org.junit.jupiter.api.TestInfo;
@@ -100,24 +103,34 @@ public class PolarisIntegrationTestFixture {
           List.of(realm), RootCredentialsSet.fromEnvironment());
     }
 
-    RealmContext realmContext = () -> realm;
+    RealmContext realmContext =
+        helper.realmContextResolver.resolveRealmContext(
+            baseUri.toString(), "GET", "/", Map.of(REALM_PROPERTY_KEY, realm));
 
-    PolarisMetaStoreSession metaStoreSession =
+    TransactionalPersistence metaStoreSession =
         helper.metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
-    PolarisMetaStoreManager metaStoreManager =
-        helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    PolarisMetaStoreManager.EntityResult principal =
-        metaStoreManager.readEntityByName(
-            metaStoreSession,
-            null,
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE,
-            PolarisEntityConstants.getRootPrincipalName());
+    PolarisCallContext polarisContext =
+        new PolarisCallContext(
+            metaStoreSession, helper.diagServices, helper.configurationStore, helper.clock);
+    try (CallContext ctx = CallContext.of(realmContext, polarisContext)) {
+      CallContext.setCurrentContext(ctx);
+      PolarisMetaStoreManager metaStoreManager =
+          helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
+      EntityResult principal =
+          metaStoreManager.readEntityByName(
+              ctx.getPolarisCallContext(),
+              null,
+              PolarisEntityType.PRINCIPAL,
+              PolarisEntitySubType.NULL_SUBTYPE,
+              PolarisEntityConstants.getRootPrincipalName());
 
-    Map<String, String> propertiesMap = readInternalProperties(principal);
-    return metaStoreManager
-        .loadPrincipalSecrets(metaStoreSession, propertiesMap.get("client_id"))
-        .getPrincipalSecrets();
+      Map<String, String> propertiesMap = readInternalProperties(principal);
+      return metaStoreManager
+          .loadPrincipalSecrets(ctx.getPolarisCallContext(), propertiesMap.get("client_id"))
+          .getPrincipalSecrets();
+    } finally {
+      CallContext.unsetCurrentContext();
+    }
   }
 
   private SnowmanCredentials createSnowmanCredentials(TestEnvironment testEnv) {
@@ -214,8 +227,7 @@ public class PolarisIntegrationTestFixture {
     }
   }
 
-  private Map<String, String> readInternalProperties(
-      PolarisMetaStoreManager.EntityResult principal) {
+  private Map<String, String> readInternalProperties(EntityResult principal) {
     try {
       return helper.objectMapper.readValue(
           principal.getEntity().getInternalProperties(), new TypeReference<>() {});

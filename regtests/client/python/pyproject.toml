@@ -34,7 +34,7 @@ dependencies = [
     "python-dateutil>=2.8.2",
     "pydantic>=2.0.0",
     "typing-extensions>=4.7.1",
-    "boto3==1.36.19",
+    "boto3==1.37.0",
 ]
 
 [project.urls]
@@ -42,7 +42,7 @@ homepage = "https://polaris.apache.org/"
 repository = "https://github.com/apache/polaris/"
 
 [tool.poetry]
-requires-poetry = ">=2.0"
+requires-poetry = ">=2.1"
 packages = [{ include = "polaris" }]
 
 [tool.poetry.group.test.dependencies]

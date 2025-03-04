@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.persistence;
+package org.apache.polaris.core.persistence.transactional;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -24,10 +24,11 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
-import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -66,7 +67,7 @@ public class PolarisEntityResolver {
    * <p>The resolver will ensure that none of the entities which are passed in have been dropped or
    * were renamed or moved.
    *
-   * @param diagnostics the diagnostics service
+   * @param callCtx call context
    * @param ms meta store in read mode
    * @param catalogPath path within the catalog. The first element MUST be a catalog entity.
    * @param resolvedEntity optional entity to resolve under that catalog path. If a non-null value
@@ -76,32 +77,36 @@ public class PolarisEntityResolver {
    *     or a principal can be specified here
    */
   PolarisEntityResolver(
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nullable PolarisEntityCore resolvedEntity,
       @Nullable List<PolarisEntityCore> otherTopLevelEntities) {
 
     // cache diagnostics services
-    this.diagnostics = diagnostics;
+    this.diagnostics = callCtx.getDiagServices();
 
     // validate path if one was specified
     if (catalogPath != null) {
       // cannot be an empty list
-      diagnostics.check(!catalogPath.isEmpty(), "catalogPath_cannot_be_empty");
+      callCtx.getDiagServices().check(!catalogPath.isEmpty(), "catalogPath_cannot_be_empty");
       // first in the path should be the catalog
-      diagnostics.check(
-          catalogPath.get(0).getTypeCode() == PolarisEntityType.CATALOG.getCode(),
-          "entity_is_not_catalog",
-          "entity={}",
-          this);
+      callCtx
+          .getDiagServices()
+          .check(
+              catalogPath.get(0).getTypeCode() == PolarisEntityType.CATALOG.getCode(),
+              "entity_is_not_catalog",
+              "entity={}",
+              this);
     } else if (resolvedEntity != null) {
       // if an entity is specified without any path, it better be a top-level entity
-      diagnostics.check(
-          resolvedEntity.getType().isTopLevel(),
-          "not_top_level_entity",
-          "resolvedEntity={}",
-          resolvedEntity);
+      callCtx
+          .getDiagServices()
+          .check(
+              resolvedEntity.getType().isTopLevel(),
+              "not_top_level_entity",
+              "resolvedEntity={}",
+              resolvedEntity);
     }
 
     // validate the otherTopLevelCatalogEntities list. Must be top-level catalog entities
@@ -109,20 +114,24 @@ public class PolarisEntityResolver {
       // ensure all entities are top-level
       for (PolarisEntityCore topLevelCatalogEntityDto : otherTopLevelEntities) {
         // top-level (catalog or account) and is catalog, catalog path must be specified
-        diagnostics.check(
-            topLevelCatalogEntityDto.isTopLevel()
-                || (topLevelCatalogEntityDto.getType().getParentType() == PolarisEntityType.CATALOG
-                    && catalogPath != null),
-            "not_top_level_or_missing_catalog_path",
-            "entity={} catalogPath={}",
-            topLevelCatalogEntityDto,
-            catalogPath);
+        callCtx
+            .getDiagServices()
+            .check(
+                topLevelCatalogEntityDto.isTopLevel()
+                    || (topLevelCatalogEntityDto.getType().getParentType()
+                            == PolarisEntityType.CATALOG
+                        && catalogPath != null),
+                "not_top_level_or_missing_catalog_path",
+                "entity={} catalogPath={}",
+                topLevelCatalogEntityDto,
+                catalogPath);
       }
     }
 
     // call the resolution logic
     this.isSuccess =
-        this.resolveEntitiesIfNeeded(ms, catalogPath, resolvedEntity, otherTopLevelEntities);
+        this.resolveEntitiesIfNeeded(
+            callCtx, ms, catalogPath, resolvedEntity, otherTopLevelEntities);
 
     // process result
     if (!this.isSuccess) {
@@ -141,50 +150,50 @@ public class PolarisEntityResolver {
   /**
    * Constructor for the resolver, when we only need to resolve a path
    *
-   * @param diagnostics the diagnostics service
+   * @param callCtx call context
    * @param ms meta store in read mode
    * @param catalogPath input path, can be null or empty list if the entity is a top-level entity
    *     like a catalog.
    */
   PolarisEntityResolver(
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath) {
-    this(diagnostics, ms, catalogPath, null, null);
+    this(callCtx, ms, catalogPath, null, null);
   }
 
   /**
    * Constructor for the resolver, when we only need to resolve a path
    *
-   * @param diagnostics the diagnostics service
+   * @param callCtx call context
    * @param ms meta store in read mode
    * @param catalogPath input path, can be null or empty list if the entity is a top-level entity
    *     like a catalog.
    * @param resolvedEntityDto resolved entity DTO
    */
   PolarisEntityResolver(
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       PolarisEntityCore resolvedEntityDto) {
-    this(diagnostics, ms, catalogPath, resolvedEntityDto, null);
+    this(callCtx, ms, catalogPath, resolvedEntityDto, null);
   }
 
   /**
    * Constructor for the resolver, when we only need to resolve a path
    *
-   * @param diagnostics the diagnostics service
+   * @param callCtx call context
    * @param ms meta store in read mode
    * @param catalogPath input path, can be null or empty list if the entity is a top-level entity
    *     like a catalog.
    * @param entity Polaris base entity
    */
   PolarisEntityResolver(
-      @Nonnull PolarisDiagnostics diagnostics,
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity) {
-    this(diagnostics, ms, catalogPath, new PolarisEntityCore(entity), null);
+    this(callCtx, ms, catalogPath, new PolarisEntityCore(entity), null);
   }
 
   /**
@@ -216,6 +225,7 @@ public class PolarisEntityResolver {
   /**
    * Ensure all specified entities are still active, have not been renamed or re-parented.
    *
+   * @param callCtx call context
    * @param ms meta store in read mode
    * @param catalogPath path within the catalog. The first element MUST be a catalog. Null or empty
    *     for top-level entities like catalog
@@ -228,7 +238,8 @@ public class PolarisEntityResolver {
    * @return true if all entities have been resolved successfully
    */
   private boolean resolveEntitiesIfNeeded(
-      @Nonnull PolarisMetaStoreSession ms,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nullable PolarisEntityCore resolvedEntity,
       @Nullable List<PolarisEntityCore> otherTopLevelEntities) {
@@ -271,13 +282,13 @@ public class PolarisEntityResolver {
             .collect(Collectors.toList());
 
     // now lookup all these entities by name
-    Iterator<PolarisEntityActiveRecord> activeRecordIt =
-        ms.lookupEntityActiveBatch(entityActiveKeys).iterator();
+    Iterator<EntityNameLookupRecord> activeRecordIt =
+        ms.lookupEntityActiveBatch(callCtx, entityActiveKeys).iterator();
 
     // now validate if there was a change and if yes, re-resolve again
     for (PolarisEntityCore resolveEntity : toResolve) {
       // get associate active record
-      PolarisEntityActiveRecord activeEntityRecord = activeRecordIt.next();
+      EntityNameLookupRecord activeEntityRecord = activeRecordIt.next();
 
       // if this entity has been dropped (null) or replaced (<> ids), then fail validation
       if (activeEntityRecord == null || activeEntityRecord.getId() != resolveEntity.getId()) {

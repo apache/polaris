@@ -19,6 +19,7 @@
 package org.apache.polaris.core.storage.aws;
 
 import static org.apache.polaris.core.PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+import static org.apache.polaris.core.PolarisConfiguration.loadConfig;
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
@@ -28,9 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.StorageUtil;
@@ -46,21 +45,16 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 /** Credential vendor that supports generating */
 public class AwsCredentialsStorageIntegration
     extends InMemoryStorageIntegration<AwsStorageConfigurationInfo> {
-
-  private final PolarisConfigurationStore configurationStore;
   private final StsClient stsClient;
 
-  public AwsCredentialsStorageIntegration(
-      PolarisConfigurationStore configurationStore, StsClient stsClient) {
-    super(configurationStore, AwsCredentialsStorageIntegration.class.getName());
-    this.configurationStore = configurationStore;
+  public AwsCredentialsStorageIntegration(StsClient stsClient) {
+    super(AwsCredentialsStorageIntegration.class.getName());
     this.stsClient = stsClient;
   }
 
   /** {@inheritDoc} */
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-      @Nonnull RealmContext realmContext,
       @Nonnull PolarisDiagnostics diagnostics,
       @Nonnull AwsStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
@@ -79,9 +73,7 @@ public class AwsCredentialsStorageIntegration
                             allowedReadLocations,
                             allowedWriteLocations)
                         .toJson())
-                .durationSeconds(
-                    configurationStore.getConfiguration(
-                        realmContext, STORAGE_CREDENTIAL_DURATION_SECONDS))
+                .durationSeconds(loadConfig(STORAGE_CREDENTIAL_DURATION_SECONDS))
                 .build());
     EnumMap<PolarisCredentialProperty, String> credentialMap =
         new EnumMap<>(PolarisCredentialProperty.class);
@@ -98,6 +90,14 @@ public class AwsCredentialsStorageIntegration
     if (storageConfig.getRegion() != null) {
       credentialMap.put(PolarisCredentialProperty.CLIENT_REGION, storageConfig.getRegion());
     }
+
+    if (storageConfig.getAwsPartition().equals("aws-us-gov")
+        && credentialMap.get(PolarisCredentialProperty.CLIENT_REGION) == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "AWS region must be set when using partition %s", storageConfig.getAwsPartition()));
+    }
+
     return credentialMap;
   }
 
@@ -127,7 +127,6 @@ public class AwsCredentialsStorageIntegration
             location -> {
               URI uri = URI.create(location);
               allowGetObjectStatementBuilder.addResource(
-                  // TODO add support for CN and GOV
                   IamResource.create(
                       arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
               final var bucket = arnPrefix + StorageUtil.getBucket(uri);
@@ -163,7 +162,6 @@ public class AwsCredentialsStorageIntegration
       writeLocations.forEach(
           location -> {
             URI uri = URI.create(location);
-            // TODO add support for CN and GOV
             allowPutObjectStatementBuilder.addResource(
                 IamResource.create(
                     arnPrefix + StorageUtil.concatFilePrefixes(parseS3Path(uri), "*", "/")));
