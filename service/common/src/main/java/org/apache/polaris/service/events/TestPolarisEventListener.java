@@ -28,64 +28,64 @@ import java.util.List;
 @ApplicationScoped
 @Identifier("test")
 public class TestPolarisEventListener implements PolarisEventListener {
-  private final List<Object> HISTORY = new ArrayList<>();
+  private final List<Object> history = new ArrayList<>();
 
   public <T> T getLatest(Class<T> type) {
-    return (T) Streams.findLast(HISTORY.stream().filter(type::isInstance)).orElseThrow();
+    return (T) Streams.findLast(history.stream().filter(type::isInstance)).orElseThrow();
   }
 
   @Override
   public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event) {
-    HISTORY.add(event);
+    history.add(event);
   }
 
   @Override
   public void onBeforeTableCommit(BeforeTableCommitEvent event) {
-    HISTORY.add(event);
+    history.add(event);
   }
 
   @Override
   public void onAfterTableCommit(AfterTableCommitEvent event) {
-    HISTORY.add(event);
+    history.add(event);
   }
 
   @Override
   public void onBeforeViewCommit(BeforeViewCommitEvent event) {
-    HISTORY.add(event);
+    history.add(event);
   }
 
   @Override
   public void onAfterViewCommit(AfterViewCommitEvent event) {
-    HISTORY.add(event);
+    history.add(event);
   }
 
   @Override
   public void onBeforeRefreshTable(BeforeTableRefreshEvent event) {
-    HISTORY.add(event);
+    history.add(event);
   }
 
   @Override
   public void onAfterRefreshTable(AfterTableRefreshEvent event) {
-    HISTORY.add(event);
+    history.add(event);
   }
 
   @Override
   public void onBeforeRefreshView(BeforeViewRefreshEvent event) {
-    HISTORY.add(event);
+    history.add(event);
   }
 
   @Override
   public void onAfterRefreshView(AfterViewRefreshEvent event) {
-    HISTORY.add(event);
+    history.add(event);
   }
 
   @Override
   public void onBeforeAttemptTask(BeforeAttemptTaskEvent event) {
-    HISTORY.add(event);
+    history.add(event);
   }
 
   @Override
   public void onAfterAttemptTask(AfterAttemptTaskEvent event) {
-    HISTORY.add(event);
+    history.add(event);
   }
 }
