@@ -82,4 +82,6 @@ jobs:
 
       - name: Test with pytest
         working-directory: regtests/client/python
-        run: poetry run pytest
+        run: |
+          export SCRIPT_DIR="non-existing-mock-directory"
+          poetry run pytest
