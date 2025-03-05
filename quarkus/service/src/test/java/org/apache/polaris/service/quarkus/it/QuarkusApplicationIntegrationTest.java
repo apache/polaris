@@ -31,6 +31,7 @@ import java.util.Map;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.auth.AuthConfig;
+import org.apache.iceberg.rest.auth.AuthSession;
 import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
@@ -61,6 +62,7 @@ public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegra
         HTTPClient.builder(Map.of())
             .withHeader(endpoints.realmHeaderName(), endpoints.realmId())
             .uri(path)
+            .withAuthSession(AuthSession.EMPTY)
             .build()) {
       String credentialString =
           clientCredentials.clientId() + ":" + clientCredentials.clientSecret();
