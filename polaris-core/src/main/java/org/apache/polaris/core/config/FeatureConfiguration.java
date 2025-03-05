@@ -30,7 +30,7 @@ import java.util.Optional;
  * @param <T>
  */
 public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
-    public FeatureConfiguration(String key, String description, T defaultValue, Optional<String> catalogConfig) {
+    protected FeatureConfiguration(String key, String description, T defaultValue, Optional<String> catalogConfig) {
         super(key, description, defaultValue, catalogConfig);
     }
 
