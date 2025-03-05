@@ -2403,7 +2403,8 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
         PolarisPolicyMappingRecord existingRecord = existingRecordsOfSameType.get(0);
         if (existingRecord.getPolicyId() != policy.getId()
             || existingRecord.getPolicyCatalogId() != policy.getCatalogId()) {
-          return new AttachmentResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
+          return new AttachmentResult(
+              BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS, null);
         }
       }
     }

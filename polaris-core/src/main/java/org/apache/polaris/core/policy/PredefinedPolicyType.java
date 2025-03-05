@@ -25,7 +25,10 @@ import jakarta.annotation.Nullable;
 
 /* Represents all predefined policy types in Polaris */
 public enum PredefinedPolicyType implements PolicyType {
-  DATA_COMPACTION(0, "system.data-compaction", true);
+  DATA_COMPACTION(0, "system.data-compaction", true),
+  METADATA_COMPACTION(1, "system.metadata-compaction", true),
+  ORPHAN_FILE_REMOVAL(2, "system.orphan-file-removal", true),
+  SNAPSHOT_RETENTION(3, "system.snapshot-retention", true);
 
   private final int code;
   private final String name;

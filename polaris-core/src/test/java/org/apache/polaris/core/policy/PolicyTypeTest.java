@@ -18,26 +18,39 @@
  */
 package org.apache.polaris.core.policy;
 
+import java.util.stream.Stream;
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 public class PolicyTypeTest {
 
-  @Test
-  public void testDataCompactionTypeFromCode() {
-    PolicyType policyType = PolicyType.fromCode(0);
-    Assertions.assertThat(policyType).isNotNull();
-    Assertions.assertThat(policyType.getCode()).isEqualTo(0);
-    Assertions.assertThat(policyType.getName()).isEqualTo("system.data-compaction");
-    Assertions.assertThat(policyType.isInheritable()).isTrue();
+  static Stream<Arguments> predefinedPolicyTypes() {
+    return Stream.of(
+        Arguments.of(0, "system.data-compaction", true),
+        Arguments.of(1, "system.metadata-compaction", true),
+        Arguments.of(2, "system.orphan-file-removal", true),
+        Arguments.of(3, "system.snapshot-retention", true));
   }
 
-  @Test
-  public void testDataCompactionTypeFromName() {
-    PolicyType policyType = PolicyType.fromName("system.data-compaction");
+  @ParameterizedTest
+  @MethodSource("predefinedPolicyTypes")
+  public void testPredefinedPolicyTypeFromCode(int code, String name, boolean isInheritable) {
+    PolicyType policyType = PolicyType.fromCode(code);
     Assertions.assertThat(policyType).isNotNull();
-    Assertions.assertThat(policyType.getCode()).isEqualTo(0);
-    Assertions.assertThat(policyType.getName()).isEqualTo("system.data-compaction");
-    Assertions.assertThat(policyType.isInheritable()).isTrue();
+    Assertions.assertThat(policyType.getCode()).isEqualTo(code);
+    Assertions.assertThat(policyType.getName()).isEqualTo(name);
+    Assertions.assertThat(policyType.isInheritable()).isEqualTo(isInheritable);
+  }
+
+  @ParameterizedTest
+  @MethodSource("predefinedPolicyTypes")
+  public void testPredefinedPolicyTypeFromName(int code, String name, boolean isInheritable) {
+    PolicyType policyType = PolicyType.fromName(name);
+    Assertions.assertThat(policyType).isNotNull();
+    Assertions.assertThat(policyType.getCode()).isEqualTo(code);
+    Assertions.assertThat(policyType.getName()).isEqualTo(name);
+    Assertions.assertThat(policyType.isInheritable()).isEqualTo(isInheritable);
   }
 }
