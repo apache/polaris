@@ -77,7 +77,8 @@ import org.apache.iceberg.view.ViewMetadataParser;
 import org.apache.iceberg.view.ViewOperations;
 import org.apache.iceberg.view.ViewUtil;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfiguration;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
@@ -514,7 +515,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .getConfigurationStore()
         .getConfiguration(
             callContext.getPolarisCallContext(),
-            PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+            FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap for {} with sibling tables or namespaces", namespace);
       validateNoLocationOverlap(
           entity.getBaseLocation(), resolvedParent.getRawFullPath(), entity.getName());
@@ -650,7 +651,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                 polarisCallContext
                     .getConfigurationStore()
                     .getConfiguration(
-                        polarisCallContext, PolarisConfiguration.CLEANUP_ON_NAMESPACE_DROP));
+                        polarisCallContext, FeatureConfiguration.CLEANUP_ON_NAMESPACE_DROP));
 
     if (!dropEntityResult.isSuccess() && dropEntityResult.failedBecauseNotEmpty()) {
       throw new NamespaceNotEmptyException("Namespace %s is not empty", namespace);
@@ -680,7 +681,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .getConfigurationStore()
         .getConfiguration(
             callContext.getPolarisCallContext(),
-            PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+            FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
       validateNoLocationOverlap(
           NamespaceEntity.of(updatedEntity).getBaseLocation(),
@@ -898,8 +899,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       PolarisEntity entity) {
     Boolean skipCredentialSubscopingIndirection =
         getBooleanContextConfiguration(
-            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
-            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
+            FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
+            FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
     if (Boolean.TRUE.equals(skipCredentialSubscopingIndirection)) {
       LOGGER
           .atInfo()
@@ -1031,7 +1032,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                   .getConfigurationStore()
                   .getConfiguration(
                       callContext.getPolarisCallContext(),
-                      PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+                      FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
           if (!allowedStorageTypes.contains(StorageConfigInfo.StorageTypeEnum.FILE.name())) {
             List<String> invalidLocations =
                 locations.stream()
@@ -1061,7 +1062,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .getConfiguration(
             callContext.getPolarisCallContext(),
             catalog,
-            PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP)) {
+            FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP)) {
       LOGGER.debug("Skipping location overlap validation for identifier '{}'", identifier);
     } else { // if (entity.getSubType().equals(PolarisEntitySubType.TABLE)) {
       // TODO - is this necessary for views? overlapping views do not expose subdirectories via the
@@ -1428,12 +1429,12 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         polarisCallContext
             .getConfigurationStore()
             .getConfiguration(
-                polarisCallContext, PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
+                polarisCallContext, FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION);
     if (!allowEscape
         && !polarisCallContext
             .getConfigurationStore()
             .getConfiguration(
-                polarisCallContext, PolarisConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
+                polarisCallContext, FeatureConfiguration.ALLOW_EXTERNAL_METADATA_FILE_LOCATION)) {
       LOGGER.debug(
           "Validating base location {} for table {} in metadata file {}",
           metadata.location(),
@@ -1887,15 +1888,15 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
               .getConfiguration(
                   callContext.getPolarisCallContext(),
                   catalogEntity,
-                  PolarisConfiguration.DROP_WITH_PURGE_ENABLED);
+                  FeatureConfiguration.DROP_WITH_PURGE_ENABLED);
       if (!dropWithPurgeEnabled) {
         throw new ForbiddenException(
             String.format(
                 "Unable to purge entity: %s. To enable this feature, set the Polaris configuration %s "
                     + "or the catalog configuration %s",
                 identifier.name(),
-                PolarisConfiguration.DROP_WITH_PURGE_ENABLED.key,
-                PolarisConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig()));
+                FeatureConfiguration.DROP_WITH_PURGE_ENABLED.key,
+                FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig()));
       }
     }
 
@@ -2126,6 +2127,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .getPolarisCallContext()
         .getConfigurationStore()
         .getConfiguration(
-            callContext.getPolarisCallContext(), PolarisConfiguration.MAX_METADATA_REFRESH_RETRIES);
+            callContext.getPolarisCallContext(), FeatureConfiguration.MAX_METADATA_REFRESH_RETRIES);
   }
 }

@@ -71,6 +71,7 @@ import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
+import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
@@ -90,10 +91,10 @@ import org.testcontainers.shaded.org.awaitility.Awaitility;
  * @implSpec @implSpec This test expects the server to be configured with the following features
  *     configured:
  *     <ul>
- *       <li>{@link org.apache.polaris.core.PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
+ *       <li>{@link PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
  *           {@code true}
  *       <li>{@link
- *           org.apache.polaris.core.PolarisConfiguration#ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING}:
+ *           PolarisConfiguration#ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING}:
  *           {@code true}
  *     </ul>
  */

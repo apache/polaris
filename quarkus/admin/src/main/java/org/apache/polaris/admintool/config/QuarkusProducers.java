@@ -25,7 +25,7 @@ import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import java.time.Clock;
-import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;

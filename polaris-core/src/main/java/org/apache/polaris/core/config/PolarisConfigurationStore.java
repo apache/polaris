@@ -16,13 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core;
+package org.apache.polaris.core.config;
 
 import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 
 /**

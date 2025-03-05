@@ -40,6 +40,7 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.service.it.env.CatalogApi;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.IntegrationTestsHelper;
@@ -64,9 +65,9 @@ import org.slf4j.LoggerFactory;
  * @implSpec This test expects the server to be configured with the following features enabled:
  *     <ul>
  *       <li>{@link
- *           org.apache.polaris.core.PolarisConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:
+ *           PolarisConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:
  *           {@code true}
- *       <li>{@link org.apache.polaris.core.PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
+ *       <li>{@link PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
  *           {@code true}
  *     </ul>
  */

@@ -21,6 +21,8 @@ package org.apache.polaris.core;
 import jakarta.annotation.Nonnull;
 import java.time.Clock;
 import java.time.ZoneId;
+
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 
 /**

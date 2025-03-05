@@ -36,7 +36,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisConfiguration;
+
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.context.CallContext;
@@ -168,7 +170,7 @@ public abstract class PolarisStorageConfigurationInfo {
                       .getConfiguration(
                           CallContext.getCurrentContext().getPolarisCallContext(),
                           catalog,
-                          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
+                          FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
               if (!allowEscape
                   && catalog.getCatalogType() != Catalog.TypeEnum.EXTERNAL
                   && baseLocation != null) {

@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.core.storage.aws;
 
-import static org.apache.polaris.core.PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
-import static org.apache.polaris.core.PolarisConfiguration.loadConfig;
+import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+import static org.apache.polaris.core.config.PolarisConfiguration.loadConfig;
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
