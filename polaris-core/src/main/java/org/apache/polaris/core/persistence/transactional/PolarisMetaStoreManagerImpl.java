@@ -2354,10 +2354,10 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   @Override
   public @NotNull AttachmentResult attachPolicyToEntity(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore target,
       @Nonnull List<PolarisEntityCore> targetCatalogPath,
-      @Nonnull PolicyEntity policy,
+      @Nonnull PolarisEntityCore target,
       @Nonnull List<PolarisEntityCore> policyCatalogPath,
+      @Nonnull PolicyEntity policy,
       Map<String, String> parameters) {
     TransactionalPersistence ms = callCtx.getMetaStore();
 
@@ -2439,10 +2439,10 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   @Override
   public @NotNull AttachmentResult detachPolicyFromEntity(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore target,
       @Nonnull List<PolarisEntityCore> targetCatalogPath,
-      @Nonnull PolicyEntity policy,
-      @Nonnull List<PolarisEntityCore> policyCatalogPath) {
+      @Nonnull PolarisEntityCore target,
+      @Nonnull List<PolarisEntityCore> policyCatalogPath,
+      @Nonnull PolicyEntity policy) {
     TransactionalPersistence ms = callCtx.getMetaStore();
     return ms.runInTransaction(
         callCtx,

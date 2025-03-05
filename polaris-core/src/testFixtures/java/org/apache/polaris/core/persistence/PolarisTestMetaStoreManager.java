@@ -2327,10 +2327,10 @@ public class PolarisTestMetaStoreManager {
 
     polarisMetaStoreManager.attachPolicyToEntity(
         polarisCallContext,
-        N1_N2_T1,
         List.of(catalog, N1, N1_N2),
-        PolicyEntity.of(N1_P1),
+        N1_N2_T1,
         List.of(catalog, N1),
+        PolicyEntity.of(N1_P1),
         null);
     PolarisPolicyMappingManager.LoadPolicyMappingsResult directSearch =
         polarisMetaStoreManager.loadPoliciesOnEntity(polarisCallContext, N1_N2_T1);
@@ -2351,10 +2351,10 @@ public class PolarisTestMetaStoreManager {
         .isEqualTo(PredefinedPolicyType.DATA_COMPACTION);
     polarisMetaStoreManager.detachPolicyFromEntity(
         polarisCallContext,
-        N1_N2_T1,
         List.of(catalog, N1, N1_N2),
-        PolicyEntity.of(N1_P1),
-        List.of(catalog, N1));
+        N1_N2_T1,
+        List.of(catalog, N1),
+        PolicyEntity.of(N1_P1));
     PolarisPolicyMappingManager.LoadPolicyMappingsResult emptySearch =
         polarisMetaStoreManager.loadPoliciesOnEntity(polarisCallContext, N1_N2_T1);
     Assertions.assertThat(emptySearch.getPolicyEntities()).isEmpty();

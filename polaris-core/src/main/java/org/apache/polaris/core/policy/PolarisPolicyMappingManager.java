@@ -39,10 +39,10 @@ public interface PolarisPolicyMappingManager {
    * non-inheritable policy, multiple policies of the same type can be attached to the target.
    *
    * @param callCtx call context
-   * @param target target entity
    * @param targetCatalogPath path to the target entity
-   * @param policy policy entity
+   * @param target target entity
    * @param policyCatalogPath path to the policy entity
+   * @param policy policy entity
    * @param parameters additional parameters for the attachment
    * @return The policy mapping record we created for this attachment. Will return ENTITY_NOT_FOUND
    *     if the specified target or policy does not exist. Will return
@@ -52,20 +52,20 @@ public interface PolarisPolicyMappingManager {
   @Nonnull
   AttachmentResult attachPolicyToEntity(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore target,
       @Nonnull List<PolarisEntityCore> targetCatalogPath,
-      @Nonnull PolicyEntity policy,
+      @Nonnull PolarisEntityCore target,
       @Nonnull List<PolarisEntityCore> policyCatalogPath,
+      @Nonnull PolicyEntity policy,
       Map<String, String> parameters);
 
   /**
    * Detach a policy from a target entity
    *
    * @param callCtx call context
-   * @param target target entity
    * @param catalogPath path to the target entity
-   * @param policy policy entity
+   * @param target target entity
    * @param policyCatalogPath path to the policy entity
+   * @param policy policy entity
    * @return The policy mapping record we detached. Will return ENTITY_NOT_FOUND if the specified
    *     target or policy does not exist. Will return POLICY_MAPPING_NOT_FOUND if the mapping cannot
    *     be found
@@ -73,10 +73,10 @@ public interface PolarisPolicyMappingManager {
   @Nonnull
   AttachmentResult detachPolicyFromEntity(
       @Nonnull PolarisCallContext callCtx,
-      @Nonnull PolarisEntityCore target,
       @Nonnull List<PolarisEntityCore> catalogPath,
-      @Nonnull PolicyEntity policy,
-      @Nonnull List<PolarisEntityCore> policyCatalogPath);
+      @Nonnull PolarisEntityCore target,
+      @Nonnull List<PolarisEntityCore> policyCatalogPath,
+      @Nonnull PolicyEntity policy);
 
   /**
    * Load all policies attached to a target entity

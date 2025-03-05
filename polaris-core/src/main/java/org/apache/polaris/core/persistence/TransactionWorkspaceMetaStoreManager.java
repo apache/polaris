@@ -387,10 +387,10 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   @Override
   public @NotNull AttachmentResult attachPolicyToEntity(
       @Nonnull PolarisCallContext callCtx,
-      @NotNull PolarisEntityCore target,
       @NotNull List<PolarisEntityCore> targetCatalogPath,
-      @NotNull PolicyEntity policy,
+      @NotNull PolarisEntityCore target,
       @NotNull List<PolarisEntityCore> policyCatalogPath,
+      @NotNull PolicyEntity policy,
       Map<String, String> parameters) {
     callCtx
         .getDiagServices()
@@ -401,10 +401,10 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   @Override
   public @NotNull AttachmentResult detachPolicyFromEntity(
       @Nonnull PolarisCallContext callCtx,
-      @NotNull PolarisEntityCore target,
       @NotNull List<PolarisEntityCore> catalogPath,
-      @NotNull PolicyEntity policy,
-      @NotNull List<PolarisEntityCore> policyCatalogPath) {
+      @NotNull PolarisEntityCore target,
+      @NotNull List<PolarisEntityCore> policyCatalogPath,
+      @NotNull PolicyEntity policy) {
     callCtx
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "detachPolicyFromEntity");
