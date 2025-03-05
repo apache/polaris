@@ -20,7 +20,6 @@ package org.apache.polaris.service.quarkus.config;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithParentName;
 import java.util.Map;
 import org.apache.polaris.service.config.FeaturesConfiguration;
 
