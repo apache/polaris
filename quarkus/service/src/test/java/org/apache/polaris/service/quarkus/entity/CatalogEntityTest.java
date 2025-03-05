@@ -20,7 +20,6 @@ package org.apache.polaris.service.quarkus.entity;
 
 import java.util.List;
 import java.util.stream.IntStream;
-
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
@@ -34,7 +33,6 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import scala.collection.immutable.Stream;
 
 public class CatalogEntityTest {
 
@@ -110,9 +108,12 @@ public class CatalogEntityTest {
             .setExternalId("externalId")
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(IntStream
-                .range(0, PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS.defaultValue + 1)
-                .mapToObj(i -> storageLocation + i + "/").toList())
+            .setAllowedLocations(
+                IntStream.range(
+                        0,
+                        PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS.defaultValue + 1)
+                    .mapToObj(i -> storageLocation + i + "/")
+                    .toList())
             .build();
     CatalogProperties prop = new CatalogProperties(storageLocation);
     Catalog awsCatalog =
