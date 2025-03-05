@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.auth;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.List;
@@ -45,6 +46,7 @@ import org.slf4j.LoggerFactory;
  * available roles are active for this request.
  */
 @RequestScoped
+@Identifier("default")
 public class DefaultActiveRolesProvider implements ActiveRolesProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultActiveRolesProvider.class);
 
