@@ -20,6 +20,9 @@ package org.apache.polaris.core.storage.s3compatible;
 
 import static org.apache.polaris.core.PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
 import static org.apache.polaris.core.PolarisConfiguration.loadConfig;
+import static org.apache.polaris.core.storage.PolarisCredentialProperty.AWS_KEY_ID;
+import static org.apache.polaris.core.storage.PolarisCredentialProperty.AWS_SECRET_KEY;
+import static org.apache.polaris.core.storage.PolarisCredentialProperty.AWS_TOKEN;
 
 import jakarta.ws.rs.NotAuthorizedException;
 import java.net.URI;
@@ -74,7 +77,7 @@ public class S3CompatibleCredentialsStorageIntegration
     }
 
     LOGGER.debug("S3Compatible - createStsClient()");
-    StsClientBuilder stsBuilder = software.amazon.awssdk.services.sts.StsClient.builder();
+    StsClientBuilder stsBuilder = StsClient.builder();
     stsBuilder.endpointOverride(URI.create(storageConfig.getS3Endpoint()));
     if (storageConfig.getS3ProfileName() != null) {
       stsBuilder.credentialsProvider(
@@ -112,8 +115,7 @@ public class S3CompatibleCredentialsStorageIntegration
           "S3Compatible - assumeRole - Obtained token expiration : {}",
           response.credentials().expiration().toString());
     } catch (Exception e) {
-      throw new NotAuthorizedException(
-          "Unable to build S3 Security Token Service client", e);
+      throw new NotAuthorizedException("Unable to build S3 Security Token Service client", e);
     }
 
     return propertiesMap;

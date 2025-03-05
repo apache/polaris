@@ -47,14 +47,13 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
 
   @JsonCreator
   public S3CompatibleStorageConfigurationInfo(
-      @JsonProperty(value = "storageType", required = true) @NotNull StorageType storageType,
       @JsonProperty(value = "s3Endpoint", required = true) @NotNull String s3Endpoint,
       @JsonProperty(value = "s3ProfileName", required = false) @Nullable String s3ProfileName,
       @JsonProperty(value = "s3CredentialsCatalogAccessKeyId", required = false) @Nullable
           String s3CredentialsCatalogAccessKeyId,
       @JsonProperty(value = "s3CredentialsCatalogSecretAccessKey", required = false) @Nullable
           String s3CredentialsCatalogSecretAccessKey,
-      @JsonProperty(value = "s3PathStyleAccess", required = false) @NotNull
+      @JsonProperty(value = "s3PathStyleAccess", required = false, defaultValue = "false") @NotNull
           Boolean s3PathStyleAccess,
       @JsonProperty(value = "s3Region", required = false) @Nullable String s3Region,
       @JsonProperty(value = "s3RoleArn", required = false) @Nullable String s3RoleArn,

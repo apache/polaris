@@ -274,7 +274,6 @@ public class CatalogEntity extends PolarisEntity {
                 (S3CompatibleStorageConfigInfo) storageConfigModel;
             config =
                 new S3CompatibleStorageConfigurationInfo(
-                    PolarisStorageConfigurationInfo.StorageType.S3_COMPATIBLE,
                     s3ConfigModel.getS3Endpoint(),
                     s3ConfigModel.getS3ProfileName(),
                     s3ConfigModel.getS3CredentialsCatalogAccessKeyEnvVar(),
