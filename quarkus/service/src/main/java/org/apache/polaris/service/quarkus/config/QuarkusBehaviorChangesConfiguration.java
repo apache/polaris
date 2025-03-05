@@ -23,8 +23,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithParentName;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,7 +31,8 @@ import org.apache.polaris.service.config.FeaturesConfiguration;
 
 @StaticInitSafe
 @ConfigMapping(prefix = "polaris.behavior-changes")
-// FIXME: this should extend FeatureConfiguration, but that causes conflicts with QuarkusFeaturesConfiguration
+// FIXME: this should extend FeatureConfiguration, but that causes conflicts with
+// QuarkusFeaturesConfiguration
 public interface QuarkusBehaviorChangesConfiguration {
 
   interface RealmOverrides {

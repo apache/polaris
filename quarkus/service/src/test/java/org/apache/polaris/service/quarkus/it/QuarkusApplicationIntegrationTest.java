@@ -28,7 +28,6 @@ import io.quarkus.test.junit.TestProfile;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
-
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.auth.AuthConfig;
