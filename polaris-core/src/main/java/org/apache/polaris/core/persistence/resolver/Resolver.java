@@ -1027,7 +1027,7 @@ public class Resolver {
     if (this.cache != null) {
       // get or load by name
       EntityCacheLookupResult lookupResult =
-          this.cache.getOrLoadEntityById(this.polarisCallContext, catalogId, entityId);
+          this.cache.getOrLoadEntityById(this.polarisCallContext, catalogId, entityId, entityType);
 
       // if not found, return null
       if (lookupResult == null) {
@@ -1049,7 +1049,7 @@ public class Resolver {
       // If no cache, load directly from metastore manager.
       ResolvedEntityResult result =
           polarisMetaStoreManager.loadResolvedEntityById(
-              this.polarisCallContext, catalogId, entityId);
+              this.polarisCallContext, catalogId, entityId, entityType);
       if (!result.isSuccess()) {
         // not found
         return null;

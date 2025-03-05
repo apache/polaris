@@ -285,7 +285,11 @@ public interface PolarisMetaStoreManager
    * @param entityId the id of the entity to load
    */
   @Nonnull
-  EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
+  EntityResult loadEntity(
+      @Nonnull PolarisCallContext callCtx,
+      long entityCatalogId,
+      long entityId,
+      @Nonnull PolarisEntityType entityType);
 
   /**
    * Fetch a list of tasks to be completed. Tasks
@@ -327,7 +331,10 @@ public interface PolarisMetaStoreManager
    */
   @Nonnull
   ResolvedEntityResult loadResolvedEntityById(
-      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
+      @Nonnull PolarisCallContext callCtx,
+      long entityCatalogId,
+      long entityId,
+      PolarisEntityType entityType);
 
   /**
    * Load a resolved entity, i.e. an entity definition and associated grant records, from the

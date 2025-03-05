@@ -351,7 +351,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   /** {@inheritDoc} */
   @Override
   public @Nullable PolarisBaseEntity lookupEntity(
-      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
     return ModelEntity.toEntity(this.store.lookupEntity(localSession.get(), catalogId, entityId));
   }
 

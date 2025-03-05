@@ -153,11 +153,12 @@ public interface BasePersistence {
    * @param callCtx call context
    * @param catalogId catalog id or NULL_ID
    * @param entityId entity id
+   * @param typeCode the PolarisEntityType code of the entity to lookup
    * @return null if the entity was not found, else the retrieved entity.
    */
   @Nullable
   PolarisBaseEntity lookupEntity(
-      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId);
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode);
 
   /**
    * Lookup an entity given its catalogId, parentId, typeCode, and name.

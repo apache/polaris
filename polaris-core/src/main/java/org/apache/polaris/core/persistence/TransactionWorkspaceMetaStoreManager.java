@@ -303,7 +303,10 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public EntityResult loadEntity(
-      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
+      @Nonnull PolarisCallContext callCtx,
+      long entityCatalogId,
+      long entityId,
+      PolarisEntityType entityType) {
     callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "loadEntity");
     return null;
   }
@@ -320,6 +323,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
+      PolarisEntityType entityType,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
@@ -327,6 +331,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
         callCtx,
         catalogId,
         entityId,
+        entityType,
         allowListOperation,
         allowedReadLocations,
         allowedWriteLocations);
@@ -337,6 +342,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
+      PolarisEntityType entityType,
       @Nonnull Set<PolarisStorageActions> actions,
       @Nonnull Set<String> locations) {
     callCtx
@@ -347,7 +353,10 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
 
   @Override
   public ResolvedEntityResult loadResolvedEntityById(
-      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
+      @Nonnull PolarisCallContext callCtx,
+      long entityCatalogId,
+      long entityId,
+      PolarisEntityType entityType) {
     callCtx
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "loadResolvedEntityById");

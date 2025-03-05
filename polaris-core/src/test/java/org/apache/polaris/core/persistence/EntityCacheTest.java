@@ -129,7 +129,9 @@ public class EntityCacheTest {
     Assertions.assertThat(lookup.isCacheHit()).isTrue();
 
     // do it again by id, should be found in the cache
-    lookup = cache.getOrLoadEntityById(this.callCtx, catalog.getCatalogId(), catalog.getId());
+    lookup =
+        cache.getOrLoadEntityById(
+            this.callCtx, catalog.getCatalogId(), catalog.getId(), catalog.getType());
     Assertions.assertThat(lookup).isNotNull();
     Assertions.assertThat(lookup.isCacheHit()).isTrue();
     Assertions.assertThat(lookup.getCacheEntry()).isNotNull();
@@ -148,7 +150,7 @@ public class EntityCacheTest {
     Assertions.assertThat(cacheEntry).isNull();
 
     // try to find it in the cache by id. Should not be there, i.e. no cache hit
-    lookup = cache.getOrLoadEntityById(this.callCtx, N1.getCatalogId(), N1.getId());
+    lookup = cache.getOrLoadEntityById(this.callCtx, N1.getCatalogId(), N1.getId(), N1.getType());
     Assertions.assertThat(lookup).isNotNull();
     Assertions.assertThat(lookup.isCacheHit()).isFalse();
 
@@ -171,7 +173,7 @@ public class EntityCacheTest {
     Assertions.assertThat(N1_entry.getGrantRecordsAsSecurable()).isNotNull();
 
     // negative tests, load an entity which does not exist
-    lookup = cache.getOrLoadEntityById(this.callCtx, N1.getCatalogId(), 10000);
+    lookup = cache.getOrLoadEntityById(this.callCtx, N1.getCatalogId(), 10000, N1.getType());
     Assertions.assertThat(lookup).isNull();
     lookup =
         cache.getOrLoadEntityByName(
@@ -429,7 +431,7 @@ public class EntityCacheTest {
 
     PolarisBaseEntity N1 =
         this.tm.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N1");
-    lookup = cache.getOrLoadEntityById(this.callCtx, N1.getCatalogId(), N1.getId());
+    lookup = cache.getOrLoadEntityById(this.callCtx, N1.getCatalogId(), N1.getId(), N1.getType());
     Assertions.assertThat(lookup).isNotNull();
 
     EntityCacheByNameKey T4_name =
@@ -457,7 +459,7 @@ public class EntityCacheTest {
 
     // new entry if lookup by id
     EntityCacheLookupResult lookupResult =
-        cache.getOrLoadEntityById(callCtx, T4.getCatalogId(), T4.getId());
+        cache.getOrLoadEntityById(callCtx, T4.getCatalogId(), T4.getId(), T4.getType());
     Assertions.assertThat(lookupResult).isNotNull();
     Assertions.assertThat(lookupResult.getCacheEntry()).isNotNull();
     Assertions.assertThat(lookupResult.getCacheEntry().getEntity().getName())

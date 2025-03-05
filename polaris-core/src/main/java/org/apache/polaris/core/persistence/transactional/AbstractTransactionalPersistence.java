@@ -68,7 +68,11 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
     // lookup the entity, should be there
     PolarisBaseEntity entity =
-        lookupEntity(callCtx, entityActiveRecord.getCatalogId(), entityActiveRecord.getId());
+        lookupEntity(
+            callCtx,
+            entityActiveRecord.getCatalogId(),
+            entityActiveRecord.getId(),
+            entityActiveRecord.getTypeCode());
     callCtx
         .getDiagServices()
         .checkNotNull(

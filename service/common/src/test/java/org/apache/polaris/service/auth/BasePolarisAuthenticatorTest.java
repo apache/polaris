@@ -27,6 +27,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -66,7 +67,8 @@ public class BasePolarisAuthenticatorTest {
     DecodedToken token = Mockito.mock(DecodedToken.class);
     long principalId = 100L;
     when(token.getPrincipalId()).thenReturn(principalId);
-    when(metaStoreManager.loadEntity(polarisCallContext, 0L, principalId))
+    when(metaStoreManager.loadEntity(
+            polarisCallContext, 0L, principalId, PolarisEntityType.PRINCIPAL))
         .thenThrow(new RuntimeException("Metastore exception"));
 
     Assertions.assertThatThrownBy(() -> authenticator.getPrincipal(token))
@@ -80,7 +82,8 @@ public class BasePolarisAuthenticatorTest {
     long principalId = 100L;
     when(token.getPrincipalId()).thenReturn(principalId);
     when(token.getClientId()).thenReturn("abc");
-    when(metaStoreManager.loadEntity(polarisCallContext, 0L, principalId))
+    when(metaStoreManager.loadEntity(
+            polarisCallContext, 0L, principalId, PolarisEntityType.PRINCIPAL))
         .thenReturn(new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, ""));
 
     Assertions.assertThatThrownBy(() -> authenticator.getPrincipal(token))

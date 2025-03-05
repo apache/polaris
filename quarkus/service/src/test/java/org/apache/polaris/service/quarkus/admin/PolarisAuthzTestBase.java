@@ -370,7 +370,10 @@ public abstract class PolarisAuthzTestBase {
         .map(
             gr ->
                 metaStoreManager.loadEntity(
-                    callContext.getPolarisCallContext(), 0L, gr.getSecurableId()))
+                    callContext.getPolarisCallContext(),
+                    0L,
+                    gr.getSecurableId(),
+                    PolarisEntityType.PRINCIPAL_ROLE))
         .map(EntityResult::getEntity)
         .map(PolarisBaseEntity::getName)
         .collect(Collectors.toSet());

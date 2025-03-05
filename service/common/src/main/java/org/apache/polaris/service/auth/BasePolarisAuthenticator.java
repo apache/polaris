@@ -69,7 +69,10 @@ public abstract class BasePolarisAuthenticator
           tokenInfo.getPrincipalId() > 0
               ? PolarisEntity.of(
                   metaStoreManager.loadEntity(
-                      callContext.getPolarisCallContext(), 0L, tokenInfo.getPrincipalId()))
+                      callContext.getPolarisCallContext(),
+                      0L,
+                      tokenInfo.getPrincipalId(),
+                      PolarisEntityType.PRINCIPAL))
               : PolarisEntity.of(
                   metaStoreManager.readEntityByName(
                       callContext.getPolarisCallContext(),
