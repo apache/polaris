@@ -28,15 +28,15 @@ import org.apache.polaris.service.config.FeaturesConfiguration;
 @ConfigMapping(prefix = "polaris.behavior-changes")
 public interface QuarkusBehaviorChangesConfiguration extends FeaturesConfiguration {
 
-    @Override
-    Map<String, String> defaults();
+  @Override
+  Map<String, String> defaults();
 
-    @Override
-    Map<String, QuarkusRealmOverrides> realmOverrides();
+  @Override
+  Map<String, QuarkusRealmOverrides> realmOverrides();
 
-    interface QuarkusRealmOverrides extends RealmOverrides {
-        @WithParentName
-        @Override
-        Map<String, String> overrides();
-    }
+  interface QuarkusRealmOverrides extends RealmOverrides {
+    @WithParentName
+    @Override
+    Map<String, String> overrides();
+  }
 }

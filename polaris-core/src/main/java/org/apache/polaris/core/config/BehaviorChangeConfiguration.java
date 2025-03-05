@@ -16,22 +16,22 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.config;
 
 import java.util.Optional;
 
 /**
- * Configurations for non-feature beheavior changes within Polaris. These configurations are not intended
- * for use by end users and govern nuanced behavior changes and bugfixes. The configurations never expose
- * user-facing catalog-level configurations. These configurations are not stable and may be removed at
- * any time.
+ * Configurations for non-feature beheavior changes within Polaris. These configurations are not
+ * intended for use by end users and govern nuanced behavior changes and bugfixes. The
+ * configurations never expose user-facing catalog-level configurations. These configurations are
+ * not stable and may be removed at any time.
+ *
  * @param <T> The type of the configuration
  */
 public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
 
-    protected BehaviorChangeConfiguration(
-            String key, String description, T defaultValue, Optional<String> catalogConfig) {
-        super(key, description, defaultValue, catalogConfig);
-    }
+  protected BehaviorChangeConfiguration(
+      String key, String description, T defaultValue, Optional<String> catalogConfig) {
+    super(key, description, defaultValue, catalogConfig);
+  }
 }

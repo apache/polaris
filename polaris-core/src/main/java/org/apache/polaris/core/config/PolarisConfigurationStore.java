@@ -23,7 +23,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
-
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 

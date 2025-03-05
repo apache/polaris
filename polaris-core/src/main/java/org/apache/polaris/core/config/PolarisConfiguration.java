@@ -21,13 +21,13 @@ package org.apache.polaris.core.config;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
 import org.apache.polaris.core.context.CallContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * An ABC for Polaris configurations that alter the service's behavior
+ *
  * @param <T> The type of the configuration
  */
 public abstract class PolarisConfiguration<T> {
@@ -109,7 +109,8 @@ public abstract class PolarisConfiguration<T> {
         throw new IllegalArgumentException("key, description, and defaultValue are required");
       }
       if (catalogConfig.isPresent()) {
-        throw new IllegalArgumentException("catalogConfig is not valid for behavior change configs");
+        throw new IllegalArgumentException(
+            "catalogConfig is not valid for behavior change configs");
       }
       return new BehaviorChangeConfiguration<>(key, description, defaultValue, catalogConfig);
     }
