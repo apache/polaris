@@ -16,11 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.entity;
+package org.apache.polaris.core.policy;
 
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.polaris.core.policy.PolicyEntity;
-import org.apache.polaris.core.policy.PredefinedPolicyType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -34,6 +33,7 @@ public class PolicyEntityTest {
             .setContent("test_content")
             .setPolicyVersion(0)
             .build();
+    Assertions.assertThat(entity.getType()).isEqualTo(PolarisEntityType.POLICY);
     Assertions.assertThat(entity.getPolicyType()).isEqualTo(PredefinedPolicyType.DATA_COMPACTION);
     Assertions.assertThat(entity.getPolicyTypeCode()).isEqualTo(0);
     Assertions.assertThat(entity.getContent()).isEqualTo("test_content");
