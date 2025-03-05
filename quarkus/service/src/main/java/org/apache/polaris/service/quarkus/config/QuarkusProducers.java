@@ -243,7 +243,7 @@ public class QuarkusProducers {
 
   @Produces
   public ActiveRolesProvider activeRolesProvider(
-      @ConfigProperty(name = "quarkus.active-roles-provider.type") String persistenceType,
+      @ConfigProperty(name = "polaris.active-roles-provider.type") String persistenceType,
       @Any Instance<ActiveRolesProvider> activeRolesProviders) {
     return activeRolesProviders.select(Identifier.Literal.of(persistenceType)).get();
   }
