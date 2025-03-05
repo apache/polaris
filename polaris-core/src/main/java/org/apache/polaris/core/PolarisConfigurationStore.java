@@ -93,8 +93,12 @@ public interface PolarisConfigurationStore {
    * @param <T> the type of the configuration value
    */
   default <T> @Nonnull T getConfiguration(PolarisCallContext ctx, PolarisConfiguration<T> config) {
-    T result = getConfiguration(ctx, config.key, config.defaultValue);
-    return tryCast(config, result);
+    if (ctx == null) {
+      return config.defaultValue;
+    } else {
+      T result = getConfiguration(ctx, config.key, config.defaultValue);
+      return tryCast(config, result);
+    }
   }
 
   /**

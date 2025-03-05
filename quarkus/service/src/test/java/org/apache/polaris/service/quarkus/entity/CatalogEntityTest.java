@@ -20,7 +20,10 @@ package org.apache.polaris.service.quarkus.entity;
 
 import java.util.List;
 import java.util.stream.IntStream;
+
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfiguration;
+import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -28,13 +31,29 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.assertj.core.api.Assertions;
+import org.junit.Before;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 public class CatalogEntityTest {
+
+  @BeforeAll
+  public static void setup() {
+    MetaStoreManagerFactory metaStoreManagerFactory = new InMemoryPolarisMetaStoreManagerFactory();
+    PolarisCallContext polarisCallContext =
+        new PolarisCallContext(
+            metaStoreManagerFactory.getOrCreateSessionSupplier(() -> "realm").get(),
+            new PolarisDefaultDiagServiceImpl());
+    CallContext callContext = CallContext.of(() -> "realm", polarisCallContext);
+    CallContext.setCurrentContext(callContext);
+  }
 
   @Test
   public void testInvalidAllowedLocationPrefix() {
