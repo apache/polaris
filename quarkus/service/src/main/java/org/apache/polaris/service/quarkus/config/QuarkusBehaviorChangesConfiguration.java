@@ -18,25 +18,79 @@
  */
 package org.apache.polaris.service.quarkus.config;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
 import io.smallrye.config.WithParentName;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.polaris.service.config.FeaturesConfiguration;
 
 @StaticInitSafe
 @ConfigMapping(prefix = "polaris.behavior-changes")
-public interface QuarkusBehaviorChangesConfiguration extends FeaturesConfiguration {
+// FIXME: this should extend FeatureConfiguration, but that causes conflicts with QuarkusFeaturesConfiguration
+public interface QuarkusBehaviorChangesConfiguration {
 
-  @Override
+  interface RealmOverrides {
+    Map<String, String> overrides();
+  }
+
   Map<String, String> defaults();
 
-  @Override
-  Map<String, QuarkusRealmOverrides> realmOverrides();
+  Map<String, ? extends FeaturesConfiguration.RealmOverrides> realmOverrides();
 
-  interface QuarkusRealmOverrides extends RealmOverrides {
-    @WithParentName
-    @Override
-    Map<String, String> overrides();
+  default Map<String, Object> parseDefaults(ObjectMapper objectMapper) {
+    return convertMap(objectMapper, defaults());
+  }
+
+  default Map<String, Map<String, Object>> parseRealmOverrides(ObjectMapper objectMapper) {
+    Map<String, Map<String, Object>> m = new HashMap<>();
+    for (String realm : realmOverrides().keySet()) {
+      m.put(realm, convertMap(objectMapper, realmOverrides().get(realm).overrides()));
+    }
+    return m;
+  }
+
+  private static Map<String, Object> convertMap(
+      ObjectMapper objectMapper, Map<String, String> properties) {
+    Map<String, Object> m = new HashMap<>();
+    for (String configName : properties.keySet()) {
+      String json = properties.get(configName);
+      try {
+        JsonNode node = objectMapper.readTree(json);
+        m.put(configName, configValue(node));
+      } catch (JsonProcessingException e) {
+        throw new RuntimeException(
+            "Invalid JSON value for feature configuration: " + configName, e);
+      }
+    }
+    return m;
+  }
+
+  private static Object configValue(JsonNode node) {
+    return switch (node.getNodeType()) {
+      case BOOLEAN -> node.asBoolean();
+      case STRING -> node.asText();
+      case NUMBER ->
+          switch (node.numberType()) {
+            case INT, LONG -> node.asLong();
+            case FLOAT, DOUBLE -> node.asDouble();
+            default ->
+                throw new IllegalArgumentException("Unsupported number type: " + node.numberType());
+          };
+      case ARRAY -> {
+        List<Object> list = new ArrayList<>();
+        node.elements().forEachRemaining(n -> list.add(configValue(n)));
+        yield List.copyOf(list);
+      }
+      default ->
+          throw new IllegalArgumentException(
+              "Unsupported feature configuration JSON type: " + node.getNodeType());
+    };
   }
 }
