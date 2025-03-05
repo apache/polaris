@@ -33,9 +33,23 @@ import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 public interface PolarisPolicyMappingManager {
 
   /**
-   * This should return error when entity cannot be found or there is already a policy of same type
-   * has been granted to the entity
+   * Attach a policy to a target entity, for example attach a policy to a table.
+   *
+   * <p>For inheritable policy, only one policy of the same type can be attached to the target. For
+   * non-inheritable policy, multiple policies of the same type can be attached to the target.
+   *
+   * @param callCtx call context
+   * @param target target entity
+   * @param targetCatalogPath path to the target entity
+   * @param policy policy entity
+   * @param policyCatalogPath path to the policy entity
+   * @param parameters additional parameters for the attachment
+   * @return The policy mapping record we created for this attachment. Will return ENTITY_NOT_FOUND
+   *     if the specified target or policy does not exist. Will return
+   *     POLICY_OF_SAME_TYPE_ALREADY_ATTACHED if the target already has a policy of the same type
+   *     attached and the policy is inheritable.
    */
+  @Nonnull
   AttachmentResult attachPolicyToEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore target,
@@ -44,6 +58,19 @@ public interface PolarisPolicyMappingManager {
       @Nonnull List<PolarisEntityCore> policyCatalogPath,
       Map<String, String> parameters);
 
+  /**
+   * Detach a policy from a target entity
+   *
+   * @param callCtx call context
+   * @param target target entity
+   * @param catalogPath path to the target entity
+   * @param policy policy entity
+   * @param policyCatalogPath path to the policy entity
+   * @return The policy mapping record we detached. Will return ENTITY_NOT_FOUND if the specified
+   *     target or policy does not exist. Will return POLICY_MAPPING_NOT_FOUND if the mapping cannot
+   *     be found
+   */
+  @Nonnull
   AttachmentResult detachPolicyFromEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore target,
@@ -51,24 +78,55 @@ public interface PolarisPolicyMappingManager {
       @Nonnull PolicyEntity policy,
       @Nonnull List<PolarisEntityCore> policyCatalogPath);
 
+  /**
+   * Load all policies attached to a target entity
+   *
+   * @param callCtx call context
+   * @param target target entity
+   * @return the list of policy mapping records on the target entity. Will return ENTITY_NOT_FOUND
+   *     if the specified target does not exist.
+   */
+  @Nonnull
   LoadPolicyMappingsResult loadPoliciesOnEntity(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore target);
 
+  /**
+   * Load all policies of a specific type attached to a target entity
+   *
+   * @param callCtx call context
+   * @param target target entity
+   * @param policyType the type of policy
+   * @return the list of policy mapping records on the target entity. Will return ENTITY_NOT_FOUND
+   *     if the specified target does not exist.
+   */
+  @Nonnull
   LoadPolicyMappingsResult loadPoliciesOnEntityByType(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore target,
       @Nonnull PolicyType policyType);
 
+  /** result of an attach/detach operation */
   class AttachmentResult extends BaseResult {
     // null if not success
     private final PolarisPolicyMappingRecord mappingRecord;
 
+    /**
+     * Constructor for an error
+     *
+     * @param errorCode error code, cannot be SUCCESS
+     * @param extraInformation extra information
+     */
     public AttachmentResult(
         @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
       this.mappingRecord = null;
     }
 
+    /**
+     * Constructor for success
+     *
+     * @param mappingRecord policy mapping record being attached/detached
+     */
     public AttachmentResult(@Nonnull PolarisPolicyMappingRecord mappingRecord) {
       super(BaseResult.ReturnStatus.SUCCESS);
       this.mappingRecord = mappingRecord;
@@ -88,6 +146,7 @@ public interface PolarisPolicyMappingManager {
     }
   }
 
+  /** result of a load policy mapping call */
   class LoadPolicyMappingsResult extends BaseResult {
     // null if not success. Else set of policy mapping records on a target or from a policy
     private final List<PolarisPolicyMappingRecord> mappingRecords;
@@ -95,6 +154,12 @@ public interface PolarisPolicyMappingManager {
     // null if not success. Else set of policy entities in the mapping records.
     private final List<PolicyEntity> policyEntities;
 
+    /**
+     * Constructor for an error
+     *
+     * @param errorCode error code, cannot be SUCCESS
+     * @param extraInformation extra information
+     */
     public LoadPolicyMappingsResult(
         @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
       super(errorCode, extraInformation);
@@ -102,6 +167,12 @@ public interface PolarisPolicyMappingManager {
       this.policyEntities = null;
     }
 
+    /**
+     * Constructor for success
+     *
+     * @param mappingRecords policy mapping records
+     * @param policyEntities policy entities
+     */
     public LoadPolicyMappingsResult(
         @Nonnull List<PolarisPolicyMappingRecord> mappingRecords,
         @Nonnull List<PolicyEntity> policyEntities) {
