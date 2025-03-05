@@ -105,16 +105,15 @@ public class S3CompatibleCredentialsStorageIntegration
                   .durationSeconds(loadConfig(STORAGE_CREDENTIAL_DURATION_SECONDS))
                   .build());
 
-      propertiesMap.put(PolarisCredentialProperty.AWS_KEY_ID, response.credentials().accessKeyId());
-      propertiesMap.put(
-          PolarisCredentialProperty.AWS_SECRET_KEY, response.credentials().secretAccessKey());
-      propertiesMap.put(PolarisCredentialProperty.AWS_TOKEN, response.credentials().sessionToken());
+      propertiesMap.put(AWS_KEY_ID, response.credentials().accessKeyId());
+      propertiesMap.put(AWS_SECRET_KEY, response.credentials().secretAccessKey());
+      propertiesMap.put(AWS_TOKEN, response.credentials().sessionToken());
       LOGGER.debug(
           "S3Compatible - assumeRole - Obtained token expiration : {}",
           response.credentials().expiration().toString());
     } catch (Exception e) {
       throw new NotAuthorizedException(
-          "Unable to build S3 Security Token Service client - " + e.getMessage());
+          "Unable to build S3 Security Token Service client", e);
     }
 
     return propertiesMap;
