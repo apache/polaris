@@ -27,14 +27,13 @@ import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.apache.polaris.core.PolarisConfiguration;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Aws Polaris Storage Configuration information */
 public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
-
-  // 5 is the approximate max allowed locations for the size of AccessPolicy when LIST is required
-  // for allowed read and write locations for subscoping creds.
-  @JsonIgnore private static final int MAX_ALLOWED_LOCATIONS = 5;
 
   // Technically, it should be ^arn:(aws|aws-cn|aws-us-gov):iam::(\d{12}):role/.+$,
   @JsonIgnore
@@ -75,7 +74,11 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     this.roleARN = roleARN;
     this.externalId = externalId;
     this.region = region;
-    validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
+    CallContext callContext = CallContext.getCurrentContext();
+    validateMaxAllowedLocations(callContext.getPolarisCallContext().getConfigurationStore().getConfiguration(
+        callContext.getPolarisCallContext(),
+        PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS
+    ));
   }
 
   @Override
