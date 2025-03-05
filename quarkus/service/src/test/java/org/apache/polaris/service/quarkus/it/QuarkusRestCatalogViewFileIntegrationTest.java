@@ -21,12 +21,17 @@ package org.apache.polaris.service.quarkus.it;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import java.lang.reflect.Field;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Map;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.service.it.test.PolarisRestCatalogViewFileIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.AnnotatedElementContext;
+import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.io.TempDirFactory;
 
 @QuarkusTest
 public class QuarkusRestCatalogViewFileIntegrationTest
@@ -41,10 +46,22 @@ public class QuarkusRestCatalogViewFileIntegrationTest
   }
 
   @BeforeEach
-  public void setUpTempDir(@TempDir Path tempDir) throws Exception {
+  public void setUpTempDir(@TempDir(factory = CustomTempDirFactory.class) Path tempDir)
+      throws Exception {
     // see https://github.com/quarkusio/quarkus/issues/13261
     Field field = ViewCatalogTests.class.getDeclaredField("tempDir");
     field.setAccessible(true);
     field.set(this, tempDir);
+  }
+
+  private static class CustomTempDirFactory implements TempDirFactory {
+    @Override
+    public Path createTempDirectory(
+        AnnotatedElementContext elementContext, ExtensionContext extensionContext)
+        throws Exception {
+      Path basePath = Paths.get(BASE_LOCATION.replaceFirst("file://", ""));
+      Files.createDirectories(basePath);
+      return Files.createTempDirectory(basePath, null);
+    }
   }
 }
