@@ -24,9 +24,18 @@ plugins {
 }
 
 dependencies {
+
+  // must be enforced to get a consistent and validated set of dependencies
+  implementation(enforcedPlatform(libs.quarkus.bom)) {
+    exclude(group = "org.antlr", module = "antlr4-runtime")
+    exclude(group = "org.scala-lang", module = "scala-library")
+    exclude(group = "org.scala-lang", module = "scala-reflect")
+  }
+
   implementation(project(":polaris-quarkus-service"))
 
   testImplementation(project(":polaris-tests"))
+  testImplementation(testFixtures(project(":polaris-quarkus-service")))
 
   testImplementation(platform(libs.quarkus.bom))
   testImplementation("io.quarkus:quarkus-junit5")
@@ -41,8 +50,6 @@ dependencies {
   testImplementation(platform(libs.testcontainers.bom))
   testImplementation("org.testcontainers:testcontainers")
   testImplementation(libs.s3mock.testcontainers)
-
-  testImplementation(testFixtures(project(":polaris-quarkus-service")))
 
   // Required for Spark integration tests
   testImplementation(enforcedPlatform(libs.scala212.lang.library))
