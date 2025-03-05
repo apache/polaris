@@ -35,10 +35,6 @@ import org.apache.polaris.service.config.FeaturesConfiguration;
 // QuarkusFeaturesConfiguration
 public interface QuarkusBehaviorChangesConfiguration {
 
-  interface RealmOverrides {
-    Map<String, String> overrides();
-  }
-
   Map<String, String> defaults();
 
   Map<String, ? extends FeaturesConfiguration.RealmOverrides> realmOverrides();
