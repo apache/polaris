@@ -94,7 +94,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 /**
  * @implSpec This test expects the server to be configured with the following features configured:
  *     <ul>
- *       <li>{@link org.apache.polaris.core.config.FeatureConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
+ *       <li>{@link
+ *           org.apache.polaris.core.config.FeatureConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
  *           {@code true}
  *       <li>{@link
  *           org.apache.polaris.core.config.FeatureConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:

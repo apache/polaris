@@ -66,7 +66,8 @@ import org.slf4j.LoggerFactory;
  *       <li>{@link
  *           org.apache.polaris.core.config.FeatureConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:
  *           {@code true}
- *       <li>{@link org.apache.polaris.core.config.FeatureConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
+ *       <li>{@link
+ *           org.apache.polaris.core.config.FeatureConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
  *           {@code true}
  *     </ul>
  */

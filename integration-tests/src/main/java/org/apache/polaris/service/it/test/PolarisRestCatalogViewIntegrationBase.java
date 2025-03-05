@@ -24,13 +24,12 @@ import java.lang.reflect.Method;
 import java.util.Map;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.view.ViewCatalogTests;
-import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.PrincipalWithCredentials;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.IcebergHelper;
@@ -51,8 +50,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
  * client.
  *
  * @implSpec This test expects the server to be configured with {@link
- *     org.apache.polaris.core.config.FeatureConfiguration#SUPPORTED_CATALOG_STORAGE_TYPES} set to the
- *     appropriate storage type.
+ *     org.apache.polaris.core.config.FeatureConfiguration#SUPPORTED_CATALOG_STORAGE_TYPES} set to
+ *     the appropriate storage type.
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
 public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogTests<RESTCatalog> {
