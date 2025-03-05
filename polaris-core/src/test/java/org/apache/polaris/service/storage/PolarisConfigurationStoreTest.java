@@ -23,8 +23,10 @@ import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.context.CallContext;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 /** Unit test for the default behaviors of the PolarisConfigurationStore interface. */
 public class PolarisConfigurationStoreTest {
@@ -61,8 +63,9 @@ public class PolarisConfigurationStoreTest {
 
     // Ensure that we can fetch all the configs and that the value is what we expect, which
     // is the config's default value based on how we've implemented PolarisConfigurationStore above.
+    PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
     for (PolarisConfiguration<?> c : configs) {
-      Assertions.assertEquals(c.defaultValue, store.getConfiguration(null, c));
+      Assertions.assertEquals(c.defaultValue, store.getConfiguration(polarisCallContext, c));
     }
   }
 
@@ -81,8 +84,10 @@ public class PolarisConfigurationStoreTest {
           }
         };
 
+    PolarisCallContext polarisCallContext = Mockito.mock(PolarisCallContext.class);
     for (PolarisConfiguration<?> c : configs) {
-      Assertions.assertThrows(NumberFormatException.class, () -> store.getConfiguration(null, c));
+      Assertions.assertThrows(
+          NumberFormatException.class, () -> store.getConfiguration(polarisCallContext, c));
     }
   }
 
