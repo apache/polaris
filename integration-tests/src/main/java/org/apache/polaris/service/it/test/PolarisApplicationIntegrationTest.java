@@ -70,7 +70,6 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.PrincipalRole;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.ClientCredentials;
@@ -95,10 +94,10 @@ import org.junit.jupiter.params.provider.ValueSource;
 /**
  * @implSpec This test expects the server to be configured with the following features configured:
  *     <ul>
- *       <li>{@link PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
+ *       <li>{@link org.apache.polaris.core.config.FeatureConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
  *           {@code true}
  *       <li>{@link
- *           PolarisConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:
+ *           org.apache.polaris.core.config.FeatureConfiguration#SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION}:
  *           {@code true}
  *     </ul>
  *     The server must also be configured to reject request body sizes larger than 1MB (1000000
