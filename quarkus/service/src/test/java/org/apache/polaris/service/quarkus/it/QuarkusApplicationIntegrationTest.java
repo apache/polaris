@@ -28,6 +28,7 @@ import io.quarkus.test.junit.TestProfile;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
+import javax.inject.Inject;
 import org.apache.iceberg.rest.HTTPClient;
 import org.apache.iceberg.rest.RESTClient;
 import org.apache.iceberg.rest.auth.AuthConfig;
@@ -35,11 +36,20 @@ import org.apache.iceberg.rest.auth.OAuth2Util;
 import org.apache.polaris.service.it.env.ClientCredentials;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.test.PolarisApplicationIntegrationTest;
+import org.apache.polaris.service.quarkus.config.QuarkusFeaturesConfiguration;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 @TestProfile(QuarkusApplicationIntegrationTest.Profile.class)
 public class QuarkusApplicationIntegrationTest extends PolarisApplicationIntegrationTest {
+
+  @Inject QuarkusFeaturesConfiguration featuresConfiguration;
+
+  @BeforeEach
+  void setup() {
+    System.out.println("Features Configuration: " + featuresConfiguration.defaults());
+  }
 
   public static class Profile implements QuarkusTestProfile {
 
