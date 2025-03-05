@@ -292,7 +292,7 @@ public class EntityCache {
         // try to load it
         refreshedCacheEntry =
             this.polarisMetaStoreManager.loadResolvedEntityById(
-                callContext, entityCatalogId, entityId);
+                callContext, entityCatalogId, entityId, entityType);
         if (refreshedCacheEntry.isSuccess()) {
           entity = refreshedCacheEntry.getEntity();
           grantRecords = refreshedCacheEntry.getEntityGrantRecords();
@@ -361,7 +361,10 @@ public class EntityCache {
    *     entity, either as found in the cache or loaded from the backend
    */
   public @Nullable EntityCacheLookupResult getOrLoadEntityById(
-      @Nonnull PolarisCallContext callContext, long entityCatalogId, long entityId) {
+      @Nonnull PolarisCallContext callContext,
+      long entityCatalogId,
+      long entityId,
+      PolarisEntityType entityType) {
 
     // if it exists, we are set
     ResolvedPolarisEntity entry = this.getEntityById(entityId);
@@ -374,7 +377,8 @@ public class EntityCache {
 
       // load it
       ResolvedEntityResult result =
-          polarisMetaStoreManager.loadResolvedEntityById(callContext, entityCatalogId, entityId);
+          polarisMetaStoreManager.loadResolvedEntityById(
+              callContext, entityCatalogId, entityId, entityType);
 
       // not found, exit
       if (!result.isSuccess()) {

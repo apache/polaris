@@ -87,6 +87,7 @@ import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -761,7 +762,8 @@ public class PolarisAdminService {
         .map(
             nameAndId ->
                 PolarisEntity.of(
-                    metaStoreManager.loadEntity(getCurrentPolarisContext(), 0, nameAndId.getId())))
+                    metaStoreManager.loadEntity(
+                        getCurrentPolarisContext(), 0, nameAndId.getId(), nameAndId.getType())))
         .toList();
   }
 
@@ -887,7 +889,10 @@ public class PolarisAdminService {
     PolarisEntity newPrincipal =
         PolarisEntity.of(
             metaStoreManager.loadEntity(
-                getCurrentPolarisContext(), 0L, currentPrincipalEntity.getId()));
+                getCurrentPolarisContext(),
+                0L,
+                currentPrincipalEntity.getId(),
+                currentPrincipalEntity.getType()));
     return new PrincipalWithCredentials(
         PrincipalEntity.of(newPrincipal).asPrincipal(),
         new PrincipalWithCredentialsCredentials(
@@ -923,7 +928,8 @@ public class PolarisAdminService {
         .map(
             nameAndId ->
                 PolarisEntity.of(
-                    metaStoreManager.loadEntity(getCurrentPolarisContext(), 0, nameAndId.getId())))
+                    metaStoreManager.loadEntity(
+                        getCurrentPolarisContext(), 0, nameAndId.getId(), nameAndId.getType())))
         .toList();
   }
 
@@ -1031,7 +1037,8 @@ public class PolarisAdminService {
         .map(
             nameAndId ->
                 PolarisEntity.of(
-                    metaStoreManager.loadEntity(getCurrentPolarisContext(), 0, nameAndId.getId())))
+                    metaStoreManager.loadEntity(
+                        getCurrentPolarisContext(), 0, nameAndId.getId(), nameAndId.getType())))
         .toList();
   }
 
@@ -1159,7 +1166,10 @@ public class PolarisAdminService {
             nameAndId ->
                 PolarisEntity.of(
                     metaStoreManager.loadEntity(
-                        getCurrentPolarisContext(), catalogEntity.getId(), nameAndId.getId())))
+                        getCurrentPolarisContext(),
+                        catalogEntity.getId(),
+                        nameAndId.getId(),
+                        nameAndId.getType())))
         .toList();
   }
 
@@ -1209,7 +1219,7 @@ public class PolarisAdminService {
     LoadGrantsResult grantList =
         metaStoreManager.loadGrantsToGrantee(
             getCurrentPolarisContext(), principalEntity.getCatalogId(), principalEntity.getId());
-    return buildEntitiesFromGrantResults(grantList, false, null);
+    return buildEntitiesFromGrantResults(grantList, false, PolarisEntityType.PRINCIPAL_ROLE, null);
   }
 
   public boolean assignCatalogRoleToPrincipalRole(
@@ -1275,7 +1285,7 @@ public class PolarisAdminService {
             getCurrentPolarisContext(),
             principalRoleEntity.getCatalogId(),
             principalRoleEntity.getId());
-    return buildEntitiesFromGrantResults(grantList, true, null);
+    return buildEntitiesFromGrantResults(grantList, true, PolarisEntityType.PRINCIPAL, null);
   }
 
   /**
@@ -1291,6 +1301,7 @@ public class PolarisAdminService {
   private List<PolarisEntity> buildEntitiesFromGrantResults(
       @Nonnull LoadGrantsResult grantList,
       boolean grantees,
+      PolarisEntityType entityType,
       @Nullable Function<PolarisGrantRecord, Boolean> grantFilter) {
     Map<Long, PolarisBaseEntity> granteeMap = grantList.getEntitiesAsMap();
     List<PolarisEntity> toReturn = new ArrayList<>(grantList.getGrantRecords().size());
@@ -1300,7 +1311,8 @@ public class PolarisAdminService {
             grantees ? grantRecord.getGranteeCatalogId() : grantRecord.getSecurableCatalogId();
         long entityId = grantees ? grantRecord.getGranteeId() : grantRecord.getSecurableId();
         // get the entity associated with the grantee
-        PolarisBaseEntity entity = this.getOrLoadEntity(granteeMap, catalogId, entityId);
+        PolarisBaseEntity entity =
+            this.getOrLoadEntity(granteeMap, catalogId, entityId, entityType);
         if (entity != null) {
           toReturn.add(PolarisEntity.of(entity));
         }
@@ -1329,7 +1341,10 @@ public class PolarisAdminService {
             principalRoleEntity.getCatalogId(),
             principalRoleEntity.getId());
     return buildEntitiesFromGrantResults(
-        grantList, false, grantRec -> grantRec.getSecurableCatalogId() == catalogEntity.getId());
+        grantList,
+        false,
+        PolarisEntityType.CATALOG_ROLE,
+        grantRec -> grantRec.getSecurableCatalogId() == catalogEntity.getId());
   }
 
   /** Adds a grant on the root container of this realm to {@code principalRoleName}. */
@@ -1554,7 +1569,7 @@ public class PolarisAdminService {
             getCurrentPolarisContext(),
             catalogRoleEntity.getCatalogId(),
             catalogRoleEntity.getId());
-    return buildEntitiesFromGrantResults(grantList, true, null);
+    return buildEntitiesFromGrantResults(grantList, true, PolarisEntityType.PRINCIPAL_ROLE, null);
   }
 
   /**
@@ -1580,8 +1595,7 @@ public class PolarisAdminService {
     Map<Long, PolarisBaseEntity> entityMap = grantList.getEntitiesAsMap();
     for (PolarisGrantRecord record : grantList.getGrantRecords()) {
       PolarisPrivilege privilege = PolarisPrivilege.fromCode(record.getPrivilegeCode());
-      PolarisBaseEntity baseEntity =
-          this.getOrLoadEntity(entityMap, record.getSecurableCatalogId(), record.getSecurableId());
+      PolarisBaseEntity baseEntity = this.getOrLoadEntityForGrant(entityMap, record);
       if (baseEntity != null) {
         switch (baseEntity.getType()) {
           case CATALOG:
@@ -1650,13 +1664,40 @@ public class PolarisAdminService {
    * @param entitiesMap map of entities
    * @param catalogId the id of the catalog of the entity we are looking for
    * @param id id of the entity we are looking for
+   * @param entityType
    * @return null if the entity does not exist
    */
   private @Nullable PolarisBaseEntity getOrLoadEntity(
-      @Nullable Map<Long, PolarisBaseEntity> entitiesMap, long catalogId, long id) {
+      @Nullable Map<Long, PolarisBaseEntity> entitiesMap,
+      long catalogId,
+      long id,
+      PolarisEntityType entityType) {
     return (entitiesMap == null)
-        ? metaStoreManager.loadEntity(getCurrentPolarisContext(), catalogId, id).getEntity()
+        ? metaStoreManager
+            .loadEntity(getCurrentPolarisContext(), catalogId, id, entityType)
+            .getEntity()
         : entitiesMap.get(id);
+  }
+
+  private @Nullable PolarisBaseEntity getOrLoadEntityForGrant(
+      @Nullable Map<Long, PolarisBaseEntity> entitiesMap, PolarisGrantRecord record) {
+    if (entitiesMap != null) {
+      return entitiesMap.get(record.getSecurableId());
+    }
+
+    for (PolarisEntityType type : PolarisEntityType.values()) {
+      EntityResult entityResult =
+          metaStoreManager.loadEntity(
+              getCurrentPolarisContext(),
+              record.getSecurableCatalogId(),
+              record.getSecurableId(),
+              type);
+      if (entityResult.isSuccess()) {
+        return entityResult.getEntity();
+      }
+    }
+
+    return null;
   }
 
   /** Adds a table-level or view-level grant on {@code identifier} to {@code catalogRoleName}. */
