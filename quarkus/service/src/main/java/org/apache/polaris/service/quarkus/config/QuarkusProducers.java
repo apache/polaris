@@ -47,6 +47,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.service.auth.ActiveRolesProvider;
 import org.apache.polaris.service.auth.Authenticator;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
@@ -64,6 +65,7 @@ import org.apache.polaris.service.quarkus.ratelimiter.QuarkusTokenBucketConfigur
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
 import org.apache.polaris.service.task.TaskHandlerConfiguration;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
 
@@ -237,6 +239,13 @@ public class QuarkusProducers {
       StorageCredentialCache credentialCache,
       EntityCache entityCache) {
     return new PolarisEntityManager(polarisMetaStoreManager, credentialCache, entityCache);
+  }
+
+  @Produces
+  public ActiveRolesProvider activeRolesProvider(
+      @ConfigProperty(name = "quarkus.active-roles-provider.type") String persistenceType,
+      @Any Instance<ActiveRolesProvider> activeRolesProviders) {
+    return activeRolesProviders.select(Identifier.Literal.of(persistenceType)).get();
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {
