@@ -113,7 +113,7 @@ public class S3CompatibleCredentialsStorageIntegration
           response.credentials().expiration().toString());
     } catch (Exception e) {
       throw new NotAuthorizedException(
-          "Unable to build S3 Security Token Service client - " + e.getMessage());
+          "Unable to build S3 Security Token Service client", e);
     }
 
     return propertiesMap;
