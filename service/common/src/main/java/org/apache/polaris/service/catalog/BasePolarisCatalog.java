@@ -79,6 +79,7 @@ import org.apache.iceberg.view.ViewUtil;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
@@ -1054,7 +1055,16 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       CatalogEntity catalog,
       TableIdentifier identifier,
       List<PolarisEntity> resolvedNamespace,
-      String location) {
+      String location,
+      PolarisEntity entity) {
+    boolean validateViewOverlap =
+        callContext
+            .getPolarisCallContext()
+            .getConfigurationStore()
+            .getConfiguration(
+                callContext.getPolarisCallContext(),
+                BehaviorChangeConfiguration.VALIDATE_VIEW_LOCATION_OVERLAP);
+
     if (callContext
         .getPolarisCallContext()
         .getConfigurationStore()
@@ -1063,9 +1073,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             catalog,
             FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP)) {
       LOGGER.debug("Skipping location overlap validation for identifier '{}'", identifier);
-    } else { // if (entity.getSubType().equals(PolarisEntitySubType.TABLE)) {
-      // TODO - is this necessary for views? overlapping views do not expose subdirectories via the
-      // credential vending so this feels like an unnecessary restriction
+    } else if (validateViewOverlap || entity.getSubType().equals(PolarisEntitySubType.TABLE)) {
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
       validateNoLocationOverlap(location, resolvedNamespace, identifier.name());
     }
@@ -1343,7 +1351,11 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         dataLocations.forEach(
             location ->
                 validateNoLocationOverlap(
-                    catalogEntity, tableIdentifier, resolvedNamespace, location));
+                    catalogEntity,
+                    tableIdentifier,
+                    resolvedNamespace,
+                    location,
+                    resolvedStorageEntity.getRawLeafEntity()));
         // and that the metadata file points to a location within the table's directory structure
         if (metadata.metadataFileLocation() != null) {
           validateMetadataFileInTableDir(tableIdentifier, metadata, catalog);
@@ -1542,7 +1554,11 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         // for the storage configuration inherited under this entity's path.
         validateLocationForTableLike(identifier, metadata.location(), resolvedStorageEntity);
         validateNoLocationOverlap(
-            catalogEntity, identifier, resolvedNamespace, metadata.location());
+            catalogEntity,
+            identifier,
+            resolvedNamespace,
+            metadata.location(),
+            resolvedStorageEntity.getRawLeafEntity());
       }
 
       Map<String, String> tableProperties = new HashMap<>(metadata.properties());

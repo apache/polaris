@@ -34,4 +34,11 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
       String key, String description, T defaultValue, Optional<String> catalogConfig) {
     super(key, description, defaultValue, catalogConfig);
   }
+
+  public static final BehaviorChangeConfiguration<Boolean> VALIDATE_VIEW_LOCATION_OVERLAP =
+      PolarisConfiguration.<Boolean>builder()
+          .key("STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS")
+          .description("If true, validate that view locations don't overlap when views are created")
+          .defaultValue(true)
+          .buildBehaviorChangeConfiguration();
 }
