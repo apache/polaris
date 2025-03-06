@@ -99,13 +99,13 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
    * @return new unique entity identifier
    */
   @Override
-  public long generateNewId(@Nonnull PolarisCallContext callCtx) {
+  public long generateNewIdInCurrentTxn(@Nonnull PolarisCallContext callCtx) {
     return this.store.getNextSequence();
   }
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntities(
+  public void writeToEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
     this.store.getSliceEntities().write(entity);
@@ -113,16 +113,17 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
-      @Nonnull PolarisCallContext callContext,
-      @Nonnull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration) {
+  public <T extends PolarisStorageConfigurationInfo>
+      void persistStorageIntegrationIfNeededInCurrentTxn(
+          @Nonnull PolarisCallContext callContext,
+          @Nonnull PolarisBaseEntity entity,
+          @Nullable PolarisStorageIntegration<T> storageIntegration) {
     // not implemented for in-memory store
   }
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntitiesActive(
+  public void writeToEntitiesActiveInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
     this.store.getSliceEntitiesActive().write(entity);
@@ -130,7 +131,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntitiesChangeTracking(
+  public void writeToEntitiesChangeTrackingInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
     this.store.getSliceEntitiesChangeTracking().write(entity);
@@ -138,7 +139,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public void writeToGrantRecords(
+  public void writeToGrantRecordsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
     // write it
     this.store.getSliceGrantRecords().write(grantRec);
@@ -147,7 +148,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromEntities(
+  public void deleteFromEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
 
     // delete it
@@ -156,7 +157,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromEntitiesActive(
+  public void deleteFromEntitiesActiveInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
     // delete it
     this.store.getSliceEntitiesActive().delete(this.store.buildEntitiesActiveKey(entity));
@@ -169,7 +170,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
    * @param entity entity record to delete
    */
   @Override
-  public void deleteFromEntitiesChangeTracking(
+  public void deleteFromEntitiesChangeTrackingInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
     // delete it
     this.store.getSliceEntitiesChangeTracking().delete(this.store.buildEntitiesKey(entity));
@@ -177,7 +178,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromGrantRecords(
+  public void deleteFromGrantRecordsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
 
     // delete it
@@ -187,7 +188,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public void deleteAllEntityGrantRecords(
+  public void deleteAllEntityGrantRecordsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore entity,
       @Nonnull List<PolarisGrantRecord> grantsOnGrantee,
@@ -206,21 +207,21 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public void deleteAll(@Nonnull PolarisCallContext callCtx) {
+  public void deleteAllInCurrentTxn(@Nonnull PolarisCallContext callCtx) {
     // clear all slices
     this.store.deleteAll();
   }
 
   /** {@inheritDoc} */
   @Override
-  public @Nullable PolarisBaseEntity lookupEntity(
+  public @Nullable PolarisBaseEntity lookupEntityInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
     return this.store.getSliceEntities().read(this.store.buildKeyComposite(catalogId, entityId));
   }
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<PolarisBaseEntity> lookupEntities(
+  public @Nonnull List<PolarisBaseEntity> lookupEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     // allocate return list
     return entityIds.stream()
@@ -234,7 +235,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<PolarisChangeTrackingVersions> lookupEntityVersions(
+  public @Nonnull List<PolarisChangeTrackingVersions> lookupEntityVersionsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     // allocate return list
     return entityIds.stream()
@@ -255,7 +256,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
   /** {@inheritDoc} */
   @Override
   @Nullable
-  public EntityNameLookupRecord lookupEntityActive(
+  public EntityNameLookupRecord lookupEntityActiveInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntitiesActiveKey entityActiveKey) {
     // lookup the active entity slice
     PolarisBaseEntity entity =
@@ -283,34 +284,35 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public List<EntityNameLookupRecord> lookupEntityActiveBatch(
+  public List<EntityNameLookupRecord> lookupEntityActiveBatchInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntitiesActiveKey> entityActiveKeys) {
     // now build a list to quickly verify that nothing has changed
     return entityActiveKeys.stream()
-        .map(entityActiveKey -> this.lookupEntityActive(callCtx, entityActiveKey))
+        .map(entityActiveKey -> this.lookupEntityActiveInCurrentTxn(callCtx, entityActiveKey))
         .collect(Collectors.toList());
   }
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<EntityNameLookupRecord> listEntities(
+  public @Nonnull List<EntityNameLookupRecord> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType) {
-    return listEntities(callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue());
+    return listEntitiesInCurrentTxn(
+        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue());
   }
 
   @Override
-  public @Nonnull List<EntityNameLookupRecord> listEntities(
+  public @Nonnull List<EntityNameLookupRecord> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter) {
     // full range scan under the parent for that type
-    return listEntities(
+    return listEntitiesInCurrentTxn(
         callCtx,
         catalogId,
         parentId,
@@ -328,7 +330,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
   }
 
   @Override
-  public @Nonnull <T> List<T> listEntities(
+  public @Nonnull <T> List<T> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -349,7 +351,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public boolean hasChildren(
+  public boolean hasChildrenInCurrentTxn(
       @Nonnull PolarisCallContext callContext,
       @Nullable PolarisEntityType entityType,
       long catalogId,
@@ -365,7 +367,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public int lookupEntityGrantRecordsVersion(
+  public int lookupEntityGrantRecordsVersionInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
     PolarisBaseEntity entity =
         this.store
@@ -378,7 +380,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public @Nullable PolarisGrantRecord lookupGrantRecord(
+  public @Nullable PolarisGrantRecord lookupGrantRecordInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long securableCatalogId,
       long securableId,
@@ -395,7 +397,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<PolarisGrantRecord> loadAllGrantRecordsOnSecurable(
+  public @Nonnull List<PolarisGrantRecord> loadAllGrantRecordsOnSecurableInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
     // now fetch all grants for this securable
     return this.store
@@ -405,7 +407,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
+  public @Nonnull List<PolarisGrantRecord> loadAllGrantRecordsOnGranteeInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
     // now fetch all grants assigned to this grantee
     return this.store
@@ -415,14 +417,14 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public @Nullable PolarisPrincipalSecrets loadPrincipalSecrets(
+  public @Nullable PolarisPrincipalSecrets loadPrincipalSecretsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId) {
     return this.store.getSlicePrincipalSecrets().read(clientId);
   }
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull PolarisPrincipalSecrets generateNewPrincipalSecrets(
+  public @Nonnull PolarisPrincipalSecrets generateNewPrincipalSecretsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull String principalName, long principalId) {
     // ensure principal client id is unique
     PolarisPrincipalSecrets principalSecrets;
@@ -445,7 +447,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull PolarisPrincipalSecrets rotatePrincipalSecrets(
+  public @Nonnull PolarisPrincipalSecrets rotatePrincipalSecretsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
@@ -490,7 +492,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
 
   /** {@inheritDoc} */
   @Override
-  public void deletePrincipalSecrets(
+  public void deletePrincipalSecretsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
     // load the existing secrets
     PolarisPrincipalSecrets principalSecrets = this.store.getSlicePrincipalSecrets().read(clientId);
@@ -522,7 +524,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
   /** {@inheritDoc} */
   @Override
   public @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegration(
+      PolarisStorageIntegration<T> createStorageIntegrationInCurrentTxn(
           @Nonnull PolarisCallContext callCtx,
           long catalogId,
           long entityId,
@@ -534,7 +536,7 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
   /** {@inheritDoc} */
   @Override
   public @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
+      PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
         BaseMetaStoreManager.extractStorageConfiguration(callCtx, entity);

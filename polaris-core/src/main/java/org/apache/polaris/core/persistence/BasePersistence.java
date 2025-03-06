@@ -191,6 +191,7 @@ public interface BasePersistence {
    * @param name the name of the entity
    * @return null if the specified entity does not exist
    */
+  @Nullable
   default EntityNameLookupRecord lookupEntityIdAndSubTypeByName(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
