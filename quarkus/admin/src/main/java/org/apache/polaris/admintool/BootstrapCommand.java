@@ -21,8 +21,8 @@ package org.apache.polaris.admintool;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import picocli.CommandLine;
 
 @CommandLine.Command(
