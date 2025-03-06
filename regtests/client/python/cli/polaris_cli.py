@@ -143,22 +143,21 @@ class PolarisCli:
             polaris_management_url = f'http://{host}:{port}/api/management/v1'
             polaris_catalog_url = f'http://{host}:{port}/api/catalog/v1'
 
-        builder = None
+        config = Configuration(host=polaris_management_url)
+        config.proxy = options.proxy
         if has_access_token:
-            builder = lambda: ApiClient(
-                Configuration(host=polaris_management_url, access_token=options.access_token),
-            )
+            config.access_token = options.access_token
         elif has_client_secret:
-            builder = lambda: ApiClient(
-                Configuration(host=polaris_management_url, username=client_id, password=client_secret),
-            )
+            config.username = client_id
+            config.password = client_secret
 
         if not has_access_token and not PolarisCli.DIRECT_AUTHENTICATION_ENABLED:
-            token = PolarisCli._get_token(builder(), polaris_catalog_url, client_id, client_secret)
-            builder = lambda: ApiClient(
-                Configuration(host=polaris_management_url, access_token=token),
-            )
-        return builder
+            token = PolarisCli._get_token(ApiClient(config), polaris_catalog_url, client_id, client_secret)
+            config.username = None
+            config.password = None
+            config.access_token = token
+
+        return lambda: ApiClient(config)
 
 
 if __name__ == '__main__':
