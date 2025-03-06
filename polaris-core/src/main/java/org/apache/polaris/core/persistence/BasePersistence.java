@@ -147,8 +147,14 @@ public interface BasePersistence {
 
   /**
    * Lookup an entity given its catalog id (which can be {@link
-   * org.apache.polaris.core.entity.PolarisEntityConstants#NULL_ID} for top-level entities) and its
-   * entityId.
+   * org.apache.polaris.core.entity.PolarisEntityConstants#NULL_ID} for top-level entities), its
+   * entityId and type code (from {@link PolarisEntityType#getCode()}.
+   *
+   * <p>The type code parameter is redundant but can be used to optimize implementations in some
+   * cases. All callers are required to provide a valid value for the type code parameter. If the
+   * given type code does not match the type code of the previously created entity with the
+   * specified {@code entityId}, implementations may still return the entity or may behave as if the
+   * entity were not found.
    *
    * @param callCtx call context
    * @param catalogId catalog id or NULL_ID
