@@ -26,13 +26,15 @@ import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisEntitiesActiveKey;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.policy.PolicyMappingPersistence;
 
 /**
  * Extends BasePersistence to express a more "transaction-oriented" control flow for backing stores
  * which can support a runInTransaction semantic, while providing default implementations of some of
  * the BasePersistence methods in terms of lower-level methods that subclasses must implement.
  */
-public interface TransactionalPersistence extends BasePersistence, IntegrationPersistence {
+public interface TransactionalPersistence
+    extends BasePersistence, IntegrationPersistence, PolicyMappingPersistence {
 
   /**
    * Run the specified transaction code (a Supplier lambda type) in a database read/write
