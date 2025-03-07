@@ -49,7 +49,10 @@ import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.dao.entity.ValidateAccessResult;
+import org.apache.polaris.core.policy.PolicyEntity;
+import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Wraps an existing impl of PolarisMetaStoreManager and delegates expected "read" operations
@@ -392,6 +395,53 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
     callCtx
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "refreshResolvedEntity");
+    return null;
+  }
+
+  @Override
+  public @NotNull AttachmentResult attachPolicyToEntity(
+      @NotNull PolarisCallContext callCtx,
+      @NotNull List<PolarisEntityCore> targetCatalogPath,
+      @NotNull PolarisEntityCore target,
+      @NotNull List<PolarisEntityCore> policyCatalogPath,
+      @NotNull PolicyEntity policy,
+      Map<String, String> parameters) {
+    callCtx
+        .getDiagServices()
+        .fail("illegal_method_in_transaction_workspace", "attachPolicyToEntity");
+    return null;
+  }
+
+  @Override
+  public @NotNull AttachmentResult detachPolicyFromEntity(
+      @NotNull PolarisCallContext callCtx,
+      @NotNull List<PolarisEntityCore> catalogPath,
+      @NotNull PolarisEntityCore target,
+      @NotNull List<PolarisEntityCore> policyCatalogPath,
+      @NotNull PolicyEntity policy) {
+    callCtx
+        .getDiagServices()
+        .fail("illegal_method_in_transaction_workspace", "detachPolicyFromEntity");
+    return null;
+  }
+
+  @Override
+  public @NotNull LoadPolicyMappingsResult loadPoliciesOnEntity(
+      @NotNull PolarisCallContext callCtx, @NotNull PolarisEntityCore target) {
+    callCtx
+        .getDiagServices()
+        .fail("illegal_method_in_transaction_workspace", "loadPoliciesOnEntity");
+    return null;
+  }
+
+  @Override
+  public @NotNull LoadPolicyMappingsResult loadPoliciesOnEntityByType(
+      @NotNull PolarisCallContext callCtx,
+      @NotNull PolarisEntityCore target,
+      @NotNull PolicyType policyType) {
+    callCtx
+        .getDiagServices()
+        .fail("illegal_method_in_transaction_workspace", "loadPoliciesOnEntityByType");
     return null;
   }
 }
