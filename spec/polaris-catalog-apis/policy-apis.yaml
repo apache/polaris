@@ -27,7 +27,7 @@ paths:
 
     post:
       tags:
-        - Catalog API
+        - Policy API
       summary: 'Create a policy in the given namespace'
       operationId: createPolicy
       description: |
@@ -74,7 +74,7 @@ paths:
 
     get:
       tags:
-        - Catalog API
+        - Policy API
       summary: 'Load a policy'
       operationId: loadPolicy
       description: |
@@ -109,7 +109,7 @@ paths:
 
     put:
       tags:
-        - Catalog API
+        - Policy API
       summary: Update a policy
       operationId: updatePolicy
       description: |
@@ -152,7 +152,7 @@ paths:
 
     delete:
       tags:
-        - Catalog API
+        - Policy API
       summary: Drop a policy from the catalog
       operationId: dropPolicy
       description: Remove a policy from the catalog
@@ -190,7 +190,7 @@ paths:
 
     put:
       tags:
-        - Catalog API
+        - Policy API
       summary: Create a mapping between a policy and a resource entity
       operationId: setPolicy
       description: |
@@ -239,7 +239,7 @@ paths:
 
     post:
       tags:
-        - Catalog API
+        - Policy API
       summary: Remove a mapping between a policy and a resource entity
       operationId: unsetPolicy
       description: |
@@ -356,7 +356,7 @@ components:
         content:
           type: string
 
-    LoadPolicyResult:
+    LoadPolicyResponse:
       type: object
       properties:
         policy:
@@ -456,14 +456,14 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/LoadPolicyResult'
+            $ref: '#/components/schemas/LoadPolicyResponse'
 
     LoadPolicyResponse:
       description: Policy object result when getting a policy
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/LoadPolicyResult'
+            $ref: '#/components/schemas/LoadPolicyResponse'
 
     UpdatePolicyResponse:
       description:
@@ -473,7 +473,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/LoadPolicyResult'
+            $ref: '#/components/schemas/LoadPolicyResponse'
 
 
   examples:
