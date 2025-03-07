@@ -19,6 +19,6 @@
 
 package org.apache.polaris.service.events;
 
-/** Represents an event emitted by Polaris. Currently there's no common data across events, hence the interface being empty, but all events still implement this interface. **/
+/** Represents an event emitted by Polaris. Currently there's no common data across events so this is just a marker interface. **/
 public interface PolarisEvent {
 }

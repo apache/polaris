@@ -106,14 +106,14 @@ import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
-import org.apache.polaris.service.events.AfterTableCommitEvent;
-import org.apache.polaris.service.events.AfterTableRefreshEvent;
-import org.apache.polaris.service.events.AfterViewCommitEvent;
-import org.apache.polaris.service.events.AfterViewRefreshEvent;
-import org.apache.polaris.service.events.BeforeTableCommitEvent;
-import org.apache.polaris.service.events.BeforeTableRefreshEvent;
-import org.apache.polaris.service.events.BeforeViewCommitEvent;
-import org.apache.polaris.service.events.BeforeViewRefreshEvent;
+import org.apache.polaris.service.events.AfterTableCommitedEvent;
+import org.apache.polaris.service.events.AfterTableRefreshedEvent;
+import org.apache.polaris.service.events.AfterViewCommitedEvent;
+import org.apache.polaris.service.events.AfterViewRefreshedEvent;
+import org.apache.polaris.service.events.BeforeTableCommitedEvent;
+import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
+import org.apache.polaris.service.events.BeforeViewCommitedEvent;
+import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -1267,7 +1267,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
-        polarisEventListener.onBeforeRefreshTable(new BeforeTableRefreshEvent(tableIdentifier));
+        polarisEventListener.onBeforeTableRefreshed(new BeforeTableRefreshedEvent(tableIdentifier));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1287,13 +1287,13 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                       Set.of(PolarisStorageActions.READ));
               return TableMetadataParser.read(fileIO, metadataLocation);
             });
-        polarisEventListener.onAfterRefreshTable(new AfterTableRefreshEvent(tableIdentifier));
+        polarisEventListener.onAfterTableRefreshed(new AfterTableRefreshedEvent(tableIdentifier));
       }
     }
 
     @Override
     public void doCommit(TableMetadata base, TableMetadata metadata) {
-      polarisEventListener.onBeforeTableCommit(new BeforeTableCommitEvent(base, metadata));
+      polarisEventListener.onBeforeTableCommited(new BeforeTableCommitedEvent(base, metadata));
 
       LOGGER.debug(
           "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
@@ -1423,7 +1423,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         updateTableLike(tableIdentifier, entity);
       }
 
-      polarisEventListener.onAfterTableCommit(new AfterTableCommitEvent(base, metadata));
+      polarisEventListener.onAfterTableCommited(new AfterTableCommitedEvent(base, metadata));
     }
 
     @Override
@@ -1498,7 +1498,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       if (latestLocation == null) {
         disableRefresh();
       } else {
-        polarisEventListener.onBeforeRefreshView(new BeforeViewRefreshEvent(identifier));
+        polarisEventListener.onBeforeViewRefreshed(new BeforeViewRefreshedEvent(identifier));
         refreshFromMetadataLocation(
             latestLocation,
             SHOULD_RETRY_REFRESH_PREDICATE,
@@ -1520,13 +1520,13 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
               return ViewMetadataParser.read(fileIO.newInputFile(metadataLocation));
             });
-        polarisEventListener.onAfterRefreshView(new AfterViewRefreshEvent(identifier));
+        polarisEventListener.onAfterViewRefreshed(new AfterViewRefreshedEvent(identifier));
       }
     }
 
     @Override
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
-      polarisEventListener.onBeforeViewCommit(new BeforeViewCommitEvent(base, metadata));
+      polarisEventListener.onBeforeViewCommited(new BeforeViewCommitedEvent(base, metadata));
 
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       LOGGER.debug("doCommit for view {} with base {}, metadata {}", identifier, base, metadata);
@@ -1614,7 +1614,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         updateTableLike(identifier, entity);
       }
 
-      polarisEventListener.onAfterViewCommit(new AfterViewCommitEvent(base, metadata));
+      polarisEventListener.onAfterViewCommited(new AfterViewCommitedEvent(base, metadata));
     }
 
     @Override

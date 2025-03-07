@@ -65,10 +65,10 @@ import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
-import org.apache.polaris.service.events.AfterViewCommitEvent;
-import org.apache.polaris.service.events.AfterViewRefreshEvent;
-import org.apache.polaris.service.events.BeforeViewCommitEvent;
-import org.apache.polaris.service.events.BeforeViewRefreshEvent;
+import org.apache.polaris.service.events.AfterViewCommitedEvent;
+import org.apache.polaris.service.events.AfterViewRefreshedEvent;
+import org.apache.polaris.service.events.BeforeViewCommitedEvent;
+import org.apache.polaris.service.events.BeforeViewRefreshedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.quarkus.test.TestData;
@@ -259,21 +259,21 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     view.updateProperties().set(key, valOld).commit();
     view.updateProperties().set(key, valNew).commit();
 
-    BeforeViewRefreshEvent beforeRefreshEvent =
-        testPolarisEventListener.getLatest(BeforeViewRefreshEvent.class);
+    var beforeRefreshEvent =
+        testPolarisEventListener.getLatest(BeforeViewRefreshedEvent.class);
     Assertions.assertThat(beforeRefreshEvent.viewIdentifier()).isEqualTo(TestData.TABLE);
 
-    AfterViewRefreshEvent afterRefreshEvent =
-        testPolarisEventListener.getLatest(AfterViewRefreshEvent.class);
+    var afterRefreshEvent =
+        testPolarisEventListener.getLatest(AfterViewRefreshedEvent.class);
     Assertions.assertThat(afterRefreshEvent.viewIdentifier()).isEqualTo(TestData.TABLE);
 
-    BeforeViewCommitEvent beforeCommitEvent =
-        testPolarisEventListener.getLatest(BeforeViewCommitEvent.class);
+    var beforeCommitEvent =
+        testPolarisEventListener.getLatest(BeforeViewCommitedEvent.class);
     Assertions.assertThat(beforeCommitEvent.base().properties().get(key)).isEqualTo(valOld);
     Assertions.assertThat(beforeCommitEvent.metadata().properties().get(key)).isEqualTo(valNew);
 
-    AfterViewCommitEvent afterCommitEvent =
-        testPolarisEventListener.getLatest(AfterViewCommitEvent.class);
+    var afterCommitEvent =
+        testPolarisEventListener.getLatest(AfterViewCommitedEvent.class);
     Assertions.assertThat(afterCommitEvent.base().properties().get(key)).isEqualTo(valOld);
     Assertions.assertThat(afterCommitEvent.metadata().properties().get(key)).isEqualTo(valNew);
   }

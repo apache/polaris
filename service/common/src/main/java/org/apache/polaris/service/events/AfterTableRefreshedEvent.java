@@ -21,9 +21,8 @@ package org.apache.polaris.service.events;
 import org.apache.iceberg.catalog.TableIdentifier;
 
 /**
- * Emitted when Polaris intends to refresh its known version of a table's metadata by fetching the
- * latest.
+ * Emitted after Polaris refreshes its known version of a table's metadata by fetching the latest.
  *
- * @param tableIdentifier The identifier of the table being refreshed.
+ * @param tableIdentifier The identifier of the table that was refreshed.
  */
-public record BeforeTableRefreshEvent(TableIdentifier tableIdentifier) implements PolarisEvent {}
+public record AfterTableRefreshedEvent(TableIdentifier tableIdentifier) implements PolarisEvent {}

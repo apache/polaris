@@ -18,11 +18,16 @@
  */
 package org.apache.polaris.service.events;
 
-import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.polaris.core.context.CallContext;
 
 /**
- * Emitted after Polaris refreshes its known version of a view's metadata by fetching the latest.
+ * Emitted after an attempt of an async task, such as manifest file cleanup, finishes.
  *
- * @param viewIdentifier The identifier of the view that was refreshed.
+ * @param taskEntityId The ID of the TaskEntity.
+ * @param callContext The CallContext the task is being executed under.
+ * @param attempt The attempt number. Each retry of the task will have its own attempt number. The
+ *     initial (non-retried) attempt starts counting from 1.
+ * @param success Whether or not the attempt succeeded.
  */
-public record AfterViewRefreshEvent(TableIdentifier viewIdentifier) implements PolarisEvent {}
+public record AfterTaskAttemptedEvent(
+    long taskEntityId, CallContext callContext, int attempt, boolean success) implements PolarisEvent {}

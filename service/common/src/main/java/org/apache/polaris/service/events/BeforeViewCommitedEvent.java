@@ -18,14 +18,14 @@
  */
 package org.apache.polaris.service.events;
 
-import org.apache.iceberg.TableMetadata;
+import org.apache.iceberg.view.ViewMetadata;
 
 /**
- * Emitted when Polaris intends to perform a commit to a table. There is no guarantee on the order
- * of this event relative to the validation checks we've performed, which means the commit may still
+ * Emitted when Polaris intends to perform a commit to a view. There is no guarantee on the order of
+ * this event relative to the validation checks we've performed, which means the commit may still
  * fail Polaris-side validation checks.
  *
  * @param base The old metadata.
  * @param metadata The new metadata.
  */
-public record BeforeTableCommitEvent(TableMetadata base, TableMetadata metadata) implements PolarisEvent {}
+public record BeforeViewCommitedEvent(ViewMetadata base, ViewMetadata metadata) implements PolarisEvent {}

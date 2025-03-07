@@ -40,52 +40,52 @@ public class TestPolarisEventListener implements PolarisEventListener {
   }
 
   @Override
-  public void onBeforeTableCommit(BeforeTableCommitEvent event) {
+  public void onBeforeTableCommited(BeforeTableCommitedEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterTableCommit(AfterTableCommitEvent event) {
+  public void onAfterTableCommited(AfterTableCommitedEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeViewCommit(BeforeViewCommitEvent event) {
+  public void onBeforeViewCommited(BeforeViewCommitedEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterViewCommit(AfterViewCommitEvent event) {
+  public void onAfterViewCommited(AfterViewCommitedEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeRefreshTable(BeforeTableRefreshEvent event) {
+  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterRefreshTable(AfterTableRefreshEvent event) {
+  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeRefreshView(BeforeViewRefreshEvent event) {
+  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterRefreshView(AfterViewRefreshEvent event) {
+  public void onAfterViewRefreshed(AfterViewRefreshedEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onBeforeAttemptTask(BeforeAttemptTaskEvent event) {
+  public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event) {
     history.add(event);
   }
 
   @Override
-  public void onAfterAttemptTask(AfterAttemptTaskEvent event) {
+  public void onAfterTaskAttempted(AfterTaskAttemptedEvent event) {
     history.add(event);
   }
 }

@@ -33,32 +33,32 @@ public class DefaultPolarisEventListener implements PolarisEventListener {
   public void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event) {}
 
   @Override
-  public void onBeforeTableCommit(BeforeTableCommitEvent event) {}
+  public void onBeforeTableCommited(BeforeTableCommitedEvent event) {}
 
   @Override
-  public void onAfterTableCommit(AfterTableCommitEvent event) {}
+  public void onAfterTableCommited(AfterTableCommitedEvent event) {}
 
   @Override
-  public void onBeforeViewCommit(BeforeViewCommitEvent event) {}
+  public void onBeforeViewCommited(BeforeViewCommitedEvent event) {}
 
   @Override
-  public void onAfterViewCommit(AfterViewCommitEvent event) {}
+  public void onAfterViewCommited(AfterViewCommitedEvent event) {}
 
   @Override
-  public void onBeforeRefreshTable(BeforeTableRefreshEvent event) {}
+  public void onBeforeTableRefreshed(BeforeTableRefreshedEvent event) {}
 
   @Override
-  public void onAfterRefreshTable(AfterTableRefreshEvent event) {}
+  public void onAfterTableRefreshed(AfterTableRefreshedEvent event) {}
 
   @Override
-  public void onBeforeRefreshView(BeforeViewRefreshEvent event) {}
+  public void onBeforeViewRefreshed(BeforeViewRefreshedEvent event) {}
 
   @Override
-  public void onAfterRefreshView(AfterViewRefreshEvent event) {}
+  public void onAfterViewRefreshed(AfterViewRefreshedEvent event) {}
 
   @Override
-  public void onBeforeAttemptTask(BeforeAttemptTaskEvent event) {}
+  public void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event) {}
 
   @Override
-  public void onAfterAttemptTask(AfterAttemptTaskEvent event) {}
+  public void onAfterTaskAttempted(AfterTaskAttemptedEvent event) {}
 }

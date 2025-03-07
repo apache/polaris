@@ -25,25 +25,36 @@ package org.apache.polaris.service.events;
  * documented under the event objects themselves.
  */
 public interface PolarisEventListener {
+  /** {@link BeforeRequestRateLimitedEvent} */
   void onBeforeRequestRateLimited(BeforeRequestRateLimitedEvent event);
 
-  void onBeforeTableCommit(BeforeTableCommitEvent event);
+  /** {@link BeforeTableCommitedEvent} */
+  void onBeforeTableCommited(BeforeTableCommitedEvent event);
 
-  void onAfterTableCommit(AfterTableCommitEvent event);
+  /** {@link AfterTableCommitedEvent} */
+  void onAfterTableCommited(AfterTableCommitedEvent event);
 
-  void onBeforeViewCommit(BeforeViewCommitEvent event);
+  /** {@link BeforeViewCommitedEvent} */
+  void onBeforeViewCommited(BeforeViewCommitedEvent event);
 
-  void onAfterViewCommit(AfterViewCommitEvent event);
+  /** {@link AfterViewCommitedEvent} */
+  void onAfterViewCommited(AfterViewCommitedEvent event);
 
-  void onBeforeRefreshTable(BeforeTableRefreshEvent event);
+  /** {@link BeforeTableRefreshedEvent} */
+  void onBeforeTableRefreshed(BeforeTableRefreshedEvent event);
 
-  void onAfterRefreshTable(AfterTableRefreshEvent event);
+  /** {@link AfterTableRefreshedEvent} */
+  void onAfterTableRefreshed(AfterTableRefreshedEvent event);
 
-  void onBeforeRefreshView(BeforeViewRefreshEvent event);
+  /** {@link BeforeViewRefreshedEvent} */
+  void onBeforeViewRefreshed(BeforeViewRefreshedEvent event);
 
-  void onAfterRefreshView(AfterViewRefreshEvent event);
+  /** {@link AfterViewRefreshedEvent} */
+  void onAfterViewRefreshed(AfterViewRefreshedEvent event);
 
-  void onBeforeAttemptTask(BeforeAttemptTaskEvent event);
+  /** {@link BeforeTaskAttemptedEvent} */
+  void onBeforeTaskAttempted(BeforeTaskAttemptedEvent event);
 
-  void onAfterAttemptTask(AfterAttemptTaskEvent event);
+  /** {@link AfterTaskAttemptedEvent} */
+  void onAfterTaskAttempted(AfterTaskAttemptedEvent event);
 }

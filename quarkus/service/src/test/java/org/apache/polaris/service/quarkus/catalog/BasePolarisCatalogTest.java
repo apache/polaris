@@ -106,10 +106,10 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
-import org.apache.polaris.service.events.AfterTableCommitEvent;
-import org.apache.polaris.service.events.AfterTableRefreshEvent;
-import org.apache.polaris.service.events.BeforeTableCommitEvent;
-import org.apache.polaris.service.events.BeforeTableRefreshEvent;
+import org.apache.polaris.service.events.AfterTableCommitedEvent;
+import org.apache.polaris.service.events.AfterTableRefreshedEvent;
+import org.apache.polaris.service.events.BeforeTableCommitedEvent;
+import org.apache.polaris.service.events.BeforeTableRefreshedEvent;
 import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.exception.FakeAzureHttpResponse;
@@ -1683,21 +1683,21 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     table.updateProperties().set(key, valOld).commit();
     table.updateProperties().set(key, valNew).commit();
 
-    BeforeTableRefreshEvent beforeRefreshEvent =
-        testPolarisEventListener.getLatest(BeforeTableRefreshEvent.class);
+    var beforeRefreshEvent =
+        testPolarisEventListener.getLatest(BeforeTableRefreshedEvent.class);
     Assertions.assertThat(beforeRefreshEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
 
-    AfterTableRefreshEvent afterRefreshEvent =
-        testPolarisEventListener.getLatest(AfterTableRefreshEvent.class);
+    var afterRefreshEvent =
+        testPolarisEventListener.getLatest(AfterTableRefreshedEvent.class);
     Assertions.assertThat(afterRefreshEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
 
-    BeforeTableCommitEvent beforeTableEvent =
-        testPolarisEventListener.getLatest(BeforeTableCommitEvent.class);
+    var beforeTableEvent =
+        testPolarisEventListener.getLatest(BeforeTableCommitedEvent.class);
     Assertions.assertThat(beforeTableEvent.base().properties().get(key)).isEqualTo(valOld);
     Assertions.assertThat(beforeTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
 
-    AfterTableCommitEvent afterTableEvent =
-        testPolarisEventListener.getLatest(AfterTableCommitEvent.class);
+    var afterTableEvent =
+        testPolarisEventListener.getLatest(AfterTableCommitedEvent.class);
     Assertions.assertThat(afterTableEvent.base().properties().get(key)).isEqualTo(valOld);
     Assertions.assertThat(afterTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
   }
