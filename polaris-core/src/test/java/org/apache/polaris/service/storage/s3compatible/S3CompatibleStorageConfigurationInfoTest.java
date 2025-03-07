@@ -16,8 +16,37 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.storage.s3compatible;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+import org.apache.polaris.core.storage.s3compatible.S3CompatibleStorageConfigurationInfo;
+import org.junit.jupiter.api.Test;
+
 public class S3CompatibleStorageConfigurationInfoTest {
+
+  @Test
+  public void testS3CompatibleStorageConfigurationInfo() {
+    String warehouseDir = "s3://bucket/path/to/warehouse";
+    S3CompatibleStorageConfigurationInfo conf =
+        new S3CompatibleStorageConfigurationInfo(
+            "http://localhost:9000",
+            null,
+            "MINIO_S3_CATALOG_1_ID",
+            "MINIO_S3_CATALOG_1_SECRET",
+            true,
+            null,
+            null,
+            List.of(warehouseDir));
+    assertThat(conf).isNotNull();
+    assertThat(conf.getS3Endpoint()).isEqualTo("http://localhost:9000");
+    assertThat(conf.getS3ProfileName()).isNull();
+    assertThat(conf.getS3CredentialsCatalogAccessKeyId()).isEqualTo("MINIO_S3_CATALOG_1_ID");
+    assertThat(conf.getS3CredentialsCatalogSecretAccessKey())
+        .isEqualTo("MINIO_S3_CATALOG_1_SECRET");
+    assertThat(conf.getS3PathStyleAccess()).isTrue();
+    assertThat(conf.getS3Region()).isNull();
+    assertThat(conf.getS3RoleArn()).isEqualTo("");
+  }
 }

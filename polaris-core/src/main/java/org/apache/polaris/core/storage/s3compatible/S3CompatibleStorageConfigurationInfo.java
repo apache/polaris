@@ -23,10 +23,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * S3-Compatible Storage Configuration. This class holds the parameters needed to connect to
@@ -37,23 +36,23 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
   // 5 is the approximate max allowed locations for the size of AccessPolicy when LIST is required
   // for allowed read and write locations for sub-scoping credentials.
   @JsonIgnore private static final int MAX_ALLOWED_LOCATIONS = 5;
-  private final @NotNull String s3Endpoint;
+  private final @Nonnull String s3Endpoint;
   private final @Nullable String s3ProfileName;
   private final @Nullable String s3CredentialsCatalogAccessKeyId;
   private final @Nullable String s3CredentialsCatalogSecretAccessKey;
-  private final @NotNull Boolean s3PathStyleAccess;
+  private final @Nonnull Boolean s3PathStyleAccess;
   private final @Nullable String s3Region;
   private final @Nullable String s3RoleArn;
 
   @JsonCreator
   public S3CompatibleStorageConfigurationInfo(
-      @JsonProperty(value = "s3Endpoint", required = true) @NotNull String s3Endpoint,
+      @JsonProperty(value = "s3Endpoint", required = true) @Nonnull String s3Endpoint,
       @JsonProperty(value = "s3ProfileName", required = false) @Nullable String s3ProfileName,
       @JsonProperty(value = "s3CredentialsCatalogAccessKeyId", required = false) @Nullable
           String s3CredentialsCatalogAccessKeyId,
       @JsonProperty(value = "s3CredentialsCatalogSecretAccessKey", required = false) @Nullable
           String s3CredentialsCatalogSecretAccessKey,
-      @JsonProperty(value = "s3PathStyleAccess", required = false, defaultValue = "false") @NotNull
+      @JsonProperty(value = "s3PathStyleAccess", required = false, defaultValue = "false") @Nonnull
           Boolean s3PathStyleAccess,
       @JsonProperty(value = "s3Region", required = false) @Nullable String s3Region,
       @JsonProperty(value = "s3RoleArn", required = false) @Nullable String s3RoleArn,
@@ -73,7 +72,7 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
     this.s3RoleArn = (s3RoleArn == null) ? "" : s3RoleArn;
   }
 
-  public @NotNull String getS3Endpoint() {
+  public @Nonnull String getS3Endpoint() {
     return this.s3Endpoint;
   }
 
@@ -81,7 +80,7 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
     return this.s3ProfileName;
   }
 
-  public @NotNull Boolean getS3PathStyleAccess() {
+  public @Nonnull Boolean getS3PathStyleAccess() {
     return this.s3PathStyleAccess;
   }
 

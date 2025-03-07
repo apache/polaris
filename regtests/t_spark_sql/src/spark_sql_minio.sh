@@ -23,13 +23,13 @@
 #  echo "S3COMPATIBLE_TEST_ENABLED is not set to 'true'. Skipping test."
 #  exit 0
 #fi
-echo "S3COMPATIBLE Starting test."
+echo "S3COMPATIBLE Starting test. (shell script called minio to avoid to be trapped by AWS test pattern based on s3 word)"
 
 SPARK_BEARER_TOKEN="${REGTEST_ROOT_BEARER_TOKEN}"
 
 curl -i -X POST -H "Authorization: Bearer ${SPARK_BEARER_TOKEN}" -H 'Accept: application/json' -H 'Content-Type: application/json' \
   http://${POLARIS_HOST:-localhost}:8181/api/management/v1/catalogs \
-  -d "{\"name\": \"spark_sql_s3compatible_catalog\", \"id\": 100, \"type\": \"INTERNAL\", \"readOnly\": false, \"properties\": {\"default-base-location\": \"s3://warehouse/polaris_test/spark_sql_s3compatible_catalog\"}, \"storageConfigInfo\": {\"storageType\": \"S3_COMPATIBLE\", \"allowedLocations\": [\"s3://warehouse/polaris_test/\"], \"s3.endpoint\": \"http://localhost:9000\", \"s3.pathStyleAccess\": true, \"s3.credentials.catalog.accessKeyEnvVar\": \"MINIO_S3_CATALOG_1_ID\", \"s3.credentials.catalog.secretAccessKeyEnvVar\": \"MINIO_S3_CATALOG_1_SECRET\" }}" > /dev/stderr
+  -d "{\"name\": \"spark_sql_s3compatible_catalog\", \"id\": 100, \"type\": \"INTERNAL\", \"readOnly\": false, \"properties\": {\"default-base-location\": \"s3://warehouse/polaris_test/spark_sql_s3compatible_catalog\"}, \"storageConfigInfo\": {\"storageType\": \"S3_COMPATIBLE\", \"allowedLocations\": [\"s3://warehouse/polaris_test/\"], \"s3.endpoint\": \"http://minio-without-tls:9000\", \"s3.pathStyleAccess\": true, \"s3.credentials.catalog.accessKeyEnvVar\": \"MINIO_S3_CATALOG_1_ID\", \"s3.credentials.catalog.secretAccessKeyEnvVar\": \"MINIO_S3_CATALOG_1_SECRET\" }}" > /dev/stderr
 
 
 # Add TABLE_WRITE_DATA to the catalog's catalog_admin role since by default it can only manage access and metadata

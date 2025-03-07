@@ -31,6 +31,8 @@ services:
       AZURE_TENANT_ID: $AZURE_TENANT_ID
       AZURE_CLIENT_ID: $AZURE_CLIENT_ID
       AZURE_CLIENT_SECRET: $AZURE_CLIENT_SECRET
+      MINIO_S3_CATALOG_1_ID: minio-user-catalog
+      MINIO_S3_CATALOG_1_SECRET: 12345678-minio-catalog
       POLARIS_BOOTSTRAP_CREDENTIALS: POLARIS,root,secret
       quarkus.log.file.enable: "false"
       quarkus.otel.sdk.disabled: "true"
@@ -70,3 +72,33 @@ services:
     volumes:
       - ./output:/tmp/polaris-regtests/
       - ./credentials:/tmp/credentials/
+  minio-without-tls:
+    image: minio/minio:latest
+    container_name: minio-without-tls
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+      - MINIO_DOMAIN=minio
+    ports:
+      - 9000:9000
+    volumes:
+      - ./minio/miniodata:/data
+    command: ["server", "/data"]
+  minio-configured-without-tls:
+    depends_on:
+      - minio-without-tls
+    image: minio/mc:latest
+    container_name: minio-configured-without-tls
+    environment:
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=password
+      - AWS_REGION=us-east-1
+    entrypoint: >
+      /bin/sh -c "
+      until (/usr/bin/mc config host add minio http://minio-without-tls:9000 admin password) do echo '...waiting...' && sleep 1; done;
+      /usr/bin/mc rm -r --force --quiet minio/warehouse;
+      /usr/bin/mc mb --ignore-existing minio/warehouse;
+      /usr/bin/mc admin user add minio minio-user-catalog 12345678-minio-catalog;
+      /usr/bin/mc admin policy attach minio readwrite --user minio-user-catalog;
+      tail -f /dev/null
+      "

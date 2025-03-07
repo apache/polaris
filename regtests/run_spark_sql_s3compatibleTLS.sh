@@ -27,7 +27,7 @@
 # java cacerts with self-signed certificate
 #
 # Usage:
-#   ./run_spark_sql_s3compatible.sh [S3-location]
+#   ./run_spark_sql_s3compatibleTLS.sh [S3-location]
 #
 # Description:
 #   - Without arguments: Runs against default minio bucket s3://warehouse/polaris
@@ -36,13 +36,13 @@
 #
 # Examples:
 #   - Run against AWS S3_COMPATIBLE:
-#     ./run_spark_sql_s3compatible.sh s3://warehouse/polaris
+#     ./run_spark_sql_s3compatibleTLS.sh s3://warehouse/polaris
 
 
 clear
 
 if [ $# -ne 0 ] && [ $# -ne 1 ]; then
-  echo "run_spark_sql_s3compatible.sh only accepts 1 or 0 argument, argument is the the bucket, by default it will be s3://warehouse/polaris"
+  echo "run_spark_sql_s3compatibleTLS.sh only accepts 1 or 0 argument, argument is the the bucket, by default it will be s3://warehouse/polaris"
   echo "Usage: ./run_spark_sql.sh [S3-location]"
   exit 1
 fi

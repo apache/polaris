@@ -29,6 +29,7 @@ services:
       minio_net:
         aliases:
           - warehouse.minio
+          - warehouse2.minio
     ports:
       - 9001:9001
       - 9000:9000

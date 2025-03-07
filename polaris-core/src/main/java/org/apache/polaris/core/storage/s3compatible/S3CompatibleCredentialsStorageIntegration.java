@@ -24,6 +24,7 @@ import static org.apache.polaris.core.storage.PolarisCredentialProperty.AWS_KEY_
 import static org.apache.polaris.core.storage.PolarisCredentialProperty.AWS_SECRET_KEY;
 import static org.apache.polaris.core.storage.PolarisCredentialProperty.AWS_TOKEN;
 
+import jakarta.annotation.Nonnull;
 import jakarta.ws.rs.NotAuthorizedException;
 import java.net.URI;
 import java.util.EnumMap;
@@ -32,7 +33,6 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.storage.InMemoryStorageIntegration;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.StorageUtil;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
@@ -57,11 +57,11 @@ public class S3CompatibleCredentialsStorageIntegration
 
   @Override
   public EnumMap<PolarisCredentialProperty, String> getSubscopedCreds(
-      @NotNull PolarisDiagnostics diagnostics,
-      @NotNull S3CompatibleStorageConfigurationInfo storageConfig,
+      @Nonnull PolarisDiagnostics diagnostics,
+      @Nonnull S3CompatibleStorageConfigurationInfo storageConfig,
       boolean allowListOperation,
-      @NotNull Set<String> allowedReadLocations,
-      @NotNull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations) {
 
     String caI = System.getenv(storageConfig.getS3CredentialsCatalogAccessKeyId());
     String caS = System.getenv(storageConfig.getS3CredentialsCatalogSecretAccessKey());
