@@ -143,6 +143,9 @@ paths:
   /polaris/v1/{prefix}/namespaces/{namespace}/policies/{policyName}/mappings:
     $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policyName}~1mappings'
 
+  /polaris/v1/{prefix}/applicablePolicies:
+    $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1v1~1{prefix}~1applicablePolicies'
+
 
 components:
   securitySchemes:

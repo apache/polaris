@@ -1649,6 +1649,73 @@ paths:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
+  /polaris/v1/{prefix}/applicablePolicies:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+    get:
+      tags:
+        - Policy API
+      summary: Get Applicable policies for catalog, namespace, table, or views
+      operationId: getApplicablePoliciesUsingParameter
+      description: |
+        Retrieves all applicable policies for a specified entity, including inherited policies from parent entities. An entity can be a table/view, namespace, or catalog. The required parameters depend on the entity type:
+
+        - Table/View:
+          - The `namespace` parameter is required to specify the entity's namespace.
+          - The `name` parameter is required to specify the entity name.
+        - Namespace:
+          - The `namespace` parameter is required to specify the identifier.
+          - The `name` parameter should not be set.
+        - Catalog:
+          - Neither `namespace` nor `name` should be set.
+
+        An optional policyType parameter filters results to return only policies of the specified type.
+
+        This API evaluates the entity's hierarchy and applies inheritable policies from parent entities.
+      parameters:
+        - $ref: '#/components/parameters/page-token'
+        - $ref: '#/components/parameters/page-size'
+        - name: namespace
+          in: query
+          required: false
+          description: A namespace identifier as a single string. Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+          schema:
+            type: string
+          examples:
+            singlepart_namespace:
+              value: accounting
+            multipart_namespace:
+              value: accounting%1Ftax
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/policy-type'
+      responses:
+        '200':
+          $ref: '#/components/responses/GetApplicablePoliciesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - NoSuchTableException, target table does not exist - NoSuchViewException, target view does not exist - NoSuchNamespaceException, target namespace does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                TargetTableDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTableError'
+                TargetViewDoesNotExist:
+                  $ref: '#/components/examples/NoSuchViewError'
+                TargetNamespaceDoesNotExist:
+                  $ref: '#/components/examples/NoSuchNamespaceError'
+        '419':
+          $ref: '#/components/responses/AuthenticationTimeoutResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
 components:
   securitySchemes:
     OAuth2:
@@ -3716,6 +3783,18 @@ components:
       properties:
         entity:
           $ref: '#/components/schemas/EntityIdentifier'
+    GetApplicablePoliciesResponse:
+      type: object
+      required:
+        - policies
+      properties:
+        next-page-token:
+          $ref: '#/components/schemas/PageToken'
+        policies:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Policy'
   responses:
     BadRequestErrorResponse:
       description: Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server's middleware.
@@ -3926,6 +4005,12 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoadPolicyResponse'
+    GetApplicablePoliciesResponse:
+      description: A list of policies applicable to the table
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetApplicablePoliciesResponse'
   parameters:
     prefix:
       name: prefix
@@ -4008,6 +4093,14 @@ components:
       required: true
       schema:
         $ref: '#/components/schemas/PolicyName'
+    name:
+      name: name
+      in: query
+      required: false
+      description: Name of the entity
+      schema:
+        type: string
+      example: test_table
   examples:
     ListNamespacesNonEmptyExample:
       summary: A non-empty list of namespaces
