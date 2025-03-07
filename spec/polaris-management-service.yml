@@ -242,7 +242,7 @@ paths:
     post:
       operationId: rotateCredentials
       description: Rotate a principal's credentials. The new credentials will be returned in the response. This is the only
-        API, aside from createPrincipal, that returns the user's credentials. This API is *not* idempotent.
+        API, aside from createPrincipal and resetCredentials, that returns the user's credentials. This API is *not* idempotent.
       responses:
         200:
           description: The principal details along with the newly rotated credentials
@@ -252,6 +252,35 @@ paths:
                 $ref: "#/components/schemas/PrincipalWithCredentials"
         403:
           description: "The caller does not have permission to rotate credentials"
+        404:
+          description: "The principal does not exist"
+
+  /principals/{principalName}/reset:
+    parameters:
+      - name: principalName
+        in: path
+        description: The user name
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+          pattern: '^(?!\s*[s|S][y|Y][s|S][t|T][e|E][m|M]\$).*$'
+    post:
+      operationId: resetCredentials
+      description:
+        Reset a principal's credentials to a set of credentials that can only be used to rotate the principal's 
+        credentials. The new credentials will be returned in the response. This is the only API, aside from 
+        createPrincipal and rotateCredentials, that returns the user's credentials. This API is *not* idempotent.
+      responses:
+        200:
+          description: The principal details along with the newly reset credentials that require rotating
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrincipalWithCredentials"
+        403:
+          description: "The caller does not have permission to reset credentials"
         404:
           description: "The principal does not exist"
 
