@@ -52,6 +52,7 @@ if (System.getProperty("idea.sync.active").toBoolean()) {
         excludeDirs +
           setOf(
             projectDir.resolve("build-logic/.kotlin"),
+            projectDir.resolve("tools/apprunner/apprunner-build-logic/.kotlin"),
             projectDir.resolve("integration-tests/build"),
             projectDir.resolve("site/resources/_gen"),
             projectDir.resolve("site/build"),
