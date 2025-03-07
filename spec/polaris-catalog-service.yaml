@@ -18,7 +18,7 @@
 #
 
 ---
-openapi: 3.0.3
+openapi: 3.0.3 
 info:
   title: Apache Polaris and Apache Iceberg REST Catalog API
   license:
@@ -127,12 +127,24 @@ paths:
   # /v1/{prefix}/namespaces/{namespace}/tables/{table}/tasks:
   # Not implemented in Polaris
 
-  ######################
-  # Polaris-native API #
-  ######################
-
   /v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications:
     $ref: './polaris-catalog-apis/notifications-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1notifications'
+
+  ######################
+  # Policy API #
+  ######################
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/policies:
+    $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies'
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/policies/{policyName}:
+    $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policyName}'
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/policies/{policyName}/mappings:
+    $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policyName}~1mappings'
+
+  /polaris/v1/{prefix}/applicablePolicies:
+    $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1v1~1{prefix}~1applicablePolicies'
 
 
 components:
