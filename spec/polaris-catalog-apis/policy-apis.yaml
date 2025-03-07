@@ -43,7 +43,9 @@ paths:
         - `description` (OPTIONAL): Provides details about the policy's purpose and functionality
         - `content` (OPTIONAL): Defines the rules that control actions and access conditions on resources. The format can be JSON, SQL, or any other format.
 
-        The policy content is validated against the policy's corresponding validator upon creation.
+        The content field in the request body is validated using the policy's corresponding validator. The policy is created only if the content passes validation.
+
+        Upon successful creation, the new policy's version will be 0.
       requestBody:
         required: true
         content:
@@ -62,6 +64,41 @@ paths:
         419:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
         503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
+    get:
+      tags:
+        - Policy API
+      summary: List all policy identifiers underneath a given namespace
+      description: Return all policy identifiers under this namespace. Users can optionally filter the result by policy type
+      operationId: listPolicies
+      parameters:
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
+        - $ref: '#/components/parameters/policy-type'
+
+      responses:
+        '200':
+          $ref: '#/components/responses/ListPoliciesResponse'
+        '400':
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchNamespaceError'
+        '419':
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
+        '503':
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
         5XX:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
@@ -201,7 +238,15 @@ paths:
         2. **Namespace level:** Policies applies to a namespace.
         3. **Catalog level:** Policies that applies to a catalog
 
+        The ability to attach a policy to a specific entity type is governed by the PolicyValidator. A policy can only be attached if the resource entity is a valid target for the specified policy type.
+
+        In addition to the validation rules enforced by the PolicyValidator, there are additional constraints on policy attachment:
+        1. For inheritable policies, only one policy of the same type can be attached to a given resource entity.
+        2. For non-inheritable policies, multiple policies of the same type can be attached to the same resource entity without restriction.
+
         Additional parameters can be provided in `parameters` when creating a mapping to define specific behavior or constraints.
+
+        If the policy is already attached to the target entity, the existing mapping record will be updated with the new set of parameters, replacing the previous ones.
       requestBody:
         required: true
         content:
@@ -283,6 +328,82 @@ paths:
         5XX:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
+  /v1/{prefix}/applicablePolicies:
+    parameters:
+      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
+
+    get:
+      tags:
+        - Policy API
+      summary: Get Applicable policies for catalog, namespace, table, or views
+      operationId: getApplicablePoliciesUsingParameter
+      description: |
+        Retrieves all applicable policies for a specified entity, including inherited policies from parent entities. An entity can be a table/view, namespace, or catalog. The required parameters depend on the entity type:
+
+        - Table/View:
+          - The `namespace` parameter is required to specify the entity's namespace.
+          - The `name` parameter is required to specify the entity name.
+        - Namespace:
+          - The `namespace` parameter is required to specify the identifier.
+          - The `name` parameter should not be set.
+        - Catalog:
+          - Neither `namespace` nor `name` should be set.
+
+        An optional policyType parameter filters results to return only policies of the specified type.
+
+        This API evaluates the entity's hierarchy and applies inheritable policies from parent entities.
+
+      parameters:
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-token'
+        - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/page-size'
+        - name: namespace
+          in: query
+          required: false
+          description:
+            A namespace identifier as a single string.
+            Multipart namespace parts should be separated by the unit separator (`0x1F`) byte.
+          schema:
+            type: string
+          examples:
+            singlepart_namespace:
+              value: "accounting"
+            multipart_namespace:
+              value: "accounting%1Ftax"
+        - $ref: '#/components/parameters/name'
+        - $ref: '#/components/parameters/policy-type'
+
+      responses:
+        200:
+          $ref: '#/components/responses/GetApplicablePoliciesResponse'
+        400:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/BadRequestErrorResponse'
+        401:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
+        403:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description:
+            Not Found
+            - NoSuchTableException, target table does not exist
+            - NoSuchViewException, target view does not exist
+            - NoSuchNamespaceException, target namespace does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                TargetTableDoesNotExist:
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchTableError'
+                TargetViewDoesNotExist:
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchViewError'
+                TargetNamespaceDoesNotExist:
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchNamespaceError'
+        419:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
+        503:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
 components:
   parameters:
@@ -293,7 +414,31 @@ components:
       schema:
         $ref: '#/components/schemas/PolicyName'
 
+    policy-type:
+      name: policyType
+      in: query
+      required: false
+      allowEmptyValue: true
+      schema:
+        $ref: '#/components/schemas/PolicyType'
+
+    name:
+      name: name
+      in: query
+      required: false
+      description: Name of the entity
+      schema:
+        type: string
+      example: "test_table"
+
   schemas:
+
+    PolicyType:
+      description: The type of a policy
+      type: string
+      nullable: true
+      example: system.data-compaction
+
     PolicyName:
       type: string
       description:
@@ -315,8 +460,8 @@ components:
         - **description:** Detailed description of the purpose and functionalities of the policy.
         - **content:** Policy content, which can be validated against predefined schemas of a policy type.
         - **version:** Indicates the current version of the policy. Versions increased monotonically, the default value is 0
-        - **created_at:** A timestamp (in milliseconds) indicating when the policy was created.
-        - **updated_at:** A timestamp (in milliseconds) indicating the last update time of the policy.
+        - **created-at:** A timestamp indicating when the policy was created, represented as a string in ISO-8601 format
+        - **updated-at:** A timestamp indicating the last update time of the policy,  represented as a string in ISO-8601 format
 
         Policies stored in Polaris serve as the persistent definition for access control and governance rules.
       required:
@@ -334,12 +479,12 @@ components:
           type: string
         version:
           type: integer
-        created-at-ms:
+        created-at:
+          type: string
+          example: "2024-03-03T12:00:00Z"
+        updated-at:
           type: integer
-          format: int64
-        updated-at-ms:
-          type: integer
-          format: int64
+          example: "2024-03-03T12:00:00Z"
 
     CreatePolicyRequest:
       type: object
@@ -450,6 +595,42 @@ components:
       required:
         - type
 
+    PolicyIdentifier:
+      type: object
+      required:
+        - namespace
+        - name
+      properties:
+        namespace:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/Namespace'
+        name:
+          type: string
+          nullable: false
+
+    ListPoliciesResponse:
+      type: object
+      properties:
+        next-page-token:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
+        identifiers:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/PolicyIdentifier'
+
+    GetApplicablePoliciesResponse:
+      type: object
+      required:
+        - policies
+      properties:
+        next-page-token:
+          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/PageToken'
+        policies:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/Policy'
+
   responses:
     CreatePolicyResponse:
       description: Policy object result after creating a policy
@@ -474,6 +655,25 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoadPolicyResponse'
+
+    ListPoliciesResponse:
+      description: a list of policy identifiers
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListPoliciesResponse'
+          examples:
+            ListPoliciesResponseNonEmpty:
+              $ref: '#/components/examples/ListPoliciesNonEmptyExample'
+            ListPoliciesResponseEmpty:
+              $ref: '#/components/examples/ListPoliciesEmptyExample'
+
+    GetApplicablePoliciesResponse:
+      description: A list of policies applicable to the table
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/GetApplicablePoliciesResponse'
 
 
   examples:
@@ -506,3 +706,21 @@ components:
           "code": 404
         }
       }
+
+    ListPoliciesNonEmptyExample:
+      summary: A non-empty list of policy identifiers
+      value:
+        identifiers:
+          - namespace:
+              - accounting
+              - tax
+            name: policy1
+          - namespace:
+              - accounting
+              - tax
+            name: policy2
+
+    ListPoliciesEmptyExample:
+      summary: An empty list for a namespace with no policies
+      value:
+        identifiers: [ ]

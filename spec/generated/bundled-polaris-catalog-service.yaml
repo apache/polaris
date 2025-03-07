@@ -1,3 +1,19 @@
+#  Licensed to the Apache Software Foundation (ASF) under one
+#  or more contributor license agreements.  See the NOTICE file
+#  distributed with this work for additional information
+#  regarding copyright ownership.  The ASF licenses this file
+#  to you under the Apache License, Version 2.0 (the
+#  "License"); you may not use this file except in compliance
+#  with the License.  You may obtain a copy of the License at
+
+#   http://www.apache.org/licenses/LICENSE-2.0
+
+#  Unless required by applicable law or agreed to in writing,
+#  software distributed under the License is distributed on an
+#  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+#  KIND, either express or implied.  See the License for the
+#  specific language governing permissions and limitations
+#  under the License.
 openapi: 3.0.3
 info:
   title: Apache Polaris and Apache Iceberg REST Catalog API
@@ -1365,7 +1381,9 @@ paths:
         - `description` (OPTIONAL): Provides details about the policy's purpose and functionality
         - `content` (OPTIONAL): Defines the rules that control actions and access conditions on resources. The format can be JSON, SQL, or any other format.
 
-        The policy content is validated against the policy's corresponding validator upon creation.
+        The content field in the request body is validated using the policy's corresponding validator. The policy is created only if the content passes validation.
+
+        Upon successful creation, the new policy's version will be 0.
       requestBody:
         required: true
         content:
@@ -1381,6 +1399,40 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '403':
           $ref: '#/components/responses/ForbiddenResponse'
+        '419':
+          $ref: '#/components/responses/AuthenticationTimeoutResponse'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+    get:
+      tags:
+        - Policy API
+      summary: List all policy identifiers underneath a given namespace
+      description: Return all policy identifiers under this namespace. Users can optionally filter the result by policy type
+      operationId: listPolicies
+      parameters:
+        - $ref: '#/components/parameters/page-token'
+        - $ref: '#/components/parameters/page-size'
+        - $ref: '#/components/parameters/policy-type'
+      responses:
+        '200':
+          $ref: '#/components/responses/ListPoliciesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '#/components/examples/NoSuchNamespaceError'
         '419':
           $ref: '#/components/responses/AuthenticationTimeoutResponse'
         '503':
@@ -1513,7 +1565,15 @@ paths:
         2. **Namespace level:** Policies applies to a namespace.
         3. **Catalog level:** Policies that applies to a catalog
 
+        The ability to attach a policy to a specific entity type is governed by the PolicyValidator. A policy can only be attached if the resource entity is a valid target for the specified policy type.
+
+        In addition to the validation rules enforced by the PolicyValidator, there are additional constraints on policy attachment:
+        1. For inheritable policies, only one policy of the same type can be attached to a given resource entity.
+        2. For non-inheritable policies, multiple policies of the same type can be attached to the same resource entity without restriction.
+
         Additional parameters can be provided in `parameters` when creating a mapping to define specific behavior or constraints.
+
+        If the policy is already attached to the target entity, the existing mapping record will be updated with the new set of parameters, replacing the previous ones.
       requestBody:
         required: true
         content:
@@ -3487,6 +3547,32 @@ components:
           $ref: '#/components/schemas/NotificationType'
         payload:
           $ref: '#/components/schemas/TableUpdateNotification'
+    PolicyType:
+      description: The type of a policy
+      type: string
+      nullable: true
+      example: system.data-compaction
+    PolicyIdentifier:
+      type: object
+      required:
+        - namespace
+        - name
+      properties:
+        namespace:
+          $ref: '#/components/schemas/Namespace'
+        name:
+          type: string
+          nullable: false
+    ListPoliciesResponse:
+      type: object
+      properties:
+        next-page-token:
+          $ref: '#/components/schemas/PageToken'
+        identifiers:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/PolicyIdentifier'
     PolicyName:
       type: string
       description: A policy name. A valid policy name should only consist of uppercase and lowercase letters (A-Z, a-z), digits (0-9), hyphens (-), underscores (_).
@@ -3519,8 +3605,8 @@ components:
         - **description:** Detailed description of the purpose and functionalities of the policy.
         - **content:** Policy content, which can be validated against predefined schemas of a policy type.
         - **version:** Indicates the current version of the policy. Versions increased monotonically, the default value is 0
-        - **created_at:** A timestamp (in milliseconds) indicating when the policy was created.
-        - **updated_at:** A timestamp (in milliseconds) indicating the last update time of the policy.
+        - **created-at:** A timestamp indicating when the policy was created, represented as a string in ISO-8601 format
+        - **updated-at:** A timestamp indicating the last update time of the policy,  represented as a string in ISO-8601 format
 
         Policies stored in Polaris serve as the persistent definition for access control and governance rules.
       required:
@@ -3538,13 +3624,13 @@ components:
           type: string
         version:
           type: integer
-        created-at-ms:
+        created-at:
+          type: string
+          example: '2024-03-03T12:00:00Z'
+        updated-at:
           type: integer
-          format: int64
-        updated-at-ms:
-          type: integer
-          format: int64
-    LoadPolicyResult:
+          example: '2024-03-03T12:00:00Z'
+    LoadPolicyResponse:
       type: object
       properties:
         policy:
@@ -3809,18 +3895,29 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoadViewResult'
+    ListPoliciesResponse:
+      description: a list of policy identifiers
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListPoliciesResponse'
+          examples:
+            ListPoliciesResponseNonEmpty:
+              $ref: '#/components/examples/ListPoliciesNonEmptyExample'
+            ListPoliciesResponseEmpty:
+              $ref: '#/components/examples/ListPoliciesEmptyExample'
     CreatePolicyResponse:
       description: Policy object result after creating a policy
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/LoadPolicyResult'
+            $ref: '#/components/schemas/LoadPolicyResponse'
     LoadPolicyResponse:
       description: Policy object result when getting a policy
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/LoadPolicyResult'
+            $ref: '#/components/schemas/LoadPolicyResponse'
     UpdatePolicyResponse:
       description: |-
         Response used when a policy is successfully updated
@@ -3828,7 +3925,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/LoadPolicyResult'
+            $ref: '#/components/schemas/LoadPolicyResponse'
   parameters:
     prefix:
       name: prefix
@@ -3898,6 +3995,13 @@ components:
       schema:
         type: string
       example: sales
+    policy-type:
+      name: policyType
+      in: query
+      required: false
+      allowEmptyValue: true
+      schema:
+        $ref: '#/components/schemas/PolicyType'
     policy-name:
       name: policyName
       in: path
@@ -4016,6 +4120,22 @@ components:
             - accounting
             - tax
           name: owed-view
+    ListPoliciesNonEmptyExample:
+      summary: A non-empty list of policy identifiers
+      value:
+        identifiers:
+          - namespace:
+              - accounting
+              - tax
+            name: policy1
+          - namespace:
+              - accounting
+              - tax
+            name: policy2
+    ListPoliciesEmptyExample:
+      summary: An empty list for a namespace with no policies
+      value:
+        identifiers: []
     NoSuchPolicyError:
       summary: The requested policy does not exist
       value:
