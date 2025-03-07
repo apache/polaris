@@ -1966,9 +1966,12 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
             },
             Function.identity());
 
+    List<PolarisBaseEntity> loadedTasks = new ArrayList<>();
     availableTasks.forEach(
         task -> {
-          PolarisBaseEntity originalTask = new PolarisBaseEntity(task);
+          // Make a copy to avoid mutating someone else's reference.
+          // TODO: Refactor into immutable/Builder pattern.
+          PolarisBaseEntity updatedTask = new PolarisBaseEntity(task);
           Map<String, String> properties =
               PolarisObjectMapperUtil.deserializeProperties(callCtx, task.getProperties());
           properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
@@ -1980,11 +1983,22 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
               String.valueOf(
                   Integer.parseInt(properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
                       + 1));
-          task.setEntityVersion(task.getEntityVersion() + 1);
-          task.setProperties(PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
-          ms.writeEntity(callCtx, task, false, originalTask);
+          updatedTask.setProperties(
+              PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
+          EntityResult result = updateEntityPropertiesIfNotChanged(callCtx, ms, null, updatedTask);
+          if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
+            loadedTasks.add(result.getEntity());
+          } else {
+            // TODO: Consider performing incremental leasing of individual tasks one at a time
+            // instead of requiring all-or-none semantics for all the tasks we think we listed,
+            // or else contention could be very bad.
+            ms.rollback();
+            throw new RetryOnConcurrencyException(
+                "Failed to lease available task with status %s, info: %s",
+                result.getReturnStatus(), result.getExtraInformation());
+          }
         });
-    return new EntitiesResult(availableTasks);
+    return new EntitiesResult(loadedTasks);
   }
 
   @Override
