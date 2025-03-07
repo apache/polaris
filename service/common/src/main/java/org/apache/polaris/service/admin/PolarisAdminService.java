@@ -70,6 +70,7 @@ import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
+import org.apache.polaris.core.entity.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -80,7 +81,6 @@ import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
-import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -461,7 +461,8 @@ public class PolarisAdminService {
         entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
     resolutionManifest.addPath(
         new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(identifier), PolarisEntityType.TABLE_LIKE),
+            PolarisCatalogHelpers.tableIdentifierToList(identifier),
+            PolarisEntityType.ICEBERG_TABLE_LIKE),
         identifier);
     resolutionManifest.addPath(
         new ResolverPath(List.of(catalogRoleName), PolarisEntityType.CATALOG_ROLE),
@@ -471,7 +472,8 @@ public class PolarisAdminService {
     if (status.getStatus() == ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED) {
       throw new NotFoundException("Catalog not found: %s", catalogName);
     } else if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED) {
-      if (status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.TABLE_LIKE) {
+      if (status.getFailedToResolvePath().getLastEntityType()
+          == PolarisEntityType.ICEBERG_TABLE_LIKE) {
         if (subType == PolarisEntitySubType.TABLE) {
           throw new NoSuchTableException("Table does not exist: %s", identifier);
         } else {
@@ -1617,10 +1619,11 @@ public class PolarisAdminService {
               namespaceGrants.add(grant);
               break;
             }
-          case TABLE_LIKE:
+          case ICEBERG_TABLE_LIKE:
             {
               if (baseEntity.getSubType() == PolarisEntitySubType.TABLE) {
-                TableIdentifier identifier = TableLikeEntity.of(baseEntity).getTableIdentifier();
+                TableIdentifier identifier =
+                    IcebergTableLikeEntity.of(baseEntity).getTableIdentifier();
                 TableGrant grant =
                     new TableGrant(
                         List.of(identifier.namespace().levels()),
@@ -1629,7 +1632,8 @@ public class PolarisAdminService {
                         GrantResource.TypeEnum.TABLE);
                 tableGrants.add(grant);
               } else {
-                TableIdentifier identifier = TableLikeEntity.of(baseEntity).getTableIdentifier();
+                TableIdentifier identifier =
+                    IcebergTableLikeEntity.of(baseEntity).getTableIdentifier();
                 ViewGrant grant =
                     new ViewGrant(
                         List.of(identifier.namespace().levels()),

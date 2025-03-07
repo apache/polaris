@@ -91,7 +91,7 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
       manifest.addPath(
           new ResolverPath(
               PolarisCatalogHelpers.tableIdentifierToList(identifier),
-              PolarisEntityType.TABLE_LIKE),
+              PolarisEntityType.ICEBERG_TABLE_LIKE),
           identifier);
       manifest.resolveAll();
       return manifest.getResolvedPath(identifier, subType);
@@ -130,7 +130,7 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
       manifest.addPassthroughPath(
           new ResolverPath(
               PolarisCatalogHelpers.tableIdentifierToList(identifier),
-              PolarisEntityType.TABLE_LIKE),
+              PolarisEntityType.ICEBERG_TABLE_LIKE),
           identifier);
       return manifest.getPassthroughResolvedPath(identifier, subType);
     } else {

@@ -102,7 +102,7 @@ import org.slf4j.LoggerFactory;
  * Authorization-aware adapter between REST stubs and shared Iceberg SDK CatalogHandlers.
  *
  * <p>We must make authorization decisions based on entity resolution at this layer instead of the
- * underlying BasePolarisCatalog layer, because this REST-adjacent layer captures intent of
+ * underlying PolarisIcebergCatalog layer, because this REST-adjacent layer captures intent of
  * different REST calls that share underlying catalog calls (e.g. updateTable will call loadTable
  * under the hood), and some features of the REST API aren't expressed at all in the underlying
  * Catalog interfaces (e.g. credential-vending in createTable/loadTable).
@@ -219,7 +219,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
         resolutionManifest.addPassthroughPath(
             new ResolverPath(
                 PolarisCatalogHelpers.tableIdentifierToList(id),
-                PolarisEntityType.TABLE_LIKE,
+                PolarisEntityType.ICEBERG_TABLE_LIKE,
                 true /* optional */),
             id);
       }
@@ -291,7 +291,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(identifier),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             true /* optional */),
         identifier);
     resolutionManifest.resolveAll();
@@ -318,7 +318,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(identifier),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             true /* optional */),
         identifier);
     resolutionManifest.resolveAll();
@@ -352,7 +352,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
             resolutionManifest.addPassthroughPath(
                 new ResolverPath(
                     PolarisCatalogHelpers.tableIdentifierToList(identifier),
-                    PolarisEntityType.TABLE_LIKE),
+                    PolarisEntityType.ICEBERG_TABLE_LIKE),
                 identifier));
 
     ResolverStatus status = resolutionManifest.resolveAll();
@@ -404,7 +404,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     // Add src, dstParent, and dst(optional)
     resolutionManifest.addPath(
         new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(src), PolarisEntityType.TABLE_LIKE),
+            PolarisCatalogHelpers.tableIdentifierToList(src), PolarisEntityType.ICEBERG_TABLE_LIKE),
         src);
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(dst.namespace().levels()), PolarisEntityType.NAMESPACE),
@@ -412,7 +412,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     resolutionManifest.addPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(dst),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             true /* optional */),
         dst);
     ResolverStatus status = resolutionManifest.resolveAll();
@@ -773,7 +773,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.SEND_NOTIFICATIONS;
 
     // For now, just require the full set of privileges on the base Catalog entity, which we can
-    // also express just as the "root" Namespace for purposes of the BasePolarisCatalog being
+    // also express just as the "root" Namespace for purposes of the PolarisIcebergCatalog being
     // able to fetch Namespace.empty() as path key.
     List<TableIdentifier> extraPassthroughTableLikes = List.of(identifier);
     List<Namespace> extraPassthroughNamespaces = new ArrayList<>();

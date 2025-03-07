@@ -175,7 +175,7 @@ public class StorageCredentialCache {
   private boolean isTypeSupported(PolarisEntityType type) {
     return type == PolarisEntityType.CATALOG
         || type == PolarisEntityType.NAMESPACE
-        || type == PolarisEntityType.TABLE_LIKE
+        || type == PolarisEntityType.ICEBERG_TABLE_LIKE
         || type == PolarisEntityType.TASK;
   }
 

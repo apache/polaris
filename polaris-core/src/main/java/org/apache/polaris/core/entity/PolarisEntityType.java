@@ -32,9 +32,10 @@ public enum PolarisEntityType {
   CATALOG_ROLE(5, CATALOG, true, false),
   NAMESPACE(6, CATALOG, false, true),
   // generic table is either a view or a real table
-  TABLE_LIKE(7, NAMESPACE, false, false),
+  ICEBERG_TABLE_LIKE(7, NAMESPACE, false, false),
   TASK(8, ROOT, false, false),
-  FILE(9, TABLE_LIKE, false, false);
+  FILE(9, ICEBERG_TABLE_LIKE, false, false),
+  GENERIC_TABLE(9, NAMESPACE, false, false);
 
   // to efficiently map a code to its corresponding entity type, use a reverse array which
   // is initialized below

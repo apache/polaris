@@ -69,8 +69,8 @@ public class FileIOUtil {
    * <p>Use cases:
    *
    * <ul>
-   *   <li>In {@link PolarisIcebergCatalog}, subscoped credentials are generated or refreshed when the
-   *       client sends a loadTable request to vend credentials.
+   *   <li>In {@link PolarisIcebergCatalog}, subscoped credentials are generated or refreshed when
+   *       the client sends a loadTable request to vend credentials.
    *   <li>In {@link DefaultFileIOFactory}, subscoped credentials are obtained to access the storage
    *       and read/write metadata JSON files.
    * </ul>
