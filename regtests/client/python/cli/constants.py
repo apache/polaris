@@ -136,6 +136,7 @@ class Arguments:
     LOCATION = 'location'
     REGION = 'region'
     PROFILE = 'profile'
+    PROXY = 'proxy'
 
 
 class Hints:

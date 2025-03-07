@@ -71,6 +71,7 @@ import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.service.admin.PolarisAdminService;
@@ -369,8 +370,11 @@ public abstract class PolarisAuthzTestBase {
         .map(
             gr ->
                 metaStoreManager.loadEntity(
-                    callContext.getPolarisCallContext(), 0L, gr.getSecurableId()))
-        .map(PolarisMetaStoreManager.EntityResult::getEntity)
+                    callContext.getPolarisCallContext(),
+                    0L,
+                    gr.getSecurableId(),
+                    PolarisEntityType.PRINCIPAL_ROLE))
+        .map(EntityResult::getEntity)
         .map(PolarisBaseEntity::getName)
         .collect(Collectors.toSet());
   }
@@ -380,7 +384,7 @@ public abstract class PolarisAuthzTestBase {
       String principalName,
       PrincipalWithCredentialsCredentials credentials,
       PolarisCallContext polarisContext) {
-    PolarisMetaStoreManager.EntityResult lookupEntity =
+    EntityResult lookupEntity =
         metaStoreManager.readEntityByName(
             callContext.getPolarisCallContext(),
             null,

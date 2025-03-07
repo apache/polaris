@@ -89,11 +89,14 @@ import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TableLikeEntity;
-import org.apache.polaris.core.persistence.BaseResult;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
@@ -432,7 +435,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
                   return clone;
                 })
             .orElse(Map.of());
-    PolarisMetaStoreManager.DropEntityResult dropEntityResult =
+    DropEntityResult dropEntityResult =
         dropTableLike(PolarisEntitySubType.TABLE, tableIdentifier, storageProperties, purge);
     if (!dropEntityResult.isSuccess()) {
       return false;
@@ -637,7 +640,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     // drop if exists and is empty
     PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
-    PolarisMetaStoreManager.DropEntityResult dropEntityResult =
+    DropEntityResult dropEntityResult =
         getMetaStoreManager()
             .dropEntityIfExists(
                 getCurrentPolarisContext(),
@@ -1077,7 +1080,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    */
   private void validateNoLocationOverlap(
       String location, List<PolarisEntity> parentPath, String name) {
-    PolarisMetaStoreManager.ListEntitiesResult siblingNamespacesResult =
+    ListEntitiesResult siblingNamespacesResult =
         getMetaStoreManager()
             .listEntities(
                 callContext.getPolarisCallContext(),
@@ -1100,7 +1103,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         parentNamespace
             .map(
                 ns -> {
-                  PolarisMetaStoreManager.ListEntitiesResult siblingTablesResult =
+                  ListEntitiesResult siblingTablesResult =
                       getMetaStoreManager()
                           .listEntities(
                               callContext.getPolarisCallContext(),
@@ -1690,7 +1693,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
 
     // rename the entity now
-    PolarisMetaStoreManager.EntityResult returnedEntityResult =
+    EntityResult returnedEntityResult =
         getMetaStoreManager()
             .renameEntity(
                 getCurrentPolarisContext(),
@@ -1798,15 +1801,27 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     entity =
         new PolarisEntity.Builder(entity).setCreateTimestamp(System.currentTimeMillis()).build();
 
-    PolarisEntity returnedEntity =
-        PolarisEntity.of(
-            getMetaStoreManager()
-                .createEntityIfNotExists(
-                    getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity));
-    LOGGER.debug("Created TableLike entity {} with TableIdentifier {}", entity, identifier);
-    if (returnedEntity == null) {
-      // TODO: Error or retry?
+    EntityResult res =
+        getMetaStoreManager()
+            .createEntityIfNotExists(
+                getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity);
+    if (!res.isSuccess()) {
+      switch (res.getReturnStatus()) {
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
+          throw new NotFoundException("Parent path does not exist for %s", identifier);
+
+        case BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS:
+          throw new AlreadyExistsException("Table or View already exists: %s", identifier);
+
+        default:
+          throw new IllegalStateException(
+              String.format(
+                  "Unknown error status for identifier %s: %s with extraInfo: %s",
+                  identifier, res.getReturnStatus(), res.getExtraInformation()));
+      }
     }
+    PolarisEntity resultEntity = PolarisEntity.of(res);
+    LOGGER.debug("Created TableLike entity {} with TableIdentifier {}", resultEntity, identifier);
   }
 
   private void updateTableLike(TableIdentifier identifier, PolarisEntity entity) {
@@ -1823,21 +1838,32 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     validateLocationForTableLike(identifier, metadataLocation, resolvedEntities);
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
-    PolarisEntity returnedEntity =
-        Optional.ofNullable(
-                getMetaStoreManager()
-                    .updateEntityPropertiesIfNotChanged(
-                        getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity)
-                    .getEntity())
-            .map(PolarisEntity::new)
-            .orElse(null);
-    if (returnedEntity == null) {
-      // TODO: Error or retry?
+    EntityResult res =
+        getMetaStoreManager()
+            .updateEntityPropertiesIfNotChanged(
+                getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity);
+    if (!res.isSuccess()) {
+      switch (res.getReturnStatus()) {
+        case BaseResult.ReturnStatus.CATALOG_PATH_CANNOT_BE_RESOLVED:
+          throw new NotFoundException("Parent path does not exist for %s", identifier);
+
+        case BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED:
+          throw new CommitFailedException(
+              "Failed to commit Table or View %s because it was concurrently modified", identifier);
+
+        default:
+          throw new IllegalStateException(
+              String.format(
+                  "Unknown error status for identifier %s: %s with extraInfo: %s",
+                  identifier, res.getReturnStatus(), res.getExtraInformation()));
+      }
     }
+    PolarisEntity resultEntity = PolarisEntity.of(res);
+    LOGGER.debug("Updated TableLike entity {} with TableIdentifier {}", resultEntity, identifier);
   }
 
   @SuppressWarnings("FormatStringAnnotation")
-  private @Nonnull PolarisMetaStoreManager.DropEntityResult dropTableLike(
+  private @Nonnull DropEntityResult dropTableLike(
       PolarisEntitySubType subType,
       TableIdentifier identifier,
       Map<String, String> storageProperties,
@@ -1846,8 +1872,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         resolvedEntityView.getResolvedPath(identifier, subType);
     if (resolvedEntities == null) {
       // TODO: Error?
-      return new PolarisMetaStoreManager.DropEntityResult(
-          BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
+      return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();

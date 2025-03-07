@@ -44,6 +44,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.auth.TokenUtils;
@@ -115,7 +116,7 @@ public class PolarisIntegrationTestFixture {
       CallContext.setCurrentContext(ctx);
       PolarisMetaStoreManager metaStoreManager =
           helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
-      PolarisMetaStoreManager.EntityResult principal =
+      EntityResult principal =
           metaStoreManager.readEntityByName(
               ctx.getPolarisCallContext(),
               null,
@@ -226,8 +227,7 @@ public class PolarisIntegrationTestFixture {
     }
   }
 
-  private Map<String, String> readInternalProperties(
-      PolarisMetaStoreManager.EntityResult principal) {
+  private Map<String, String> readInternalProperties(EntityResult principal) {
     try {
       return helper.objectMapper.readValue(
           principal.getEntity().getInternalProperties(), new TypeReference<>() {});

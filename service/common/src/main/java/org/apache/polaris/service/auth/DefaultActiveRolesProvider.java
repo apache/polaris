@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.auth;
 
+import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.RequestScoped;
 import jakarta.inject.Inject;
 import java.util.List;
@@ -31,9 +32,11 @@ import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,6 +47,7 @@ import org.slf4j.LoggerFactory;
  * available roles are active for this request.
  */
 @RequestScoped
+@Identifier("default")
 public class DefaultActiveRolesProvider implements ActiveRolesProvider {
   private static final Logger LOGGER = LoggerFactory.getLogger(DefaultActiveRolesProvider.class);
 
@@ -87,9 +91,12 @@ public class DefaultActiveRolesProvider implements ActiveRolesProvider {
             .map(
                 gr ->
                     metaStoreManager.loadEntity(
-                        polarisContext, gr.getSecurableCatalogId(), gr.getSecurableId()))
-            .filter(PolarisMetaStoreManager.EntityResult::isSuccess)
-            .map(PolarisMetaStoreManager.EntityResult::getEntity)
+                        polarisContext,
+                        gr.getSecurableCatalogId(),
+                        gr.getSecurableId(),
+                        PolarisEntityType.PRINCIPAL_ROLE))
+            .filter(EntityResult::isSuccess)
+            .map(EntityResult::getEntity)
             .map(PrincipalRoleEntity::of)
             .filter(includeRoleFilter)
             .toList();

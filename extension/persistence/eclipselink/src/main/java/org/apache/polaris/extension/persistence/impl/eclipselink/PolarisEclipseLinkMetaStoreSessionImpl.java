@@ -52,7 +52,7 @@ import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
-import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.persistence.transactional.AbstractTransactionalPersistence;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -68,7 +68,7 @@ import org.slf4j.LoggerFactory;
  * EclipseLink implementation of a Polaris metadata store supporting persisting and retrieving all
  * Polaris metadata from/to the configured database systems.
  */
-public class PolarisEclipseLinkMetaStoreSessionImpl extends TransactionalPersistence {
+public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactionalPersistence {
   private static final Logger LOGGER =
       LoggerFactory.getLogger(PolarisEclipseLinkMetaStoreSessionImpl.class);
 
@@ -163,7 +163,11 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends TransactionalPersist
 
         return result;
       } catch (Exception e) {
-        tr.rollback();
+        // For some transaction conflict errors, the transaction will already no longer be active;
+        // if it's still active, explicitly rollback.
+        if (tr.isActive()) {
+          tr.rollback();
+        }
         LOGGER.debug("transaction rolled back", e);
 
         if (e instanceof OptimisticLockException
@@ -205,7 +209,11 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends TransactionalPersist
         }
       } catch (Exception e) {
         LOGGER.debug("Rolling back transaction due to an error", e);
-        tr.rollback();
+        // For some transaction conflict errors, the transaction will already no longer be active;
+        // if it's still active, explicitly rollback.
+        if (tr.isActive()) {
+          tr.rollback();
+        }
 
         if (e instanceof OptimisticLockException
             || e.getCause() instanceof OptimisticLockException) {
@@ -343,7 +351,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends TransactionalPersist
   /** {@inheritDoc} */
   @Override
   public @Nullable PolarisBaseEntity lookupEntity(
-      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
     return ModelEntity.toEntity(this.store.lookupEntity(localSession.get(), catalogId, entityId));
   }
 

@@ -34,6 +34,7 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.service.types.TokenType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -109,11 +110,12 @@ public abstract class JWTBroker implements TokenBroker {
       return new TokenResponse(OAuthTokenErrorResponse.Error.invalid_request);
     }
     DecodedToken decodedToken = verify(subjectToken);
-    PolarisMetaStoreManager.EntityResult principalLookup =
+    EntityResult principalLookup =
         metaStoreManager.loadEntity(
             CallContext.getCurrentContext().getPolarisCallContext(),
             0L,
-            decodedToken.getPrincipalId());
+            decodedToken.getPrincipalId(),
+            PolarisEntityType.PRINCIPAL);
     if (!principalLookup.isSuccess()
         || principalLookup.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
       return new TokenResponse(OAuthTokenErrorResponse.Error.unauthorized_client);

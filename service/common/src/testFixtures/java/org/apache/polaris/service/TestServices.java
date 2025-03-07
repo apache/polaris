@@ -40,6 +40,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.service.admin.PolarisServiceImpl;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApi;
@@ -184,7 +185,7 @@ public record TestServices(
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
 
-      PolarisMetaStoreManager.CreatePrincipalResult createdPrincipal =
+      CreatePrincipalResult createdPrincipal =
           metaStoreManager.createPrincipal(
               callContext.getPolarisCallContext(),
               new PrincipalEntity.Builder()

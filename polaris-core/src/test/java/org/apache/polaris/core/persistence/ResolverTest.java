@@ -44,8 +44,9 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -486,8 +487,8 @@ public class ResolverTest {
                                     PolarisEntityType.PRINCIPAL_ROLE,
                                     PolarisEntitySubType.NULL_SUBTYPE,
                                     role))
-                        .filter(PolarisMetaStoreManager.EntityResult::isSuccess)
-                        .map(PolarisMetaStoreManager.EntityResult::getEntity)
+                        .filter(EntityResult::isSuccess)
+                        .map(EntityResult::getEntity)
                         .map(PrincipalRoleEntity::of)
                         .collect(Collectors.toList()));
     AuthenticatedPolarisPrincipal authenticatedPrincipal =
@@ -775,7 +776,7 @@ public class ResolverTest {
       // the principal does not exist, check that this is the case
       if (principalName != null) {
         // see if the principal exists
-        PolarisMetaStoreManager.EntityResult result =
+        EntityResult result =
             this.metaStoreManager.readEntityByName(
                 this.callCtx,
                 null,
@@ -981,7 +982,7 @@ public class ResolverTest {
     // reload the cached entry from the backend
     ResolvedEntityResult refResolvedEntity =
         this.metaStoreManager.loadResolvedEntityById(
-            this.callCtx, refEntity.getCatalogId(), refEntity.getId());
+            this.callCtx, refEntity.getCatalogId(), refEntity.getId(), refEntity.getType());
 
     // should exist
     Assertions.assertThat(refResolvedEntity).isNotNull();

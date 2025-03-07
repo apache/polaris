@@ -37,9 +37,9 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.BaseResult;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.transactional.PolarisTreeMapMetaStoreSessionImpl;
 import org.apache.polaris.core.persistence.transactional.PolarisTreeMapStore;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
@@ -84,6 +84,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -115,6 +116,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -157,6 +159,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -214,6 +217,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -301,6 +305,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
