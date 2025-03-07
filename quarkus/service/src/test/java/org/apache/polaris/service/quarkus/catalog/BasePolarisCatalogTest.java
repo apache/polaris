@@ -1429,6 +1429,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 polarisContext,
                 0,
                 taskEntity.getId(),
+                taskEntity.getType(),
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()))

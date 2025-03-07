@@ -127,7 +127,10 @@ public interface TokenBroker {
     }
     EntityResult result =
         metaStoreManager.loadEntity(
-            polarisCallContext, 0L, principalSecrets.getPrincipalSecrets().getPrincipalId());
+            polarisCallContext,
+            0L,
+            principalSecrets.getPrincipalSecrets().getPrincipalId(),
+            PolarisEntityType.PRINCIPAL);
     if (!result.isSuccess() || result.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
       return Optional.empty();
     }
