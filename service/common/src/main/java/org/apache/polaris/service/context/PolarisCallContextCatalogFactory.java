@@ -34,7 +34,7 @@ import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
-import org.apache.polaris.service.catalog.BasePolarisCatalog;
+import org.apache.polaris.service.catalog.PolarisIcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -83,8 +83,8 @@ public class PolarisCallContextCatalogFactory implements CallContextCatalogFacto
     PolarisEntityManager entityManager =
         entityManagerFactory.getOrCreateEntityManager(context.getRealmContext());
 
-    BasePolarisCatalog catalogInstance =
-        new BasePolarisCatalog(
+    PolarisIcebergCatalog catalogInstance =
+        new PolarisIcebergCatalog(
             entityManager,
             metaStoreManagerFactory.getOrCreateMetaStoreManager(context.getRealmContext()),
             context,

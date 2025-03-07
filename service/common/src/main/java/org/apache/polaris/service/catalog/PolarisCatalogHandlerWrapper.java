@@ -470,7 +470,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     }
     authorizeCreateNamespaceUnderNamespaceOperationOrThrow(op, namespace);
 
-    if (namespaceCatalog instanceof BasePolarisCatalog) {
+    if (namespaceCatalog instanceof PolarisIcebergCatalog) {
       // Note: The CatalogHandlers' default implementation will non-atomically create the
       // namespace and then fetch its properties using loadNamespaceMetadata for the response.
       // However, the latest namespace metadata technically isn't the same authorized instance,
@@ -673,9 +673,9 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     if (request.location() != null) {
       // Even if the request provides a location, run it through the catalog's TableBuilder
       // to inherit any override behaviors if applicable.
-      if (baseCatalog instanceof BasePolarisCatalog) {
+      if (baseCatalog instanceof PolarisIcebergCatalog) {
         location =
-            ((BasePolarisCatalog) baseCatalog).transformTableLikeLocation(request.location());
+            ((PolarisIcebergCatalog) baseCatalog).transformTableLikeLocation(request.location());
       } else {
         location = request.location();
       }
@@ -896,11 +896,11 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
         request.updates().stream()
             .map(
                 update -> {
-                  if (baseCatalog instanceof BasePolarisCatalog
+                  if (baseCatalog instanceof PolarisIcebergCatalog
                       && update instanceof MetadataUpdate.SetLocation) {
                     String requestedLocation = ((MetadataUpdate.SetLocation) update).location();
                     String filteredLocation =
-                        ((BasePolarisCatalog) baseCatalog)
+                        ((PolarisIcebergCatalog) baseCatalog)
                             .transformTableLikeLocation(requestedLocation);
                     return new MetadataUpdate.SetLocation(filteredLocation);
                   } else {
@@ -1019,7 +1019,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
       throw new BadRequestException("Cannot update table on external catalogs.");
     }
 
-    if (!(baseCatalog instanceof BasePolarisCatalog)) {
+    if (!(baseCatalog instanceof PolarisIcebergCatalog)) {
       throw new BadRequestException(
           "Unsupported operation: commitTransaction with baseCatalog type: %s",
           baseCatalog.getClass().getName());
@@ -1030,7 +1030,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     // validations.
     TransactionWorkspaceMetaStoreManager transactionMetaStoreManager =
         new TransactionWorkspaceMetaStoreManager(metaStoreManager);
-    ((BasePolarisCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
+    ((PolarisIcebergCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
 
     commitTransactionRequest.tableChanges().stream()
         .forEach(

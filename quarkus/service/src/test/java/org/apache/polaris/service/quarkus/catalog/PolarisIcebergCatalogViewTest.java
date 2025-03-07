@@ -59,7 +59,7 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
-import org.apache.polaris.service.catalog.BasePolarisCatalog;
+import org.apache.polaris.service.catalog.PolarisIcebergCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -73,8 +73,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
 
 @QuarkusTest
-@TestProfile(BasePolarisCatalogViewTest.Profile.class)
-public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCatalog> {
+@TestProfile(PolarisIcebergCatalogViewTest.Profile.class)
+public class PolarisIcebergCatalogViewTest extends ViewCatalogTests<PolarisIcebergCatalog> {
 
   public static class Profile implements QuarkusTestProfile {
 
@@ -100,7 +100,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
   @Inject PolarisConfigurationStore configurationStore;
   @Inject PolarisDiagnostics diagServices;
 
-  private BasePolarisCatalog catalog;
+  private PolarisIcebergCatalog catalog;
 
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
@@ -188,7 +188,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
         new DefaultFileIOFactory(
             new RealmEntityManagerFactory(managerFactory), managerFactory, configurationStore);
     this.catalog =
-        new BasePolarisCatalog(
+        new PolarisIcebergCatalog(
             entityManager,
             metaStoreManager,
             callContext,
@@ -209,7 +209,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
   }
 
   @Override
-  protected BasePolarisCatalog catalog() {
+  protected PolarisIcebergCatalog catalog() {
     return catalog;
   }
 

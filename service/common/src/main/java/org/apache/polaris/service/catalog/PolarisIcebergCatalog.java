@@ -116,9 +116,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /** Defines the relationship between PolarisEntities and Iceberg's business logic. */
-public class BasePolarisCatalog extends BaseMetastoreViewCatalog
+public class PolarisIcebergCatalog extends BaseMetastoreViewCatalog
     implements SupportsNamespaces, SupportsNotifications, Closeable, SupportsCredentialDelegation {
-  private static final Logger LOGGER = LoggerFactory.getLogger(BasePolarisCatalog.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisIcebergCatalog.class);
 
   private static final Joiner SLASH = Joiner.on("/");
 
@@ -176,7 +176,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    *     this catalog instance only interacts with authorized resolved paths.
    * @param taskExecutor Executor we use to register cleanup task handlers
    */
-  public BasePolarisCatalog(
+  public PolarisIcebergCatalog(
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
@@ -564,7 +564,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         .reversed()
         .stream()
         .map(entity -> baseLocation(callContext, entity))
-        .map(BasePolarisCatalog::stripLeadingTrailingSlash)
+        .map(PolarisIcebergCatalog::stripLeadingTrailingSlash)
         .collect(Collectors.joining("/"));
   }
 
@@ -1210,7 +1210,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       super(identifier);
       withProperties(
           PropertyUtil.propertiesWithPrefix(
-              BasePolarisCatalog.this.properties(), "table-default."));
+              PolarisIcebergCatalog.this.properties(), "table-default."));
     }
 
     @Override

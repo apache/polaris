@@ -107,7 +107,7 @@ import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
-import org.apache.polaris.service.catalog.BasePolarisCatalog;
+import org.apache.polaris.service.catalog.PolarisIcebergCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -141,8 +141,8 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
 @QuarkusTest
-@TestProfile(BasePolarisCatalogTest.Profile.class)
-public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
+@TestProfile(PolarisIcebergCatalogTest.Profile.class)
+public class PolarisIcebergCatalogTest extends CatalogTests<PolarisIcebergCatalog> {
 
   public static class Profile implements QuarkusTestProfile {
 
@@ -174,7 +174,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
 
-  private BasePolarisCatalog catalog;
+  private PolarisIcebergCatalog catalog;
   private CallContext callContext;
   private AwsStorageConfigInfo storageConfigModel;
   private StsClient stsClient;
@@ -290,7 +290,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.catalog =
-        new BasePolarisCatalog(
+        new PolarisIcebergCatalog(
             entityManager,
             metaStoreManager,
             callContext,
@@ -311,7 +311,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   }
 
   @Override
-  protected BasePolarisCatalog catalog() {
+  protected PolarisIcebergCatalog catalog() {
     return catalog;
   }
 
@@ -376,7 +376,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         requiresNamespaceCreate(),
         "Only applicable if namespaces must be created before adding children");
 
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
     catalog.createNamespace(NS);
 
     Assertions.assertThat(catalog.tableExists(TABLE))
@@ -420,7 +420,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     Assumptions.assumeTrue(
         supportsNestedNamespaces(), "Only applicable if nested namespaces are supoprted");
 
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
 
     Namespace child1 = Namespace.of("parent", "child1");
 
@@ -441,7 +441,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     final String tableLocation = "s3://externally-owned-bucket/validate_table/";
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
 
     Namespace namespace = Namespace.of("parent", "child1");
     TableIdentifier table = TableIdentifier.of(namespace, "table");
@@ -504,7 +504,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     // filename.
     final String tableLocation = "s3://forbidden-table-location/table/";
     final String tableMetadataLocation = tableLocation + "metadata/";
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
 
     Namespace namespace = Namespace.of("parent", "child1");
     TableIdentifier table = TableIdentifier.of(namespace, "table");
@@ -548,8 +548,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 new RealmEntityManagerFactory(createMockMetaStoreManagerFactory()),
                 managerFactory,
                 configurationStore));
-    BasePolarisCatalog catalog =
-        new BasePolarisCatalog(
+    PolarisIcebergCatalog catalog =
+        new PolarisIcebergCatalog(
             entityManager,
             metaStoreManager,
             callContext,
@@ -594,7 +594,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     final String tableLocation = "s3://externally-owned-bucket/table/";
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
 
     Namespace namespace = Namespace.of("parent", "child1");
     TableIdentifier table = TableIdentifier.of(namespace, "table");
@@ -638,7 +638,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     // The location of the metadata JSON file specified in the create will be forbidden.
     final String tableLocation = "s3://forbidden-table-location/table/";
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
 
     Namespace namespace = Namespace.of("parent", "child1");
     TableIdentifier table = TableIdentifier.of(namespace, "table");
@@ -689,7 +689,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             .addProperty(
                 PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
             .build());
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
     TableMetadata tableMetadata =
         TableMetadata.buildFromEmpty()
             .assignUUID()
@@ -746,7 +746,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             .addProperty(
                 PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
             .build());
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
     TableMetadata tableMetadata =
         TableMetadata.buildFromEmpty()
             .assignUUID()
@@ -800,7 +800,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             .addProperty(
                 PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
             .build());
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
     InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
 
     fileIO.addFile(
@@ -872,8 +872,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, catalogWithoutStorage);
     TaskExecutor taskExecutor = Mockito.mock();
-    BasePolarisCatalog catalog =
-        new BasePolarisCatalog(
+    PolarisIcebergCatalog catalog =
+        new PolarisIcebergCatalog(
             entityManager,
             metaStoreManager,
             callContext,
@@ -936,8 +936,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, catalogName);
     TaskExecutor taskExecutor = Mockito.mock();
-    BasePolarisCatalog catalog =
-        new BasePolarisCatalog(
+    PolarisIcebergCatalog catalog =
+        new PolarisIcebergCatalog(
             entityManager,
             metaStoreManager,
             callContext,
@@ -1014,7 +1014,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     final String tableLocation = "s3://externally-owned-bucket/table/";
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
 
     Namespace namespace = Namespace.of("parent", "child1");
 
@@ -1060,7 +1060,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     final String tableLocation = "s3://externally-owned-bucket/table/";
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
 
     Namespace namespace = Namespace.of("parent", "child1");
 
@@ -1113,7 +1113,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     // The location of the metadata JSON file specified in the update will be forbidden.
     final String tableLocation = "s3://forbidden-table-location/table/";
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
 
     Namespace namespace = Namespace.of("parent", "child1");
 
@@ -1159,7 +1159,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     final String tableLocation = "s3://externally-owned-bucket/table/";
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
 
     Namespace namespace = Namespace.of("parent", "child1");
     TableIdentifier table = TableIdentifier.of(namespace, "table");
@@ -1224,7 +1224,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     final String tableLocation = "s3://externally-owned-bucket/table/";
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
 
     Namespace namespace = Namespace.of("parent", "child1");
 
@@ -1273,7 +1273,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     final String tableLocation = "s3://externally-owned-bucket/table/";
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
 
     Namespace namespace = Namespace.of("parent", "child1");
     TableIdentifier table = TableIdentifier.of(namespace, "table");
@@ -1308,7 +1308,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     final String tableLocation = "s3://externally-owned-bucket/table/";
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
 
     Namespace namespace = Namespace.of("parent", "child1");
 
@@ -1354,7 +1354,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     final String tableLocation = "s3://externally-owned-bucket/table/";
     final String tableMetadataLocation = tableLocation + "metadata/v1.metadata.json";
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
 
     Namespace namespace = Namespace.of("parent", "child1");
 
@@ -1477,8 +1477,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, noPurgeCatalogName);
-    BasePolarisCatalog noPurgeCatalog =
-        new BasePolarisCatalog(
+    PolarisIcebergCatalog noPurgeCatalog =
+        new PolarisIcebergCatalog(
             entityManager,
             metaStoreManager,
             callContext,
@@ -1535,7 +1535,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   @ParameterizedTest
   @MethodSource
   public void testRetriableException(Exception exception, boolean shouldRetry) {
-    Assertions.assertThat(BasePolarisCatalog.SHOULD_RETRY_REFRESH_PREDICATE.test(exception))
+    Assertions.assertThat(PolarisIcebergCatalog.SHOULD_RETRY_REFRESH_PREDICATE.test(exception))
         .isEqualTo(shouldRetry);
   }
 
@@ -1585,8 +1585,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             new RealmEntityManagerFactory(createMockMetaStoreManagerFactory()),
             managerFactory,
             configurationStore);
-    BasePolarisCatalog catalog =
-        new BasePolarisCatalog(
+    PolarisIcebergCatalog catalog =
+        new PolarisIcebergCatalog(
             entityManager,
             metaStoreManager,
             callContext,
@@ -1658,7 +1658,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
   @Test
   public void testRegisterTableWithSlashlessMetadataLocation() {
-    BasePolarisCatalog catalog = catalog();
+    PolarisIcebergCatalog catalog = catalog();
     Assertions.assertThatThrownBy(
             () -> catalog.registerTable(TABLE, "metadata_location_without_slashes"))
         .isInstanceOf(IllegalArgumentException.class)
@@ -1682,8 +1682,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, CATALOG_NAME);
-    final BasePolarisCatalog catalog =
-        new BasePolarisCatalog(
+    final PolarisIcebergCatalog catalog =
+        new PolarisIcebergCatalog(
             entityManager,
             spyMetaStore,
             callContext,
@@ -1730,8 +1730,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, CATALOG_NAME);
-    final BasePolarisCatalog catalog =
-        new BasePolarisCatalog(
+    final PolarisIcebergCatalog catalog =
+        new PolarisIcebergCatalog(
             entityManager,
             spyMetaStore,
             callContext,

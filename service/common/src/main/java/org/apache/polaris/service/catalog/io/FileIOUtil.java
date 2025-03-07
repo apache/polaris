@@ -31,7 +31,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.service.catalog.BasePolarisCatalog;
+import org.apache.polaris.service.catalog.PolarisIcebergCatalog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +69,7 @@ public class FileIOUtil {
    * <p>Use cases:
    *
    * <ul>
-   *   <li>In {@link BasePolarisCatalog}, subscoped credentials are generated or refreshed when the
+   *   <li>In {@link PolarisIcebergCatalog}, subscoped credentials are generated or refreshed when the
    *       client sends a loadTable request to vend credentials.
    *   <li>In {@link DefaultFileIOFactory}, subscoped credentials are obtained to access the storage
    *       and read/write metadata JSON files.
