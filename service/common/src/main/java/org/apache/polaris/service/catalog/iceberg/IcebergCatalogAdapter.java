@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
@@ -68,6 +68,7 @@ import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
@@ -165,9 +166,9 @@ public class IcebergCatalogAdapter
   private Response withCatalog(
       SecurityContext securityContext,
       String prefix,
-      Function<PolarisCatalogHandlerWrapper, Response> action) {
+      Function<IcebergCatalogHandlerWrapper, Response> action) {
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
-    try (PolarisCatalogHandlerWrapper wrapper =
+    try (IcebergCatalogHandlerWrapper wrapper =
         newHandlerWrapper(realmContext, securityContext, catalogName)) {
       return action.apply(wrapper);
     } catch (RuntimeException e) {
@@ -179,7 +180,7 @@ public class IcebergCatalogAdapter
     }
   }
 
-  private PolarisCatalogHandlerWrapper newHandlerWrapper(
+  private IcebergCatalogHandlerWrapper newHandlerWrapper(
       RealmContext realmContext, SecurityContext securityContext, String catalogName) {
     AuthenticatedPolarisPrincipal authenticatedPrincipal =
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
@@ -187,7 +188,7 @@ public class IcebergCatalogAdapter
       throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
     }
 
-    return new PolarisCatalogHandlerWrapper(
+    return new IcebergCatalogHandlerWrapper(
         callContext,
         entityManager,
         metaStoreManager,
@@ -421,7 +422,7 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
-    if (PolarisCatalogHandlerWrapper.isCreate(commitTableRequest)) {
+    if (IcebergCatalogHandlerWrapper.isCreate(commitTableRequest)) {
       return Response.ok(
               newHandlerWrapper(realmContext, securityContext, prefix)
                   .updateTableForStagedCreate(tableIdentifier, commitTableRequest))

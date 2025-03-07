@@ -31,7 +31,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.service.catalog.PolarisIcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.PolarisIcebergCatalog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

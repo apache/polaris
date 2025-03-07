@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
@@ -92,6 +92,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
@@ -112,8 +113,8 @@ import org.slf4j.LoggerFactory;
  * model objects used in this layer to still benefit from the shared implementation of
  * authorization-aware catalog protocols.
  */
-public class PolarisCatalogHandlerWrapper implements AutoCloseable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisCatalogHandlerWrapper.class);
+public class IcebergCatalogHandlerWrapper implements AutoCloseable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandlerWrapper.class);
 
   private final CallContext callContext;
   private final PolarisEntityManager entityManager;
@@ -133,7 +134,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   private SupportsNamespaces namespaceCatalog = null;
   private ViewCatalog viewCatalog = null;
 
-  public PolarisCatalogHandlerWrapper(
+  public IcebergCatalogHandlerWrapper(
       CallContext callContext,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
