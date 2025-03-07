@@ -53,12 +53,15 @@ val policyManagementModels =
       "CreatePolicyRequest",
       "EntityIdentifier",
       "LoadPolicyResponse",
+      "PolicyIdentifier",
       "NamespaceIdentifier",
       "Policy",
       "SetPolicyRequest",
       "TableLikeIdentifier",
       "UnsetPolicyRequest",
       "UpdatePolicyRequest",
+      "GetApplicablePoliciesResponse",
+      "ListPoliciesResponse",
     )
     .joinToString(",")
 
@@ -82,6 +85,7 @@ openApiGenerate {
   configOptions.put("useJakartaEe", "true")
   configOptions.put("generateBuilders", "true")
   configOptions.put("generateConstructorWithAllArgs", "true")
+  configOptions.put("openApiNullable", "false")
   openapiNormalizer.put("REFACTOR_ALLOF_WITH_PROPERTIES_ONLY", "true")
   additionalProperties.put("apiNamePrefix", "PolarisRest")
   additionalProperties.put("apiNameSuffix", "")
