@@ -174,7 +174,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
     entity = prepareToPersistNewEntity(callCtx, ms, entity);
 
     // write it
-    ms.writeEntity(callCtx, entity, true, null);
+    ms.writeEntityAtomically(callCtx, entity, true, null);
   }
 
   /**
@@ -259,7 +259,7 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
         prepareToPersistEntityAfterChange(callCtx, ms, entity, nameOrParentChanged, originalEntity);
 
     // persist it to the various slices
-    ms.writeEntity(callCtx, entity, nameOrParentChanged, originalEntity);
+    ms.writeEntityAtomically(callCtx, entity, nameOrParentChanged, originalEntity);
 
     // return it
     return entity;
@@ -271,6 +271,6 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
     // get meta store we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
-    return new GenerateEntityIdResult(ms.generateNewId(callCtx));
+    return new GenerateEntityIdResult(ms.generateNewIdAtomically(callCtx));
   }
 }
