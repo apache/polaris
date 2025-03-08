@@ -62,7 +62,6 @@ import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.UpdateSchema;
 import org.apache.iceberg.catalog.CatalogTests;
 import org.apache.iceberg.catalog.Namespace;
-import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
@@ -153,6 +152,8 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
           "true",
           "polaris.features.defaults.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
           "true",
+          "polaris.features.defaults.\"ALLOW_OVERLAPPING_CATALOG_URLS\"",
+          "true",
           "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\"]");
     }
@@ -177,7 +178,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   private BasePolarisCatalog catalog;
   private CallContext callContext;
   private AwsStorageConfigInfo storageConfigModel;
-  private StsClient stsClient;
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
   private PolarisCallContext polarisContext;
@@ -241,32 +241,6 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             securityContext,
             new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
 
-    String storageLocation = "s3://my-bucket/path/to/data";
-    storageConfigModel =
-        AwsStorageConfigInfo.builder()
-            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
-            .setExternalId("externalId")
-            .setUserArn("aws::a:user:arn")
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
-            .build();
-    catalogEntity =
-        adminService.createCatalog(
-            new CatalogEntity.Builder()
-                .setName(CATALOG_NAME)
-                .setDefaultBaseLocation(storageLocation)
-                .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-                .addProperty(
-                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
-                .build());
-
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            callContext, entityManager, securityContext, CATALOG_NAME);
-    TaskExecutor taskExecutor = Mockito.mock();
     RealmEntityManagerFactory realmEntityManagerFactory =
         new RealmEntityManagerFactory(createMockMetaStoreManagerFactory());
     this.fileIOFactory =
@@ -289,19 +263,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
-    this.catalog =
-        new BasePolarisCatalog(
-            entityManager,
-            metaStoreManager,
-            callContext,
-            passthroughView,
-            securityContext,
-            taskExecutor,
-            fileIOFactory);
-    this.catalog.initialize(
-        CATALOG_NAME,
-        ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    this.catalog = initCatalog(CATALOG_NAME, ImmutableMap.of());
   }
 
   @AfterEach
@@ -313,6 +275,52 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   @Override
   protected BasePolarisCatalog catalog() {
     return catalog;
+  }
+
+  @Override
+  protected BasePolarisCatalog initCatalog(
+      String catalogName, Map<String, String> additionalProperties) {
+    String storageLocation = "s3://my-bucket/path/to/data";
+    storageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setExternalId("externalId")
+            .setUserArn("aws::a:user:arn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
+            .build();
+    catalogEntity =
+        adminService.createCatalog(
+            new CatalogEntity.Builder()
+                .setName(catalogName)
+                .setDefaultBaseLocation(storageLocation)
+                .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+                .addProperty(
+                    PolarisConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                .addProperty(
+                    PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                .build());
+    PolarisPassthroughResolutionView passthroughView =
+        new PolarisPassthroughResolutionView(
+            callContext, entityManager, securityContext, catalogName);
+    TaskExecutor taskExecutor = Mockito.mock();
+    BasePolarisCatalog basePolarisCatalog =
+        new BasePolarisCatalog(
+            entityManager,
+            metaStoreManager,
+            callContext,
+            passthroughView,
+            securityContext,
+            taskExecutor,
+            fileIOFactory);
+
+    ImmutableMap.Builder<String, String> propertiesBuilder =
+        ImmutableMap.<String, String>builder()
+            .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
+            .putAll(additionalProperties);
+    basePolarisCatalog.initialize(catalogName, propertiesBuilder.buildKeepingLast());
+    return basePolarisCatalog;
   }
 
   @Override
@@ -368,6 +376,42 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         throw new NotImplementedException("Purging realms is not supported");
       }
     };
+  }
+
+  @Test
+  @Override
+  public void listNamespacesWithEmptyNamespace() {
+    // TODO: remove this override test once Polaris handles empty namespaces the same as the
+    // superclass expectation.
+    Assumptions.assumeTrue(supportsEmptyNamespace());
+    super.listNamespacesWithEmptyNamespace();
+  }
+
+  @Test
+  @Override
+  public void createAndDropEmptyNamespace() {
+    // Skip this test because AssertJ's Assumptions.assumeThat() is not compatible with Quarkus.
+    // This test can be removed once Quarkus supports AssertJ or Polaris supports empty namespaces.
+    Assumptions.assumeTrue(supportsEmptyNamespace());
+    super.createAndDropEmptyNamespace();
+  }
+
+  @Test
+  @Override
+  public void namespacePropertiesOnEmptyNamespace() {
+    // Skip this test because AssertJ's Assumptions.assumeThat() is not compatible with Quarkus.
+    // This test can be removed once Quarkus supports AssertJ or Polaris supports empty namespaces.
+    Assumptions.assumeTrue(supportsEmptyNamespace());
+    super.namespacePropertiesOnEmptyNamespace();
+  }
+
+  @Test
+  @Override
+  public void listTablesInEmptyNamespace() {
+    // Skip this test because AssertJ's Assumptions.assumeThat() is not compatible with Quarkus.
+    // This test can be removed once Quarkus supports AssertJ or Polaris supports empty namespaces.
+    Assumptions.assumeTrue(supportsEmptyNamespace());
+    super.listTablesInEmptyNamespace();
   }
 
   @Test
@@ -694,7 +738,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         TableMetadata.buildFromEmpty()
             .assignUUID()
             .setLocation(anotherTableLocation)
-            .addSchema(SCHEMA, 4)
+            .addSchema(SCHEMA)
             .addPartitionSpec(PartitionSpec.unpartitioned())
             .addSortOrder(SortOrder.unsorted())
             .build();
@@ -751,7 +795,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         TableMetadata.buildFromEmpty()
             .assignUUID()
             .setLocation(anotherTableLocation)
-            .addSchema(SCHEMA, 4)
+            .addSchema(SCHEMA)
             .addPartitionSpec(PartitionSpec.unpartitioned())
             .addSortOrder(SortOrder.unsorted())
             .build();
@@ -828,7 +872,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
         TableMetadata.buildFromEmpty()
             .assignUUID()
             .setLocation(anotherTableLocation)
-            .addSchema(SCHEMA, 4)
+            .addSchema(SCHEMA)
             .addPartitionSpec(PartitionSpec.unpartitioned())
             .addSortOrder(SortOrder.unsorted())
             .build();
@@ -1398,7 +1442,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
   @Override
   public void testDropTableWithPurge() {
     if (this.requiresNamespaceCreate()) {
-      ((SupportsNamespaces) catalog).createNamespace(NS);
+      catalog.createNamespace(NS);
     }
 
     Assertions.assertThatPredicate(catalog::tableExists)
@@ -1492,7 +1536,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
 
     if (this.requiresNamespaceCreate()) {
-      ((SupportsNamespaces) noPurgeCatalog).createNamespace(NS);
+      noPurgeCatalog.createNamespace(NS);
     }
 
     Assertions.assertThatPredicate(noPurgeCatalog::tableExists)
