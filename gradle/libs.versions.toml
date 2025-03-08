@@ -40,7 +40,7 @@ antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.strictly = "4.9.
 assertj-core = { module = "org.assertj:assertj-core", version = "3.27.3" }
 auth0-jwt = { module = "com.auth0:java-jwt", version = "4.5.0" }
 awssdk-bom = { module = "software.amazon.awssdk:bom", version = "2.30.31" }
-azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.31" }
+azuresdk-bom = { module = "com.azure:azure-sdk-bom", version = "1.2.32" }
 bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version = "1.80" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.0" }
 commons-codec1 = { module = "commons-codec:commons-codec", version = "1.18.0" }
@@ -74,8 +74,8 @@ jetbrains-annotations = { module = "org.jetbrains:annotations", version = "26.0.
 junit-bom = { module = "org.junit:junit-bom", version = "5.12.0" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.17" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.14.4" }
-mockito-core = { module = "org.mockito:mockito-core", version = "5.15.2" }
-mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.15.2" }
+mockito-core = { module = "org.mockito:mockito-core", version = "5.16.0" }
+mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.16.0" }
 opentelemetry-bom = { module = "io.opentelemetry:opentelemetry-bom", version = "1.47.0" }
 opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.30.0" }
 picocli = { module = "info.picocli:picocli-codegen", version.ref = "picocli" }
@@ -93,7 +93,7 @@ spark35-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version.ref
 spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version = "4.9.2" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
-testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.20.5" }
+testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.20.6" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
 
 [plugins]

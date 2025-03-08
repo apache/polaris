@@ -24,8 +24,10 @@ import com.azure.core.exception.AzureException;
 import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.apache.iceberg.exceptions.RuntimeIOException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -37,7 +39,11 @@ public class IcebergExceptionMapperTest {
     Map<Integer, Integer> cloudCodeMappings =
         Map.of(
             // Map of HTTP code returned from a cloud provider to the HTTP code Polaris is expected
-            // to return
+            // to return. We create a test case for each of these mappings for each cloud provider.
+            // We also create a test case for cloud provider exceptions wrapped as
+            // RuntimeIOExceptions,
+            // which is what the Iceberg SDK sometimes wraps them with if the error happens during
+            // IO.
             302, 422,
             400, 400,
             401, 403,
@@ -61,14 +67,26 @@ public class IcebergExceptionMapperTest {
             .flatMap(
                 entry ->
                     Stream.of(
-                        Arguments.of(
-                            new HttpResponseException(
-                                "", new FakeAzureHttpResponse(entry.getKey()), ""),
-                            entry.getValue()),
-                        Arguments.of(
-                            S3Exception.builder().message("").statusCode(entry.getKey()).build(),
-                            entry.getValue()),
-                        Arguments.of(new StorageException(entry.getKey(), ""), entry.getValue()))));
+                            Arguments.of(
+                                new HttpResponseException(
+                                    "", new FakeAzureHttpResponse(entry.getKey()), ""),
+                                entry.getValue()),
+                            Arguments.of(
+                                S3Exception.builder()
+                                    .message("")
+                                    .statusCode(entry.getKey())
+                                    .build(),
+                                entry.getValue()),
+                            Arguments.of(
+                                new StorageException(entry.getKey(), ""), entry.getValue()))
+                        .flatMap(
+                            args ->
+                                Stream.of(
+                                    args,
+                                    Arguments.of(
+                                        new RuntimeIOException(
+                                            new IOException((Throwable) args.get()[0])),
+                                        args.get()[1])))));
   }
 
   @ParameterizedTest
