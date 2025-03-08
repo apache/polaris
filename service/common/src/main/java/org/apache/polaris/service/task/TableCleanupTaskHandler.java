@@ -231,9 +231,9 @@ public class TableCleanupTaskHandler implements TaskHandler {
                   .setName(taskName)
                   .setId(metaStoreManager.generateNewEntityId(polarisCallContext).getId())
                   .setCreateTimestamp(polarisCallContext.getClock().millis())
-                  .withTaskType(AsyncTaskType.METADATA_FILE_BATCH_CLEANUP)
+                  .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
                   .withData(
-                      new ManifestFileCleanupTaskHandler.ManifestCleanupTask(
+                      new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
                           tableEntity.getTableIdentifier(), metadataBatch))
                   .setInternalProperties(cleanupTask.getInternalPropertiesAsMap())
                   .build();
