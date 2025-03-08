@@ -19,20 +19,18 @@
 package org.apache.polaris.core.storage.azure;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
+import org.apache.polaris.core.PolarisConfiguration;
+import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Azure storage configuration information. */
 public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
-  // technically there is no limitation since expectation for Azure locations are for the same
-  // storage account and same container
-  @JsonIgnore private static final int MAX_ALLOWED_LOCATIONS = 20;
 
   // Azure tenant id
   private final @Nonnull String tenantId;
@@ -52,7 +50,9 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
       @JsonProperty(value = "tenantId", required = true) @Nonnull String tenantId) {
     super(StorageType.AZURE, allowedLocations);
     this.tenantId = tenantId;
-    validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
+    validateMaxAllowedLocations(
+        PolarisConfigurationStore.getConfiguration(
+            PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
   }
 
   @Override

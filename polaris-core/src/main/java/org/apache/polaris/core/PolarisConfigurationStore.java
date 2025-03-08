@@ -23,6 +23,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 
 /**
@@ -92,8 +93,12 @@ public interface PolarisConfigurationStore {
    * @param <T> the type of the configuration value
    */
   default <T> @Nonnull T getConfiguration(PolarisCallContext ctx, PolarisConfiguration<T> config) {
-    T result = getConfiguration(ctx, config.key, config.defaultValue);
-    return tryCast(config, result);
+    if (ctx == null) {
+      return config.defaultValue;
+    } else {
+      T result = getConfiguration(ctx, config.key, config.defaultValue);
+      return tryCast(config, result);
+    }
   }
 
   /**
@@ -115,6 +120,18 @@ public interface PolarisConfigurationStore {
       return tryCast(config, catalogEntity.getPropertiesAsMap().get(config.catalogConfig()));
     } else {
       return getConfiguration(ctx, config);
+    }
+  }
+
+  public static <T> @Nonnull T getConfiguration(PolarisConfiguration<T> configuration) {
+    CallContext callContext = CallContext.getCurrentContext();
+    if (callContext == null) {
+      return configuration.defaultValue;
+    } else {
+      return callContext
+          .getPolarisCallContext()
+          .getConfigurationStore()
+          .getConfiguration(callContext.getPolarisCallContext(), configuration);
     }
   }
 }
