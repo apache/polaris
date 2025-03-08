@@ -18,10 +18,6 @@
  */
 package org.apache.polaris.core.persistence.transactional;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonMappingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -59,7 +55,6 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
-import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
@@ -77,77 +72,32 @@ import org.slf4j.LoggerFactory;
 public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisMetaStoreManagerImpl.class);
 
-  /** mapper, allows to serialize/deserialize properties to/from JSON */
-  private static final ObjectMapper MAPPER = new ObjectMapper();
-
   /**
-   * Persist the specified new entity. Persist will write this entity in the ENTITIES, in the
-   * ENTITIES_ACTIVE and finally in the ENTITIES_CHANGE_TRACKING tables
+   * A version of BaseMetaStoreManager::persistNewEntity but instead of calling the one-shot
+   * immediate-peristence APIs of BasePersistence, expects to be run under an outer
+   * runInTransaction, and calls through to analogous versions of * methods of
+   * TransactionalPersistence.
    *
    * @param callCtx call context
    * @param ms meta store in read/write mode
-   * @param entity entity we need a DPO for
+   * @param entity entity we need a new persisted record for
    */
-  private void persistNewEntity(
+  protected void persistNewEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisBaseEntity entity) {
-
-    // validate the entity type and subtype
-    callCtx.getDiagServices().checkNotNull(entity, "unexpected_null_entity");
-    callCtx
-        .getDiagServices()
-        .checkNotNull(entity.getName(), "unexpected_null_name", "entity={}", entity);
-    PolarisEntityType type = PolarisEntityType.fromCode(entity.getTypeCode());
-    callCtx.getDiagServices().checkNotNull(type, "unknown_type", "entity={}", entity);
-    PolarisEntitySubType subType = PolarisEntitySubType.fromCode(entity.getSubTypeCode());
-    callCtx.getDiagServices().checkNotNull(subType, "unexpected_null_subType", "entity={}", entity);
-    callCtx
-        .getDiagServices()
-        .check(
-            subType.getParentType() == null || subType.getParentType() == type,
-            "invalid_subtype",
-            "type={} subType={}",
-            type,
-            subType);
-
-    // if top-level entity, its parent should be the account
-    callCtx
-        .getDiagServices()
-        .check(
-            !type.isTopLevel() || entity.getParentId() == PolarisEntityConstants.getRootEntityId(),
-            "top_level_parent_should_be_account",
-            "entity={}",
-            entity);
-
-    // id should not be null
-    callCtx
-        .getDiagServices()
-        .check(
-            entity.getId() != 0 || type == PolarisEntityType.ROOT,
-            "id_not_set",
-            "entity={}",
-            entity);
-
-    // creation timestamp must be filled
-    callCtx.getDiagServices().check(entity.getCreateTimestamp() != 0, "null_create_timestamp");
-
-    // this is the first change
-    entity.setLastUpdateTimestamp(entity.getCreateTimestamp());
-
-    // set all other timestamps to 0
-    entity.setDropTimestamp(0);
-    entity.setPurgeTimestamp(0);
-    entity.setToPurgeTimestamp(0);
+    // Invoke shared logic for validation and filling out remaining fields.
+    entity = prepareToPersistNewEntity(callCtx, ms, entity);
 
     // write it
     ms.writeEntity(callCtx, entity, true, null);
   }
 
   /**
-   * Persist the specified entity after it has been changed. We will update the last changed time,
-   * increment the entity version and persist it back to the ENTITIES and ENTITIES_CHANGE_TRACKING
-   * tables
+   * A version of BaseMetaStoreManager::persistEntityAfterChange but instead of calling the one-shot
+   * immediate-peristence APIs of BasePersistence, expects to be run under an outer
+   * runInTransaction, and calls through to analogous versions of * methods of
+   * TransactionalPersistence.
    *
    * @param callCtx call context
    * @param ms meta store
@@ -162,48 +112,12 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
       @Nonnull PolarisBaseEntity originalEntity) {
+    // Invoke shared logic for validation and updating expected fields.
+    entity =
+        prepareToPersistEntityAfterChange(callCtx, ms, entity, nameOrParentChanged, originalEntity);
 
-    // validate the entity type and subtype
-    callCtx.getDiagServices().checkNotNull(entity, "unexpected_null_entity");
-    callCtx
-        .getDiagServices()
-        .checkNotNull(entity.getName(), "unexpected_null_name", "entity={}", entity);
-    PolarisEntityType type = entity.getType();
-    callCtx.getDiagServices().checkNotNull(type, "unexpected_null_type", "entity={}", entity);
-    PolarisEntitySubType subType = entity.getSubType();
-    callCtx.getDiagServices().checkNotNull(subType, "unexpected_null_subType", "entity={}", entity);
-    callCtx
-        .getDiagServices()
-        .check(
-            subType.getParentType() == null || subType.getParentType() == type,
-            "invalid_subtype",
-            "type={} subType={} entity={}",
-            type,
-            subType,
-            entity);
-
-    // entity should not have been dropped
-    callCtx
-        .getDiagServices()
-        .check(entity.getDropTimestamp() == 0, "entity_dropped", "entity={}", entity);
-
-    // creation timestamp must be filled
-    long createTimestamp = entity.getCreateTimestamp();
-    callCtx
-        .getDiagServices()
-        .check(createTimestamp != 0, "null_create_timestamp", "entity={}", entity);
-
-    // ensure time is not moving backward...
-    long now = System.currentTimeMillis();
-    if (now < entity.getCreateTimestamp()) {
-      now = entity.getCreateTimestamp() + 1;
-    }
-
-    // update last update timestamp and increment entity version
-    entity.setLastUpdateTimestamp(now);
-    entity.setEntityVersion(entity.getEntityVersion() + 1);
-
-    // persist it to the various slices
+    // Use the write method defined in TransactionalPersistence which expects an
+    // existing runInTransaction to already be in-place.
     ms.writeEntity(callCtx, entity, nameOrParentChanged, originalEntity);
 
     // return it
@@ -763,55 +677,6 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     // run operation in a read transaction
     return ms.runInReadTransaction(
         callCtx, () -> listEntities(callCtx, ms, catalogPath, entityType, entitySubType));
-  }
-
-  /** {@inheritDoc} */
-  @Override
-  public @Nonnull GenerateEntityIdResult generateNewEntityId(@Nonnull PolarisCallContext callCtx) {
-    // get meta store we should be using
-    TransactionalPersistence ms = callCtx.getMetaStore();
-
-    return new GenerateEntityIdResult(ms.generateNewId(callCtx));
-  }
-
-  /**
-   * Given the internal property as a map of key/value pairs, serialize it to a String
-   *
-   * @param properties a map of key/value pairs
-   * @return a String, the JSON representation of the map
-   */
-  public String serializeProperties(PolarisCallContext callCtx, Map<String, String> properties) {
-
-    String jsonString = null;
-    try {
-      // Deserialize the JSON string to a Map<String, String>
-      jsonString = MAPPER.writeValueAsString(properties);
-    } catch (JsonProcessingException ex) {
-      callCtx.getDiagServices().fail("got_json_processing_exception", "ex={}", ex);
-    }
-
-    return jsonString;
-  }
-
-  /**
-   * Given the serialized properties, deserialize those to a {@code Map<String, String>}
-   *
-   * @param properties a JSON string representing the set of properties
-   * @return a Map of string
-   */
-  public Map<String, String> deserializeProperties(PolarisCallContext callCtx, String properties) {
-
-    Map<String, String> retProperties = null;
-    try {
-      // Deserialize the JSON string to a Map<String, String>
-      retProperties = MAPPER.readValue(properties, new TypeReference<>() {});
-    } catch (JsonMappingException ex) {
-      callCtx.getDiagServices().fail("got_json_mapping_exception", "ex={}", ex);
-    } catch (JsonProcessingException ex) {
-      callCtx.getDiagServices().fail("got_json_processing_exception", "ex={}", ex);
-    }
-
-    return retProperties;
   }
 
   /** {@link #createPrincipal(PolarisCallContext, PolarisBaseEntity)} */
@@ -1464,7 +1329,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     if (cleanup) {
       PolarisBaseEntity taskEntity =
           new PolarisEntity.Builder()
-              .setId(generateNewEntityId(callCtx).getId())
+              .setId(ms.generateNewId(callCtx))
               .setCatalogId(0L)
               .setName("entityCleanup_" + entityToDrop.getId())
               .setType(PolarisEntityType.TASK)
