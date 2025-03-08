@@ -20,7 +20,6 @@ package org.apache.polaris.service.quarkus.config;
 
 import io.quarkus.runtime.annotations.StaticInitSafe;
 import io.smallrye.config.ConfigMapping;
-import io.smallrye.config.WithParentName;
 import java.util.Map;
 import org.apache.polaris.service.config.FeaturesConfiguration;
 
@@ -32,11 +31,5 @@ public interface QuarkusFeaturesConfiguration extends FeaturesConfiguration {
   Map<String, String> defaults();
 
   @Override
-  Map<String, QuarkusRealmOverrides> realmOverrides();
-
-  interface QuarkusRealmOverrides extends RealmOverrides {
-    @WithParentName
-    @Override
-    Map<String, String> overrides();
-  }
+  Map<String, FeaturesConfiguration.RealmOverrides> realmOverrides();
 }

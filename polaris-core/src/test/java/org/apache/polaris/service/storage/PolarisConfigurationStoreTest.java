@@ -21,8 +21,8 @@ package org.apache.polaris.service.storage;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfiguration;
-import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.config.PolarisConfiguration;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -91,6 +91,6 @@ public class PolarisConfigurationStoreTest {
         .key(key)
         .description("")
         .defaultValue(defaultValue)
-        .build();
+        .buildFeatureConfiguration();
   }
 }

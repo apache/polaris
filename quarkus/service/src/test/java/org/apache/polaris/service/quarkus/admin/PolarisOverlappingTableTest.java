@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.service.quarkus.admin;
 
-import static org.apache.polaris.core.PolarisConfiguration.ALLOW_TABLE_LOCATION_OVERLAP;
-import static org.apache.polaris.core.PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION;
+import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP;
+import static org.apache.polaris.core.config.FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION;
 import static org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase.SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 
