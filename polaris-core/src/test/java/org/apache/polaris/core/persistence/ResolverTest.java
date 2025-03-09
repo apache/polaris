@@ -45,7 +45,7 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.cache.EntityCache;
-import org.apache.polaris.core.persistence.dao.PolarisMetastoreManagerDao;
+import org.apache.polaris.core.persistence.dao.PolarisDaoManager;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.resolver.Resolver;
@@ -118,7 +118,7 @@ public class ResolverTest {
     store = new PolarisTreeMapStore(diagServices);
     metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(metaStore, diagServices);
-    metaStoreManager = new PolarisMetastoreManagerDao();
+    metaStoreManager = new PolarisDaoManager();
 
     // bootstrap the mata store with our test schema
     tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);

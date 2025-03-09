@@ -42,7 +42,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
-import org.apache.polaris.core.persistence.dao.PolarisMetastoreManagerDao;
+import org.apache.polaris.core.persistence.dao.PolarisDaoManager;
 import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
@@ -108,7 +108,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
         // layer, below the DAO layer, and ideally shouldn't directly invoke DAO classes. The change
         // is temporarily for refactor verification purposes.
         // We should identify a cleaner testing strategy moving forward.
-        new PolarisMetastoreManagerDao(),
+        new PolarisDaoManager(),
         new PolarisCallContext(
             session,
             diagServices,

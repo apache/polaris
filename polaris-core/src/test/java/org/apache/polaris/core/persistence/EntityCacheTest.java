@@ -33,7 +33,7 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.cache.EntityCacheByNameKey;
 import org.apache.polaris.core.persistence.cache.EntityCacheLookupResult;
-import org.apache.polaris.core.persistence.dao.PolarisMetastoreManagerDao;
+import org.apache.polaris.core.persistence.dao.PolarisDaoManager;
 import org.apache.polaris.core.persistence.transactional.PolarisTreeMapMetaStoreSessionImpl;
 import org.apache.polaris.core.persistence.transactional.PolarisTreeMapStore;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
@@ -89,7 +89,7 @@ public class EntityCacheTest {
     store = new PolarisTreeMapStore(diagServices);
     metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(metaStore, diagServices);
-    metaStoreManager = new PolarisMetastoreManagerDao();
+    metaStoreManager = new PolarisDaoManager();
 
     // bootstrap the mata store with our test schema
     tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);

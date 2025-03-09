@@ -29,7 +29,7 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.core.persistence.BaseMetaStoreManager;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
@@ -55,13 +55,13 @@ import org.apache.polaris.core.persistence.transactional.FdbTaskDaoImpl;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-/** This class servers as a bridge so that we defer the business logic refactor */
-public class PolarisMetastoreManagerDao extends BaseMetaStoreManager {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisMetastoreManagerDao.class);
-
+/**
+ * This class acts as a temporary bridge to defer refactoring of business logic. It currently
+ * implements PolarisMetaStoreManager, but it is no longer be necessary after refactoring.
+ * Post-refactor, callers can directly interact with individual DAO objects as needed.
+ */
+public class PolarisDaoManager implements PolarisMetaStoreManager {
   // TODO, using factory or CDI to create following instances, so that the implementation can be
   // injected.
   FdbCatalogDaoImpl catalogDao = new FdbCatalogDaoImpl();

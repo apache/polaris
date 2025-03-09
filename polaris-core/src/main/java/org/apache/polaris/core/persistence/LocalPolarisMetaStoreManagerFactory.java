@@ -36,7 +36,7 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
-import org.apache.polaris.core.persistence.dao.PolarisMetastoreManagerDao;
+import org.apache.polaris.core.persistence.dao.PolarisDaoManager;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
@@ -94,7 +94,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
         realmContext.getRealmIdentifier(),
         () -> createMetaStoreSession(backingStore, realmContext, rootCredentialsSet, diagnostics));
 
-    PolarisMetaStoreManager metaStoreManager = new PolarisMetastoreManagerDao();
+    PolarisMetaStoreManager metaStoreManager = new PolarisDaoManager();
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 
