@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence.transactional;
 
+import static org.apache.polaris.core.entity.PolarisEntitySubType.ANY_SUBTYPE;
 import static org.apache.polaris.core.entity.PolarisEntityType.TASK;
 
 import java.util.List;
@@ -29,17 +30,40 @@ import org.apache.polaris.core.persistence.dao.TaskDao;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class FdbTaskDaoImpl implements TaskDao {
   PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
+  @Override
+  public @NotNull EntityResult readEntityByName(
+      @NotNull PolarisCallContext callCtx, @NotNull String name) {
+    // Task shouldn't have a catalog path and subtype
+    return metaStoreManager.readEntityByName(callCtx, null, TASK, ANY_SUBTYPE, name);
+  }
+
+  @NotNull
+  @Override
+  public ListEntitiesResult listEntities(@NotNull PolarisCallContext callCtx) {
+    return metaStoreManager.listEntities(callCtx, null, TASK, ANY_SUBTYPE);
+  }
+
   @NotNull
   @Override
   public EntitiesResult loadTasks(
       @NotNull PolarisCallContext callCtx, String executorId, int limit) {
     return metaStoreManager.loadTasks(callCtx, executorId, limit);
+  }
+
+  @NotNull
+  @Override
+  public EntityResult createEntityIfNotExists(
+      @NotNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NotNull PolarisBaseEntity entity) {
+    return metaStoreManager.createEntityIfNotExists(callCtx, catalogPath, entity);
   }
 
   @NotNull

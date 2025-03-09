@@ -28,10 +28,24 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
+import org.jetbrains.annotations.NotNull;
 
 public interface TaskDao {
+  @NotNull
+  EntityResult readEntityByName(@NotNull PolarisCallContext callCtx, @NotNull String name);
+
+  @Nonnull
+  ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx);
+
   @Nonnull
   EntitiesResult loadTasks(@Nonnull PolarisCallContext callCtx, String executorId, int limit);
+
+  @Nonnull
+  EntityResult createEntityIfNotExists(
+      @Nonnull PolarisCallContext callCtx,
+      @jakarta.annotation.Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisBaseEntity entity);
 
   @Nonnull
   EntitiesResult createEntitiesIfNotExist(

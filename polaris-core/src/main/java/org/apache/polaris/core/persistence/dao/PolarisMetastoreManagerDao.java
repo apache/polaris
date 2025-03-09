@@ -109,6 +109,8 @@ public class PolarisMetastoreManagerDao extends BaseMetaStoreManager {
         return principalDao.readEntityByName(callCtx, name);
       case PRINCIPAL_ROLE:
         return principalRoleDao.readEntityByName(callCtx, name);
+      case TASK:
+        return taskDao.readEntityByName(callCtx, name);
       default:
         throw new IllegalArgumentException("Unknown entity type: " + entityType);
     }
@@ -134,6 +136,8 @@ public class PolarisMetastoreManagerDao extends BaseMetaStoreManager {
         return principalDao.listEntities(callCtx);
       case PRINCIPAL_ROLE:
         return principalRoleDao.listEntities(callCtx);
+      case TASK:
+        return taskDao.listEntities(callCtx);
       default:
         throw new IllegalArgumentException("Unknown entity type: " + entityType);
     }
@@ -176,6 +180,8 @@ public class PolarisMetastoreManagerDao extends BaseMetaStoreManager {
         return catalogRoleDao.createEntityIfNotExists(callCtx, catalogPath, entity);
       case PRINCIPAL_ROLE:
         return principalRoleDao.createEntityIfNotExists(callCtx, catalogPath, entity);
+      case TASK:
+        return taskDao.createEntityIfNotExists(callCtx, catalogPath, entity);
       default:
         throw new IllegalArgumentException("Unknown entity type: " + entity.getType());
     }
