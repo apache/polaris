@@ -179,7 +179,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
       case CATALOG_ROLE:
         return catalogRoleDao.createEntityIfNotExists(callCtx, catalogPath, entity);
       case PRINCIPAL_ROLE:
-        return principalRoleDao.createEntityIfNotExists(callCtx, catalogPath, entity);
+        return principalRoleDao.createEntityIfNotExists(callCtx, entity);
       case TASK:
         return taskDao.createEntityIfNotExists(callCtx, entity);
       default:
@@ -215,7 +215,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
       case PRINCIPAL:
         return principalDao.updateEntityPropertiesIfNotChanged(callCtx, entity);
       case PRINCIPAL_ROLE:
-        return principalRoleDao.updateEntityPropertiesIfNotChanged(callCtx, catalogPath, entity);
+        return principalRoleDao.updateEntityPropertiesIfNotChanged(callCtx, entity);
       default:
         throw new IllegalArgumentException("Unknown entity type: " + entity.getType());
     }
@@ -293,7 +293,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
       case PRINCIPAL:
         return principalDao.loadEntity(callCtx, entityId);
       case PRINCIPAL_ROLE:
-        return principalRoleDao.loadEntity(callCtx, entityCatalogId, entityId);
+        return principalRoleDao.loadEntity(callCtx, entityId);
       case TASK:
         return taskDao.loadEntity(callCtx, entityId);
       case NULL_TYPE:
@@ -335,7 +335,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
       case PRINCIPAL:
         return principalDao.loadResolvedEntityById(callCtx, entityId);
       case PRINCIPAL_ROLE:
-        return principalRoleDao.loadResolvedEntityById(callCtx, entityCatalogId, entityId);
+        return principalRoleDao.loadResolvedEntityById(callCtx, entityId);
       case CATALOG_ROLE:
         return catalogRoleDao.loadResolvedEntityById(callCtx, entityCatalogId, entityId);
       default:
@@ -361,8 +361,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
       case PRINCIPAL:
         return principalDao.loadResolvedEntityByName(callCtx, parentId, entityName);
       case PRINCIPAL_ROLE:
-        return principalRoleDao.loadResolvedEntityByName(
-            callCtx, entityCatalogId, parentId, entityName);
+        return principalRoleDao.loadResolvedEntityByName(callCtx, parentId, entityName);
       case ROOT:
         return commonDao.loadResolvedEntityByName(callCtx, entityCatalogId, parentId, entityName);
       case CATALOG:
@@ -399,7 +398,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
             callCtx, entityVersion, entityGrantRecordsVersion, entityId);
       case PRINCIPAL_ROLE:
         return principalRoleDao.refreshResolvedEntity(
-            callCtx, entityVersion, entityGrantRecordsVersion, entityCatalogId, entityId);
+            callCtx, entityVersion, entityGrantRecordsVersion, entityId);
       case CATALOG_ROLE:
         return catalogRoleDao.refreshResolvedEntity(
             callCtx, entityVersion, entityGrantRecordsVersion, entityCatalogId, entityId);

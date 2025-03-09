@@ -20,7 +20,6 @@ package org.apache.polaris.core.persistence.dao;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -39,38 +38,29 @@ public interface PrincipalRoleDao {
   EntityResult readEntityByName(@NotNull PolarisCallContext callCtx, @NotNull String name);
 
   @Nonnull
-  EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
+  EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long id);
 
   @Nonnull
-  ResolvedEntityResult loadResolvedEntityById(
-      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
+  ResolvedEntityResult loadResolvedEntityById(@Nonnull PolarisCallContext callCtx, long id);
 
   @Nonnull
   ResolvedEntityResult loadResolvedEntityByName(
-      @Nonnull PolarisCallContext callCtx,
-      long entityCatalogId,
-      long parentId,
-      @Nonnull String entityName);
+      @Nonnull PolarisCallContext callCtx, long parentId, @Nonnull String entityName);
 
   @Nonnull
   ResolvedEntityResult refreshResolvedEntity(
       @Nonnull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
-      long entityCatalogId,
       long entityId);
 
   @Nonnull
   EntityResult createEntityIfNotExists(
-      @Nonnull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisBaseEntity entity);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   @Nonnull
   EntityResult updateEntityPropertiesIfNotChanged(
-      @Nonnull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisBaseEntity entity);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   @Nonnull
   DropEntityResult dropEntityIfExists(
