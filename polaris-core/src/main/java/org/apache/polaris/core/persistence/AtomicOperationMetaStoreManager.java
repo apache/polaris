@@ -161,7 +161,19 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // creation timestamp must be filled
     callCtx.getDiagServices().check(entity.getDropTimestamp() == 0, "already_dropped");
 
-    // for now drop all associated grants, etc. synchronously
+    // Remove the main entity itself first-thing; once its id no longer resolves successfully
+    // it will be pruned out of any grant-record lookups anyways.
+    ms.deleteEntityAtomically(callCtx, entity);
+
+    // Best-effort cleanup - drop grant records, update grantRecordVersions for affected
+    // other entities.
+    // TODO: Support some more formal garbage-collection mechanism so that a garbage-collector
+    // doesn't have to "guess" at whether orphaned id links are garbage vs "newly allocated" ids
+    // that just haven't been fully committed yet. Potentially pre-populate a tombstone
+    // record that only behaves as a tombstone if the main entity is also verified to be
+    // gone; then garbage-collection looks for cleanup grants based on the tombstone and only
+    // removes the tombstone once cleanup is done; cleanup can occur incrementally.
+
     // delete ALL grant records to (if the entity is a grantee) and from that entity
     final List<PolarisGrantRecord> grantsOnGrantee =
         (entity.getType().isGrantee())
@@ -193,13 +205,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       entityGrantChanged.setGrantRecordsVersion(entityGrantChanged.getGrantRecordsVersion() + 1);
       ms.writeEntityAtomically(callCtx, entityGrantChanged, false, originalEntity);
     }
-
-    // TODO: Reorder so that the cleanup can be best-effort with async garbage-collection
-    // *after* entity-removal and/or expose bulk atomic cleanup methods that update both the
-    // grantRecords as well as entities
-
-    // remove the entity being dropped now
-    ms.deleteEntityAtomically(callCtx, entity);
 
     // if it is a principal, we also need to drop the secrets
     if (entity.getType() == PolarisEntityType.PRINCIPAL) {
@@ -284,7 +289,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     securableEntity.setGrantRecordsVersion(securableEntity.getGrantRecordsVersion() + 1);
     ms.writeEntityAtomically(callCtx, securableEntity, false, originalSecurableEntity);
 
-    // TODO: Reorder and/or expose bulk update of both grantRecordsVersions and grant records.
+    // TODO: Reorder and/or expose bulk update of both grantRecordsVersions and grant records. In
+    // the meantime, cache can be disabled or configured with a short enough expiry time to
+    // define an "eventual consistency" timeframe.
     // TODO: Figure out if it's actually necessary to separately validate whether the entities have
     // not changed, if we plan to include the compare-and-swap in the helper method that updates the
     // grantRecordsVersions already.
@@ -373,7 +380,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     refreshSecurable.setGrantRecordsVersion(refreshSecurable.getGrantRecordsVersion() + 1);
     ms.writeEntityAtomically(callCtx, refreshSecurable, false, originalRefreshSecurable);
 
-    // TODO: Reorder and/or expose bulk update of both grantRecordsVersions and grant recors.
+    // TODO: Reorder and/or expose bulk update of both grantRecordsVersions and grant records. In
+    // the meantime, cache can be disabled or configured with a short enough expiry time to
+    // define an "eventual consistency" timeframe.
   }
 
   /** {@inheritDoc} */
@@ -410,6 +419,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     // check if that catalog has already been created
+    // This can be done safely as a separate atomic operation before trying to create the catalog
+    // because same-id idempotent-retry collisions of this sort are necessarily sequential, so
+    // there is no concurrency conflict for something else creating a catalog of this same id.
     PolarisBaseEntity refreshCatalog =
         ms.lookupEntityAtomically(
             callCtx, catalog.getCatalogId(), catalog.getId(), catalog.getTypeCode());
@@ -443,24 +455,19 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       // done, return the existing catalog
       return new CreateCatalogResult(refreshCatalog, catalogAdminRole);
     }
-
-    // check that a catalog with the same name does not exist already
-    // if it exists, this is an error, the client should retry
-    if (ms.lookupEntityIdAndSubTypeByNameAtomically(
-            callCtx,
-            PolarisEntityConstants.getNullId(),
-            PolarisEntityConstants.getRootEntityId(),
-            PolarisEntityType.CATALOG.getCode(),
-            catalog.getName())
-        != null) {
-      return new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null);
-    }
-
     ((IntegrationPersistence) ms)
         .persistStorageIntegrationIfNeededAtomically(callCtx, catalog, integration);
 
     // now create and persist new catalog entity
-    this.persistNewEntity(callCtx, ms, catalog);
+    EntityResult lowLevelResult = this.persistNewEntity(callCtx, ms, catalog);
+    if (lowLevelResult.getReturnStatus() == BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS) {
+      // TODO: Garbage-collection should include integrations, and anything else created before
+      // this if the server crashes before being able to do this cleanup.
+      // TODO: Perform best-effort cleanup. For now, none of the codebase apparently cleans
+      // up storage integrations "if needed", but also the default impls don't create any
+      // storage integrations "if needed" either.
+      return new CreateCatalogResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null);
+    }
 
     // create the catalog admin role for this new catalog
     long adminRoleId = ms.generateNewIdAtomically(callCtx);
@@ -515,7 +522,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       }
     }
 
-    // TODO: Reorder and/or expose bulk update/create of new entities and grant records.
+    // TODO: Reorder and/or expose bulk update/create of new entities and grant records. In the
+    // meantime, if a server crashes halfway through catalog creation, it might be in a partially
+    // initialized state. In such a case, the correct action is to simply delete the catalog
+    // and recreate it -- SERVICE_MANAGE_ACCESS already possesses CATALOG_DROP at the
+    // root-container level even if it requires the grants in here to have CATALOG_MANAGE_ACCESS
+    // or CATALOG_MANAGE_METADATA, so no one can use the catalog if this initialization is
+    // incomplete, but the won't be "stuck" orphaned since the service admin can still delete the
+    // catalog.
 
     // success, return the two entities
     return new CreateCatalogResult(catalog, adminRole);
@@ -582,7 +596,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         serviceAdminPrincipalRole,
         PolarisPrivilege.SERVICE_MANAGE_ACCESS);
 
-    // TODO: Make idempotent by being able to continue where it left off for the context's realm
+    // TODO: Make idempotent by being able to continue where it left off for the context's realm.
+    // In the meantime, if a realm was only partially initialized before the server crashed,
+    // it's fine to purge the realm and retry the bootstrap.
 
     // all good
     return new BaseResult(BaseResult.ReturnStatus.SUCCESS);
@@ -629,7 +645,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       entity = null;
     }
 
-    // TODO: Use post-validation to enforce consistent view against catalogPath
+    // TODO: Use post-validation to enforce consistent view against catalogPath. In the
+    // meantime, happens-before ordering semantics aren't guaranteed during high-concurrency
+    // race conditions, such as first revoking a grant on a namespace before adding sensitive
+    // data to a table; but the window of inconsistency is only the duration of a single
+    // in-flight request (the cache-based resolution follows a different path entirely).
 
     // success, return what we found
     return (entity == null)
@@ -666,7 +686,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
               .collect(Collectors.toList());
     }
 
-    // TODO: Use post-validation to enforce consistent view against catalogPath
+    // TODO: Use post-validation to enforce consistent view against catalogPath. In the
+    // meantime, happens-before ordering semantics aren't guaranteed during high-concurrency
+    // race conditions, such as first revoking a grant on a namespace before adding a table
+    // with sensitive data; but the window of inconsistency is only the duration of a single
+    // in-flight request (the cache-based resolution follows a different path entirely).
 
     // done
     return new ListEntitiesResult(toreturnList);
@@ -688,6 +712,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             callCtx, principal.getCatalogId(), principal.getId(), principal.getTypeCode());
 
     // if found, probably a retry, simply return the previously created principal
+    // This can be done safely as a separate atomic operation before trying to create the principal
+    // because same-id idempotent-retry collisions of this sort are necessarily sequential, so
+    // there is no concurrency conflict for something else creating a principal of this same id.
     if (refreshPrincipal != null) {
       // if found, ensure it is indeed a principal
       callCtx
@@ -740,18 +767,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       return new CreatePrincipalResult(refreshPrincipal, principalSecrets);
     }
 
-    // check that a principal with the same name does not exist already
-    // if it exists, this is an error, the client should retry
-    if (ms.lookupEntityIdAndSubTypeByNameAtomically(
-            callCtx,
-            PolarisEntityConstants.getNullId(),
-            PolarisEntityConstants.getRootEntityId(),
-            PolarisEntityType.PRINCIPAL.getCode(),
-            principal.getName())
-        != null) {
-      return new CreatePrincipalResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null);
-    }
-
     // generate new secrets for this principal
     PolarisPrincipalSecrets principalSecrets =
         ((IntegrationPersistence) ms)
@@ -766,9 +781,16 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     principal.setInternalProperties(this.serializeProperties(callCtx, internalProperties));
 
     // now create and persist new catalog entity
-    this.persistNewEntity(callCtx, ms, principal);
-
-    // TODO: Reorder and/or expose bulk update/create of new entities.
+    EntityResult lowLevelResult = this.persistNewEntity(callCtx, ms, principal);
+    if (lowLevelResult.getReturnStatus() == BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS) {
+      // Name collision; do best-effort cleanup of the new principalSecrets we created
+      // TODO: Garbage-collection should include principal secrets if the server crashes
+      // before being able to do this cleanup.
+      ((IntegrationPersistence) ms)
+          .deletePrincipalSecretsAtomically(
+              callCtx, principalSecrets.getPrincipalClientId(), principal.getId());
+      return new CreatePrincipalResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null);
+    }
 
     // success, return the two entities
     return new CreatePrincipalResult(principal, principalSecrets);
@@ -865,7 +887,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // entity name must be specified
     callCtx.getDiagServices().checkNotNull(entity.getName(), "unexpected_null_entity_name");
 
-    // TODO: Use post-validation to enforce consistent view against catalogPath
+    // TODO: Use post-validation to enforce consistent view against catalogPath. In the
+    // meantime, happens-before ordering semantics aren't guaranteed during high-concurrency
+    // race conditions, such as first revoking a grant on a namespace before adding sensitive
+    // data to a table; but the window of inconsistency is only the duration of a single
+    // in-flight request (the cache-based resolution follows a different path entirely).
     return this.persistNewEntity(callCtx, ms, entity);
   }
 
@@ -885,6 +911,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     try {
       ms.writeEntitiesAtomically(callCtx, createdEntities, null);
+      // TODO: Use post-validation to enforce consistent view against catalogPath. In the
+      // meantime, happens-before ordering semantics aren't guaranteed during high-concurrency
+      // race conditions, such as first revoking a grant on a namespace before adding sensitive
+      // data to a table; but the window of inconsistency is only the duration of a single
+      // in-flight request (the cache-based resolution follows a different path entirely).
     } catch (EntityAlreadyExistsException e) {
       return new EntitiesResult(
           BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
@@ -1111,7 +1142,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       // TODO: Come up with atomic solution to blocking dropping of container entities that
       // have children; one option is reference-counting if all child creation/drop operations
       // become two-entity bulk conditional updates that also update the refcount on the parent
-      // if not changed concurrently (else retry).
+      // if not changed concurrently (else retry). In the meantime, there's a window of time
+      // where dropping a namespace or container is effectively "recursive" in deleting its
+      // children as well if those child entities were created within the short window of
+      // the race condition.
       if (ms.hasChildrenAtomically(callCtx, PolarisEntityType.NAMESPACE, catalogId, catalogId)) {
         return new DropEntityResult(BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY, null);
       }
@@ -1172,6 +1206,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         taskEntity.setInternalProperties(
             PolarisObjectMapperUtil.serializeProperties(callCtx, cleanupProperties));
       }
+      // TODO: Add a way to create the task entities atomically with dropping the entity;
+      // in the meantime, if the server fails partway through a dropEntity, it's possible that
+      // the entity is dropped but we don't have any persisted task records that will carry
+      // out the cleanup.
       createEntityIfNotExists(callCtx, null, taskEntity);
       return new DropEntityResult(taskEntity.getId());
     }

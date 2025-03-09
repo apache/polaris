@@ -197,6 +197,8 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
       // delete it from the secret slice
       ms.deletePrincipalSecrets(callCtx, clientId, entity.getId());
     }
+    // TODO: Also, if an entity contains a storage integration, delete the storage integration
+    // and other things of that nature.
   }
 
   /**
