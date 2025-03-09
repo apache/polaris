@@ -98,7 +98,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
       @NotNull String name) {
     switch (entityType) {
       case CATALOG:
-        return catalogDao.readEntityByName(callCtx, catalogPath, name);
+        return catalogDao.readEntityByName(callCtx, name);
       case NAMESPACE:
         return namespaceDao.readEntityByName(callCtx, catalogPath, name);
       case TABLE_LIKE:
@@ -205,7 +205,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
       @NotNull PolarisBaseEntity entity) {
     switch (entity.getType()) {
       case CATALOG:
-        return catalogDao.updateEntityPropertiesIfNotChanged(callCtx, catalogPath, entity);
+        return catalogDao.updateEntityPropertiesIfNotChanged(callCtx, entity);
       case NAMESPACE:
         return namespaceDao.updateEntityPropertiesIfNotChanged(callCtx, catalogPath, entity);
       case TABLE_LIKE:

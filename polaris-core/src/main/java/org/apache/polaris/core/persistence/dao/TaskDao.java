@@ -44,7 +44,7 @@ public interface TaskDao {
   @Nonnull
   EntityResult createEntityIfNotExists(
       @Nonnull PolarisCallContext callCtx,
-      @jakarta.annotation.Nullable List<PolarisEntityCore> catalogPath,
+      @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity);
 
   @Nonnull

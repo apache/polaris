@@ -38,24 +38,9 @@ public interface CatalogDao {
       @NotNull PolarisBaseEntity catalog,
       @NotNull List<PolarisEntityCore> principalRoles);
 
-  // TODO this should return a type-specific entity result, e.g., CatalogEntityResult
-  @NotNull
-  EntityResult readEntityByName(
-      @NotNull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull String name);
-
-  @Nonnull
-  EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
-
-  @Nonnull
-  ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx);
-
   @Nonnull
   EntityResult updateEntityPropertiesIfNotChanged(
-      @Nonnull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisBaseEntity entity);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   @Nonnull
   DropEntityResult dropEntityIfExists(
@@ -63,6 +48,16 @@ public interface CatalogDao {
       @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup);
+
+  // TODO this should return a type-specific entity result, e.g., CatalogEntityResult
+  @NotNull
+  EntityResult readEntityByName(@NotNull PolarisCallContext callCtx, @NotNull String name);
+
+  @Nonnull
+  EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
+
+  @Nonnull
+  ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx);
 
   @Nonnull
   ResolvedEntityResult loadResolvedEntityById(

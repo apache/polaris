@@ -49,11 +49,8 @@ public class FdbCatalogDaoImpl implements CatalogDao {
 
   @NotNull
   @Override
-  public EntityResult readEntityByName(
-      @NotNull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull String name) {
-    return metaStoreManager.readEntityByName(callCtx, catalogPath, CATALOG, ANY_SUBTYPE, name);
+  public EntityResult readEntityByName(@NotNull PolarisCallContext callCtx, @NotNull String name) {
+    return metaStoreManager.readEntityByName(callCtx, null, CATALOG, ANY_SUBTYPE, name);
   }
 
   @NotNull
@@ -72,10 +69,8 @@ public class FdbCatalogDaoImpl implements CatalogDao {
   @NotNull
   @Override
   public EntityResult updateEntityPropertiesIfNotChanged(
-      @NotNull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisBaseEntity entity) {
-    return metaStoreManager.updateEntityPropertiesIfNotChanged(callCtx, catalogPath, entity);
+      @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity entity) {
+    return metaStoreManager.updateEntityPropertiesIfNotChanged(callCtx, null, entity);
   }
 
   @NotNull

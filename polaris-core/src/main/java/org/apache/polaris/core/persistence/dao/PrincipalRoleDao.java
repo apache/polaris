@@ -76,6 +76,6 @@ public interface PrincipalRoleDao {
   DropEntityResult dropEntityIfExists(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore entityToDrop,
-      @jakarta.annotation.Nullable Map<String, String> cleanupProperties,
+      @Nullable Map<String, String> cleanupProperties,
       boolean cleanup);
 }

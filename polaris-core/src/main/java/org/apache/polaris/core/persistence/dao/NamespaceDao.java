@@ -68,20 +68,20 @@ public interface NamespaceDao {
   @Nonnull
   EntityResult createEntityIfNotExists(
       @Nonnull PolarisCallContext callCtx,
-      @jakarta.annotation.Nullable List<PolarisEntityCore> catalogPath,
+      @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity);
 
   @Nonnull
   EntityResult updateEntityPropertiesIfNotChanged(
       @Nonnull PolarisCallContext callCtx,
-      @jakarta.annotation.Nullable List<PolarisEntityCore> catalogPath,
+      @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity);
 
   @Nonnull
   DropEntityResult dropEntityIfExists(
       @Nonnull PolarisCallContext callCtx,
-      @jakarta.annotation.Nullable List<PolarisEntityCore> catalogPath,
+      @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore entityToDrop,
-      @jakarta.annotation.Nullable Map<String, String> cleanupProperties,
+      @Nullable Map<String, String> cleanupProperties,
       boolean cleanup);
 }
