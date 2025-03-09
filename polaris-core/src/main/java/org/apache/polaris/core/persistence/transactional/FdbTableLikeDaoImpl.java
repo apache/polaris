@@ -20,6 +20,8 @@ package org.apache.polaris.core.persistence.transactional;
 
 import static org.apache.polaris.core.entity.PolarisEntityType.TABLE_LIKE;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
@@ -34,72 +36,69 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class FdbTableLikeDaoImpl implements TableLikeDao {
-  // TODO we need a map to cache the PolarisMetaStoreManagerImpl as well
   PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
   @Override
-  public @NotNull EntityResult readEntityByName(
-      @NotNull PolarisCallContext callCtx,
+  public @Nonnull EntityResult readEntityByName(
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntitySubType entitySubType,
-      @NotNull String name) {
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull String name) {
     return metaStoreManager.readEntityByName(callCtx, catalogPath, TABLE_LIKE, entitySubType, name);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult loadEntity(
-      @NotNull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
+      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
     return metaStoreManager.loadEntity(callCtx, entityCatalogId, entityId, TABLE_LIKE);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ListEntitiesResult listEntities(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntitySubType entitySubType) {
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntitySubType entitySubType) {
     return metaStoreManager.listEntities(callCtx, catalogPath, TABLE_LIKE, entitySubType);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult renameEntity(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityCore entityToRename,
+      @Nonnull PolarisEntityCore entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
-      @NotNull PolarisEntity renamedEntity) {
+      @Nonnull PolarisEntity renamedEntity) {
     return metaStoreManager.renameEntity(
         callCtx, catalogPath, entityToRename, newCatalogPath, renamedEntity);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityById(
-      @NotNull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
+      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
     return metaStoreManager.loadResolvedEntityById(callCtx, entityCatalogId, entityId, TABLE_LIKE);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityByName(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long entityCatalogId,
       long parentId,
-      @NotNull String entityName) {
+      @Nonnull String entityName) {
     return metaStoreManager.loadResolvedEntityByName(
         callCtx, entityCatalogId, parentId, TABLE_LIKE, entityName);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ResolvedEntityResult refreshResolvedEntity(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
       long entityCatalogId,
@@ -108,40 +107,40 @@ public class FdbTableLikeDaoImpl implements TableLikeDao {
         callCtx, entityVersion, entityGrantRecordsVersion, TABLE_LIKE, entityCatalogId, entityId);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult createEntityIfNotExists(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisBaseEntity entity) {
+      @Nonnull PolarisBaseEntity entity) {
     return metaStoreManager.createEntityIfNotExists(callCtx, catalogPath, entity);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult updateEntityPropertiesIfNotChanged(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisBaseEntity entity) {
+      @Nonnull PolarisBaseEntity entity) {
     return metaStoreManager.updateEntityPropertiesIfNotChanged(callCtx, catalogPath, entity);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public DropEntityResult dropEntityIfExists(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityCore entityToDrop,
+      @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     return metaStoreManager.dropEntityIfExists(
         callCtx, catalogPath, entityToDrop, cleanupProperties, cleanup);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntitiesResult updateEntitiesPropertiesIfNotChanged(
-      @NotNull PolarisCallContext callCtx, @NotNull List<EntityWithPath> entities) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityWithPath> entities) {
     return metaStoreManager.updateEntitiesPropertiesIfNotChanged(callCtx, entities);
   }
 }

@@ -21,6 +21,8 @@ package org.apache.polaris.core.persistence.transactional;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ANY_SUBTYPE;
 import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
@@ -32,8 +34,6 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class FdbCatalogDaoImpl implements CatalogDao {
   // TODO we need a map to cache the PolarisMetaStoreManagerImpl as well
@@ -41,71 +41,71 @@ public class FdbCatalogDaoImpl implements CatalogDao {
 
   @Override
   public CreateCatalogResult createCatalog(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisBaseEntity catalog,
-      @NotNull List<PolarisEntityCore> principalRoles) {
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity catalog,
+      @Nonnull List<PolarisEntityCore> principalRoles) {
     return metaStoreManager.createCatalog(callCtx, catalog, principalRoles);
   }
 
-  @NotNull
+  @Nonnull
   @Override
-  public EntityResult readEntityByName(@NotNull PolarisCallContext callCtx, @NotNull String name) {
+  public EntityResult readEntityByName(@Nonnull PolarisCallContext callCtx, @Nonnull String name) {
     return metaStoreManager.readEntityByName(callCtx, null, CATALOG, ANY_SUBTYPE, name);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult loadEntity(
-      @NotNull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
+      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
     return metaStoreManager.loadEntity(callCtx, entityCatalogId, entityId, CATALOG);
   }
 
-  @NotNull
+  @Nonnull
   @Override
-  public ListEntitiesResult listEntities(@NotNull PolarisCallContext callCtx) {
+  public ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx) {
     return metaStoreManager.listEntities(callCtx, null, CATALOG, ANY_SUBTYPE);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult updateEntityPropertiesIfNotChanged(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity entity) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     return metaStoreManager.updateEntityPropertiesIfNotChanged(callCtx, null, entity);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public DropEntityResult dropEntityIfExists(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisEntityCore entityToDrop,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     return metaStoreManager.dropEntityIfExists(
         callCtx, null, entityToDrop, cleanupProperties, cleanup);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityById(
-      @NotNull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
+      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
     return metaStoreManager.loadResolvedEntityById(callCtx, entityCatalogId, entityId, CATALOG);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityByName(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long entityCatalogId,
       long parentId,
-      @NotNull String entityName) {
+      @Nonnull String entityName) {
     return metaStoreManager.loadResolvedEntityByName(
         callCtx, entityCatalogId, parentId, CATALOG, entityName);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ResolvedEntityResult refreshResolvedEntity(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
       long entityCatalogId,

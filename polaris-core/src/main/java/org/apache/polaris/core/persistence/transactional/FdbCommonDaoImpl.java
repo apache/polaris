@@ -21,6 +21,7 @@ package org.apache.polaris.core.persistence.transactional;
 import static org.apache.polaris.core.entity.PolarisEntityType.NULL_TYPE;
 import static org.apache.polaris.core.entity.PolarisEntityType.ROOT;
 
+import jakarta.annotation.Nonnull;
 import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityId;
@@ -30,51 +31,50 @@ import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.jetbrains.annotations.NotNull;
 
 public class FdbCommonDaoImpl implements CommonDao {
   PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
-  @NotNull
+  @Nonnull
   @Override
-  public GenerateEntityIdResult generateNewEntityId(@NotNull PolarisCallContext callCtx) {
+  public GenerateEntityIdResult generateNewEntityId(@Nonnull PolarisCallContext callCtx) {
     return metaStoreManager.generateNewEntityId(callCtx);
   }
 
-  @NotNull
+  @Nonnull
   @Override
-  public BaseResult bootstrapPolarisService(@NotNull PolarisCallContext callCtx) {
+  public BaseResult bootstrapPolarisService(@Nonnull PolarisCallContext callCtx) {
     return metaStoreManager.bootstrapPolarisService(callCtx);
   }
 
-  @NotNull
+  @Nonnull
   @Override
-  public BaseResult purge(@NotNull PolarisCallContext callCtx) {
+  public BaseResult purge(@Nonnull PolarisCallContext callCtx) {
     return metaStoreManager.purge(callCtx);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityByName(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long entityCatalogId,
       long parentId,
-      @NotNull String entityName) {
+      @Nonnull String entityName) {
     return metaStoreManager.loadResolvedEntityByName(
         callCtx, entityCatalogId, parentId, ROOT, entityName);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ChangeTrackingResult loadEntitiesChangeTracking(
-      @NotNull PolarisCallContext callCtx, @NotNull List<PolarisEntityId> entityIds) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEntityId> entityIds) {
     return metaStoreManager.loadEntitiesChangeTracking(callCtx, entityIds);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ResolvedEntityResult refreshResolvedEntity(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
       long entityCatalogId,
@@ -83,10 +83,10 @@ public class FdbCommonDaoImpl implements CommonDao {
         callCtx, entityVersion, entityGrantRecordsVersion, ROOT, entityCatalogId, entityId);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult loadEntity(
-      @NotNull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
+      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
     return metaStoreManager.loadEntity(callCtx, entityCatalogId, entityId, NULL_TYPE);
   }
 }

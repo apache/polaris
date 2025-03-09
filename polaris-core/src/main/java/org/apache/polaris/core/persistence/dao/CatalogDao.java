@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence.dao;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
@@ -29,14 +30,12 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public interface CatalogDao {
   CreateCatalogResult createCatalog(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisBaseEntity catalog,
-      @NotNull List<PolarisEntityCore> principalRoles);
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity catalog,
+      @Nonnull List<PolarisEntityCore> principalRoles);
 
   @Nonnull
   EntityResult updateEntityPropertiesIfNotChanged(
@@ -50,8 +49,8 @@ public interface CatalogDao {
       boolean cleanup);
 
   // TODO this should return a type-specific entity result, e.g., CatalogEntityResult
-  @NotNull
-  EntityResult readEntityByName(@NotNull PolarisCallContext callCtx, @NotNull String name);
+  @Nonnull
+  EntityResult readEntityByName(@Nonnull PolarisCallContext callCtx, @Nonnull String name);
 
   @Nonnull
   EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);

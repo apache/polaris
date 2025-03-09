@@ -21,6 +21,8 @@ package org.apache.polaris.core.persistence.transactional;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.NULL_SUBTYPE;
 import static org.apache.polaris.core.entity.PolarisEntityType.PRINCIPAL_ROLE;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -30,48 +32,46 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class FdbPrincipalRoleDaoImpl implements PrincipalRoleDao {
   PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
-  @NotNull
+  @Nonnull
   @Override
-  public ListEntitiesResult listEntities(@NotNull PolarisCallContext callCtx) {
+  public ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx) {
     return metaStoreManager.listEntities(callCtx, null, PRINCIPAL_ROLE, NULL_SUBTYPE);
   }
 
   @Override
-  public @NotNull EntityResult readEntityByName(
-      @NotNull PolarisCallContext callCtx, @NotNull String name) {
+  public @Nonnull EntityResult readEntityByName(
+      @Nonnull PolarisCallContext callCtx, @Nonnull String name) {
     return metaStoreManager.readEntityByName(callCtx, null, PRINCIPAL_ROLE, NULL_SUBTYPE, name);
   }
 
-  @NotNull
+  @Nonnull
   @Override
-  public EntityResult loadEntity(@NotNull PolarisCallContext callCtx, long id) {
+  public EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long id) {
     return metaStoreManager.loadEntity(callCtx, 0L, id, PRINCIPAL_ROLE);
   }
 
-  @NotNull
+  @Nonnull
   @Override
-  public ResolvedEntityResult loadResolvedEntityById(@NotNull PolarisCallContext callCtx, long id) {
+  public ResolvedEntityResult loadResolvedEntityById(@Nonnull PolarisCallContext callCtx, long id) {
     return metaStoreManager.loadResolvedEntityById(callCtx, 0L, id, PRINCIPAL_ROLE);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityByName(
-      @NotNull PolarisCallContext callCtx, long parentId, @NotNull String entityName) {
+      @Nonnull PolarisCallContext callCtx, long parentId, @Nonnull String entityName) {
     return metaStoreManager.loadResolvedEntityByName(
         callCtx, 0L, parentId, PRINCIPAL_ROLE, entityName);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ResolvedEntityResult refreshResolvedEntity(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
       long id) {
@@ -79,25 +79,25 @@ public class FdbPrincipalRoleDaoImpl implements PrincipalRoleDao {
         callCtx, entityVersion, entityGrantRecordsVersion, PRINCIPAL_ROLE, 0L, id);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult createEntityIfNotExists(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity entity) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     return metaStoreManager.createEntityIfNotExists(callCtx, null, entity);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult updateEntityPropertiesIfNotChanged(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity entity) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     return metaStoreManager.updateEntityPropertiesIfNotChanged(callCtx, null, entity);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public DropEntityResult dropEntityIfExists(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisEntityCore entityToDrop,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     return metaStoreManager.dropEntityIfExists(

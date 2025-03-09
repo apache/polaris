@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.persistence.dao;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -53,8 +55,6 @@ import org.apache.polaris.core.persistence.transactional.FdbPrincipalSecretsDaoI
 import org.apache.polaris.core.persistence.transactional.FdbTableLikeDaoImpl;
 import org.apache.polaris.core.persistence.transactional.FdbTaskDaoImpl;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 /**
  * This class acts as a temporary bridge to defer refactoring of business logic. It currently
@@ -76,26 +76,26 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
   FdbCommonDaoImpl commonDao = new FdbCommonDaoImpl();
   FdbCredentialVendorDaoImpl credentialVendorDao = new FdbCredentialVendorDaoImpl();
 
-  @NotNull
+  @Nonnull
   @Override
-  public BaseResult bootstrapPolarisService(@NotNull PolarisCallContext callCtx) {
+  public BaseResult bootstrapPolarisService(@Nonnull PolarisCallContext callCtx) {
     return commonDao.bootstrapPolarisService(callCtx);
   }
 
-  @NotNull
+  @Nonnull
   @Override
-  public BaseResult purge(@NotNull PolarisCallContext callCtx) {
+  public BaseResult purge(@Nonnull PolarisCallContext callCtx) {
     return commonDao.purge(callCtx);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult readEntityByName(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityType entityType,
-      @NotNull PolarisEntitySubType entitySubType,
-      @NotNull String name) {
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull String name) {
     switch (entityType) {
       case CATALOG:
         return catalogDao.readEntityByName(callCtx, name);
@@ -116,13 +116,13 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
     }
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ListEntitiesResult listEntities(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityType entityType,
-      @NotNull PolarisEntitySubType entitySubType) {
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull PolarisEntitySubType entitySubType) {
     switch (entityType) {
       case CATALOG:
         return catalogDao.listEntities(callCtx);
@@ -143,34 +143,34 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
     }
   }
 
-  @NotNull
+  @Nonnull
   @Override
-  public GenerateEntityIdResult generateNewEntityId(@NotNull PolarisCallContext callCtx) {
+  public GenerateEntityIdResult generateNewEntityId(@Nonnull PolarisCallContext callCtx) {
     return commonDao.generateNewEntityId(callCtx);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public CreatePrincipalResult createPrincipal(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity principal) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity principal) {
     return principalDao.createPrincipal(callCtx, principal);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public CreateCatalogResult createCatalog(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisBaseEntity catalog,
-      @NotNull List<PolarisEntityCore> principalRoles) {
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity catalog,
+      @Nonnull List<PolarisEntityCore> principalRoles) {
     return catalogDao.createCatalog(callCtx, catalog, principalRoles);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult createEntityIfNotExists(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisBaseEntity entity) {
+      @Nonnull PolarisBaseEntity entity) {
     switch (entity.getType()) {
       case NAMESPACE:
         return namespaceDao.createEntityIfNotExists(callCtx, catalogPath, entity);
@@ -187,22 +187,22 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
     }
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntitiesResult createEntitiesIfNotExist(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull List<? extends PolarisBaseEntity> entities) {
+      @Nonnull List<? extends PolarisBaseEntity> entities) {
     // only for tasks
     return taskDao.createTasksIfNotExist(callCtx, entities);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult updateEntityPropertiesIfNotChanged(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisBaseEntity entity) {
+      @Nonnull PolarisBaseEntity entity) {
     switch (entity.getType()) {
       case CATALOG:
         return catalogDao.updateEntityPropertiesIfNotChanged(callCtx, entity);
@@ -221,33 +221,33 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
     }
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntitiesResult updateEntitiesPropertiesIfNotChanged(
-      @NotNull PolarisCallContext callCtx, @NotNull List<EntityWithPath> entities) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityWithPath> entities) {
     // only for multi-table transactions
     return tableLikeDao.updateEntitiesPropertiesIfNotChanged(callCtx, entities);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult renameEntity(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityCore entityToRename,
+      @Nonnull PolarisEntityCore entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
-      @NotNull PolarisEntity renamedEntity) {
+      @Nonnull PolarisEntity renamedEntity) {
     // only tableLike is supported
     return tableLikeDao.renameEntity(
         callCtx, catalogPath, entityToRename, newCatalogPath, renamedEntity);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public DropEntityResult dropEntityIfExists(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityCore entityToDrop,
+      @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     switch (entityToDrop.getType()) {
@@ -274,13 +274,13 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
     }
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult loadEntity(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long entityCatalogId,
       long entityId,
-      @NotNull PolarisEntityType entityType) {
+      @Nonnull PolarisEntityType entityType) {
     switch (entityType) {
       case CATALOG:
         return catalogDao.loadEntity(callCtx, entityCatalogId, entityId);
@@ -303,25 +303,25 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
     }
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntitiesResult loadTasks(
-      @NotNull PolarisCallContext callCtx, String executorId, int limit) {
+      @Nonnull PolarisCallContext callCtx, String executorId, int limit) {
     return taskDao.loadTasks(callCtx, executorId, limit);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ChangeTrackingResult loadEntitiesChangeTracking(
-      @NotNull PolarisCallContext callCtx, @NotNull List<PolarisEntityId> entityIds) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEntityId> entityIds) {
     // todo we need to figure out how to handle type-specific one later
     return commonDao.loadEntitiesChangeTracking(callCtx, entityIds);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityById(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long entityCatalogId,
       long entityId,
       PolarisEntityType entityType) {
@@ -343,14 +343,14 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
     }
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityByName(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long entityCatalogId,
       long parentId,
-      @NotNull PolarisEntityType entityType,
-      @NotNull String entityName) {
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull String entityName) {
     switch (entityType) {
       case NAMESPACE:
         return namespaceDao.loadResolvedEntityByName(
@@ -374,13 +374,13 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
     }
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ResolvedEntityResult refreshResolvedEntity(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
-      @NotNull PolarisEntityType entityType,
+      @Nonnull PolarisEntityType entityType,
       long entityCatalogId,
       long entityId) {
     switch (entityType) {
@@ -410,93 +410,93 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
     }
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public PrivilegeResult grantUsageOnRoleToGrantee(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
-      @NotNull PolarisEntityCore role,
-      @NotNull PolarisEntityCore grantee) {
+      @Nonnull PolarisEntityCore role,
+      @Nonnull PolarisEntityCore grantee) {
     return grantRecordDao.grantUsageOnRoleToGrantee(callCtx, catalog, role, grantee);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public PrivilegeResult revokeUsageOnRoleFromGrantee(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
-      @NotNull PolarisEntityCore role,
-      @NotNull PolarisEntityCore grantee) {
+      @Nonnull PolarisEntityCore role,
+      @Nonnull PolarisEntityCore grantee) {
     return grantRecordDao.revokeUsageOnRoleFromGrantee(callCtx, catalog, role, grantee);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public PrivilegeResult grantPrivilegeOnSecurableToRole(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisEntityCore grantee,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityCore securable,
-      @NotNull PolarisPrivilege privilege) {
+      @Nonnull PolarisEntityCore securable,
+      @Nonnull PolarisPrivilege privilege) {
     return grantRecordDao.grantPrivilegeOnSecurableToRole(
         callCtx, grantee, catalogPath, securable, privilege);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public PrivilegeResult revokePrivilegeOnSecurableFromRole(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisEntityCore grantee,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityCore securable,
-      @NotNull PolarisPrivilege privilege) {
+      @Nonnull PolarisEntityCore securable,
+      @Nonnull PolarisPrivilege privilege) {
     return grantRecordDao.revokePrivilegeOnSecurableFromRole(
         callCtx, grantee, catalogPath, securable, privilege);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public LoadGrantsResult loadGrantsOnSecurable(
-      @NotNull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
+      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
     return grantRecordDao.loadGrantsOnSecurable(callCtx, securableCatalogId, securableId);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public LoadGrantsResult loadGrantsToGrantee(
       PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
     return grantRecordDao.loadGrantsToGrantee(callCtx, granteeCatalogId, granteeId);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public PrincipalSecretsResult loadPrincipalSecrets(
-      @NotNull PolarisCallContext callCtx, @NotNull String clientId) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull String clientId) {
     return principalSecretsDao.loadPrincipalSecrets(callCtx, clientId);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public PrincipalSecretsResult rotatePrincipalSecrets(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull String clientId,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull String clientId,
       long principalId,
       boolean reset,
-      @NotNull String oldSecretHash) {
+      @Nonnull String oldSecretHash) {
     return principalSecretsDao.rotatePrincipalSecrets(
         callCtx, clientId, principalId, reset, oldSecretHash);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ScopedCredentialsResult getSubscopedCredsForEntity(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
       PolarisEntityType entityType,
       boolean allowListOperation,
-      @NotNull Set<String> allowedReadLocations,
-      @NotNull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations) {
     return credentialVendorDao.getSubscopedCredsForEntity(
         callCtx,
         catalogId,
@@ -507,15 +507,15 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
         allowedWriteLocations);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public ValidateAccessResult validateAccessToLocations(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
       PolarisEntityType entityType,
-      @NotNull Set<PolarisStorageActions> actions,
-      @NotNull Set<String> locations) {
+      @Nonnull Set<PolarisStorageActions> actions,
+      @Nonnull Set<String> locations) {
     return credentialVendorDao.validateAccessToLocations(
         callCtx, catalogId, entityId, entityType, actions, locations);
   }

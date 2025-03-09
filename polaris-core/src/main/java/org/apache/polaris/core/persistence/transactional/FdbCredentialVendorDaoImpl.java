@@ -18,27 +18,27 @@
  */
 package org.apache.polaris.core.persistence.transactional;
 
+import jakarta.annotation.Nonnull;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.CredentialVendorDao;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.jetbrains.annotations.NotNull;
 
 public class FdbCredentialVendorDaoImpl implements CredentialVendorDao {
   PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
-  @NotNull
+  @Nonnull
   @Override
   public PolarisCredentialVendor.ScopedCredentialsResult getSubscopedCredsForEntity(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
       PolarisEntityType entityType,
       boolean allowListOperation,
-      @NotNull Set<String> allowedReadLocations,
-      @NotNull Set<String> allowedWriteLocations) {
+      @Nonnull Set<String> allowedReadLocations,
+      @Nonnull Set<String> allowedWriteLocations) {
     return metaStoreManager.getSubscopedCredsForEntity(
         callCtx,
         catalogId,
@@ -49,15 +49,15 @@ public class FdbCredentialVendorDaoImpl implements CredentialVendorDao {
         allowedWriteLocations);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public PolarisCredentialVendor.ValidateAccessResult validateAccessToLocations(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
       PolarisEntityType entityType,
-      @NotNull Set<PolarisStorageActions> actions,
-      @NotNull Set<String> locations) {
+      @Nonnull Set<PolarisStorageActions> actions,
+      @Nonnull Set<String> locations) {
     return metaStoreManager.validateAccessToLocations(
         callCtx, catalogId, entityId, entityType, actions, locations);
   }

@@ -28,14 +28,13 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.jetbrains.annotations.NotNull;
 
 public interface PrincipalRoleDao {
   @Nonnull
   ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx);
 
-  @NotNull
-  EntityResult readEntityByName(@NotNull PolarisCallContext callCtx, @NotNull String name);
+  @Nonnull
+  EntityResult readEntityByName(@Nonnull PolarisCallContext callCtx, @Nonnull String name);
 
   @Nonnull
   EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long id);

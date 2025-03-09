@@ -29,11 +29,10 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
-import org.jetbrains.annotations.NotNull;
 
 public interface TaskDao {
-  @NotNull
-  EntityResult readEntityByName(@NotNull PolarisCallContext callCtx, @NotNull String name);
+  @Nonnull
+  EntityResult readEntityByName(@Nonnull PolarisCallContext callCtx, @Nonnull String name);
 
   @Nonnull
   ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx);

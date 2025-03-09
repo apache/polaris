@@ -21,6 +21,8 @@ package org.apache.polaris.core.persistence.transactional;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ANY_SUBTYPE;
 import static org.apache.polaris.core.entity.PolarisEntityType.TASK;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
@@ -31,60 +33,58 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class FdbTaskDaoImpl implements TaskDao {
   PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
   @Override
-  public @NotNull EntityResult readEntityByName(
-      @NotNull PolarisCallContext callCtx, @NotNull String name) {
+  public @Nonnull EntityResult readEntityByName(
+      @Nonnull PolarisCallContext callCtx, @Nonnull String name) {
     // Task shouldn't have a catalog path and subtype
     return metaStoreManager.readEntityByName(callCtx, null, TASK, ANY_SUBTYPE, name);
   }
 
-  @NotNull
+  @Nonnull
   @Override
-  public ListEntitiesResult listEntities(@NotNull PolarisCallContext callCtx) {
+  public ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx) {
     return metaStoreManager.listEntities(callCtx, null, TASK, ANY_SUBTYPE);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntitiesResult loadTasks(
-      @NotNull PolarisCallContext callCtx, String executorId, int limit) {
+      @Nonnull PolarisCallContext callCtx, String executorId, int limit) {
     return metaStoreManager.loadTasks(callCtx, executorId, limit);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntityResult createEntityIfNotExists(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity entity) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     return metaStoreManager.createEntityIfNotExists(callCtx, null, entity);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public EntitiesResult createTasksIfNotExist(
-      @NotNull PolarisCallContext callCtx, @NotNull List<? extends PolarisBaseEntity> entities) {
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<? extends PolarisBaseEntity> entities) {
     return metaStoreManager.createEntitiesIfNotExist(callCtx, null, entities);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public DropEntityResult dropEntityIfExists(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisEntityCore entityToDrop,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     return metaStoreManager.dropEntityIfExists(
         callCtx, null, entityToDrop, cleanupProperties, cleanup);
   }
 
-  @NotNull
+  @Nonnull
   @Override
-  public EntityResult loadEntity(@NotNull PolarisCallContext callCtx, long entityId) {
+  public EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityId) {
     return metaStoreManager.loadEntity(callCtx, 0L, entityId, TASK);
   }
 }

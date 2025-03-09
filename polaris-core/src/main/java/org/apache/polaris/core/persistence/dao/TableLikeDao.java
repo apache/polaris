@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence.dao;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
@@ -32,16 +33,14 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public interface TableLikeDao {
-  @NotNull
+  @Nonnull
   EntityResult readEntityByName(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntitySubType entitySubType,
-      @NotNull String name);
+      @Nonnull PolarisEntitySubType entitySubType,
+      @Nonnull String name);
 
   @Nonnull
   EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
@@ -50,7 +49,7 @@ public interface TableLikeDao {
   ListEntitiesResult listEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntitySubType entitySubType);
+      @Nonnull PolarisEntitySubType entitySubType);
 
   @Nonnull
   EntityResult renameEntity(

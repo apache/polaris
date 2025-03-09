@@ -29,11 +29,10 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.jetbrains.annotations.NotNull;
 
 public interface PrincipalDao {
-  @NotNull
-  EntityResult readEntityByName(@NotNull PolarisCallContext callCtx, @NotNull String name);
+  @Nonnull
+  EntityResult readEntityByName(@Nonnull PolarisCallContext callCtx, @Nonnull String name);
 
   @Nonnull
   EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long id);
@@ -42,7 +41,7 @@ public interface PrincipalDao {
   ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx);
 
   CreatePrincipalResult createPrincipal(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity principal);
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity principal);
 
   @Nonnull
   ResolvedEntityResult loadResolvedEntityById(@Nonnull PolarisCallContext callCtx, long id);

@@ -18,70 +18,70 @@
  */
 package org.apache.polaris.core.persistence.transactional;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.dao.GrantRecordDao;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 public class FdbGrantRecordDaoImpl implements GrantRecordDao {
   PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
-  @NotNull
+  @Nonnull
   @Override
   public PolarisGrantManager.PrivilegeResult grantUsageOnRoleToGrantee(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
-      @NotNull PolarisEntityCore role,
-      @NotNull PolarisEntityCore grantee) {
+      @Nonnull PolarisEntityCore role,
+      @Nonnull PolarisEntityCore grantee) {
     return metaStoreManager.grantUsageOnRoleToGrantee(callCtx, catalog, role, grantee);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public PolarisGrantManager.PrivilegeResult revokeUsageOnRoleFromGrantee(
-      @NotNull PolarisCallContext callCtx,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
-      @NotNull PolarisEntityCore role,
-      @NotNull PolarisEntityCore grantee) {
+      @Nonnull PolarisEntityCore role,
+      @Nonnull PolarisEntityCore grantee) {
     return metaStoreManager.revokeUsageOnRoleFromGrantee(callCtx, catalog, role, grantee);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public PolarisGrantManager.PrivilegeResult grantPrivilegeOnSecurableToRole(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisEntityCore grantee,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityCore securable,
-      @NotNull PolarisPrivilege privilege) {
+      @Nonnull PolarisEntityCore securable,
+      @Nonnull PolarisPrivilege privilege) {
     return metaStoreManager.grantPrivilegeOnSecurableToRole(
         callCtx, grantee, catalogPath, securable, privilege);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public PolarisGrantManager.PrivilegeResult revokePrivilegeOnSecurableFromRole(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisEntityCore grantee,
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityCore securable,
-      @NotNull PolarisPrivilege privilege) {
+      @Nonnull PolarisEntityCore securable,
+      @Nonnull PolarisPrivilege privilege) {
     return metaStoreManager.revokePrivilegeOnSecurableFromRole(
         callCtx, grantee, catalogPath, securable, privilege);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public PolarisGrantManager.LoadGrantsResult loadGrantsOnSecurable(
-      @NotNull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
+      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
     return metaStoreManager.loadGrantsOnSecurable(callCtx, securableCatalogId, securableId);
   }
 
-  @NotNull
+  @Nonnull
   @Override
   public PolarisGrantManager.LoadGrantsResult loadGrantsToGrantee(
       PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
