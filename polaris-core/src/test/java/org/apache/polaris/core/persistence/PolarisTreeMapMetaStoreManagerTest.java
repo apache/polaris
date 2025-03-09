@@ -25,7 +25,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
+import org.apache.polaris.core.persistence.dao.PolarisMetastoreManagerDao;
 import org.apache.polaris.core.persistence.transactional.PolarisTreeMapMetaStoreSessionImpl;
 import org.apache.polaris.core.persistence.transactional.PolarisTreeMapStore;
 import org.mockito.Mockito;
@@ -42,6 +42,11 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
             new PolarisConfigurationStore() {},
             timeSource.withZone(ZoneId.systemDefault()));
 
-    return new PolarisTestMetaStoreManager(new PolarisMetaStoreManagerImpl(), callCtx);
+    // TODO: PolarisTreeMapMetaStoreSessionImpl now resides within a persistence implementation
+    // layer, below the DAO layer,
+    // and ideally shouldn't directly invoke DAO classes. The change is temporarily for refactor
+    // verification purposes.
+    // We should identify a cleaner testing strategy moving forward.
+    return new PolarisTestMetaStoreManager(new PolarisMetastoreManagerDao(), callCtx);
   }
 }
