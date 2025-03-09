@@ -327,7 +327,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
       PolarisEntityType entityType) {
     switch (entityType) {
       case CATALOG:
-        return catalogDao.loadResolvedEntityById(callCtx, entityCatalogId, entityId);
+        return catalogDao.loadResolvedEntityById(callCtx, entityId);
       case NAMESPACE:
         return namespaceDao.loadResolvedEntityById(callCtx, entityCatalogId, entityId);
       case TABLE_LIKE:
@@ -365,7 +365,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
       case ROOT:
         return commonDao.loadResolvedEntityByName(callCtx, entityCatalogId, parentId, entityName);
       case CATALOG:
-        return catalogDao.loadResolvedEntityByName(callCtx, entityCatalogId, parentId, entityName);
+        return catalogDao.loadResolvedEntityByName(callCtx, parentId, entityName);
       case CATALOG_ROLE:
         return catalogRoleDao.loadResolvedEntityByName(
             callCtx, entityCatalogId, parentId, entityName);
@@ -386,7 +386,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
     switch (entityType) {
       case CATALOG:
         return catalogDao.refreshResolvedEntity(
-            callCtx, entityVersion, entityGrantRecordsVersion, entityCatalogId, entityId);
+            callCtx, entityVersion, entityGrantRecordsVersion, entityId);
       case NAMESPACE:
         return namespaceDao.refreshResolvedEntity(
             callCtx, entityVersion, entityGrantRecordsVersion, entityCatalogId, entityId);

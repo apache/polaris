@@ -59,21 +59,16 @@ public interface CatalogDao {
   ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx);
 
   @Nonnull
-  ResolvedEntityResult loadResolvedEntityById(
-      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
+  ResolvedEntityResult loadResolvedEntityById(@Nonnull PolarisCallContext callCtx, long entityId);
 
   @Nonnull
   ResolvedEntityResult loadResolvedEntityByName(
-      @Nonnull PolarisCallContext callCtx,
-      long entityCatalogId,
-      long parentId,
-      @Nonnull String entityName);
+      @Nonnull PolarisCallContext callCtx, long parentId, @Nonnull String entityName);
 
   @Nonnull
   ResolvedEntityResult refreshResolvedEntity(
       @Nonnull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
-      long entityCatalogId,
       long entityId);
 }

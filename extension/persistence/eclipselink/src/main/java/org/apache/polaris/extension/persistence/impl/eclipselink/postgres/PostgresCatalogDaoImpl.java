@@ -88,19 +88,15 @@ public class PostgresCatalogDaoImpl implements CatalogDao {
   @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityById(
-      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
-    return metaStoreManager.loadResolvedEntityById(callCtx, entityCatalogId, entityId, CATALOG);
+      @Nonnull PolarisCallContext callCtx, long entityId) {
+    return metaStoreManager.loadResolvedEntityById(callCtx, 0L, entityId, CATALOG);
   }
 
   @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityByName(
-      @Nonnull PolarisCallContext callCtx,
-      long entityCatalogId,
-      long parentId,
-      @Nonnull String entityName) {
-    return metaStoreManager.loadResolvedEntityByName(
-        callCtx, entityCatalogId, parentId, CATALOG, entityName);
+      @Nonnull PolarisCallContext callCtx, long parentId, @Nonnull String entityName) {
+    return metaStoreManager.loadResolvedEntityByName(callCtx, 0L, parentId, CATALOG, entityName);
   }
 
   @Nonnull
@@ -109,9 +105,8 @@ public class PostgresCatalogDaoImpl implements CatalogDao {
       @Nonnull PolarisCallContext callCtx,
       int entityVersion,
       int entityGrantRecordsVersion,
-      long entityCatalogId,
       long entityId) {
     return metaStoreManager.refreshResolvedEntity(
-        callCtx, entityVersion, entityGrantRecordsVersion, CATALOG, entityCatalogId, entityId);
+        callCtx, entityVersion, entityGrantRecordsVersion, CATALOG, 0L, entityId);
   }
 }
