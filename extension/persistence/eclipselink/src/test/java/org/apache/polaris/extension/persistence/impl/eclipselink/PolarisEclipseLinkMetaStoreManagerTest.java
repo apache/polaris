@@ -105,9 +105,8 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
             store, Mockito.mock(), () -> "realm", null, "polaris", RANDOM_SECRETS);
     return new PolarisTestMetaStoreManager(
         // TODO: Currently, EclipseLinkMetaStoreManager resides within a persistence implementation
-        // layer, below the DAO layer,
-        // and ideally shouldn't directly invoke DAO classes. The change is temporarily for refactor
-        // verification purposes.
+        // layer, below the DAO layer, and ideally shouldn't directly invoke DAO classes. The change
+        // is temporarily for refactor verification purposes.
         // We should identify a cleaner testing strategy moving forward.
         new PolarisMetastoreManagerDao(),
         new PolarisCallContext(

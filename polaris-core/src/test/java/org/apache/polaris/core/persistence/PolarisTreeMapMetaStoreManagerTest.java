@@ -43,10 +43,9 @@ public class PolarisTreeMapMetaStoreManagerTest extends BasePolarisMetaStoreMana
             timeSource.withZone(ZoneId.systemDefault()));
 
     // TODO: PolarisTreeMapMetaStoreSessionImpl now resides within a persistence implementation
-    // layer, below the DAO layer,
-    // and ideally shouldn't directly invoke DAO classes. The change is temporarily for refactor
-    // verification purposes.
-    // We should identify a cleaner testing strategy moving forward.
+    // layer, below the DAO layer, and ideally shouldn't directly invoke DAO classes. The change
+    // is temporarily for refactor verification purposes. We should identify a cleaner testing
+    // strategy moving forward.
     return new PolarisTestMetaStoreManager(new PolarisMetastoreManagerDao(), callCtx);
   }
 }
