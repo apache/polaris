@@ -181,7 +181,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
       case PRINCIPAL_ROLE:
         return principalRoleDao.createEntityIfNotExists(callCtx, catalogPath, entity);
       case TASK:
-        return taskDao.createEntityIfNotExists(callCtx, catalogPath, entity);
+        return taskDao.createEntityIfNotExists(callCtx, entity);
       default:
         throw new IllegalArgumentException("Unknown entity type: " + entity.getType());
     }
@@ -194,7 +194,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
       @Nullable List<PolarisEntityCore> catalogPath,
       @NotNull List<? extends PolarisBaseEntity> entities) {
     // only for tasks
-    return taskDao.createEntitiesIfNotExist(callCtx, catalogPath, entities);
+    return taskDao.createTasksIfNotExist(callCtx, entities);
   }
 
   @NotNull
@@ -295,7 +295,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
       case PRINCIPAL_ROLE:
         return principalRoleDao.loadEntity(callCtx, entityCatalogId, entityId);
       case TASK:
-        return taskDao.loadEntity(callCtx, entityCatalogId, entityId);
+        return taskDao.loadEntity(callCtx, entityId);
       case NULL_TYPE:
         return commonDao.loadEntity(callCtx, entityCatalogId, entityId);
       default:

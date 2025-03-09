@@ -60,19 +60,15 @@ public class FdbTaskDaoImpl implements TaskDao {
   @NotNull
   @Override
   public EntityResult createEntityIfNotExists(
-      @NotNull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisBaseEntity entity) {
-    return metaStoreManager.createEntityIfNotExists(callCtx, catalogPath, entity);
+      @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity entity) {
+    return metaStoreManager.createEntityIfNotExists(callCtx, null, entity);
   }
 
   @NotNull
   @Override
-  public EntitiesResult createEntitiesIfNotExist(
-      @NotNull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull List<? extends PolarisBaseEntity> entities) {
-    return metaStoreManager.createEntitiesIfNotExist(callCtx, catalogPath, entities);
+  public EntitiesResult createTasksIfNotExist(
+      @NotNull PolarisCallContext callCtx, @NotNull List<? extends PolarisBaseEntity> entities) {
+    return metaStoreManager.createEntitiesIfNotExist(callCtx, null, entities);
   }
 
   @NotNull
@@ -88,8 +84,7 @@ public class FdbTaskDaoImpl implements TaskDao {
 
   @NotNull
   @Override
-  public EntityResult loadEntity(
-      @NotNull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
-    return metaStoreManager.loadEntity(callCtx, entityCatalogId, entityId, TASK);
+  public EntityResult loadEntity(@NotNull PolarisCallContext callCtx, long entityId) {
+    return metaStoreManager.loadEntity(callCtx, 0L, entityId, TASK);
   }
 }

@@ -42,16 +42,15 @@ public interface TaskDao {
   EntitiesResult loadTasks(@Nonnull PolarisCallContext callCtx, String executorId, int limit);
 
   @Nonnull
-  EntityResult createEntityIfNotExists(
-      @Nonnull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisBaseEntity entity);
+  EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long id);
 
   @Nonnull
-  EntitiesResult createEntitiesIfNotExist(
-      @Nonnull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull List<? extends PolarisBaseEntity> entities);
+  EntityResult createEntityIfNotExists(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
+
+  @Nonnull
+  EntitiesResult createTasksIfNotExist(
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<? extends PolarisBaseEntity> entities);
 
   @Nonnull
   DropEntityResult dropEntityIfExists(
@@ -59,7 +58,4 @@ public interface TaskDao {
       @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup);
-
-  @Nonnull
-  EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
 }
