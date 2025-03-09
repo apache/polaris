@@ -375,7 +375,6 @@ public abstract class BasePolarisMetaStoreManagerTest {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
     PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
     List<Future<Set<String>>> futureList = new ArrayList<>();
-    List<Set<String>> responses;
     ExecutorService executorService = Executors.newCachedThreadPool();
     try {
       for (int i = 0; i < 3; i++) {
@@ -399,21 +398,21 @@ public abstract class BasePolarisMetaStoreManagerTest {
                   return taskNames;
                 }));
       }
-      responses =
-          futureList.stream()
-              .map(
-                  f -> {
-                    try {
-                      return f.get();
-                    } catch (Exception e) {
-                      throw new RuntimeException(e);
-                    }
-                  })
-              .collect(Collectors.toList());
     } finally {
       executorService.shutdown();
-      Assertions.assertThat(executorService.awaitTermination(10, TimeUnit.MINUTES)).isTrue();
+      Assertions.assertThat(executorService.awaitTermination(30, TimeUnit.SECONDS)).isTrue();
     }
+    List<Set<String>> responses =
+        futureList.stream()
+            .map(
+                f -> {
+                  try {
+                    return f.get(30, TimeUnit.SECONDS);
+                  } catch (Exception e) {
+                    throw new RuntimeException(e);
+                  }
+                })
+            .collect(Collectors.toList());
     Assertions.assertThat(responses)
         .hasSize(3)
         .satisfies(l -> Assertions.assertThat(l.stream().flatMap(Set::stream)).hasSize(100));

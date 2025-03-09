@@ -341,6 +341,9 @@ public class PolarisTreeMapMetaStoreSessionImpl extends AbstractTransactionalPer
         .getSliceEntitiesActive()
         .readRange(this.store.buildPrefixKeyComposite(catalogId, parentId, entityType.getCode()))
         .stream()
+        .map(
+            nameRecord ->
+                this.lookupEntity(callCtx, catalogId, nameRecord.getId(), entityType.getCode()))
         .filter(entityFilter)
         .limit(limit)
         .map(transformer)

@@ -33,6 +33,8 @@ import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 
@@ -120,13 +122,62 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   //
   // Implementations of the one-shot atomic BasePersistence methods which explicitly run
-  // the * variants of methods in a new transaction.
+  // the in-transaction variants of methods in a new transaction.
   //
 
   /** {@inheritDoc} */
   @Override
   public long generateNewIdAtomically(@Nonnull PolarisCallContext callCtx) {
     return runInTransaction(callCtx, () -> this.generateNewId(callCtx));
+  }
+
+  /** Helper to perform the compare-and-swap semantics of a single writeEntity call. */
+  private void checkConditionsForWriteEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity entity,
+      @Nullable PolarisBaseEntity originalEntity) {
+    PolarisBaseEntity refreshedEntity =
+        this.lookupEntity(callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
+
+    if (originalEntity == null) {
+      if (refreshedEntity != null) {
+        // If this is a "create", and we manage to look up an existing entity with already
+        // the same id, where ids are uniquely reserved when generated, it means it's a
+        // low-level retry possibly in the face of a transient connectivity failure to
+        // the backend database.
+        throw new EntityAlreadyExistsException(refreshedEntity);
+      } else {
+        // Successfully verified the entity doesn't already exist by-id, but for a "create"
+        // we must also check for name-collection now.
+        refreshedEntity =
+            this.lookupEntityByName(
+                callCtx,
+                entity.getCatalogId(),
+                entity.getParentId(),
+                entity.getType().getCode(),
+                entity.getName());
+        if (refreshedEntity != null) {
+          // Name-collision conflict.
+          throw new EntityAlreadyExistsException(refreshedEntity);
+        }
+      }
+    } else {
+      // This is an "update".
+      if (refreshedEntity == null
+          || refreshedEntity.getEntityVersion() != originalEntity.getEntityVersion()
+          || refreshedEntity.getGrantRecordsVersion() != originalEntity.getGrantRecordsVersion()) {
+        // TODO: Better standardization of exception types, possibly make the ones that are
+        // really part of the persistence contract be CheckedExceptions.
+        throw new RetryOnConcurrencyException(
+            "Entity '%s' id '%s' concurrently modified; expected version %s/%s got %s/%s",
+            entity.getName(),
+            entity.getId(),
+            originalEntity.getEntityVersion(),
+            originalEntity.getGrantRecordsVersion(),
+            refreshedEntity != null ? refreshedEntity.getEntityVersion() : -1,
+            refreshedEntity != null ? refreshedEntity.getGrantRecordsVersion() : -1);
+      }
+    }
   }
 
   /** {@inheritDoc} */
@@ -137,7 +188,11 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       boolean nameOrParentChanged,
       @Nullable PolarisBaseEntity originalEntity) {
     runActionInTransaction(
-        callCtx, () -> this.writeEntity(callCtx, entity, nameOrParentChanged, originalEntity));
+        callCtx,
+        () -> {
+          this.checkConditionsForWriteEntity(callCtx, entity, originalEntity);
+          this.writeEntity(callCtx, entity, nameOrParentChanged, originalEntity);
+        });
   }
 
   /** {@inheritDoc} */
@@ -146,7 +201,50 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisBaseEntity> entities,
       @Nullable List<PolarisBaseEntity> originalEntities) {
-    throw new UnsupportedOperationException("Not yet implemented");
+    if (originalEntities != null) {
+      callCtx
+          .getDiagServices()
+          .check(
+              entities.size() == originalEntities.size(),
+              "mismatched_entities_and_original_entities_size",
+              "entities.size()={}, originalEntities.size()={}",
+              entities.size(),
+              originalEntities.size());
+    }
+    runActionInTransaction(
+        callCtx,
+        () -> {
+          // Validate and write each one independently so that we can also detect conflicting
+          // writes to the same entity id within a given batch (so that previously written
+          // ones will be seen during validation of the later item).
+          for (int i = 0; i < entities.size(); ++i) {
+            PolarisBaseEntity entity = entities.get(i);
+            PolarisBaseEntity originalEntity =
+                originalEntities != null ? originalEntities.get(i) : null;
+            // TODO: This isn't quite correct right now, because originalEntity is only actually
+            // safe to use for entityVersion and grantRecordsVersion right now. Once we refactor
+            // the writeEntities[Atomically] methods to take something like PolarisEntityCore
+            // for originalEntity and force the callsites such as BasePolarisCatalog to actually
+            // provide the original values, this will be correct. For now, the API does't support
+            // bulk renames anyways.
+            boolean nameOrParentChanged =
+                originalEntity == null
+                    || !entity.getName().equals(originalEntity.getName())
+                    || entity.getParentId() != originalEntity.getParentId();
+            try {
+              this.checkConditionsForWriteEntity(callCtx, entity, originalEntity);
+            } catch (EntityAlreadyExistsException e) {
+              // If the ids are equal then it is an idempotent-create-retry error, which counts
+              // as a "success" for multi-entity commit purposes; name-collisions on different
+              // ids counts as a true error that we rethrow.
+              if (e.getExistingEntity().getId() != entity.getId()) {
+                throw e;
+              }
+              // Else silently swallow the apparent create-retry
+            }
+            this.writeEntity(callCtx, entity, nameOrParentChanged, originalEntity);
+          }
+        });
   }
 
   /** {@inheritDoc} */
@@ -425,7 +523,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   }
 
   //
-  // Implementations of the * versions for basic write/delete/lookup using the
+  // Implementations of the in-transaction versions for basic write/delete/lookup using the
   // slice-based model supported by this class.
   //
 
@@ -436,8 +534,6 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       @Nonnull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
       @Nullable PolarisBaseEntity originalEntity) {
-    // TODO: Pull down relevant compare-and-swap semantics from PolarisMetaStoreManagerImpl
-    // into this layer.
     writeToEntities(callCtx, entity);
     writeToEntitiesChangeTracking(callCtx, entity);
 
@@ -458,7 +554,31 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisBaseEntity> entities,
       @Nullable List<PolarisBaseEntity> originalEntities) {
-    throw new UnsupportedOperationException("Not yet implemented");
+    if (originalEntities != null) {
+      callCtx
+          .getDiagServices()
+          .check(
+              entities.size() == originalEntities.size(),
+              "mismatched_entities_and_original_entities_size",
+              "entities.size()={}, originalEntities.size()={}",
+              entities.size(),
+              originalEntities.size());
+    }
+    for (int i = 0; i < entities.size(); ++i) {
+      PolarisBaseEntity entity = entities.get(i);
+      PolarisBaseEntity originalEntity = originalEntities != null ? originalEntities.get(i) : null;
+      // TODO: This isn't quite correct right now, because originalEntity is only actually
+      // safe to use for entityVersion and grantRecordsVersion right now. Once we refactor
+      // the writeEntities[Atomically] methods to take something like PolarisEntityCore
+      // for originalEntity and force the callsites such as BasePolarisCatalog to actually
+      // provide the original values, this will be correct. For now, the API does't support
+      // bulk renames anyways.
+      boolean nameOrParentChanged =
+          originalEntity == null
+              || !entity.getName().equals(originalEntity.getName())
+              || entity.getParentId() != originalEntity.getParentId();
+      this.writeEntity(callCtx, entity, nameOrParentChanged, originalEntity);
+    }
   }
 
   /** {@inheritDoc} */

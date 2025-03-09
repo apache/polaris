@@ -266,6 +266,9 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     securableEntity.setGrantRecordsVersion(securableEntity.getGrantRecordsVersion() + 1);
     ms.writeEntity(callCtx, securableEntity, false, originalSecurableEntity);
 
+    // TODO: Update this to be an atomic bulk-update of the grantee/securable, ideally along
+    // with adding the grant record in the same bulk-update.
+
     // done, return the new grant record
     return grantRecord;
   }
@@ -348,6 +351,9 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
     // grants have changed, we need to bump-up the grants version
     refreshSecurable.setGrantRecordsVersion(refreshSecurable.getGrantRecordsVersion() + 1);
     ms.writeEntity(callCtx, refreshSecurable, false, originalRefreshSecurable);
+
+    // TODO: Update this to be an atomic bulk-update of the grantee/securable, ideally along
+    // with removing the grant record in the same bulk-update.
   }
 
   /**
@@ -938,6 +944,8 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
         ms.lookupEntity(callCtx, entity.getCatalogId(), entity.getId(), entity.getTypeCode());
     if (entityFound != null) {
       // probably the client retried, simply return it
+      // TODO: Check correctness of returning entityFound vs entity here. It may have already
+      // been updated after the creation.
       return new EntityResult(entityFound);
     }
 
@@ -1039,6 +1047,18 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
 
     // check that the version of the entity has not changed at all to avoid concurrent updates
     if (entityRefreshed.getEntityVersion() != entity.getEntityVersion()) {
+      // TODO: Check if this is a bug that might cause grantRecordVersions to go backwards. The
+      // behavior for grantRecordVersions updates could be either to still allow the update
+      // while taking the higher grantRecordsVersion, or to hard-fail. If we still allow the
+      // update, then we're only guaranteeing that the caller was authorized for the update
+      // *at some point in time* in the vicinity of an updated grant. If we don't have retries
+      // that re-fetch the entity properties and try to re-apply updates server-side this is
+      // probably fine, but if we do have server-side retries *after* grantRecordVersion
+      // resolution, this could mean a bug where a grant is revoked before something else
+      // already modifies the table in a way that is only safe with that grant revoked,
+      // while the retry will allow the update to go through. If we consider grantRecordsVersion
+      // a strict part of the version comparison here then we have well-ordering guarantees.
+      // TODO: Give useful extraInformation
       return new EntityResult(BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, null);
     }
 
@@ -1861,9 +1881,12 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
             },
             Function.identity());
 
+    List<PolarisBaseEntity> loadedTasks = new ArrayList<>();
     availableTasks.forEach(
         task -> {
-          PolarisBaseEntity originalTask = new PolarisBaseEntity(task);
+          // Make a copy to avoid mutating someone else's reference.
+          // TODO: Refactor into immutable/Builder pattern.
+          PolarisBaseEntity updatedTask = new PolarisBaseEntity(task);
           Map<String, String> properties =
               PolarisObjectMapperUtil.deserializeProperties(callCtx, task.getProperties());
           properties.put(PolarisTaskConstants.LAST_ATTEMPT_EXECUTOR_ID, executorId);
@@ -1875,11 +1898,22 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
               String.valueOf(
                   Integer.parseInt(properties.getOrDefault(PolarisTaskConstants.ATTEMPT_COUNT, "0"))
                       + 1));
-          task.setEntityVersion(task.getEntityVersion() + 1);
-          task.setProperties(PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
-          ms.writeEntity(callCtx, task, false, originalTask);
+          updatedTask.setProperties(
+              PolarisObjectMapperUtil.serializeProperties(callCtx, properties));
+          EntityResult result = updateEntityPropertiesIfNotChanged(callCtx, ms, null, updatedTask);
+          if (result.getReturnStatus() == BaseResult.ReturnStatus.SUCCESS) {
+            loadedTasks.add(result.getEntity());
+          } else {
+            // TODO: Consider performing incremental leasing of individual tasks one at a time
+            // instead of requiring all-or-none semantics for all the tasks we think we listed,
+            // or else contention could be very bad.
+            ms.rollback();
+            throw new RetryOnConcurrencyException(
+                "Failed to lease available task with status %s, info: %s",
+                result.getReturnStatus(), result.getExtraInformation());
+          }
         });
-    return new EntitiesResult(availableTasks);
+    return new EntitiesResult(loadedTasks);
   }
 
   @Override

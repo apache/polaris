@@ -87,6 +87,14 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
     }
   }
 
+  /**
+   * Subclasses can override this to inject different implementations of PolarisMetaStoreManager
+   * into the existing realm-based setup flow.
+   */
+  protected PolarisMetaStoreManager createNewMetaStoreManager() {
+    return new PolarisMetaStoreManagerImpl();
+  }
+
   private void initializeForRealm(
       RealmContext realmContext, RootCredentialsSet rootCredentialsSet) {
     final StoreType backingStore = createBackingStore(diagnostics);
@@ -94,7 +102,7 @@ public abstract class LocalPolarisMetaStoreManagerFactory<StoreType>
         realmContext.getRealmIdentifier(),
         () -> createMetaStoreSession(backingStore, realmContext, rootCredentialsSet, diagnostics));
 
-    PolarisMetaStoreManager metaStoreManager = new PolarisMetaStoreManagerImpl();
+    PolarisMetaStoreManager metaStoreManager = createNewMetaStoreManager();
     metaStoreManagerMap.put(realmContext.getRealmIdentifier(), metaStoreManager);
   }
 

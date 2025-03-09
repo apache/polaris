@@ -60,6 +60,11 @@ public interface BasePersistence {
    * or push down the return status enums from PolarisMetaStoreManager into this layer and document
    * accordingly.
    *
+   * <p>TODO: Change originalEntity to be just the set of members taht participate in conditions,
+   * similar to PolarisEntityCore, and make the callsites in BasePolarisCatalog actually plumb
+   * through correctly, in particular for values the PolarisMetaStoreManagerImpl doesn't have access
+   * to such as the original name and parentId in renames.
+   *
    * @param callCtx call context
    * @param entity entity to persist
    * @param nameOrParentChanged if true, also write it to by-name lookups if applicable
@@ -80,12 +85,18 @@ public interface BasePersistence {
    * <p>TODO: Push down the multi-entity commit from PolarisMetaStoreManagerImpl to use this instead
    * of running single writeEntity actions within a transaction.
    *
+   * <p>TODO: Change originalEntity to be just the set of members taht participate in conditions,
+   * similar to PolarisEntityCore, and make the callsites in BasePolarisCatalog actually plumb
+   * through correctly, in particular for values the PolarisMetaStoreManagerImpl doesn't have access
+   * to such as the original name and parentId in renames.
+   *
    * @param callCtx call context
    * @param entities entities to persist
    * @param originalEntities original states of the entity to use for compare-and-swap purposes, or
    *     null if this is expected to be a brand-new entity; must contain exactly as many elements as
    *     {@code entities} where each item corresponds to the element of {@code entities} in the same
-   *     index as this list.
+   *     index as this list. If non-null, we expect all elements of originalEntities to be non-null;
+   *     there is no mix-and-match "create" and "update" in a single batch.
    */
   void writeEntitiesAtomically(
       @Nonnull PolarisCallContext callCtx,

@@ -150,6 +150,8 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
     callCtx.getDiagServices().check(entity.getCreateTimestamp() != 0, "null_create_timestamp");
 
     // this is the first change
+    // TODO: Make immutable; make sure no caller depends on the input entity actually
+    // being changed.
     entity.setLastUpdateTimestamp(entity.getCreateTimestamp());
 
     // set all other timestamps to 0
@@ -157,24 +159,6 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
     entity.setPurgeTimestamp(0);
     entity.setToPurgeTimestamp(0);
     return entity;
-  }
-
-  /**
-   * Persist the specified new entity.
-   *
-   * @param callCtx call context
-   * @param ms meta store in read/write mode
-   * @param entity entity we need a new persisted record for
-   */
-  protected void persistNewEntity(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull BasePersistence ms,
-      @Nonnull PolarisBaseEntity entity) {
-    // Invoke shared logic for validation and filling out remaining fields.
-    entity = prepareToPersistNewEntity(callCtx, ms, entity);
-
-    // write it
-    ms.writeEntityAtomically(callCtx, entity, true, null);
   }
 
   /**
@@ -232,36 +216,10 @@ public abstract class BaseMetaStoreManager implements PolarisMetaStoreManager {
     }
 
     // update last update timestamp and increment entity version
+    // TODO: Make immutable; make sure no caller depends on the input entity actually
+    // being changed.
     entity.setLastUpdateTimestamp(now);
     entity.setEntityVersion(entity.getEntityVersion() + 1);
-    return entity;
-  }
-
-  /**
-   * Persist the specified entity after it has been changed. We will update the last changed time,
-   * increment the entity version and persist it in one atomic operation.
-   *
-   * @param callCtx call context
-   * @param ms meta store
-   * @param entity the entity which has been changed
-   * @param nameOrParentChanged indicates if parent or name changed
-   * @param originalEntity the original state of the entity before changes
-   * @return the entity with its version and lastUpdateTimestamp updated
-   */
-  protected @Nonnull PolarisBaseEntity persistEntityAfterChange(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull BasePersistence ms,
-      @Nonnull PolarisBaseEntity entity,
-      boolean nameOrParentChanged,
-      @Nonnull PolarisBaseEntity originalEntity) {
-    // Invoke shared logic for validation and updating expected fields.
-    entity =
-        prepareToPersistEntityAfterChange(callCtx, ms, entity, nameOrParentChanged, originalEntity);
-
-    // persist it to the various slices
-    ms.writeEntityAtomically(callCtx, entity, nameOrParentChanged, originalEntity);
-
-    // return it
     return entity;
   }
 

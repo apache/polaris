@@ -18,8 +18,24 @@
  */
 package org.apache.polaris.core.persistence;
 
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+
 /**
- * Implementation of PolarisMetaStoreManager which only relies on one-shot atomic operations into a
- * BasePersistence implementation without any kind of open-ended multi-statement transactions.
+ * Exception raised when some kind of conclit in the persistence layer prevents the attempted
+ * creation of a new entity; provides a member holding the conflicting entity.
  */
-public abstract class NonTransactionalMetaStoreManager extends BaseMetaStoreManager {}
+public class EntityAlreadyExistsException extends RuntimeException {
+  private PolarisBaseEntity existingEntity;
+
+  /**
+   * @param existingEntity The conflicting entity that caused creation to fail.
+   */
+  public EntityAlreadyExistsException(PolarisBaseEntity existingEntity) {
+    super(existingEntity.getName() + ":" + existingEntity.getId());
+    this.existingEntity = existingEntity;
+  }
+
+  public PolarisBaseEntity getExistingEntity() {
+    return this.existingEntity;
+  }
+}
