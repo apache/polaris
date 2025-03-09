@@ -16,8 +16,36 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.persistence.dao;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import java.util.List;
+import java.util.Map;
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+
 public interface TaskDao {
+  @Nonnull
+  EntitiesResult loadTasks(@Nonnull PolarisCallContext callCtx, String executorId, int limit);
+
+  @Nonnull
+  EntitiesResult createEntitiesIfNotExist(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull List<? extends PolarisBaseEntity> entities);
+
+  @Nonnull
+  DropEntityResult dropEntityIfExists(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore entityToDrop,
+      @Nullable Map<String, String> cleanupProperties,
+      boolean cleanup);
+
+  @Nonnull
+  EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
 }

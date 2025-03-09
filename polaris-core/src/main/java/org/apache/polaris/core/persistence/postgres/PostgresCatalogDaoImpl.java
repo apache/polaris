@@ -16,35 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.persistence.postgres;
 
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntityCore;
-import org.apache.polaris.core.persistence.dao.CatalogDao;
-import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
-
-public class PostgresCatalogDaoImpl implements CatalogDao {
-    @Override
-    public CreateCatalogResult createCatalog(@NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity catalog, @NotNull List<PolarisEntityCore> principalRoles) {
-        return null;
-    }
-
-    @Override
-    public @NotNull EntityResult readEntityByName(@NotNull PolarisCallContext callCtx, @Nullable List<PolarisEntityCore> catalogPath, @NotNull String name) {
-        return null;
-    }
-
-    @NotNull
-    @Override
-    public ListEntitiesResult listEntities(@NotNull PolarisCallContext callCtx) {
-        return null;
-    }
-}
+public class PostgresCatalogDaoImpl {}

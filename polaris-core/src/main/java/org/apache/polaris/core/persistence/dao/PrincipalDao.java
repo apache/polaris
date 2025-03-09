@@ -19,46 +19,31 @@
 package org.apache.polaris.core.persistence.dao;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
-import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
-public interface TableLikeDao {
+public interface PrincipalDao {
   @NotNull
-  EntityResult readEntityByName(
-      @NotNull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntitySubType entitySubType,
-      @NotNull String name);
+  EntityResult readEntityByName(@NotNull PolarisCallContext callCtx, @NotNull String name);
 
   @Nonnull
   EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
 
   @Nonnull
-  ListEntitiesResult listEntities(
-      @Nonnull PolarisCallContext callCtx,
-      @Nonnull List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntitySubType entitySubType);
+  ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx);
 
-  @Nonnull
-  EntityResult renameEntity(
-      @Nonnull PolarisCallContext callCtx,
-      @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore entityToRename,
-      @Nullable List<PolarisEntityCore> newCatalogPath,
-      @Nonnull PolarisEntity renamedEntity);
+  CreatePrincipalResult createPrincipal(
+      @NotNull PolarisCallContext callCtx, @NotNull PolarisBaseEntity principal);
 
   @Nonnull
   ResolvedEntityResult loadResolvedEntityById(
@@ -80,35 +65,15 @@ public interface TableLikeDao {
       long entityId);
 
   @Nonnull
-  EntityResult createEntityIfNotExists(
-      @Nonnull PolarisCallContext callCtx,
-      @jakarta.annotation.Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisBaseEntity entity);
-
-  @Nonnull
   EntityResult updateEntityPropertiesIfNotChanged(
       @Nonnull PolarisCallContext callCtx,
-      @jakarta.annotation.Nullable List<PolarisEntityCore> catalogPath,
+      @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity);
 
   @Nonnull
   DropEntityResult dropEntityIfExists(
       @Nonnull PolarisCallContext callCtx,
-      @jakarta.annotation.Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore entityToDrop,
       @jakarta.annotation.Nullable Map<String, String> cleanupProperties,
       boolean cleanup);
-
-  /**
-   * This allows to operate on multiple tables at once. Just loop through the list, calling each
-   * entity update and return null if any of those fail.
-   *
-   * @param callCtx call context
-   * @param entities the set of entities to update
-   * @return list of all entities we updated or null if the client should retry because one update
-   *     failed
-   */
-  @Nonnull
-  EntitiesResult updateEntitiesPropertiesIfNotChanged(
-      @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityWithPath> entities);
 }

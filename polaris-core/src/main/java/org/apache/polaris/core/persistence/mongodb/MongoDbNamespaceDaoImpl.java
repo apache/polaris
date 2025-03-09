@@ -16,28 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.persistence.mongodb;
 
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisEntityCore;
-import org.apache.polaris.core.persistence.dao.NamespaceDao;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
-
-public class MongoDbNamespaceDaoImpl implements NamespaceDao {
-    @Override
-    public @NotNull EntityResult readEntityByName(@NotNull PolarisCallContext callCtx, @Nullable List<PolarisEntityCore> catalogPath, @NotNull String name) {
-        return null;
-    }
-
-    @NotNull
-    @Override
-    public ListEntitiesResult listEntities(@NotNull PolarisCallContext callCtx, @NotNull List<PolarisEntityCore> catalogPath) {
-        return null;
-    }
-}
+public class MongoDbNamespaceDaoImpl {}

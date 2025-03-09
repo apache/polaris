@@ -16,29 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.persistence.postgres;
 
-import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisEntityCore;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
-import org.apache.polaris.core.persistence.dao.TableLikeDao;
-import org.apache.polaris.core.persistence.dao.entity.EntityResult;
-import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
-
-public class PostgresTableLikeDaoImpl implements TableLikeDao {
-    @Override
-    public @NotNull EntityResult readEntityByName(@NotNull PolarisCallContext callCtx, @Nullable List<PolarisEntityCore> catalogPath, @NotNull PolarisEntitySubType entitySubType, @NotNull String name) {
-        return null;
-    }
-
-    @NotNull
-    @Override
-    public ListEntitiesResult listEntities(@NotNull PolarisCallContext callCtx, @NotNull List<PolarisEntityCore> catalogPath, @NotNull PolarisEntitySubType entitySubType) {
-        return null;
-    }
-}
+public class PostgresTableLikeDaoImpl {}

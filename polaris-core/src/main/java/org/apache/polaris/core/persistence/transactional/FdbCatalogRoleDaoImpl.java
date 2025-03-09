@@ -19,14 +19,14 @@
 package org.apache.polaris.core.persistence.transactional;
 
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ANY_SUBTYPE;
-import static org.apache.polaris.core.entity.PolarisEntityType.NAMESPACE;
+import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG_ROLE;
 
 import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
-import org.apache.polaris.core.persistence.dao.NamespaceDao;
+import org.apache.polaris.core.persistence.dao.CatalogRoleDao;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
@@ -34,8 +34,7 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class FdbNamespaceDaoImpl implements NamespaceDao {
-  // TODO we need a map to cache the PolarisMetaStoreManagerImpl as well
+public class FdbCatalogRoleDaoImpl implements CatalogRoleDao {
   PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
   @Override
@@ -43,28 +42,29 @@ public class FdbNamespaceDaoImpl implements NamespaceDao {
       @NotNull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @NotNull String name) {
-    return metaStoreManager.readEntityByName(callCtx, catalogPath, NAMESPACE, ANY_SUBTYPE, name);
+    return metaStoreManager.readEntityByName(callCtx, catalogPath, CATALOG_ROLE, ANY_SUBTYPE, name);
   }
 
   @NotNull
   @Override
   public EntityResult loadEntity(
       @NotNull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
-    return metaStoreManager.loadEntity(callCtx, entityCatalogId, entityId, NAMESPACE);
+    return metaStoreManager.loadEntity(callCtx, entityCatalogId, entityId, CATALOG_ROLE);
   }
 
   @NotNull
   @Override
   public ListEntitiesResult listEntities(
-      @NotNull PolarisCallContext callCtx, @NotNull List<PolarisEntityCore> catalogPath) {
-    return metaStoreManager.listEntities(callCtx, catalogPath, NAMESPACE, ANY_SUBTYPE);
+      @NotNull PolarisCallContext callCtx, @Nullable List<PolarisEntityCore> catalogPath) {
+    return metaStoreManager.listEntities(callCtx, catalogPath, CATALOG_ROLE, ANY_SUBTYPE);
   }
 
   @NotNull
   @Override
   public ResolvedEntityResult loadResolvedEntityById(
       @NotNull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
-    return metaStoreManager.loadResolvedEntityById(callCtx, entityCatalogId, entityId, NAMESPACE);
+    return metaStoreManager.loadResolvedEntityById(
+        callCtx, entityCatalogId, entityId, CATALOG_ROLE);
   }
 
   @NotNull
@@ -75,7 +75,7 @@ public class FdbNamespaceDaoImpl implements NamespaceDao {
       long parentId,
       @NotNull String entityName) {
     return metaStoreManager.loadResolvedEntityByName(
-        callCtx, entityCatalogId, parentId, NAMESPACE, entityName);
+        callCtx, entityCatalogId, parentId, CATALOG_ROLE, entityName);
   }
 
   @NotNull
@@ -87,7 +87,7 @@ public class FdbNamespaceDaoImpl implements NamespaceDao {
       long entityCatalogId,
       long entityId) {
     return metaStoreManager.refreshResolvedEntity(
-        callCtx, entityVersion, entityGrantRecordsVersion, NAMESPACE, entityCatalogId, entityId);
+        callCtx, entityVersion, entityGrantRecordsVersion, CATALOG_ROLE, entityCatalogId, entityId);
   }
 
   @NotNull

@@ -45,12 +45,12 @@ import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.dao.PolarisMetastoreManagerDao;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.PolarisTreeMapMetaStoreSessionImpl;
 import org.apache.polaris.core.persistence.transactional.PolarisTreeMapStore;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
@@ -118,7 +118,7 @@ public class ResolverTest {
     store = new PolarisTreeMapStore(diagServices);
     metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(metaStore, diagServices);
-    metaStoreManager = new PolarisMetaStoreManagerImpl();
+    metaStoreManager = new PolarisMetastoreManagerDao();
 
     // bootstrap the mata store with our test schema
     tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);

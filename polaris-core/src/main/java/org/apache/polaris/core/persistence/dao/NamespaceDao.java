@@ -16,25 +16,72 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.persistence.dao;
 
 import jakarta.annotation.Nonnull;
+import java.util.List;
+import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
+import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.List;
-
 public interface NamespaceDao {
-    // TODO this should return a type-specific entity result
-    @NotNull
-    EntityResult readEntityByName(@NotNull PolarisCallContext callCtx, @Nullable List<PolarisEntityCore> catalogPath, @NotNull String name);
+  // TODO this should return a type-specific entity result
+  @NotNull
+  EntityResult readEntityByName(
+      @NotNull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @NotNull String name);
 
-    // TODO this should return a type-specific entity result
-    @Nonnull
-    ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEntityCore> catalogPath);
+  @Nonnull
+  EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
+
+  @Nonnull
+  ListEntitiesResult listEntities(
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEntityCore> catalogPath);
+
+  @Nonnull
+  ResolvedEntityResult loadResolvedEntityById(
+      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
+
+  @Nonnull
+  ResolvedEntityResult loadResolvedEntityByName(
+      @Nonnull PolarisCallContext callCtx,
+      long entityCatalogId,
+      long parentId,
+      @Nonnull String entityName);
+
+  @Nonnull
+  ResolvedEntityResult refreshResolvedEntity(
+      @Nonnull PolarisCallContext callCtx,
+      int entityVersion,
+      int entityGrantRecordsVersion,
+      long entityCatalogId,
+      long entityId);
+
+  @Nonnull
+  EntityResult createEntityIfNotExists(
+      @Nonnull PolarisCallContext callCtx,
+      @jakarta.annotation.Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisBaseEntity entity);
+
+  @Nonnull
+  EntityResult updateEntityPropertiesIfNotChanged(
+      @Nonnull PolarisCallContext callCtx,
+      @jakarta.annotation.Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisBaseEntity entity);
+
+  @Nonnull
+  DropEntityResult dropEntityIfExists(
+      @Nonnull PolarisCallContext callCtx,
+      @jakarta.annotation.Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityCore entityToDrop,
+      @jakarta.annotation.Nullable Map<String, String> cleanupProperties,
+      boolean cleanup);
 }
