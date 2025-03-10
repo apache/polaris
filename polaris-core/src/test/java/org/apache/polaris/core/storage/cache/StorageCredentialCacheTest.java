@@ -84,6 +84,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -115,6 +116,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -157,6 +159,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -214,6 +217,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -301,6 +305,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))

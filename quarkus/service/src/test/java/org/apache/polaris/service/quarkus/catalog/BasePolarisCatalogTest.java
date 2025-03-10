@@ -34,6 +34,7 @@ import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -122,7 +123,6 @@ import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
 import org.assertj.core.api.Assertions;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -1429,6 +1429,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 polarisContext,
                 0,
                 taskEntity.getId(),
+                taskEntity.getType(),
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()))
@@ -1630,13 +1631,13 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             new FileIOFactory() {
               @Override
               public FileIO loadFileIO(
-                  @NotNull CallContext callContext,
-                  @NotNull String ioImplClassName,
-                  @NotNull Map<String, String> properties,
-                  @NotNull TableIdentifier identifier,
-                  @NotNull Set<String> tableLocations,
-                  @NotNull Set<PolarisStorageActions> storageActions,
-                  @NotNull PolarisResolvedPathWrapper resolvedEntityPath) {
+                  @Nonnull CallContext callContext,
+                  @Nonnull String ioImplClassName,
+                  @Nonnull Map<String, String> properties,
+                  @Nonnull TableIdentifier identifier,
+                  @Nonnull Set<String> tableLocations,
+                  @Nonnull Set<PolarisStorageActions> storageActions,
+                  @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
                 return measured.loadFileIO(
                     callContext,
                     "org.apache.iceberg.inmemory.InMemoryFileIO",

@@ -75,7 +75,8 @@ public class JWTRSAKeyPairTest {
             PolarisEntitySubType.NULL_SUBTYPE,
             0L,
             "principal");
-    Mockito.when(metastoreManager.loadEntity(polarisCallContext, 0L, 1L))
+    Mockito.when(
+            metastoreManager.loadEntity(polarisCallContext, 0L, 1L, PolarisEntityType.PRINCIPAL))
         .thenReturn(new EntityResult(principal));
     TokenBroker tokenBroker =
         new JWTRSAKeyPair(metastoreManager, 420, publicFileLocation, privateFileLocation);
