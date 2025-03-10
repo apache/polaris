@@ -517,6 +517,10 @@ public class Resolver {
    * @return true if none of the entities has changed
    */
   private boolean bulkValidate(List<ResolvedPolarisEntity> toValidate) {
+    if (!polarisMetaStoreManager.requiresEntityReload()) {
+      return true;
+    }
+
     // assume everything is good
     boolean validationStatus = true;
 
