@@ -19,7 +19,6 @@
 package org.apache.polaris.core.storage.s3compatible;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
@@ -33,9 +32,6 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
  */
 public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
-  // 5 is the approximate max allowed locations for the size of AccessPolicy when LIST is required
-  // for allowed read and write locations for sub-scoping credentials.
-  @JsonIgnore private static final int MAX_ALLOWED_LOCATIONS = 5;
   private final @Nonnull String s3Endpoint;
   private final @Nullable String s3ProfileName;
   private final @Nullable String s3CredentialsCatalogAccessKeyId;
@@ -60,7 +56,6 @@ public class S3CompatibleStorageConfigurationInfo extends PolarisStorageConfigur
           List<String> allowedLocations) {
 
     super(StorageType.S3_COMPATIBLE, allowedLocations);
-    validateMaxAllowedLocations(MAX_ALLOWED_LOCATIONS);
     this.s3PathStyleAccess = s3PathStyleAccess;
     this.s3Endpoint = s3Endpoint;
     this.s3ProfileName = s3ProfileName;
