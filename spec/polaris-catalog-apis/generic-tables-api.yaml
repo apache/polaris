@@ -139,7 +139,7 @@ paths:
                 $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
               examples:
                 TableToLoadDoesNotExist:
-                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchGenericTableError'
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchTableError'
         419:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
         503:
@@ -198,7 +198,7 @@ components:
           additionalProperties:
             type: string
 
-    Table:
+    GenericTable:
       type: object
       required:
         - name
@@ -224,7 +224,7 @@ components:
         - table
       properties:
         table:
-          $ref: '#/components/schemas/Table'
+          $ref: '#/components/schemas/GenericTable'
 
     ListGenericTablesResponse:
       type: object

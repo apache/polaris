@@ -28,7 +28,7 @@ val models =
       "CreateGenericTableRequest",
       "LoadGenericTableResponse",
       "ListGenericTablesResponse",
-      "Table",
+      "GenericTable",
     )
     .joinToString(",")
 
