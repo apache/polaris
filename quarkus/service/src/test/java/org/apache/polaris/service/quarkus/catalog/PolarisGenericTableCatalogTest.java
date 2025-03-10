@@ -57,7 +57,6 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
@@ -303,19 +302,11 @@ public class PolarisGenericTableCatalogTest {
 
     genericTableCatalog.createGenericTable(TableIdentifier.of("ns", tableName), format, properties);
 
-    // todo remove debugging
-    PolarisPassthroughResolutionView passthroughView =
-        new PolarisPassthroughResolutionView(
-            callContext, entityManager, securityContext, CATALOG_NAME);
-    PolarisResolvedPathWrapper dbg = passthroughView.getPassthroughResolvedPath(namespace);
-    System.out.println(dbg);
-    // todo end of debugging
-
     GenericTableEntity resultEntity =
         genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", tableName));
 
     Assertions.assertThat(resultEntity.getFormat()).isEqualTo(format);
-    Assertions.assertThat(resultEntity.getProperties()).isEqualTo(properties);
+    Assertions.assertThat(resultEntity.getPropertiesAsMap()).isEqualTo(properties);
     Assertions.assertThat(resultEntity.getName()).isEqualTo(tableName);
   }
 }

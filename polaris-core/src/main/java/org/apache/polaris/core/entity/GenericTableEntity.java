@@ -45,17 +45,7 @@ public class GenericTableEntity extends PolarisEntity {
 
   @JsonIgnore
   public String getFormat() {
-    return getPropertiesAsMap().get(GenericTableEntity.FORMAT_KEY);
-  }
-
-  @JsonIgnore
-  public Namespace getParentNamespace() {
-    String encodedNamespace =
-        getInternalPropertiesAsMap().get(NamespaceEntity.PARENT_NAMESPACE_KEY);
-    if (encodedNamespace == null) {
-      return Namespace.empty();
-    }
-    return RESTUtil.decodeNamespace(encodedNamespace);
+    return getInternalPropertiesAsMap().get(GenericTableEntity.FORMAT_KEY);
   }
 
   public static class Builder
@@ -69,7 +59,7 @@ public class GenericTableEntity extends PolarisEntity {
 
     public GenericTableEntity.Builder setFormat(String format) {
       // TODO in the future, we may validate the format and require certain properties
-      properties.put(GenericTableEntity.FORMAT_KEY, format);
+      internalProperties.put(GenericTableEntity.FORMAT_KEY, format);
       return this;
     }
 

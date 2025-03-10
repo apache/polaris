@@ -108,6 +108,8 @@ public class PolarisGenericTableCatalog {
       entity =
           new GenericTableEntity.Builder(tableIdentifier, format)
               .setCatalogId(this.catalogId)
+              .setParentNamespace(tableIdentifier.namespace())
+              .setParentId(resolvedParent.getRawLeafEntity().getId())
               .setId(
                   this.metaStoreManager
                       .generateNewEntityId(this.callContext.getPolarisCallContext())
