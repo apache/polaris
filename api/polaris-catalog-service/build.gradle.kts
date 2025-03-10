@@ -23,6 +23,15 @@ plugins {
   alias(libs.plugins.jandex)
 }
 
+val models =
+  listOf(
+      "CreateGenericTableRequest",
+      "LoadGenericTableResponse",
+      "ListGenericTablesResponse",
+      "Table",
+    )
+    .joinToString(",")
+
 dependencies {
   implementation(project(":polaris-core"))
 
@@ -52,11 +61,12 @@ openApiGenerate {
   generatorName = "jaxrs-resteasy"
   outputDir = "$projectDir/build/generated"
   apiPackage = "org.apache.polaris.service.catalog.api"
+  modelPackage = "org.apache.polaris.service.types"
   ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
-  globalProperties.put("apis", "CatalogApi,ConfigurationApi,OAuth2Api")
-  globalProperties.put("models", "false")
+  globalProperties.put("apis", "GenericTableApi")
+  globalProperties.put("models", models)
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")
   configOptions.put("resourceName", "catalog")
@@ -64,46 +74,19 @@ openApiGenerate {
   configOptions.put("useBeanValidation", "false")
   configOptions.put("sourceFolder", "src/main/java")
   configOptions.put("useJakartaEe", "true")
+  configOptions.put("generateBuilders", "true")
+  configOptions.put("generateConstructorWithAllArgs", "true")
+  configOptions.put("openApiNullable", "false")
   openapiNormalizer.put("REFACTOR_ALLOF_WITH_PROPERTIES_ONLY", "true")
-  additionalProperties.put("apiNamePrefix", "IcebergRest")
+  additionalProperties.put("apiNamePrefix", "PolarisCatalog")
   additionalProperties.put("apiNameSuffix", "")
   additionalProperties.put("metricsPrefix", "polaris")
   serverVariables.put("basePath", "api/catalog")
   importMappings =
     mapOf(
-      "CatalogConfig" to "org.apache.iceberg.rest.responses.ConfigResponse",
-      "CommitTableResponse" to "org.apache.iceberg.rest.responses.LoadTableResponse",
-      "CreateNamespaceRequest" to "org.apache.iceberg.rest.requests.CreateNamespaceRequest",
-      "CreateNamespaceResponse" to "org.apache.iceberg.rest.responses.CreateNamespaceResponse",
-      "CreateTableRequest" to "org.apache.iceberg.rest.requests.CreateTableRequest",
       "ErrorModel" to "org.apache.iceberg.rest.responses.ErrorResponse",
-      "GetNamespaceResponse" to "org.apache.iceberg.rest.responses.GetNamespaceResponse",
-      "ListNamespacesResponse" to "org.apache.iceberg.rest.responses.ListNamespacesResponse",
-      "ListTablesResponse" to "org.apache.iceberg.rest.responses.ListTablesResponse",
-      "LoadCredentialsResponse" to "org.apache.iceberg.rest.responses.LoadCredentialsResponse",
-      "LoadTableResult" to "org.apache.iceberg.rest.responses.LoadTableResponse",
-      "LoadViewResult" to "org.apache.iceberg.rest.responses.LoadTableResponse",
-      "OAuthTokenResponse" to "org.apache.iceberg.rest.responses.OAuthTokenResponse",
-      "OAuthErrorResponse" to "org.apache.iceberg.rest.responses.OAuthErrorResponse",
-      "RenameTableRequest" to "org.apache.iceberg.rest.requests.RenameTableRequest",
-      "ReportMetricsRequest" to "org.apache.iceberg.rest.requests.ReportMetricsRequest",
-      "UpdateNamespacePropertiesRequest" to
-        "org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest",
-      "UpdateNamespacePropertiesResponse" to
-        "org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse",
-      "CommitTransactionRequest" to "org.apache.iceberg.rest.requests.CommitTransactionRequest",
-      "CreateViewRequest" to "org.apache.iceberg.rest.requests.CreateViewRequest",
-      "RegisterTableRequest" to "org.apache.iceberg.rest.requests.RegisterTableRequest",
       "IcebergErrorResponse" to "org.apache.iceberg.rest.responses.ErrorResponse",
-      "OAuthError" to "org.apache.iceberg.rest.responses.ErrorResponse",
-
-      // Custom types defined below
-      "CommitViewRequest" to "org.apache.polaris.service.types.CommitViewRequest",
-      "TokenType" to "org.apache.polaris.service.types.TokenType",
-      "CommitTableRequest" to "org.apache.polaris.service.types.CommitTableRequest",
-      "NotificationRequest" to "org.apache.polaris.service.types.NotificationRequest",
-      "TableUpdateNotification" to "org.apache.polaris.service.types.TableUpdateNotification",
-      "NotificationType" to "org.apache.polaris.service.types.NotificationType",
+      "TableIdentifier" to "org.apache.iceberg.catalog.TableIdentifier",
     )
 }
 
