@@ -82,6 +82,17 @@ public interface BasePersistence {
    * originalEntities matching the existing persistent state. After this commit, *every* member of
    * entities must be committed durably.
    *
+   * <p>Important: For now, the following constraints apply:
+   *
+   * <ul>
+   *   <li>Either all entities are CREATE xor all entities are UPDATE; no mixing and matching of
+   *       CREATE and UPDATE in a single batch here
+   *   <li>Either all entities are catalog-scoped child entities (Namespace/Table/View) or all
+   *       entities are root-scoped entities (Catalogs/Principals/PrincipalRoles/Tasks). TODO:
+   *       Document whether CatalogRole is considered catalog-scoped, root-scoped, or "other" for
+   *       these purposes.
+   * </ul>
+   *
    * <p>TODO: Push down the multi-entity commit from PolarisMetaStoreManagerImpl to use this instead
    * of running single writeEntity actions within a transaction.
    *
