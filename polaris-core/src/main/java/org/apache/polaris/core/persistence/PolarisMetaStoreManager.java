@@ -383,4 +383,14 @@ public interface PolarisMetaStoreManager
       @Nonnull PolarisEntityType entityType,
       long entityCatalogId,
       long entityId);
+
+  /**
+   * Indicates whether this metastore manager implementation requires entities to be reloaded via
+   * {@link #loadEntitiesChangeTracking} in order to ensure the most recent versions are obtained.
+   *
+   * <p>Generally this flag is {@code true} when entity caching is used.
+   */
+  default boolean requiresEntityReload() {
+    return true;
+  }
 }

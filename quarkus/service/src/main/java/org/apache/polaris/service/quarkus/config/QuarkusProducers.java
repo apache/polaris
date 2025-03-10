@@ -44,7 +44,6 @@ import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.auth.ActiveRolesProvider;
@@ -52,6 +51,7 @@ import org.apache.polaris.service.auth.Authenticator;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
@@ -213,13 +213,6 @@ public class QuarkusProducers {
 
   @Produces
   @RequestScoped
-  public EntityCache entityCache(
-      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
-    return metaStoreManagerFactory.getOrCreateEntityCache(realmContext);
-  }
-
-  @Produces
-  @RequestScoped
   public PolarisMetaStoreManager polarisMetaStoreManager(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
     return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
@@ -235,10 +228,8 @@ public class QuarkusProducers {
   @Produces
   @RequestScoped
   public PolarisEntityManager polarisEntityManager(
-      PolarisMetaStoreManager polarisMetaStoreManager,
-      StorageCredentialCache credentialCache,
-      EntityCache entityCache) {
-    return new PolarisEntityManager(polarisMetaStoreManager, credentialCache, entityCache);
+      RealmContext realmContext, RealmEntityManagerFactory factory) {
+    return factory.getOrCreateEntityManager(realmContext);
   }
 
   @Produces
