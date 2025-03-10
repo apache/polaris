@@ -16,10 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.impl.eclipselink.postgres;
-
-import static org.apache.polaris.core.entity.PolarisEntitySubType.ANY_SUBTYPE;
-import static org.apache.polaris.core.entity.PolarisEntityType.TASK;
+package org.apache.polaris.extension.persistence.impl.jdbc;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -33,43 +30,45 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
 
 public class PostgresTaskDaoImpl implements TaskDao {
-  PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
-
+  @Nonnull
   @Override
-  public @Nonnull EntityResult readEntityByName(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String name) {
-    // Task shouldn't have a catalog path and subtype
-    return metaStoreManager.readEntityByName(callCtx, null, TASK, ANY_SUBTYPE, name);
+  public EntityResult readEntityByName(@Nonnull PolarisCallContext callCtx, @Nonnull String name) {
+    return null;
   }
 
   @Nonnull
   @Override
   public ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx) {
-    return metaStoreManager.listEntities(callCtx, null, TASK, ANY_SUBTYPE);
+    return null;
   }
 
   @Nonnull
   @Override
   public EntitiesResult loadTasks(
       @Nonnull PolarisCallContext callCtx, String executorId, int limit) {
-    return metaStoreManager.loadTasks(callCtx, executorId, limit);
+    return null;
+  }
+
+  @Nonnull
+  @Override
+  public EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long id) {
+    return null;
   }
 
   @Nonnull
   @Override
   public EntityResult createEntityIfNotExists(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    return metaStoreManager.createEntityIfNotExists(callCtx, null, entity);
+    return null;
   }
 
   @Nonnull
   @Override
   public EntitiesResult createTasksIfNotExist(
       @Nonnull PolarisCallContext callCtx, @Nonnull List<? extends PolarisBaseEntity> entities) {
-    return metaStoreManager.createEntitiesIfNotExist(callCtx, null, entities);
+    return null;
   }
 
   @Nonnull
@@ -79,13 +78,6 @@ public class PostgresTaskDaoImpl implements TaskDao {
       @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
-    return metaStoreManager.dropEntityIfExists(
-        callCtx, null, entityToDrop, cleanupProperties, cleanup);
-  }
-
-  @Nonnull
-  @Override
-  public EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityId) {
-    return metaStoreManager.loadEntity(callCtx, 0L, entityId, TASK);
+    return null;
   }
 }

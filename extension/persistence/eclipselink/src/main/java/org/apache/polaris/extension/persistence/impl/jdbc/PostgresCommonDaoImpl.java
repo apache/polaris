@@ -16,10 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.impl.eclipselink.postgres;
-
-import static org.apache.polaris.core.entity.PolarisEntityType.NULL_TYPE;
-import static org.apache.polaris.core.entity.PolarisEntityType.ROOT;
+package org.apache.polaris.extension.persistence.impl.jdbc;
 
 import jakarta.annotation.Nonnull;
 import java.util.List;
@@ -31,27 +28,24 @@ import org.apache.polaris.core.persistence.dao.entity.ChangeTrackingResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
 
 public class PostgresCommonDaoImpl implements CommonDao {
-  PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
-
   @Nonnull
   @Override
   public GenerateEntityIdResult generateNewEntityId(@Nonnull PolarisCallContext callCtx) {
-    return metaStoreManager.generateNewEntityId(callCtx);
+    return null;
   }
 
   @Nonnull
   @Override
   public BaseResult bootstrapPolarisService(@Nonnull PolarisCallContext callCtx) {
-    return metaStoreManager.bootstrapPolarisService(callCtx);
+    return null;
   }
 
   @Nonnull
   @Override
   public BaseResult purge(@Nonnull PolarisCallContext callCtx) {
-    return metaStoreManager.purge(callCtx);
+    return null;
   }
 
   @Nonnull
@@ -61,15 +55,14 @@ public class PostgresCommonDaoImpl implements CommonDao {
       long entityCatalogId,
       long parentId,
       @Nonnull String entityName) {
-    return metaStoreManager.loadResolvedEntityByName(
-        callCtx, entityCatalogId, parentId, ROOT, entityName);
+    return null;
   }
 
   @Nonnull
   @Override
   public ChangeTrackingResult loadEntitiesChangeTracking(
       @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEntityId> entityIds) {
-    return metaStoreManager.loadEntitiesChangeTracking(callCtx, entityIds);
+    return null;
   }
 
   @Nonnull
@@ -80,14 +73,13 @@ public class PostgresCommonDaoImpl implements CommonDao {
       int entityGrantRecordsVersion,
       long entityCatalogId,
       long entityId) {
-    return metaStoreManager.refreshResolvedEntity(
-        callCtx, entityVersion, entityGrantRecordsVersion, ROOT, entityCatalogId, entityId);
+    return null;
   }
 
   @Nonnull
   @Override
   public EntityResult loadEntity(
       @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
-    return metaStoreManager.loadEntity(callCtx, entityCatalogId, entityId, NULL_TYPE);
+    return null;
   }
 }

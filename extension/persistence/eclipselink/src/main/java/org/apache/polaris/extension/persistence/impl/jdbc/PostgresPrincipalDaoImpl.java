@@ -16,10 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.impl.eclipselink.postgres;
-
-import static org.apache.polaris.core.entity.PolarisEntitySubType.NULL_SUBTYPE;
-import static org.apache.polaris.core.entity.PolarisEntityType.PRINCIPAL;
+package org.apache.polaris.extension.persistence.impl.jdbc;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -33,46 +30,43 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
 
 public class PostgresPrincipalDaoImpl implements PrincipalDao {
-  PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
-
+  @Nonnull
   @Override
-  public @Nonnull EntityResult readEntityByName(
-      @Nonnull PolarisCallContext callCtx, @Nonnull String name) {
-    return metaStoreManager.readEntityByName(callCtx, null, PRINCIPAL, NULL_SUBTYPE, name);
+  public EntityResult readEntityByName(@Nonnull PolarisCallContext callCtx, @Nonnull String name) {
+    return null;
   }
 
   @Nonnull
   @Override
   public EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long id) {
-    return metaStoreManager.loadEntity(callCtx, 0L, id, PRINCIPAL);
+    return null;
   }
 
   @Nonnull
   @Override
   public ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx) {
-    return metaStoreManager.listEntities(callCtx, null, PRINCIPAL, NULL_SUBTYPE);
+    return null;
   }
 
   @Override
   public CreatePrincipalResult createPrincipal(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity principal) {
-    return metaStoreManager.createPrincipal(callCtx, principal);
+    return null;
   }
 
   @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityById(@Nonnull PolarisCallContext callCtx, long id) {
-    return metaStoreManager.loadResolvedEntityById(callCtx, 0L, id, PRINCIPAL);
+    return null;
   }
 
   @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityByName(
       @Nonnull PolarisCallContext callCtx, long parentId, @Nonnull String name) {
-    return metaStoreManager.loadResolvedEntityByName(callCtx, 0L, parentId, PRINCIPAL, name);
+    return null;
   }
 
   @Nonnull
@@ -82,15 +76,14 @@ public class PostgresPrincipalDaoImpl implements PrincipalDao {
       int entityVersion,
       int entityGrantRecordsVersion,
       long id) {
-    return metaStoreManager.refreshResolvedEntity(
-        callCtx, entityVersion, entityGrantRecordsVersion, PRINCIPAL, 0L, id);
+    return null;
   }
 
   @Nonnull
   @Override
   public EntityResult updateEntityPropertiesIfNotChanged(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    return metaStoreManager.updateEntityPropertiesIfNotChanged(callCtx, null, entity);
+    return null;
   }
 
   @Nonnull
@@ -100,7 +93,6 @@ public class PostgresPrincipalDaoImpl implements PrincipalDao {
       @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
-    return metaStoreManager.dropEntityIfExists(
-        callCtx, null, entityToDrop, cleanupProperties, cleanup);
+    return null;
   }
 }

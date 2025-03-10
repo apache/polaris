@@ -16,10 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.impl.eclipselink.postgres;
-
-import static org.apache.polaris.core.entity.PolarisEntitySubType.ANY_SUBTYPE;
-import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG;
+package org.apache.polaris.extension.persistence.impl.jdbc;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -34,44 +31,22 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
 
 public class PostgresCatalogDaoImpl implements CatalogDao {
-  // TODO it uses PolarisMetaStoreManagerImpl now, we can change it later
-  PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
   @Override
   public CreateCatalogResult createCatalog(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisBaseEntity catalog,
       @Nonnull List<PolarisEntityCore> principalRoles) {
-    return metaStoreManager.createCatalog(callCtx, catalog, principalRoles);
-  }
-
-  @Nonnull
-  @Override
-  public EntityResult readEntityByName(@Nonnull PolarisCallContext callCtx, @Nonnull String name) {
-    return metaStoreManager.readEntityByName(callCtx, null, CATALOG, ANY_SUBTYPE, name);
-  }
-
-  @Nonnull
-  @Override
-  public EntityResult loadEntity(
-      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
-    return metaStoreManager.loadEntity(callCtx, entityCatalogId, entityId, CATALOG);
-  }
-
-  @Nonnull
-  @Override
-  public ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx) {
-    return metaStoreManager.listEntities(callCtx, null, CATALOG, ANY_SUBTYPE);
+    return null;
   }
 
   @Nonnull
   @Override
   public EntityResult updateEntityPropertiesIfNotChanged(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    return metaStoreManager.updateEntityPropertiesIfNotChanged(callCtx, null, entity);
+    return null;
   }
 
   @Nonnull
@@ -81,22 +56,40 @@ public class PostgresCatalogDaoImpl implements CatalogDao {
       @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
-    return metaStoreManager.dropEntityIfExists(
-        callCtx, null, entityToDrop, cleanupProperties, cleanup);
+    return null;
+  }
+
+  @Nonnull
+  @Override
+  public EntityResult readEntityByName(@Nonnull PolarisCallContext callCtx, @Nonnull String name) {
+    return null;
+  }
+
+  @Nonnull
+  @Override
+  public EntityResult loadEntity(
+      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
+    return null;
+  }
+
+  @Nonnull
+  @Override
+  public ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx) {
+    return null;
   }
 
   @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityById(
       @Nonnull PolarisCallContext callCtx, long entityId) {
-    return metaStoreManager.loadResolvedEntityById(callCtx, 0L, entityId, CATALOG);
+    return null;
   }
 
   @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityByName(
       @Nonnull PolarisCallContext callCtx, long parentId, @Nonnull String entityName) {
-    return metaStoreManager.loadResolvedEntityByName(callCtx, 0L, parentId, CATALOG, entityName);
+    return null;
   }
 
   @Nonnull
@@ -106,7 +99,6 @@ public class PostgresCatalogDaoImpl implements CatalogDao {
       int entityVersion,
       int entityGrantRecordsVersion,
       long entityId) {
-    return metaStoreManager.refreshResolvedEntity(
-        callCtx, entityVersion, entityGrantRecordsVersion, CATALOG, 0L, entityId);
+    return null;
   }
 }

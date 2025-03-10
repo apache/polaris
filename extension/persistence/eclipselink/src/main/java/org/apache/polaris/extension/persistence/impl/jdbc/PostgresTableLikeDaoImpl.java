@@ -16,10 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.impl.eclipselink.postgres;
-
-import static org.apache.polaris.core.entity.PolarisEntitySubType.ANY_SUBTYPE;
-import static org.apache.polaris.core.entity.PolarisEntityType.NAMESPACE;
+package org.apache.polaris.extension.persistence.impl.jdbc;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -27,44 +24,60 @@ import java.util.List;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
-import org.apache.polaris.core.persistence.dao.NamespaceDao;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.persistence.dao.TableLikeDao;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.EntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
 
-public class PostgresNamespaceDaoImpl implements NamespaceDao {
-  PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
-
+public class PostgresTableLikeDaoImpl implements TableLikeDao {
+  @Nonnull
   @Override
-  public @Nonnull EntityResult readEntityByName(
+  public EntityResult readEntityByName(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntitySubType entitySubType,
       @Nonnull String name) {
-    return metaStoreManager.readEntityByName(callCtx, catalogPath, NAMESPACE, ANY_SUBTYPE, name);
+    return null;
   }
 
   @Nonnull
   @Override
   public EntityResult loadEntity(
       @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
-    return metaStoreManager.loadEntity(callCtx, entityCatalogId, entityId, NAMESPACE);
+    return null;
   }
 
   @Nonnull
   @Override
   public ListEntitiesResult listEntities(
-      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEntityCore> catalogPath) {
-    return metaStoreManager.listEntities(callCtx, catalogPath, NAMESPACE, ANY_SUBTYPE);
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntitySubType entitySubType) {
+    return null;
+  }
+
+  @Nonnull
+  @Override
+  public EntityResult renameEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nullable List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityCore entityToRename,
+      @Nullable List<PolarisEntityCore> newCatalogPath,
+      @Nonnull PolarisEntity renamedEntity) {
+    return null;
   }
 
   @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityById(
       @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
-    return metaStoreManager.loadResolvedEntityById(callCtx, entityCatalogId, entityId, NAMESPACE);
+    return null;
   }
 
   @Nonnull
@@ -74,8 +87,7 @@ public class PostgresNamespaceDaoImpl implements NamespaceDao {
       long entityCatalogId,
       long parentId,
       @Nonnull String entityName) {
-    return metaStoreManager.loadResolvedEntityByName(
-        callCtx, entityCatalogId, parentId, NAMESPACE, entityName);
+    return null;
   }
 
   @Nonnull
@@ -86,8 +98,7 @@ public class PostgresNamespaceDaoImpl implements NamespaceDao {
       int entityGrantRecordsVersion,
       long entityCatalogId,
       long entityId) {
-    return metaStoreManager.refreshResolvedEntity(
-        callCtx, entityVersion, entityGrantRecordsVersion, NAMESPACE, entityCatalogId, entityId);
+    return null;
   }
 
   @Nonnull
@@ -96,7 +107,7 @@ public class PostgresNamespaceDaoImpl implements NamespaceDao {
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity) {
-    return metaStoreManager.createEntityIfNotExists(callCtx, catalogPath, entity);
+    return null;
   }
 
   @Nonnull
@@ -105,7 +116,7 @@ public class PostgresNamespaceDaoImpl implements NamespaceDao {
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity) {
-    return metaStoreManager.updateEntityPropertiesIfNotChanged(callCtx, catalogPath, entity);
+    return null;
   }
 
   @Nonnull
@@ -116,7 +127,13 @@ public class PostgresNamespaceDaoImpl implements NamespaceDao {
       @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
-    return metaStoreManager.dropEntityIfExists(
-        callCtx, catalogPath, entityToDrop, cleanupProperties, cleanup);
+    return null;
+  }
+
+  @Nonnull
+  @Override
+  public EntitiesResult updateEntitiesPropertiesIfNotChanged(
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<EntityWithPath> entities) {
+    return null;
   }
 }

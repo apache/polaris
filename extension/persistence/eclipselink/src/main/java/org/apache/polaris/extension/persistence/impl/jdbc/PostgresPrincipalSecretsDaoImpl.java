@@ -16,32 +16,30 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.impl.eclipselink.postgres;
+package org.apache.polaris.extension.persistence.impl.jdbc;
 
 import jakarta.annotation.Nonnull;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.auth.PolarisSecretsManager;
 import org.apache.polaris.core.persistence.dao.PrincipalSecretsDao;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
 
 public class PostgresPrincipalSecretsDaoImpl implements PrincipalSecretsDao {
-  PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
   @Nonnull
   @Override
   public PolarisSecretsManager.PrincipalSecretsResult loadPrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId) {
-    return metaStoreManager.loadPrincipalSecrets(callCtx, clientId);
+    return null;
   }
 
+  @Nonnull
   @Override
-  public @Nonnull PolarisSecretsManager.PrincipalSecretsResult rotatePrincipalSecrets(
+  public PolarisSecretsManager.PrincipalSecretsResult rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
       boolean reset,
       @Nonnull String oldSecretHash) {
-    return metaStoreManager.rotatePrincipalSecrets(
-        callCtx, clientId, principalId, reset, oldSecretHash);
+    return null;
   }
 }

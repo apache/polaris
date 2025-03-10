@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.impl.eclipselink.postgres;
+package org.apache.polaris.extension.persistence.impl.jdbc;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -26,11 +26,8 @@ import org.apache.polaris.core.auth.PolarisGrantManager;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.dao.GrantRecordDao;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
 
 public class PostgresGrantRecordDaoImpl implements GrantRecordDao {
-  PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
-
   @Nonnull
   @Override
   public PolarisGrantManager.PrivilegeResult grantUsageOnRoleToGrantee(
@@ -38,7 +35,7 @@ public class PostgresGrantRecordDaoImpl implements GrantRecordDao {
       @Nullable PolarisEntityCore catalog,
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee) {
-    return metaStoreManager.grantUsageOnRoleToGrantee(callCtx, catalog, role, grantee);
+    return null;
   }
 
   @Nonnull
@@ -48,7 +45,7 @@ public class PostgresGrantRecordDaoImpl implements GrantRecordDao {
       @Nullable PolarisEntityCore catalog,
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee) {
-    return metaStoreManager.revokeUsageOnRoleFromGrantee(callCtx, catalog, role, grantee);
+    return null;
   }
 
   @Nonnull
@@ -59,8 +56,7 @@ public class PostgresGrantRecordDaoImpl implements GrantRecordDao {
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore securable,
       @Nonnull PolarisPrivilege privilege) {
-    return metaStoreManager.grantPrivilegeOnSecurableToRole(
-        callCtx, grantee, catalogPath, securable, privilege);
+    return null;
   }
 
   @Nonnull
@@ -71,21 +67,20 @@ public class PostgresGrantRecordDaoImpl implements GrantRecordDao {
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore securable,
       @Nonnull PolarisPrivilege privilege) {
-    return metaStoreManager.revokePrivilegeOnSecurableFromRole(
-        callCtx, grantee, catalogPath, securable, privilege);
+    return null;
   }
 
   @Nonnull
   @Override
   public PolarisGrantManager.LoadGrantsResult loadGrantsOnSecurable(
       @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
-    return metaStoreManager.loadGrantsOnSecurable(callCtx, securableCatalogId, securableId);
+    return null;
   }
 
   @Nonnull
   @Override
   public PolarisGrantManager.LoadGrantsResult loadGrantsToGrantee(
       PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
-    return metaStoreManager.loadGrantsToGrantee(callCtx, granteeCatalogId, granteeId);
+    return null;
   }
 }

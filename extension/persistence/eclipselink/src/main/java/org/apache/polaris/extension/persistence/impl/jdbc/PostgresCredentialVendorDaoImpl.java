@@ -16,19 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.impl.eclipselink.postgres;
+package org.apache.polaris.extension.persistence.impl.jdbc;
 
 import jakarta.annotation.Nonnull;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.dao.CredentialVendorDao;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 
 public class PostgresCredentialVendorDaoImpl implements CredentialVendorDao {
-  PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
   @Nonnull
   @Override
@@ -40,14 +38,7 @@ public class PostgresCredentialVendorDaoImpl implements CredentialVendorDao {
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
-    return metaStoreManager.getSubscopedCredsForEntity(
-        callCtx,
-        catalogId,
-        entityId,
-        entityType,
-        allowListOperation,
-        allowedReadLocations,
-        allowedWriteLocations);
+    return null;
   }
 
   @Nonnull
@@ -59,7 +50,6 @@ public class PostgresCredentialVendorDaoImpl implements CredentialVendorDao {
       PolarisEntityType entityType,
       @Nonnull Set<PolarisStorageActions> actions,
       @Nonnull Set<String> locations) {
-    return metaStoreManager.validateAccessToLocations(
-        callCtx, catalogId, entityId, entityType, actions, locations);
+    return null;
   }
 }
