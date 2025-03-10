@@ -30,10 +30,10 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Locale;
-import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -67,6 +67,9 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException> {
   /** Signifies that we could not extract an HTTP code from a given cloud exception */
   public static final int UNKNOWN_CLOUD_HTTP_CODE = -1;
+
+  /** Jakarta Response.Status doesn't define this code */
+  @VisibleForTesting public static final int UNPROCESSABLE_CONTENT_HTTP_CODE = 422;
 
   public static final Set<Integer> RETRYABLE_AZURE_HTTP_CODES =
       Set.of(
@@ -165,12 +168,16 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   }
 
   static int mapExceptionToResponseCode(RuntimeException rex) {
-    Optional<Throwable> cloudException =
-        Arrays.stream(ExceptionUtils.getThrowables(rex))
-            .filter(IcebergExceptionMapper::isCloudException)
-            .findAny();
-    if (cloudException.isPresent()) {
-      return mapCloudExceptionToResponseCode(cloudException.get());
+    for (Throwable t : ExceptionUtils.getThrowables(rex)) {
+      // Cloud exceptions can be wrapped by the Iceberg SDK
+      if (isCloudException(t)) {
+        return mapCloudExceptionToResponseCode(t);
+      }
+
+      // UnknownHostException isn't a RuntimeException so it's always wrapped
+      if (t instanceof UnknownHostException) {
+        return UNPROCESSABLE_CONTENT_HTTP_CODE;
+      }
     }
 
     return switch (rex) {
@@ -181,7 +188,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       case NotFoundException e -> Status.NOT_FOUND.getStatusCode();
       case AlreadyExistsException e -> Status.CONFLICT.getStatusCode();
       case CommitFailedException e -> Status.CONFLICT.getStatusCode();
-      case UnprocessableEntityException e -> 422;
+      case UnprocessableEntityException e -> UNPROCESSABLE_CONTENT_HTTP_CODE;
       case CherrypickAncestorCommitException e -> Status.BAD_REQUEST.getStatusCode();
       case CommitStateUnknownException e -> Status.BAD_REQUEST.getStatusCode();
       case DuplicateWAPCommitException e -> Status.BAD_REQUEST.getStatusCode();
@@ -250,7 +257,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       // shouldn't expect it to.
       // This is a 4xx error to indicate that the client may be able to resolve this by changing
       // some data, such as their catalog's region.
-      return 422;
+      return UNPROCESSABLE_CONTENT_HTTP_CODE;
     }
     if (httpFamily == Status.Family.SERVER_ERROR) {
       return Status.BAD_GATEWAY.getStatusCode();
