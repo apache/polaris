@@ -216,6 +216,7 @@ components:
             type: string
         register-at:
           type: string
+          example: "2024-03-03T12:00:00Z"
 
     LoadGenericTableResponse:
       description: Result used when a table is successfully loaded.
