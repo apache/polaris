@@ -44,7 +44,7 @@ public interface IntegrationPersistence {
    * @return the secrets
    */
   @Nullable
-  PolarisPrincipalSecrets loadPrincipalSecretsAtomically(
+  PolarisPrincipalSecrets loadPrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId);
 
   /**
@@ -55,7 +55,7 @@ public interface IntegrationPersistence {
    * @param principalId principal id
    */
   @Nonnull
-  PolarisPrincipalSecrets generateNewPrincipalSecretsAtomically(
+  PolarisPrincipalSecrets generateNewPrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String principalName, long principalId);
 
   /**
@@ -70,7 +70,7 @@ public interface IntegrationPersistence {
    * @param oldSecretHash the principal secret's old main secret hash
    */
   @Nullable
-  PolarisPrincipalSecrets rotatePrincipalSecretsAtomically(
+  PolarisPrincipalSecrets rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
@@ -84,7 +84,7 @@ public interface IntegrationPersistence {
    * @param clientId principal client id
    * @param principalId the id of the principal whose secrets are dropped
    */
-  void deletePrincipalSecretsAtomically(
+  void deletePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId);
 
   /**
@@ -97,12 +97,11 @@ public interface IntegrationPersistence {
    * @return a storage integration object
    */
   @Nullable
-  <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegrationAtomically(
-          @Nonnull PolarisCallContext callCtx,
-          long catalogId,
-          long entityId,
-          PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
+  <T extends PolarisStorageConfigurationInfo> PolarisStorageIntegration<T> createStorageIntegration(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long entityId,
+      PolarisStorageConfigurationInfo polarisStorageConfigurationInfo);
 
   /**
    * Persist a storage integration in the metastore
@@ -111,7 +110,7 @@ public interface IntegrationPersistence {
    * @param entity the entity of the object
    * @param storageIntegration the storage integration to persist
    */
-  <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeededAtomically(
+  <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
       @Nonnull PolarisCallContext callContext,
       @Nonnull PolarisBaseEntity entity,
       @Nullable PolarisStorageIntegration<T> storageIntegration);
@@ -125,6 +124,6 @@ public interface IntegrationPersistence {
    */
   @Nullable
   <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegrationAtomically(
+      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
           @Nonnull PolarisCallContext callContext, @Nonnull PolarisBaseEntity entity);
 }

@@ -49,7 +49,7 @@ public interface BasePersistence {
    * @param callCtx call context
    * @return new unique entity identifier
    */
-  long generateNewIdAtomically(@Nonnull PolarisCallContext callCtx);
+  long generateNewId(@Nonnull PolarisCallContext callCtx);
 
   /**
    * Write this entity to the persistence backend. If successful, the write must be durable and
@@ -71,16 +71,16 @@ public interface BasePersistence {
    * @param originalEntity original state of the entity to use for compare-and-swap purposes, or
    *     null if this is expected to be a brand-new entity
    */
-  void writeEntityAtomically(
+  void writeEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
       @Nullable PolarisBaseEntity originalEntity);
 
   /**
-   * Atomically write a batch of entities to the persistence backend conditional on *every* member
-   * of originalEntities matching the existing persistent state. After this commit, *every* member
-   * of entities must be committed durably.
+   * write a batch of entities to the persistence backend conditional on *every* member of
+   * originalEntities matching the existing persistent state. After this commit, *every* member of
+   * entities must be committed durably.
    *
    * <p>TODO: Push down the multi-entity commit from PolarisMetaStoreManagerImpl to use this instead
    * of running single writeEntity actions within a transaction.
@@ -98,7 +98,7 @@ public interface BasePersistence {
    *     index as this list. If non-null, we expect all elements of originalEntities to be non-null;
    *     there is no mix-and-match "create" and "update" in a single batch.
    */
-  void writeEntitiesAtomically(
+  void writeEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisBaseEntity> entities,
       @Nullable List<PolarisBaseEntity> originalEntities);
@@ -111,7 +111,7 @@ public interface BasePersistence {
    * @param grantRec entity record to write, potentially replacing an existing entity record with
    *     the same key
    */
-  void writeToGrantRecordsAtomically(
+  void writeToGrantRecords(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec);
 
   /**
@@ -120,8 +120,7 @@ public interface BasePersistence {
    * @param callCtx call context
    * @param entity entity to delete
    */
-  void deleteEntityAtomically(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
+  void deleteEntity(@Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity);
 
   /**
    * Delete the specified grantRecord to the grant_records table.
@@ -129,7 +128,7 @@ public interface BasePersistence {
    * @param callCtx call context
    * @param grantRec entity record to delete.
    */
-  void deleteFromGrantRecordsAtomically(
+  void deleteFromGrantRecords(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec);
 
   /**
@@ -143,7 +142,7 @@ public interface BasePersistence {
    *     grantee
    * @param grantsOnSecurable all grants on that securable entity
    */
-  void deleteAllEntityGrantRecordsAtomically(
+  void deleteAllEntityGrantRecords(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore entity,
       @Nonnull List<PolarisGrantRecord> grantsOnGrantee,
@@ -155,7 +154,7 @@ public interface BasePersistence {
    *
    * @param callCtx call context
    */
-  void deleteAllAtomically(@Nonnull PolarisCallContext callCtx);
+  void deleteAll(@Nonnull PolarisCallContext callCtx);
 
   /**
    * Lookup an entity given its catalog id (which can be {@link
@@ -175,7 +174,7 @@ public interface BasePersistence {
    * @return null if the entity was not found, else the retrieved entity.
    */
   @Nullable
-  PolarisBaseEntity lookupEntityAtomically(
+  PolarisBaseEntity lookupEntity(
       @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode);
 
   /**
@@ -193,7 +192,7 @@ public interface BasePersistence {
    * @return null if the specified entity does not exist
    */
   @Nullable
-  PolarisBaseEntity lookupEntityByNameAtomically(
+  PolarisBaseEntity lookupEntityByName(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -211,14 +210,13 @@ public interface BasePersistence {
    * @return null if the specified entity does not exist
    */
   @Nullable
-  default EntityNameLookupRecord lookupEntityIdAndSubTypeByNameAtomically(
+  default EntityNameLookupRecord lookupEntityIdAndSubTypeByName(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       int typeCode,
       @Nonnull String name) {
-    PolarisBaseEntity baseEntity =
-        lookupEntityByNameAtomically(callCtx, catalogId, parentId, typeCode, name);
+    PolarisBaseEntity baseEntity = lookupEntityByName(callCtx, catalogId, parentId, typeCode, name);
     if (baseEntity == null) {
       return null;
     }
@@ -234,7 +232,7 @@ public interface BasePersistence {
    *     will be null if the corresponding entity could not be found.
    */
   @Nonnull
-  List<PolarisBaseEntity> lookupEntitiesAtomically(
+  List<PolarisBaseEntity> lookupEntities(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
 
   /**
@@ -246,7 +244,7 @@ public interface BasePersistence {
    *     corresponding element in the list will be null
    */
   @Nonnull
-  List<PolarisChangeTrackingVersions> lookupEntityVersionsAtomically(
+  List<PolarisChangeTrackingVersions> lookupEntityVersions(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds);
 
   /**
@@ -259,7 +257,7 @@ public interface BasePersistence {
    * @return the list of entities for the specified list operation
    */
   @Nonnull
-  List<EntityNameLookupRecord> listEntitiesAtomically(
+  List<EntityNameLookupRecord> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -277,7 +275,7 @@ public interface BasePersistence {
    * @return the list of entities for which the predicate returns true
    */
   @Nonnull
-  List<EntityNameLookupRecord> listEntitiesAtomically(
+  List<EntityNameLookupRecord> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -299,7 +297,7 @@ public interface BasePersistence {
    * @return the list of entities for which the predicate returns true
    */
   @Nonnull
-  <T> List<T> listEntitiesAtomically(
+  <T> List<T> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -317,7 +315,7 @@ public interface BasePersistence {
    * @param entityId unique entity id
    * @return current grant records version for that entity.
    */
-  int lookupEntityGrantRecordsVersionAtomically(
+  int lookupEntityGrantRecordsVersion(
       @Nonnull PolarisCallContext callCtx, long catalogId, long entityId);
 
   /**
@@ -333,7 +331,7 @@ public interface BasePersistence {
    * @return the grant record if found, NULL if not found
    */
   @Nullable
-  PolarisGrantRecord lookupGrantRecordAtomically(
+  PolarisGrantRecord lookupGrantRecord(
       @Nonnull PolarisCallContext callCtx,
       long securableCatalogId,
       long securableId,
@@ -351,7 +349,7 @@ public interface BasePersistence {
    * @return the list of grant records for the specified securable
    */
   @Nonnull
-  List<PolarisGrantRecord> loadAllGrantRecordsOnSecurableAtomically(
+  List<PolarisGrantRecord> loadAllGrantRecordsOnSecurable(
       @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId);
 
   /**
@@ -363,7 +361,7 @@ public interface BasePersistence {
    * @return the list of grant records for the specified grantee
    */
   @Nonnull
-  List<PolarisGrantRecord> loadAllGrantRecordsOnGranteeAtomically(
+  List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
       @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId);
 
   /**
@@ -378,7 +376,7 @@ public interface BasePersistence {
    * @param parentId id of the parent
    * @return true if the parent entity has children
    */
-  boolean hasChildrenAtomically(
+  boolean hasChildren(
       @Nonnull PolarisCallContext callContext,
       @Nullable PolarisEntityType optionalEntityType,
       long catalogId,

@@ -127,7 +127,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   /** {@inheritDoc} */
   @Override
-  public long generateNewIdAtomically(@Nonnull PolarisCallContext callCtx) {
+  public long generateNewId(@Nonnull PolarisCallContext callCtx) {
     return runInTransaction(callCtx, () -> this.generateNewIdInCurrentTxn(callCtx));
   }
 
@@ -183,7 +183,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   /** {@inheritDoc} */
   @Override
-  public void writeEntityAtomically(
+  public void writeEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisBaseEntity entity,
       boolean nameOrParentChanged,
@@ -198,7 +198,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   /** {@inheritDoc} */
   @Override
-  public void writeEntitiesAtomically(
+  public void writeEntities(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisBaseEntity> entities,
       @Nullable List<PolarisBaseEntity> originalEntities) {
@@ -224,7 +224,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
                 originalEntities != null ? originalEntities.get(i) : null;
             // TODO: This isn't quite correct right now, because originalEntity is only actually
             // safe to use for entityVersion and grantRecordsVersion right now. Once we refactor
-            // the writeEntities[Atomically] methods to take something like PolarisEntityCore
+            // the writeEntities[] methods to take something like PolarisEntityCore
             // for originalEntity and force the callsites such as BasePolarisCatalog to actually
             // provide the original values, this will be correct. For now, the API does't support
             // bulk renames anyways.
@@ -250,21 +250,20 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   /** {@inheritDoc} */
   @Override
-  public void writeToGrantRecordsAtomically(
+  public void writeToGrantRecords(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
     runActionInTransaction(callCtx, () -> this.writeToGrantRecordsInCurrentTxn(callCtx, grantRec));
   }
 
   /** {@inheritDoc} */
   @Override
-  public void deleteEntityAtomically(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
+  public void deleteEntity(@Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     runActionInTransaction(callCtx, () -> this.deleteEntityInCurrentTxn(callCtx, entity));
   }
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromGrantRecordsAtomically(
+  public void deleteFromGrantRecords(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
     runActionInTransaction(
         callCtx, () -> this.deleteFromGrantRecordsInCurrentTxn(callCtx, grantRec));
@@ -272,7 +271,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   /** {@inheritDoc} */
   @Override
-  public void deleteAllEntityGrantRecordsAtomically(
+  public void deleteAllEntityGrantRecords(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore entity,
       @Nonnull List<PolarisGrantRecord> grantsOnGrantee,
@@ -286,14 +285,14 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   /** {@inheritDoc} */
   @Override
-  public void deleteAllAtomically(@Nonnull PolarisCallContext callCtx) {
+  public void deleteAll(@Nonnull PolarisCallContext callCtx) {
     runActionInTransaction(callCtx, () -> this.deleteAllInCurrentTxn(callCtx));
   }
 
   /** {@inheritDoc} */
   @Override
   @Nullable
-  public PolarisBaseEntity lookupEntityAtomically(
+  public PolarisBaseEntity lookupEntity(
       @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
     return runInReadTransaction(
         callCtx, () -> this.lookupEntityInCurrentTxn(callCtx, catalogId, entityId, typeCode));
@@ -302,7 +301,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nullable
-  public PolarisBaseEntity lookupEntityByNameAtomically(
+  public PolarisBaseEntity lookupEntityByName(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -316,7 +315,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nullable
-  public EntityNameLookupRecord lookupEntityIdAndSubTypeByNameAtomically(
+  public EntityNameLookupRecord lookupEntityIdAndSubTypeByName(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -332,7 +331,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public List<PolarisBaseEntity> lookupEntitiesAtomically(
+  public List<PolarisBaseEntity> lookupEntities(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     return runInReadTransaction(callCtx, () -> this.lookupEntitiesInCurrentTxn(callCtx, entityIds));
   }
@@ -340,7 +339,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public List<PolarisChangeTrackingVersions> lookupEntityVersionsAtomically(
+  public List<PolarisChangeTrackingVersions> lookupEntityVersions(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     return runInReadTransaction(
         callCtx, () -> this.lookupEntityVersionsInCurrentTxn(callCtx, entityIds));
@@ -349,7 +348,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public List<EntityNameLookupRecord> listEntitiesAtomically(
+  public List<EntityNameLookupRecord> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -361,7 +360,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public List<EntityNameLookupRecord> listEntitiesAtomically(
+  public List<EntityNameLookupRecord> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -376,7 +375,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public <T> List<T> listEntitiesAtomically(
+  public <T> List<T> listEntities(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -393,7 +392,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   /** {@inheritDoc} */
   @Override
-  public int lookupEntityGrantRecordsVersionAtomically(
+  public int lookupEntityGrantRecordsVersion(
       @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
     return runInReadTransaction(
         callCtx,
@@ -403,7 +402,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nullable
-  public PolarisGrantRecord lookupGrantRecordAtomically(
+  public PolarisGrantRecord lookupGrantRecord(
       @Nonnull PolarisCallContext callCtx,
       long securableCatalogId,
       long securableId,
@@ -425,7 +424,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public List<PolarisGrantRecord> loadAllGrantRecordsOnSecurableAtomically(
+  public List<PolarisGrantRecord> loadAllGrantRecordsOnSecurable(
       @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
     return runInReadTransaction(
         callCtx,
@@ -437,7 +436,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public List<PolarisGrantRecord> loadAllGrantRecordsOnGranteeAtomically(
+  public List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
       @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
     return runInReadTransaction(
         callCtx,
@@ -446,7 +445,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   /** {@inheritDoc} */
   @Override
-  public boolean hasChildrenAtomically(
+  public boolean hasChildren(
       @Nonnull PolarisCallContext callCtx,
       @Nullable PolarisEntityType optionalEntityType,
       long catalogId,
@@ -464,7 +463,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nullable
-  public PolarisPrincipalSecrets loadPrincipalSecretsAtomically(
+  public PolarisPrincipalSecrets loadPrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId) {
     return runInReadTransaction(
         callCtx, () -> this.loadPrincipalSecretsInCurrentTxn(callCtx, clientId));
@@ -473,7 +472,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public PolarisPrincipalSecrets generateNewPrincipalSecretsAtomically(
+  public PolarisPrincipalSecrets generateNewPrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String principalName, long principalId) {
     return runInTransaction(
         callCtx,
@@ -483,7 +482,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   /** {@inheritDoc} */
   @Override
   @Nullable
-  public PolarisPrincipalSecrets rotatePrincipalSecretsAtomically(
+  public PolarisPrincipalSecrets rotatePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
@@ -498,7 +497,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   /** {@inheritDoc} */
   @Override
-  public void deletePrincipalSecretsAtomically(
+  public void deletePrincipalSecrets(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
     runActionInTransaction(
         callCtx, () -> this.deletePrincipalSecretsInCurrentTxn(callCtx, clientId, principalId));
@@ -508,7 +507,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   @Override
   @Nullable
   public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegrationAtomically(
+      PolarisStorageIntegration<T> createStorageIntegration(
           @Nonnull PolarisCallContext callCtx,
           long catalogId,
           long entityId,
@@ -522,11 +521,10 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
 
   /** {@inheritDoc} */
   @Override
-  public <T extends PolarisStorageConfigurationInfo>
-      void persistStorageIntegrationIfNeededAtomically(
-          @Nonnull PolarisCallContext callCtx,
-          @Nonnull PolarisBaseEntity entity,
-          @Nullable PolarisStorageIntegration<T> storageIntegration) {
+  public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisBaseEntity entity,
+      @Nullable PolarisStorageIntegration<T> storageIntegration) {
     runActionInTransaction(
         callCtx,
         () ->
@@ -538,7 +536,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   @Override
   @Nullable
   public <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegrationAtomically(
+      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     return runInReadTransaction(
         callCtx, () -> this.loadPolarisStorageIntegrationInCurrentTxn(callCtx, entity));
@@ -591,7 +589,7 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
       PolarisBaseEntity originalEntity = originalEntities != null ? originalEntities.get(i) : null;
       // TODO: This isn't quite correct right now, because originalEntity is only actually
       // safe to use for entityVersion and grantRecordsVersion right now. Once we refactor
-      // the writeEntities[Atomically] methods to take something like PolarisEntityCore
+      // the writeEntities[] methods to take something like PolarisEntityCore
       // for originalEntity and force the callsites such as BasePolarisCatalog to actually
       // provide the original values, this will be correct. For now, the API does't support
       // bulk renames anyways.

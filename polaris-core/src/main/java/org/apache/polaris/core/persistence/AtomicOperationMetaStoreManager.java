@@ -87,7 +87,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     try {
       // write it
-      ms.writeEntityAtomically(callCtx, entity, true, null);
+      ms.writeEntity(callCtx, entity, true, null);
     } catch (EntityAlreadyExistsException e) {
       if (e.getExistingEntity().getId() == entity.getId()) {
         // Since ids are unique and reserved when generated, a matching id means a low-level retry
@@ -129,7 +129,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         prepareToPersistEntityAfterChange(callCtx, ms, entity, nameOrParentChanged, originalEntity);
 
     // persist it to the various slices
-    ms.writeEntityAtomically(callCtx, entity, nameOrParentChanged, originalEntity);
+    ms.writeEntity(callCtx, entity, nameOrParentChanged, originalEntity);
 
     // return it
     return entity;
@@ -163,7 +163,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // Remove the main entity itself first-thing; once its id no longer resolves successfully
     // it will be pruned out of any grant-record lookups anyways.
-    ms.deleteEntityAtomically(callCtx, entity);
+    ms.deleteEntity(callCtx, entity);
 
     // Best-effort cleanup - drop grant records, update grantRecordVersions for affected
     // other entities.
@@ -177,12 +177,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // delete ALL grant records to (if the entity is a grantee) and from that entity
     final List<PolarisGrantRecord> grantsOnGrantee =
         (entity.getType().isGrantee())
-            ? ms.loadAllGrantRecordsOnGranteeAtomically(
-                callCtx, entity.getCatalogId(), entity.getId())
+            ? ms.loadAllGrantRecordsOnGrantee(callCtx, entity.getCatalogId(), entity.getId())
             : List.of();
     final List<PolarisGrantRecord> grantsOnSecurable =
-        ms.loadAllGrantRecordsOnSecurableAtomically(callCtx, entity.getCatalogId(), entity.getId());
-    ms.deleteAllEntityGrantRecordsAtomically(callCtx, entity, grantsOnGrantee, grantsOnSecurable);
+        ms.loadAllGrantRecordsOnSecurable(callCtx, entity.getCatalogId(), entity.getId());
+    ms.deleteAllEntityGrantRecords(callCtx, entity, grantsOnGrantee, grantsOnSecurable);
 
     // Now determine the set of entities on the other side of the grants we just removed. Grants
     // from/to these entities has been removed, hence we need to update the grant version of
@@ -199,11 +198,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // Bump up the grant version of these entities
     List<PolarisBaseEntity> entities =
-        ms.lookupEntitiesAtomically(callCtx, new ArrayList<>(entityIdsGrantChanged));
+        ms.lookupEntities(callCtx, new ArrayList<>(entityIdsGrantChanged));
     for (PolarisBaseEntity entityGrantChanged : entities) {
       PolarisBaseEntity originalEntity = new PolarisBaseEntity(entityGrantChanged);
       entityGrantChanged.setGrantRecordsVersion(entityGrantChanged.getGrantRecordsVersion() + 1);
-      ms.writeEntityAtomically(callCtx, entityGrantChanged, false, originalEntity);
+      ms.writeEntity(callCtx, entityGrantChanged, false, originalEntity);
     }
 
     // if it is a principal, we also need to drop the secrets
@@ -216,8 +215,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       String clientId = properties.get(PolarisEntityConstants.getClientIdPropertyName());
 
       // delete it from the secret slice
-      ((IntegrationPersistence) ms)
-          .deletePrincipalSecretsAtomically(callCtx, clientId, entity.getId());
+      ((IntegrationPersistence) ms).deletePrincipalSecrets(callCtx, clientId, entity.getId());
     }
   }
 
@@ -259,13 +257,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             priv.getCode());
 
     // persist the new grant
-    ms.writeToGrantRecordsAtomically(callCtx, grantRecord);
+    ms.writeToGrantRecords(callCtx, grantRecord);
 
     // load the grantee (either a catalog/principal role or a principal) and increment its grants
     // version
     PolarisBaseEntity granteeEntity =
-        ms.lookupEntityAtomically(
-            callCtx, grantee.getCatalogId(), grantee.getId(), grantee.getTypeCode());
+        ms.lookupEntity(callCtx, grantee.getCatalogId(), grantee.getId(), grantee.getTypeCode());
     callCtx
         .getDiagServices()
         .checkNotNull(granteeEntity, "grantee_not_found", "grantee={}", grantee);
@@ -273,12 +270,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // grants have changed, we need to bump-up the grants version
     granteeEntity.setGrantRecordsVersion(granteeEntity.getGrantRecordsVersion() + 1);
-    ms.writeEntityAtomically(callCtx, granteeEntity, false, originalGranteeEntity);
+    ms.writeEntity(callCtx, granteeEntity, false, originalGranteeEntity);
 
     // we also need to invalidate the grants on that securable so that we can reload them.
     // load the securable and increment its grants version
     PolarisBaseEntity securableEntity =
-        ms.lookupEntityAtomically(
+        ms.lookupEntity(
             callCtx, securable.getCatalogId(), securable.getId(), securable.getTypeCode());
     callCtx
         .getDiagServices()
@@ -287,7 +284,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // grants have changed, we need to bump-up the grants version
     securableEntity.setGrantRecordsVersion(securableEntity.getGrantRecordsVersion() + 1);
-    ms.writeEntityAtomically(callCtx, securableEntity, false, originalSecurableEntity);
+    ms.writeEntity(callCtx, securableEntity, false, originalSecurableEntity);
 
     // TODO: Reorder and/or expose bulk update of both grantRecordsVersions and grant records. In
     // the meantime, cache can be disabled or configured with a short enough expiry time to
@@ -345,12 +342,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         .check(grantee.getType().isGrantee(), "not_a_grantee", "grantee={}", grantee);
 
     // remove that grant
-    ms.deleteFromGrantRecordsAtomically(callCtx, grantRecord);
+    ms.deleteFromGrantRecords(callCtx, grantRecord);
 
     // load the grantee and increment its grants version
     PolarisBaseEntity refreshGrantee =
-        ms.lookupEntityAtomically(
-            callCtx, grantee.getCatalogId(), grantee.getId(), grantee.getTypeCode());
+        ms.lookupEntity(callCtx, grantee.getCatalogId(), grantee.getId(), grantee.getTypeCode());
     callCtx
         .getDiagServices()
         .checkNotNull(
@@ -359,12 +355,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // grants have changed, we need to bump-up the grants version
     refreshGrantee.setGrantRecordsVersion(refreshGrantee.getGrantRecordsVersion() + 1);
-    ms.writeEntityAtomically(callCtx, refreshGrantee, false, originalRefreshGrantee);
+    ms.writeEntity(callCtx, refreshGrantee, false, originalRefreshGrantee);
 
     // we also need to invalidate the grants on that securable so that we can reload them.
     // load the securable and increment its grants version
     PolarisBaseEntity refreshSecurable =
-        ms.lookupEntityAtomically(
+        ms.lookupEntity(
             callCtx, securable.getCatalogId(), securable.getId(), securable.getTypeCode());
     callCtx
         .getDiagServices()
@@ -378,7 +374,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // grants have changed, we need to bump-up the grants version
     refreshSecurable.setGrantRecordsVersion(refreshSecurable.getGrantRecordsVersion() + 1);
-    ms.writeEntityAtomically(callCtx, refreshSecurable, false, originalRefreshSecurable);
+    ms.writeEntity(callCtx, refreshSecurable, false, originalRefreshSecurable);
 
     // TODO: Reorder and/or expose bulk update of both grantRecordsVersions and grant records. In
     // the meantime, cache can be disabled or configured with a short enough expiry time to
@@ -408,7 +404,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     if (storageConfigInfoStr != null && integrationIdentifierOrId == null) {
       integration =
           ((IntegrationPersistence) ms)
-              .createStorageIntegrationAtomically(
+              .createStorageIntegration(
                   callCtx,
                   catalog.getCatalogId(),
                   catalog.getId(),
@@ -423,8 +419,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // because same-id idempotent-retry collisions of this sort are necessarily sequential, so
     // there is no concurrency conflict for something else creating a catalog of this same id.
     PolarisBaseEntity refreshCatalog =
-        ms.lookupEntityAtomically(
-            callCtx, catalog.getCatalogId(), catalog.getId(), catalog.getTypeCode());
+        ms.lookupEntity(callCtx, catalog.getCatalogId(), catalog.getId(), catalog.getTypeCode());
 
     // if found, probably a retry, simply return the previously created catalog
     if (refreshCatalog != null) {
@@ -439,7 +434,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
       // lookup catalog admin role, should exist
       PolarisBaseEntity catalogAdminRole =
-          ms.lookupEntityByNameAtomically(
+          ms.lookupEntityByName(
               callCtx,
               refreshCatalog.getId(),
               refreshCatalog.getId(),
@@ -455,8 +450,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       // done, return the existing catalog
       return new CreateCatalogResult(refreshCatalog, catalogAdminRole);
     }
-    ((IntegrationPersistence) ms)
-        .persistStorageIntegrationIfNeededAtomically(callCtx, catalog, integration);
+    ((IntegrationPersistence) ms).persistStorageIntegrationIfNeeded(callCtx, catalog, integration);
 
     // now create and persist new catalog entity
     EntityResult lowLevelResult = this.persistNewEntity(callCtx, ms, catalog);
@@ -470,7 +464,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     // create the catalog admin role for this new catalog
-    long adminRoleId = ms.generateNewIdAtomically(callCtx);
+    long adminRoleId = ms.generateNewId(callCtx);
     PolarisBaseEntity adminRole =
         new PolarisBaseEntity(
             catalog.getId(),
@@ -494,7 +488,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     if (principalRoles.isEmpty()) {
       // lookup service admin role, should exist
       PolarisBaseEntity serviceAdminRole =
-          ms.lookupEntityByNameAtomically(
+          ms.lookupEntityByName(
               callCtx,
               PolarisEntityConstants.getNullId(),
               PolarisEntityConstants.getRootEntityId(),
@@ -555,7 +549,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // Now bootstrap the service by creating the root principal and the service_admin principal
     // role. The principal role will be granted to that root principal and the root catalog admin
     // of the root catalog will be granted to that principal role.
-    long rootPrincipalId = ms.generateNewIdAtomically(callCtx);
+    long rootPrincipalId = ms.generateNewId(callCtx);
     PolarisBaseEntity rootPrincipal =
         new PolarisBaseEntity(
             PolarisEntityConstants.getNullId(),
@@ -569,7 +563,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     this.createPrincipal(callCtx, rootPrincipal);
 
     // now create the account admin principal role
-    long serviceAdminPrincipalRoleId = ms.generateNewIdAtomically(callCtx);
+    long serviceAdminPrincipalRoleId = ms.generateNewId(callCtx);
     PolarisBaseEntity serviceAdminPrincipalRole =
         new PolarisBaseEntity(
             PolarisEntityConstants.getNullId(),
@@ -610,7 +604,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     BasePersistence ms = callCtx.getMetaStore();
 
     LOGGER.warn("Deleting all metadata in the metastore...");
-    ms.deleteAllAtomically(callCtx);
+    ms.deleteAll(callCtx);
     LOGGER.warn("Finished deleting all metadata in the metastore");
 
     // all good
@@ -636,7 +630,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             ? 0l
             : catalogPath.get(catalogPath.size() - 1).getId();
     PolarisBaseEntity entity =
-        ms.lookupEntityByNameAtomically(callCtx, catalogId, parentId, entityType.getCode(), name);
+        ms.lookupEntityByName(callCtx, catalogId, parentId, entityType.getCode(), name);
 
     // if found, check if subType really matches
     if (entity != null
@@ -676,7 +670,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             ? 0l
             : catalogPath.get(catalogPath.size() - 1).getId();
     List<EntityNameLookupRecord> toreturnList =
-        ms.listEntitiesAtomically(callCtx, catalogId, parentId, entityType);
+        ms.listEntities(callCtx, catalogId, parentId, entityType);
 
     // prune the returned list with only entities matching the entity subtype
     if (entitySubType != PolarisEntitySubType.ANY_SUBTYPE) {
@@ -708,7 +702,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // check if that catalog has already been created
     PolarisBaseEntity refreshPrincipal =
-        ms.lookupEntityAtomically(
+        ms.lookupEntity(
             callCtx, principal.getCatalogId(), principal.getId(), principal.getTypeCode());
 
     // if found, probably a retry, simply return the previously created principal
@@ -751,7 +745,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
       // get the main and secondary secrets for that client
       PolarisPrincipalSecrets principalSecrets =
-          ((IntegrationPersistence) ms).loadPrincipalSecretsAtomically(callCtx, clientId);
+          ((IntegrationPersistence) ms).loadPrincipalSecrets(callCtx, clientId);
 
       // should not be null
       callCtx
@@ -770,7 +764,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // generate new secrets for this principal
     PolarisPrincipalSecrets principalSecrets =
         ((IntegrationPersistence) ms)
-            .generateNewPrincipalSecretsAtomically(callCtx, principal.getName(), principal.getId());
+            .generateNewPrincipalSecrets(callCtx, principal.getName(), principal.getId());
 
     // generate properties
     Map<String, String> internalProperties = getInternalPropertyMap(callCtx, principal);
@@ -787,7 +781,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       // TODO: Garbage-collection should include principal secrets if the server crashes
       // before being able to do this cleanup.
       ((IntegrationPersistence) ms)
-          .deletePrincipalSecretsAtomically(
+          .deletePrincipalSecrets(
               callCtx, principalSecrets.getPrincipalClientId(), principal.getId());
       return new CreatePrincipalResult(BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS, null);
     }
@@ -804,7 +798,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     BasePersistence ms = callCtx.getMetaStore();
 
     PolarisPrincipalSecrets secrets =
-        ((IntegrationPersistence) ms).loadPrincipalSecretsAtomically(callCtx, clientId);
+        ((IntegrationPersistence) ms).loadPrincipalSecrets(callCtx, clientId);
 
     return (secrets == null)
         ? new PrincipalSecretsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null)
@@ -844,8 +838,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                 != null;
     PolarisPrincipalSecrets secrets =
         ((IntegrationPersistence) ms)
-            .rotatePrincipalSecretsAtomically(
-                callCtx, clientId, principalId, doReset, oldSecretHash);
+            .rotatePrincipalSecrets(callCtx, clientId, principalId, doReset, oldSecretHash);
 
     if (reset
         && !internalProps.containsKey(
@@ -855,14 +848,14 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       principal.setInternalProperties(
           PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
       principal.setEntityVersion(principal.getEntityVersion() + 1);
-      ms.writeEntityAtomically(callCtx, principal, true, originalPrincipal);
+      ms.writeEntity(callCtx, principal, true, originalPrincipal);
     } else if (internalProps.containsKey(
         PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE)) {
       internalProps.remove(PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE);
       principal.setInternalProperties(
           PolarisObjectMapperUtil.serializeProperties(callCtx, internalProps));
       principal.setEntityVersion(principal.getEntityVersion() + 1);
-      ms.writeEntityAtomically(callCtx, principal, true, originalPrincipal);
+      ms.writeEntity(callCtx, principal, true, originalPrincipal);
     }
 
     // TODO: Rethink the atomicity of the relationship between principalSecrets and principal
@@ -910,7 +903,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     try {
-      ms.writeEntitiesAtomically(callCtx, createdEntities, null);
+      ms.writeEntities(callCtx, createdEntities, null);
       // TODO: Use post-validation to enforce consistent view against catalogPath. In the
       // meantime, happens-before ordering semantics aren't guaranteed during high-concurrency
       // race conditions, such as first revoking a grant on a namespace before adding sensitive
@@ -990,7 +983,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     try {
-      ms.writeEntitiesAtomically(callCtx, updatedEntities, originalEntities);
+      ms.writeEntities(callCtx, updatedEntities, originalEntities);
     } catch (RetryOnConcurrencyException e) {
       return new EntitiesResult(
           BaseResult.ReturnStatus.TARGET_ENTITY_CONCURRENTLY_MODIFIED, e.getMessage());
@@ -1030,7 +1023,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // find the entity to rename
     PolarisBaseEntity refreshEntityToRename =
-        ms.lookupEntityAtomically(
+        ms.lookupEntity(
             callCtx,
             entityToRename.getCatalogId(),
             entityToRename.getId(),
@@ -1061,7 +1054,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             ? 0l
             : newCatalogPath.get(newCatalogPath.size() - 1).getId();
     EntityNameLookupRecord entityActiveRecord =
-        ms.lookupEntityIdAndSubTypeByNameAtomically(
+        ms.lookupEntityIdAndSubTypeByName(
             callCtx,
             catalogId,
             parentId,
@@ -1119,7 +1112,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // first find the entity to drop
     PolarisBaseEntity refreshEntityToDrop =
-        ms.lookupEntityAtomically(
+        ms.lookupEntity(
             callCtx, entityToDrop.getCatalogId(), entityToDrop.getId(), entityToDrop.getTypeCode());
 
     // if this entity was not found, return failure
@@ -1146,13 +1139,13 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       // where dropping a namespace or container is effectively "recursive" in deleting its
       // children as well if those child entities were created within the short window of
       // the race condition.
-      if (ms.hasChildrenAtomically(callCtx, PolarisEntityType.NAMESPACE, catalogId, catalogId)) {
+      if (ms.hasChildren(callCtx, PolarisEntityType.NAMESPACE, catalogId, catalogId)) {
         return new DropEntityResult(BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY, null);
       }
 
       // get the list of catalog roles, at most 2
       List<PolarisBaseEntity> catalogRoles =
-          ms.listEntitiesAtomically(
+          ms.listEntities(
               callCtx,
               catalogId,
               catalogId,
@@ -1172,7 +1165,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         this.dropEntity(callCtx, ms, catalogRoles.get(0));
       }
     } else if (refreshEntityToDrop.getType() == PolarisEntityType.NAMESPACE) {
-      if (ms.hasChildrenAtomically(
+      if (ms.hasChildren(
           callCtx, null, refreshEntityToDrop.getCatalogId(), refreshEntityToDrop.getId())) {
         return new DropEntityResult(BaseResult.ReturnStatus.NAMESPACE_NOT_EMPTY, null);
       }
@@ -1188,7 +1181,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     if (cleanup) {
       PolarisBaseEntity taskEntity =
           new PolarisEntity.Builder()
-              .setId(ms.generateNewIdAtomically(callCtx))
+              .setId(ms.generateNewId(callCtx))
               .setCatalogId(0L)
               .setName("entityCleanup_" + entityToDrop.getId())
               .setType(PolarisEntityType.TASK)
@@ -1261,7 +1254,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // first, ensure that this privilege has been granted
     PolarisGrantRecord grantRecord =
-        ms.lookupGrantRecordAtomically(
+        ms.lookupGrantRecord(
             callCtx,
             role.getCatalogId(),
             role.getId(),
@@ -1310,7 +1303,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // lookup the grants records to find this grant
     PolarisGrantRecord grantRecord =
-        ms.lookupGrantRecordAtomically(
+        ms.lookupGrantRecord(
             callCtx,
             securable.getCatalogId(),
             securable.getId(),
@@ -1342,7 +1335,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // lookup grants version for this securable entity
     int grantsVersion =
-        ms.lookupEntityGrantRecordsVersionAtomically(callCtx, securableCatalogId, securableId);
+        ms.lookupEntityGrantRecordsVersion(callCtx, securableCatalogId, securableId);
 
     // return null if securable does not exists
     if (grantsVersion == 0) {
@@ -1351,7 +1344,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // now fetch all grants for this securable
     final List<PolarisGrantRecord> returnGrantRecords =
-        ms.loadAllGrantRecordsOnSecurableAtomically(callCtx, securableCatalogId, securableId);
+        ms.loadAllGrantRecordsOnSecurable(callCtx, securableCatalogId, securableId);
 
     // find all unique grantees
     List<PolarisEntityId> entityIds =
@@ -1362,7 +1355,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                         grantRecord.getGranteeCatalogId(), grantRecord.getGranteeId()))
             .distinct()
             .collect(Collectors.toList());
-    List<PolarisBaseEntity> entities = ms.lookupEntitiesAtomically(callCtx, entityIds);
+    List<PolarisBaseEntity> entities = ms.lookupEntities(callCtx, entityIds);
 
     // done, return the list of grants and their version
     return new LoadGrantsResult(
@@ -1382,8 +1375,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // or if it's actually safe as two independent lookups.
 
     // lookup grants version for this grantee entity
-    int grantsVersion =
-        ms.lookupEntityGrantRecordsVersionAtomically(callCtx, granteeCatalogId, granteeId);
+    int grantsVersion = ms.lookupEntityGrantRecordsVersion(callCtx, granteeCatalogId, granteeId);
 
     // return null if grantee does not exists
     if (grantsVersion == 0) {
@@ -1392,7 +1384,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // now fetch all grants for this grantee
     final List<PolarisGrantRecord> returnGrantRecords =
-        ms.loadAllGrantRecordsOnGranteeAtomically(callCtx, granteeCatalogId, granteeId);
+        ms.loadAllGrantRecordsOnGrantee(callCtx, granteeCatalogId, granteeId);
 
     // find all unique securables
     List<PolarisEntityId> entityIds =
@@ -1403,7 +1395,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                         grantRecord.getSecurableCatalogId(), grantRecord.getSecurableId()))
             .distinct()
             .collect(Collectors.toList());
-    List<PolarisBaseEntity> entities = ms.lookupEntitiesAtomically(callCtx, entityIds);
+    List<PolarisBaseEntity> entities = ms.lookupEntities(callCtx, entityIds);
 
     // done, return the list of grants and their version
     return new LoadGrantsResult(
@@ -1420,7 +1412,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     BasePersistence ms = callCtx.getMetaStore();
 
     List<PolarisChangeTrackingVersions> changeTracking =
-        ms.lookupEntityVersionsAtomically(callCtx, entityIds);
+        ms.lookupEntityVersions(callCtx, entityIds);
     return new ChangeTrackingResult(changeTracking);
   }
 
@@ -1436,7 +1428,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // this is an easy one
     PolarisBaseEntity entity =
-        ms.lookupEntityAtomically(callCtx, entityCatalogId, entityId, entityType.getCode());
+        ms.lookupEntity(callCtx, entityCatalogId, entityId, entityType.getCode());
     return (entity != null)
         ? new EntityResult(entity)
         : new EntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
@@ -1449,7 +1441,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // find all available tasks
     List<PolarisBaseEntity> availableTasks =
-        ms.listEntitiesAtomically(
+        ms.listEntities(
             callCtx,
             PolarisEntityConstants.getRootEntityId(),
             PolarisEntityConstants.getRootEntityId(),
@@ -1546,7 +1538,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // get storage integration
     PolarisStorageIntegration<PolarisStorageConfigurationInfo> storageIntegration =
         ((IntegrationPersistence) ms)
-            .loadPolarisStorageIntegrationAtomically(callCtx, reloadedEntity.getEntity());
+            .loadPolarisStorageIntegration(callCtx, reloadedEntity.getEntity());
 
     // cannot be null
     callCtx
@@ -1601,7 +1593,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // get storage integration, expect not null
     PolarisStorageIntegration<PolarisStorageConfigurationInfo> storageIntegration =
         ((IntegrationPersistence) ms)
-            .loadPolarisStorageIntegrationAtomically(callCtx, reloadedEntity.getEntity());
+            .loadPolarisStorageIntegration(callCtx, reloadedEntity.getEntity());
     callCtx
         .getDiagServices()
         .checkNotNull(
@@ -1657,7 +1649,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // load that entity
     PolarisBaseEntity entity =
-        ms.lookupEntityAtomically(callCtx, entityCatalogId, entityId, entityType.getCode());
+        ms.lookupEntity(callCtx, entityCatalogId, entityId, entityType.getCode());
 
     // if entity not found, return null
     if (entity == null) {
@@ -1671,13 +1663,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     final List<PolarisGrantRecord> grantRecords;
     if (entity.getType().isGrantee()) {
       grantRecords =
-          new ArrayList<>(
-              ms.loadAllGrantRecordsOnGranteeAtomically(callCtx, entityCatalogId, entityId));
-      grantRecords.addAll(
-          ms.loadAllGrantRecordsOnSecurableAtomically(callCtx, entityCatalogId, entityId));
+          new ArrayList<>(ms.loadAllGrantRecordsOnGrantee(callCtx, entityCatalogId, entityId));
+      grantRecords.addAll(ms.loadAllGrantRecordsOnSecurable(callCtx, entityCatalogId, entityId));
     } else {
-      grantRecords =
-          ms.loadAllGrantRecordsOnSecurableAtomically(callCtx, entityCatalogId, entityId);
+      grantRecords = ms.loadAllGrantRecordsOnSecurable(callCtx, entityCatalogId, entityId);
     }
 
     // return the result
@@ -1697,8 +1686,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // load that entity
     PolarisBaseEntity entity =
-        ms.lookupEntityByNameAtomically(
-            callCtx, entityCatalogId, parentId, entityType.getCode(), entityName);
+        ms.lookupEntityByName(callCtx, entityCatalogId, parentId, entityType.getCode(), entityName);
 
     // null if entity not found
     if (entity == null) {
@@ -1713,12 +1701,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     if (entity.getType().isGrantee()) {
       grantRecords =
           new ArrayList<>(
-              ms.loadAllGrantRecordsOnGranteeAtomically(callCtx, entityCatalogId, entity.getId()));
+              ms.loadAllGrantRecordsOnGrantee(callCtx, entityCatalogId, entity.getId()));
       grantRecords.addAll(
-          ms.loadAllGrantRecordsOnSecurableAtomically(callCtx, entityCatalogId, entity.getId()));
+          ms.loadAllGrantRecordsOnSecurable(callCtx, entityCatalogId, entity.getId()));
     } else {
-      grantRecords =
-          ms.loadAllGrantRecordsOnSecurableAtomically(callCtx, entityCatalogId, entity.getId());
+      grantRecords = ms.loadAllGrantRecordsOnSecurable(callCtx, entityCatalogId, entity.getId());
     }
 
     ResolvedEntityResult result =
@@ -1738,7 +1725,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
       EntityResult backfillResult = this.createEntityIfNotExists(callCtx, null, rootContainer);
       if (backfillResult.isSuccess()) {
         PolarisBaseEntity serviceAdminRole =
-            ms.lookupEntityByNameAtomically(
+            ms.lookupEntityByName(
                 callCtx,
                 0L,
                 0L,
@@ -1777,8 +1764,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     // load version information
     PolarisChangeTrackingVersions entityVersions =
-        ms.lookupEntityVersionsAtomically(
-                callCtx, List.of(new PolarisEntityId(entityCatalogId, entityId)))
+        ms.lookupEntityVersions(callCtx, List.of(new PolarisEntityId(entityCatalogId, entityId)))
             .get(0);
 
     // if null, the entity has been purged
@@ -1789,7 +1775,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // load the entity if something changed
     final PolarisBaseEntity entity;
     if (entityVersion != entityVersions.getEntityVersion()) {
-      entity = ms.lookupEntityAtomically(callCtx, entityCatalogId, entityId, entityType.getCode());
+      entity = ms.lookupEntity(callCtx, entityCatalogId, entityId, entityType.getCode());
 
       // if not found, return null
       if (entity == null) {
@@ -1808,13 +1794,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     if (entityVersions.getGrantRecordsVersion() != entityGrantRecordsVersion) {
       if (entityType.isGrantee()) {
         grantRecords =
-            new ArrayList<>(
-                ms.loadAllGrantRecordsOnGranteeAtomically(callCtx, entityCatalogId, entityId));
-        grantRecords.addAll(
-            ms.loadAllGrantRecordsOnSecurableAtomically(callCtx, entityCatalogId, entityId));
+            new ArrayList<>(ms.loadAllGrantRecordsOnGrantee(callCtx, entityCatalogId, entityId));
+        grantRecords.addAll(ms.loadAllGrantRecordsOnSecurable(callCtx, entityCatalogId, entityId));
       } else {
-        grantRecords =
-            ms.loadAllGrantRecordsOnSecurableAtomically(callCtx, entityCatalogId, entityId);
+        grantRecords = ms.loadAllGrantRecordsOnSecurable(callCtx, entityCatalogId, entityId);
       }
     } else {
       grantRecords = null;
