@@ -17,23 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-title: All Apache Polaris Versions
-cascade:
-  type: releases
-  params:
-    no_list: true
+title: 'Apache Polaris Management Service OpenAPI'
+linkTitle: 'Management OpenAPI'
+weight: 800
 params:
-  top_hidden: true
-  # Parameter used to identify the "root" page over all released-version pages.
-  all_releases_root: true
+  show_page_toc: false
 ---
 
-Please find all released Polaris versions in the sidebar.
-
-{{% alert title="Info" color="primary" %}}
-
-The whole `releases/` folder lives in a separate Git branch `versioned-docs` in the Polaris main repository.
-The main source tree would does not contain the `releases/` folder - the site itself renders fine for local development
-even without the `releases/` folder.
-
-{{% /alert %}}
+{{< redoc-polaris "polaris-management-service.yml" >}}
