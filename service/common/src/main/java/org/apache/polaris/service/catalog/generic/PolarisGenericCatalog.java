@@ -41,8 +41,8 @@ import org.apache.polaris.service.task.TaskExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class PolarisGenericTableCatalog {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisGenericTableCatalog.class);
+public class PolarisGenericCatalog {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisGenericCatalog.class);
 
   private final PolarisEntityManager entityManager;
   private final CallContext callContext;
@@ -63,7 +63,7 @@ public class PolarisGenericTableCatalog {
    *     this catalog instance only interacts with authorized resolved paths.
    * @param taskExecutor Executor we use to register cleanup task handlers
    */
-  public PolarisGenericTableCatalog(
+  public PolarisGenericCatalog(
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
       CallContext callContext,
