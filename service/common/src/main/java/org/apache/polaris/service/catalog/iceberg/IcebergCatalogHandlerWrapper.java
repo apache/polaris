@@ -323,7 +323,8 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
         identifier);
     resolutionManifest.resolveAll();
     PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(identifier, subType, true);
+        resolutionManifest.getResolvedPath(
+            identifier, PolarisEntityType.ICEBERG_TABLE_LIKE, subType, true);
     if (target == null) {
       if (subType == PolarisEntitySubType.TABLE) {
         throw new NoSuchTableException("Table does not exist: %s", identifier);
@@ -375,7 +376,8 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
             .map(
                 identifier ->
                     Optional.ofNullable(
-                            resolutionManifest.getResolvedPath(identifier, subType, true))
+                            resolutionManifest.getResolvedPath(
+                                identifier, PolarisEntityType.ICEBERG_TABLE_LIKE, subType, true))
                         .orElseThrow(
                             () ->
                                 subType == PolarisEntitySubType.TABLE
@@ -419,7 +421,9 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED
         && status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.NAMESPACE) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", dst.namespace());
-    } else if (resolutionManifest.getResolvedPath(src, subType) == null) {
+    } else if (resolutionManifest.getResolvedPath(
+            src, PolarisEntityType.ICEBERG_TABLE_LIKE, subType)
+        == null) {
       if (subType == PolarisEntitySubType.TABLE) {
         throw new NoSuchTableException("Table does not exist: %s", src);
       } else {
@@ -441,7 +445,9 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
       throw new AlreadyExistsException("Cannot rename %s to %s. View already exists", src, dst);
     }
 
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(src, subType, true);
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getResolvedPath(
+            src, PolarisEntityType.ICEBERG_TABLE_LIKE, subType, true);
     PolarisResolvedPathWrapper secondary =
         resolutionManifest.getResolvedPath(dst.namespace(), true);
     authorizer.authorizeOrThrow(

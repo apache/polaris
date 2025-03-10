@@ -83,23 +83,22 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
   }
 
   @Override
-  public PolarisResolvedPathWrapper getResolvedPath(Object key, PolarisEntitySubType subType) {
+  public PolarisResolvedPathWrapper getResolvedPath(
+      Object key, PolarisEntityType entityType, PolarisEntitySubType subType) {
     PolarisResolutionManifest manifest =
         entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
 
     if (key instanceof TableIdentifier identifier) {
       manifest.addPath(
-          new ResolverPath(
-              PolarisCatalogHelpers.tableIdentifierToList(identifier),
-              PolarisEntityType.ICEBERG_TABLE_LIKE),
+          new ResolverPath(PolarisCatalogHelpers.tableIdentifierToList(identifier), entityType),
           identifier);
       manifest.resolveAll();
-      return manifest.getResolvedPath(identifier, subType);
+      return manifest.getResolvedPath(identifier, entityType, subType);
     } else {
       throw new IllegalStateException(
           String.format(
-              "Trying to getResolvedPath(key, subType) for %s with class %s and subType %s",
-              key, key.getClass(), subType));
+              "Trying to getResolvedPath(key, subType) for %s with class %s and type %s / %s",
+              key, key.getClass(), entityType, subType));
     }
   }
 
@@ -122,17 +121,15 @@ public class PolarisPassthroughResolutionView implements PolarisResolutionManife
 
   @Override
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(
-      Object key, PolarisEntitySubType subType) {
+      Object key, PolarisEntityType entityType, PolarisEntitySubType subType) {
     PolarisResolutionManifest manifest =
         entityManager.prepareResolutionManifest(callContext, securityContext, catalogName);
 
     if (key instanceof TableIdentifier identifier) {
       manifest.addPassthroughPath(
-          new ResolverPath(
-              PolarisCatalogHelpers.tableIdentifierToList(identifier),
-              PolarisEntityType.ICEBERG_TABLE_LIKE),
+          new ResolverPath(PolarisCatalogHelpers.tableIdentifierToList(identifier), entityType),
           identifier);
-      return manifest.getPassthroughResolvedPath(identifier, subType);
+      return manifest.getPassthroughResolvedPath(identifier, entityType, subType);
     } else {
       throw new IllegalStateException(
           String.format(

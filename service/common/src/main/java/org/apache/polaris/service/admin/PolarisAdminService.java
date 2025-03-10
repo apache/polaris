@@ -485,7 +485,8 @@ public class PolarisAdminService {
     }
 
     PolarisResolvedPathWrapper tableLikeWrapper =
-        resolutionManifest.getResolvedPath(identifier, subType, true);
+        resolutionManifest.getResolvedPath(
+            identifier, PolarisEntityType.ICEBERG_TABLE_LIKE, subType, true);
     PolarisResolvedPathWrapper catalogRoleWrapper =
         resolutionManifest.getResolvedPath(catalogRoleName, true);
 
@@ -1719,7 +1720,8 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
     PolarisResolvedPathWrapper resolvedPathWrapper =
-        resolutionManifest.getResolvedPath(identifier, subType);
+        resolutionManifest.getResolvedPath(
+            identifier, PolarisEntityType.ICEBERG_TABLE_LIKE, subType);
     if (resolvedPathWrapper == null) {
       if (subType == PolarisEntitySubType.VIEW) {
         throw new NotFoundException("View %s not found", identifier);
@@ -1757,7 +1759,8 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
     PolarisResolvedPathWrapper resolvedPathWrapper =
-        resolutionManifest.getResolvedPath(identifier, subType);
+        resolutionManifest.getResolvedPath(
+            identifier, PolarisEntityType.ICEBERG_TABLE_LIKE, subType);
     if (resolvedPathWrapper == null) {
       if (subType == PolarisEntitySubType.VIEW) {
         throw new NotFoundException("View %s not found", identifier);

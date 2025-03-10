@@ -29,6 +29,7 @@ import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.GenericTableEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -99,19 +100,20 @@ public class PolarisGenericTableCatalog {
     // TODO we need to filter by type here?
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
-            tableIdentifier, PolarisEntitySubType.ANY_SUBTYPE);
+            tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
     GenericTableEntity entity =
         GenericTableEntity.of(
             resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
     if (null == entity) {
       entity =
-          new GenericTableEntity.Builder(format)
+          new GenericTableEntity.Builder(tableIdentifier, format)
               .setCatalogId(this.catalogId)
               .setId(
                   this.metaStoreManager
                       .generateNewEntityId(this.callContext.getPolarisCallContext())
                       .getId())
               .setProperties(properties)
+              .setCreateTimestamp(System.currentTimeMillis())
               .build();
     } else {
       throw new AlreadyExistsException(
@@ -145,7 +147,7 @@ public class PolarisGenericTableCatalog {
     // TODO we need to filter by type here?
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
-            tableIdentifier, PolarisEntitySubType.ANY_SUBTYPE);
+            tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
     GenericTableEntity entity =
         GenericTableEntity.of(
             resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());

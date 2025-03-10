@@ -60,9 +60,10 @@ public class GenericTableEntity extends PolarisEntity {
 
   public static class Builder
       extends PolarisEntity.BaseBuilder<GenericTableEntity, GenericTableEntity.Builder> {
-    public Builder(String format) {
+    public Builder(TableIdentifier tableIdentifier, String format) {
       super();
       setType(PolarisEntityType.GENERIC_TABLE);
+      setTableIdentifier(tableIdentifier);
       setFormat(format);
     }
 

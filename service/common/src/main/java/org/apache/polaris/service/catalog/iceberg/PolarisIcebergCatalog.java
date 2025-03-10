@@ -876,7 +876,8 @@ public class PolarisIcebergCatalog extends BaseMetastoreViewCatalog
 
   private @Nonnull Optional<PolarisEntity> findStorageInfo(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper resolvedTableEntities =
-        resolvedEntityView.getResolvedPath(tableIdentifier, PolarisEntitySubType.TABLE);
+        resolvedEntityView.getResolvedPath(
+            tableIdentifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.TABLE);
 
     PolarisResolvedPathWrapper resolvedStorageEntity =
         resolvedTableEntities == null
@@ -947,7 +948,8 @@ public class PolarisIcebergCatalog extends BaseMetastoreViewCatalog
    */
   private void validateLocationForTableLike(TableIdentifier identifier, String location) {
     PolarisResolvedPathWrapper resolvedStorageEntity =
-        resolvedEntityView.getResolvedPath(identifier, PolarisEntitySubType.ANY_SUBTYPE);
+        resolvedEntityView.getResolvedPath(
+            identifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
     if (resolvedStorageEntity == null) {
       resolvedStorageEntity = resolvedEntityView.getResolvedPath(identifier.namespace());
     }
@@ -1242,7 +1244,7 @@ public class PolarisIcebergCatalog extends BaseMetastoreViewCatalog
       // table entity instead of the statically-resolved authz resolution set.
       PolarisResolvedPathWrapper resolvedEntities =
           resolvedEntityView.getPassthroughResolvedPath(
-              tableIdentifier, PolarisEntitySubType.TABLE);
+              tableIdentifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.TABLE);
       IcebergTableLikeEntity entity = null;
 
       if (resolvedEntities != null) {
@@ -1296,7 +1298,7 @@ public class PolarisIcebergCatalog extends BaseMetastoreViewCatalog
 
       PolarisResolvedPathWrapper resolvedTableEntities =
           resolvedEntityView.getPassthroughResolvedPath(
-              tableIdentifier, PolarisEntitySubType.TABLE);
+              tableIdentifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.TABLE);
 
       // Fetch credentials for the resolved entity. The entity could be the table itself (if it has
       // already been stored and credentials have been configured directly) or it could be the
@@ -1364,7 +1366,8 @@ public class PolarisIcebergCatalog extends BaseMetastoreViewCatalog
       String oldLocation = base == null ? null : base.metadataFileLocation();
 
       PolarisResolvedPathWrapper resolvedView =
-          resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, PolarisEntitySubType.VIEW);
+          resolvedEntityView.getPassthroughResolvedPath(
+              tableIdentifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.VIEW);
       if (resolvedView != null) {
         throw new AlreadyExistsException("View with same name already exists: %s", tableIdentifier);
       }
@@ -1377,7 +1380,7 @@ public class PolarisIcebergCatalog extends BaseMetastoreViewCatalog
       // persistence-layer commit).
       PolarisResolvedPathWrapper resolvedEntities =
           resolvedEntityView.getPassthroughResolvedPath(
-              tableIdentifier, PolarisEntitySubType.TABLE);
+              tableIdentifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.TABLE);
       IcebergTableLikeEntity entity =
           IcebergTableLikeEntity.of(
               resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
@@ -1474,7 +1477,8 @@ public class PolarisIcebergCatalog extends BaseMetastoreViewCatalog
     @Override
     public void doRefresh() {
       PolarisResolvedPathWrapper resolvedEntities =
-          resolvedEntityView.getPassthroughResolvedPath(identifier, PolarisEntitySubType.VIEW);
+          resolvedEntityView.getPassthroughResolvedPath(
+              identifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.VIEW);
       IcebergTableLikeEntity entity = null;
 
       if (resolvedEntities != null) {
@@ -1528,13 +1532,15 @@ public class PolarisIcebergCatalog extends BaseMetastoreViewCatalog
       }
 
       PolarisResolvedPathWrapper resolvedTable =
-          resolvedEntityView.getPassthroughResolvedPath(identifier, PolarisEntitySubType.TABLE);
+          resolvedEntityView.getPassthroughResolvedPath(
+              identifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.TABLE);
       if (resolvedTable != null) {
         throw new AlreadyExistsException("Table with same name already exists: %s", identifier);
       }
 
       PolarisResolvedPathWrapper resolvedEntities =
-          resolvedEntityView.getPassthroughResolvedPath(identifier, PolarisEntitySubType.VIEW);
+          resolvedEntityView.getPassthroughResolvedPath(
+              identifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.VIEW);
 
       // Fetch credentials for the resolved entity. The entity could be the view itself (if it has
       // already been stored and credentials have been configured directly) or it could be the
@@ -1670,7 +1676,8 @@ public class PolarisIcebergCatalog extends BaseMetastoreViewCatalog
   private void renameTableLike(
       PolarisEntitySubType subType, TableIdentifier from, TableIdentifier to) {
     LOGGER.debug("Renaming tableLike from {} to {}", from, to);
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(from, subType);
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getResolvedPath(from, PolarisEntityType.ICEBERG_TABLE_LIKE, subType);
     if (resolvedEntities == null) {
       if (subType == PolarisEntitySubType.VIEW) {
         throw new NoSuchViewException("Cannot rename %s to %s. View does not exist", from, to);
@@ -1840,7 +1847,7 @@ public class PolarisIcebergCatalog extends BaseMetastoreViewCatalog
 
   private void updateTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getResolvedPath(identifier, entity.getSubType());
+        resolvedEntityView.getResolvedPath(identifier, entity.getType(), entity.getSubType());
     if (resolvedEntities == null) {
       // Illegal state because the identifier should've already been in the static resolution set.
       throw new IllegalStateException(
@@ -1883,7 +1890,8 @@ public class PolarisIcebergCatalog extends BaseMetastoreViewCatalog
       Map<String, String> storageProperties,
       boolean purge) {
     PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getResolvedPath(identifier, subType);
+        resolvedEntityView.getResolvedPath(
+            identifier, PolarisEntityType.ICEBERG_TABLE_LIKE, subType);
     if (resolvedEntities == null) {
       // TODO: Error?
       return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
@@ -1927,7 +1935,8 @@ public class PolarisIcebergCatalog extends BaseMetastoreViewCatalog
     LOGGER.debug(
         "Handling notification request {} for tableIdentifier {}", request, tableIdentifier);
     PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getPassthroughResolvedPath(tableIdentifier, subType);
+        resolvedEntityView.getPassthroughResolvedPath(
+            tableIdentifier, PolarisEntityType.ICEBERG_TABLE_LIKE, subType);
 
     NotificationType notificationType = request.getNotificationType();
 
