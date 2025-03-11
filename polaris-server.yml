@@ -132,8 +132,8 @@ logging:
 
   # Logger-specific levels.
   loggers:
-    org.apache.iceberg.rest: INFO
-    org.apache.polaris: INFO
+    org.apache.iceberg.rest: TRACE
+    org.apache.polaris: TRACE
 
   appenders:
 
