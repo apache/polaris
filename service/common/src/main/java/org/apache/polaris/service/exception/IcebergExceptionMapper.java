@@ -68,8 +68,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   /** Signifies that we could not extract an HTTP code from a given cloud exception */
   public static final int UNKNOWN_CLOUD_HTTP_CODE = -1;
 
-  /** Jakarta Response.Status doesn't define this code */
-  @VisibleForTesting public static final int UNPROCESSABLE_CONTENT_HTTP_CODE = 422;
+  @VisibleForTesting public static final String AZURE_STORAGE_URL_SUFFIX = ".blob.core.windows.net";
 
   public static final Set<Integer> RETRYABLE_AZURE_HTTP_CODES =
       Set.of(
@@ -175,8 +174,8 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       }
 
       // UnknownHostException isn't a RuntimeException so it's always wrapped
-      if (t instanceof UnknownHostException) {
-        return UNPROCESSABLE_CONTENT_HTTP_CODE;
+      if (t instanceof UnknownHostException && t.getMessage().contains(AZURE_STORAGE_URL_SUFFIX)) {
+        return Status.NOT_FOUND.getStatusCode(); // Return a 404 to be consistent with S3/GCS
       }
     }
 
@@ -188,7 +187,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       case NotFoundException e -> Status.NOT_FOUND.getStatusCode();
       case AlreadyExistsException e -> Status.CONFLICT.getStatusCode();
       case CommitFailedException e -> Status.CONFLICT.getStatusCode();
-      case UnprocessableEntityException e -> UNPROCESSABLE_CONTENT_HTTP_CODE;
+      case UnprocessableEntityException e -> 422;
       case CherrypickAncestorCommitException e -> Status.BAD_REQUEST.getStatusCode();
       case CommitStateUnknownException e -> Status.BAD_REQUEST.getStatusCode();
       case DuplicateWAPCommitException e -> Status.BAD_REQUEST.getStatusCode();
@@ -257,7 +256,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       // shouldn't expect it to.
       // This is a 4xx error to indicate that the client may be able to resolve this by changing
       // some data, such as their catalog's region.
-      return UNPROCESSABLE_CONTENT_HTTP_CODE;
+      return 422;
     }
     if (httpFamily == Status.Family.SERVER_ERROR) {
       return Status.BAD_GATEWAY.getStatusCode();

@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.service.exception;
 
-import static org.apache.polaris.service.exception.IcebergExceptionMapper.UNPROCESSABLE_CONTENT_HTTP_CODE;
+import static org.apache.polaris.service.exception.IcebergExceptionMapper.AZURE_STORAGE_URL_SUFFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.azure.core.exception.AzureException;
@@ -46,7 +46,7 @@ public class IcebergExceptionMapperTest {
             // RuntimeIOExceptions,
             // which is what the Iceberg SDK sometimes wraps them with if the error happens during
             // IO.
-            302, UNPROCESSABLE_CONTENT_HTTP_CODE,
+            302, 422,
             400, 400,
             401, 403,
             403, 403,
@@ -66,7 +66,11 @@ public class IcebergExceptionMapperTest {
             Arguments.of(S3Exception.builder().message("Access denied").build(), 403),
             Arguments.of(new StorageException(1, "access denied"), 403),
             Arguments.of(
-                new RuntimeException(new UnknownHostException()), UNPROCESSABLE_CONTENT_HTTP_CODE)),
+                new RuntimeException(
+                    new UnknownHostException(
+                        String.format(
+                            "mybucket%s: Name or service not known", AZURE_STORAGE_URL_SUFFIX))),
+                404)),
         cloudCodeMappings.entrySet().stream()
             .flatMap(
                 entry ->
