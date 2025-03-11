@@ -213,6 +213,13 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     };
   }
 
+  /**
+   * Tries mapping a cloud exception to the HTTP code that Polaris should return
+   *
+   * @param t the throwable/exception
+   * @return the HTTP code Polaris should return, if it was possible to return a suitable mapping.
+   *     Optional.empty() otherwise.
+   */
   static Optional<Integer> mapCloudExceptionToResponseCode(Throwable t) {
     // UnknownHostException isn't a RuntimeException so it's always wrapped
     if (t instanceof UnknownHostException && t.getMessage().contains(AZURE_STORAGE_URL_SUFFIX)) {
