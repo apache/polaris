@@ -34,7 +34,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 
-public class FdbPrincipalDaoImpl implements PrincipalDao {
+public class DelegatingPrincipalDaoImpl implements PrincipalDao {
   PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
   @Override

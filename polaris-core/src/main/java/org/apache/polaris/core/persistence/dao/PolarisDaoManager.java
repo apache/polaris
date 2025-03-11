@@ -43,17 +43,17 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.persistence.transactional.FdbCatalogDaoImpl;
-import org.apache.polaris.core.persistence.transactional.FdbCatalogRoleDaoImpl;
-import org.apache.polaris.core.persistence.transactional.FdbCommonDaoImpl;
-import org.apache.polaris.core.persistence.transactional.FdbCredentialVendorDaoImpl;
-import org.apache.polaris.core.persistence.transactional.FdbGrantRecordDaoImpl;
-import org.apache.polaris.core.persistence.transactional.FdbNamespaceDaoImpl;
-import org.apache.polaris.core.persistence.transactional.FdbPrincipalDaoImpl;
-import org.apache.polaris.core.persistence.transactional.FdbPrincipalRoleDaoImpl;
-import org.apache.polaris.core.persistence.transactional.FdbPrincipalSecretsDaoImpl;
-import org.apache.polaris.core.persistence.transactional.FdbTableLikeDaoImpl;
-import org.apache.polaris.core.persistence.transactional.FdbTaskDaoImpl;
+import org.apache.polaris.core.persistence.transactional.DelegatingCatalogDaoImpl;
+import org.apache.polaris.core.persistence.transactional.DelegatingCatalogRoleDaoImpl;
+import org.apache.polaris.core.persistence.transactional.DelegatingCommonDaoImpl;
+import org.apache.polaris.core.persistence.transactional.DelegatingCredentialVendorDaoImpl;
+import org.apache.polaris.core.persistence.transactional.DelegatingGrantRecordDaoImpl;
+import org.apache.polaris.core.persistence.transactional.DelegatingNamespaceDaoImpl;
+import org.apache.polaris.core.persistence.transactional.DelegatingPrincipalDaoImpl;
+import org.apache.polaris.core.persistence.transactional.DelegatingPrincipalRoleDaoImpl;
+import org.apache.polaris.core.persistence.transactional.DelegatingPrincipalSecretsDaoImpl;
+import org.apache.polaris.core.persistence.transactional.DelegatingTableLikeDaoImpl;
+import org.apache.polaris.core.persistence.transactional.DelegatingTaskDaoImpl;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 
 /**
@@ -64,18 +64,63 @@ import org.apache.polaris.core.storage.PolarisStorageActions;
 public class PolarisDaoManager implements PolarisMetaStoreManager {
   // TODO, using factory or CDI to create following instances, so that the implementation can be
   // injected.
-  FdbCatalogDaoImpl catalogDao = new FdbCatalogDaoImpl();
-  FdbNamespaceDaoImpl namespaceDao = new FdbNamespaceDaoImpl();
-  FdbTableLikeDaoImpl tableLikeDao = new FdbTableLikeDaoImpl();
-  FdbCatalogRoleDaoImpl catalogRoleDao = new FdbCatalogRoleDaoImpl();
-  FdbPrincipalRoleDaoImpl principalRoleDao = new FdbPrincipalRoleDaoImpl();
-  FdbPrincipalDaoImpl principalDao = new FdbPrincipalDaoImpl();
-  FdbTaskDaoImpl taskDao = new FdbTaskDaoImpl();
-  FdbPrincipalSecretsDaoImpl principalSecretsDao = new FdbPrincipalSecretsDaoImpl();
-  FdbGrantRecordDaoImpl grantRecordDao = new FdbGrantRecordDaoImpl();
-  FdbCommonDaoImpl commonDao = new FdbCommonDaoImpl();
-  FdbCredentialVendorDaoImpl credentialVendorDao = new FdbCredentialVendorDaoImpl();
+  private final CatalogDao catalogDao = new DelegatingCatalogDaoImpl();
+  private final NamespaceDao namespaceDao = new DelegatingNamespaceDaoImpl();
+  private final TableLikeDao tableLikeDao = new DelegatingTableLikeDaoImpl();
+  private final CatalogRoleDao catalogRoleDao = new DelegatingCatalogRoleDaoImpl();
+  private final PrincipalRoleDao principalRoleDao = new DelegatingPrincipalRoleDaoImpl();
+  private final PrincipalDao principalDao = new DelegatingPrincipalDaoImpl();
+  private final TaskDao taskDao = new DelegatingTaskDaoImpl();
+  private final PrincipalSecretsDao principalSecretsDao = new DelegatingPrincipalSecretsDaoImpl();
+  private final GrantRecordDao grantRecordDao = new DelegatingGrantRecordDaoImpl();
+  private final CommonDao commonDao = new DelegatingCommonDaoImpl();
+  private final CredentialVendorDao credentialVendorDao = new DelegatingCredentialVendorDaoImpl();
 
+  public CatalogDao getCatalogDao() {
+    return catalogDao;
+  }
+
+  public NamespaceDao getNamespaceDao() {
+    return namespaceDao;
+  }
+
+  public TableLikeDao getTableLikeDao() {
+    return tableLikeDao;
+  }
+
+  public CatalogRoleDao getCatalogRoleDao() {
+    return catalogRoleDao;
+  }
+
+  public PrincipalRoleDao getPrincipalRoleDao() {
+    return principalRoleDao;
+  }
+
+  public PrincipalDao getPrincipalDao() {
+    return principalDao;
+  }
+
+  public TaskDao getTaskDao() {
+    return taskDao;
+  }
+
+  public PrincipalSecretsDao getPrincipalSecretsDao() {
+    return principalSecretsDao;
+  }
+
+  public GrantRecordDao getGrantRecordDao() {
+    return grantRecordDao;
+  }
+
+  public CommonDao getCommonDao() {
+    return commonDao;
+  }
+
+  public CredentialVendorDao getCredentialVendorDao() {
+    return credentialVendorDao;
+  }
+
+  // TODO, we can remove all following methods once we finished the business logic refactor.
   @Nonnull
   @Override
   public BaseResult bootstrapPolarisService(@Nonnull PolarisCallContext callCtx) {
@@ -283,7 +328,7 @@ public class PolarisDaoManager implements PolarisMetaStoreManager {
       @Nonnull PolarisEntityType entityType) {
     switch (entityType) {
       case CATALOG:
-        return catalogDao.loadEntity(callCtx, entityCatalogId, entityId);
+        return catalogDao.loadEntity(callCtx, entityId);
       case NAMESPACE:
         return namespaceDao.loadEntity(callCtx, entityCatalogId, entityId);
       case TABLE_LIKE:

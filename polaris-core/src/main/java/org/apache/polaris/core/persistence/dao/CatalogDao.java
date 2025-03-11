@@ -53,7 +53,7 @@ public interface CatalogDao {
   EntityResult readEntityByName(@Nonnull PolarisCallContext callCtx, @Nonnull String name);
 
   @Nonnull
-  EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId);
+  EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityId);
 
   @Nonnull
   ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx);

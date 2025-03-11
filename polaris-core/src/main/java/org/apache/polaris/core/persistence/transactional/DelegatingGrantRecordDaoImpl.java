@@ -27,7 +27,7 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.dao.GrantRecordDao;
 
-public class FdbGrantRecordDaoImpl implements GrantRecordDao {
+public class DelegatingGrantRecordDaoImpl implements GrantRecordDao {
   PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
   @Nonnull

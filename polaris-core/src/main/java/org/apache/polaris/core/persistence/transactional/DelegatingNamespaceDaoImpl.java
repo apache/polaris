@@ -16,7 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.impl.jdbc;
+package org.apache.polaris.core.persistence.transactional;
+
+import static org.apache.polaris.core.entity.PolarisEntitySubType.ANY_SUBTYPE;
+import static org.apache.polaris.core.entity.PolarisEntityType.NAMESPACE;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -25,42 +28,42 @@ import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
-import org.apache.polaris.core.persistence.dao.CatalogRoleDao;
+import org.apache.polaris.core.persistence.dao.NamespaceDao;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 
-public class PostgresCatalogRoleDaoImpl implements CatalogRoleDao {
+public class DelegatingNamespaceDaoImpl implements NamespaceDao {
+  PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
-  @Nonnull
   @Override
-  public EntityResult readEntityByName(
+  public @Nonnull EntityResult readEntityByName(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull String name) {
-    return null;
+    return metaStoreManager.readEntityByName(callCtx, catalogPath, NAMESPACE, ANY_SUBTYPE, name);
   }
 
   @Nonnull
   @Override
   public EntityResult loadEntity(
       @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
-    return null;
+    return metaStoreManager.loadEntity(callCtx, entityCatalogId, entityId, NAMESPACE);
   }
 
   @Nonnull
   @Override
   public ListEntitiesResult listEntities(
-      @Nonnull PolarisCallContext callCtx, @Nullable List<PolarisEntityCore> catalogPath) {
-    return null;
+      @Nonnull PolarisCallContext callCtx, @Nonnull List<PolarisEntityCore> catalogPath) {
+    return metaStoreManager.listEntities(callCtx, catalogPath, NAMESPACE, ANY_SUBTYPE);
   }
 
   @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityById(
       @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
-    return null;
+    return metaStoreManager.loadResolvedEntityById(callCtx, entityCatalogId, entityId, NAMESPACE);
   }
 
   @Nonnull
@@ -70,7 +73,8 @@ public class PostgresCatalogRoleDaoImpl implements CatalogRoleDao {
       long entityCatalogId,
       long parentId,
       @Nonnull String entityName) {
-    return null;
+    return metaStoreManager.loadResolvedEntityByName(
+        callCtx, entityCatalogId, parentId, NAMESPACE, entityName);
   }
 
   @Nonnull
@@ -81,7 +85,8 @@ public class PostgresCatalogRoleDaoImpl implements CatalogRoleDao {
       int entityGrantRecordsVersion,
       long entityCatalogId,
       long entityId) {
-    return null;
+    return metaStoreManager.refreshResolvedEntity(
+        callCtx, entityVersion, entityGrantRecordsVersion, NAMESPACE, entityCatalogId, entityId);
   }
 
   @Nonnull
@@ -90,7 +95,7 @@ public class PostgresCatalogRoleDaoImpl implements CatalogRoleDao {
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity) {
-    return null;
+    return metaStoreManager.createEntityIfNotExists(callCtx, catalogPath, entity);
   }
 
   @Nonnull
@@ -99,7 +104,7 @@ public class PostgresCatalogRoleDaoImpl implements CatalogRoleDao {
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisBaseEntity entity) {
-    return null;
+    return metaStoreManager.updateEntityPropertiesIfNotChanged(callCtx, catalogPath, entity);
   }
 
   @Nonnull
@@ -110,6 +115,7 @@ public class PostgresCatalogRoleDaoImpl implements CatalogRoleDao {
       @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
-    return null;
+    return metaStoreManager.dropEntityIfExists(
+        callCtx, catalogPath, entityToDrop, cleanupProperties, cleanup);
   }
 }

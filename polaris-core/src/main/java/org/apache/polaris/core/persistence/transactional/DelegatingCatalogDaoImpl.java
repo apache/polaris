@@ -35,7 +35,7 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 
-public class FdbCatalogDaoImpl implements CatalogDao {
+public class DelegatingCatalogDaoImpl implements CatalogDao {
   // TODO we need a map to cache the PolarisMetaStoreManagerImpl as well
   PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
@@ -55,8 +55,7 @@ public class FdbCatalogDaoImpl implements CatalogDao {
 
   @Nonnull
   @Override
-  public EntityResult loadEntity(
-      @Nonnull PolarisCallContext callCtx, long entityCatalogId, long entityId) {
+  public EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long entityId) {
     return metaStoreManager.loadEntity(callCtx, 0L, entityId, CATALOG);
   }
 

@@ -16,7 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.extension.persistence.impl.jdbc;
+package org.apache.polaris.core.persistence.transactional;
+
+import static org.apache.polaris.core.entity.PolarisEntitySubType.NULL_SUBTYPE;
+import static org.apache.polaris.core.entity.PolarisEntityType.PRINCIPAL_ROLE;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
@@ -24,49 +27,45 @@ import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
-import org.apache.polaris.core.persistence.dao.PrincipalDao;
-import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
+import org.apache.polaris.core.persistence.dao.PrincipalRoleDao;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 
-public class PostgresPrincipalDaoImpl implements PrincipalDao {
+public class DelegatingPrincipalRoleDaoImpl implements PrincipalRoleDao {
+  PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
+
   @Nonnull
   @Override
-  public EntityResult readEntityByName(@Nonnull PolarisCallContext callCtx, @Nonnull String name) {
-    return null;
+  public ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx) {
+    return metaStoreManager.listEntities(callCtx, null, PRINCIPAL_ROLE, NULL_SUBTYPE);
+  }
+
+  @Override
+  public @Nonnull EntityResult readEntityByName(
+      @Nonnull PolarisCallContext callCtx, @Nonnull String name) {
+    return metaStoreManager.readEntityByName(callCtx, null, PRINCIPAL_ROLE, NULL_SUBTYPE, name);
   }
 
   @Nonnull
   @Override
   public EntityResult loadEntity(@Nonnull PolarisCallContext callCtx, long id) {
-    return null;
-  }
-
-  @Nonnull
-  @Override
-  public ListEntitiesResult listEntities(@Nonnull PolarisCallContext callCtx) {
-    return null;
-  }
-
-  @Override
-  public CreatePrincipalResult createPrincipal(
-      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity principal) {
-    return null;
+    return metaStoreManager.loadEntity(callCtx, 0L, id, PRINCIPAL_ROLE);
   }
 
   @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityById(@Nonnull PolarisCallContext callCtx, long id) {
-    return null;
+    return metaStoreManager.loadResolvedEntityById(callCtx, 0L, id, PRINCIPAL_ROLE);
   }
 
   @Nonnull
   @Override
   public ResolvedEntityResult loadResolvedEntityByName(
-      @Nonnull PolarisCallContext callCtx, long parentId, @Nonnull String name) {
-    return null;
+      @Nonnull PolarisCallContext callCtx, long parentId, @Nonnull String entityName) {
+    return metaStoreManager.loadResolvedEntityByName(
+        callCtx, 0L, parentId, PRINCIPAL_ROLE, entityName);
   }
 
   @Nonnull
@@ -76,14 +75,22 @@ public class PostgresPrincipalDaoImpl implements PrincipalDao {
       int entityVersion,
       int entityGrantRecordsVersion,
       long id) {
-    return null;
+    return metaStoreManager.refreshResolvedEntity(
+        callCtx, entityVersion, entityGrantRecordsVersion, PRINCIPAL_ROLE, 0L, id);
+  }
+
+  @Nonnull
+  @Override
+  public EntityResult createEntityIfNotExists(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
+    return metaStoreManager.createEntityIfNotExists(callCtx, null, entity);
   }
 
   @Nonnull
   @Override
   public EntityResult updateEntityPropertiesIfNotChanged(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
-    return null;
+    return metaStoreManager.updateEntityPropertiesIfNotChanged(callCtx, null, entity);
   }
 
   @Nonnull
@@ -93,6 +100,7 @@ public class PostgresPrincipalDaoImpl implements PrincipalDao {
       @Nonnull PolarisEntityCore entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
-    return null;
+    return metaStoreManager.dropEntityIfExists(
+        callCtx, null, entityToDrop, cleanupProperties, cleanup);
   }
 }

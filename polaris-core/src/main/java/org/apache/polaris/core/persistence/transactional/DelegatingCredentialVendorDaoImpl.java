@@ -26,7 +26,7 @@ import org.apache.polaris.core.persistence.dao.CredentialVendorDao;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 
-public class FdbCredentialVendorDaoImpl implements CredentialVendorDao {
+public class DelegatingCredentialVendorDaoImpl implements CredentialVendorDao {
   PolarisMetaStoreManagerImpl metaStoreManager = new PolarisMetaStoreManagerImpl();
 
   @Nonnull
