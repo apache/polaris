@@ -102,6 +102,10 @@ public final class PolarisClient implements AutoCloseable {
         client, endpoints, obtainToken(credentials), endpoints.catalogApiEndpoint());
   }
 
+  public CatalogApi catalogApiPlain() {
+    return new CatalogApi(client, endpoints, null, endpoints.catalogApiEndpoint());
+  }
+
   /**
    * Requests an access token from the Polaris server for the client ID/secret pair that is part of
    * the given principal data object.
