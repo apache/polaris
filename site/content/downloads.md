@@ -17,9 +17,8 @@
   under the License.
 -->
 
-# Downloads
 
-You can find Apache Polaris resources here, including releases.
+# Downloads
 
 ## Releases
 
@@ -28,7 +27,7 @@ You can find Apache Polaris resources here, including releases.
 Apache Polaris 0.9.0 release is the first Polaris release. Only the source distribution is available for this release.
 
 * https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz
-** [asc](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.asc)
-** [sha512](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.sha512)
-** [KEYS](https://downloads.apache.org/incubator/polaris/KEYS))
+    * [asc](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.asc)
+    * [sha512](https://downloads.apache.org/incubator/polaris/0.9.0-incubating/apache-polaris-0.9.0-incubating.tar.gz.sha512)
+    * [KEYS](https://downloads.apache.org/incubator/polaris/KEYS)
 
