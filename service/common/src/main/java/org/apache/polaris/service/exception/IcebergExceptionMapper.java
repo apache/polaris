@@ -68,7 +68,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   /** Signifies that we could not extract an HTTP code from a given cloud exception */
   public static final int UNKNOWN_CLOUD_HTTP_CODE = -1;
 
-  @VisibleForTesting public static final String AZURE_STORAGE_URL_SUFFIX = ".blob.core.windows.net";
+  private static final String AZURE_STORAGE_URL_SUFFIX = ".windows.net";
 
   public static final Set<Integer> RETRYABLE_AZURE_HTTP_CODES =
       Set.of(

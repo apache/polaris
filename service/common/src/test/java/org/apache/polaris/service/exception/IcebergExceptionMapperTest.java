@@ -18,7 +18,6 @@
  */
 package org.apache.polaris.service.exception;
 
-import static org.apache.polaris.service.exception.IcebergExceptionMapper.AZURE_STORAGE_URL_SUFFIX;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.azure.core.exception.AzureException;
@@ -68,8 +67,7 @@ public class IcebergExceptionMapperTest {
             Arguments.of(
                 new RuntimeException(
                     new UnknownHostException(
-                        String.format(
-                            "mybucket%s: Name or service not known", AZURE_STORAGE_URL_SUFFIX))),
+                        "mybucket.blob.core.windows.net: Name or service not known")),
                 404)),
         cloudCodeMappings.entrySet().stream()
             .flatMap(
