@@ -84,6 +84,7 @@ import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
+import org.apache.polaris.core.persistence.dao.PolarisDaoManager;
 import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
@@ -116,7 +117,7 @@ public class PolarisAdminService {
   private final SecurityContext securityContext;
   private final AuthenticatedPolarisPrincipal authenticatedPrincipal;
   private final PolarisAuthorizer authorizer;
-  private final PolarisMetaStoreManager metaStoreManager;
+  private final PolarisDaoManager daoManager;
 
   // Initialized in the authorize methods.
   private PolarisResolutionManifest resolutionManifest = null;
@@ -129,7 +130,8 @@ public class PolarisAdminService {
       @NotNull PolarisAuthorizer authorizer) {
     this.callContext = callContext;
     this.entityManager = entityManager;
-    this.metaStoreManager = metaStoreManager;
+    // TODO remove the casting in a followup PR
+    this.daoManager = (PolarisDaoManager) metaStoreManager;
     this.securityContext = securityContext;
     PolarisDiagnostics diagServices = callContext.getPolarisCallContext().getDiagServices();
     diagServices.checkNotNull(securityContext, "null_security_context");
@@ -573,11 +575,14 @@ public class PolarisAdminService {
 
     PolarisEntity polarisEntity =
         new PolarisEntity.Builder(entity)
-            .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
+            .setId(
+                daoManager.getCommonDao().generateNewEntityId(getCurrentPolarisContext()).getId())
             .setCreateTimestamp(System.currentTimeMillis())
             .build();
     CreateCatalogResult catalogResult =
-        metaStoreManager.createCatalog(getCurrentPolarisContext(), polarisEntity, List.of());
+        daoManager
+            .getCatalogDao()
+            .createCatalog(getCurrentPolarisContext(), polarisEntity, List.of());
     if (catalogResult.alreadyExists()) {
       throw new AlreadyExistsException(
           "Cannot create Catalog %s. Catalog already exists or resolution failed",
@@ -600,8 +605,9 @@ public class PolarisAdminService {
             .getConfigurationStore()
             .getConfiguration(polarisCallContext, PolarisConfiguration.CLEANUP_ON_CATALOG_DROP);
     DropEntityResult dropEntityResult =
-        metaStoreManager.dropEntityIfExists(
-            getCurrentPolarisContext(), null, entity, Map.of(), cleanup);
+        daoManager
+            .getCatalogDao()
+            .dropEntityIfExists(getCurrentPolarisContext(), entity, Map.of(), cleanup);
 
     // at least some handling of error
     if (!dropEntityResult.isSuccess()) {
@@ -730,8 +736,10 @@ public class PolarisAdminService {
         Optional.ofNullable(
                 CatalogEntity.of(
                     PolarisEntity.of(
-                        metaStoreManager.updateEntityPropertiesIfNotChanged(
-                            getCurrentPolarisContext(), null, updatedEntity))))
+                        daoManager
+                            .getCatalogDao()
+                            .updateEntityPropertiesIfNotChanged(
+                                getCurrentPolarisContext(), updatedEntity))))
             .orElseThrow(
                 () ->
                     new CommitFailedException(
@@ -751,19 +759,17 @@ public class PolarisAdminService {
    * process before it could be loaded.
    */
   private List<PolarisEntity> listCatalogsUnsafe() {
-    return metaStoreManager
-        .listEntities(
-            getCurrentPolarisContext(),
-            null,
-            PolarisEntityType.CATALOG,
-            PolarisEntitySubType.ANY_SUBTYPE)
+    return daoManager
+        .getCatalogDao()
+        .listEntities(getCurrentPolarisContext())
         .getEntities()
         .stream()
         .map(
             nameAndId ->
                 PolarisEntity.of(
-                    metaStoreManager.loadEntity(
-                        getCurrentPolarisContext(), 0, nameAndId.getId(), nameAndId.getType())))
+                    daoManager
+                        .getCatalogDao()
+                        .loadEntity(getCurrentPolarisContext(), nameAndId.getId())))
         .toList();
   }
 
@@ -774,12 +780,18 @@ public class PolarisAdminService {
     checkArgument(entity.getId() == -1, "Entity to be created must have no ID assigned");
 
     CreatePrincipalResult principalResult =
-        metaStoreManager.createPrincipal(
-            getCurrentPolarisContext(),
-            new PolarisEntity.Builder(entity)
-                .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
-                .setCreateTimestamp(System.currentTimeMillis())
-                .build());
+        daoManager
+            .getPrincipalDao()
+            .createPrincipal(
+                getCurrentPolarisContext(),
+                new PolarisEntity.Builder(entity)
+                    .setId(
+                        daoManager
+                            .getCommonDao()
+                            .generateNewEntityId(getCurrentPolarisContext())
+                            .getId())
+                    .setCreateTimestamp(System.currentTimeMillis())
+                    .build());
     if (principalResult.alreadyExists()) {
       throw new AlreadyExistsException(
           "Cannot create Principal %s. Principal already exists or resolution failed",
@@ -801,8 +813,9 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("Principal %s not found", name));
     // TODO: Handle return value in case of concurrent modification
     DropEntityResult dropEntityResult =
-        metaStoreManager.dropEntityIfExists(
-            getCurrentPolarisContext(), null, entity, Map.of(), false);
+        daoManager
+            .getPrincipalDao()
+            .dropEntityIfExists(getCurrentPolarisContext(), entity, Map.of(), false);
 
     // at least some handling of error
     if (!dropEntityResult.isSuccess()) {
@@ -848,8 +861,10 @@ public class PolarisAdminService {
         Optional.ofNullable(
                 PrincipalEntity.of(
                     PolarisEntity.of(
-                        metaStoreManager.updateEntityPropertiesIfNotChanged(
-                            getCurrentPolarisContext(), null, updatedEntity))))
+                        daoManager
+                            .getPrincipalDao()
+                            .updateEntityPropertiesIfNotChanged(
+                                getCurrentPolarisContext(), updatedEntity))))
             .orElseThrow(
                 () ->
                     new CommitFailedException(
@@ -864,7 +879,8 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("Principal %s not found", principalName));
 
     PolarisPrincipalSecrets currentSecrets =
-        metaStoreManager
+        daoManager
+            .getPrincipalSecretsDao()
             .loadPrincipalSecrets(getCurrentPolarisContext(), currentPrincipalEntity.getClientId())
             .getPrincipalSecrets();
     if (currentSecrets == null) {
@@ -872,7 +888,8 @@ public class PolarisAdminService {
           String.format("Failed to load current secrets for principal '%s'", principalName));
     }
     PolarisPrincipalSecrets newSecrets =
-        metaStoreManager
+        daoManager
+            .getPrincipalSecretsDao()
             .rotatePrincipalSecrets(
                 getCurrentPolarisContext(),
                 currentPrincipalEntity.getClientId(),
@@ -888,11 +905,9 @@ public class PolarisAdminService {
     }
     PolarisEntity newPrincipal =
         PolarisEntity.of(
-            metaStoreManager.loadEntity(
-                getCurrentPolarisContext(),
-                0L,
-                currentPrincipalEntity.getId(),
-                currentPrincipalEntity.getType()));
+            daoManager
+                .getPrincipalDao()
+                .loadEntity(getCurrentPolarisContext(), currentPrincipalEntity.getId()));
     return new PrincipalWithCredentials(
         PrincipalEntity.of(newPrincipal).asPrincipal(),
         new PrincipalWithCredentialsCredentials(
@@ -917,19 +932,17 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_PRINCIPALS;
     authorizeBasicRootOperationOrThrow(op);
 
-    return metaStoreManager
-        .listEntities(
-            getCurrentPolarisContext(),
-            null,
-            PolarisEntityType.PRINCIPAL,
-            PolarisEntitySubType.NULL_SUBTYPE)
+    return daoManager
+        .getPrincipalDao()
+        .listEntities(getCurrentPolarisContext())
         .getEntities()
         .stream()
         .map(
             nameAndId ->
                 PolarisEntity.of(
-                    metaStoreManager.loadEntity(
-                        getCurrentPolarisContext(), 0, nameAndId.getId(), nameAndId.getType())))
+                    daoManager
+                        .getPrincipalDao()
+                        .loadEntity(getCurrentPolarisContext(), nameAndId.getId())))
         .toList();
   }
 
@@ -941,13 +954,18 @@ public class PolarisAdminService {
 
     PolarisEntity returnedEntity =
         PolarisEntity.of(
-            metaStoreManager.createEntityIfNotExists(
-                getCurrentPolarisContext(),
-                null,
-                new PolarisEntity.Builder(entity)
-                    .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
-                    .setCreateTimestamp(System.currentTimeMillis())
-                    .build()));
+            daoManager
+                .getPrincipalRoleDao()
+                .createEntityIfNotExists(
+                    getCurrentPolarisContext(),
+                    new PolarisEntity.Builder(entity)
+                        .setId(
+                            daoManager
+                                .getCommonDao()
+                                .generateNewEntityId(getCurrentPolarisContext())
+                                .getId())
+                        .setCreateTimestamp(System.currentTimeMillis())
+                        .build()));
     if (returnedEntity == null) {
       throw new AlreadyExistsException(
           "Cannot create PrincipalRole %s. PrincipalRole already exists or resolution failed",
@@ -965,8 +983,10 @@ public class PolarisAdminService {
             .orElseThrow(() -> new NotFoundException("PrincipalRole %s not found", name));
     // TODO: Handle return value in case of concurrent modification
     DropEntityResult dropEntityResult =
-        metaStoreManager.dropEntityIfExists(
-            getCurrentPolarisContext(), null, entity, Map.of(), true); // cleanup grants
+        daoManager
+            .getPrincipalRoleDao()
+            .dropEntityIfExists(
+                getCurrentPolarisContext(), entity, Map.of(), true); // cleanup grants
 
     // at least some handling of error
     if (!dropEntityResult.isSuccess()) {
@@ -1013,8 +1033,10 @@ public class PolarisAdminService {
         Optional.ofNullable(
                 PrincipalRoleEntity.of(
                     PolarisEntity.of(
-                        metaStoreManager.updateEntityPropertiesIfNotChanged(
-                            getCurrentPolarisContext(), null, updatedEntity))))
+                        daoManager
+                            .getPrincipalRoleDao()
+                            .updateEntityPropertiesIfNotChanged(
+                                getCurrentPolarisContext(), updatedEntity))))
             .orElseThrow(
                 () ->
                     new CommitFailedException(
@@ -1026,19 +1048,17 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_PRINCIPAL_ROLES;
     authorizeBasicRootOperationOrThrow(op);
 
-    return metaStoreManager
-        .listEntities(
-            getCurrentPolarisContext(),
-            null,
-            PolarisEntityType.PRINCIPAL_ROLE,
-            PolarisEntitySubType.NULL_SUBTYPE)
+    return daoManager
+        .getPrincipalRoleDao()
+        .listEntities(getCurrentPolarisContext())
         .getEntities()
         .stream()
         .map(
             nameAndId ->
                 PolarisEntity.of(
-                    metaStoreManager.loadEntity(
-                        getCurrentPolarisContext(), 0, nameAndId.getId(), nameAndId.getType())))
+                    daoManager
+                        .getPrincipalRoleDao()
+                        .loadEntity(getCurrentPolarisContext(), nameAndId.getId())))
         .toList();
   }
 
@@ -1054,15 +1074,21 @@ public class PolarisAdminService {
 
     PolarisEntity returnedEntity =
         PolarisEntity.of(
-            metaStoreManager.createEntityIfNotExists(
-                getCurrentPolarisContext(),
-                PolarisEntity.toCoreList(List.of(catalogEntity)),
-                new PolarisEntity.Builder(entity)
-                    .setId(metaStoreManager.generateNewEntityId(getCurrentPolarisContext()).getId())
-                    .setCatalogId(catalogEntity.getId())
-                    .setParentId(catalogEntity.getId())
-                    .setCreateTimestamp(System.currentTimeMillis())
-                    .build()));
+            daoManager
+                .getCatalogRoleDao()
+                .createEntityIfNotExists(
+                    getCurrentPolarisContext(),
+                    PolarisEntity.toCoreList(List.of(catalogEntity)),
+                    new PolarisEntity.Builder(entity)
+                        .setId(
+                            daoManager
+                                .getCommonDao()
+                                .generateNewEntityId(getCurrentPolarisContext())
+                                .getId())
+                        .setCatalogId(catalogEntity.getId())
+                        .setParentId(catalogEntity.getId())
+                        .setCreateTimestamp(System.currentTimeMillis())
+                        .build()));
     if (returnedEntity == null) {
       throw new AlreadyExistsException(
           "Cannot create CatalogRole %s in %s. CatalogRole already exists or resolution failed",
@@ -1081,12 +1107,14 @@ public class PolarisAdminService {
     }
     // TODO: Handle return value in case of concurrent modification
     DropEntityResult dropEntityResult =
-        metaStoreManager.dropEntityIfExists(
-            getCurrentPolarisContext(),
-            PolarisEntity.toCoreList(resolvedCatalogRoleEntity.getRawParentPath()),
-            resolvedCatalogRoleEntity.getRawLeafEntity(),
-            Map.of(),
-            true); // cleanup grants
+        daoManager
+            .getCatalogRoleDao()
+            .dropEntityIfExists(
+                getCurrentPolarisContext(),
+                PolarisEntity.toCoreList(resolvedCatalogRoleEntity.getRawParentPath()),
+                resolvedCatalogRoleEntity.getRawLeafEntity(),
+                Map.of(),
+                true); // cleanup grants
 
     // at least some handling of error
     if (!dropEntityResult.isSuccess()) {
@@ -1136,10 +1164,12 @@ public class PolarisAdminService {
         Optional.ofNullable(
                 CatalogRoleEntity.of(
                     PolarisEntity.of(
-                        metaStoreManager.updateEntityPropertiesIfNotChanged(
-                            getCurrentPolarisContext(),
-                            PolarisEntity.toCoreList(List.of(catalogEntity)),
-                            updatedEntity))))
+                        daoManager
+                            .getCatalogRoleDao()
+                            .updateEntityPropertiesIfNotChanged(
+                                getCurrentPolarisContext(),
+                                PolarisEntity.toCoreList(List.of(catalogEntity)),
+                                updatedEntity))))
             .orElseThrow(
                 () ->
                     new CommitFailedException(
@@ -1154,22 +1184,18 @@ public class PolarisAdminService {
     PolarisEntity catalogEntity =
         findCatalogByName(catalogName)
             .orElseThrow(() -> new NotFoundException("Parent catalog %s not found", catalogName));
-    return metaStoreManager
-        .listEntities(
-            getCurrentPolarisContext(),
-            PolarisEntity.toCoreList(List.of(catalogEntity)),
-            PolarisEntityType.CATALOG_ROLE,
-            PolarisEntitySubType.NULL_SUBTYPE)
+    return daoManager
+        .getCatalogRoleDao()
+        .listEntities(getCurrentPolarisContext(), PolarisEntity.toCoreList(List.of(catalogEntity)))
         .getEntities()
         .stream()
         .map(
             nameAndId ->
                 PolarisEntity.of(
-                    metaStoreManager.loadEntity(
-                        getCurrentPolarisContext(),
-                        catalogEntity.getId(),
-                        nameAndId.getId(),
-                        nameAndId.getType())))
+                    daoManager
+                        .getCatalogRoleDao()
+                        .loadEntity(
+                            getCurrentPolarisContext(), catalogEntity.getId(), nameAndId.getId())))
         .toList();
   }
 
@@ -1185,7 +1211,8 @@ public class PolarisAdminService {
             .orElseThrow(
                 () -> new NotFoundException("PrincipalRole %s not found", principalRoleName));
 
-    return metaStoreManager
+    return daoManager
+        .getGrantRecordDao()
         .grantUsageOnRoleToGrantee(
             getCurrentPolarisContext(), null, principalRoleEntity, principalEntity)
         .isSuccess();
@@ -1202,7 +1229,8 @@ public class PolarisAdminService {
         findPrincipalRoleByName(principalRoleName)
             .orElseThrow(
                 () -> new NotFoundException("PrincipalRole %s not found", principalRoleName));
-    return metaStoreManager
+    return daoManager
+        .getGrantRecordDao()
         .revokeUsageOnRoleFromGrantee(
             getCurrentPolarisContext(), null, principalRoleEntity, principalEntity)
         .isSuccess();
@@ -1217,8 +1245,12 @@ public class PolarisAdminService {
         findPrincipalByName(principalName)
             .orElseThrow(() -> new NotFoundException("Principal %s not found", principalName));
     LoadGrantsResult grantList =
-        metaStoreManager.loadGrantsToGrantee(
-            getCurrentPolarisContext(), principalEntity.getCatalogId(), principalEntity.getId());
+        daoManager
+            .getGrantRecordDao()
+            .loadGrantsToGrantee(
+                getCurrentPolarisContext(),
+                principalEntity.getCatalogId(),
+                principalEntity.getId());
     return buildEntitiesFromGrantResults(grantList, false, PolarisEntityType.PRINCIPAL_ROLE, null);
   }
 
@@ -1240,7 +1272,8 @@ public class PolarisAdminService {
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
-    return metaStoreManager
+    return daoManager
+        .getGrantRecordDao()
         .grantUsageOnRoleToGrantee(
             getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity)
         .isSuccess();
@@ -1263,7 +1296,8 @@ public class PolarisAdminService {
     PolarisEntity catalogRoleEntity =
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
-    return metaStoreManager
+    return daoManager
+        .getGrantRecordDao()
         .revokeUsageOnRoleFromGrantee(
             getCurrentPolarisContext(), catalogEntity, catalogRoleEntity, principalRoleEntity)
         .isSuccess();
@@ -1281,10 +1315,12 @@ public class PolarisAdminService {
             .orElseThrow(
                 () -> new NotFoundException("PrincipalRole %s not found", principalRoleName));
     LoadGrantsResult grantList =
-        metaStoreManager.loadGrantsOnSecurable(
-            getCurrentPolarisContext(),
-            principalRoleEntity.getCatalogId(),
-            principalRoleEntity.getId());
+        daoManager
+            .getGrantRecordDao()
+            .loadGrantsOnSecurable(
+                getCurrentPolarisContext(),
+                principalRoleEntity.getCatalogId(),
+                principalRoleEntity.getId());
     return buildEntitiesFromGrantResults(grantList, true, PolarisEntityType.PRINCIPAL, null);
   }
 
@@ -1336,10 +1372,12 @@ public class PolarisAdminService {
             .orElseThrow(
                 () -> new NotFoundException("PrincipalRole %s not found", principalRoleName));
     LoadGrantsResult grantList =
-        metaStoreManager.loadGrantsToGrantee(
-            getCurrentPolarisContext(),
-            principalRoleEntity.getCatalogId(),
-            principalRoleEntity.getId());
+        daoManager
+            .getGrantRecordDao()
+            .loadGrantsToGrantee(
+                getCurrentPolarisContext(),
+                principalRoleEntity.getCatalogId(),
+                principalRoleEntity.getId());
     return buildEntitiesFromGrantResults(
         grantList,
         false,
@@ -1360,7 +1398,8 @@ public class PolarisAdminService {
             .orElseThrow(
                 () -> new NotFoundException("PrincipalRole %s not found", principalRoleName));
 
-    return metaStoreManager
+    return daoManager
+        .getGrantRecordDao()
         .grantPrivilegeOnSecurableToRole(
             getCurrentPolarisContext(), principalRoleEntity, null, rootContainerEntity, privilege)
         .isSuccess();
@@ -1380,7 +1419,8 @@ public class PolarisAdminService {
             .orElseThrow(
                 () -> new NotFoundException("PrincipalRole %s not found", principalRoleName));
 
-    return metaStoreManager
+    return daoManager
+        .getGrantRecordDao()
         .revokePrivilegeOnSecurableFromRole(
             getCurrentPolarisContext(), principalRoleEntity, null, rootContainerEntity, privilege)
         .isSuccess();
@@ -1404,7 +1444,8 @@ public class PolarisAdminService {
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
-    return metaStoreManager
+    return daoManager
+        .getGrantRecordDao()
         .grantPrivilegeOnSecurableToRole(
             getCurrentPolarisContext(),
             catalogRoleEntity,
@@ -1428,7 +1469,8 @@ public class PolarisAdminService {
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
 
-    return metaStoreManager
+    return daoManager
+        .getGrantRecordDao()
         .revokePrivilegeOnSecurableFromRole(
             getCurrentPolarisContext(),
             catalogRoleEntity,
@@ -1456,7 +1498,8 @@ public class PolarisAdminService {
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity namespaceEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
+    return daoManager
+        .getGrantRecordDao()
         .grantPrivilegeOnSecurableToRole(
             getCurrentPolarisContext(),
             catalogRoleEntity,
@@ -1484,7 +1527,8 @@ public class PolarisAdminService {
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity namespaceEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
+    return daoManager
+        .getGrantRecordDao()
         .revokePrivilegeOnSecurableFromRole(
             getCurrentPolarisContext(),
             catalogRoleEntity,
@@ -1565,10 +1609,12 @@ public class PolarisAdminService {
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
     LoadGrantsResult grantList =
-        metaStoreManager.loadGrantsOnSecurable(
-            getCurrentPolarisContext(),
-            catalogRoleEntity.getCatalogId(),
-            catalogRoleEntity.getId());
+        daoManager
+            .getGrantRecordDao()
+            .loadGrantsOnSecurable(
+                getCurrentPolarisContext(),
+                catalogRoleEntity.getCatalogId(),
+                catalogRoleEntity.getId());
     return buildEntitiesFromGrantResults(grantList, true, PolarisEntityType.PRINCIPAL_ROLE, null);
   }
 
@@ -1584,10 +1630,12 @@ public class PolarisAdminService {
         findCatalogRoleByName(catalogName, catalogRoleName)
             .orElseThrow(() -> new NotFoundException("CatalogRole %s not found", catalogRoleName));
     LoadGrantsResult grantList =
-        metaStoreManager.loadGrantsToGrantee(
-            getCurrentPolarisContext(),
-            catalogRoleEntity.getCatalogId(),
-            catalogRoleEntity.getId());
+        daoManager
+            .getGrantRecordDao()
+            .loadGrantsToGrantee(
+                getCurrentPolarisContext(),
+                catalogRoleEntity.getCatalogId(),
+                catalogRoleEntity.getId());
     List<CatalogGrant> catalogGrants = new ArrayList<>();
     List<NamespaceGrant> namespaceGrants = new ArrayList<>();
     List<TableGrant> tableGrants = new ArrayList<>();
@@ -1673,7 +1721,7 @@ public class PolarisAdminService {
       long id,
       PolarisEntityType entityType) {
     return (entitiesMap == null)
-        ? metaStoreManager
+        ? daoManager // TODO use type-specific DAO here
             .loadEntity(getCurrentPolarisContext(), catalogId, id, entityType)
             .getEntity()
         : entitiesMap.get(id);
@@ -1687,7 +1735,8 @@ public class PolarisAdminService {
 
     for (PolarisEntityType type : PolarisEntityType.values()) {
       EntityResult entityResult =
-          metaStoreManager.loadEntity(
+          // TODO use type-specific DAO here
+          daoManager.loadEntity(
               getCurrentPolarisContext(),
               record.getSecurableCatalogId(),
               record.getSecurableId(),
@@ -1726,7 +1775,8 @@ public class PolarisAdminService {
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
+    return daoManager
+        .getGrantRecordDao()
         .grantPrivilegeOnSecurableToRole(
             getCurrentPolarisContext(),
             catalogRoleEntity,
@@ -1764,7 +1814,8 @@ public class PolarisAdminService {
     List<PolarisEntity> catalogPath = resolvedPathWrapper.getRawParentPath();
     PolarisEntity tableLikeEntity = resolvedPathWrapper.getRawLeafEntity();
 
-    return metaStoreManager
+    return daoManager
+        .getGrantRecordDao()
         .revokePrivilegeOnSecurableFromRole(
             getCurrentPolarisContext(),
             catalogRoleEntity,

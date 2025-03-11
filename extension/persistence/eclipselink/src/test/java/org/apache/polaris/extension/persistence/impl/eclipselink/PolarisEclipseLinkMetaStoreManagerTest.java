@@ -42,7 +42,7 @@ import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
+import org.apache.polaris.core.persistence.dao.PolarisDaoManager;
 import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
@@ -104,7 +104,11 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
         new PolarisEclipseLinkMetaStoreSessionImpl(
             store, Mockito.mock(), () -> "realm", null, "polaris", RANDOM_SECRETS);
     return new PolarisTestMetaStoreManager(
-        new PolarisMetaStoreManagerImpl(),
+        // TODO: Currently, EclipseLinkMetaStoreManager resides within a persistence implementation
+        // layer, below the DAO layer, and ideally shouldn't directly invoke DAO classes. The change
+        // is temporarily for refactor verification purposes.
+        // We should identify a cleaner testing strategy moving forward.
+        new PolarisDaoManager(),
         new PolarisCallContext(
             session,
             diagServices,
