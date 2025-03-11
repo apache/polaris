@@ -37,12 +37,12 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -66,6 +66,10 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
   @BeforeAll
   static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
+    // Set preferredAssumptionException as Quarkus does not suppress JUnit4's
+    // AssumptionViolatedException
+    org.assertj.core.api.Assumptions.setPreferredAssumptionException(
+        PreferredAssumptionException.JUNIT5);
     adminCredentials = credentials;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
@@ -166,14 +170,5 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
   @Override
   protected boolean overridesRequestedLocation() {
     return true;
-  }
-
-  @Test
-  @Override
-  public void listViewsInEmptyNamespace() {
-    // Skip this test because AssertJ's Assumptions.assumeThat() is not compatible with Quarkus.
-    // This test can be removed once Quarkus supports AssertJ or Polaris supports empty namespaces.
-    Assumptions.assumeTrue(supportsEmptyNamespace());
-    super.listViewsInEmptyNamespace();
   }
 }

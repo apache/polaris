@@ -123,6 +123,7 @@ import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -193,6 +194,10 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     PolarisStorageIntegrationProviderImpl mock =
         Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
+    // Set preferredAssumptionException as Quarkus does not suppress JUnit4's
+    // AssumptionViolatedException
+    org.assertj.core.api.Assumptions.setPreferredAssumptionException(
+        PreferredAssumptionException.JUNIT5);
   }
 
   @Nullable
@@ -388,33 +393,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     // superclass expectation.
     Assumptions.assumeTrue(supportsEmptyNamespace());
     super.listNamespacesWithEmptyNamespace();
-  }
-
-  @Test
-  @Override
-  public void createAndDropEmptyNamespace() {
-    // Skip this test because AssertJ's Assumptions.assumeThat() is not compatible with Quarkus.
-    // This test can be removed once Quarkus supports AssertJ or Polaris supports empty namespaces.
-    Assumptions.assumeTrue(supportsEmptyNamespace());
-    super.createAndDropEmptyNamespace();
-  }
-
-  @Test
-  @Override
-  public void namespacePropertiesOnEmptyNamespace() {
-    // Skip this test because AssertJ's Assumptions.assumeThat() is not compatible with Quarkus.
-    // This test can be removed once Quarkus supports AssertJ or Polaris supports empty namespaces.
-    Assumptions.assumeTrue(supportsEmptyNamespace());
-    super.namespacePropertiesOnEmptyNamespace();
-  }
-
-  @Test
-  @Override
-  public void listTablesInEmptyNamespace() {
-    // Skip this test because AssertJ's Assumptions.assumeThat() is not compatible with Quarkus.
-    // This test can be removed once Quarkus supports AssertJ or Polaris supports empty namespaces.
-    Assumptions.assumeTrue(supportsEmptyNamespace());
-    super.listTablesInEmptyNamespace();
   }
 
   @Test
