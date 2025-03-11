@@ -344,7 +344,7 @@ public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCat
       @Override
       public Supplier<TransactionalPersistence> getOrCreateSessionSupplier(
           RealmContext realmContext) {
-        return () -> polarisContext.getMetaStore();
+        return () -> ((TransactionalPersistence) polarisContext.getMetaStore());
       }
 
       @Override
