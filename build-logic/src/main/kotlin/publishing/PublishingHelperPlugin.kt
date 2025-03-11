@@ -84,6 +84,8 @@ constructor(private val softwareComponentFactory: SoftwareComponentFactory) : Pl
         tasks.withType<Jar>().configureEach {
           manifest { MemoizedGitInfo.gitInfo(rootProject, attributes) }
         }
+
+        addAdditionalJarContent(this)
       }
 
       apply(plugin = "maven-publish")
