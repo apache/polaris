@@ -43,7 +43,8 @@ public class StorageCredentialCacheEntry {
       return Long.parseLong(credsMap.get(PolarisCredentialProperty.GCS_ACCESS_TOKEN_EXPIRES_AT));
     }
     if (credsMap.containsKey(PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS)) {
-      return Long.parseLong(credsMap.get(PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS));
+      return Long.parseLong(
+          credsMap.get(PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS));
     }
     if (credsMap.containsKey(PolarisCredentialProperty.EXPIRATION_TIME)) {
       return Long.parseLong(credsMap.get(PolarisCredentialProperty.EXPIRATION_TIME));
