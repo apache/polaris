@@ -110,6 +110,7 @@ import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
+import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
@@ -473,7 +474,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     // Now also check that despite creating the metadata file, the validation call still doesn't
     // create any namespaces or tables.
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
     fileIO.addFile(
         tableMetadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
@@ -608,7 +609,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -652,7 +653,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -801,7 +802,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
             .build());
     BasePolarisCatalog catalog = catalog();
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -898,7 +899,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         metadataLocation,
@@ -953,7 +954,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     Namespace namespace = Namespace.of("parent", "child1");
     TableIdentifier table = TableIdentifier.of(namespace, "table");
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     // The location of the metadata JSON file specified in the create will be forbidden.
     final String metadataLocation = "http://maliciousdomain.com/metadata.json";
@@ -1031,7 +1032,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -1083,7 +1084,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -1136,7 +1137,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -1174,7 +1175,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(timestamp);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -1247,7 +1248,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     // Though the metadata JSON file itself is in an allowed location, make it internally specify
     // a forbidden table location.
@@ -1325,7 +1326,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -1377,7 +1378,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -1448,7 +1449,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                     metaStoreManagerFactory,
                     configurationStore))
             .apply(taskEntity, callContext);
-    Assertions.assertThat(fileIO).isNotNull().isInstanceOf(InMemoryFileIO.class);
+    Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
+    Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
+        .isInstanceOf(InMemoryFileIO.class);
   }
 
   @Test
@@ -1761,5 +1764,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     Assertions.assertThatThrownBy(() -> update.commit())
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("conflict_table");
+  }
+
+  private static InMemoryFileIO getInMemoryIo(BasePolarisCatalog catalog) {
+    return (InMemoryFileIO) ((ExceptionMappingFileIO) catalog.getIo()).getInnerIo();
   }
 }

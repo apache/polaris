@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.catalog.io;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.net.UnknownHostException;
 import java.util.Map;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -41,6 +42,11 @@ public class ExceptionMappingFileIO implements FileIO {
         throw new FileIOUnknownHostException("UnknownHostException during File IO", t);
       }
     }
+  }
+
+  @VisibleForTesting
+  public FileIO getInnerIo() {
+    return io;
   }
 
   @Override
