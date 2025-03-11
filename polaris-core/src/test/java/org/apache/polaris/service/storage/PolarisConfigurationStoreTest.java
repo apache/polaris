@@ -20,7 +20,11 @@ package org.apache.polaris.service.storage;
 
 import jakarta.annotation.Nullable;
 import java.util.List;
+import java.util.function.Supplier;
+
 import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.junit.jupiter.api.Assertions;
@@ -92,5 +96,49 @@ public class PolarisConfigurationStoreTest {
         .description("")
         .defaultValue(defaultValue)
         .buildFeatureConfiguration();
+  }
+
+  private static class PolarisConfigurationConsumer {
+
+      private final PolarisCallContext polarisCallContext;
+      private final PolarisConfigurationStore configurationStore;
+
+      public PolarisConfigurationConsumer(
+              PolarisCallContext polarisCallContext,
+              PolarisConfigurationStore configurationStore) {
+          this.polarisCallContext = polarisCallContext;
+          this.configurationStore = configurationStore;
+      }
+
+      public <T> T consumeConfiguration(PolarisConfiguration<Boolean> config, Supplier<T> code, T defaultVal) {
+          if (configurationStore.getConfiguration(polarisCallContext, config)) {
+              return code.get();
+          }
+          return defaultVal;
+      }
+  }
+
+  @Test
+  public void testBehaviorAndFeatureConfigs() {
+      PolarisConfigurationConsumer consumer =
+          new PolarisConfigurationConsumer(null, new PolarisConfigurationStore() {});
+
+      FeatureConfiguration<Boolean> featureConfig =
+          PolarisConfiguration.<Boolean>builder()
+              .key("example")
+              .description("example")
+              .defaultValue(true)
+              .buildFeatureConfiguration();
+
+      BehaviorChangeConfiguration<Boolean> behaviorChangeConfig =
+          PolarisConfiguration.<Boolean>builder()
+              .key("example")
+              .description("example")
+              .defaultValue(true)
+              .buildBehaviorChangeConfiguration();
+
+      consumer.consumeConfiguration(behaviorChangeConfig, () -> 21, 22);
+
+      consumer.consumeConfiguration(featureConfig, () -> 42, 43);
   }
 }
