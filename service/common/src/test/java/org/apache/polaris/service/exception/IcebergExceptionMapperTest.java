@@ -29,6 +29,7 @@ import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.RuntimeIOException;
+import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -65,9 +66,9 @@ public class IcebergExceptionMapperTest {
             Arguments.of(S3Exception.builder().message("Access denied").build(), 403),
             Arguments.of(new StorageException(1, "access denied"), 403),
             Arguments.of(
-                new RuntimeException(
-                    new UnknownHostException(
-                        "mybucket.blob.core.windows.net: Name or service not known")),
+                new FileIOUnknownHostException(
+                    "mybucket.blob.core.windows.net: Name or service not known",
+                    new RuntimeException(new UnknownHostException())),
                 404)),
         cloudCodeMappings.entrySet().stream()
             .flatMap(

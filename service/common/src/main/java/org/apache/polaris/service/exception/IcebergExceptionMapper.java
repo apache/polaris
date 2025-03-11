@@ -30,7 +30,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
-import java.net.UnknownHostException;
 import java.util.Collection;
 import java.util.Locale;
 import java.util.Optional;
@@ -57,6 +56,7 @@ import org.apache.iceberg.exceptions.ServiceUnavailableException;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -173,6 +173,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       case NoSuchTableException e -> Status.NOT_FOUND.getStatusCode();
       case NoSuchViewException e -> Status.NOT_FOUND.getStatusCode();
       case NotFoundException e -> Status.NOT_FOUND.getStatusCode();
+      case FileIOUnknownHostException e -> Status.NOT_FOUND.getStatusCode();
       case AlreadyExistsException e -> Status.CONFLICT.getStatusCode();
       case CommitFailedException e -> Status.CONFLICT.getStatusCode();
       case UnprocessableEntityException e -> 422;
@@ -221,12 +222,6 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
    *     Optional.empty() otherwise.
    */
   static Optional<Integer> mapCloudExceptionToResponseCode(Throwable t) {
-    // UnknownHostException isn't a RuntimeException so it's always wrapped
-    if (t instanceof UnknownHostException && t.getMessage().contains(AZURE_STORAGE_URL_SUFFIX)) {
-      return Optional.of(
-          Status.NOT_FOUND.getStatusCode()); // Return a 404 to be consistent with S3/GCS
-    }
-
     if (!(t instanceof S3Exception
         || t instanceof AzureException
         || t instanceof StorageException)) {
