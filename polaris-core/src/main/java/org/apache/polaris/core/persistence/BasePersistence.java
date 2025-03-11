@@ -60,6 +60,11 @@ public interface BasePersistence {
    * or push down the return status enums from PolarisMetaStoreManager into this layer and document
    * accordingly.
    *
+   * <p>TODO: Change originalEntity to be just the set of members taht participate in conditions,
+   * similar to PolarisEntityCore, and make the callsites in BasePolarisCatalog actually plumb
+   * through correctly, in particular for values the PolarisMetaStoreManagerImpl doesn't have access
+   * to such as the original name and parentId in renames.
+   *
    * @param callCtx call context
    * @param entity entity to persist
    * @param nameOrParentChanged if true, also write it to by-name lookups if applicable
@@ -73,19 +78,36 @@ public interface BasePersistence {
       @Nullable PolarisBaseEntity originalEntity);
 
   /**
-   * Atomically write a batch of entities to the persistence backend conditional on *every* member
-   * of originalEntities matching the existing persistent state. After this commit, *every* member
-   * of entities must be committed durably.
+   * write a batch of entities to the persistence backend conditional on *every* member of
+   * originalEntities matching the existing persistent state. After this commit, *every* member of
+   * entities must be committed durably.
+   *
+   * <p>Important: For now, the following constraints apply:
+   *
+   * <ul>
+   *   <li>Either all entities are CREATE xor all entities are UPDATE; no mixing and matching of
+   *       CREATE and UPDATE in a single batch here
+   *   <li>Either all entities are catalog-scoped child entities (Namespace/Table/View) or all
+   *       entities are root-scoped entities (Catalogs/Principals/PrincipalRoles/Tasks). TODO:
+   *       Document whether CatalogRole is considered catalog-scoped, root-scoped, or "other" for
+   *       these purposes.
+   * </ul>
    *
    * <p>TODO: Push down the multi-entity commit from PolarisMetaStoreManagerImpl to use this instead
    * of running single writeEntity actions within a transaction.
+   *
+   * <p>TODO: Change originalEntity to be just the set of members taht participate in conditions,
+   * similar to PolarisEntityCore, and make the callsites in BasePolarisCatalog actually plumb
+   * through correctly, in particular for values the PolarisMetaStoreManagerImpl doesn't have access
+   * to such as the original name and parentId in renames.
    *
    * @param callCtx call context
    * @param entities entities to persist
    * @param originalEntities original states of the entity to use for compare-and-swap purposes, or
    *     null if this is expected to be a brand-new entity; must contain exactly as many elements as
    *     {@code entities} where each item corresponds to the element of {@code entities} in the same
-   *     index as this list.
+   *     index as this list. If non-null, we expect all elements of originalEntities to be non-null;
+   *     there is no mix-and-match "create" and "update" in a single batch.
    */
   void writeEntities(
       @Nonnull PolarisCallContext callCtx,
@@ -147,17 +169,24 @@ public interface BasePersistence {
 
   /**
    * Lookup an entity given its catalog id (which can be {@link
-   * org.apache.polaris.core.entity.PolarisEntityConstants#NULL_ID} for top-level entities) and its
-   * entityId.
+   * org.apache.polaris.core.entity.PolarisEntityConstants#NULL_ID} for top-level entities), its
+   * entityId and type code (from {@link PolarisEntityType#getCode()}.
+   *
+   * <p>The type code parameter is redundant but can be used to optimize implementations in some
+   * cases. All callers are required to provide a valid value for the type code parameter. If the
+   * given type code does not match the type code of the previously created entity with the
+   * specified {@code entityId}, implementations may still return the entity or may behave as if the
+   * entity were not found.
    *
    * @param callCtx call context
    * @param catalogId catalog id or NULL_ID
    * @param entityId entity id
+   * @param typeCode the PolarisEntityType code of the entity to lookup
    * @return null if the entity was not found, else the retrieved entity.
    */
   @Nullable
   PolarisBaseEntity lookupEntity(
-      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId);
+      @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode);
 
   /**
    * Lookup an entity given its catalogId, parentId, typeCode, and name.
@@ -191,6 +220,7 @@ public interface BasePersistence {
    * @param name the name of the entity
    * @return null if the specified entity does not exist
    */
+  @Nullable
   default EntityNameLookupRecord lookupEntityIdAndSubTypeByName(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,

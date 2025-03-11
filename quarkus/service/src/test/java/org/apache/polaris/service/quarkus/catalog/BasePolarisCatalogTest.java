@@ -31,9 +31,9 @@ import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
-import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -122,7 +122,6 @@ import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
 import org.assertj.core.api.Assertions;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -140,9 +139,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
-@QuarkusTest
-@TestProfile(BasePolarisCatalogTest.Profile.class)
-public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
+public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
   public static class Profile implements QuarkusTestProfile {
 
@@ -195,6 +192,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
+  @Nullable
+  protected abstract EntityCache createEntityCache(PolarisMetaStoreManager metaStoreManager);
+
   @BeforeEach
   @SuppressWarnings("unchecked")
   public void before(TestInfo testInfo) {
@@ -212,7 +212,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             Clock.systemDefaultZone());
     entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
+            metaStoreManager, new StorageCredentialCache(), createEntityCache(metaStoreManager));
 
     callContext = CallContext.of(realmContext, polarisContext);
 
@@ -344,7 +344,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
       @Override
       public Supplier<TransactionalPersistence> getOrCreateSessionSupplier(
           RealmContext realmContext) {
-        return () -> polarisContext.getMetaStore();
+        return () -> ((TransactionalPersistence) polarisContext.getMetaStore());
       }
 
       @Override
@@ -1429,6 +1429,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 polarisContext,
                 0,
                 taskEntity.getId(),
+                taskEntity.getType(),
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()))
@@ -1630,13 +1631,13 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             new FileIOFactory() {
               @Override
               public FileIO loadFileIO(
-                  @NotNull CallContext callContext,
-                  @NotNull String ioImplClassName,
-                  @NotNull Map<String, String> properties,
-                  @NotNull TableIdentifier identifier,
-                  @NotNull Set<String> tableLocations,
-                  @NotNull Set<PolarisStorageActions> storageActions,
-                  @NotNull PolarisResolvedPathWrapper resolvedEntityPath) {
+                  @Nonnull CallContext callContext,
+                  @Nonnull String ioImplClassName,
+                  @Nonnull Map<String, String> properties,
+                  @Nonnull TableIdentifier identifier,
+                  @Nonnull Set<String> tableLocations,
+                  @Nonnull Set<PolarisStorageActions> storageActions,
+                  @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
                 return measured.loadFileIO(
                     callContext,
                     "org.apache.iceberg.inmemory.InMemoryFileIO",

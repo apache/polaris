@@ -386,7 +386,9 @@ public class PolarisTreeMapStore {
         this.startWriteTransaction();
         return transactionCode.get();
       } catch (Throwable e) {
-        this.rollback();
+        if (this.tr != null) {
+          this.rollback();
+        }
         throw e;
       } finally {
         this.tr = null;
@@ -413,7 +415,9 @@ public class PolarisTreeMapStore {
         this.startWriteTransaction();
         transactionCode.run();
       } catch (Throwable e) {
-        this.rollback();
+        if (this.tr != null) {
+          this.rollback();
+        }
         throw e;
       } finally {
         this.tr = null;
@@ -499,6 +503,7 @@ public class PolarisTreeMapStore {
    * @return next id, must be in a read/write transaction
    */
   public long getNextSequence() {
+    this.ensureReadWriteTr();
     return this.nextId.incrementAndGet();
   }
 

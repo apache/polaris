@@ -21,6 +21,7 @@ package org.apache.polaris.service.storage.aws;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import jakarta.annotation.Nonnull;
+import java.time.Instant;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Set;
@@ -49,6 +50,8 @@ import software.amazon.awssdk.services.sts.model.Credentials;
 
 class AwsCredentialsStorageIntegrationTest {
 
+  public static final Instant EXPIRE_TIME = Instant.now().plusMillis(3600_000);
+
   public static final AssumeRoleResponse ASSUME_ROLE_RESPONSE =
       AssumeRoleResponse.builder()
           .credentials(
@@ -56,6 +59,7 @@ class AwsCredentialsStorageIntegrationTest {
                   .accessKeyId("accessKey")
                   .secretAccessKey("secretKey")
                   .sessionToken("sess")
+                  .expiration(EXPIRE_TIME)
                   .build())
           .build();
   public static final String AWS_PARTITION = "aws";
@@ -93,7 +97,10 @@ class AwsCredentialsStorageIntegrationTest {
         .isNotEmpty()
         .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
         .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, "accessKey")
-        .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey");
+        .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey")
+        .containsEntry(
+            PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+            String.valueOf(EXPIRE_TIME.toEpochMilli()));
   }
 
   @ParameterizedTest
@@ -255,7 +262,10 @@ class AwsCredentialsStorageIntegrationTest {
             .isNotEmpty()
             .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
             .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, "accessKey")
-            .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey");
+            .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey")
+            .containsEntry(
+                PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                String.valueOf(EXPIRE_TIME.toEpochMilli()));
         break;
       default:
         throw new IllegalArgumentException("Unknown aws partition: " + awsPartition);
@@ -353,7 +363,10 @@ class AwsCredentialsStorageIntegrationTest {
         .isNotEmpty()
         .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
         .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, "accessKey")
-        .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey");
+        .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey")
+        .containsEntry(
+            PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+            String.valueOf(EXPIRE_TIME.toEpochMilli()));
   }
 
   @Test
@@ -445,7 +458,10 @@ class AwsCredentialsStorageIntegrationTest {
         .isNotEmpty()
         .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
         .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, "accessKey")
-        .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey");
+        .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey")
+        .containsEntry(
+            PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+            String.valueOf(EXPIRE_TIME.toEpochMilli()));
   }
 
   @Test
@@ -507,7 +523,10 @@ class AwsCredentialsStorageIntegrationTest {
         .isNotEmpty()
         .containsEntry(PolarisCredentialProperty.AWS_TOKEN, "sess")
         .containsEntry(PolarisCredentialProperty.AWS_KEY_ID, "accessKey")
-        .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey");
+        .containsEntry(PolarisCredentialProperty.AWS_SECRET_KEY, "secretKey")
+        .containsEntry(
+            PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+            String.valueOf(EXPIRE_TIME.toEpochMilli()));
   }
 
   @ParameterizedTest

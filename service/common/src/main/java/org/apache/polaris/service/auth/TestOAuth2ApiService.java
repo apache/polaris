@@ -91,7 +91,10 @@ public class TestOAuth2ApiService implements IcebergRestOAuth2ApiService {
       LOGGER.debug("Found principal secrets for client id {}", clientId);
       EntityResult principalResult =
           metaStoreManager.loadEntity(
-              polarisCallContext, 0L, secretsResult.getPrincipalSecrets().getPrincipalId());
+              polarisCallContext,
+              0L,
+              secretsResult.getPrincipalSecrets().getPrincipalId(),
+              PolarisEntityType.PRINCIPAL);
       if (!principalResult.isSuccess()) {
         throw new NotAuthorizedException("Failed to load principal entity");
       }

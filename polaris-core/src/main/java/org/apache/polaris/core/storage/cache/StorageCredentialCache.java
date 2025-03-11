@@ -148,6 +148,7 @@ public class StorageCredentialCache {
                   k.getCallContext(),
                   k.getCatalogId(),
                   k.getEntityId(),
+                  polarisEntity.getType(),
                   k.isAllowedListAction(),
                   k.getAllowedReadLocations(),
                   k.getAllowedWriteLocations());

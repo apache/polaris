@@ -84,6 +84,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -115,6 +116,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -157,6 +159,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -214,6 +217,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -301,6 +305,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -392,6 +397,7 @@ public class StorageCredentialCacheTest {
                   ImmutableMap.<PolarisCredentialProperty, String>builder()
                       .put(PolarisCredentialProperty.AWS_KEY_ID, "key_id_" + finalI)
                       .put(PolarisCredentialProperty.AWS_SECRET_KEY, "key_secret_" + finalI)
+                      .put(PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, expireTime)
                       .put(PolarisCredentialProperty.EXPIRATION_TIME, expireTime)
                       .buildOrThrow())));
       if (res.size() == number) return res;

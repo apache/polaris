@@ -982,7 +982,7 @@ public class ResolverTest {
     // reload the cached entry from the backend
     ResolvedEntityResult refResolvedEntity =
         this.metaStoreManager.loadResolvedEntityById(
-            this.callCtx, refEntity.getCatalogId(), refEntity.getId());
+            this.callCtx, refEntity.getCatalogId(), refEntity.getId(), refEntity.getType());
 
     // should exist
     Assertions.assertThat(refResolvedEntity).isNotNull();

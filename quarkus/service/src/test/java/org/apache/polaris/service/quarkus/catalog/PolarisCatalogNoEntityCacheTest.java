@@ -16,13 +16,21 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.it;
+package org.apache.polaris.service.quarkus.catalog;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.TestProfile;
-import java.util.Map;
-import org.apache.polaris.service.it.test.PolarisSparkIntegrationTest;
+import jakarta.annotation.Nullable;
+import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.cache.EntityCache;
 
-@QuarkusIntegrationTest
-public class QuarkusSparkIT extends PolarisSparkIntegrationTest {}
+@QuarkusTest
+@TestProfile(BasePolarisCatalogTest.Profile.class)
+public class PolarisCatalogNoEntityCacheTest extends BasePolarisCatalogTest {
+
+  @Nullable
+  @Override
+  protected EntityCache createEntityCache(PolarisMetaStoreManager metaStoreManager) {
+    return null;
+  }
+}

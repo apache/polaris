@@ -44,6 +44,7 @@ class Parser(object):
         Argument(Arguments.CLIENT_SECRET, str, hint='client secret for token-based authentication'),
         Argument(Arguments.ACCESS_TOKEN, str, hint='access token for token-based authentication'),
         Argument(Arguments.PROFILE, str, hint='profile for token-based authentication'),
+        Argument(Arguments.PROXY, str, hint='proxy URL'),
     ]
 
     @staticmethod
