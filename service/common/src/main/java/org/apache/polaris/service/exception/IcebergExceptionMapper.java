@@ -31,9 +31,9 @@ import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
 import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
@@ -118,14 +118,6 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     return errorResp;
   }
 
-  /**
-   * @return whether any throwable in the chain case-insensitive-contains the given message
-   */
-  static boolean doesAnyThrowableContainAccessDeniedHint(Throwable t) {
-    return Arrays.stream(ExceptionUtils.getThrowables(t))
-        .anyMatch(th -> containsAnyAccessDeniedHint(th.getMessage()));
-  }
-
   public static boolean containsAnyAccessDeniedHint(String message) {
     String messageLower = message.toLowerCase(Locale.ENGLISH);
     return ACCESS_DENIED_HINTS.stream().anyMatch(messageLower::contains);
@@ -169,13 +161,9 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   static int mapExceptionToResponseCode(RuntimeException rex) {
     for (Throwable t : ExceptionUtils.getThrowables(rex)) {
       // Cloud exceptions can be wrapped by the Iceberg SDK
-      if (isCloudException(t)) {
-        return mapCloudExceptionToResponseCode(t);
-      }
-
-      // UnknownHostException isn't a RuntimeException so it's always wrapped
-      if (t instanceof UnknownHostException && t.getMessage().contains(AZURE_STORAGE_URL_SUFFIX)) {
-        return Status.NOT_FOUND.getStatusCode(); // Return a 404 to be consistent with S3/GCS
+      Optional<Integer> code = mapCloudExceptionToResponseCode(t);
+      if (code.isPresent()) {
+        return code.get();
       }
     }
 
@@ -208,10 +196,6 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     };
   }
 
-  private static boolean isCloudException(Throwable t) {
-    return t instanceof S3Exception || t instanceof AzureException || t instanceof StorageException;
-  }
-
   /**
    * We typically call cloud providers over HTTP, so when there's an exception there's typically an
    * associated HTTP code. This extracts the HTTP code if possible.
@@ -229,9 +213,21 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     };
   }
 
-  static int mapCloudExceptionToResponseCode(Throwable t) {
-    if (doesAnyThrowableContainAccessDeniedHint(t)) {
-      return Status.FORBIDDEN.getStatusCode();
+  static Optional<Integer> mapCloudExceptionToResponseCode(Throwable t) {
+    // UnknownHostException isn't a RuntimeException so it's always wrapped
+    if (t instanceof UnknownHostException && t.getMessage().contains(AZURE_STORAGE_URL_SUFFIX)) {
+      return Optional.of(
+          Status.NOT_FOUND.getStatusCode()); // Return a 404 to be consistent with S3/GCS
+    }
+
+    if (!(t instanceof S3Exception
+        || t instanceof AzureException
+        || t instanceof StorageException)) {
+      return Optional.empty();
+    }
+
+    if (containsAnyAccessDeniedHint(t.getMessage())) {
+      return Optional.of(Status.FORBIDDEN.getStatusCode());
     }
 
     int httpCode = extractHttpCodeFromCloudException(t);
@@ -239,29 +235,29 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     Status.Family httpFamily = Status.Family.familyOf(httpCode);
 
     if (httpStatus == Status.NOT_FOUND) {
-      return Status.BAD_REQUEST.getStatusCode();
+      return Optional.of(Status.BAD_REQUEST.getStatusCode());
     }
     if (httpStatus == Status.UNAUTHORIZED) {
-      return Status.FORBIDDEN.getStatusCode();
+      return Optional.of(Status.FORBIDDEN.getStatusCode());
     }
     if (httpStatus == Status.BAD_REQUEST
         || httpStatus == Status.FORBIDDEN
         || httpStatus == Status.REQUEST_TIMEOUT
         || httpStatus == Status.TOO_MANY_REQUESTS
         || httpStatus == Status.GATEWAY_TIMEOUT) {
-      return httpCode;
+      return Optional.of(httpCode);
     }
     if (httpFamily == Status.Family.REDIRECTION) {
       // Currently Polaris doesn't know how to follow redirects from cloud providers, thus clients
       // shouldn't expect it to.
       // This is a 4xx error to indicate that the client may be able to resolve this by changing
       // some data, such as their catalog's region.
-      return 422;
+      return Optional.of(422);
     }
     if (httpFamily == Status.Family.SERVER_ERROR) {
-      return Status.BAD_GATEWAY.getStatusCode();
+      return Optional.of(Status.BAD_GATEWAY.getStatusCode());
     }
 
-    return Status.INTERNAL_SERVER_ERROR.getStatusCode();
+    return Optional.of(Status.INTERNAL_SERVER_ERROR.getStatusCode());
   }
 }
