@@ -65,11 +65,11 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.assertj.core.api.Assumptions;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
@@ -113,6 +113,9 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     PolarisStorageIntegrationProviderImpl mock =
         Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
+    // Set preferredAssumptionException as Quarkus does not suppress JUnit4's
+    // AssumptionViolatedException
+    Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
   }
 
   @BeforeEach
@@ -228,14 +231,5 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
   @Override
   protected boolean requiresNamespaceCreate() {
     return true;
-  }
-
-  @Test
-  @Override
-  public void listViewsInEmptyNamespace() {
-    // Skip this test because AssertJ's Assumptions.assumeThat() is not compatible with Quarkus.
-    // This test can be removed once Quarkus supports AssertJ or Polaris supports empty namespaces.
-    Assumptions.assumeTrue(supportsEmptyNamespace());
-    super.listViewsInEmptyNamespace();
   }
 }
