@@ -212,8 +212,6 @@ components:
         - `properties` properties for the generic table passed on creation
         
         - `doc` comment or description for the generic table
-        
-        - `register-at` time when the generic table is registered with Polaris service in ISO format.
       required:
         - name
         - format
@@ -228,9 +226,6 @@ components:
           type: object
           additionalProperties:
             type: string
-        register-at:
-          type: string
-          example: "2024-03-03T12:00:00Z"
 
     LoadGenericTableResponse:
       description: Result used when a table is successfully loaded.
