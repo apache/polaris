@@ -48,6 +48,11 @@ public class PolarisPrincipalAuthenticatorFilter implements ContainerRequestFilt
       return;
     }
 
+    // don't check for Auth header on a healthcheck endpoint
+    if (requestContext.getUriInfo().getPath().equals("/healthcheck")) {
+      return;
+    }
+
     String authHeader = requestContext.getHeaderString("Authorization");
 
     if (authHeader == null) {
