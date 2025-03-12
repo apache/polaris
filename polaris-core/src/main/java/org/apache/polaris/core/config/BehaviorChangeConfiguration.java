@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.config;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import java.util.Optional;
 
 /**
@@ -37,6 +39,7 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
     super(key, description, defaultValue, catalogConfig);
   }
 
+  @ApiStatus.AvailableSince("0.9.0")
   public static final BehaviorChangeConfiguration<Boolean> VALIDATE_VIEW_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
           .key("STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS")
