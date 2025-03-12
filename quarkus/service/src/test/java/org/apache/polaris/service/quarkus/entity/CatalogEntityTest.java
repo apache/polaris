@@ -126,11 +126,13 @@ public class CatalogEntityTest {
             .setUserArn("aws::a:user:arn")
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .setAllowedLocations(
-                IntStream.range(
-                        0,
-                        PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS.defaultValue + 1)
-                    .mapToObj(i -> storageLocation + i + "/")
-                    .toList())
+                List.of(
+                    storageLocation + "1/",
+                    storageLocation + "2/",
+                    storageLocation + "3/",
+                    storageLocation + "4/",
+                    storageLocation + "5/",
+                    storageLocation + "6/"))
             .build();
     CatalogProperties prop = new CatalogProperties(storageLocation);
     Catalog awsCatalog =
@@ -140,9 +142,7 @@ public class CatalogEntityTest {
             .setProperties(prop)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(awsCatalog))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Number of allowed locations exceeds ");
+    Assertions.assertThatCode(() -> CatalogEntity.fromCatalog(awsCatalog)).doesNotThrowAnyException();
   }
 
   @Test
