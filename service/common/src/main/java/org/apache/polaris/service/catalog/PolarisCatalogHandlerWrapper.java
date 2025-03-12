@@ -885,10 +885,11 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
             }
             if(accessDelegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)){
               try {
-                String hostName = InetAddress.getLocalHost().getCanonicalHostName();
+                // String hostName = InetAddress.getLocalHost().getCanonicalHostName();
+                String hostName = "localhost";
                 responseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
                 responseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, new URI("https", hostName, String.format("/v1/%s/namespaces/%s/tables/%s/credentials", catalogName, tableIdentifier.namespace().toString(), tableIdentifier.name()), null).toString());
-              } catch (UnknownHostException | URISyntaxException e) {
+              } catch (URISyntaxException e) {
                 LOGGER.error("Error while fetching hostname. Ignoring refresh credentials properties", e);
               }
             return responseBuilder.build();}
