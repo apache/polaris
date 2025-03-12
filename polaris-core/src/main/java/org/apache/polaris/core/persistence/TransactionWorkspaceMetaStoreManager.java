@@ -211,7 +211,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   public EntityResult renameEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore entityToRename,
+      @Nonnull PolarisBaseEntity entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
       @Nonnull PolarisEntity renamedEntity) {
     callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "renameEntity");
@@ -222,7 +222,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   public DropEntityResult dropEntityIfExists(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore entityToDrop,
+      @Nonnull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     callCtx.getDiagServices().fail("illegal_method_in_transaction_workspace", "dropEntityIfExists");

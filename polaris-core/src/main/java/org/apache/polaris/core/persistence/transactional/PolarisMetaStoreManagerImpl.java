@@ -1152,7 +1152,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   }
 
   /**
-   * See {@link PolarisMetaStoreManager#renameEntity(PolarisCallContext, List, PolarisEntityCore,
+   * See {@link PolarisMetaStoreManager#renameEntity(PolarisCallContext, List, PolarisBaseEntity,
    * List, PolarisEntity)}
    */
   private @Nonnull EntityResult renameEntity(
@@ -1264,7 +1264,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   public @Nonnull EntityResult renameEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore entityToRename,
+      @Nonnull PolarisBaseEntity entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
       @Nonnull PolarisEntity renamedEntity) {
     // get metastore we should be using
@@ -1281,13 +1281,14 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   /**
    * See
    *
-   * <p>{@link #dropEntityIfExists(PolarisCallContext, List, PolarisEntityCore, Map, boolean)}
+   * <p>{@link #dropEntityIfExists(PolarisCallContext, TransactionalPersistence, List,
+   * PolarisBaseEntity, Map, boolean)}
    */
   private @Nonnull DropEntityResult dropEntityIfExists(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore entityToDrop,
+      @Nonnull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     // entity cannot be null
@@ -1397,7 +1398,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   public @Nonnull DropEntityResult dropEntityIfExists(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore entityToDrop,
+      @Nonnull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     // get metastore we should be using

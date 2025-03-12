@@ -29,7 +29,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
-import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
@@ -140,7 +139,7 @@ public class TaskExecutorImpl implements TaskExecutor {
           .addKeyValue("handlerClass", handler.getClass())
           .log("Task successfully handled");
       metaStoreManager.dropEntityIfExists(
-          ctx.getPolarisCallContext(), null, PolarisEntity.toCore(taskEntity), Map.of(), false);
+          ctx.getPolarisCallContext(), null, taskEntity, Map.of(), false);
     } else {
       LOGGER
           .atWarn()

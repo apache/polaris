@@ -651,7 +651,7 @@ public class PolarisTestMetaStoreManager {
   }
 
   /** Drop the entity if it exists. */
-  void dropEntity(List<PolarisEntityCore> catalogPath, PolarisEntityCore entityToDrop) {
+  void dropEntity(List<PolarisEntityCore> catalogPath, PolarisBaseEntity entityToDrop) {
     // see if the entity exists
     final boolean exists;
     boolean hasChildren = false;
