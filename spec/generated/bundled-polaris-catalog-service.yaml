@@ -3426,6 +3426,13 @@ components:
             type: string
     GenericTable:
       type: object
+      description: |
+        Generic Table information.
+        - `name` name for the generic table
+        - `format` format for the generic table, i.e. "delta", "csv"
+        - `properties` properties for the generic table passed on creation
+        - `doc` comment or description for the generic table
+        - `register-at` time when the generic table is registered with Polaris service in ISO format.
       required:
         - name
         - format
