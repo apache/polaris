@@ -874,7 +874,10 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", EnumSet.noneOf(AccessDelegationMode.class)),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegation(
+                    TABLE_NS1A_2, "all", EnumSet.noneOf(AccessDelegationMode.class)),
         null /* cleanupAction */);
   }
 
@@ -890,7 +893,10 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_CREATE,
             PolarisPrivilege.TABLE_LIST,
             PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", EnumSet.noneOf(AccessDelegationMode.class)));
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegation(
+                    TABLE_NS1A_2, "all", EnumSet.noneOf(AccessDelegationMode.class)));
   }
 
   @Test
@@ -903,7 +909,10 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_READ_DATA,
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", EnumSet.noneOf(AccessDelegationMode.class)),
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegation(
+                    TABLE_NS1A_2, "all", EnumSet.noneOf(AccessDelegationMode.class)),
         null /* cleanupAction */);
   }
 
@@ -919,7 +928,10 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             PolarisPrivilege.TABLE_CREATE,
             PolarisPrivilege.TABLE_LIST,
             PolarisPrivilege.TABLE_DROP),
-        () -> newWrapper().loadTableWithAccessDelegation(TABLE_NS1A_2, "all", EnumSet.noneOf(AccessDelegationMode.class)));
+        () ->
+            newWrapper()
+                .loadTableWithAccessDelegation(
+                    TABLE_NS1A_2, "all", EnumSet.noneOf(AccessDelegationMode.class)));
   }
 
   @Test

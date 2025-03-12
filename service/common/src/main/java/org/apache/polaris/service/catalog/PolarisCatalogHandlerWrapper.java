@@ -23,10 +23,8 @@ import com.google.common.collect.Maps;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.UnknownHostException;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -820,7 +818,9 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
-      TableIdentifier tableIdentifier, String snapshots, EnumSet<AccessDelegationMode> accessDelegationModes) {
+      TableIdentifier tableIdentifier,
+      String snapshots,
+      EnumSet<AccessDelegationMode> accessDelegationModes) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -883,23 +883,37 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                   credentialDelegation.getCredentialConfig(
                       tableIdentifier, tableMetadata, actionsRequested));
             }
-            if(accessDelegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)){
+            if (accessDelegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)) {
               try {
                 // String hostName = InetAddress.getLocalHost().getCanonicalHostName();
                 String hostName = "localhost";
                 responseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
-                responseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, new URI("https", hostName, String.format("/v1/%s/namespaces/%s/tables/%s/credentials", catalogName, tableIdentifier.namespace().toString(), tableIdentifier.name()), null).toString());
+                responseBuilder.addConfig(
+                    AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
+                    new URI(
+                            "https",
+                            hostName,
+                            String.format(
+                                "/v1/%s/namespaces/%s/tables/%s/credentials",
+                                catalogName,
+                                tableIdentifier.namespace().toString(),
+                                tableIdentifier.name()),
+                            null)
+                        .toString());
               } catch (URISyntaxException e) {
-                LOGGER.error("Error while fetching hostname. Ignoring refresh credentials properties", e);
+                LOGGER.error(
+                    "Error while fetching hostname. Ignoring refresh credentials properties", e);
               }
-            return responseBuilder.build();}
+              return responseBuilder.build();
+            }
           } else if (table instanceof BaseMetadataTable) {
             // metadata tables are loaded on the client side, return NoSuchTableException for now
             throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
           }
 
           throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
-        });}
+        });
+  }
 
   private UpdateTableRequest applyUpdateFilters(UpdateTableRequest request) {
     // Certain MetadataUpdates need to be explicitly transformed to achieve the same behavior
