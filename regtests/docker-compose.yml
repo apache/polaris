@@ -51,6 +51,8 @@ services:
     depends_on:
       polaris:
         condition: service_healthy
+      minio-configured-without-tls:
+        condition: service_started
     environment:
       AWS_TEST_ENABLED: $AWS_TEST_ENABLED
       AWS_STORAGE_BUCKET: $AWS_STORAGE_BUCKET

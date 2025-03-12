@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.core.storage.s3compatible;
 
-import static org.apache.polaris.core.PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
-import static org.apache.polaris.core.PolarisConfiguration.loadConfig;
+import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+import static org.apache.polaris.core.config.PolarisConfiguration.loadConfig;
 import static org.apache.polaris.core.storage.PolarisCredentialProperty.AWS_KEY_ID;
 import static org.apache.polaris.core.storage.PolarisCredentialProperty.AWS_SECRET_KEY;
 import static org.apache.polaris.core.storage.PolarisCredentialProperty.AWS_TOKEN;
