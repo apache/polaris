@@ -26,6 +26,7 @@ description = "Polaris site - reference docs"
 
 val genProjectPaths = listOf(
   ":polaris-async-api",
+  ":polaris-tasks-api",
   ":polaris-runtime-service",
 )
 
