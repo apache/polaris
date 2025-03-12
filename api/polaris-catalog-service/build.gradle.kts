@@ -23,7 +23,7 @@ plugins {
   alias(libs.plugins.jandex)
 }
 
-val models =
+val genericTableModels =
   listOf(
       "CreateGenericTableRequest",
       "LoadGenericTableResponse",
@@ -66,7 +66,7 @@ openApiGenerate {
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
   globalProperties.put("apis", "GenericTableApi")
-  globalProperties.put("models", models)
+  globalProperties.put("models", genericTableModels)
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")
   configOptions.put("resourceName", "catalog")
