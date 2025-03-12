@@ -133,10 +133,43 @@ tasks.named<Test>("test").configure { maxParallelForks = 4 }
 
 tasks.named<Test>("intTest").configure {
   maxParallelForks = 1
-  // Same issue as above: allow a java security manager after Java 21
-  // (this setting is for the application under test, while the setting above is for test code).
-  systemProperty("quarkus.test.arg-line", "-Djava.security.manager=allow")
+
   val logsDir = project.layout.buildDirectory.get().asFile.resolve("logs")
+
+  // JVM arguments provider does not interfere with Gradle's cache keys
+  jvmArgumentProviders.add(
+    CommandLineArgumentProvider {
+      // Same issue as above: allow a java security manager after Java 21
+      // (this setting is for the application under test, while the setting above is for test code).
+      val securityManagerAllow = "-Djava.security.manager=allow"
+
+      val args = mutableListOf<String>()
+
+      // Example: to attach a debugger to the spawned JVM running Quarkus, add
+      // -Dquarkus.test.arg-line=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+      // to your test configuration.
+      val explicitQuarkusTestArgLine = System.getProperty("quarkus.test.arg-line")
+      var quarkusTestArgLine =
+        if (explicitQuarkusTestArgLine != null) "$explicitQuarkusTestArgLine $securityManagerAllow"
+        else securityManagerAllow
+
+      args.add("-Dquarkus.test.arg-line=$quarkusTestArgLine")
+      // This property is not honored in a per-profile application.properties file,
+      // so we need to set it here.
+      args.add("-Dquarkus.log.file.path=${logsDir.resolve("polaris.log").absolutePath}")
+
+      // Add `quarkus.*` system properties, other than the ones explicitly set above
+      System.getProperties()
+        .filter {
+          it.key.toString().startsWith("quarkus.") &&
+            !"quarkus.test.arg-line".equals(it.key) &&
+            !"quarkus.log.file.path".equals(it.key)
+        }
+        .forEach { args.add("${it.key}=${it.value}") }
+
+      args
+    }
+  )
   // delete files from previous runs
   doFirst {
     // delete log files written by Polaris
@@ -144,7 +177,4 @@ tasks.named<Test>("intTest").configure {
     // delete quarkus.log file (captured Polaris stdout/stderr)
     project.layout.buildDirectory.get().asFile.resolve("quarkus.log").delete()
   }
-  // This property is not honored in a per-profile application.properties file,
-  // so we need to set it here.
-  systemProperty("quarkus.log.file.path", logsDir.resolve("polaris.log").absolutePath)
 }

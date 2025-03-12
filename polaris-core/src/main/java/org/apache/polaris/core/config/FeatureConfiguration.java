@@ -16,115 +16,26 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core;
+package org.apache.polaris.core.config;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
-import org.apache.polaris.core.context.CallContext;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-public class PolarisConfiguration<T> {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisConfiguration.class);
-
-  public final String key;
-  public final String description;
-  public final T defaultValue;
-  private final Optional<String> catalogConfigImpl;
-  private final Class<T> typ;
-
-  @SuppressWarnings("unchecked")
-  public PolarisConfiguration(
+/**
+ * Configurations for features within Polaris. These configurations are intended to be customized
+ * and many expose user-facing catalog-level configurations. These configurations are stable over
+ * time.
+ *
+ * @param <T>
+ */
+public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
+  protected FeatureConfiguration(
       String key, String description, T defaultValue, Optional<String> catalogConfig) {
-    this.key = key;
-    this.description = description;
-    this.defaultValue = defaultValue;
-    this.catalogConfigImpl = catalogConfig;
-    this.typ = (Class<T>) defaultValue.getClass();
+    super(key, description, defaultValue, catalogConfig);
   }
 
-  public boolean hasCatalogConfig() {
-    return catalogConfigImpl.isPresent();
-  }
-
-  public String catalogConfig() {
-    return catalogConfigImpl.orElseThrow(
-        () ->
-            new IllegalStateException(
-                "Attempted to read a catalog config key from a configuration that doesn't have one."));
-  }
-
-  T cast(Object value) {
-    return this.typ.cast(value);
-  }
-
-  public static class Builder<T> {
-    private String key;
-    private String description;
-    private T defaultValue;
-    private Optional<String> catalogConfig = Optional.empty();
-
-    public Builder<T> key(String key) {
-      this.key = key;
-      return this;
-    }
-
-    public Builder<T> description(String description) {
-      this.description = description;
-      return this;
-    }
-
-    @SuppressWarnings("unchecked")
-    public Builder<T> defaultValue(T defaultValue) {
-      if (defaultValue instanceof List<?>) {
-        // Type-safe handling of List
-        this.defaultValue = (T) new ArrayList<>((List<?>) defaultValue);
-      } else {
-        this.defaultValue = defaultValue;
-      }
-      return this;
-    }
-
-    public Builder<T> catalogConfig(String catalogConfig) {
-      this.catalogConfig = Optional.of(catalogConfig);
-      return this;
-    }
-
-    public PolarisConfiguration<T> build() {
-      if (key == null || description == null || defaultValue == null) {
-        throw new IllegalArgumentException("key, description, and defaultValue are required");
-      }
-      return new PolarisConfiguration<>(key, description, defaultValue, catalogConfig);
-    }
-  }
-
-  /**
-   * Returns the value of a `PolarisConfiguration`, or the default if it cannot be loaded. This
-   * method does not need to be used when a `CallContext` is already available
-   */
-  public static <T> T loadConfig(PolarisConfiguration<T> configuration) {
-    var callContext = CallContext.getCurrentContext();
-    if (callContext == null) {
-      LOGGER.warn(
-          String.format(
-              "Unable to load current call context; using %s = %s",
-              configuration.key, configuration.defaultValue));
-      return configuration.defaultValue;
-    }
-    return callContext
-        .getPolarisCallContext()
-        .getConfigurationStore()
-        .getConfiguration(callContext.getPolarisCallContext(), configuration);
-  }
-
-  public static <T> Builder<T> builder() {
-    return new Builder<>();
-  }
-
-  public static final PolarisConfiguration<Boolean>
+  public static final FeatureConfiguration<Boolean>
       ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING =
           PolarisConfiguration.<Boolean>builder()
               .key("ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING")
@@ -132,9 +43,9 @@ public class PolarisConfiguration<T> {
                   "If set to true, require that principals must rotate their credentials before being used "
                       + "for anything else.")
               .defaultValue(false)
-              .build();
+              .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Boolean> SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION =
+  public static final FeatureConfiguration<Boolean> SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION =
       PolarisConfiguration.<Boolean>builder()
           .key("SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION")
           .description(
@@ -147,9 +58,9 @@ public class PolarisConfiguration<T> {
                   + "   \"credential-vending\" and can use server-default environment variables or credential config\n"
                   + "   files for all storage access, or in test/dev scenarios.")
           .defaultValue(false)
-          .build();
+          .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
+  public static final FeatureConfiguration<Boolean> ALLOW_TABLE_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_TABLE_LOCATION_OVERLAP")
           .catalogConfig("allow.overlapping.table.location")
@@ -157,58 +68,58 @@ public class PolarisConfiguration<T> {
               "If set to true, allow one table's location to reside within another table's location. "
                   + "This is only enforced within a given namespace.")
           .defaultValue(false)
-          .build();
+          .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Boolean> ALLOW_NAMESPACE_LOCATION_OVERLAP =
+  public static final FeatureConfiguration<Boolean> ALLOW_NAMESPACE_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_NAMESPACE_LOCATION_OVERLAP")
           .description(
               "If set to true, allow one namespace's location to reside within another namespace's location. "
                   + "This is only enforced within a parent catalog or namespace.")
           .defaultValue(false)
-          .build();
+          .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Boolean> ALLOW_EXTERNAL_METADATA_FILE_LOCATION =
+  public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_METADATA_FILE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_METADATA_FILE_LOCATION")
           .description(
               "If set to true, allows metadata files to be located outside the default metadata directory.")
           .defaultValue(false)
-          .build();
+          .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Boolean> ALLOW_OVERLAPPING_CATALOG_URLS =
+  public static final FeatureConfiguration<Boolean> ALLOW_OVERLAPPING_CATALOG_URLS =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_OVERLAPPING_CATALOG_URLS")
           .description("If set to true, allows catalog URLs to overlap.")
           .defaultValue(false)
-          .build();
+          .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Boolean> ALLOW_UNSTRUCTURED_TABLE_LOCATION =
+  public static final FeatureConfiguration<Boolean> ALLOW_UNSTRUCTURED_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_UNSTRUCTURED_TABLE_LOCATION")
           .catalogConfig("allow.unstructured.table.location")
           .description("If set to true, allows unstructured table locations.")
           .defaultValue(false)
-          .build();
+          .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Boolean> ALLOW_EXTERNAL_TABLE_LOCATION =
+  public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_TABLE_LOCATION =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_TABLE_LOCATION")
           .catalogConfig("allow.external.table.location")
           .description(
               "If set to true, allows tables to have external locations outside the default structure.")
           .defaultValue(false)
-          .build();
+          .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Boolean> ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING =
+  public static final FeatureConfiguration<Boolean> ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING =
       PolarisConfiguration.<Boolean>builder()
           .key("ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING")
           .catalogConfig("enable.credential.vending")
           .description("If set to true, allow credential vending for external catalogs.")
           .defaultValue(true)
-          .build();
+          .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<List<String>> SUPPORTED_CATALOG_STORAGE_TYPES =
+  public static final FeatureConfiguration<List<String>> SUPPORTED_CATALOG_STORAGE_TYPES =
       PolarisConfiguration.<List<String>>builder()
           .key("SUPPORTED_CATALOG_STORAGE_TYPES")
           .catalogConfig("supported.storage.types")
@@ -220,34 +131,34 @@ public class PolarisConfiguration<T> {
                   StorageConfigInfo.StorageTypeEnum.AZURE.name(),
                   StorageConfigInfo.StorageTypeEnum.GCS.name(),
                   StorageConfigInfo.StorageTypeEnum.FILE.name()))
-          .build();
+          .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
+  public static final FeatureConfiguration<Boolean> CLEANUP_ON_NAMESPACE_DROP =
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_NAMESPACE_DROP")
           .catalogConfig("cleanup.on.namespace.drop")
           .description("If set to true, clean up data when a namespace is dropped")
           .defaultValue(false)
-          .build();
+          .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Boolean> CLEANUP_ON_CATALOG_DROP =
+  public static final FeatureConfiguration<Boolean> CLEANUP_ON_CATALOG_DROP =
       PolarisConfiguration.<Boolean>builder()
           .key("CLEANUP_ON_CATALOG_DROP")
           .catalogConfig("cleanup.on.catalog.drop")
           .description("If set to true, clean up data when a catalog is dropped")
           .defaultValue(false)
-          .build();
+          .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Boolean> DROP_WITH_PURGE_ENABLED =
+  public static final FeatureConfiguration<Boolean> DROP_WITH_PURGE_ENABLED =
       PolarisConfiguration.<Boolean>builder()
           .key("DROP_WITH_PURGE_ENABLED")
           .catalogConfig("drop-with-purge.enabled")
           .description(
               "If set to true, allows tables to be dropped with the purge parameter set to true.")
           .defaultValue(true)
-          .build();
+          .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Integer> STORAGE_CREDENTIAL_DURATION_SECONDS =
+  public static final FeatureConfiguration<Integer> STORAGE_CREDENTIAL_DURATION_SECONDS =
       PolarisConfiguration.<Integer>builder()
           .key("STORAGE_CREDENTIAL_DURATION_SECONDS")
           .description(
@@ -255,22 +166,22 @@ public class PolarisConfiguration<T> {
                   + " longer (or shorter) durations is dependent on the storage provider. GCS"
                   + " current does not respect this value.")
           .defaultValue(60 * 60) // 1 hour
-          .build();
+          .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Integer> STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS =
+  public static final FeatureConfiguration<Integer> STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS =
       PolarisConfiguration.<Integer>builder()
           .key("STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS")
           .description(
               "How long to store storage credentials in the local cache. This should be less than "
                   + STORAGE_CREDENTIAL_DURATION_SECONDS.key)
           .defaultValue(30 * 60) // 30 minutes
-          .build();
+          .buildFeatureConfiguration();
 
-  public static final PolarisConfiguration<Integer> MAX_METADATA_REFRESH_RETRIES =
+  public static final FeatureConfiguration<Integer> MAX_METADATA_REFRESH_RETRIES =
       PolarisConfiguration.<Integer>builder()
           .key("MAX_METADATA_REFRESH_RETRIES")
           .description(
               "How many times to retry refreshing metadata when the previous error was retryable")
           .defaultValue(2)
-          .build();
+          .buildFeatureConfiguration();
 }

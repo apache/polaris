@@ -23,6 +23,10 @@ public enum PolarisCredentialProperty {
   AWS_KEY_ID(String.class, "s3.access-key-id", "the aws access key id"),
   AWS_SECRET_KEY(String.class, "s3.secret-access-key", "the aws access key secret"),
   AWS_TOKEN(String.class, "s3.session-token", "the aws scoped access token"),
+  AWS_SESSION_TOKEN_EXPIRES_AT_MS(
+      String.class,
+      "s3.session-token-expires-at-ms",
+      "the time the aws session token expires, in milliseconds"),
   AWS_ENDPOINT(String.class, "s3.endpoint", "the aws s3 endpoint"),
   AWS_PATH_STYLE_ACCESS(
       Boolean.class, "s3.path-style-access", "whether or not to use path-style access"),

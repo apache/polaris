@@ -29,9 +29,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfiguration;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.slf4j.Logger;
@@ -95,15 +97,15 @@ public class StorageCredentialCache {
   private static long maxCacheDurationMs() {
     var cacheDurationSeconds =
         PolarisConfiguration.loadConfig(
-            PolarisConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
+            FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
     var credentialDurationSeconds =
-        PolarisConfiguration.loadConfig(PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+        PolarisConfiguration.loadConfig(FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
     if (cacheDurationSeconds >= credentialDurationSeconds) {
       throw new IllegalArgumentException(
           String.format(
               "%s should be less than %s",
-              PolarisConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS.key,
-              PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.key));
+              FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS.key,
+              FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.key));
     } else {
       return cacheDurationSeconds * 1000L;
     }
@@ -143,7 +145,7 @@ public class StorageCredentialCache {
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {
           LOGGER.atDebug().log("StorageCredentialCache::load");
-          PolarisCredentialVendor.ScopedCredentialsResult scopedCredentialsResult =
+          ScopedCredentialsResult scopedCredentialsResult =
               credentialVendor.getSubscopedCredsForEntity(
                   k.getCallContext(),
                   k.getCatalogId(),

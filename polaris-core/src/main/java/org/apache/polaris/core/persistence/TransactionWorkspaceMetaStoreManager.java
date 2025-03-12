@@ -43,7 +43,12 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.persistence.dao.entity.ValidateAccessResult;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 
 /**

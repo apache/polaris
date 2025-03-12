@@ -247,33 +247,34 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
    * @return new unique entity identifier
    */
   @Override
-  public long generateNewId(@Nonnull PolarisCallContext callCtx) {
+  public long generateNewIdInCurrentTxn(@Nonnull PolarisCallContext callCtx) {
     // This function can be called within a transaction or out of transaction.
     // If called out of transaction, create a new transaction, otherwise run in current transaction
     return localSession.get() != null
         ? this.store.getNextSequence(localSession.get())
-        : runInReadTransaction(callCtx, () -> generateNewId(callCtx));
+        : runInReadTransaction(callCtx, () -> generateNewIdInCurrentTxn(callCtx));
   }
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntities(
+  public void writeToEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     this.store.writeToEntities(localSession.get(), entity);
   }
 
   /** {@inheritDoc} */
   @Override
-  public <T extends PolarisStorageConfigurationInfo> void persistStorageIntegrationIfNeeded(
-      @Nonnull PolarisCallContext callContext,
-      @Nonnull PolarisBaseEntity entity,
-      @Nullable PolarisStorageIntegration<T> storageIntegration) {
+  public <T extends PolarisStorageConfigurationInfo>
+      void persistStorageIntegrationIfNeededInCurrentTxn(
+          @Nonnull PolarisCallContext callContext,
+          @Nonnull PolarisBaseEntity entity,
+          @Nullable PolarisStorageIntegration<T> storageIntegration) {
     // not implemented for eclipselink store
   }
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntitiesActive(
+  public void writeToEntitiesActiveInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
     this.store.writeToEntitiesActive(localSession.get(), entity);
@@ -281,7 +282,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public void writeToEntitiesChangeTracking(
+  public void writeToEntitiesChangeTrackingInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     // write it
     this.store.writeToEntitiesChangeTracking(localSession.get(), entity);
@@ -289,7 +290,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public void writeToGrantRecords(
+  public void writeToGrantRecordsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
     // write it
     this.store.writeToGrantRecords(localSession.get(), grantRec);
@@ -297,7 +298,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromEntities(
+  public void deleteFromEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
 
     // delete it
@@ -306,7 +307,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromEntitiesActive(
+  public void deleteFromEntitiesActiveInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
     // delete it
     this.store.deleteFromEntitiesActive(localSession.get(), new PolarisEntitiesActiveKey(entity));
@@ -319,7 +320,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
    * @param entity entity record to delete
    */
   @Override
-  public void deleteFromEntitiesChangeTracking(
+  public void deleteFromEntitiesChangeTrackingInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore entity) {
     // delete it
     this.store.deleteFromEntitiesChangeTracking(localSession.get(), entity);
@@ -327,14 +328,14 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public void deleteFromGrantRecords(
+  public void deleteFromGrantRecordsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisGrantRecord grantRec) {
     this.store.deleteFromGrantRecords(localSession.get(), grantRec);
   }
 
   /** {@inheritDoc} */
   @Override
-  public void deleteAllEntityGrantRecords(
+  public void deleteAllEntityGrantRecordsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore entity,
       @Nonnull List<PolarisGrantRecord> grantsOnGrantee,
@@ -344,19 +345,19 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public void deleteAll(@Nonnull PolarisCallContext callCtx) {
+  public void deleteAllInCurrentTxn(@Nonnull PolarisCallContext callCtx) {
     this.store.deleteAll(localSession.get());
   }
 
   /** {@inheritDoc} */
   @Override
-  public @Nullable PolarisBaseEntity lookupEntity(
+  public @Nullable PolarisBaseEntity lookupEntityInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, long catalogId, long entityId, int typeCode) {
     return ModelEntity.toEntity(this.store.lookupEntity(localSession.get(), catalogId, entityId));
   }
 
   @Override
-  public @Nonnull List<PolarisBaseEntity> lookupEntities(
+  public @Nonnull List<PolarisBaseEntity> lookupEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     return this.store.lookupEntities(localSession.get(), entityIds).stream()
         .map(ModelEntity::toEntity)
@@ -365,7 +366,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<PolarisChangeTrackingVersions> lookupEntityVersions(
+  public @Nonnull List<PolarisChangeTrackingVersions> lookupEntityVersionsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, List<PolarisEntityId> entityIds) {
     Map<PolarisEntityId, ModelEntity> idToEntityMap =
         this.store.lookupEntities(localSession.get(), entityIds).stream()
@@ -388,7 +389,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   /** {@inheritDoc} */
   @Override
   @Nullable
-  public EntityNameLookupRecord lookupEntityActive(
+  public EntityNameLookupRecord lookupEntityActiveInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntitiesActiveKey entityActiveKey) {
     // lookup the active entity slice
     return ModelEntityActive.toEntityActive(
@@ -398,34 +399,35 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   /** {@inheritDoc} */
   @Override
   @Nonnull
-  public List<EntityNameLookupRecord> lookupEntityActiveBatch(
+  public List<EntityNameLookupRecord> lookupEntityActiveBatchInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntitiesActiveKey> entityActiveKeys) {
     // now build a list to quickly verify that nothing has changed
     return entityActiveKeys.stream()
-        .map(entityActiveKey -> this.lookupEntityActive(callCtx, entityActiveKey))
+        .map(entityActiveKey -> this.lookupEntityActiveInCurrentTxn(callCtx, entityActiveKey))
         .collect(Collectors.toList());
   }
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<EntityNameLookupRecord> listEntities(
+  public @Nonnull List<EntityNameLookupRecord> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType) {
-    return listEntities(callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue());
+    return this.listEntitiesInCurrentTxn(
+        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue());
   }
 
   @Override
-  public @Nonnull List<EntityNameLookupRecord> listEntities(
+  public @Nonnull List<EntityNameLookupRecord> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter) {
     // full range scan under the parent for that type
-    return listEntities(
+    return this.listEntitiesInCurrentTxn(
         callCtx,
         catalogId,
         parentId,
@@ -443,7 +445,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   }
 
   @Override
-  public @Nonnull <T> List<T> listEntities(
+  public @Nonnull <T> List<T> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
@@ -464,7 +466,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public boolean hasChildren(
+  public boolean hasChildrenInCurrentTxn(
       @Nonnull PolarisCallContext callContext,
       @Nullable PolarisEntityType entityType,
       long catalogId,
@@ -476,7 +478,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public int lookupEntityGrantRecordsVersion(
+  public int lookupEntityGrantRecordsVersionInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, long catalogId, long entityId) {
     ModelEntityChangeTracking entity =
         this.store.lookupEntityChangeTracking(localSession.get(), catalogId, entityId);
@@ -487,7 +489,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public @Nullable PolarisGrantRecord lookupGrantRecord(
+  public @Nullable PolarisGrantRecord lookupGrantRecordInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long securableCatalogId,
       long securableId,
@@ -507,7 +509,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<PolarisGrantRecord> loadAllGrantRecordsOnSecurable(
+  public @Nonnull List<PolarisGrantRecord> loadAllGrantRecordsOnSecurableInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
     // now fetch all grants for this securable
     return this.store
@@ -519,7 +521,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<PolarisGrantRecord> loadAllGrantRecordsOnGrantee(
+  public @Nonnull List<PolarisGrantRecord> loadAllGrantRecordsOnGranteeInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
     // now fetch all grants assigned to this grantee
     return this.store
@@ -531,7 +533,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public @Nullable PolarisPrincipalSecrets loadPrincipalSecrets(
+  public @Nullable PolarisPrincipalSecrets loadPrincipalSecretsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId) {
     return ModelPrincipalSecrets.toPrincipalSecrets(
         this.store.lookupPrincipalSecrets(localSession.get(), clientId));
@@ -539,7 +541,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull PolarisPrincipalSecrets generateNewPrincipalSecrets(
+  public @Nonnull PolarisPrincipalSecrets generateNewPrincipalSecretsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull String principalName, long principalId) {
     // ensure principal client id is unique
     PolarisPrincipalSecrets principalSecrets;
@@ -563,7 +565,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull PolarisPrincipalSecrets rotatePrincipalSecrets(
+  public @Nonnull PolarisPrincipalSecrets rotatePrincipalSecretsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull String clientId,
       long principalId,
@@ -610,7 +612,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public void deletePrincipalSecrets(
+  public void deletePrincipalSecretsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull String clientId, long principalId) {
     // load the existing secrets
     ModelPrincipalSecrets principalSecrets =
@@ -643,7 +645,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   /** {@inheritDoc} */
   @Override
   public @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> createStorageIntegration(
+      PolarisStorageIntegration<T> createStorageIntegrationInCurrentTxn(
           @Nonnull PolarisCallContext callCtx,
           long catalogId,
           long entityId,
@@ -655,7 +657,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   /** {@inheritDoc} */
   @Override
   public @Nullable <T extends PolarisStorageConfigurationInfo>
-      PolarisStorageIntegration<T> loadPolarisStorageIntegration(
+      PolarisStorageIntegration<T> loadPolarisStorageIntegrationInCurrentTxn(
           @Nonnull PolarisCallContext callCtx, @Nonnull PolarisBaseEntity entity) {
     PolarisStorageConfigurationInfo storageConfig =
         BaseMetaStoreManager.extractStorageConfiguration(callCtx, entity);
