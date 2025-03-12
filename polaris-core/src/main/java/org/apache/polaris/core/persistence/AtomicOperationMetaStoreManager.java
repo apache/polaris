@@ -1003,7 +1003,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   public @Nonnull EntityResult renameEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore entityToRename,
+      @Nonnull PolarisBaseEntity entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
       @Nonnull PolarisEntity renamedEntity) {
     // get metastore we should be using
@@ -1101,7 +1101,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   public @Nonnull DropEntityResult dropEntityIfExists(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore entityToDrop,
+      @Nonnull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     // get metastore we should be using
