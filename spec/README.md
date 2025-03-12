@@ -23,7 +23,7 @@ Polaris provides two sets of OpenAPI specifications:
 - `polaris-management-service.yml` - Defines the management APIs for using Polaris to create and manage Iceberg catalogs and their principals
 - `polaris-catalog-service.yaml` - Defines the specification for the Polaris Catalog API, which encompasses both the Iceberg REST Catalog API
    and Polaris-native API.
-  - `polaris-catalog-apis` - Contains the specification for Polaris-native Catalog APIs
+  - `polaris-catalog-apis` - Contains the specification for Polaris-specific Catalog APIs
   - `iceberg-rest-catalog-open-api.yaml` - Contains the specification for Iceberg Rest Catalog API
 
 ## Generated Specification Files
