@@ -18,15 +18,12 @@
  */
 package org.apache.polaris.core.storage;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
-import java.util.EnumMap;
-import java.util.Map;
 import java.util.Set;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
+import org.apache.polaris.core.persistence.dao.entity.ValidateAccessResult;
 
 /** Manage credentials for storage locations. */
 public interface PolarisCredentialVendor {
@@ -48,6 +45,7 @@ public interface PolarisCredentialVendor {
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
+      PolarisEntityType entityType,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations);
@@ -90,96 +88,7 @@ public interface PolarisCredentialVendor {
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long entityId,
+      PolarisEntityType entityType,
       @Nonnull Set<PolarisStorageActions> actions,
       @Nonnull Set<String> locations);
-
-  /** Result of a getSubscopedCredsForEntity() call */
-  class ScopedCredentialsResult extends BaseResult {
-
-    // null if not success. Else, set of name/value pairs for the credentials
-    private final EnumMap<PolarisCredentialProperty, String> credentials;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public ScopedCredentialsResult(
-        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.credentials = null;
-    }
-
-    /**
-     * Constructor for success
-     *
-     * @param credentials credentials
-     */
-    public ScopedCredentialsResult(
-        @Nonnull EnumMap<PolarisCredentialProperty, String> credentials) {
-      super(BaseResult.ReturnStatus.SUCCESS);
-      this.credentials = credentials;
-    }
-
-    @JsonCreator
-    private ScopedCredentialsResult(
-        @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") String extraInformation,
-        @JsonProperty("credentials") Map<String, String> credentials) {
-      super(returnStatus, extraInformation);
-      this.credentials = new EnumMap<>(PolarisCredentialProperty.class);
-      if (credentials != null) {
-        credentials.forEach(
-            (k, v) -> this.credentials.put(PolarisCredentialProperty.valueOf(k), v));
-      }
-    }
-
-    public EnumMap<PolarisCredentialProperty, String> getCredentials() {
-      return credentials;
-    }
-  }
-
-  /** Result of a validateAccessToLocations() call */
-  class ValidateAccessResult extends BaseResult {
-
-    // null if not success. Else, set of location/validationResult pairs for each location in the
-    // set
-    private final Map<String, String> validateResult;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public ValidateAccessResult(
-        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.validateResult = null;
-    }
-
-    /**
-     * Constructor for success
-     *
-     * @param validateResult validate result
-     */
-    public ValidateAccessResult(@Nonnull Map<String, String> validateResult) {
-      super(BaseResult.ReturnStatus.SUCCESS);
-      this.validateResult = validateResult;
-    }
-
-    @JsonCreator
-    private ValidateAccessResult(
-        @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") String extraInformation,
-        @JsonProperty("validateResult") Map<String, String> validateResult) {
-      super(returnStatus, extraInformation);
-      this.validateResult = validateResult;
-    }
-
-    public Map<String, String> getValidateResult() {
-      return this.validateResult;
-    }
-  }
 }

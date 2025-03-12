@@ -884,61 +884,6 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     return FileIOUtil.findStorageInfoFromHierarchy(resolvedStorageEntity);
   }
 
-  private Map<String, String> refreshCredentials(
-      TableIdentifier tableIdentifier,
-      Set<PolarisStorageActions> storageActions,
-      String tableLocation,
-      PolarisEntity entity) {
-    return refreshCredentials(tableIdentifier, storageActions, Set.of(tableLocation), entity);
-  }
-
-  private Map<String, String> refreshCredentials(
-      TableIdentifier tableIdentifier,
-      Set<PolarisStorageActions> storageActions,
-      Set<String> tableLocations,
-      PolarisEntity entity) {
-    Boolean skipCredentialSubscopingIndirection =
-        getBooleanContextConfiguration(
-            FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
-            FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
-    if (Boolean.TRUE.equals(skipCredentialSubscopingIndirection)) {
-      LOGGER
-          .atInfo()
-          .addKeyValue("tableIdentifier", tableIdentifier)
-          .log("Skipping generation of subscoped creds for table");
-      return Map.of();
-    }
-
-    boolean allowList =
-        storageActions.contains(PolarisStorageActions.LIST)
-            || storageActions.contains(PolarisStorageActions.ALL);
-    Set<String> writeLocations =
-        storageActions.contains(PolarisStorageActions.WRITE)
-                || storageActions.contains(PolarisStorageActions.DELETE)
-                || storageActions.contains(PolarisStorageActions.ALL)
-            ? tableLocations
-            : Set.of();
-    Map<String, String> credentialsMap =
-        entityManager
-            .getCredentialCache()
-            .getOrGenerateSubScopeCreds(
-                getCredentialVendor(),
-                callContext.getPolarisCallContext(),
-                entity,
-                allowList,
-                tableLocations,
-                writeLocations);
-    LOGGER
-        .atDebug()
-        .addKeyValue("tableIdentifier", tableIdentifier)
-        .addKeyValue("credentialKeys", credentialsMap.keySet())
-        .log("Loaded scoped credentials for table");
-    if (credentialsMap.isEmpty()) {
-      LOGGER.debug("No credentials found for table");
-    }
-    return credentialsMap;
-  }
-
   /**
    * Validates that the specified {@code location} is valid for whatever storage config is found for
    * this TableLike's parent hierarchy.

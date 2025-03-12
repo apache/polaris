@@ -64,7 +64,7 @@ public class Resolver {
   private final @Nonnull PolarisMetaStoreManager polarisMetaStoreManager;
 
   // the cache of entities
-  private final EntityCache cache;
+  @Nullable private final EntityCache cache;
 
   // the id of the principal making the call or 0 if unknown
   private final @Nonnull AuthenticatedPolarisPrincipal polarisPrincipal;
@@ -517,6 +517,10 @@ public class Resolver {
    * @return true if none of the entities has changed
    */
   private boolean bulkValidate(List<ResolvedPolarisEntity> toValidate) {
+    if (!polarisMetaStoreManager.requiresEntityReload()) {
+      return true;
+    }
+
     // assume everything is good
     boolean validationStatus = true;
 
@@ -1027,7 +1031,7 @@ public class Resolver {
     if (this.cache != null) {
       // get or load by name
       EntityCacheLookupResult lookupResult =
-          this.cache.getOrLoadEntityById(this.polarisCallContext, catalogId, entityId);
+          this.cache.getOrLoadEntityById(this.polarisCallContext, catalogId, entityId, entityType);
 
       // if not found, return null
       if (lookupResult == null) {
@@ -1049,7 +1053,7 @@ public class Resolver {
       // If no cache, load directly from metastore manager.
       ResolvedEntityResult result =
           polarisMetaStoreManager.loadResolvedEntityById(
-              this.polarisCallContext, catalogId, entityId);
+              this.polarisCallContext, catalogId, entityId, entityType);
       if (!result.isSuccess()) {
         // not found
         return null;

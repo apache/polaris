@@ -27,7 +27,6 @@ import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.client.Invocation;
 import jakarta.ws.rs.core.Response;
-import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
@@ -57,14 +56,12 @@ import org.apache.iceberg.hadoop.HadoopFileIO;
 import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTSessionCatalog;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
-import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.EnvironmentUtil;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.CatalogRole;
-import org.apache.polaris.core.admin.model.Catalogs;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
@@ -88,8 +85,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * @implSpec This test expects the server to be configured with the following features configured:
@@ -650,64 +645,6 @@ public class PolarisApplicationIntegrationTest {
                   // asserts that one of those things happens.
                 }
               });
-    }
-  }
-
-  @Test
-  public void testNoRealmHeader() {
-    try (Response response =
-        managementApi
-            .request(
-                "v1/catalogs", Map.of(), Map.of(), Map.of("Authorization", "Bearer " + authToken))
-            .get()) {
-      assertThat(response.getStatus()).isEqualTo(Status.OK.getStatusCode());
-      Catalogs roles = response.readEntity(Catalogs.class);
-      assertThat(roles.getCatalogs()).extracting(Catalog::getName).contains(internalCatalogName);
-    }
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = {"POLARIS", "OTHER"})
-  public void testRealmHeaderValid(String realmId) {
-    String catalogName = client.newEntityName("testRealmHeaderValid" + realmId);
-    createCatalog(catalogName, Catalog.TypeEnum.INTERNAL, principalRoleName);
-    try (Response response =
-        managementApi
-            .request(
-                "v1/catalogs",
-                Map.of(),
-                Map.of(),
-                Map.of(
-                    "Authorization", "Bearer " + authToken, endpoints.realmHeaderName(), realmId))
-            .get()) {
-      assertThat(response.getStatus()).isEqualTo(Status.OK.getStatusCode());
-      Catalogs catalogsList = response.readEntity(Catalogs.class);
-      if ("POLARIS".equals(realmId)) {
-        assertThat(catalogsList.getCatalogs()).extracting(Catalog::getName).contains(catalogName);
-      } else {
-        assertThat(catalogsList.getCatalogs()).isEmpty();
-      }
-    }
-  }
-
-  @Test
-  public void testRealmHeaderInvalid() {
-    try (Response response =
-        managementApi
-            .request(
-                "v1/catalogs",
-                Map.of(),
-                Map.of(),
-                Map.of(
-                    "Authorization", "Bearer " + authToken, endpoints.realmHeaderName(), "INVALID"))
-            .get()) {
-      assertThat(response.getStatus()).isEqualTo(Status.NOT_FOUND.getStatusCode());
-      assertThat(response.readEntity(ErrorResponse.class))
-          .extracting(ErrorResponse::code, ErrorResponse::type, ErrorResponse::message)
-          .containsExactly(
-              Status.NOT_FOUND.getStatusCode(),
-              "UnresolvableRealmContextException",
-              "Unknown realm: INVALID");
     }
   }
 }

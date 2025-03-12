@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.it;
+package org.apache.polaris.core.exceptions;
 
-import io.quarkus.test.junit.QuarkusIntegrationTest;
-import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
-import java.util.Map;
-import org.apache.polaris.service.it.test.PolarisSparkIntegrationTest;
-
-@QuarkusIntegrationTest
-public class QuarkusSparkIT extends PolarisSparkIntegrationTest {}
+/**
+ * A {@link PolarisException} implementation for when an UnknownHostException happens during File IO
+ * to S3, GCS, or Azure.
+ */
+public class FileIOUnknownHostException extends PolarisException {
+  public FileIOUnknownHostException(String message, Throwable cause) {
+    super(message, cause);
+  }
+}

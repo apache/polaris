@@ -114,6 +114,7 @@ public class DefaultFileIOFactory implements FileIOFactory {
   @VisibleForTesting
   FileIO loadFileIOInternal(
       @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
-    return CatalogUtil.loadFileIO(ioImplClassName, properties, new Configuration());
+    return new ExceptionMappingFileIO(
+        CatalogUtil.loadFileIO(ioImplClassName, properties, new Configuration()));
   }
 }

@@ -22,7 +22,7 @@ import jakarta.annotation.Nonnull;
 import java.time.Clock;
 import java.time.ZoneId;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
-import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.persistence.BasePersistence;
 
 /**
  * The Call context is allocated each time a new REST request is processed. It contains instances of
@@ -31,7 +31,7 @@ import org.apache.polaris.core.persistence.transactional.TransactionalPersistenc
 public class PolarisCallContext {
 
   // meta store which is used to persist Polaris entity metadata
-  private final TransactionalPersistence metaStore;
+  private final BasePersistence metaStore;
 
   // diag services
   private final PolarisDiagnostics diagServices;
@@ -41,7 +41,7 @@ public class PolarisCallContext {
   private final Clock clock;
 
   public PolarisCallContext(
-      @Nonnull TransactionalPersistence metaStore,
+      @Nonnull BasePersistence metaStore,
       @Nonnull PolarisDiagnostics diagServices,
       @Nonnull PolarisConfigurationStore configurationStore,
       @Nonnull Clock clock) {
@@ -52,7 +52,7 @@ public class PolarisCallContext {
   }
 
   public PolarisCallContext(
-      @Nonnull TransactionalPersistence metaStore, @Nonnull PolarisDiagnostics diagServices) {
+      @Nonnull BasePersistence metaStore, @Nonnull PolarisDiagnostics diagServices) {
     this.metaStore = metaStore;
     this.diagServices = diagServices;
     this.configurationStore = new PolarisConfigurationStore() {};
@@ -67,7 +67,7 @@ public class PolarisCallContext {
         original.getClock());
   }
 
-  public TransactionalPersistence getMetaStore() {
+  public BasePersistence getMetaStore() {
     return metaStore;
   }
 

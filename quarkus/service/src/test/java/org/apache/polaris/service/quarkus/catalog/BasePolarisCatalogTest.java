@@ -31,9 +31,9 @@ import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
-import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
-import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -77,7 +77,6 @@ import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
@@ -97,6 +96,7 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -109,6 +109,7 @@ import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
+import org.apache.polaris.service.catalog.io.ExceptionMappingFileIO;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.MeasuredFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
@@ -122,7 +123,6 @@ import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
 import org.assertj.core.api.Assertions;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -140,9 +140,7 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
-@QuarkusTest
-@TestProfile(BasePolarisCatalogTest.Profile.class)
-public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
+public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
   public static class Profile implements QuarkusTestProfile {
 
@@ -195,6 +193,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
 
+  @Nullable
+  protected abstract EntityCache createEntityCache(PolarisMetaStoreManager metaStoreManager);
+
   @BeforeEach
   @SuppressWarnings("unchecked")
   public void before(TestInfo testInfo) {
@@ -212,7 +213,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             Clock.systemDefaultZone());
     entityManager =
         new PolarisEntityManager(
-            metaStoreManager, new StorageCredentialCache(), new EntityCache(metaStoreManager));
+            metaStoreManager, new StorageCredentialCache(), createEntityCache(metaStoreManager));
 
     callContext = CallContext.of(realmContext, polarisContext);
 
@@ -344,7 +345,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
       @Override
       public Supplier<TransactionalPersistence> getOrCreateSessionSupplier(
           RealmContext realmContext) {
-        return () -> polarisContext.getMetaStore();
+        return () -> ((TransactionalPersistence) polarisContext.getMetaStore());
       }
 
       @Override
@@ -473,7 +474,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
 
     // Now also check that despite creating the metadata file, the validation call still doesn't
     // create any namespaces or tables.
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
     fileIO.addFile(
         tableMetadataLocation,
         TableMetadataParser.toJson(createSampleTableMetadata(tableLocation)).getBytes(UTF_8));
@@ -608,7 +609,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -652,7 +653,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -801,7 +802,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
             .build());
     BasePolarisCatalog catalog = catalog();
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -898,7 +899,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         metadataLocation,
@@ -953,7 +954,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     Namespace namespace = Namespace.of("parent", "child1");
     TableIdentifier table = TableIdentifier.of(namespace, "table");
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     // The location of the metadata JSON file specified in the create will be forbidden.
     final String metadataLocation = "http://maliciousdomain.com/metadata.json";
@@ -1031,7 +1032,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -1083,7 +1084,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -1136,7 +1137,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -1174,7 +1175,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(timestamp);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -1247,7 +1248,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     // Though the metadata JSON file itself is in an allowed location, make it internally specify
     // a forbidden table location.
@@ -1325,7 +1326,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -1377,7 +1378,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     update.setTimestamp(230950845L);
     request.setPayload(update);
 
-    InMemoryFileIO fileIO = (InMemoryFileIO) catalog.getIo();
+    InMemoryFileIO fileIO = getInMemoryIo(catalog);
 
     fileIO.addFile(
         tableMetadataLocation,
@@ -1429,6 +1430,7 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                 polarisContext,
                 0,
                 taskEntity.getId(),
+                taskEntity.getType(),
                 true,
                 Set.of(tableMetadata.location()),
                 Set.of(tableMetadata.location()))
@@ -1447,7 +1449,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
                     metaStoreManagerFactory,
                     configurationStore))
             .apply(taskEntity, callContext);
-    Assertions.assertThat(fileIO).isNotNull().isInstanceOf(InMemoryFileIO.class);
+    Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
+    Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
+        .isInstanceOf(InMemoryFileIO.class);
   }
 
   @Test
@@ -1630,13 +1634,13 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
             new FileIOFactory() {
               @Override
               public FileIO loadFileIO(
-                  @NotNull CallContext callContext,
-                  @NotNull String ioImplClassName,
-                  @NotNull Map<String, String> properties,
-                  @NotNull TableIdentifier identifier,
-                  @NotNull Set<String> tableLocations,
-                  @NotNull Set<PolarisStorageActions> storageActions,
-                  @NotNull PolarisResolvedPathWrapper resolvedEntityPath) {
+                  @Nonnull CallContext callContext,
+                  @Nonnull String ioImplClassName,
+                  @Nonnull Map<String, String> properties,
+                  @Nonnull TableIdentifier identifier,
+                  @Nonnull Set<String> tableLocations,
+                  @Nonnull Set<PolarisStorageActions> storageActions,
+                  @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
                 return measured.loadFileIO(
                     callContext,
                     "org.apache.iceberg.inmemory.InMemoryFileIO",
@@ -1760,5 +1764,9 @@ public class BasePolarisCatalogTest extends CatalogTests<BasePolarisCatalog> {
     Assertions.assertThatThrownBy(() -> update.commit())
         .isInstanceOf(CommitFailedException.class)
         .hasMessageContaining("conflict_table");
+  }
+
+  private static InMemoryFileIO getInMemoryIo(BasePolarisCatalog catalog) {
+    return (InMemoryFileIO) ((ExceptionMappingFileIO) catalog.getIo()).getInnerIo();
   }
 }

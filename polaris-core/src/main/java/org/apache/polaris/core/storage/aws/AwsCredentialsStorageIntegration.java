@@ -83,9 +83,13 @@ public class AwsCredentialsStorageIntegration
     credentialMap.put(PolarisCredentialProperty.AWS_TOKEN, response.credentials().sessionToken());
     Optional.ofNullable(response.credentials().expiration())
         .ifPresent(
-            i ->
-                credentialMap.put(
-                    PolarisCredentialProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli())));
+            i -> {
+              credentialMap.put(
+                  PolarisCredentialProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
+              credentialMap.put(
+                  PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                  String.valueOf(i.toEpochMilli()));
+            });
 
     if (storageConfig.getRegion() != null) {
       credentialMap.put(PolarisCredentialProperty.CLIENT_REGION, storageConfig.getRegion());
