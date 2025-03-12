@@ -74,7 +74,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
     this.externalId = externalId;
     this.region = region;
     validateMaxAllowedLocations(
-        PolarisConfigurationStore.getConfiguration(
+        PolarisConfiguration.loadConfig(
             PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
   }
 

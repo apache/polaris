@@ -51,7 +51,7 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
     super(StorageType.AZURE, allowedLocations);
     this.tenantId = tenantId;
     validateMaxAllowedLocations(
-        PolarisConfigurationStore.getConfiguration(
+        PolarisConfiguration.loadConfig(
             PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
   }
 

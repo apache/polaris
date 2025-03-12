@@ -279,6 +279,6 @@ public class PolarisConfiguration<T> {
           .description(
               "How many locations can be associated with a storage configuration, or -1 for"
                   + " unlimited locations")
-          .defaultValue(20)
+          .defaultValue(-1)
           .build();
 }

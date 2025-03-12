@@ -41,7 +41,7 @@ public class GcpStorageConfigurationInfo extends PolarisStorageConfigurationInfo
           List<String> allowedLocations) {
     super(StorageType.GCS, allowedLocations);
     validateMaxAllowedLocations(
-        PolarisConfigurationStore.getConfiguration(
+        PolarisConfiguration.loadConfig(
             PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
   }
 
