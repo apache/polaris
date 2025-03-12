@@ -128,7 +128,7 @@ paths:
   # Not implemented in Polaris
 
   ############################
-  # Polaris notification API #
+  # Polaris Notification API #
   ############################
 
   /v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications:
