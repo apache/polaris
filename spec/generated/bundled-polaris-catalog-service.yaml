@@ -1390,8 +1390,6 @@ paths:
               examples:
                 NamespaceNotFound:
                   $ref: '#/components/examples/NoSuchNamespaceError'
-        '419':
-          $ref: '#/components/responses/AuthenticationTimeoutResponse'
         '503':
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
@@ -1435,8 +1433,6 @@ paths:
               examples:
                 TableAlreadyExists:
                   $ref: '#/components/examples/TableAlreadyExistsError'
-        '419':
-          $ref: '#/components/responses/AuthenticationTimeoutResponse'
         '503':
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
@@ -1472,8 +1468,6 @@ paths:
               examples:
                 TableToLoadDoesNotExist:
                   $ref: '#/components/examples/NoSuchTableError'
-        '419':
-          $ref: '#/components/responses/AuthenticationTimeoutResponse'
         '503':
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
@@ -1502,8 +1496,6 @@ paths:
               examples:
                 TableToDeleteDoesNotExist:
                   $ref: '#/components/examples/NoSuchTableError'
-        '419':
-          $ref: '#/components/responses/AuthenticationTimeoutResponse'
         '503':
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:

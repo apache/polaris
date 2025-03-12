@@ -127,9 +127,9 @@ paths:
   # /v1/{prefix}/namespaces/{namespace}/tables/{table}/tasks:
   # Not implemented in Polaris
 
-  ###################################
-  # Polaris-native notification API #
-  ###################################
+  ############################
+  # Polaris notification API #
+  ############################
 
   /v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications:
     $ref: './polaris-catalog-apis/notifications-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1notifications'

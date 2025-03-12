@@ -51,8 +51,6 @@ paths:
               examples:
                 NamespaceNotFound:
                   $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchNamespaceError'
-        419:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
         503:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
         5XX:
@@ -98,8 +96,6 @@ paths:
               examples:
                 TableAlreadyExists:
                   $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/TableAlreadyExistsError'
-        419:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
         503:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
         5XX:
@@ -140,8 +136,6 @@ paths:
               examples:
                 TableToLoadDoesNotExist:
                   $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchTableError'
-        419:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
         503:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
         5XX:
@@ -172,8 +166,6 @@ paths:
               examples:
                 TableToDeleteDoesNotExist:
                   $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchTableError'
-        419:
-          $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/AuthenticationTimeoutResponse'
         503:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
         5XX:
