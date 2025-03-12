@@ -101,11 +101,11 @@ paths:
         5XX:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
-  /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{table}:
+  /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}:
     parameters:
       - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/prefix'
       - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/namespace'
-      - $ref: '../iceberg-rest-catalog-open-api.yaml#/components/parameters/table'
+      - $ref: '#/components/parameters/generic-table'
 
     get:
       tags:
@@ -172,6 +172,16 @@ paths:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServerErrorResponse'
 
 components:
+  parameters:
+    generic-table:
+      name: generic-table
+      in: path
+      description: A generic table name
+      required: true
+      schema:
+        type: string
+      example: "sales"
+
   schemas:
     CreateGenericTableRequest:
       type: object
