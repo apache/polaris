@@ -68,7 +68,7 @@ import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.generic.PolarisGenericCatalog;
+import org.apache.polaris.service.catalog.generic.PolarisGenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.PolarisIcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
@@ -86,8 +86,8 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
 @QuarkusTest
-@TestProfile(PolarisGenericCatalogTest.Profile.class)
-public class PolarisGenericCatalogTest {
+@TestProfile(PolarisGenericTableCatalogTest.Profile.class)
+public class PolarisGenericTableCatalogTest {
   public static class Profile implements QuarkusTestProfile {
 
     @Override
@@ -108,7 +108,7 @@ public class PolarisGenericCatalogTest {
   @Inject PolarisStorageIntegrationProvider storageIntegrationProvider;
   @Inject PolarisDiagnostics diagServices;
 
-  private PolarisGenericCatalog genericTableCatalog;
+  private PolarisGenericTableCatalog genericTableCatalog;
   private PolarisIcebergCatalog icebergCatalog;
   private CallContext callContext;
   private AwsStorageConfigInfo storageConfigModel;
@@ -220,7 +220,7 @@ public class PolarisGenericCatalogTest {
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
     this.genericTableCatalog =
-        new PolarisGenericCatalog(
+        new PolarisGenericTableCatalog(
             entityManager,
             metaStoreManager,
             callContext,
