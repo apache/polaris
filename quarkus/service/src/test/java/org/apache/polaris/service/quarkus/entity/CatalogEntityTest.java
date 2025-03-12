@@ -19,9 +19,7 @@
 package org.apache.polaris.service.quarkus.entity;
 
 import java.util.List;
-import java.util.stream.IntStream;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
@@ -142,7 +140,8 @@ public class CatalogEntityTest {
             .setProperties(prop)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    Assertions.assertThatCode(() -> CatalogEntity.fromCatalog(awsCatalog)).doesNotThrowAnyException();
+    Assertions.assertThatCode(() -> CatalogEntity.fromCatalog(awsCatalog))
+        .doesNotThrowAnyException();
   }
 
   @Test
