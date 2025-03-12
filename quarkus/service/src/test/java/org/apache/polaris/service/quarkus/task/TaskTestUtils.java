@@ -109,7 +109,7 @@ public class TaskTestUtils {
     for (Snapshot snapshot : snapshots) {
       tmBuilder.addSnapshot(snapshot);
       if (statisticsFiles != null) {
-        tmBuilder.setStatistics(snapshot.snapshotId(), statisticsFiles.get(statisticsFileIndex++));
+        tmBuilder.setStatistics(statisticsFiles.get(statisticsFileIndex++));
       }
     }
     TableMetadata tableMetadata = tmBuilder.build();
