@@ -28,8 +28,6 @@ import java.util.Objects;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
-import static org.apache.polaris.core.config.BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS;
-
 /** Azure storage configuration information. */
 public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationInfo {
 
@@ -52,7 +50,8 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
     super(StorageType.AZURE, allowedLocations);
     this.tenantId = tenantId;
     validateMaxAllowedLocations(
-        BehaviorChangeConfiguration.loadConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
+        BehaviorChangeConfiguration.loadConfig(
+            BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
   }
 
   @Override
