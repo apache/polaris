@@ -25,9 +25,11 @@ import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.stream.Stream;
 import org.apache.iceberg.exceptions.RuntimeIOException;
+import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -62,7 +64,12 @@ public class IcebergExceptionMapperTest {
             Arguments.of(new AzureException("Not Authorized"), 403),
             Arguments.of(new AzureException("Access Denied"), 403),
             Arguments.of(S3Exception.builder().message("Access denied").build(), 403),
-            Arguments.of(new StorageException(1, "access denied"), 403)),
+            Arguments.of(new StorageException(1, "access denied"), 403),
+            Arguments.of(
+                new FileIOUnknownHostException(
+                    "mybucket.blob.core.windows.net: Name or service not known",
+                    new RuntimeException(new UnknownHostException())),
+                404)),
         cloudCodeMappings.entrySet().stream()
             .flatMap(
                 entry ->

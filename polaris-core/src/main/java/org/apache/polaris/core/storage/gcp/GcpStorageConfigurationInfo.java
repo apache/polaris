@@ -24,7 +24,7 @@ import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
-import org.apache.polaris.core.PolarisConfiguration;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Gcp storage storage configuration information. */
@@ -40,7 +40,7 @@ public class GcpStorageConfigurationInfo extends PolarisStorageConfigurationInfo
           List<String> allowedLocations) {
     super(StorageType.GCS, allowedLocations);
     validateMaxAllowedLocations(
-        PolarisConfiguration.loadConfig(PolarisConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
+        BehaviorChangeConfiguration.loadConfig(BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
   }
 
   @Override

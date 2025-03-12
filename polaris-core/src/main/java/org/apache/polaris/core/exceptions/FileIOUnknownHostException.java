@@ -16,20 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.quarkus.config;
+package org.apache.polaris.core.exceptions;
 
-import io.quarkus.runtime.annotations.StaticInitSafe;
-import io.smallrye.config.ConfigMapping;
-import java.util.Map;
-import org.apache.polaris.service.config.FeaturesConfiguration;
-
-@StaticInitSafe
-@ConfigMapping(prefix = "polaris.features")
-public interface QuarkusFeaturesConfiguration extends FeaturesConfiguration {
-
-  @Override
-  Map<String, String> defaults();
-
-  @Override
-  Map<String, FeaturesConfiguration.RealmOverrides> realmOverrides();
+/**
+ * A {@link PolarisException} implementation for when an UnknownHostException happens during File IO
+ * to S3, GCS, or Azure.
+ */
+public class FileIOUnknownHostException extends PolarisException {
+  public FileIOUnknownHostException(String message, Throwable cause) {
+    super(message, cause);
+  }
 }

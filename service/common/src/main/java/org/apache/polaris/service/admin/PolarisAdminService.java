@@ -45,7 +45,6 @@ import org.apache.iceberg.exceptions.NoSuchViewException;
 import org.apache.iceberg.exceptions.NotFoundException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogPrivilege;
@@ -65,8 +64,8 @@ import org.apache.polaris.core.admin.model.ViewPrivilege;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.auth.PolarisGrantManager.LoadGrantsResult;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
@@ -88,6 +87,7 @@ import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
@@ -528,7 +528,7 @@ public class PolarisAdminService {
         getCurrentPolarisContext()
             .getConfigurationStore()
             .getConfiguration(
-                getCurrentPolarisContext(), PolarisConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS);
+                getCurrentPolarisContext(), FeatureConfiguration.ALLOW_OVERLAPPING_CATALOG_URLS);
 
     if (allowOverlappingCatalogUrls) {
       return false;
@@ -598,7 +598,7 @@ public class PolarisAdminService {
     boolean cleanup =
         polarisCallContext
             .getConfigurationStore()
-            .getConfiguration(polarisCallContext, PolarisConfiguration.CLEANUP_ON_CATALOG_DROP);
+            .getConfiguration(polarisCallContext, FeatureConfiguration.CLEANUP_ON_CATALOG_DROP);
     DropEntityResult dropEntityResult =
         metaStoreManager.dropEntityIfExists(
             getCurrentPolarisContext(), null, entity, Map.of(), cleanup);
