@@ -71,13 +71,13 @@ import org.apache.iceberg.rest.responses.ListTablesResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
 import org.apache.iceberg.rest.responses.LoadViewResponse;
 import org.apache.iceberg.rest.responses.UpdateNamespacePropertiesResponse;
-import org.apache.polaris.core.PolarisConfiguration;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -850,11 +850,11 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
         && !configurationStore.getConfiguration(
             callContext.getPolarisCallContext(),
             catalogEntity,
-            PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING)) {
+            FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING)) {
       throw new ForbiddenException(
           "Access Delegation is not enabled for this catalog. Please consult applicable "
               + "documentation for the catalog config property '%s' to enable this feature",
-          PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
+          FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
 
     // TODO: Find a way for the configuration or caller to better express whether to fail or omit
@@ -1070,7 +1070,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                                   .getConfigurationStore()
                                   .getConfiguration(
                                       callContext.getPolarisCallContext(),
-                                      PolarisConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+                                      FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
                             throw new BadRequestException(
                                 "Unsupported operation: commitTransaction containing SetLocation"
                                     + " for table '%s' and new location '%s'",
