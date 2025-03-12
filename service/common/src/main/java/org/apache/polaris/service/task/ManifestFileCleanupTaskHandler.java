@@ -87,10 +87,7 @@ public class ManifestFileCleanupTaskHandler extends FileCleanupTaskHandler {
         StreamSupport.stream(
                 Spliterators.spliteratorUnknownSize(dataFiles.iterator(), Spliterator.IMMUTABLE),
                 false)
-            .map(
-                file ->
-                    tryDelete(
-                        tableId, fileIO, manifestFile.path(), file.path().toString(), null, 1))
+            .map(file -> tryDelete(tableId, fileIO, manifestFile.path(), file.location(), null, 1))
             .toList();
     LOGGER.debug(
         "Scheduled {} data files to be deleted from manifest {}",
