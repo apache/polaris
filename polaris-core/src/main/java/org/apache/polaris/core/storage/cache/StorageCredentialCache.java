@@ -51,7 +51,7 @@ public class StorageCredentialCache {
         Caffeine.newBuilder()
             .maximumSize(CACHE_MAX_NUMBER_OF_ENTRIES)
             .expireAfter(
-                Expiry.writing(
+                Expiry.creating(
                     (StorageCredentialCacheKey key, StorageCredentialCacheEntry entry) -> {
                       long expireAfterMillis =
                           Math.max(
