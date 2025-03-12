@@ -30,6 +30,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
@@ -348,7 +349,7 @@ public class IcebergCatalogAdapter
     } else {
       return Response.ok(
               newHandlerWrapper(realmContext, securityContext, prefix)
-                  .loadTableWithAccessDelegation(tableIdentifier, snapshots))
+                  .loadTableWithAccessDelegation(tableIdentifier, snapshots, delegationModes))
           .build();
     }
   }
@@ -472,7 +473,7 @@ public class IcebergCatalogAdapter
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
     LoadTableResponse loadTableResponse =
         newHandlerWrapper(realmContext, securityContext, prefix)
-            .loadTableWithAccessDelegation(tableIdentifier, "all");
+            .loadTableWithAccessDelegation(tableIdentifier, "all", EnumSet.noneOf(AccessDelegationMode.class));
     return Response.ok(
             ImmutableLoadCredentialsResponse.builder()
                 .credentials(loadTableResponse.credentials())
