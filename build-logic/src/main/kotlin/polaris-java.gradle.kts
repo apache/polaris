@@ -163,11 +163,11 @@ tasks.withType(Jar::class).configureEach {
 class StaleBehaviorChangeConfigurationChecker(private val appVersion: String) : FormatterFunc {
 
   // Helper function for spotless to check for stale BehaviorChangeConfigurations
-  fun isStaleVersion(annotatedVersion: String, appVersion: String): Boolean {
-    val (majorA, minorA, _) = annotatedVersion.split(".").map { it.toInt() }
-    val (majorB, minorB, _) = appVersion.split(".").map { it.toInt() }
+  fun isStaleVersion(annotatedVersion: String, polarisVersion: String): Boolean {
+    val (majorA, _, _) = annotatedVersion.split(".").map { it.toInt() }
+    val (majorB, _, _) = polarisVersion.split(".").map { it.toInt() }
     // Minor version difference is > 1
-    return (majorB == majorA && minorB - minorA > 1) || (majorB > majorA + 1)
+    return (majorB > majorA)
   }
 
   override fun apply(input: String): String {

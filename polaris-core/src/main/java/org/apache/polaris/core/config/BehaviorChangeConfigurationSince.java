@@ -26,7 +26,7 @@ import java.lang.annotation.Target;
 /**
  * An annotation for BehaviorChangeConfiguration instances that should be applied to all instances.
  * The value here is the Polaris version when the flag was introduced. A spotless check should
- * validate that behavior change flags are not present for more than 2 minor versions.
+ * validate that behavior change flags are not present for more than 1 major release
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
