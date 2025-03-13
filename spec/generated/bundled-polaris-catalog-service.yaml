@@ -1359,6 +1359,147 @@ paths:
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
           $ref: '#/components/responses/ServerErrorResponse'
+  /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/namespace'
+    get:
+      tags:
+        - Generic Table API
+      summary: List all generic tables identifiers underneath a given namespace
+      description: Return all generic table identifiers under this namespace
+      operationId: listGenericTables
+      parameters:
+        - $ref: '#/components/parameters/page-token'
+        - $ref: '#/components/parameters/page-size'
+      responses:
+        '200':
+          $ref: '#/components/responses/ListGenericTablesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '#/components/examples/NoSuchNamespaceError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+    post:
+      tags:
+        - Generic Table API
+      summary: Create a generic table under the given namespace
+      description: Create a generic table under the given namespace, and return the created table information as a response.
+      operationId: createGenericTable
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGenericTableRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/CreateGenericTableResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '#/components/examples/NoSuchNamespaceError'
+        '409':
+          description: Conflict - The table already exists under the given namespace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                TableAlreadyExists:
+                  $ref: '#/components/examples/TableAlreadyExistsError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+  /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}:
+    parameters:
+      - $ref: '#/components/parameters/prefix'
+      - $ref: '#/components/parameters/namespace'
+      - $ref: '#/components/parameters/generic-table'
+    get:
+      tags:
+        - Generic Table API
+      summary: Load a generic table under the given namespace from the catalog
+      operationId: loadGenericTable
+      description: |-
+        Load a generic table from the catalog under the given namespace.
+        The response contains all table information passed during create.
+      responses:
+        '200':
+          $ref: '#/components/responses/LoadGenericTableResponse'
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - NoSuchTableError, generic table to load does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                TableToLoadDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTableError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
+    delete:
+      tags:
+        - Generic Table API
+      summary: Drop a generic table under the given namespace from the catalog
+      operationId: dropGenericTable
+      description: Remove a table under the given namespace from the catalog
+      responses:
+        '204':
+          description: Success, no content
+        '400':
+          $ref: '#/components/responses/BadRequestErrorResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedResponse'
+        '403':
+          $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - NoSuchTableError, Generic table to drop does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                TableToDeleteDoesNotExist:
+                  $ref: '#/components/examples/NoSuchTableError'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailableResponse'
+        5XX:
+          $ref: '#/components/responses/ServerErrorResponse'
 components:
   securitySchemes:
     OAuth2:
@@ -3257,6 +3398,62 @@ components:
           $ref: '#/components/schemas/NotificationType'
         payload:
           $ref: '#/components/schemas/TableUpdateNotification'
+    ListGenericTablesResponse:
+      type: object
+      properties:
+        next-page-token:
+          $ref: '#/components/schemas/PageToken'
+        identifiers:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/TableIdentifier'
+    CreateGenericTableRequest:
+      type: object
+      required:
+        - name
+        - format
+      properties:
+        name:
+          type: string
+        format:
+          type: string
+        doc:
+          type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+    GenericTable:
+      type: object
+      description: |
+        Generic Table information.
+        - `name` name for the generic table
+        - `format` format for the generic table, i.e. "delta", "csv"
+        - `properties` properties for the generic table passed on creation
+        - `doc` comment or description for the generic table
+      required:
+        - name
+        - format
+      properties:
+        name:
+          type: string
+        format:
+          type: string
+        doc:
+          type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+    LoadGenericTableResponse:
+      description: Result used when a table is successfully loaded.
+      type: object
+      required:
+        - table
+      properties:
+        table:
+          $ref: '#/components/schemas/GenericTable'
   responses:
     BadRequestErrorResponse:
       description: Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server's middleware.
@@ -3436,6 +3633,24 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/LoadViewResult'
+    ListGenericTablesResponse:
+      description: List of generic table identifiers.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ListGenericTablesResponse'
+    CreateGenericTableResponse:
+      description: Table result if successfully created a generic table.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadGenericTableResponse'
+    LoadGenericTableResponse:
+      description: Table result if successfully load a generic table.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/LoadGenericTableResponse'
   parameters:
     prefix:
       name: prefix
@@ -3501,6 +3716,14 @@ components:
       name: view
       in: path
       description: A view name
+      required: true
+      schema:
+        type: string
+      example: sales
+    generic-table:
+      name: generic-table
+      in: path
+      description: A generic table name
       required: true
       schema:
         type: string

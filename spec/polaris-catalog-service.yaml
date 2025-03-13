@@ -127,13 +127,21 @@ paths:
   # /v1/{prefix}/namespaces/{namespace}/tables/{table}/tasks:
   # Not implemented in Polaris
 
-  ######################
-  # Polaris-native API #
-  ######################
+  ############################
+  # Polaris Notification API #
+  ############################
 
   /v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications:
     $ref: './polaris-catalog-apis/notifications-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1notifications'
 
+  #############################
+  # Polaris Generic Table API #
+  #############################
+  /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables:
+    $ref: './polaris-catalog-apis/generic-tables-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1generic-tables'
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}:
+    $ref: './polaris-catalog-apis/generic-tables-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1generic-tables~1{generic-table}'
 
 components:
   securitySchemes:
