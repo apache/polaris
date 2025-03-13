@@ -65,7 +65,7 @@ public interface PolicyType {
    */
   @JsonCreator
   static @Nullable PolicyType fromCode(int code) {
-    return PredefinedPolicyType.fromCode(code);
+    return PredefinedPolicyTypes.fromCode(code);
   }
 
   /**
@@ -79,6 +79,6 @@ public interface PolicyType {
    * @return the corresponding {@link PolicyType}, or {@code null} if no matching type is found
    */
   static @Nullable PolicyType fromName(String name) {
-    return PredefinedPolicyType.fromName(name);
+    return PredefinedPolicyTypes.fromName(name);
   }
 }
