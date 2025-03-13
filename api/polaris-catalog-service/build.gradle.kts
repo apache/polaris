@@ -25,12 +25,28 @@ plugins {
 
 val genericTableModels =
   listOf(
-      "CreateGenericTableRequest",
-      "LoadGenericTableResponse",
-      "ListGenericTablesResponse",
-      "GenericTable",
-    )
-    .joinToString(",")
+    "CreateGenericTableRequest",
+    "LoadGenericTableResponse",
+    "ListGenericTablesResponse",
+    "GenericTable",
+  )
+
+val policyManagementModels =
+  listOf(
+    "CatalogIdentifier",
+    "CreatePolicyRequest",
+    "LoadPolicyResponse",
+    "PolicyIdentifier",
+    "Policy",
+    "PolicyAttachmentTarget",
+    "AttachPolicyRequest",
+    "DetachPolicyRequest",
+    "UpdatePolicyRequest",
+    "GetApplicablePoliciesResponse",
+    "ListPoliciesResponse",
+  )
+
+val models = (genericTableModels + policyManagementModels).joinToString(",")
 
 dependencies {
   implementation(project(":polaris-core"))
@@ -56,22 +72,6 @@ dependencies {
   implementation("com.fasterxml.jackson.core:jackson-databind")
 }
 
-val policyManagementModels =
-  listOf(
-      "CatalogIdentifier",
-      "CreatePolicyRequest",
-      "LoadPolicyResponse",
-      "PolicyIdentifier",
-      "Policy",
-      "PolicyAttachmentTarget",
-      "AttachPolicyRequest",
-      "DetachPolicyRequest",
-      "UpdatePolicyRequest",
-      "GetApplicablePoliciesResponse",
-      "ListPoliciesResponse",
-    )
-    .joinToString(",")
-
 openApiGenerate {
   inputSpec = "$rootDir/spec/polaris-catalog-service.yaml"
   generatorName = "jaxrs-resteasy"
@@ -82,7 +82,7 @@ openApiGenerate {
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
   globalProperties.put("apis", "GenericTableApi,PolicyApi")
-  globalProperties.put("models", genericTableModels)
+  globalProperties.put("models", models)
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")
   configOptions.put("resourceName", "catalog")
