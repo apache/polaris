@@ -20,6 +20,7 @@ package org.apache.polaris.core.entity;
 
 import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeEnum.AZURE;
 
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
