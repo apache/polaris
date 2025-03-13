@@ -27,8 +27,8 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.polaris.ids.api.MonotonicClock;
+import org.apache.polaris.ids.mocks.MutableMonotonicClock;
 import org.assertj.core.api.SoftAssertions;
 import org.assertj.core.api.junit.jupiter.InjectSoftAssertions;
 import org.assertj.core.api.junit.jupiter.SoftAssertionsExtension;
@@ -48,17 +48,7 @@ public class TestMonotonicClockImpl {
     var systemNow = System.currentTimeMillis();
 
     try (var monotonicClock =
-        new MonotonicClockImpl() {
-          @Override
-          long systemNanoTime() {
-            return MILLISECONDS.toNanos(systemNow);
-          }
-
-          @Override
-          long systemCurrentTimeMillis() {
-            return systemNow;
-          }
-        }) {
+        new MutableMonotonicClock(systemNow, MILLISECONDS.toNanos(systemNow))) {
       monotonicClock.start();
       soft.assertThat(monotonicClock.currentTimeMillis()).isEqualTo(systemNow);
     }
@@ -142,23 +132,10 @@ public class TestMonotonicClockImpl {
     var systemWall = 0L;
     var realTimeWall = 0L;
     var inst = Instant.EPOCH;
-    var currentMillis = new AtomicLong(systemWall);
-    var currentNanos = new AtomicLong(nano);
 
     // MonotonicClockImpl not started, no need to close()
     @SuppressWarnings("resource")
-    var monotonicClock =
-        new MonotonicClockImpl() {
-          @Override
-          long systemCurrentTimeMillis() {
-            return currentMillis.get();
-          }
-
-          @Override
-          long systemNanoTime() {
-            return currentNanos.get();
-          }
-        };
+    var monotonicClock = new MutableMonotonicClock(systemWall, nano);
 
     soft.assertThat(monotonicClock)
         .extracting(
@@ -187,8 +164,8 @@ public class TestMonotonicClockImpl {
     nano = nanoOffset + MILLISECONDS.toNanos(realTimeWall) + 123456L;
     systemWall = 100;
     inst = Instant.ofEpochSecond(0, MILLISECONDS.toNanos(realTimeWall) + 123456L);
-    currentNanos.set(nano);
-    currentMillis.set(systemWall);
+    monotonicClock.setNanoTime(nano);
+    monotonicClock.setCurrentTimeMillis(systemWall);
 
     monotonicClock.tick();
 
@@ -204,8 +181,8 @@ public class TestMonotonicClockImpl {
     nano = nanoOffset + MILLISECONDS.toNanos(realTimeWall) + 234567L;
     systemWall = 1400;
     inst = Instant.ofEpochSecond(0, MILLISECONDS.toNanos(1400) + 234567L);
-    currentNanos.set(nano);
-    currentMillis.set(systemWall);
+    monotonicClock.setNanoTime(nano);
+    monotonicClock.setCurrentTimeMillis(systemWall);
 
     monotonicClock.tick();
 
@@ -219,9 +196,9 @@ public class TestMonotonicClockImpl {
 
     // wall clock goes backwards
     // wall = 200;
-    currentNanos.set(nano);
+    monotonicClock.setNanoTime(nano);
     systemWall = 1000;
-    currentMillis.set(systemWall);
+    monotonicClock.setCurrentTimeMillis(systemWall);
 
     monotonicClock.tick();
 
@@ -238,8 +215,8 @@ public class TestMonotonicClockImpl {
     systemWall = 2000;
     nano = nanoOffset + MILLISECONDS.toNanos(realTimeWall) + 234567L;
     inst = Instant.ofEpochSecond(0, MILLISECONDS.toNanos(realTimeWall) + 234567L);
-    currentNanos.set(nano);
-    currentMillis.set(systemWall);
+    monotonicClock.setNanoTime(nano);
+    monotonicClock.setCurrentTimeMillis(systemWall);
 
     monotonicClock.tick();
 
@@ -257,23 +234,9 @@ public class TestMonotonicClockImpl {
     // Note: this test case emits FAKE "MonotonicClock tick loop is stalled" warnings!
     // Ignore those warnings.
 
-    var currentMillis = new AtomicLong();
-    var currentNanos = new AtomicLong();
-
     // MonotonicClockImpl not started, no need to close()
     @SuppressWarnings("resource")
-    var monotonicClock =
-        new MonotonicClockImpl() {
-          @Override
-          long systemCurrentTimeMillis() {
-            return currentMillis.get();
-          }
-
-          @Override
-          long systemNanoTime() {
-            return currentNanos.get();
-          }
-        };
+    var monotonicClock = new MutableMonotonicClock(0L, 0L);
 
     monotonicClock.tick();
 
@@ -284,8 +247,8 @@ public class TestMonotonicClockImpl {
 
     var nanos = 456111222333L;
     var millis = TimeUnit.NANOSECONDS.toMillis(nanos);
-    currentMillis.set(millis);
-    currentNanos.set(nanos);
+    monotonicClock.setCurrentTimeMillis(millis);
+    monotonicClock.setNanoTime(nanos);
 
     monotonicClock.tick();
 
@@ -299,28 +262,15 @@ public class TestMonotonicClockImpl {
 
   @Test
   public void strictlyMonotonicIfWallClockGoesBackwards() {
-    var millis = new AtomicLong(System.currentTimeMillis());
-    var nanos = new AtomicLong(System.nanoTime());
-
     var adjustCalled = new AtomicBoolean();
 
     // MonotonicClockImpl not started, no need to close()
     @SuppressWarnings("resource")
     var monotonicClock =
-        new MonotonicClockImpl() {
+        new MutableMonotonicClock() {
           @Override
-          void afterAdjust() {
+          protected void afterAdjust() {
             adjustCalled.set(true);
-          }
-
-          @Override
-          long systemCurrentTimeMillis() {
-            return millis.get();
-          }
-
-          @Override
-          long systemNanoTime() {
-            return nanos.get();
           }
         };
 
@@ -333,7 +283,7 @@ public class TestMonotonicClockImpl {
     adjustCalled.set(false);
 
     // Increment the nano-clock source by 1 millisecond
-    nanos.addAndGet(MILLISECONDS.toNanos(1));
+    monotonicClock.advanceNanos(1, MILLISECONDS);
 
     monotonicClock.tick();
 
@@ -352,9 +302,9 @@ public class TestMonotonicClockImpl {
     adjustCalled.set(false);
 
     // Let the wall clock go backwards
-    millis.addAndGet(-10);
+    monotonicClock.advanceCurrentTimeMillis(-10, MILLISECONDS);
     // Increment the nano-clock source by 1 second
-    nanos.addAndGet(SECONDS.toNanos(1));
+    monotonicClock.advanceNanos(1, SECONDS);
 
     monotonicClock.tick();
 
@@ -373,9 +323,9 @@ public class TestMonotonicClockImpl {
     adjustCalled.set(false);
 
     // Let the wall clock go forwards to trigger the wall clock sync
-    millis.addAndGet(SECONDS.toMillis(5));
+    monotonicClock.advanceCurrentTimeMillis(5, SECONDS);
     // Increment the nano-clock source by 1 second
-    nanos.addAndGet(SECONDS.toNanos(1));
+    monotonicClock.advanceNanos(1, SECONDS);
 
     monotonicClock.tick();
 
