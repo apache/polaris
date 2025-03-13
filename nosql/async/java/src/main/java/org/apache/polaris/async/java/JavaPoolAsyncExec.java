@@ -51,7 +51,7 @@ import org.slf4j.LoggerFactory;
  * Java thread pool to execute blocking task.
  */
 @ApplicationScoped
-class JavaPoolAsyncExec implements AsyncExec {
+public class JavaPoolAsyncExec implements AsyncExec {
   private static final Logger LOGGER = LoggerFactory.getLogger(JavaPoolAsyncExec.class.getName());
 
   private final ThreadPoolExecutor executorService;

@@ -24,6 +24,12 @@ plugins {
 description = "Polaris site - reference docs"
 
 val genProjectPaths = listOf(
+  ":polaris-async-api",
+  ":polaris-nodes-api",
+  ":polaris-persistence-api",
+  ":polaris-persistence-cache",
+  ":polaris-persistence-cdi-quarkus",
+  ":polaris-persistence-mongodb",
   ":polaris-quarkus-service",
   ":polaris-eclipselink",
 )
