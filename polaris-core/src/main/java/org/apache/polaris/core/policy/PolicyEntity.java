@@ -77,11 +77,12 @@ public class PolicyEntity extends PolarisEntity {
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<PolicyEntity, Builder> {
-    public Builder(Namespace namespace, String policyName) {
+    public Builder(Namespace namespace, String policyName, PolicyType policyType) {
       super();
       setType(PolarisEntityType.POLICY);
       setParentNamespace(namespace);
       setName(policyName);
+      setPolicyType(policyType);
       setPolicyVersion(0);
     }
 

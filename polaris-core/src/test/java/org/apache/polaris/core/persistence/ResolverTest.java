@@ -243,8 +243,7 @@ public class ResolverTest {
     this.resolveDriver(this.cache, "test", N7_N8_POL1, null, null);
 
     // N7/POL3 which exists
-    ResolverPath N7_POL3 =
-        new ResolverPath(List.of("N7", "POL3"), PolarisEntityType.POLICY);
+    ResolverPath N7_POL3 = new ResolverPath(List.of("N7", "POL3"), PolarisEntityType.POLICY);
     this.resolveDriver(this.cache, "test", N7_POL3, null, null);
 
     // Error scenarios: N5/N6/T8 which does not exists
