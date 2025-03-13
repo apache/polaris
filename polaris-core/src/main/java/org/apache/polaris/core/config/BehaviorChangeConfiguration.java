@@ -19,7 +19,6 @@
 package org.apache.polaris.core.config;
 
 import java.util.Optional;
-import org.jetbrains.annotations.ApiStatus;
 
 /**
  * Internal configuration flags for non-feature behavior changes in Polaris. These flags control
@@ -38,7 +37,7 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
     super(key, description, defaultValue, catalogConfig);
   }
 
-  @ApiStatus.AvailableSince("0.9.0")
+  @BehaviorChangeConfigurationSince("1.0.0")
   public static final BehaviorChangeConfiguration<Boolean> VALIDATE_VIEW_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
           .key("STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS")

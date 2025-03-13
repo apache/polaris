@@ -160,12 +160,28 @@ tasks.withType(Jar::class).configureEach {
   }
 }
 
-// Helper function for spotless to check for stale BehaviorChangeConfigurations
-fun isStaleVersion(annotatedVersion: String, appVersion: String): Boolean {
-  val (majorA, minorA, _) = annotatedVersion.split(".").map { it.toInt() }
-  val (majorB, minorB, _) = appVersion.split(".").map { it.toInt() }
-  // Minor version difference is > 1
-  return (majorB == majorA && minorB - minorA > 1) || (majorB > majorA + 1)
+class StaleBehaviorChangeConfigurationChecker(private val appVersion: String) : FormatterFunc {
+
+  // Helper function for spotless to check for stale BehaviorChangeConfigurations
+  fun isStaleVersion(annotatedVersion: String, appVersion: String): Boolean {
+    val (majorA, minorA, _) = annotatedVersion.split(".").map { it.toInt() }
+    val (majorB, minorB, _) = appVersion.split(".").map { it.toInt() }
+    // Minor version difference is > 1
+    return (majorB == majorA && minorB - minorA > 1) || (majorB > majorA + 1)
+  }
+
+  override fun apply(input: String): String {
+    val versionRegex = """@BehaviorChangeConfigurationSince\("(\d+\.\d+\.\d+)"\)""".toRegex()
+    val matcher = versionRegex.findAll(input)
+    matcher.forEach { matchResult ->
+      val annotationVersion = matchResult.groupValues[1]
+      if (isStaleVersion(annotationVersion, appVersion)) {
+        throw GradleException("Outdated behavior change annotation detected. Please remove the configurations or" +
+                " promote them to feature configurations.")
+      }
+    }
+    return input
+  }
 }
 
 spotless {
@@ -186,21 +202,12 @@ spotless {
         }
       },
     )
-
-    custom("staleBehaviorChangeFlag") { input ->
-      val versionFile = File(rootProject.projectDir, "version.txt")
-      val appVersion = versionFile.readText().trim().substringBefore("-") // Remove `-SNAPSHOT` etc.
-      val versionRegex = """@ApiStatus\.AvailableSince\("(\d+\.\d+\.\d+)"\)""".toRegex()
-      val matcher = versionRegex.findAll(input)
-      matcher.forEach { matchResult ->
-        val annotationVersion = matchResult.groupValues[1]
-        if (isStaleVersion(annotationVersion, appVersion)) {
-          throw GradleException("Outdated behavior change annotation detected. Please remove the configurations or" +
-                  " promote them to feature configurations.")
-        }
+    val polarisVersion = File(rootProject.projectDir, "version.txt").readText().trim().substringBefore("-")
+    custom("Check @BehaviorChangeConfigSince", object : Serializable, FormatterFunc {
+      override fun apply(text: String): String {
+        return StaleBehaviorChangeConfigurationChecker(polarisVersion).apply(text)
       }
-      input
-    }
+    })
     toggleOffOn()
   }
   kotlinGradle {
