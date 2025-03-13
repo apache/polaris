@@ -40,8 +40,7 @@ public class PolicyEntityTest {
   @MethodSource("policyTypes")
   public void testPolicyEntity(PolicyType policyType) {
     PolicyEntity entity =
-        new PolicyEntity.Builder(Namespace.of("NS1"), "testPolicy")
-            .setPolicyType(policyType)
+        new PolicyEntity.Builder(Namespace.of("NS1"), "testPolicy", policyType)
             .setContent("test_content")
             .setPolicyVersion(0)
             .build();
