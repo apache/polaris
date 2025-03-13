@@ -23,6 +23,7 @@ import static org.apache.polaris.core.admin.model.StorageConfigInfo.StorageTypeE
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -39,6 +40,7 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -237,6 +239,10 @@ public class CatalogEntity extends PolarisEntity {
           throw new BadRequestException("Must specify default base location");
         }
         allowedLocations.add(defaultBaseLocation);
+        validateMaxAllowedLocations(
+            allowedLocations,
+            BehaviorChangeConfiguration.loadConfig(
+                BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
         switch (storageConfigModel.getStorageType()) {
           case S3:
             AwsStorageConfigInfo awsConfigModel = (AwsStorageConfigInfo) storageConfigModel;
@@ -277,6 +283,15 @@ public class CatalogEntity extends PolarisEntity {
             PolarisEntityConstants.getStorageConfigInfoPropertyName(), config.serialize());
       }
       return this;
+    }
+
+    /** Validate the number of allowed locations not exceeding the max value. */
+    public void validateMaxAllowedLocations(
+        Collection<String> allowedLocations, int maxAllowedLocations) {
+      if (maxAllowedLocations != -1 && allowedLocations.size() > maxAllowedLocations) {
+        throw new IllegalArgumentException(
+            "Number of allowed locations exceeds " + maxAllowedLocations);
+      }
     }
 
     @Override

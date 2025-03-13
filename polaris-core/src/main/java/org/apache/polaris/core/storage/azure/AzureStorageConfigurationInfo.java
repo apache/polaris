@@ -25,7 +25,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
-import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Azure storage configuration information. */
@@ -49,9 +48,6 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
       @JsonProperty(value = "tenantId", required = true) @Nonnull String tenantId) {
     super(StorageType.AZURE, allowedLocations);
     this.tenantId = tenantId;
-    validateMaxAllowedLocations(
-        BehaviorChangeConfiguration.loadConfig(
-            BehaviorChangeConfiguration.STORAGE_CONFIGURATION_MAX_LOCATIONS));
   }
 
   @Override
