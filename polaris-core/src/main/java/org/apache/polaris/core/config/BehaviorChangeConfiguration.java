@@ -18,9 +18,8 @@
  */
 package org.apache.polaris.core.config;
 
-import org.jetbrains.annotations.ApiStatus;
-
 import java.util.Optional;
+import org.jetbrains.annotations.ApiStatus;
 
 /**
  * Internal configuration flags for non-feature behavior changes in Polaris. These flags control
