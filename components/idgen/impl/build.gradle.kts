@@ -20,6 +20,7 @@
 plugins {
   alias(libs.plugins.jandex)
   alias(libs.plugins.jmh)
+  alias(libs.plugins.jcstress)
   id("polaris-server")
 }
 
@@ -53,6 +54,16 @@ dependencies {
   testFixturesCompileOnly(libs.jakarta.inject.api)
   testFixturesCompileOnly(libs.jakarta.enterprise.cdi.api)
 
+  testImplementation(project(":polaris-idgen-mocks"))
+
   jmhImplementation(libs.jmh.core)
   jmhAnnotationProcessor(libs.jmh.generator.annprocess)
 }
+
+tasks.named("jcstressJar") { dependsOn("jandex") }
+
+tasks.named("compileJcstressJava") { dependsOn("jandex") }
+
+tasks.named("check") { dependsOn("jcstress") }
+
+jcstress { jcstressDependency = libs.jcstress.core.get().toString() }

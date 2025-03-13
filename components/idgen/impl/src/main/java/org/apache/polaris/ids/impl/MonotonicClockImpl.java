@@ -62,6 +62,7 @@ import org.apache.polaris.ids.api.MonotonicClock;
  * 2ms.
  */
 @ApplicationScoped
+@VisibleForTesting
 public class MonotonicClockImpl implements MonotonicClock {
   private final TickState tickState = new TickState();
 
@@ -139,7 +140,13 @@ public class MonotonicClockImpl implements MonotonicClock {
   }
 
   // for CDI
+
+  /** Default "production" constructor. */
   MonotonicClockImpl() {
+    setup();
+  }
+
+  protected void setup() {
     var nowNanos = systemNanoTime();
     PREVIOUS_SYSTEM_NANO_TIME_UPDATER.set(this, nowNanos);
 
@@ -147,6 +154,9 @@ public class MonotonicClockImpl implements MonotonicClock {
 
     this.adjustToWallClockAsNanos = MILLISECONDS.toNanos(nowWallClockAsMillis) - nowNanos;
   }
+
+  /** Constructor for {@code MutableMonotonicClock}. */
+  protected MonotonicClockImpl(boolean dummy) {}
 
   long currentTimeNanos() {
     return currentTimeNanos(monotonicSystemNanoTime());
@@ -158,7 +168,7 @@ public class MonotonicClockImpl implements MonotonicClock {
   }
 
   @VisibleForTesting
-  void tick() {
+  protected void tick() {
     var nowNanos = monotonicSystemNanoTime();
     var nowWallClockAsMillis = systemCurrentTimeMillis();
 
@@ -194,7 +204,7 @@ public class MonotonicClockImpl implements MonotonicClock {
     CompletableFuture.delayedExecutor(1, MILLISECONDS).execute(this::onTick);
   }
 
-  MonotonicClockImpl start() {
+  protected MonotonicClockImpl start() {
     startForCDI();
     return this;
   }
@@ -272,17 +282,17 @@ public class MonotonicClockImpl implements MonotonicClock {
 
   // Overridden by tests
   @VisibleForTesting
-  void afterAdjust() {}
+  protected void afterAdjust() {}
 
   // Overridden by tests
   @VisibleForTesting
-  long systemCurrentTimeMillis() {
+  protected long systemCurrentTimeMillis() {
     return System.currentTimeMillis();
   }
 
   // Overridden by tests
   @VisibleForTesting
-  long systemNanoTime() {
+  protected long systemNanoTime() {
     return System.nanoTime();
   }
 
