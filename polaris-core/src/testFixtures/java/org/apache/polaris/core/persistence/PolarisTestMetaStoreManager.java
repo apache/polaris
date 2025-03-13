@@ -2051,6 +2051,26 @@ public class PolarisTestMetaStoreManager {
     this.dropEntity(List.of(catalog, N5), N5_N6);
     this.dropEntity(List.of(catalog), N5);
 
+    PolarisBaseEntity N7 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N7");
+    PolarisBaseEntity N7_N8 =
+        this.ensureExistsByName(
+            List.of(catalog, N7),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            "N8");
+    PolarisBaseEntity POL1 =
+        this.ensureExistsByName(List.of(catalog, N7, N7_N8), PolarisEntityType.POLICY, "POL1");
+    PolarisBaseEntity POL2 =
+        this.ensureExistsByName(List.of(catalog, N7, N7_N8), PolarisEntityType.POLICY, "POL2");
+    PolarisBaseEntity POL3 =
+        this.ensureExistsByName(List.of(catalog, N7), PolarisEntityType.POLICY, "POL3");
+    this.dropEntity(List.of(catalog, N7, N7_N8), POL1);
+    this.dropEntity(List.of(catalog, N7, N7_N8), POL2);
+    this.dropEntity(List.of(catalog, N7), POL3);
+    this.dropEntity(List.of(catalog, N7), N7_N8);
+    this.dropEntity(List.of(catalog), N7);
+
     // attempt to drop the catalog again, should fail because of role R1
     this.dropEntity(null, catalog);
 
