@@ -43,4 +43,13 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
           .description("If true, validate that view locations don't overlap when views are created")
           .defaultValue(true)
           .buildBehaviorChangeConfiguration();
+
+  public static final BehaviorChangeConfiguration<Integer> STORAGE_CONFIGURATION_MAX_LOCATIONS =
+      PolarisConfiguration.<Integer>builder()
+          .key("STORAGE_CONFIGURATION_MAX_LOCATIONS")
+          .description(
+              "How many locations can be associated with a storage configuration, or -1 for"
+                  + " unlimited locations")
+          .defaultValue(-1)
+          .buildBehaviorChangeConfiguration();
 }
