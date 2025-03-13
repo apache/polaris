@@ -248,8 +248,8 @@ paths:
       description: |
         Create a mapping between a policy and a resource entity
 
-        Policy can be set at different levels:
-        1. **Table-like level:** Policies specific to individual tables, views, or other table-like entities.
+        Policy can be attached to different levels:
+        1. **Table-like level:** Policies specific to individual tables or views.
         2. **Namespace level:** Policies applies to a namespace.
         3. **Catalog level:** Policies that applies to a catalog
 
@@ -353,12 +353,12 @@ paths:
 
         - Table/View:
           - The `namespace` parameter is required to specify the entity's namespace.
-          - The `table-like` parameter is required to specify the entity name.
+          - The `target-name` parameter is required to specify the entity name.
         - Namespace:
           - The `namespace` parameter is required to specify the identifier.
-          - The `table-like` parameter should not be set.
+          - The `target-name` parameter should not be set.
         - Catalog:
-          - Neither `namespace` nor `table-like` should be set.
+          - Neither `namespace` nor `target-name` should be set.
 
         An optional policyType parameter filters results to return only policies of the specified type.
 
@@ -546,6 +546,11 @@ components:
       properties:
         type:
           type: string
+          description: |
+            Policy can be attached to different levels:
+            1. table-like: Policies specific to individual tables or views.
+            2. namespace: Policies applies to a namespace.
+            3. catalog: Policies that applies to a catalog
           enum:
             - catalog
             - namespace
