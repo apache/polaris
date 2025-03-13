@@ -30,6 +30,10 @@ dependencies {
   implementation(project(":polaris-service-common"))
   implementation(project(":polaris-quarkus-defaults"))
 
+  runtimeOnly(project(":polaris-persistence-bridge"))
+  runtimeOnly(project(":polaris-persistence-cdi-quarkus"))
+  runtimeOnly(project(":polaris-persistence-cache"))
+
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
@@ -113,6 +117,8 @@ dependencies {
 
   testImplementation(libs.threeten.extra)
   testImplementation(libs.hawkular.agent.prometheus.scraper)
+
+  testImplementation(project(":polaris-persistence-api"))
 }
 
 tasks.withType(Test::class.java).configureEach {
@@ -122,14 +128,20 @@ tasks.withType(Test::class.java).configureEach {
   }
   // Note: the test secrets are referenced in
   // org.apache.polaris.service.quarkus.it.QuarkusServerManager
-  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
+  environment(
+    "POLARIS_BOOTSTRAP_CREDENTIALS",
+    "POLARIS,test-admin,test-secret;OTHER,test-admin,test-secret",
+  )
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   // Need to allow a java security manager after Java 21, for Subject.getSubject to work
   // "getSubject is supported only if a security manager is allowed".
   systemProperty("java.security.manager", "allow")
 }
 
-tasks.named<Test>("test").configure { maxParallelForks = 4 }
+tasks.named<Test>("test").configure {
+  maxParallelForks = 4
+  forkEvery = 1
+}
 
 tasks.named<Test>("intTest").configure {
   maxParallelForks = 1

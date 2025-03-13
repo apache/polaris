@@ -152,6 +152,15 @@ public class QuarkusProducers {
     return metaStoreManagerFactories.select(Identifier.Literal.of(config.type())).get();
   }
 
+  public void eagerInitMetaStoreManagerFactory(
+      @Observes StartupEvent startupEvent, MetaStoreManagerFactory metaStoreManagerFactory) {
+    LOGGER.trace("Eagerly initializing meta-store manager factory ...");
+    // Need to call some function on MetaStoreManagerFactory to let it initialize...
+    LOGGER.debug(
+        "Eagerly initialized meta-store manager factory {} ...",
+        metaStoreManagerFactory.toString());
+  }
+
   /**
    * Eagerly initialize the {@link MetaStoreManagerFactory} on startup, to give the implementation
    * the opportunity to auto-bootstrap.
