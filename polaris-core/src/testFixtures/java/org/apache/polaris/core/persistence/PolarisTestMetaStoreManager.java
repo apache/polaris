@@ -51,7 +51,7 @@ import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
-import org.apache.polaris.core.policy.PredefinedPolicyType;
+import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.assertj.core.api.Assertions;
 
 /** Test the Polaris persistence layer */
@@ -1051,10 +1051,10 @@ public class PolarisTestMetaStoreManager {
     PolarisBaseEntity N7 = this.createEntity(List.of(catalog), PolarisEntityType.NAMESPACE, "N7");
     PolarisBaseEntity N7_N8 =
         this.createEntity(List.of(catalog, N7), PolarisEntityType.NAMESPACE, "N8");
-    this.createPolicy(List.of(catalog, N7, N7_N8), "POL1", PredefinedPolicyType.DATA_COMPACTION);
+    this.createPolicy(List.of(catalog, N7, N7_N8), "POL1", PredefinedPolicyTypes.DATA_COMPACTION);
     this.createPolicy(
-        List.of(catalog, N7, N7_N8), "POL2", PredefinedPolicyType.METADATA_COMPACTION);
-    this.createPolicy(List.of(catalog, N7), "POL3", PredefinedPolicyType.SNAPSHOT_RETENTION);
+        List.of(catalog, N7, N7_N8), "POL2", PredefinedPolicyTypes.METADATA_COMPACTION);
+    this.createPolicy(List.of(catalog, N7), "POL3", PredefinedPolicyTypes.SNAPSHOT_RETENTION);
 
     // the two catalog roles
     PolarisBaseEntity R1 =
@@ -1770,7 +1770,7 @@ public class PolarisTestMetaStoreManager {
         List.of(
             ImmutablePair.of("N1", PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of("N5", PolarisEntitySubType.NULL_SUBTYPE),
-                ImmutablePair.of("N7", PolarisEntitySubType.NULL_SUBTYPE)));
+            ImmutablePair.of("N7", PolarisEntitySubType.NULL_SUBTYPE)));
 
     // should see 3 top-level catalog roles including the admin one
     this.validateListReturn(
@@ -1880,7 +1880,8 @@ public class PolarisTestMetaStoreManager {
     this.validateListReturn(
         List.of(catalog, N7, N7_N8),
         PolarisEntityType.POLICY,
-        List.of(ImmutablePair.of("POL1", PolarisEntitySubType.NULL_SUBTYPE),
+        List.of(
+            ImmutablePair.of("POL1", PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of("POL2", PolarisEntitySubType.NULL_SUBTYPE)));
   }
 

@@ -30,10 +30,10 @@ public class PolicyEntityTest {
 
   static Stream<Arguments> policyTypes() {
     return Stream.of(
-        Arguments.of(PredefinedPolicyType.DATA_COMPACTION),
-        Arguments.of(PredefinedPolicyType.METADATA_COMPACTION),
-        Arguments.of(PredefinedPolicyType.ORPHAN_FILE_REMOVAL),
-        Arguments.of(PredefinedPolicyType.METADATA_COMPACTION));
+        Arguments.of(PredefinedPolicyTypes.DATA_COMPACTION),
+        Arguments.of(PredefinedPolicyTypes.METADATA_COMPACTION),
+        Arguments.of(PredefinedPolicyTypes.ORPHAN_FILE_REMOVAL),
+        Arguments.of(PredefinedPolicyTypes.METADATA_COMPACTION));
   }
 
   @ParameterizedTest

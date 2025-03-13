@@ -24,7 +24,7 @@ import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nullable;
 
 /* Represents all predefined policy types in Polaris */
-public enum PredefinedPolicyType implements PolicyType {
+public enum PredefinedPolicyTypes implements PolicyType {
   DATA_COMPACTION(0, "system.data-compaction", true),
   METADATA_COMPACTION(1, "system.metadata-compaction", true),
   ORPHAN_FILE_REMOVAL(2, "system.orphan-file-removal", true),
@@ -33,28 +33,28 @@ public enum PredefinedPolicyType implements PolicyType {
   private final int code;
   private final String name;
   private final boolean isInheritable;
-  private static final PredefinedPolicyType[] REVERSE_CODE_MAPPING_ARRAY;
-  private static final ImmutableMap<String, PredefinedPolicyType> REVERSE_NAME_MAPPING_ARRAY;
+  private static final PredefinedPolicyTypes[] REVERSE_CODE_MAPPING_ARRAY;
+  private static final ImmutableMap<String, PredefinedPolicyTypes> REVERSE_NAME_MAPPING_ARRAY;
 
   static {
     int maxId = 0;
-    for (PredefinedPolicyType policyType : PredefinedPolicyType.values()) {
+    for (PredefinedPolicyTypes policyType : PredefinedPolicyTypes.values()) {
       if (maxId < policyType.code) {
         maxId = policyType.code;
       }
     }
 
-    REVERSE_CODE_MAPPING_ARRAY = new PredefinedPolicyType[maxId + 1];
-    ImmutableMap.Builder<String, PredefinedPolicyType> builder = ImmutableMap.builder();
+    REVERSE_CODE_MAPPING_ARRAY = new PredefinedPolicyTypes[maxId + 1];
+    ImmutableMap.Builder<String, PredefinedPolicyTypes> builder = ImmutableMap.builder();
     // populate both
-    for (PredefinedPolicyType policyType : PredefinedPolicyType.values()) {
+    for (PredefinedPolicyTypes policyType : PredefinedPolicyTypes.values()) {
       REVERSE_CODE_MAPPING_ARRAY[policyType.code] = policyType;
       builder.put(policyType.name, policyType);
     }
     REVERSE_NAME_MAPPING_ARRAY = builder.build();
   }
 
-  PredefinedPolicyType(int code, String name, boolean isInheritable) {
+  PredefinedPolicyTypes(int code, String name, boolean isInheritable) {
     this.code = code;
     this.name = name;
     this.isInheritable = isInheritable;
@@ -80,14 +80,14 @@ public enum PredefinedPolicyType implements PolicyType {
   }
 
   /**
-   * Retrieves a {@link PredefinedPolicyType} instance corresponding to the given type code.
+   * Retrieves a {@link PredefinedPolicyTypes} instance corresponding to the given type code.
    *
    * @param code the type code of the predefined policy type
-   * @return the corresponding {@link PredefinedPolicyType}, or {@code null} if no matching type is
+   * @return the corresponding {@link PredefinedPolicyTypes}, or {@code null} if no matching type is
    *     found
    */
   @JsonCreator
-  public static @Nullable PredefinedPolicyType fromCode(int code) {
+  public static @Nullable PredefinedPolicyTypes fromCode(int code) {
     if (code >= REVERSE_CODE_MAPPING_ARRAY.length) {
       return null;
     }
@@ -96,13 +96,13 @@ public enum PredefinedPolicyType implements PolicyType {
   }
 
   /**
-   * Retrieves a {@link PredefinedPolicyType} instance corresponding to the given policy name.
+   * Retrieves a {@link PredefinedPolicyTypes} instance corresponding to the given policy name.
    *
    * @param name the name of the predefined policy type
-   * @return the corresponding {@link PredefinedPolicyType}, or {@code null} if no matching type is
+   * @return the corresponding {@link PredefinedPolicyTypes}, or {@code null} if no matching type is
    *     found
    */
-  public static @Nullable PredefinedPolicyType fromName(String name) {
+  public static @Nullable PredefinedPolicyTypes fromName(String name) {
     return REVERSE_NAME_MAPPING_ARRAY.get(name);
   }
 }
