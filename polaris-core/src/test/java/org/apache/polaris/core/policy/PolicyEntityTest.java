@@ -22,6 +22,7 @@ import java.util.stream.Stream;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -48,5 +49,17 @@ public class PolicyEntityTest {
     Assertions.assertThat(entity.getPolicyType()).isEqualTo(policyType);
     Assertions.assertThat(entity.getPolicyTypeCode()).isEqualTo(policyType.getCode());
     Assertions.assertThat(entity.getContent()).isEqualTo("test_content");
+  }
+
+  @Test
+  public void testBuildPolicyEntityWithoutPolicyTye() {
+    Assertions.assertThatThrownBy(
+            () ->
+                new PolicyEntity.Builder(Namespace.of("NS1"), "testPolicy", null)
+                    .setContent("test_content")
+                    .setPolicyVersion(0)
+                    .build())
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Policy type must be specified");
   }
 }
