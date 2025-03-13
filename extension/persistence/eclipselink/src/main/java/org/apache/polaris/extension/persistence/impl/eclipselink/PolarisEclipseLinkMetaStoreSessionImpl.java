@@ -50,6 +50,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.transactional.AbstractTransactionalPersistence;
@@ -98,17 +99,33 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
       @Nullable String confFile,
       @Nullable String persistenceUnitName,
       @Nonnull PrincipalSecretsGenerator secretsGenerator) {
+    this(
+        createEntityManagerFactory(realmContext, confFile, persistenceUnitName),
+        store,
+        storageIntegrationProvider,
+        secretsGenerator);
     LOGGER.debug(
         "Creating EclipseLink Meta Store Session for realm {}", realmContext.getRealmIdentifier());
-    emf = createEntityManagerFactory(realmContext, confFile, persistenceUnitName);
-
-    // init store
-    this.store = store;
     try (EntityManager session = emf.createEntityManager()) {
       this.store.initialize(session);
     }
+  }
+
+  private PolarisEclipseLinkMetaStoreSessionImpl(
+      EntityManagerFactory emf,
+      PolarisEclipseLinkStore store,
+      PolarisStorageIntegrationProvider storageIntegrationProvider,
+      PrincipalSecretsGenerator secretsGenerator) {
+    this.emf = emf;
+    this.store = store;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.secretsGenerator = secretsGenerator;
+  }
+
+  @Override
+  public BasePersistence copyOf() {
+    return new PolarisEclipseLinkMetaStoreSessionImpl(
+        emf, store, storageIntegrationProvider, secretsGenerator);
   }
 
   /**
@@ -117,7 +134,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
    * <p>The EntityManagerFactory creation is expensive, so we are caching and reusing it for each
    * realm.
    */
-  private EntityManagerFactory createEntityManagerFactory(
+  private static EntityManagerFactory createEntityManagerFactory(
       @Nonnull RealmContext realmContext,
       @Nullable String confFile,
       @Nullable String persistenceUnitName) {

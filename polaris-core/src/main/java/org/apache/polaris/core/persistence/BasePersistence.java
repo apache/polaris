@@ -395,12 +395,10 @@ public interface BasePersistence {
 
   /**
    * Creates a fresh copy of this persistence implementation that is able to function independently
-   * of {@code this object}. The {@code copyOf} method is intended to be used to isolate state of
-   * {@link BasePersistence} instances in different thread.
+   * of {@code this} object. The {@code copyOf} method is intended to be used to isolate state of
+   * {@link BasePersistence} instances in different threads.
    *
    * <p>If a particular implementation is thread-safe, it may return {@code this} from this method.
    */
-  default BasePersistence copyOf() {
-    return this;
-  }
+  BasePersistence copyOf();
 }
