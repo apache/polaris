@@ -87,7 +87,7 @@ jobs:
 
       - name: Set up Minikube
         if: steps.list-changed.outputs.changed == 'true'
-        uses: medyagh/setup-minikube@v0.0.18
+        uses: medyagh/setup-minikube@cea33675329b799adccc9526aa5daccc26cd5052 # v0.0.19
 
       - name: Print Docker info
         if: steps.list-changed.outputs.changed == 'true'
