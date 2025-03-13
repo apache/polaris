@@ -164,10 +164,10 @@ class StaleBehaviorChangeConfigurationChecker(private val appVersion: String) : 
 
   // Helper function for spotless to check for stale BehaviorChangeConfigurations
   fun isStaleVersion(annotatedVersion: String, polarisVersion: String): Boolean {
-    val (majorA, _, _) = annotatedVersion.split(".").map { it.toInt() }
-    val (majorB, _, _) = polarisVersion.split(".").map { it.toInt() }
+    val (majorA, minorA, _) = annotatedVersion.split(".").map { it.toInt() }
+    val (majorB, minorB, _) = polarisVersion.split(".").map { it.toInt() }
     // Minor version difference is > 1
-    return (majorB > majorA)
+    return (majorB > majorA || (majorB == majorA && minorB > minorA + 1))
   }
 
   override fun apply(input: String): String {
@@ -176,8 +176,8 @@ class StaleBehaviorChangeConfigurationChecker(private val appVersion: String) : 
     matcher.forEach { matchResult ->
       val annotationVersion = matchResult.groupValues[1]
       if (isStaleVersion(annotationVersion, appVersion)) {
-        throw GradleException("Outdated behavior change annotation detected. Please remove the configurations or" +
-                " promote them to feature configurations.")
+        throw GradleException("Outdated behavior change annotation detected. Consider removing the configuration, " +
+                " promoting it to a feature configuration, or disabling this check for the configuration.")
       }
     }
     return input
@@ -203,7 +203,7 @@ spotless {
       },
     )
     val polarisVersion = File(rootProject.projectDir, "version.txt").readText().trim().substringBefore("-")
-    custom("Check @BehaviorChangeConfigSince", object : Serializable, FormatterFunc {
+    custom("checkStaleBehaviorChangeFlags", object : Serializable, FormatterFunc {
       override fun apply(text: String): String {
         return StaleBehaviorChangeConfigurationChecker(polarisVersion).apply(text)
       }
