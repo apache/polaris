@@ -1540,6 +1540,24 @@ paths:
           $ref: '#/components/responses/UnauthorizedResponse'
         '403':
           $ref: '#/components/responses/ForbiddenResponse'
+        '404':
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '#/components/examples/NoSuchNamespaceError'
+        '409':
+          description: Conflict - The policy already exists under the given namespace
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                PolicyAlreadyExists:
+                  $ref: '#/components/examples/PolicyAlreadyExistsError'
         '503':
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
@@ -1754,6 +1772,15 @@ paths:
                   $ref: '#/components/examples/NoSuchPolicyError'
                 TargetToSetDoesNotExist:
                   $ref: '#/components/examples/NoSuchTargetError'
+        '409':
+          description: Conflict - The policy type is inheritable and there is already a policy of the same type attached to the target entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                AnotherPolicyOfSameInheritableAttached:
+                  $ref: '#/components/examples/ConflictPolicyAttachmentError'
         '503':
           $ref: '#/components/responses/ServiceUnavailableResponse'
         5XX:
@@ -4428,6 +4455,13 @@ components:
       summary: An empty list for a namespace with no policies
       value:
         identifiers: []
+    PolicyAlreadyExistsError:
+      summary: The requested policy identifier already exists
+      value:
+        error:
+          message: The given policy already exists
+          type: AlreadyExistsException
+          code: 409
     NoSuchPolicyError:
       summary: The requested policy does not exist
       value:
@@ -4449,6 +4483,13 @@ components:
           message: The given target does not exist
           type: NoSuchTargetException
           code: 404
+    ConflictPolicyAttachmentError:
+      summary: The policy type is inheritable and there is already a policy of the same type attached to the target entity
+      value:
+        error:
+          message: The policy type is inheritable and there is already a policy of the same type attached to the target entity
+          type: ConflictPolicyAttachmentException
+          code: 409
     NoSuchMappingError:
       summary: The requested mapping between policy and target does not exist
       value:

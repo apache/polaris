@@ -61,6 +61,24 @@ paths:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/UnauthorizedResponse'
         403:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ForbiddenResponse'
+        404:
+          description: Not Found - The namespace specified does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                NamespaceNotFound:
+                  $ref: '../iceberg-rest-catalog-open-api.yaml#/components/examples/NoSuchNamespaceError'
+        409:
+          description: Conflict - The policy already exists under the given namespace
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                PolicyAlreadyExists:
+                  $ref: '#/components/examples/PolicyAlreadyExistsError'
         503:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
         5XX:
@@ -290,6 +308,15 @@ paths:
                   $ref: '#/components/examples/NoSuchPolicyError'
                 TargetToSetDoesNotExist:
                   $ref: '#/components/examples/NoSuchTargetError'
+        409:
+          description: Conflict - The policy type is inheritable and there is already a policy of the same type attached to the target entity
+          content:
+            application/json:
+              schema:
+                $ref: '../iceberg-rest-catalog-open-api.yaml#/components/schemas/IcebergErrorResponse'
+              examples:
+                AnotherPolicyOfSameInheritableAttached:
+                    $ref: '#/components/examples/ConflictPolicyAttachmentError'
         503:
           $ref: '../iceberg-rest-catalog-open-api.yaml#/components/responses/ServiceUnavailableResponse'
         5XX:
@@ -658,6 +685,16 @@ components:
         }
       }
 
+    PolicyAlreadyExistsError:
+        summary: The requested policy identifier already exists
+        value: {
+            "error": {
+            "message": "The given policy already exists",
+            "type": "AlreadyExistsException",
+            "code": 409
+            }
+        }
+
     PolicyVersionMismatchError:
       summary: The policy version doesn't match the current-policy-version
       value: {
@@ -685,6 +722,16 @@ components:
           "message": "The given mapping between policy and target does not exist",
           "type": "NoSuchMappingException",
           "code": 404
+        }
+      }
+
+    ConflictPolicyAttachmentError:
+      summary: The policy type is inheritable and there is already a policy of the same type attached to the target entity
+      value: {
+        "error": {
+          "message": "The policy type is inheritable and there is already a policy of the same type attached to the target entity",
+          "type": "ConflictPolicyAttachmentException",
+          "code": 409
         }
       }
 
