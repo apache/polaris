@@ -53,12 +53,11 @@ public class PolicyEntity extends PolarisEntity {
 
   @JsonIgnore
   public int getPolicyTypeCode() {
+    Preconditions.checkArgument(
+        getPropertiesAsMap().containsKey(POLICY_TYPE_CODE_KEY),
+        "Invalid policy entity: policy type must exist");
     String policyTypeCode = getPropertiesAsMap().get(POLICY_TYPE_CODE_KEY);
-    if (policyTypeCode != null) {
-      return Integer.parseInt(policyTypeCode);
-    }
-
-    return -1;
+    return Integer.parseInt(policyTypeCode);
   }
 
   @JsonIgnore
@@ -93,7 +92,7 @@ public class PolicyEntity extends PolarisEntity {
     @Override
     public PolicyEntity build() {
       Preconditions.checkArgument(
-          properties.get(POLICY_TYPE_CODE_KEY) != null, "Policy type must be specified");
+          properties.containsKey(POLICY_TYPE_CODE_KEY), "Policy type must be specified");
 
       return new PolicyEntity(buildBase());
     }
@@ -107,6 +106,7 @@ public class PolicyEntity extends PolarisEntity {
     }
 
     public Builder setPolicyType(PolicyType policyType) {
+      Preconditions.checkArgument(policyType != null, "Policy type must be specified");
       properties.put(POLICY_TYPE_CODE_KEY, Integer.toString(policyType.getCode()));
       return this;
     }
