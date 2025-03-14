@@ -35,6 +35,7 @@ import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -143,7 +144,7 @@ import software.amazon.awssdk.services.sts.model.Credentials;
 
 @QuarkusTest
 @TestProfile(PolarisIcebergCatalogTest.Profile.class)
-public class PolarisIcebergCatalogTest extends CatalogTests<PolarisIcebergCatalog> {
+public abstract class PolarisIcebergCatalogTest extends CatalogTests<PolarisIcebergCatalog> {
 
   public static class Profile implements QuarkusTestProfile {
 
@@ -195,6 +196,9 @@ public class PolarisIcebergCatalogTest extends CatalogTests<PolarisIcebergCatalo
         Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
   }
+
+  @Nullable
+  protected abstract EntityCache createEntityCache(PolarisMetaStoreManager metaStoreManager);
 
   @BeforeEach
   @SuppressWarnings("unchecked")
