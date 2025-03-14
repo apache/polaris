@@ -163,19 +163,26 @@ tasks.withType(Jar::class).configureEach {
 class StaleBehaviorChangeConfigurationChecker(private val appVersion: String) : FormatterFunc {
 
   // Helper function for spotless to check for stale BehaviorChangeConfigurations
-  fun isStaleVersion(annotatedVersion: String, polarisVersion: String): Boolean {
-    val (majorA, minorA, _) = annotatedVersion.split(".").map { it.toInt() }
-    val (majorB, minorB, _) = polarisVersion.split(".").map { it.toInt() }
-    // Minor version difference is > 1
-    return (majorB > majorA || (majorB == majorA && minorB > minorA + 1))
+  fun isStaleVersion(annotatedVersion: String, expiresVersion: String?, polarisVersion: String): Boolean {
+    val (majorA, minorA, patchA) = annotatedVersion.split(".").map { it.toInt() }
+    if (expiresVersion == null) {
+      val (majorB, minorB, _) = polarisVersion.split(".").map { it.toInt() }
+      return (majorB > majorA || (majorB == majorA && minorB > minorA + 1))
+    } else {
+      val (majorB, minorB, patchB) = expiresVersion.split(".").map { it.toInt() }
+      return (majorA > majorB ||
+              (majorA == majorB && minorA > minorB) ||
+              (majorA == majorB && minorA == minorB && patchB > patchA))
+    }
   }
 
   override fun apply(input: String): String {
-    val versionRegex = """@BehaviorChangeConfigurationSince\("(\d+\.\d+\.\d+)"\)""".toRegex()
+    val versionRegex = """@BehaviorChangeScope\s*\(\s*since\s*=\s*"(\d+\.\d+\.\d+)"(?:\s*,\s*expires\s*=\s*"(\d+\.\d+\.\d+)")?\s*\)""".toRegex()
     val matcher = versionRegex.findAll(input)
     matcher.forEach { matchResult ->
-      val annotationVersion = matchResult.groupValues[1]
-      if (isStaleVersion(annotationVersion, appVersion)) {
+      val sinceVersion = matchResult.groupValues[1]
+      val expiresVersion = matchResult.groupValues.getOrNull(2)
+      if (isStaleVersion(sinceVersion, expiresVersion, appVersion)) {
         throw GradleException("Outdated behavior change annotation detected. Consider removing the configuration, " +
                 " promoting it to a feature configuration, or disabling this check for the configuration.")
       }

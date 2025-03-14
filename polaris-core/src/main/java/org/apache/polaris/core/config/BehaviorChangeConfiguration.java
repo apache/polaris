@@ -37,7 +37,7 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
     super(key, description, defaultValue, catalogConfig);
   }
 
-  @BehaviorChangeConfigurationSince("1.0.0")
+  @BehaviorChangeScope(since="1.0.0")
   public static final BehaviorChangeConfiguration<Boolean> VALIDATE_VIEW_LOCATION_OVERLAP =
       PolarisConfiguration.<Boolean>builder()
           .key("VALIDATE_VIEW_LOCATION_OVERLAP")
