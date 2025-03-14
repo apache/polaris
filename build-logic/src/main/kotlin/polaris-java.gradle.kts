@@ -223,6 +223,20 @@ spotless {
     // getting the license-header delimiter right is a bit tricky.
     // licenseHeaderFile(rootProject.file("codestyle/copyright-header.xml"), '<^[!?].*$')
   }
+  format("enforceBehaviorChangeFlagLocations") {
+    target("**/*.java")
+    targetExclude("**/BehaviorChangeConfiguration.java", "**/PolarisConfigurationStoreTest.java")
+    custom("enforceBehaviorChangeFlags", object : Serializable, FormatterFunc {
+      override fun apply(text: String): String {
+        if (".buildBehaviorChangeConfiguration()" in text) {
+          throw GradleException(
+            "Usage of buildBehaviorChangeConfiguration() is restricted to BehaviorChangeConfiguration.java"
+          )
+        }
+        return text
+      }
+    })
+  }
 }
 
 dependencies { errorprone(versionCatalogs.named("libs").findLibrary("errorprone").get()) }
