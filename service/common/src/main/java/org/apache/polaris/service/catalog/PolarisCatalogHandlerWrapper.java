@@ -23,8 +23,6 @@ import com.google.common.collect.Maps;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -884,26 +882,18 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                       tableIdentifier, tableMetadata, actionsRequested));
             }
             if (accessDelegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)) {
-              try {
-                // String hostName = InetAddress.getLocalHost().getCanonicalHostName();
-                String hostName = "localhost";
-                responseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
-                responseBuilder.addConfig(
-                    AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
-                    new URI(
-                            "https",
-                            hostName,
-                            String.format(
-                                "/v1/%s/namespaces/%s/tables/%s/credentials",
-                                catalogName,
-                                tableIdentifier.namespace().toString(),
-                                tableIdentifier.name()),
-                            null)
-                        .toString());
-              } catch (URISyntaxException e) {
-                LOGGER.error(
-                    "Error while fetching hostname. Ignoring refresh credentials properties", e);
-              }
+              responseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
+              responseBuilder.addConfig(
+                  AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
+                  callContext
+                      .getBaseUri()
+                      .resolve(
+                          String.format(
+                              "/v1/%s/namespaces/%s/tables/%s/credentials",
+                              catalogName,
+                              tableIdentifier.namespace().toString(),
+                              tableIdentifier.name()))
+                      .toString());
               return responseBuilder.build();
             }
           } else if (table instanceof BaseMetadataTable) {
