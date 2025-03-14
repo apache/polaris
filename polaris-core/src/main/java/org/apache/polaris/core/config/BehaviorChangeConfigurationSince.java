@@ -27,6 +27,7 @@ import java.lang.annotation.Target;
  * An annotation that should be applied to all BehaviorChangeConfiguration instances. Spotless will
  * enforce that these flags are not around too long. When the flag expires, the linter will prompt
  * the person attempting to do the release to take 1 of 3 actions:
+ *
  * <pre>
  * <ul>
  *     <li>Remove the flag</li>
