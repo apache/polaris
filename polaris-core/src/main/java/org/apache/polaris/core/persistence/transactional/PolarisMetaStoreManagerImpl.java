@@ -66,7 +66,6 @@ import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1757,8 +1756,8 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   }
 
   @Override
-  public @NotNull LoadGrantsResult loadGrantsOnSecurable(
-      @NotNull PolarisCallContext callCtx, PolarisEntityCore securable) {
+  public @Nonnull LoadGrantsResult loadGrantsOnSecurable(
+      @Nonnull PolarisCallContext callCtx, PolarisEntityCore securable) {
     return loadGrantsOnSecurable(callCtx, securable.getCatalogId(), securable.getId());
   }
 
@@ -1811,8 +1810,8 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
   }
 
   @Override
-  public @NotNull LoadGrantsResult loadGrantsToGrantee(
-      @NotNull PolarisCallContext callCtx, PolarisEntityCore grantee) {
+  public @Nonnull LoadGrantsResult loadGrantsToGrantee(
+      @Nonnull PolarisCallContext callCtx, PolarisEntityCore grantee) {
     return loadGrantsToGrantee(callCtx, grantee.getCatalogId(), grantee.getId());
   }
 
