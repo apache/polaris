@@ -252,7 +252,7 @@ public interface PolarisMetaStoreManager
   EntityResult renameEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore entityToRename,
+      @Nonnull PolarisBaseEntity entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
       @Nonnull PolarisEntity renamedEntity);
 
@@ -272,7 +272,7 @@ public interface PolarisMetaStoreManager
   DropEntityResult dropEntityIfExists(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore entityToDrop,
+      @Nonnull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup);
 
@@ -383,4 +383,14 @@ public interface PolarisMetaStoreManager
       @Nonnull PolarisEntityType entityType,
       long entityCatalogId,
       long entityId);
+
+  /**
+   * Indicates whether this metastore manager implementation requires entities to be reloaded via
+   * {@link #loadEntitiesChangeTracking} in order to ensure the most recent versions are obtained.
+   *
+   * <p>Generally this flag is {@code true} when entity caching is used.
+   */
+  default boolean requiresEntityReload() {
+    return true;
+  }
 }

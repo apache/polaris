@@ -21,6 +21,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
   echo "Performing first-time setup for the Python client..."
+  rm -f ${SCRIPT_DIR}/poetry.lock
   python3 -m venv ${SCRIPT_DIR}/polaris-venv
   . ${SCRIPT_DIR}/polaris-venv/bin/activate
   pip install -r regtests/requirements.txt

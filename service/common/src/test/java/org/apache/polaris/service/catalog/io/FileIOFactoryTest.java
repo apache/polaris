@@ -190,7 +190,9 @@ public class FileIOFactoryTest {
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
     FileIO fileIO =
         new TaskFileIOSupplier(testServices.fileIOFactory()).apply(taskEntity, callContext);
-    Assertions.assertThat(fileIO).isNotNull().isInstanceOf(InMemoryFileIO.class);
+    Assertions.assertThat(fileIO).isNotNull().isInstanceOf(ExceptionMappingFileIO.class);
+    Assertions.assertThat(((ExceptionMappingFileIO) fileIO).getInnerIo())
+        .isInstanceOf(InMemoryFileIO.class);
 
     // 1. BasePolarisCatalog:doCommit: for writing the table during the creation
     // 2. BasePolarisCatalog:doRefresh: for reading the table during the drop

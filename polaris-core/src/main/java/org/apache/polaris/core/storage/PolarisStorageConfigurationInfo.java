@@ -36,9 +36,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.Catalog;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.IcebergTableLikeEntity;
@@ -168,7 +168,7 @@ public abstract class PolarisStorageConfigurationInfo {
                       .getConfiguration(
                           CallContext.getCurrentContext().getPolarisCallContext(),
                           catalog,
-                          PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
+                          FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION);
               if (!allowEscape
                   && catalog.getCatalogType() != Catalog.TypeEnum.EXTERNAL
                   && baseLocation != null) {
@@ -227,14 +227,6 @@ public abstract class PolarisStorageConfigurationInfo {
           String.format(
               "Location prefix not allowed: '%s', expected prefixes: '%s'",
               loc, String.join(",", storageType.prefixes)));
-    }
-  }
-
-  /** Validate the number of allowed locations not exceeding the max value. */
-  public void validateMaxAllowedLocations(int maxAllowedLocations) {
-    if (allowedLocations.size() > maxAllowedLocations) {
-      throw new IllegalArgumentException(
-          "Number of allowed locations exceeds " + maxAllowedLocations);
     }
   }
 
