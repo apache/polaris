@@ -59,6 +59,8 @@ import org.apache.polaris.service.task.BatchFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.apache.polaris.service.task.TaskUtils;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @QuarkusTest
 public class BatchFileCleanupTaskHandlerTest {
@@ -191,7 +193,7 @@ public class BatchFileCleanupTaskHandlerTest {
               .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
               .withData(
                   new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
-                      tableIdentifier, cleanupFiles))
+                      tableIdentifier, cleanupFiles, BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
               .setName(UUID.randomUUID().toString())
               .build();
 
@@ -242,7 +244,7 @@ public class BatchFileCleanupTaskHandlerTest {
               .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
               .withData(
                   new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
-                      tableIdentifier, List.of(statisticsFile.path())))
+                      tableIdentifier, List.of(statisticsFile.path()), BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
               .setName(UUID.randomUUID().toString())
               .build();
 
@@ -252,40 +254,45 @@ public class BatchFileCleanupTaskHandlerTest {
     }
   }
 
-  @Test
-  public void testCleanupWithRetries() throws IOException {
+  @ParameterizedTest
+  @ValueSource(ints = {1, 2, 3})
+  public void testCleanupWithRetries(int retryTime) throws IOException {
     PolarisCallContext polarisCallContext =
         new PolarisCallContext(
             metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get(),
             new PolarisDefaultDiagServiceImpl());
     try (CallContext callCtx = CallContext.of(realmContext, polarisCallContext)) {
       CallContext.setCurrentContext(callCtx);
-      Map<String, AtomicInteger> retryCounter = new HashMap<>();
+      AtomicInteger batchRetryCounter = new AtomicInteger(0);
       FileIO fileIO =
           new InMemoryFileIO() {
             @Override
             public void close() {
               // no-op
             }
-
-            @Override
-            public void deleteFile(String location) {
-              int attempts =
-                  retryCounter
-                      .computeIfAbsent(location, k -> new AtomicInteger(0))
-                      .incrementAndGet();
-              if (attempts < 3) {
-                throw new RuntimeException("Simulating failure to test retries");
-              } else {
-                super.deleteFile(location);
-              }
-            }
           };
       TableIdentifier tableIdentifier =
           TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
       BatchFileCleanupTaskHandler handler =
           new BatchFileCleanupTaskHandler(
-              buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor());
+              buildTaskFileIOSupplier(fileIO), Executors.newSingleThreadExecutor()) {
+            @Override
+            public CompletableFuture<Void> tryDelete(
+                TableIdentifier tableId,
+                FileIO fileIO,
+                Iterable<String> files,
+                String type,
+                Boolean isConcurrent,
+                Throwable e,
+                int attempt) {
+              if (attempt <= retryTime) {
+                batchRetryCounter.incrementAndGet();
+                return tryDelete(tableId, fileIO, files, type, isConcurrent, e, attempt + 1);
+              } else {
+                return super.tryDelete(tableId, fileIO, files, type, isConcurrent, e, attempt);
+              }
+            }
+          };
       long snapshotId = 100L;
       ManifestFile manifestFile =
           TaskTestUtils.manifestFile(
@@ -307,7 +314,9 @@ public class BatchFileCleanupTaskHandlerTest {
               .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
               .withData(
                   new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
-                      tableIdentifier, List.of(statisticsFile.path())))
+                      tableIdentifier,
+                      List.of(statisticsFile.path()),
+                          BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
               .setName(UUID.randomUUID().toString())
               .build();
 
@@ -323,12 +332,11 @@ public class BatchFileCleanupTaskHandlerTest {
       // Wait for all async tasks to finish
       future.join();
 
+      // Ensure that retries happened as expected
+      assertThat(batchRetryCounter.get()).isEqualTo(retryTime);
+
       // Check if the file was successfully deleted after retries
       assertThat(TaskUtils.exists(statisticsFile.path(), fileIO)).isFalse();
-
-      // Ensure that retries happened as expected
-      assertThat(retryCounter.containsKey(statisticsFile.path())).isTrue();
-      assertThat(retryCounter.get(statisticsFile.path()).get()).isEqualTo(3);
     }
   }
 }
