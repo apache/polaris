@@ -75,7 +75,8 @@ public class EntityCache {
           }
         };
 
-    long weigherTarget = PolarisConfiguration.loadConfig(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
+    long weigherTarget =
+        PolarisConfiguration.loadConfig(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
     Caffeine<Long, ResolvedPolarisEntity> byIdBuilder =
         Caffeine.newBuilder()
             .maximumWeight(weigherTarget)
