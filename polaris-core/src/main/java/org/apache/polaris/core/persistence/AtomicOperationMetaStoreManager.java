@@ -1328,6 +1328,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     return new PrivilegeResult(grantRecord);
   }
 
+  /** {@inheritDoc} */
   @Override
   public @Nonnull LoadGrantsResult loadGrantsOnSecurable(
       @Nonnull PolarisCallContext callCtx, PolarisEntityCore securable) {
@@ -1373,6 +1374,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         entities.stream().filter(Objects::nonNull).collect(Collectors.toList()));
   }
 
+  /** {@inheritDoc} */
   @Override
   public @Nonnull LoadGrantsResult loadGrantsToGrantee(
       @Nonnull PolarisCallContext callCtx, PolarisEntityCore grantee) {

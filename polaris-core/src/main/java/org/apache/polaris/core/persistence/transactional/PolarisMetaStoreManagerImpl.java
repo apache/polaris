@@ -1755,6 +1755,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
         entities.stream().filter(Objects::nonNull).collect(Collectors.toList()));
   }
 
+  /** {@inheritDoc} */
   @Override
   public @Nonnull LoadGrantsResult loadGrantsOnSecurable(
       @Nonnull PolarisCallContext callCtx, PolarisEntityCore securable) {
@@ -1809,6 +1810,7 @@ public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
         entities.stream().filter(Objects::nonNull).collect(Collectors.toList()));
   }
 
+  /** {@inheritDoc} */
   @Override
   public @Nonnull LoadGrantsResult loadGrantsToGrantee(
       @Nonnull PolarisCallContext callCtx, PolarisEntityCore grantee) {
