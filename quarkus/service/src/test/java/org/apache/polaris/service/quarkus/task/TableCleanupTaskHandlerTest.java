@@ -48,9 +48,9 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
-import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.task.ManifestFileCleanupTaskHandler;
@@ -176,7 +176,7 @@ class TableCleanupTaskHandlerTest {
 
   @Test
   public void testTableCleanupHandlesAlreadyDeletedMetadata() throws IOException {
-    TransactionalPersistence metaStoreSession =
+    BasePersistence metaStoreSession =
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     FileIO fileIO =
         new InMemoryFileIO() {
@@ -230,7 +230,7 @@ class TableCleanupTaskHandlerTest {
 
   @Test
   public void testTableCleanupDuplicatesTasksIfFileStillExists() throws IOException {
-    TransactionalPersistence metaStoreSession =
+    BasePersistence metaStoreSession =
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     FileIO fileIO =
         new InMemoryFileIO() {
@@ -346,7 +346,7 @@ class TableCleanupTaskHandlerTest {
 
   @Test
   public void testTableCleanupMultipleSnapshots() throws IOException {
-    TransactionalPersistence metaStoreSession =
+    BasePersistence metaStoreSession =
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
@@ -491,7 +491,7 @@ class TableCleanupTaskHandlerTest {
 
   @Test
   public void testTableCleanupMultipleMetadata() throws IOException {
-    TransactionalPersistence metaStoreSession =
+    BasePersistence metaStoreSession =
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     FileIO fileIO = new InMemoryFileIO();
     TableIdentifier tableIdentifier = TableIdentifier.of(Namespace.of("db1", "schema1"), "table1");
