@@ -20,7 +20,6 @@ package org.apache.polaris.core;
 
 import com.google.common.base.Preconditions;
 import java.util.Arrays;
-import org.jetbrains.annotations.Contract;
 
 /** Default implementation of the PolarisDiagServices. */
 public class PolarisDefaultDiagServiceImpl implements PolarisDiagnostics {
@@ -67,7 +66,6 @@ public class PolarisDefaultDiagServiceImpl implements PolarisDiagnostics {
    * @return the non-null reference that was validated
    * @throws RuntimeException if `reference` is null
    */
-  @Contract("null, _ -> fail")
   @Override
   public <T> T checkNotNull(final T reference, final String signature) {
     return Preconditions.checkNotNull(reference, signature);
@@ -85,7 +83,6 @@ public class PolarisDefaultDiagServiceImpl implements PolarisDiagnostics {
    * @return the non-null reference that was validated
    * @throws RuntimeException if `reference` is null
    */
-  @Contract("null, _, _, _ -> fail")
   @Override
   public <T> T checkNotNull(
       final T reference,
@@ -104,7 +101,6 @@ public class PolarisDefaultDiagServiceImpl implements PolarisDiagnostics {
    *     like "path_cannot_be_null"
    * @throws RuntimeException if `condition` is not true
    */
-  @Contract("false, _ -> fail")
   @Override
   public void check(final boolean expression, final String signature) {
     Preconditions.checkState(expression, signature);
@@ -121,7 +117,6 @@ public class PolarisDefaultDiagServiceImpl implements PolarisDiagnostics {
    * @param extraInfoArgs extra information arguments
    * @throws RuntimeException if condition` is not true
    */
-  @Contract("false, _, _, _ -> fail")
   @Override
   public void check(
       final boolean expression,
