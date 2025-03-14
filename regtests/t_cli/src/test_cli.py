@@ -27,7 +27,7 @@ import subprocess
 import sys
 from typing import Callable
 
-CLI_PYTHONPATH = f'{os.path.dirname(os.path.abspath(__file__))}/../../client/python'
+CLI_PYTHONPATH = f'{os.path.dirname(os.path.abspath(__file__))}/../../../client/python'
 ROLE_ARN = 'arn:aws:iam::123456789012:role/my-role'
 POLARIS_HOST = os.getenv('POLARIS_HOST', 'localhost')
 POLARIS_URL = f'http://{POLARIS_HOST}:8181/api/catalog/v1/oauth/tokens'
