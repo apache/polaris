@@ -22,8 +22,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import jakarta.ws.rs.core.Response;
+import java.time.Clock;
 import java.util.List;
 import java.util.Map;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
@@ -32,14 +34,37 @@ import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.service.TestServices;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 public class ManagementServiceTest {
-  static TestServices services =
-      TestServices.builder()
-          .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
-          .build();
+  private TestServices services;
+
+  @BeforeEach
+  public void setup() {
+    // Used to build a `CallContext` which then gets fed into the real `TestServices`
+    TestServices fakeServices =
+        TestServices.builder()
+            .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
+            .build();
+    PolarisCallContext polarisCallContext =
+        new PolarisCallContext(
+            fakeServices
+                .metaStoreManagerFactory()
+                .getOrCreateSessionSupplier(fakeServices.realmContext())
+                .get(),
+            fakeServices.polarisDiagnostics(),
+            fakeServices.configurationStore(),
+            Mockito.mock(Clock.class));
+    CallContext.setCurrentContext(CallContext.of(fakeServices.realmContext(), polarisCallContext));
+    services =
+        TestServices.builder()
+            .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
+            .build();
+  }
 
   @Test
   public void testCreateCatalogWithDisallowedStorageConfig() {

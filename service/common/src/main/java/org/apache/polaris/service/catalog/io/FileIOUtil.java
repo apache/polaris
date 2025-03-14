@@ -22,13 +22,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.core.PolarisConfiguration;
-import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
@@ -77,20 +76,20 @@ public class FileIOUtil {
    * </ul>
    */
   public static Map<String, String> refreshCredentials(
-      RealmContext realmContext,
+      CallContext callContext,
       PolarisEntityManager entityManager,
       PolarisCredentialVendor credentialVendor,
-      PolarisMetaStoreSession metaStoreSession,
       PolarisConfigurationStore configurationStore,
       TableIdentifier tableIdentifier,
       Set<String> tableLocations,
       Set<PolarisStorageActions> storageActions,
       PolarisEntity entity) {
+
     boolean skipCredentialSubscopingIndirection =
         configurationStore.getConfiguration(
-            realmContext,
-            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
-            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
+            callContext.getPolarisCallContext(),
+            FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
+            FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
     if (skipCredentialSubscopingIndirection) {
       LOGGER
           .atDebug()
@@ -113,7 +112,7 @@ public class FileIOUtil {
             .getCredentialCache()
             .getOrGenerateSubScopeCreds(
                 credentialVendor,
-                metaStoreSession,
+                callContext.getPolarisCallContext(),
                 entity,
                 allowList,
                 tableLocations,

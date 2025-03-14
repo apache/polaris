@@ -52,7 +52,7 @@ dependencies {
 
   implementation("org.apache.iceberg:iceberg-spark-3.5_2.12")
   implementation("org.apache.iceberg:iceberg-spark-extensions-3.5_2.12")
-  implementation("org.apache.spark:spark-sql_2.12:3.5.4") {
+  implementation("org.apache.spark:spark-sql_2.12:3.5.5") {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
     exclude("org.apache.logging.log4j", "log4j-api")
@@ -62,6 +62,7 @@ dependencies {
 
   implementation(platform(libs.junit.bom))
   implementation("org.junit.jupiter:junit-jupiter")
+  implementation("org.junit.jupiter:junit-jupiter-api")
   compileOnly("org.junit.jupiter:junit-jupiter-engine")
   implementation(libs.assertj.core)
   implementation(libs.mockito.core)

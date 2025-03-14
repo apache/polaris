@@ -80,6 +80,7 @@ class Subcommands:
     VIEW = 'view'
     GRANT = 'grant'
     REVOKE = 'revoke'
+    ACCESS = 'access'
 
 
 class Actions:
@@ -135,6 +136,7 @@ class Arguments:
     LOCATION = 'location'
     REGION = 'region'
     PROFILE = 'profile'
+    PROXY = 'proxy'
 
 
 class Hints:

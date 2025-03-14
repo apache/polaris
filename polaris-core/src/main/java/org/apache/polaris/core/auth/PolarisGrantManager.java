@@ -18,20 +18,15 @@
  */
 package org.apache.polaris.core.auth;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
-import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
-import org.apache.polaris.core.persistence.BaseResult;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
+import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 
 /** Manage grants for Polaris entities. */
 public interface PolarisGrantManager {
@@ -39,7 +34,7 @@ public interface PolarisGrantManager {
    * Grant usage on a role to a grantee, for example granting usage on a catalog role to a principal
    * role or granting a principal role to a principal.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param catalog if the role is a catalog role, the caller needs to pass-in the catalog entity
    *     which was used to resolve that granted. Else null.
    * @param role resolved catalog or principal role
@@ -49,7 +44,7 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   PrivilegeResult grantUsageOnRoleToGrantee(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee);
@@ -58,7 +53,7 @@ public interface PolarisGrantManager {
    * Revoke usage on a role (a catalog or a principal role) from a grantee (e.g. a principal role or
    * a principal).
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param catalog if the granted is a catalog role, the caller needs to pass-in the catalog entity
    *     which was used to resolve that role. Else null should be passed-in.
    * @param role a catalog/principal role as resolved by the caller
@@ -69,7 +64,7 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   PrivilegeResult revokeUsageOnRoleFromGrantee(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nullable PolarisEntityCore catalog,
       @Nonnull PolarisEntityCore role,
       @Nonnull PolarisEntityCore grantee);
@@ -77,7 +72,7 @@ public interface PolarisGrantManager {
   /**
    * Grant a privilege on a catalog securable to a grantee.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param grantee resolved role, the grantee
    * @param catalogPath path to that entity, cannot be null or empty unless securable is top-level
    * @param securable securable entity, must have been resolved by the client. Can be the catalog
@@ -88,7 +83,7 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   PrivilegeResult grantPrivilegeOnSecurableToRole(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore securable,
@@ -97,7 +92,7 @@ public interface PolarisGrantManager {
   /**
    * Revoke a privilege on a catalog securable from a grantee.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param grantee resolved role, the grantee
    * @param catalogPath path to that entity, cannot be null or empty unless securable is top-level
    * @param securable securable entity, must have been resolved by the client. Can be the catalog
@@ -109,7 +104,7 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   PrivilegeResult revokePrivilegeOnSecurableFromRole(
-      @Nonnull PolarisMetaStoreSession session,
+      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore grantee,
       @Nullable List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore securable,
@@ -118,21 +113,21 @@ public interface PolarisGrantManager {
   /**
    * This method should be used by the Polaris app to cache all grant records on a securable.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param securable the securable entity
    * @return the list of grants and the version of the grant records. We will return
    *     ENTITY_NOT_FOUND if the securable cannot be found
    */
   @Nonnull
   default LoadGrantsResult loadGrantsOnSecurable(
-      @Nonnull PolarisMetaStoreSession session, PolarisBaseEntity securable) {
-    return loadGrantsOnSecurable(session, securable.getCatalogId(), securable.getId());
+      @Nonnull PolarisCallContext callCtx, PolarisBaseEntity securable) {
+    return loadGrantsOnSecurable(callCtx, securable.getCatalogId(), securable.getId());
   }
 
   /**
    * This method should be used by the Polaris app to cache all grant records on a securable.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param securableCatalogId id of the catalog this securable belongs to
    * @param securableId id of the securable
    * @return the list of grants and the version of the grant records. We will return
@@ -140,28 +135,28 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   LoadGrantsResult loadGrantsOnSecurable(
-      @Nonnull PolarisMetaStoreSession session, long securableCatalogId, long securableId);
+      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId);
 
   /**
    * This method should be used by the Polaris app to load all grants made to a grantee, either a
    * role or a principal.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param grantee the grantee entity
    * @return the list of grants and the version of the grant records. We will return NULL if the
    *     grantee does not exist
    */
   @Nonnull
   default LoadGrantsResult loadGrantsToGrantee(
-      @Nonnull PolarisMetaStoreSession session, PolarisBaseEntity grantee) {
-    return loadGrantsToGrantee(session, grantee.getCatalogId(), grantee.getId());
+      @Nonnull PolarisCallContext callCtx, PolarisBaseEntity grantee) {
+    return loadGrantsToGrantee(callCtx, grantee.getCatalogId(), grantee.getId());
   }
 
   /**
    * This method should be used by the Polaris app to load all grants made to a grantee, either a
    * role or a principal.
    *
-   * @param session the metastore session
+   * @param callCtx call context
    * @param granteeCatalogId id of the catalog this grantee belongs to
    * @param granteeId id of the grantee
    * @return the list of grants and the version of the grant records. We will return NULL if the
@@ -169,137 +164,5 @@ public interface PolarisGrantManager {
    */
   @Nonnull
   LoadGrantsResult loadGrantsToGrantee(
-      @Nonnull PolarisMetaStoreSession session, long granteeCatalogId, long granteeId);
-
-  /** Result of a grant/revoke privilege call */
-  class PrivilegeResult extends BaseResult {
-
-    // null if not success.
-    private final PolarisGrantRecord grantRecord;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public PrivilegeResult(
-        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.grantRecord = null;
-    }
-
-    /**
-     * Constructor for success
-     *
-     * @param grantRecord grant record being granted or revoked
-     */
-    public PrivilegeResult(@Nonnull PolarisGrantRecord grantRecord) {
-      super(BaseResult.ReturnStatus.SUCCESS);
-      this.grantRecord = grantRecord;
-    }
-
-    @JsonCreator
-    private PrivilegeResult(
-        @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") String extraInformation,
-        @JsonProperty("grantRecord") PolarisGrantRecord grantRecord) {
-      super(returnStatus, extraInformation);
-      this.grantRecord = grantRecord;
-    }
-
-    public PolarisGrantRecord getGrantRecord() {
-      return grantRecord;
-    }
-  }
-
-  /** Result of a load grants call */
-  class LoadGrantsResult extends BaseResult {
-    // true if success. If false, the caller should retry because of some concurrent change
-    private final int grantsVersion;
-
-    // null if not success. Else set of grants records on a securable or to a grantee
-    private final List<PolarisGrantRecord> grantRecords;
-
-    // null if not success. Else, for each grant record, list of securable or grantee entities
-    private final List<PolarisBaseEntity> entities;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public LoadGrantsResult(
-        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.grantsVersion = 0;
-      this.grantRecords = null;
-      this.entities = null;
-    }
-
-    /**
-     * Constructor for success
-     *
-     * @param grantsVersion version of the grants
-     * @param grantRecords set of grant records
-     */
-    public LoadGrantsResult(
-        int grantsVersion,
-        @Nonnull List<PolarisGrantRecord> grantRecords,
-        List<PolarisBaseEntity> entities) {
-      super(BaseResult.ReturnStatus.SUCCESS);
-      this.grantsVersion = grantsVersion;
-      this.grantRecords = grantRecords;
-      this.entities = entities;
-    }
-
-    @JsonCreator
-    private LoadGrantsResult(
-        @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") String extraInformation,
-        @JsonProperty("grantsVersion") int grantsVersion,
-        @JsonProperty("grantRecords") List<PolarisGrantRecord> grantRecords,
-        @JsonProperty("entities") List<PolarisBaseEntity> entities) {
-      super(returnStatus, extraInformation);
-      this.grantsVersion = grantsVersion;
-      this.grantRecords = grantRecords;
-      // old GS code might not serialize this argument
-      this.entities = entities;
-    }
-
-    public int getGrantsVersion() {
-      return grantsVersion;
-    }
-
-    public List<PolarisGrantRecord> getGrantRecords() {
-      return grantRecords;
-    }
-
-    public List<PolarisBaseEntity> getEntities() {
-      return entities;
-    }
-
-    @JsonIgnore
-    public Map<Long, PolarisBaseEntity> getEntitiesAsMap() {
-      return (this.getEntities() == null)
-          ? null
-          : this.getEntities().stream()
-              .collect(Collectors.toMap(PolarisBaseEntity::getId, entity -> entity));
-    }
-
-    @Override
-    public String toString() {
-      return "LoadGrantsResult{"
-          + "grantsVersion="
-          + grantsVersion
-          + ", grantRecords="
-          + grantRecords
-          + ", entities="
-          + entities
-          + ", returnStatus="
-          + getReturnStatus()
-          + '}';
-    }
-  }
+      PolarisCallContext callCtx, long granteeCatalogId, long granteeId);
 }

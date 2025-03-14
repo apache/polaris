@@ -18,13 +18,14 @@
  */
 package org.apache.polaris.core.persistence;
 
-import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
 
 /** Configuration interface for configuring the {@link PolarisMetaStoreManager}. */
@@ -32,15 +33,15 @@ public interface MetaStoreManagerFactory {
 
   PolarisMetaStoreManager getOrCreateMetaStoreManager(RealmContext realmContext);
 
-  Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(RealmContext realmContext);
+  Supplier<TransactionalPersistence> getOrCreateSessionSupplier(RealmContext realmContext);
 
   StorageCredentialCache getOrCreateStorageCredentialCache(RealmContext realmContext);
 
   EntityCache getOrCreateEntityCache(RealmContext realmContext);
 
   Map<String, PrincipalSecretsResult> bootstrapRealms(
-      List<String> realms, RootCredentialsSet rootCredentialsSet);
+      Iterable<String> realms, RootCredentialsSet rootCredentialsSet);
 
   /** Purge all metadata for the realms provided */
-  void purgeRealms(List<String> realms);
+  Map<String, BaseResult> purgeRealms(Iterable<String> realms);
 }

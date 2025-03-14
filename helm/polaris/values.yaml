@@ -67,18 +67,21 @@ revisionHistoryLimit: ~
 
 # -- Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/.
 podSecurityContext:
-  {}
-  # fsGroup: 2000
+  # -- GID 10001 is compatible with Polaris OSS default images; change this if you are using a different image.
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
 
 # -- Security context for the polaris container. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/.
 containerSecurityContext:
-  {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-  # runAsUser: 1000
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  # -- UID 10000 is compatible with Polaris OSS default images; change this if you are using a different image.
+  runAsUser: 10000
+  capabilities:
+    drop: ["ALL"]
+  seccompProfile:
+    type: RuntimeDefault
 
 # -- Polaris main service settings.
 service:

@@ -19,13 +19,14 @@
 package org.apache.polaris.core.persistence.cache;
 
 import com.github.benmanes.caffeine.cache.Weigher;
+import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.checkerframework.checker.index.qual.NonNegative;
 
 /**
- * A {@link Weigher} implementation that weighs {@link EntityCacheEntry} objects by the approximate
+ * A {@link Weigher} implementation that weighs {@link ResolvedPolarisEntity} objects by the approximate
  * size of the entity object.
  */
-public class EntityWeigher implements Weigher<Long, EntityCacheEntry> {
+public class EntityWeigher implements Weigher<Long, ResolvedPolarisEntity> {
 
   /** The amount of weight that is expected to roughly equate to 1MB of memory usage */
   public static final long WEIGHT_PER_MB = 1024 * 1024;
@@ -51,14 +52,14 @@ public class EntityWeigher implements Weigher<Long, EntityCacheEntry> {
    * @return The weight of the entity
    */
   @Override
-  public @NonNegative int weigh(Long key, EntityCacheEntry value) {
+  public @NonNegative int weigh(Long key, ResolvedPolarisEntity value) {
     return APPROXIMATE_ENTITY_OVERHEAD
         + value.getEntity().getProperties().length()
         + value.getEntity().getInternalProperties().length();
   }
 
   /** Factory method to provide a typed Weigher */
-  public static Weigher<Long, EntityCacheEntry> asWeigher() {
-    return (Weigher<Long, EntityCacheEntry>) getInstance();
+  public static Weigher<Long, ResolvedPolarisEntity> asWeigher() {
+    return (Weigher<Long, ResolvedPolarisEntity>) getInstance();
   }
 }
