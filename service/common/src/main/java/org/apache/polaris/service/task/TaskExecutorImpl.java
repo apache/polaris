@@ -63,6 +63,9 @@ public class TaskExecutorImpl implements TaskExecutor {
     addTaskHandler(
         new ManifestFileCleanupTaskHandler(
             fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
+    addTaskHandler(
+        new BatchFileCleanupTaskHandler(
+            fileIOSupplier, Executors.newVirtualThreadPerTaskExecutor()));
   }
 
   /**

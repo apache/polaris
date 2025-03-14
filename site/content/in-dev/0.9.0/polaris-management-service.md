@@ -1,3 +1,4 @@
+---
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -16,13 +17,11 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+title: 'Apache Polaris Management Service OpenAPI'
+linkTitle: 'Management OpenAPI'
+weight: 800
+params:
+  show_page_toc: false
+---
 
-distributionBase=GRADLE_USER_HOME
-distributionPath=wrapper/dists
-# See https://gradle.org/release-checksums/ for valid checksums
-distributionSha256Sum=20f1b1176237254a6fc204d8434196fa11a4cfb387567519c61556e8710aed78
-distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip
-networkTimeout=10000
-validateDistributionUrl=true
-zipStoreBase=GRADLE_USER_HOME
-zipStorePath=wrapper/dists
+{{< redoc-polaris "polaris-management-service.yml" >}}
