@@ -65,6 +65,8 @@ import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
+import org.assertj.core.api.Assumptions;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -111,6 +113,9 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     PolarisStorageIntegrationProviderImpl mock =
         Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
+    // Set preferredAssumptionException as Quarkus does not suppress JUnit4's
+    // AssumptionViolatedException
+    Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
   }
 
   @BeforeEach
@@ -199,7 +204,12 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+            CatalogProperties.FILE_IO_IMPL,
+            "org.apache.iceberg.inmemory.InMemoryFileIO",
+            CatalogProperties.VIEW_DEFAULT_PREFIX + "key1",
+            "catalog-default-key1",
+            CatalogProperties.VIEW_DEFAULT_PREFIX + "key2",
+            "catalog-default-key2"));
   }
 
   @AfterEach

@@ -88,7 +88,9 @@ import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.assertj.core.api.Assertions;
+import org.assertj.core.api.Assumptions;
 import org.assertj.core.api.InstanceOfAssertFactories;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -118,16 +120,16 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   private static URI externalCatalogBase;
 
   protected static final String VIEW_QUERY = "select * from ns1.layer1_table";
-  private static String principalRoleName;
   private static ClientCredentials adminCredentials;
-  private static PrincipalWithCredentials principalCredentials;
   private static PolarisApiEndpoints endpoints;
   private static PolarisClient client;
   private static ManagementApi managementApi;
-  private static CatalogApi catalogApi;
 
+  private PrincipalWithCredentials principalCredentials;
+  private CatalogApi catalogApi;
   private RESTCatalog restCatalog;
   private String currentCatalogName;
+  private TestInfo testInfo;
 
   private final String catalogBaseLocation =
       s3BucketBase + "/" + System.getenv("USER") + "/path/to/data";
@@ -155,14 +157,13 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @BeforeAll
   static void setup(
       PolarisApiEndpoints apiEndpoints, ClientCredentials credentials, @TempDir Path tempDir) {
+    // Set preferredAssumptionException as Quarkus does not suppress JUnit4's
+    // AssumptionViolatedException
+    Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
     adminCredentials = credentials;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
     managementApi = client.managementApi(credentials);
-    String principalName = client.newEntityName("snowman-rest");
-    principalRoleName = client.newEntityName("rest-admin");
-    principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
-    catalogApi = client.catalogApi(principalCredentials);
     URI testRootUri = IntegrationTestsHelper.getTemporaryDirectory(tempDir);
     s3BucketBase = testRootUri.resolve("my-bucket");
     externalCatalogBase = testRootUri.resolve("external-catalog");
@@ -175,10 +176,10 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
   @BeforeEach
   public void before(TestInfo testInfo) {
+    this.testInfo = testInfo;
     String principalName = "snowman-rest-" + UUID.randomUUID();
-    principalRoleName = "rest-admin-" + UUID.randomUUID();
-    PrincipalWithCredentials principalCredentials =
-        managementApi.createPrincipalWithRole(principalName, principalRoleName);
+    String principalRoleName = "rest-admin-" + UUID.randomUUID();
+    principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
 
     catalogApi = client.catalogApi(principalCredentials);
 
@@ -219,6 +220,21 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
 
     managementApi.createCatalog(principalRoleName, catalog);
 
+    restCatalog = initCatalog(currentCatalogName, ImmutableMap.of());
+  }
+
+  @AfterEach
+  public void cleanUp() {
+    client.cleanUp(adminCredentials);
+  }
+
+  @Override
+  protected RESTCatalog catalog() {
+    return restCatalog;
+  }
+
+  @Override
+  protected RESTCatalog initCatalog(String catalogName, Map<String, String> additionalProperties) {
     Optional<PolarisRestCatalogIntegrationTest.RestCatalogConfig> restCatalogConfig =
         testInfo
             .getTestMethod()
@@ -234,24 +250,14 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             extraPropertiesBuilder.put(config.value()[i], config.value()[i + 1]);
           }
         });
-
-    restCatalog =
-        IcebergHelper.restCatalog(
-            client,
-            endpoints,
-            principalCredentials,
-            currentCatalogName,
-            extraPropertiesBuilder.build());
-  }
-
-  @AfterEach
-  public void cleanUp() {
-    client.cleanUp(adminCredentials);
-  }
-
-  @Override
-  protected RESTCatalog catalog() {
-    return restCatalog;
+    extraPropertiesBuilder.putAll(additionalProperties);
+    return IcebergHelper.restCatalog(
+        client,
+        endpoints,
+        principalCredentials,
+        catalogName,
+        currentCatalogName,
+        extraPropertiesBuilder.buildKeepingLast());
   }
 
   @Override

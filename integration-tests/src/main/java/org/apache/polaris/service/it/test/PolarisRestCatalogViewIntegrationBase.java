@@ -37,6 +37,7 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
+import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
@@ -65,6 +66,10 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
   @BeforeAll
   static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
+    // Set preferredAssumptionException as Quarkus does not suppress JUnit4's
+    // AssumptionViolatedException
+    org.assertj.core.api.Assumptions.setPreferredAssumptionException(
+        PreferredAssumptionException.JUNIT5);
     adminCredentials = credentials;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
@@ -113,7 +118,17 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     managementApi.createCatalog(principalRoleName, catalog);
 
     restCatalog =
-        IcebergHelper.restCatalog(client, endpoints, principalCredentials, catalogName, Map.of());
+        IcebergHelper.restCatalog(
+            client,
+            endpoints,
+            principalCredentials,
+            catalogName,
+            catalogName,
+            Map.of(
+                org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key1",
+                "catalog-default-key1",
+                org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key2",
+                "catalog-default-key2"));
   }
 
   @AfterEach
