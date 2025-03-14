@@ -1701,7 +1701,14 @@ paths:
         '204':
           description: Success, no content
         '400':
-          $ref: '#/components/responses/BadRequestErrorResponse'
+          description: Bad Request - the policy to be dropped is attached to one or more targets and detach-all is not set to true
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IcebergErrorResponse'
+              examples:
+                PolicyInUse:
+                  $ref: '#/components/examples/PolicyInUseError'
         '401':
           $ref: '#/components/responses/UnauthorizedResponse'
         '403':
@@ -1742,6 +1749,10 @@ paths:
         In addition to the validation rules enforced by the PolicyValidator, there are additional constraints on policy attachment:
         1. For inheritable policies, only one policy of the same type can be attached to a given resource entity.
         2. For non-inheritable policies, multiple policies of the same type can be attached to the same resource entity without restriction.
+
+        For inheritable policies, the inheritance override rule is:
+        1. Table-like level policies override namespace and catalog policies.
+        2. Namespace-level policies override upper level namespace or catalog policies.
 
         Additional parameters can be provided in `parameters` when creating a mapping to define specific behavior or constraints.
 
@@ -1848,7 +1859,10 @@ paths:
 
         An optional policyType parameter filters results to return only policies of the specified type.
 
-        This API evaluates the entity's hierarchy and applies inheritable policies from parent entities.
+        This API evaluates the entity's hierarchy and applies inheritable policies from parent entities. The inheritance follows the following override rule:
+
+        1. Table-like level policies override namespace and catalog policies.
+        2. Namespace-level policies override upper level namespace or catalog policies.
       parameters:
         - $ref: '#/components/parameters/page-token'
         - $ref: '#/components/parameters/page-size'
@@ -4476,6 +4490,13 @@ components:
           message: The policy version doesn't match the current-policy-version
           type: PolicyVersionMismatchException
           code: 409
+    PolicyInUseError:
+      summary: The policy is attached to one or more targets
+      value:
+        error:
+          message: The policy is attached to one or more targets
+          type: PolicyInUseException
+          code: 400
     NoSuchTargetError:
       summary: The requested target does not exist
       value:
