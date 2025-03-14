@@ -56,8 +56,7 @@ public class BehaviorChangeConfiguration<T> extends PolarisConfiguration<T> {
   public static final BehaviorChangeConfiguration<Boolean> ENTITY_CACHE_SOFT_VALUES =
       PolarisConfiguration.<Boolean>builder()
           .key("ENTITY_CACHE_SOFT_VALUES")
-          .description(
-              "Whether or not to use soft values in the entity cache")
+          .description("Whether or not to use soft values in the entity cache")
           .defaultValue(false)
           .buildBehaviorChangeConfiguration();
 }

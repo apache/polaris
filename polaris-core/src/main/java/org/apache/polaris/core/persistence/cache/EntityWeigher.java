@@ -23,8 +23,8 @@ import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.checkerframework.checker.index.qual.NonNegative;
 
 /**
- * A {@link Weigher} implementation that weighs {@link ResolvedPolarisEntity} objects by the approximate
- * size of the entity object.
+ * A {@link Weigher} implementation that weighs {@link ResolvedPolarisEntity} objects by the
+ * approximate size of the entity object.
  */
 public class EntityWeigher implements Weigher<Long, ResolvedPolarisEntity> {
 
