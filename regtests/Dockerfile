@@ -38,7 +38,7 @@ ENV PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src
 WORKDIR /home/spark/regtests
 COPY ./regtests/setup.sh /home/spark/regtests/setup.sh
 COPY ./regtests/pyspark-setup.sh /home/spark/regtests/pyspark-setup.sh
-COPY ./client/python /home/spark/client/python
+COPY ./client/python /home/spark/regtests/client/python
 COPY ./regtests/polaris-reg-test /home/spark/polaris
 COPY ./regtests/requirements.txt /tmp/
 
@@ -48,11 +48,11 @@ RUN python3 -m venv /home/spark/polaris-venv && \
     deactivate \
     ./setup.sh
 
-COPY --chown=spark . /home/spark/regtests
+COPY --chown=spark ./regtests /home/spark/regtests
 
 # /home/spark/regtests might not be writable in all situations, see https://github.com/apache/polaris/pull/205
 USER root
 RUN chmod -R go+rwx /home/spark/regtests
 USER spark
 
-ENTRYPOINT ["./regtests/run.sh"]
+ENTRYPOINT ["./run.sh"]
