@@ -57,6 +57,7 @@ public class EntityWeigher implements Weigher<Long, ResolvedPolarisEntity> {
   @Override
   public @NonNegative int weigh(Long key, ResolvedPolarisEntity value) {
     return APPROXIMATE_ENTITY_OVERHEAD
+        + (value.getEntity().getName().length() * APPROXIMATE_BYTES_PER_CHAR)
         + (value.getEntity().getProperties().length() * APPROXIMATE_BYTES_PER_CHAR)
         + (value.getEntity().getInternalProperties().length() * APPROXIMATE_BYTES_PER_CHAR);
   }
