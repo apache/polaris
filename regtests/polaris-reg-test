@@ -39,7 +39,7 @@ if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
   . ${SCRIPT_DIR}/polaris-venv/bin/activate
   pip install -f requirements.txt
 
-  cp ${SCRIPT_DIR}/regtests/client/python/pyproject.toml ${SCRIPT_DIR}
+  cp ${SCRIPT_DIR}/client/python/pyproject.toml ${SCRIPT_DIR}
 
   # Save the current directory
   CURRENT_DIR=$(pwd)
@@ -53,7 +53,7 @@ fi
 # Save the current directory
 CURRENT_DIR=$(pwd)
 cd $SCRIPT_DIR > /dev/null
-PYTHONPATH=regtests/client/python SCRIPT_DIR="$SCRIPT_DIR" ${SCRIPT_DIR}/polaris-venv/bin/python3 regtests/client/python/cli/polaris_cli.py "$@"
+PYTHONPATH=client/python SCRIPT_DIR="$SCRIPT_DIR" ${SCRIPT_DIR}/polaris-venv/bin/python3 client/python/cli/polaris_cli.py "$@"
 status=$?
 cd $CURRENT_DIR > /dev/null
 
