@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatPredicate;
 
 import io.quarkus.test.junit.QuarkusTest;
+import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import java.io.IOException;
 import java.util.HashMap;
@@ -56,7 +57,6 @@ import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.task.BatchFileCleanupTaskHandler;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.apache.polaris.service.task.TaskUtils;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
@@ -69,13 +69,13 @@ public class BatchFileCleanupTaskHandlerTest {
         new FileIOFactory() {
           @Override
           public FileIO loadFileIO(
-              @NotNull CallContext callContext,
-              @NotNull String ioImplClassName,
-              @NotNull Map<String, String> properties,
-              @NotNull TableIdentifier identifier,
-              @NotNull Set<String> tableLocations,
-              @NotNull Set<PolarisStorageActions> storageActions,
-              @NotNull PolarisResolvedPathWrapper resolvedEntityPath) {
+              @Nonnull CallContext callContext,
+              @Nonnull String ioImplClassName,
+              @Nonnull Map<String, String> properties,
+              @Nonnull TableIdentifier identifier,
+              @Nonnull Set<String> tableLocations,
+              @Nonnull Set<PolarisStorageActions> storageActions,
+              @Nonnull PolarisResolvedPathWrapper resolvedEntityPath) {
             return fileIO;
           }
         });
