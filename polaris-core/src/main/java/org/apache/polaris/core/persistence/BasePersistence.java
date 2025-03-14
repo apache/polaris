@@ -394,13 +394,13 @@ public interface BasePersistence {
       long parentId);
 
   /**
-   * Creates a fresh copy of this persistence implementation that is able to function independently
-   * of {@code this object}. The {@code copyOf} method is intended to be used to isolate state of
-   * {@link BasePersistence} instances in different thread.
-   *
-   * <p>If a particular implementation is thread-safe, it may return {@code this} from this method.
+   * Performs operations necessary to isolate the state of {@code this} {@link BasePersistence}
+   * instance from the state of the returned instance as far as multithreaded usage is concerned. If
+   * the implementation has state that is not supposed to be accessed or modified by multiple
+   * threads, it may return a copy from this method. If the implementation is thread-safe, it may
+   * return {@code this}.
    */
-  default BasePersistence copyOf() {
+  default BasePersistence detach() {
     return this;
   }
 }
