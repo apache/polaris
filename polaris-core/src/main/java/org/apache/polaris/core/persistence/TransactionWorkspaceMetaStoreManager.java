@@ -50,6 +50,7 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.dao.entity.ValidateAccessResult;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * Wraps an existing impl of PolarisMetaStoreManager and delegates expected "read" operations
@@ -280,8 +281,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public LoadGrantsResult loadGrantsOnSecurable(
-      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
+  public @NotNull LoadGrantsResult loadGrantsOnSecurable(
+      @NotNull PolarisCallContext callCtx, PolarisEntityCore securable) {
     callCtx
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "loadGrantsOnSecurable");
@@ -289,8 +290,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public LoadGrantsResult loadGrantsToGrantee(
-      PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
+  public @NotNull LoadGrantsResult loadGrantsToGrantee(
+      @NotNull PolarisCallContext callCtx, PolarisEntityCore grantee) {
     callCtx
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "loadGrantsToGrantee");

@@ -65,6 +65,7 @@ import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1328,8 +1329,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     return new PrivilegeResult(grantRecord);
   }
 
-  /** {@inheritDoc} */
   @Override
+  public @NotNull LoadGrantsResult loadGrantsOnSecurable(
+      @NotNull PolarisCallContext callCtx, PolarisEntityCore securable) {
+    return loadGrantsOnSecurable(callCtx, securable.getCatalogId(), securable.getId());
+  }
+
   public @Nonnull LoadGrantsResult loadGrantsOnSecurable(
       @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
     // get metastore we should be using
@@ -1369,8 +1374,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         entities.stream().filter(Objects::nonNull).collect(Collectors.toList()));
   }
 
-  /** {@inheritDoc} */
   @Override
+  public @NotNull LoadGrantsResult loadGrantsToGrantee(
+      @NotNull PolarisCallContext callCtx, PolarisEntityCore grantee) {
+    return loadGrantsToGrantee(callCtx, grantee.getCatalogId(), grantee.getId());
+  }
+
   public @Nonnull LoadGrantsResult loadGrantsToGrantee(
       @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
     // get metastore we should be using
