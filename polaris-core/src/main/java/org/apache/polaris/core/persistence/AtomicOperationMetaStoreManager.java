@@ -68,7 +68,6 @@ import org.apache.polaris.core.storage.PolarisCredentialProperty;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -1827,12 +1826,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   }
 
   @Override
-  public @NotNull AttachmentResult attachPolicyToEntity(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull List<PolarisEntityCore> targetCatalogPath,
-      @NotNull PolarisEntityCore target,
-      @NotNull List<PolarisEntityCore> policyCatalogPath,
-      @NotNull PolicyEntity policy,
+  public @Nonnull AttachmentResult attachPolicyToEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<PolarisEntityCore> targetCatalogPath,
+      @Nonnull PolarisEntityCore target,
+      @Nonnull List<PolarisEntityCore> policyCatalogPath,
+      @Nonnull PolicyEntity policy,
       Map<String, String> parameters) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
@@ -1869,12 +1868,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   }
 
   @Override
-  public @NotNull AttachmentResult detachPolicyFromEntity(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityCore target,
-      @NotNull List<PolarisEntityCore> policyCatalogPath,
-      @NotNull PolicyEntity policy) {
+  public @Nonnull AttachmentResult detachPolicyFromEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityCore target,
+      @Nonnull List<PolarisEntityCore> policyCatalogPath,
+      @Nonnull PolicyEntity policy) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
@@ -1896,8 +1895,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   }
 
   @Override
-  public @NotNull LoadPolicyMappingsResult loadPoliciesOnEntity(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisEntityCore target) {
+  public @Nonnull LoadPolicyMappingsResult loadPoliciesOnEntity(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore target) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
@@ -1917,10 +1916,10 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   }
 
   @Override
-  public @NotNull LoadPolicyMappingsResult loadPoliciesOnEntityByType(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisEntityCore target,
-      @NotNull PolicyType policyType) {
+  public @Nonnull LoadPolicyMappingsResult loadPoliciesOnEntityByType(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore target,
+      @Nonnull PolicyType policyType) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 

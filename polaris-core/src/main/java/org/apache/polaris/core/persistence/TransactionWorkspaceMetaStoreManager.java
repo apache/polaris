@@ -52,7 +52,6 @@ import org.apache.polaris.core.persistence.dao.entity.ValidateAccessResult;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.jetbrains.annotations.NotNull;
 
 /**
  * Wraps an existing impl of PolarisMetaStoreManager and delegates expected "read" operations
@@ -399,12 +398,12 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public @NotNull AttachmentResult attachPolicyToEntity(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull List<PolarisEntityCore> targetCatalogPath,
-      @NotNull PolarisEntityCore target,
-      @NotNull List<PolarisEntityCore> policyCatalogPath,
-      @NotNull PolicyEntity policy,
+  public @Nonnull AttachmentResult attachPolicyToEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<PolarisEntityCore> targetCatalogPath,
+      @Nonnull PolarisEntityCore target,
+      @Nonnull List<PolarisEntityCore> policyCatalogPath,
+      @Nonnull PolicyEntity policy,
       Map<String, String> parameters) {
     callCtx
         .getDiagServices()
@@ -413,12 +412,12 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public @NotNull AttachmentResult detachPolicyFromEntity(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull List<PolarisEntityCore> catalogPath,
-      @NotNull PolarisEntityCore target,
-      @NotNull List<PolarisEntityCore> policyCatalogPath,
-      @NotNull PolicyEntity policy) {
+  public @Nonnull AttachmentResult detachPolicyFromEntity(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull List<PolarisEntityCore> catalogPath,
+      @Nonnull PolarisEntityCore target,
+      @Nonnull List<PolarisEntityCore> policyCatalogPath,
+      @Nonnull PolicyEntity policy) {
     callCtx
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "detachPolicyFromEntity");
@@ -426,8 +425,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public @NotNull LoadPolicyMappingsResult loadPoliciesOnEntity(
-      @NotNull PolarisCallContext callCtx, @NotNull PolarisEntityCore target) {
+  public @Nonnull LoadPolicyMappingsResult loadPoliciesOnEntity(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisEntityCore target) {
     callCtx
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "loadPoliciesOnEntity");
@@ -435,10 +434,10 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public @NotNull LoadPolicyMappingsResult loadPoliciesOnEntityByType(
-      @NotNull PolarisCallContext callCtx,
-      @NotNull PolarisEntityCore target,
-      @NotNull PolicyType policyType) {
+  public @Nonnull LoadPolicyMappingsResult loadPoliciesOnEntityByType(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore target,
+      @Nonnull PolicyType policyType) {
     callCtx
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "loadPoliciesOnEntityByType");
