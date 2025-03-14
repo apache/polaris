@@ -34,6 +34,9 @@ public class EntityWeigher implements Weigher<Long, ResolvedPolarisEntity> {
   /* Represents the approximate size of an entity beyond the properties */
   private static final int APPROXIMATE_ENTITY_OVERHEAD = 1000;
 
+  /* Represents the amount of bytes that a character is expected to take up */
+  private static final int APPROXIMATE_BYTES_PER_CHAR = 2;
+
   /** Singleton instance */
   private static final EntityWeigher instance = new EntityWeigher();
 
@@ -45,7 +48,7 @@ public class EntityWeigher implements Weigher<Long, ResolvedPolarisEntity> {
   }
 
   /**
-   * Computes the weight of a given entity
+   * Computes the weight of a given entity. The unit here is not exactly bytes, but it's close.
    *
    * @param key The entity's key; not used
    * @param value The entity to be cached
@@ -54,8 +57,8 @@ public class EntityWeigher implements Weigher<Long, ResolvedPolarisEntity> {
   @Override
   public @NonNegative int weigh(Long key, ResolvedPolarisEntity value) {
     return APPROXIMATE_ENTITY_OVERHEAD
-        + value.getEntity().getProperties().length()
-        + value.getEntity().getInternalProperties().length();
+        + (value.getEntity().getProperties().length() * APPROXIMATE_BYTES_PER_CHAR)
+        + (value.getEntity().getInternalProperties().length() * APPROXIMATE_BYTES_PER_CHAR);
   }
 
   /** Factory method to provide a typed Weigher */
