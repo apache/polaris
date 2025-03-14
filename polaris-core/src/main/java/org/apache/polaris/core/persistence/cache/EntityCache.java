@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
+import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -74,9 +75,10 @@ public class EntityCache {
           }
         };
 
+    long weigherTarget = PolarisConfiguration.loadConfig(FeatureConfiguration.ENTITY_CACHE_WEIGHER_TARGET);
     Caffeine<Long, ResolvedPolarisEntity> byIdBuilder =
         Caffeine.newBuilder()
-            .maximumWeight(100 * EntityWeigher.WEIGHT_PER_MB) // Goal is ~100MB
+            .maximumWeight(weigherTarget)
             .weigher(EntityWeigher.asWeigher())
             .expireAfterAccess(1, TimeUnit.HOURS) // Expire entries after 1 hour of no access
             .removalListener(removalListener); // Set the removal listener
