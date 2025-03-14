@@ -38,7 +38,7 @@ ENV PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src
 WORKDIR /home/spark/regtests
 COPY ./regtests/setup.sh /home/spark/regtests/setup.sh
 COPY ./regtests/pyspark-setup.sh /home/spark/regtests/pyspark-setup.sh
-COPY ./client/python /home/spark/regtests/client/python
+COPY ./client/python /home/spark/client/python
 COPY ./regtests/polaris-reg-test /home/spark/polaris
 COPY ./regtests/requirements.txt /tmp/
 
