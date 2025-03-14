@@ -24,9 +24,16 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * An annotation that should be applied to all BehaviorChangeConfiguration instances. The value here
- * is the Polaris version when the flag was introduced. A spotless check should validate that
- * behavior change flags are not present for more than 2 minor releases or 1 major release
+ * An annotation that should be applied to all BehaviorChangeConfiguration instances. Spotless will
+ * enforce that these flags are not around too long. When the flag expires, the linter will prompt
+ * the person attempting to do the release to take 1 of 3 actions:
+ * <pre>
+ * <ul>
+ *     <li>Remove the flag</li>
+ *     <li>Promote the flag to a feature flag</li>
+ *     <li>Disable the linter for this flag for an "extension"</li>
+ * </ul>
+ * </pre>
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
