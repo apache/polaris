@@ -62,12 +62,12 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
-import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
@@ -125,9 +125,6 @@ public class IcebergCatalogAdapter
   private final CallContextCatalogFactory catalogFactory;
   private final PolarisEntityManager entityManager;
   private final PolarisMetaStoreManager metaStoreManager;
-  private final TransactionalPersistence session;
-  private final PolarisConfigurationStore configurationStore;
-  private final PolarisDiagnostics diagnostics;
   private final PolarisAuthorizer polarisAuthorizer;
   private final IcebergCatalogPrefixParser prefixParser;
 
@@ -138,7 +135,7 @@ public class IcebergCatalogAdapter
       CallContextCatalogFactory catalogFactory,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
-      TransactionalPersistence session,
+      BasePersistence session,
       PolarisConfigurationStore configurationStore,
       PolarisDiagnostics diagnostics,
       PolarisAuthorizer polarisAuthorizer,
@@ -148,9 +145,6 @@ public class IcebergCatalogAdapter
     this.catalogFactory = catalogFactory;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
-    this.session = session;
-    this.configurationStore = configurationStore;
-    this.diagnostics = diagnostics;
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
 
