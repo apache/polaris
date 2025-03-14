@@ -104,8 +104,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
         store,
         storageIntegrationProvider,
         secretsGenerator);
-    LOGGER.debug(
-        "Creating EclipseLink Meta Store Session for realm {}", realmContext.getRealmIdentifier());
+
     try (EntityManager session = emf.createEntityManager()) {
       this.store.initialize(session);
     }
