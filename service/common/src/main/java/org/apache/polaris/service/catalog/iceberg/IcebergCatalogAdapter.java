@@ -69,6 +69,7 @@ import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.service.catalog.AccessDelegationMode;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
@@ -130,7 +131,7 @@ public class IcebergCatalogAdapter
   private final PolarisConfigurationStore configurationStore;
   private final PolarisDiagnostics diagnostics;
   private final PolarisAuthorizer polarisAuthorizer;
-  private final IcebergCatalogPrefixParser prefixParser;
+  private final CatalogPrefixParser prefixParser;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -143,7 +144,7 @@ public class IcebergCatalogAdapter
       PolarisConfigurationStore configurationStore,
       PolarisDiagnostics diagnostics,
       PolarisAuthorizer polarisAuthorizer,
-      IcebergCatalogPrefixParser prefixParser) {
+      CatalogPrefixParser prefixParser) {
     this.realmContext = realmContext;
     this.callContext = callContext;
     this.catalogFactory = catalogFactory;

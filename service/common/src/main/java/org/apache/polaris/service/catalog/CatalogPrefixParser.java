@@ -16,12 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog.iceberg;
+package org.apache.polaris.service.catalog;
 
 import org.apache.polaris.core.context.RealmContext;
 
 /** An extension point for converting Iceberg REST API "prefix" values to Polaris Catalog names. */
-public interface IcebergCatalogPrefixParser {
+public interface CatalogPrefixParser {
 
   /**
    * Produces the name of a Polaris catalog from the given Iceberg Catalog REST API "prefix" for the
