@@ -25,12 +25,28 @@ plugins {
 
 val genericTableModels =
   listOf(
-      "CreateGenericTableRequest",
-      "LoadGenericTableResponse",
-      "ListGenericTablesResponse",
-      "GenericTable",
-    )
-    .joinToString(",")
+    "CreateGenericTableRequest",
+    "LoadGenericTableResponse",
+    "ListGenericTablesResponse",
+    "GenericTable",
+  )
+
+val policyManagementModels =
+  listOf(
+    "CatalogIdentifier",
+    "CreatePolicyRequest",
+    "LoadPolicyResponse",
+    "PolicyIdentifier",
+    "Policy",
+    "PolicyAttachmentTarget",
+    "AttachPolicyRequest",
+    "DetachPolicyRequest",
+    "UpdatePolicyRequest",
+    "GetApplicablePoliciesResponse",
+    "ListPoliciesResponse",
+  )
+
+val models = (genericTableModels + policyManagementModels).joinToString(",")
 
 dependencies {
   implementation(project(":polaris-core"))
@@ -65,8 +81,8 @@ openApiGenerate {
   ignoreFileOverride = "$rootDir/.openapi-generator-ignore"
   removeOperationIdPrefix = true
   templateDir = "$rootDir/server-templates"
-  globalProperties.put("apis", "GenericTableApi")
-  globalProperties.put("models", genericTableModels)
+  globalProperties.put("apis", "GenericTableApi,PolicyApi")
+  globalProperties.put("models", models)
   globalProperties.put("apiDocs", "false")
   globalProperties.put("modelTests", "false")
   configOptions.put("resourceName", "catalog")
