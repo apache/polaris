@@ -101,6 +101,7 @@ for TEST_FILE in ${TEST_LIST}; do
       NUM_FAILURES=$(( NUM_FAILURES + 1 ))
     else
       loggreen "Test SUCCEEDED: ${TEST_FILE}"
+      NUM_SUCCESSES=$(( NUM_SUCCESSES + 1 ))
     fi
     continue
   fi
@@ -121,6 +122,7 @@ for TEST_FILE in ${TEST_LIST}; do
       NUM_FAILURES=$(( NUM_FAILURES + 1 ))
     else
       loggreen "Test SUCCEEDED: ${TEST_SUITE}:${TEST_SHORTNAME}"
+      NUM_SUCCESSES=$(( NUM_SUCCESSES + 1 ))
     fi
     continue
   fi

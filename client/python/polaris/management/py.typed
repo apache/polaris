@@ -1,4 +1,5 @@
 #
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -16,14 +17,4 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-FROM jupyter/all-spark-notebook:spark-3.5.0
-
-COPY --chown=jovyan client /home/jovyan/client
-COPY --chown=jovyan regtests/requirements.txt /tmp
-RUN pip install -r /tmp/requirements.txt && \
-    cd client/python && \
-    python3 -m poetry install && \
-    pip install -e .
-
-WORKDIR /home/jovyan/
+#
