@@ -105,6 +105,9 @@ public class ResolverTest {
    * - (N1/N4)
    * - N5/N6/T5
    * - N5/N6/T6
+   * - N7/N8/POL1
+   * - N7/N8/POL2
+   * - N7/POL3
    * - R1(TABLE_READ on N1/N2, VIEW_CREATE on C, TABLE_LIST on N2, TABLE_DROP on N5/N6/T5)
    * - R2(TABLE_WRITE_DATA on N5, VIEW_LIST on C)
    * - PR1(R1, R2)
@@ -229,6 +232,19 @@ public class ResolverTest {
     ResolverPath N5_N6_T5 =
         new ResolverPath(List.of("N5", "N6", "T5"), PolarisEntityType.TABLE_LIKE);
     this.resolveDriver(this.cache, "test", N5_N6_T5, null, null);
+
+    // N7/N8 which exists
+    ResolverPath N7_N8 = new ResolverPath(List.of("N7", "N8"), PolarisEntityType.NAMESPACE);
+    this.resolveDriver(this.cache, "test", N7_N8, null, null);
+
+    // N7/N8/POL1 which exists
+    ResolverPath N7_N8_POL1 =
+        new ResolverPath(List.of("N7", "N8", "POL1"), PolarisEntityType.POLICY);
+    this.resolveDriver(this.cache, "test", N7_N8_POL1, null, null);
+
+    // N7/POL3 which exists
+    ResolverPath N7_POL3 = new ResolverPath(List.of("N7", "POL3"), PolarisEntityType.POLICY);
+    this.resolveDriver(this.cache, "test", N7_POL3, null, null);
 
     // Error scenarios: N5/N6/T8 which does not exists
     ResolverPath N5_N6_T8 =
