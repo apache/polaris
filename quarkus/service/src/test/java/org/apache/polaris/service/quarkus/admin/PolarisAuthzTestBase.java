@@ -362,8 +362,7 @@ public abstract class PolarisAuthzTestBase {
 
   protected @Nonnull Set<String> loadPrincipalRolesNames(AuthenticatedPolarisPrincipal p) {
     return metaStoreManager
-        .loadGrantsToGrantee(
-            callContext.getPolarisCallContext(), 0L, p.getPrincipalEntity().getId())
+        .loadGrantsToGrantee(callContext.getPolarisCallContext(), p.getPrincipalEntity())
         .getGrantRecords()
         .stream()
         .filter(gr -> gr.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode())

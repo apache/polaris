@@ -268,8 +268,7 @@ public class PolarisTestMetaStoreManager {
 
     // load all grant records on that securable, should not fail
     LoadGrantsResult loadGrantsOnSecurable =
-        polarisMetaStoreManager.loadGrantsOnSecurable(
-            this.polarisCallContext, securable.getCatalogId(), securable.getId());
+        polarisMetaStoreManager.loadGrantsOnSecurable(this.polarisCallContext, securable);
     // ensure entities for these grant records have been properly loaded
     this.validateLoadedGrants(loadGrantsOnSecurable, false);
 
@@ -278,8 +277,7 @@ public class PolarisTestMetaStoreManager {
 
     // load all grant records on that grantee, should not fail
     LoadGrantsResult loadGrantsOnGrantee =
-        polarisMetaStoreManager.loadGrantsToGrantee(
-            this.polarisCallContext, grantee.getCatalogId(), grantee.getId());
+        polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, grantee);
     // ensure entities for these grant records have been properly loaded
     this.validateLoadedGrants(loadGrantsOnGrantee, true);
 
@@ -355,8 +353,7 @@ public class PolarisTestMetaStoreManager {
 
     // load all grant records on that securable, should not fail
     LoadGrantsResult loadGrantsOnSecurable =
-        polarisMetaStoreManager.loadGrantsOnSecurable(
-            this.polarisCallContext, securable.getCatalogId(), securable.getId());
+        polarisMetaStoreManager.loadGrantsOnSecurable(this.polarisCallContext, securable);
     // ensure entities for these grant records have been properly loaded
     this.validateLoadedGrants(loadGrantsOnSecurable, false);
 
@@ -365,8 +362,7 @@ public class PolarisTestMetaStoreManager {
 
     // load all grant records on that grantee, should not fail
     LoadGrantsResult loadGrantsOnGrantee =
-        polarisMetaStoreManager.loadGrantsToGrantee(
-            this.polarisCallContext, grantee.getCatalogId(), grantee.getId());
+        polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, grantee);
     this.validateLoadedGrants(loadGrantsOnGrantee, true);
 
     // check that the grant record has been removed
@@ -734,14 +730,12 @@ public class PolarisTestMetaStoreManager {
       granteeEntities =
           new ArrayList<>(
               polarisMetaStoreManager
-                  .loadGrantsOnSecurable(
-                      this.polarisCallContext, entity.getCatalogId(), entity.getId())
+                  .loadGrantsOnSecurable(this.polarisCallContext, entity)
                   .getEntities());
       securableEntities =
           new ArrayList<>(
               polarisMetaStoreManager
-                  .loadGrantsToGrantee(
-                      this.polarisCallContext, entity.getCatalogId(), entity.getId())
+                  .loadGrantsToGrantee(this.polarisCallContext, entity)
                   .getEntities());
     } else {
       granteeEntities = List.of();
@@ -831,8 +825,7 @@ public class PolarisTestMetaStoreManager {
       // of the entity it was connected with before being dropped
       for (PolarisBaseEntity connectedEntity : granteeEntities) {
         LoadGrantsResult grantResult =
-            polarisMetaStoreManager.loadGrantsToGrantee(
-                this.polarisCallContext, connectedEntity.getCatalogId(), connectedEntity.getId());
+            polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, connectedEntity);
         if (grantResult.isSuccess()) {
           long cnt =
               grantResult.getGrantRecords().stream()
@@ -853,8 +846,7 @@ public class PolarisTestMetaStoreManager {
       }
       for (PolarisBaseEntity connectedEntity : securableEntities) {
         LoadGrantsResult grantResult =
-            polarisMetaStoreManager.loadGrantsOnSecurable(
-                this.polarisCallContext, connectedEntity.getCatalogId(), connectedEntity.getId());
+            polarisMetaStoreManager.loadGrantsOnSecurable(this.polarisCallContext, connectedEntity);
         long cnt =
             grantResult.getGrantRecords().stream()
                 .filter(gr -> gr.getGranteeId() == entityToDrop.getId())
@@ -1294,8 +1286,7 @@ public class PolarisTestMetaStoreManager {
     List<PolarisGrantRecord> refGrantRecords = new ArrayList<>();
     if (refEntity.getType().isGrantee()) {
       LoadGrantsResult loadGrantResult =
-          this.polarisMetaStoreManager.loadGrantsToGrantee(
-              this.polarisCallContext, refEntity.getCatalogId(), refEntity.getId());
+          this.polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, refEntity);
       this.validateLoadedGrants(loadGrantResult, true);
 
       // same version
@@ -1306,8 +1297,7 @@ public class PolarisTestMetaStoreManager {
     }
 
     LoadGrantsResult loadGrantResult =
-        this.polarisMetaStoreManager.loadGrantsOnSecurable(
-            this.polarisCallContext, refEntity.getCatalogId(), refEntity.getId());
+        this.polarisMetaStoreManager.loadGrantsOnSecurable(this.polarisCallContext, refEntity);
     this.validateLoadedGrants(loadGrantResult, false);
 
     // same version
@@ -1347,10 +1337,9 @@ public class PolarisTestMetaStoreManager {
     // reload the grants
     LoadGrantsResult loadGrantResult =
         refEntity.getType().isGrantee()
-            ? this.polarisMetaStoreManager.loadGrantsToGrantee(
-                this.polarisCallContext, catalogId, entityId)
+            ? this.polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, refEntity)
             : this.polarisMetaStoreManager.loadGrantsOnSecurable(
-                this.polarisCallContext, catalogId, entityId);
+                this.polarisCallContext, refEntity);
     this.validateLoadedGrants(loadGrantResult, refEntity.getType().isGrantee());
     Assertions.assertThat(cacheEntry.getGrantRecordsVersion())
         .isEqualTo(loadGrantResult.getGrantsVersion());
@@ -2099,7 +2088,7 @@ public class PolarisTestMetaStoreManager {
     grantToGrantee(catalog, R1, PR9000, PolarisPrivilege.CATALOG_ROLE_USAGE);
 
     LoadGrantsResult loadGrantsResult =
-        polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, 0L, PR9000.getId());
+        polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, PR9000);
     this.validateLoadedGrants(loadGrantsResult, true);
     Assertions.assertThat(loadGrantsResult.getGrantRecords()).hasSize(1);
     Assertions.assertThat(loadGrantsResult.getGrantRecords().get(0).getSecurableCatalogId())
@@ -2107,8 +2096,7 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(loadGrantsResult.getGrantRecords().get(0).getSecurableId())
         .isEqualTo(R1.getId());
 
-    loadGrantsResult =
-        polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, 0L, PR900.getId());
+    loadGrantsResult = polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, PR900);
     Assertions.assertThat(loadGrantsResult).isNotNull();
     Assertions.assertThat(loadGrantsResult.getGrantRecords()).hasSize(0);
   }

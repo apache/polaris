@@ -96,7 +96,7 @@ menu:
     - name: GitHub
       url: https://github.com/apache/polaris
 
-    - name: "Docs & Releases"
+    - name: "Documentation"
       identifier: "releases"
       weight: 100
       params:
@@ -104,6 +104,9 @@ menu:
     - name: "All Releases"
       identifier: "all-releases-page"
       url: "/releases/"
+      parent: "releases"
+    - name: "0.9.0"
+      url: "/in-dev/0.9.0/"
       parent: "releases"
     - name: "In Development"
       url: "/in-dev/unreleased/"

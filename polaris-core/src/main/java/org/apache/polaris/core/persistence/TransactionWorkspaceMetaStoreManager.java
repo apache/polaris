@@ -280,8 +280,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public LoadGrantsResult loadGrantsOnSecurable(
-      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
+  public @Nonnull LoadGrantsResult loadGrantsOnSecurable(
+      @Nonnull PolarisCallContext callCtx, PolarisEntityCore securable) {
     callCtx
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "loadGrantsOnSecurable");
@@ -289,8 +289,8 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public LoadGrantsResult loadGrantsToGrantee(
-      PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
+  public @Nonnull LoadGrantsResult loadGrantsToGrantee(
+      @Nonnull PolarisCallContext callCtx, PolarisEntityCore grantee) {
     callCtx
         .getDiagServices()
         .fail("illegal_method_in_transaction_workspace", "loadGrantsToGrantee");

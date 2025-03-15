@@ -1331,6 +1331,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   /** {@inheritDoc} */
   @Override
   public @Nonnull LoadGrantsResult loadGrantsOnSecurable(
+      @Nonnull PolarisCallContext callCtx, PolarisEntityCore securable) {
+    return loadGrantsOnSecurable(callCtx, securable.getCatalogId(), securable.getId());
+  }
+
+  public @Nonnull LoadGrantsResult loadGrantsOnSecurable(
       @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
@@ -1371,6 +1376,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
+  public @Nonnull LoadGrantsResult loadGrantsToGrantee(
+      @Nonnull PolarisCallContext callCtx, PolarisEntityCore grantee) {
+    return loadGrantsToGrantee(callCtx, grantee.getCatalogId(), grantee.getId());
+  }
+
   public @Nonnull LoadGrantsResult loadGrantsToGrantee(
       @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
     // get metastore we should be using

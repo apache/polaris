@@ -18,8 +18,6 @@
  */
 package org.apache.polaris.core;
 
-import org.jetbrains.annotations.Contract;
-
 public interface PolarisDiagnostics {
 
   /**
@@ -31,7 +29,6 @@ public interface PolarisDiagnostics {
    *     pairs: "id={} fileName={}"
    * @param extraInfoArgs extra information arguments
    */
-  @Contract("_, _, _ -> fail")
   RuntimeException fail(
       final String signature, final String extraInfoFormat, final Object... extraInfoArgs);
 
@@ -45,7 +42,6 @@ public interface PolarisDiagnostics {
    *     pairs: "id={} fileName={}"
    * @param extraInfoArgs extra information arguments
    */
-  @Contract("_, _, _, _ -> fail")
   RuntimeException fail(
       final String signature,
       final Throwable cause,
@@ -61,7 +57,6 @@ public interface PolarisDiagnostics {
    * @return the non-null reference that was validated
    * @throws RuntimeException if `reference` is null
    */
-  @Contract("null, _ -> fail")
   <T> T checkNotNull(final T reference, final String signature);
 
   /**
@@ -76,7 +71,6 @@ public interface PolarisDiagnostics {
    * @return the non-null reference that was validated
    * @throws RuntimeException if `reference` is null
    */
-  @Contract("null, _, _, _ -> fail")
   <T> T checkNotNull(
       final T reference,
       final String signature,
@@ -91,7 +85,6 @@ public interface PolarisDiagnostics {
    *     like "path_cannot_be_null"
    * @throws RuntimeException if `condition` is not true
    */
-  @Contract("false, _ -> fail")
   void check(final boolean expression, final String signature);
 
   /**
@@ -105,7 +98,6 @@ public interface PolarisDiagnostics {
    * @param extraInfoArgs extra information arguments
    * @throws RuntimeException if `condition` is not true
    */
-  @Contract("false, _, _, _ -> fail")
   void check(
       final boolean expression,
       final String signature,

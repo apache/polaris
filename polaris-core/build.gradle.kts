@@ -41,7 +41,6 @@ dependencies {
   implementation(libs.commons.codec1)
   implementation(libs.guava)
   implementation(libs.slf4j.api)
-  compileOnly(libs.jetbrains.annotations)
   compileOnly(libs.spotbugs.annotations)
 
   compileOnly(project(":polaris-immutables"))

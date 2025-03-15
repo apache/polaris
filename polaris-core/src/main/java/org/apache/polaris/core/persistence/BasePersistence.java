@@ -392,4 +392,15 @@ public interface BasePersistence {
       @Nullable PolarisEntityType optionalEntityType,
       long catalogId,
       long parentId);
+
+  /**
+   * Performs operations necessary to isolate the state of {@code this} {@link BasePersistence}
+   * instance from the state of the returned instance as far as multithreaded usage is concerned. If
+   * the implementation has state that is not supposed to be accessed or modified by multiple
+   * threads, it may return a copy from this method. If the implementation is thread-safe, it may
+   * return {@code this}.
+   */
+  default BasePersistence detach() {
+    return this;
+  }
 }
