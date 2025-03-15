@@ -31,6 +31,8 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Clock;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -70,6 +72,9 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
 
 public class QuarkusProducers {
+
+  @ConfigProperty(name = "quarkus.http.proxy.enable-forwarded-prefix")
+  boolean enableForwardedPrefix;
 
   @Produces
   @ApplicationScoped // cannot be singleton because it is mocked in tests
@@ -120,8 +125,16 @@ public class QuarkusProducers {
 
   @Produces
   @RequestScoped
-  public CallContext callContext(RealmContext realmContext, PolarisCallContext polarisCallContext) {
-    return CallContext.of(realmContext, polarisCallContext);
+  public CallContext callContext(
+      RealmContext realmContext,
+      PolarisCallContext polarisCallContext,
+      @Context ContainerRequestContext request)
+      throws URISyntaxException {
+    URI baseUri =
+        enableForwardedPrefix
+            ? new URI(request.getHeaderString("X-Forwarded-Prefix"))
+            : request.getUriInfo().getBaseUri();
+    return CallContext.of(realmContext, polarisCallContext, baseUri);
   }
 
   public void closeCallContext(@Disposes CallContext callContext) {

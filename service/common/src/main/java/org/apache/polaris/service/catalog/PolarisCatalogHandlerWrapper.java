@@ -27,6 +27,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,7 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.UpdateRequirement;
+import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
@@ -814,7 +816,9 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
-      TableIdentifier tableIdentifier, String snapshots) {
+      TableIdentifier tableIdentifier,
+      String snapshots,
+      EnumSet<AccessDelegationMode> accessDelegationModes) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -877,7 +881,21 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                   credentialDelegation.getCredentialConfig(
                       tableIdentifier, tableMetadata, actionsRequested));
             }
-            return responseBuilder.build();
+            if (accessDelegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)) {
+              responseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
+              responseBuilder.addConfig(
+                  AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
+                  callContext
+                      .getBaseUri()
+                      .resolve(
+                          String.format(
+                              "/v1/%s/namespaces/%s/tables/%s/credentials",
+                              catalogName,
+                              tableIdentifier.namespace().toString(),
+                              tableIdentifier.name()))
+                      .toString());
+              return responseBuilder.build();
+            }
           } else if (table instanceof BaseMetadataTable) {
             // metadata tables are loaded on the client side, return NoSuchTableException for now
             throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
