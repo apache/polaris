@@ -466,12 +466,10 @@ public class PolarisManagementServiceIntegrationTest {
             .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
             .build();
     String catalogName = client.newEntityName("my-external-catalog");
-    String remoteUrl = "http://localhost:8080";
     Catalog catalog =
         ExternalCatalog.builder()
             .setType(Catalog.TypeEnum.EXTERNAL)
             .setName(catalogName)
-            .setRemoteUrl(remoteUrl)
             .setProperties(new CatalogProperties("s3://my-bucket/path/to/data"))
             .setStorageConfigInfo(awsConfigModel)
             .build();
@@ -484,7 +482,6 @@ public class PolarisManagementServiceIntegrationTest {
           .isNotNull()
           .isInstanceOf(ExternalCatalog.class)
           .asInstanceOf(InstanceOfAssertFactories.type(ExternalCatalog.class))
-          .returns(remoteUrl, ExternalCatalog::getRemoteUrl)
           .extracting(ExternalCatalog::getStorageConfigInfo)
           .isNotNull()
           .isInstanceOf(AwsStorageConfigInfo.class)
