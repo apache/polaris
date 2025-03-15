@@ -22,7 +22,6 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
@@ -119,23 +118,8 @@ public interface PolarisGrantManager {
    *     ENTITY_NOT_FOUND if the securable cannot be found
    */
   @Nonnull
-  default LoadGrantsResult loadGrantsOnSecurable(
-      @Nonnull PolarisCallContext callCtx, PolarisBaseEntity securable) {
-    return loadGrantsOnSecurable(callCtx, securable.getCatalogId(), securable.getId());
-  }
-
-  /**
-   * This method should be used by the Polaris app to cache all grant records on a securable.
-   *
-   * @param callCtx call context
-   * @param securableCatalogId id of the catalog this securable belongs to
-   * @param securableId id of the securable
-   * @return the list of grants and the version of the grant records. We will return
-   *     ENTITY_NOT_FOUND if the securable cannot be found
-   */
-  @Nonnull
   LoadGrantsResult loadGrantsOnSecurable(
-      @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId);
+      @Nonnull PolarisCallContext callCtx, PolarisEntityCore securable);
 
   /**
    * This method should be used by the Polaris app to load all grants made to a grantee, either a
@@ -147,22 +131,6 @@ public interface PolarisGrantManager {
    *     grantee does not exist
    */
   @Nonnull
-  default LoadGrantsResult loadGrantsToGrantee(
-      @Nonnull PolarisCallContext callCtx, PolarisBaseEntity grantee) {
-    return loadGrantsToGrantee(callCtx, grantee.getCatalogId(), grantee.getId());
-  }
-
-  /**
-   * This method should be used by the Polaris app to load all grants made to a grantee, either a
-   * role or a principal.
-   *
-   * @param callCtx call context
-   * @param granteeCatalogId id of the catalog this grantee belongs to
-   * @param granteeId id of the grantee
-   * @return the list of grants and the version of the grant records. We will return NULL if the
-   *     grantee does not exist
-   */
-  @Nonnull
   LoadGrantsResult loadGrantsToGrantee(
-      PolarisCallContext callCtx, long granteeCatalogId, long granteeId);
+      @Nonnull PolarisCallContext callCtx, PolarisEntityCore grantee);
 }
