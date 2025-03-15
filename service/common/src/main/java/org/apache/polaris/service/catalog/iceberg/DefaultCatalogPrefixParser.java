@@ -16,13 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.catalog.iceberg;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.service.catalog.CatalogPrefixParser;
 
 @ApplicationScoped
-public class DefaultIcebergCatalogPrefixParser implements IcebergCatalogPrefixParser {
+public class DefaultCatalogPrefixParser implements CatalogPrefixParser {
   @Override
   public String prefixToCatalogName(RealmContext realm, String prefix) {
     return prefix;

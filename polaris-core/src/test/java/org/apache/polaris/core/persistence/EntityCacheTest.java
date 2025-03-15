@@ -298,7 +298,7 @@ public class EntityCacheTest {
     PolarisBaseEntity T6v1 =
         this.tm.ensureExistsByName(
             List.of(catalog, N5, N5_N6),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.TABLE,
             "T6");
     Assertions.assertThat(T6v1).isNotNull();
@@ -435,7 +435,8 @@ public class EntityCacheTest {
     Assertions.assertThat(lookup).isNotNull();
 
     EntityCacheByNameKey T4_name =
-        new EntityCacheByNameKey(N1.getCatalogId(), N1.getId(), PolarisEntityType.TABLE_LIKE, "T4");
+        new EntityCacheByNameKey(
+            N1.getCatalogId(), N1.getId(), PolarisEntityType.ICEBERG_TABLE_LIKE, "T4");
     lookup = cache.getOrLoadEntityByName(callCtx, T4_name);
     Assertions.assertThat(lookup).isNotNull();
     ResolvedPolarisEntity cacheEntry_T4 = lookup.getCacheEntry();
@@ -450,7 +451,7 @@ public class EntityCacheTest {
     // load the renamed entity into cache
     EntityCacheByNameKey T4_renamed =
         new EntityCacheByNameKey(
-            N1.getCatalogId(), N1.getId(), PolarisEntityType.TABLE_LIKE, "T4_renamed");
+            N1.getCatalogId(), N1.getId(), PolarisEntityType.ICEBERG_TABLE_LIKE, "T4_renamed");
     lookup = cache.getOrLoadEntityByName(callCtx, T4_renamed);
     Assertions.assertThat(lookup).isNotNull();
     ResolvedPolarisEntity cacheEntry_T4_renamed = lookup.getCacheEntry();

@@ -28,7 +28,7 @@ import java.util.Objects;
 
 /**
  * Base polaris entity representing all attributes of a Polaris Entity. This is used to exchange
- * full entity information between the client and the GS backend
+ * full entity information between the client and the backend
  */
 public class PolarisBaseEntity extends PolarisEntityCore {
 

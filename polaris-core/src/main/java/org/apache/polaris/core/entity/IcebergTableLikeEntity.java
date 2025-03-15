@@ -24,7 +24,7 @@ import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
 
-public class TableLikeEntity extends PolarisEntity {
+public class IcebergTableLikeEntity extends PolarisEntity {
   // For applicable types, this key on the "internalProperties" map will return the location
   // of the internalProperties JSON file.
   public static final String METADATA_LOCATION_KEY = "metadata-location";
@@ -35,13 +35,13 @@ public class TableLikeEntity extends PolarisEntity {
   public static final String LAST_ADMITTED_NOTIFICATION_TIMESTAMP_KEY =
       "last-notification-timestamp";
 
-  public TableLikeEntity(PolarisBaseEntity sourceEntity) {
+  public IcebergTableLikeEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
   }
 
-  public static TableLikeEntity of(PolarisBaseEntity sourceEntity) {
+  public static IcebergTableLikeEntity of(PolarisBaseEntity sourceEntity) {
     if (sourceEntity != null) {
-      return new TableLikeEntity(sourceEntity);
+      return new IcebergTableLikeEntity(sourceEntity);
     }
     return null;
   }
@@ -79,21 +79,21 @@ public class TableLikeEntity extends PolarisEntity {
     return getPropertiesAsMap().get(PolarisEntityConstants.ENTITY_BASE_LOCATION);
   }
 
-  public static class Builder extends PolarisEntity.BaseBuilder<TableLikeEntity, Builder> {
+  public static class Builder extends PolarisEntity.BaseBuilder<IcebergTableLikeEntity, Builder> {
     public Builder(TableIdentifier identifier, String metadataLocation) {
       super();
-      setType(PolarisEntityType.TABLE_LIKE);
+      setType(PolarisEntityType.ICEBERG_TABLE_LIKE);
       setTableIdentifier(identifier);
       setMetadataLocation(metadataLocation);
     }
 
-    public Builder(TableLikeEntity original) {
+    public Builder(IcebergTableLikeEntity original) {
       super(original);
     }
 
     @Override
-    public TableLikeEntity build() {
-      return new TableLikeEntity(buildBase());
+    public IcebergTableLikeEntity build() {
+      return new IcebergTableLikeEntity(buildBase());
     }
 
     public Builder setTableIdentifier(TableIdentifier identifier) {

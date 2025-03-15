@@ -373,7 +373,8 @@ public class Resolver {
 
     // validate input
     diagnostics.check(
-        entityType != PolarisEntityType.NAMESPACE && entityType != PolarisEntityType.TABLE_LIKE,
+        entityType != PolarisEntityType.NAMESPACE
+            && entityType != PolarisEntityType.ICEBERG_TABLE_LIKE,
         "cannot_be_path");
     diagnostics.check(
         entityType.isTopLevel() || this.referenceCatalogName != null, "reference_catalog_expected");

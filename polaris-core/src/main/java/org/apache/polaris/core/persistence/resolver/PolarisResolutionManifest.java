@@ -180,8 +180,9 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
    *     "optional", or if it was resolved but the subType doesn't match the specified subType.
    */
   @Override
-  public PolarisResolvedPathWrapper getResolvedPath(Object key, PolarisEntitySubType subType) {
-    return getResolvedPath(key, subType, false);
+  public PolarisResolvedPathWrapper getResolvedPath(
+      Object key, PolarisEntityType entityType, PolarisEntitySubType subType) {
+    return getResolvedPath(key, entityType, subType, false);
   }
 
   /**
@@ -237,7 +238,7 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
    */
   @Override
   public PolarisResolvedPathWrapper getPassthroughResolvedPath(
-      Object key, PolarisEntitySubType subType) {
+      Object key, PolarisEntityType entityType, PolarisEntitySubType subType) {
     PolarisResolvedPathWrapper resolvedPath = getPassthroughResolvedPath(key);
     if (resolvedPath == null) {
       return null;
@@ -374,7 +375,10 @@ public class PolarisResolutionManifest implements PolarisResolutionManifestCatal
    *     "optional", or if it was resolved but the subType doesn't match the specified subType.
    */
   public PolarisResolvedPathWrapper getResolvedPath(
-      Object key, PolarisEntitySubType subType, boolean prependRootContainer) {
+      Object key,
+      PolarisEntityType entityType,
+      PolarisEntitySubType subType,
+      boolean prependRootContainer) {
     PolarisResolvedPathWrapper resolvedPath = getResolvedPath(key, prependRootContainer);
     if (resolvedPath == null) {
       return null;
