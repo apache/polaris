@@ -35,6 +35,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 
@@ -659,5 +660,87 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
     PolarisEntitiesActiveKey entityActiveKey =
         new PolarisEntitiesActiveKey(catalogId, parentId, typeCode, name);
     return this.lookupEntityActiveInCurrentTxn(callCtx, entityActiveKey);
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void writeToPolicyMappingRecords(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+    this.runActionInTransaction(
+        callCtx, () -> this.writeToPolicyMappingRecordsInCurrentTxn(callCtx, record));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteFromPolicyMappingRecords(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+    this.runActionInTransaction(
+        callCtx, () -> this.deleteFromPolicyMappingRecordsInCurrentTxn(callCtx, record));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void deleteAllEntityPolicyMappingRecords(
+      @Nonnull PolarisCallContext callCtx,
+      @Nonnull PolarisEntityCore entity,
+      @Nonnull List<PolarisPolicyMappingRecord> mappingOnTarget,
+      @Nonnull List<PolarisPolicyMappingRecord> mappingOnPolicy) {
+    this.runActionInTransaction(
+        callCtx,
+        () ->
+            this.deleteAllEntityPolicyMappingRecordsInCurrentTxn(
+                callCtx, entity, mappingOnTarget, mappingOnPolicy));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  @Nullable
+  public PolarisPolicyMappingRecord lookupPolicyMappingRecord(
+      @Nonnull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode,
+      long policyCatalogId,
+      long policyId) {
+    return this.runInReadTransaction(
+        callCtx,
+        () ->
+            this.lookupPolicyMappingRecordInCurrentTxn(
+                callCtx, targetCatalogId, targetId, policyTypeCode, policyCatalogId, policyId));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  @Nonnull
+  public List<PolarisPolicyMappingRecord> loadPoliciesOnTargetByType(
+      @Nonnull PolarisCallContext callCtx,
+      long targetCatalogId,
+      long targetId,
+      int policyTypeCode) {
+    return this.runInReadTransaction(
+        callCtx,
+        () ->
+            this.loadPoliciesOnTargetByTypeInCurrentTxn(
+                callCtx, targetCatalogId, targetId, policyTypeCode));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  @Nonnull
+  public List<PolarisPolicyMappingRecord> loadAllPoliciesOnTarget(
+      @Nonnull PolarisCallContext callCtx, long targetCatalogId, long targetId) {
+    return this.runInReadTransaction(
+        callCtx,
+        () -> this.loadAllPoliciesOnTargetInCurrentTxn(callCtx, targetCatalogId, targetId));
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  @Nonnull
+  public List<PolarisPolicyMappingRecord> loadAllPoliciesOnPolicy(
+      @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
+    return this.runInReadTransaction(
+        callCtx,
+        () -> this.loadAllPoliciesOnPolicyInCurrentTxn(callCtx, policyCatalogId, policyId));
   }
 }
