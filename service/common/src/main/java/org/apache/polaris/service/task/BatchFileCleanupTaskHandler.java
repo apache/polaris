@@ -77,17 +77,11 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
                 missingFiles.size());
       }
 
-      // Schedule the deletion for each file asynchronously
-      List<CompletableFuture<Void>> deleteFutures =
-          validFiles.stream()
-              .map(file -> super.tryDelete(tableId, authorizedFileIO, null, file, null, 1))
-              .toList();
+      CompletableFuture<Void> deleteFutures =
+          tryDelete(tableId, authorizedFileIO, validFiles, cleanupTask.type().getValue(), true, null, 1);
 
       try {
-        // Wait for all delete operations to finish
-        CompletableFuture<Void> allDeletes =
-            CompletableFuture.allOf(deleteFutures.toArray(new CompletableFuture[0]));
-        allDeletes.join();
+        deleteFutures.join();
       } catch (Exception e) {
         LOGGER.error("Exception detected during batch files deletion", e);
         return false;
@@ -97,5 +91,25 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
     }
   }
 
-  public record BatchFileCleanupTask(TableIdentifier tableId, List<String> batchFiles) {}
+  public enum BatchFileType {
+    TABLE_METADATA("table_metadata");
+
+    private final String value;
+
+    BatchFileType(String value) {
+      this.value = value;
+    }
+
+    public String getValue() {
+      return value;
+    }
+
+    @Override
+    public String toString() {
+      return value;
+    }
+  }
+
+  public record BatchFileCleanupTask(
+      TableIdentifier tableId, List<String> batchFiles, BatchFileType type) {}
 }
