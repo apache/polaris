@@ -38,9 +38,10 @@ import java.lang.annotation.Target;
  */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface BehaviorChangeScope {
+public @interface BehaviorChange {
   static final String AUTOMATIC_EXPIRES = "auto";
 
   String since();
+
   String expires() default AUTOMATIC_EXPIRES;
 }

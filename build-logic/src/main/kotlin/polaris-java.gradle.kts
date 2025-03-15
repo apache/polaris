@@ -163,7 +163,11 @@ tasks.withType(Jar::class).configureEach {
 class StaleBehaviorChangeConfigurationChecker(private val appVersion: String) : FormatterFunc {
 
   // Helper function for spotless to check for stale BehaviorChangeConfigurations
-  fun isStaleVersion(annotatedVersion: String, expiresVersion: String?, polarisVersion: String): Boolean {
+  fun isStaleVersion(
+    annotatedVersion: String,
+    expiresVersion: String?,
+    polarisVersion: String,
+  ): Boolean {
     val (majorA, minorA, patchA) = annotatedVersion.split(".").map { it.toInt() }
     if (expiresVersion == null) {
       val (majorB, minorB, _) = polarisVersion.split(".").map { it.toInt() }
@@ -171,20 +175,24 @@ class StaleBehaviorChangeConfigurationChecker(private val appVersion: String) : 
     } else {
       val (majorB, minorB, patchB) = expiresVersion.split(".").map { it.toInt() }
       return (majorA > majorB ||
-              (majorA == majorB && minorA > minorB) ||
-              (majorA == majorB && minorA == minorB && patchB > patchA))
+        (majorA == majorB && minorA > minorB) ||
+        (majorA == majorB && minorA == minorB && patchB > patchA))
     }
   }
 
   override fun apply(input: String): String {
-    val versionRegex = """@BehaviorChangeScope\s*\(\s*since\s*=\s*"(\d+\.\d+\.\d+)"(?:\s*,\s*expires\s*=\s*"(\d+\.\d+\.\d+)")?\s*\)""".toRegex()
+    val versionRegex =
+      """@BehaviorChangeScope\s*\(\s*since\s*=\s*"(\d+\.\d+\.\d+)"(?:\s*,\s*expires\s*=\s*"(\d+\.\d+\.\d+)")?\s*\)"""
+        .toRegex()
     val matcher = versionRegex.findAll(input)
     matcher.forEach { matchResult ->
       val sinceVersion = matchResult.groupValues[1]
       val expiresVersion = matchResult.groupValues.getOrNull(2)
       if (isStaleVersion(sinceVersion, expiresVersion, appVersion)) {
-        throw GradleException("Outdated behavior change annotation detected. Consider removing the configuration, " +
-                " promoting it to a feature configuration, or disabling this check for the configuration.")
+        throw GradleException(
+          "Outdated behavior change annotation detected. Consider removing the configuration, " +
+            " promoting it to a feature configuration, or disabling this check for the configuration."
+        )
       }
     }
     return input
@@ -209,12 +217,16 @@ spotless {
         }
       },
     )
-    val polarisVersion = File(rootProject.projectDir, "version.txt").readText().trim().substringBefore("-")
-    custom("checkStaleBehaviorChangeFlags", object : Serializable, FormatterFunc {
-      override fun apply(text: String): String {
-        return StaleBehaviorChangeConfigurationChecker(polarisVersion).apply(text)
-      }
-    })
+    val polarisVersion =
+      File(rootProject.projectDir, "version.txt").readText().trim().substringBefore("-")
+    custom(
+      "checkStaleBehaviorChangeFlags",
+      object : Serializable, FormatterFunc {
+        override fun apply(text: String): String {
+          return StaleBehaviorChangeConfigurationChecker(polarisVersion).apply(text)
+        }
+      },
+    )
     toggleOffOn()
   }
   kotlinGradle {
@@ -233,16 +245,19 @@ spotless {
   format("enforceBehaviorChangeFlagLocations") {
     target("**/*.java")
     targetExclude("**/BehaviorChangeConfiguration.java", "**/PolarisConfigurationStoreTest.java")
-    custom("enforceBehaviorChangeFlags", object : Serializable, FormatterFunc {
-      override fun apply(text: String): String {
-        if (".buildBehaviorChangeConfiguration()" in text) {
-          throw GradleException(
-            "Usage of buildBehaviorChangeConfiguration() is restricted to BehaviorChangeConfiguration.java"
-          )
+    custom(
+      "enforceBehaviorChangeFlags",
+      object : Serializable, FormatterFunc {
+        override fun apply(text: String): String {
+          if (".buildBehaviorChangeConfiguration()" in text) {
+            throw GradleException(
+              "Usage of buildBehaviorChangeConfiguration() is restricted to BehaviorChangeConfiguration.java"
+            )
+          }
+          return text
         }
-        return text
-      }
-    })
+      },
+    )
   }
 }
 
