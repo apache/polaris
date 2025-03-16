@@ -44,12 +44,12 @@ if ! [ -f ${SPARK_HOME}/bin/spark-sql ]; then
   fi
   if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
     echo 'Downloading spark distro...'
-    wget -O ~/${SPARK_DISTRIBUTION}.tgz https://dlcdn.apache.org/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
+    wget -O ~/${SPARK_DISTRIBUTION}.tgz https://archive.apache.org/dist/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
     if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
       if [[ "${OSTYPE}" == "darwin"* ]]; then
         echo "Detected OS: mac. Running 'brew install wget' to try again."
         brew install wget
-        wget -O ~/${SPARK_DISTRIBUTION}.tgz https://dlcdn.apache.org/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
+        wget -O ~/${SPARK_DISTRIBUTION}.tgz https://archive.apache.org/dist/spark/${SPARK_VERSION}/${SPARK_DISTRIBUTION}.tgz
       fi
     fi
   else
