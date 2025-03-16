@@ -45,7 +45,7 @@ In order to specify a configuration file outside the classpath, follow these ste
 ## EclipseLink Configuration - persistence.xml
 The configuration file `persistence.xml` is used to set up the database connection properties, which can differ depending on the type of database and its configuration.
 
-Check out the default [persistence.xml](https://github.com/apache/polaris/blob/main/extension/persistence/eclipselink/src/main/resources/META-INF/persistence.xml) for a complete sample for connecting to the file-based H2 database. 
+Check out the default [persistence.xml](https://github.com/apache/polaris/blob/main/extension/persistence/eclipselink/src/main/resources/META-INF/persistence.xml) for a complete sample for connecting to the file-based H2 database.
 
 Polaris creates and connects to a separate database for each realm. Specifically, the `{realm}` placeholder in `jakarta.persistence.jdbc.url` is substituted with the actual realm name, allowing the Polaris server to connect to different databases based on the realm.
 
@@ -101,6 +101,8 @@ The following shows a sample configuration for integrating Polaris with Postgres
     <property name="jakarta.persistence.jdbc.password" value="postgres"/>
     <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
     <property name="eclipselink.persistence-context.flush-mode" value="auto"/>
+    <property name="eclipselink.session.customizer" value="org.apache.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkSessionCustomizer"/>
+    <property name="eclipselink.transaction.join-existing" value="true"/>
   </properties>
 </persistence-unit>
 ```
