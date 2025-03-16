@@ -55,8 +55,19 @@ if ! [ -f ${SPARK_HOME}/bin/spark-sql ]; then
   else
     echo 'Found existing Spark tarball'
   fi
+  # check if the download was successful
+  if ! [ -f ~/${SPARK_DISTRIBUTION}.tgz ]; then
+    echo 'Failed to download Spark distribution. Please check the logs.'
+    exit 1
+  fi
   tar xzvf ~/${SPARK_DISTRIBUTION}.tgz -C ~
-  echo 'Done!'
+  if [ $? -ne 0 ]; then
+    echo 'Failed to extract Spark distribution. Please check the logs.'
+    exit 1
+  else
+    echo 'Extracted Spark distribution.'
+    rm ~/${SPARK_DISTRIBUTION}.tgz
+  fi
   SPARK_HOME=$(realpath ~/${SPARK_DISTRIBUTION})
   SPARK_CONF="${SPARK_HOME}/conf/spark-defaults.conf"
 else
