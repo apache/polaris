@@ -1706,7 +1706,7 @@ public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCat
             securityContext,
             Mockito.mock(TaskExecutor.class),
             fileIOFactory,
-                polarisEventListener);
+            polarisEventListener);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -1755,7 +1755,7 @@ public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCat
             securityContext,
             Mockito.mock(TaskExecutor.class),
             fileIOFactory,
-                polarisEventListener);
+            polarisEventListener);
     catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(

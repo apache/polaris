@@ -117,7 +117,7 @@ public class TaskExecutorImpl implements TaskExecutor {
 
   protected void handleTask(long taskEntityId, CallContext ctx, int attempt) {
     polarisEventListener.onBeforeTaskAttempted(
-            new BeforeTaskAttemptedEvent(taskEntityId, ctx, attempt));
+        new BeforeTaskAttemptedEvent(taskEntityId, ctx, attempt));
 
     boolean success = false;
     try {
@@ -163,7 +163,7 @@ public class TaskExecutorImpl implements TaskExecutor {
       }
     } finally {
       polarisEventListener.onAfterTaskAttempted(
-              new AfterTaskAttemptedEvent(taskEntityId, ctx, attempt, success));
+          new AfterTaskAttemptedEvent(taskEntityId, ctx, attempt, success));
     }
   }
 }
