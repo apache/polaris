@@ -35,8 +35,8 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 
-/** The entity cache, can be private or shared */
-public class EntityCache {
+/** An in-memory entity cache with a limit of 100k entities and a 1h TTL. */
+public class EntityCache implements EntityCacheInterface {
 
   // cache mode
   private EntityCacheMode cacheMode;
@@ -93,6 +93,7 @@ public class EntityCache {
    *
    * @param cacheEntry cache entry to remove
    */
+  @Override
   public void removeCacheEntry(@Nonnull ResolvedPolarisEntity cacheEntry) {
     // compute name key
     EntityCacheByNameKey nameKey = new EntityCacheByNameKey(cacheEntry.getEntity());
@@ -223,6 +224,7 @@ public class EntityCache {
    * @param entityId entity id
    * @return the cache entry or null if not found
    */
+  @Override
   public @Nullable ResolvedPolarisEntity getEntityById(long entityId) {
     return byId.getIfPresent(entityId);
   }
@@ -233,6 +235,7 @@ public class EntityCache {
    * @param entityNameKey entity name key
    * @return the cache entry or null if not found
    */
+  @Override
   public @Nullable ResolvedPolarisEntity getEntityByName(
       @Nonnull EntityCacheByNameKey entityNameKey) {
     return byName.get(entityNameKey);
@@ -250,6 +253,7 @@ public class EntityCache {
    *     records should be reloaded if needed
    * @return the cache entry for the entity or null if the specified entity does not exist
    */
+  @Override
   public @Nullable ResolvedPolarisEntity getAndRefreshIfNeeded(
       @Nonnull PolarisCallContext callContext,
       @Nonnull PolarisBaseEntity entityToValidate,
@@ -360,6 +364,7 @@ public class EntityCache {
    * @return null if the entity does not exist or was dropped. Else return the entry for that
    *     entity, either as found in the cache or loaded from the backend
    */
+  @Override
   public @Nullable EntityCacheLookupResult getOrLoadEntityById(
       @Nonnull PolarisCallContext callContext,
       long entityCatalogId,
@@ -415,6 +420,7 @@ public class EntityCache {
    * @return null if the entity does not exist or was dropped. Else return the entry for that
    *     entity, either as found in the cache or loaded from the backend
    */
+  @Override
   public @Nullable EntityCacheLookupResult getOrLoadEntityByName(
       @Nonnull PolarisCallContext callContext, @Nonnull EntityCacheByNameKey entityNameKey) {
 
