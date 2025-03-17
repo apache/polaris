@@ -101,7 +101,7 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
           "true",
           "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\"]",
-          "polaris.events.type",
+          "polaris.event-listener.type",
           "test");
     }
   }

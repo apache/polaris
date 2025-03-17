@@ -81,7 +81,7 @@ public class RateLimiterFilterTest {
           "prod",
           "polaris.realm-context.type",
           "test",
-          "polaris.events.type",
+          "polaris.event-listener.type",
           "test");
     }
   }
