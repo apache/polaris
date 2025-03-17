@@ -71,6 +71,7 @@ import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.service.catalog.api.IcebergRestCatalogApiService;
 import org.apache.polaris.service.catalog.api.IcebergRestConfigurationApiService;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.types.CommitTableRequest;
 import org.apache.polaris.service.types.CommitViewRequest;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -127,6 +128,7 @@ public class IcebergCatalogAdapter
   private final PolarisMetaStoreManager metaStoreManager;
   private final PolarisAuthorizer polarisAuthorizer;
   private final IcebergCatalogPrefixParser prefixParser;
+  private final PolarisEventListener polarisEventListener;
 
   @Inject
   public IcebergCatalogAdapter(
@@ -139,7 +141,8 @@ public class IcebergCatalogAdapter
       PolarisConfigurationStore configurationStore,
       PolarisDiagnostics diagnostics,
       PolarisAuthorizer polarisAuthorizer,
-      IcebergCatalogPrefixParser prefixParser) {
+      IcebergCatalogPrefixParser prefixParser,
+      PolarisEventListener polarisEventListener) {
     this.realmContext = realmContext;
     this.callContext = callContext;
     this.catalogFactory = catalogFactory;
@@ -147,6 +150,7 @@ public class IcebergCatalogAdapter
     this.metaStoreManager = metaStoreManager;
     this.polarisAuthorizer = polarisAuthorizer;
     this.prefixParser = prefixParser;
+    this.polarisEventListener = polarisEventListener;
 
     // FIXME: This is a hack to set the current context for downstream calls.
     CallContext.setCurrentContext(callContext);
@@ -188,7 +192,8 @@ public class IcebergCatalogAdapter
         securityContext,
         catalogFactory,
         catalogName,
-        polarisAuthorizer);
+        polarisAuthorizer,
+        polarisEventListener);
   }
 
   @Override
