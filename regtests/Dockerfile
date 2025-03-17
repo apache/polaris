@@ -46,7 +46,7 @@ RUN python3 -m venv /home/spark/polaris-venv && \
     . /home/spark/polaris-venv/bin/activate && \
     pip install -r /tmp/requirements.txt && \
     deactivate \
-RUN ./setup.sh
+    ./setup.sh
 
 COPY --chown=spark . /home/spark/regtests
 
