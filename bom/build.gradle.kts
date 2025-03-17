@@ -35,6 +35,10 @@ dependencies {
     api(project(":polaris-version"))
     api(project(":polaris-varint"))
 
+    api(project(":polaris-async-api"))
+    api(project(":polaris-async-java"))
+    api(project(":polaris-async-vertx"))
+
     api(project(":polaris-config-docs-annotations"))
     api(project(":polaris-config-docs-generator"))
 
