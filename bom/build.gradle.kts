@@ -31,6 +31,8 @@ dependencies {
 
     api(project(":polaris-container-spec-helper"))
     api(project(":polaris-immutables"))
+    api(project(":polaris-misc-types"))
+    api(project(":polaris-varint"))
     api(project(":polaris-version"))
 
     api(project(":polaris-config-docs-annotations"))
