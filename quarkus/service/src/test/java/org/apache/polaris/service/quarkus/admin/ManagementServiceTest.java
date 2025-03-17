@@ -204,7 +204,7 @@ public class ManagementServiceTest {
             .setUserArn(S3_IAM_USER_ARN + "-new")
             .build();
     updatePolarisCatalogEntity(
-        DEFAULT_CATALOG_NAME, S3_BASE_LOCATION, updatedAwsStorageModel, null);
+        DEFAULT_CATALOG_NAME, S3_BASE_LOCATION, updatedAwsStorageModel, "Cannot modify userARN in storage config");
     awsStorageConfigInfo = (AwsStorageConfigInfo) fetchedCatalog.getStorageConfigInfo();
     assertThat(awsStorageConfigInfo.getUserArn()).isEqualTo(S3_IAM_USER_ARN);
     assertThat(awsStorageConfigInfo.getExternalId()).isEqualTo(S3_EXTERNAL_ID);

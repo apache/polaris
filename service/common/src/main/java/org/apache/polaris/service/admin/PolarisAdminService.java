@@ -671,7 +671,7 @@ public class PolarisAdminService {
           || (newAwsConfig.getUserARN() != null
               && !newAwsConfig.getUserARN().equals(currentAwsConfig.getUserARN()))) {
         throw new BadRequestException(
-            "Cannot modify User ARN in storage config from %s to %s",
+            "Cannot modify userARN in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
       }
     } else if (currentStorageConfig instanceof AzureStorageConfigurationInfo currentAzureConfig
