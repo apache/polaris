@@ -95,6 +95,7 @@ import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
 import org.apache.polaris.core.storage.azure.AzureStorageConfigurationInfo;
+import org.apache.polaris.core.storage.gcp.GcpStorageConfigurationInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -664,6 +665,15 @@ public class PolarisAdminService {
             "Cannot modify ExternalId in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
       }
+
+      if ((currentAwsConfig.getUserARN() != null
+              && !currentAwsConfig.getUserARN().equals(newAwsConfig.getUserARN()))
+          || (newAwsConfig.getUserARN() != null
+              && !newAwsConfig.getUserARN().equals(currentAwsConfig.getUserARN()))) {
+        throw new BadRequestException(
+            "Cannot modify User ARN in storage config from %s to %s",
+            currentStorageConfig, newStorageConfig);
+      }
     } else if (currentStorageConfig instanceof AzureStorageConfigurationInfo currentAzureConfig
         && newStorageConfig instanceof AzureStorageConfigurationInfo newAzureConfig) {
 
@@ -671,6 +681,42 @@ public class PolarisAdminService {
           || !newAzureConfig.getTenantId().equals(currentAzureConfig.getTenantId())) {
         throw new BadRequestException(
             "Cannot modify TenantId in storage config from %s to %s",
+            currentStorageConfig, newStorageConfig);
+      }
+
+      if (currentAzureConfig.getMultiTenantAppName() != null
+              && !currentAzureConfig
+                  .getMultiTenantAppName()
+                  .equals(newAzureConfig.getMultiTenantAppName())
+          || newAzureConfig.getMultiTenantAppName() != null
+              && !newAzureConfig
+                  .getMultiTenantAppName()
+                  .equals(currentAzureConfig.getMultiTenantAppName())) {
+        throw new BadRequestException(
+            "Cannot modify multiTenantAppName in storage config from %s to %s",
+            currentStorageConfig, newStorageConfig);
+      }
+
+      if (currentAzureConfig.getConsentUrl() != null
+              && !currentAzureConfig.getConsentUrl().equals(newAzureConfig.getConsentUrl())
+          || newAzureConfig.getConsentUrl() != null
+              && !newAzureConfig.getConsentUrl().equals(currentAzureConfig.getConsentUrl())) {
+        throw new BadRequestException(
+            "Cannot modify consentUrl in storage config from %s to %s",
+            currentStorageConfig, newStorageConfig);
+      }
+    } else if (currentStorageConfig instanceof GcpStorageConfigurationInfo currentGcpConfig
+        && newStorageConfig instanceof GcpStorageConfigurationInfo newGcpConfig) {
+      if ((currentGcpConfig.getGcpServiceAccount() != null
+              && !currentGcpConfig
+                  .getGcpServiceAccount()
+                  .equals(newGcpConfig.getGcpServiceAccount()))
+          || (newGcpConfig.getGcpServiceAccount() != null
+              && !newGcpConfig
+                  .getGcpServiceAccount()
+                  .equals(currentGcpConfig.getGcpServiceAccount()))) {
+        throw new BadRequestException(
+            "Cannot modify gcpServiceAccount in storage config from %s to %s",
             currentStorageConfig, newStorageConfig);
       }
     }
@@ -714,7 +760,7 @@ public class PolarisAdminService {
     }
     if (updateRequest.getStorageConfigInfo() != null) {
       updateBuilder.setStorageConfigurationInfo(
-          updateRequest.getStorageConfigInfo(), defaultBaseLocation);
+          updateRequest.getStorageConfigInfo(), defaultBaseLocation, true /*inherit*/);
     }
     CatalogEntity updatedEntity = updateBuilder.build();
 

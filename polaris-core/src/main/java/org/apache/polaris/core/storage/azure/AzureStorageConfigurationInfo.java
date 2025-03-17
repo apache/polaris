@@ -25,6 +25,7 @@ import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 
 /** Azure storage configuration information. */
@@ -91,5 +92,23 @@ public class AzureStorageConfigurationInfo extends PolarisStorageConfigurationIn
     AzureLocation location = new AzureLocation(loc);
     Objects.requireNonNull(
         location); // do something with the variable so the JVM doesn't optimize out the check
+  }
+
+  public @Nonnull AzureStorageConfigurationInfo merge(
+      @Nonnull AzureStorageConfigurationInfo other) {
+    if (other.getStorageType() != this.getStorageType()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Storage type mismatch: %s vs %s", this.getStorageType(), other.getStorageType()));
+    }
+
+    AzureStorageConfigurationInfo ret =
+        new AzureStorageConfigurationInfo(
+            Optional.ofNullable(other.getAllowedLocations()).orElseGet(this::getAllowedLocations),
+            Optional.ofNullable(other.getTenantId()).orElseGet(this::getTenantId));
+    ret.setMultiTenantAppName(
+        Optional.ofNullable(other.getMultiTenantAppName()).orElseGet(this::getMultiTenantAppName));
+    ret.setConsentUrl(Optional.ofNullable(other.getConsentUrl()).orElseGet(this::getConsentUrl));
+    return ret;
   }
 }

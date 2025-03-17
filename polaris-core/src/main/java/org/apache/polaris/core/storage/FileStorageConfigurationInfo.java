@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 /**
  * Support for file:// URLs in storage configuration. This is pretty-much only used for testing.
@@ -52,5 +53,16 @@ public class FileStorageConfigurationInfo extends PolarisStorageConfigurationInf
           String.format(
               "Location prefix not allowed: '%s', expected prefix: file:// or / or *", loc));
     }
+  }
+
+  public @Nonnull FileStorageConfigurationInfo merge(@Nonnull FileStorageConfigurationInfo other) {
+    if (other.getStorageType() != this.getStorageType()) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Storage type mismatch: %s vs %s", this.getStorageType(), other.getStorageType()));
+    }
+
+    return new FileStorageConfigurationInfo(
+        Optional.ofNullable(other.getAllowedLocations()).orElseGet(this::getAllowedLocations));
   }
 }
