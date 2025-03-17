@@ -41,7 +41,7 @@ dependencies {
   }
 
   implementation(
-    "org.apache.iceberg:iceberg-spark-runtime-3.5_${scalaVersion}:${libs.versions.icebergplugin.get()}"
+    "org.apache.iceberg:iceberg-spark-runtime-3.5_${scalaVersion}:${libs.versions.icebergspark.get()}"
   )
 
   compileOnly("org.apache.spark:spark-sql_${scalaVersion}:${libs.versions.spark35.get()}") {
@@ -55,8 +55,11 @@ dependencies {
   testImplementation(platform(libs.junit.bom))
   testImplementation("org.junit.jupiter:junit-jupiter")
   testImplementation(libs.assertj.core)
+  testImplementation(libs.mockito.core)
 
-  testImplementation("org.apache.iceberg:iceberg-spark-runtime-3.5_${scalaVersion}:${libs.versions.icebergplugin.get()}")
+  testImplementation(
+    "org.apache.iceberg:iceberg-spark-runtime-3.5_${scalaVersion}:${libs.versions.icebergspark.get()}"
+  )
   testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${libs.versions.spark35.get()}") {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
@@ -66,25 +69,23 @@ dependencies {
   }
 }
 
-sourceSets { main { java { srcDir(project.layout.buildDirectory.dir("src/main/java")) } } }
-
 tasks.register<ShadowJar>("createPolarisSparkJar") {
   archiveClassifier = null
   archiveBaseName =
-    "polaris-iceberg-${libs.versions.icebergplugin.get()}-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
+    "polaris-iceberg-${libs.versions.icebergspark.get()}-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
 
   dependencies { exclude("META-INF/**") }
 
+  // pack both the source code and dependencies
   from(sourceSets.main.get().output)
   configurations = listOf(project.configurations.runtimeClasspath.get())
 
   mergeServiceFiles()
 
-  // Optional: Minimize the JAR (remove unused classes from dependencies)
+  // Optimization: Minimize the JAR (remove unused classes from dependencies)
+  // The iceberg-spark-runtime plugin is always packaged along with our polaris-spark plugin,
+  // therefore excluded from the optimization.
   minimize { exclude(dependency("org.apache.iceberg:iceberg-spark-runtime-*.*")) }
 }
 
-tasks.withType(Jar::class).named("sourcesJar") {
-  dependsOn("createPolarisSparkJar")
-  duplicatesStrategy = DuplicatesStrategy.INCLUDE
-}
+tasks.withType(Jar::class).named("sourcesJar") { dependsOn("createPolarisSparkJar") }
