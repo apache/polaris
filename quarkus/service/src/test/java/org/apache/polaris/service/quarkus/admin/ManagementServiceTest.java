@@ -67,22 +67,6 @@ public class ManagementServiceTest {
 
   @BeforeEach
   public void setup() {
-    // Used to build a `CallContext` which then gets fed into the real `TestServices`
-    // TestServices fakeServices =
-    //     TestServices.builder()
-    //         .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
-    //         .build();
-    // PolarisCallContext polarisCallContext =
-    //     new PolarisCallContext(
-    //         fakeServices
-    //             .metaStoreManagerFactory()
-    //             .getOrCreateSessionSupplier(fakeServices.realmContext())
-    //             .get(),
-    //         fakeServices.polarisDiagnostics(),
-    //         fakeServices.configurationStore(),
-    //         Mockito.mock(Clock.class));
-    // CallContext.setCurrentContext(CallContext.of(fakeServices.realmContext(),
-    // polarisCallContext));
     services =
         TestServices.builder()
             .config(Map.of("SUPPORTED_CATALOG_STORAGE_TYPES", List.of("S3", "GCS", "AZURE")))
@@ -221,7 +205,8 @@ public class ManagementServiceTest {
       assertThat(fetchedCatalog.getEntityVersion()).isGreaterThan(0);
     }
 
-    // Update the catalog without specifying the external id, should inherit the existing value
+    // Update the catalog without specifying the user arn and external id, should inherit the
+    // existing value
     AwsStorageConfigInfo updatedAwsStorageModel =
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
@@ -280,7 +265,8 @@ public class ManagementServiceTest {
       assertThat(fetchedCatalog.getEntityVersion()).isGreaterThan(0);
     }
 
-    // Update the catalog without specifying the external id, should inherit the existing value
+    // Update the catalog without specifying the consent url and multi tenant app name, should
+    // inherit the existing value
     AzureStorageConfigInfo updatedAzureStorageModel =
         AzureStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
@@ -339,7 +325,7 @@ public class ManagementServiceTest {
       assertThat(fetchedCatalog.getEntityVersion()).isGreaterThan(0);
     }
 
-    // Update the catalog without specifying the external id, should inherit the existing value
+    // Update the catalog without specifying the service account, should inherit the existing value
     GcpStorageConfigInfo updatedGcpStorageModel =
         GcpStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
