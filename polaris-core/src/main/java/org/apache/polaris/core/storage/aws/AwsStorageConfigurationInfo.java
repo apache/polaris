@@ -60,6 +60,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
       @JsonProperty(value = "roleARN", required = true) @Nonnull String roleARN,
       @JsonProperty(value = "region", required = false) @Nullable String region) {
     this(storageType, allowedLocations, roleARN, null, region);
+    validateArn(roleARN);
   }
 
   public AwsStorageConfigurationInfo(

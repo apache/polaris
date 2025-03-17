@@ -271,7 +271,7 @@ public class CatalogEntity extends PolarisEntity {
                     awsConfigModel.getRoleArn(),
                     awsConfigModel.getExternalId(),
                     awsConfigModel.getRegion());
-            awsConfig.validateArn(awsConfigModel.getRoleArn());
+            awsConfig.setUserARN(awsConfigModel.getUserArn());
             if (inherit && existingConfig instanceof AwsStorageConfigurationInfo) {
               awsConfig = ((AwsStorageConfigurationInfo) existingConfig).merge(awsConfig);
             }

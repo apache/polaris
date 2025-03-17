@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
+import org.apache.iceberg.exceptions.BadRequestException;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
@@ -185,54 +186,58 @@ public class ManagementServiceTest {
             S3_EXTERNAL_ID,
             null);
     awsStorageConfigurationInfo.setUserARN(S3_IAM_USER_ARN);
-
     createPolarisCatalogEntity(DEFAULT_CATALOG_NAME, S3_BASE_LOCATION, awsStorageConfigurationInfo);
 
     // 200 successful GET after creation
-    Catalog fetchedCatalog;
-    try (Response response =
-        services
-            .catalogsApi()
-            .getCatalog(
-                DEFAULT_CATALOG_NAME, services.realmContext(), services.securityContext())) {
-      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-      fetchedCatalog = (Catalog) response.getEntity();
-      System.out.println(fetchedCatalog);
+    Catalog fetchedCatalog = getPolariCatalogEntity(DEFAULT_CATALOG_NAME, S3_BASE_LOCATION);
+    AwsStorageConfigInfo awsStorageConfigInfo =
+        (AwsStorageConfigInfo) fetchedCatalog.getStorageConfigInfo();
+    assertThat(awsStorageConfigInfo.getUserArn()).isEqualTo(S3_IAM_USER_ARN);
+    assertThat(awsStorageConfigInfo.getExternalId()).isEqualTo(S3_EXTERNAL_ID);
 
-      assertThat(fetchedCatalog.getName()).isEqualTo(DEFAULT_CATALOG_NAME);
-      assertThat(fetchedCatalog.getProperties().toMap())
-          .isEqualTo(Map.of(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, S3_BASE_LOCATION));
-      assertThat(fetchedCatalog.getEntityVersion()).isGreaterThan(0);
-    }
-
-    // Update the catalog without specifying the user arn and external id, should inherit the
-    // existing value
+    // Case 1: Update the catalog by providing a user arn
     AwsStorageConfigInfo updatedAwsStorageModel =
         AwsStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setRoleArn(S3_IAM_ROLE_ARN)
             .setAllowedLocations(List.of(S3_BASE_LOCATION))
+            .setRoleArn(S3_IAM_ROLE_ARN)
+            .setUserArn(S3_IAM_USER_ARN + "-new")
             .build();
-    UpdateCatalogRequest updateRequest =
-        new UpdateCatalogRequest(
-            fetchedCatalog.getEntityVersion(),
-            Map.of(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, S3_BASE_LOCATION),
-            updatedAwsStorageModel);
-    try (Response response =
-        services
-            .catalogsApi()
-            .updateCatalog(
-                DEFAULT_CATALOG_NAME,
-                updateRequest,
-                services.realmContext(),
-                services.securityContext())) {
-      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-      Catalog updatedCatalog = (Catalog) response.getEntity();
-      AwsStorageConfigInfo awsStorageConfigInfo =
-          (AwsStorageConfigInfo) updatedCatalog.getStorageConfigInfo();
-      assertThat(awsStorageConfigInfo.getUserArn()).isEqualTo(S3_IAM_USER_ARN);
-      assertThat(awsStorageConfigInfo.getExternalId()).isEqualTo(S3_EXTERNAL_ID);
-    }
+    updatePolarisCatalogEntity(
+        DEFAULT_CATALOG_NAME, S3_BASE_LOCATION, updatedAwsStorageModel, null);
+    awsStorageConfigInfo = (AwsStorageConfigInfo) fetchedCatalog.getStorageConfigInfo();
+    assertThat(awsStorageConfigInfo.getUserArn()).isEqualTo(S3_IAM_USER_ARN);
+    assertThat(awsStorageConfigInfo.getExternalId()).isEqualTo(S3_EXTERNAL_ID);
+
+    // Case 2: Update the catalog by providing an external id
+    updatedAwsStorageModel =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(S3_BASE_LOCATION))
+            .setRoleArn(S3_IAM_ROLE_ARN)
+            .setExternalId(S3_EXTERNAL_ID + "-new")
+            .build();
+    updatePolarisCatalogEntity(
+        DEFAULT_CATALOG_NAME,
+        S3_BASE_LOCATION,
+        updatedAwsStorageModel,
+        "Cannot modify ExternalId in storage config");
+
+    // Case 3: Update the catalog without the user arn and external id, should inherit existing
+    // values
+    updatedAwsStorageModel =
+        AwsStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(S3_BASE_LOCATION))
+            .setRoleArn(S3_IAM_ROLE_ARN)
+            .build();
+    Catalog updatedCatalog =
+        updatePolarisCatalogEntity(
+            DEFAULT_CATALOG_NAME, S3_BASE_LOCATION, updatedAwsStorageModel, null);
+    AwsStorageConfigInfo updatedAwsStorageConfigInfo =
+        (AwsStorageConfigInfo) updatedCatalog.getStorageConfigInfo();
+    assertThat(updatedAwsStorageConfigInfo.getUserArn()).isEqualTo(S3_IAM_USER_ARN);
+    assertThat(updatedAwsStorageConfigInfo.getExternalId()).isEqualTo(S3_EXTERNAL_ID);
   }
 
   @Test
@@ -244,56 +249,60 @@ public class ManagementServiceTest {
         new AzureStorageConfigurationInfo(List.of(AZ_BASE_LOCATION), AZ_TENANT_ID);
     azureStorageConfigurationInfo.setConsentUrl(AZ_CONSENT_URL);
     azureStorageConfigurationInfo.setMultiTenantAppName(AZ_MULTI_TENANT_APP_NAME);
-
     createPolarisCatalogEntity(
         DEFAULT_CATALOG_NAME, AZ_BASE_LOCATION, azureStorageConfigurationInfo);
 
     // 200 successful GET after creation
-    Catalog fetchedCatalog;
-    try (Response response =
-        services
-            .catalogsApi()
-            .getCatalog(
-                DEFAULT_CATALOG_NAME, services.realmContext(), services.securityContext())) {
-      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-      fetchedCatalog = (Catalog) response.getEntity();
-      System.out.println(fetchedCatalog);
+    Catalog fetchedCatalog = getPolariCatalogEntity(DEFAULT_CATALOG_NAME, AZ_BASE_LOCATION);
+    AzureStorageConfigInfo azureStorageConfigInfo =
+        (AzureStorageConfigInfo) fetchedCatalog.getStorageConfigInfo();
+    assertThat(azureStorageConfigInfo.getConsentUrl()).isEqualTo(AZ_CONSENT_URL);
+    assertThat(azureStorageConfigInfo.getMultiTenantAppName()).isEqualTo(AZ_MULTI_TENANT_APP_NAME);
 
-      assertThat(fetchedCatalog.getName()).isEqualTo(DEFAULT_CATALOG_NAME);
-      assertThat(fetchedCatalog.getProperties().toMap())
-          .isEqualTo(Map.of(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, AZ_BASE_LOCATION));
-      assertThat(fetchedCatalog.getEntityVersion()).isGreaterThan(0);
-    }
-
-    // Update the catalog without specifying the consent url and multi tenant app name, should
-    // inherit the existing value
+    // Case 1: Update the catalog by specifying the consent url
     AzureStorageConfigInfo updatedAzureStorageModel =
         AzureStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
-            .setTenantId(AZ_TENANT_ID)
             .setAllowedLocations(List.of(AZ_BASE_LOCATION))
+            .setTenantId(AZ_TENANT_ID)
+            .setConsentUrl(AZ_CONSENT_URL + "-new")
             .build();
-    UpdateCatalogRequest updateRequest =
-        new UpdateCatalogRequest(
-            fetchedCatalog.getEntityVersion(),
-            Map.of(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, AZ_BASE_LOCATION),
-            updatedAzureStorageModel);
-    try (Response response =
-        services
-            .catalogsApi()
-            .updateCatalog(
-                DEFAULT_CATALOG_NAME,
-                updateRequest,
-                services.realmContext(),
-                services.securityContext())) {
-      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-      Catalog updatedCatalog = (Catalog) response.getEntity();
-      AzureStorageConfigInfo azureStorageConfigInfo =
-          (AzureStorageConfigInfo) updatedCatalog.getStorageConfigInfo();
-      assertThat(azureStorageConfigInfo.getConsentUrl()).isEqualTo(AZ_CONSENT_URL);
-      assertThat(azureStorageConfigInfo.getMultiTenantAppName())
-          .isEqualTo(AZ_MULTI_TENANT_APP_NAME);
-    }
+    updatePolarisCatalogEntity(
+        DEFAULT_CATALOG_NAME,
+        AZ_BASE_LOCATION,
+        updatedAzureStorageModel,
+        "Cannot modify consentUrl in storage config");
+
+    // Case 2: Update the catalog by specifying the multi tenant app name
+    updatedAzureStorageModel =
+        AzureStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+            .setAllowedLocations(List.of(AZ_BASE_LOCATION))
+            .setTenantId(AZ_TENANT_ID)
+            .setMultiTenantAppName(AZ_MULTI_TENANT_APP_NAME + "-new")
+            .build();
+    updatePolarisCatalogEntity(
+        DEFAULT_CATALOG_NAME,
+        AZ_BASE_LOCATION,
+        updatedAzureStorageModel,
+        "Cannot modify multiTenantAppName in storage config");
+
+    // Case 3: Update the catalog without specifying the consent url and multi tenant app name,
+    // should inherit existing values
+    updatedAzureStorageModel =
+        AzureStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.AZURE)
+            .setAllowedLocations(List.of(AZ_BASE_LOCATION))
+            .setTenantId(AZ_TENANT_ID)
+            .build();
+    Catalog updatedCatalog =
+        updatePolarisCatalogEntity(
+            DEFAULT_CATALOG_NAME, AZ_BASE_LOCATION, updatedAzureStorageModel, null);
+    AzureStorageConfigInfo updatedAzureStorageConfigInfo =
+        (AzureStorageConfigInfo) updatedCatalog.getStorageConfigInfo();
+    assertThat(updatedAzureStorageConfigInfo.getConsentUrl()).isEqualTo(AZ_CONSENT_URL);
+    assertThat(updatedAzureStorageConfigInfo.getMultiTenantAppName())
+        .isEqualTo(AZ_MULTI_TENANT_APP_NAME);
   }
 
   @Test
@@ -304,52 +313,40 @@ public class ManagementServiceTest {
     GcpStorageConfigurationInfo gcpStorageConfigurationInfo =
         new GcpStorageConfigurationInfo(List.of());
     gcpStorageConfigurationInfo.setGcpServiceAccount(GCP_SERVICE_ACCOUNT);
-
     createPolarisCatalogEntity(
         DEFAULT_CATALOG_NAME, GCP_BASE_LOCATION, gcpStorageConfigurationInfo);
 
     // 200 successful GET after creation
-    Catalog fetchedCatalog;
-    try (Response response =
-        services
-            .catalogsApi()
-            .getCatalog(
-                DEFAULT_CATALOG_NAME, services.realmContext(), services.securityContext())) {
-      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-      fetchedCatalog = (Catalog) response.getEntity();
-      System.out.println(fetchedCatalog);
+    Catalog fetchedCatalog = getPolariCatalogEntity(DEFAULT_CATALOG_NAME, GCP_BASE_LOCATION);
+    GcpStorageConfigInfo gcpStorageConfigInfo =
+        (GcpStorageConfigInfo) fetchedCatalog.getStorageConfigInfo();
+    assertThat(gcpStorageConfigInfo.getGcsServiceAccount()).isEqualTo(GCP_SERVICE_ACCOUNT);
 
-      assertThat(fetchedCatalog.getName()).isEqualTo(DEFAULT_CATALOG_NAME);
-      assertThat(fetchedCatalog.getProperties().toMap())
-          .isEqualTo(Map.of(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, GCP_BASE_LOCATION));
-      assertThat(fetchedCatalog.getEntityVersion()).isGreaterThan(0);
-    }
-
-    // Update the catalog without specifying the service account, should inherit the existing value
+    // Case 1: Update the catalog by providing a service account
     GcpStorageConfigInfo updatedGcpStorageModel =
         GcpStorageConfigInfo.builder()
             .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
             .setAllowedLocations(List.of(GCP_BASE_LOCATION))
+            .setGcsServiceAccount(GCP_SERVICE_ACCOUNT + "-new")
             .build();
-    UpdateCatalogRequest updateRequest =
-        new UpdateCatalogRequest(
-            fetchedCatalog.getEntityVersion(),
-            Map.of(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, GCP_BASE_LOCATION),
-            updatedGcpStorageModel);
-    try (Response response =
-        services
-            .catalogsApi()
-            .updateCatalog(
-                DEFAULT_CATALOG_NAME,
-                updateRequest,
-                services.realmContext(),
-                services.securityContext())) {
-      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-      Catalog updatedCatalog = (Catalog) response.getEntity();
-      GcpStorageConfigInfo gcpStorageConfigInfo =
-          (GcpStorageConfigInfo) updatedCatalog.getStorageConfigInfo();
-      assertThat(gcpStorageConfigInfo.getGcsServiceAccount()).isEqualTo(GCP_SERVICE_ACCOUNT);
-    }
+    updatePolarisCatalogEntity(
+        DEFAULT_CATALOG_NAME,
+        GCP_BASE_LOCATION,
+        updatedGcpStorageModel,
+        "Cannot modify gcpServiceAccount in storage config");
+
+    // Case 2: Update the catalog without specifying the service account, should inherit the
+    // existing value
+    updatedGcpStorageModel =
+        GcpStorageConfigInfo.builder()
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.GCS)
+            .setAllowedLocations(List.of(GCP_BASE_LOCATION))
+            .build();
+    Catalog updatedCatalog =
+        updatePolarisCatalogEntity(
+            DEFAULT_CATALOG_NAME, GCP_BASE_LOCATION, updatedGcpStorageModel, null);
+    gcpStorageConfigInfo = (GcpStorageConfigInfo) updatedCatalog.getStorageConfigInfo();
+    assertThat(gcpStorageConfigInfo.getGcsServiceAccount()).isEqualTo(GCP_SERVICE_ACCOUNT);
   }
 
   private PolarisBaseEntity createPolarisCatalogEntity(
@@ -372,5 +369,64 @@ public class ManagementServiceTest {
         .metaStoreManager()
         .createCatalog(polarisCallContext, catalogEntity, List.of())
         .getCatalog();
+  }
+
+  private Catalog getPolariCatalogEntity(String catalogName, String defaultBaseLocation) {
+    Catalog fetchedCatalog;
+    try (Response response =
+        services
+            .catalogsApi()
+            .getCatalog(
+                DEFAULT_CATALOG_NAME, services.realmContext(), services.securityContext())) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+      fetchedCatalog = (Catalog) response.getEntity();
+
+      assertThat(fetchedCatalog.getName()).isEqualTo(catalogName);
+      assertThat(fetchedCatalog.getProperties().toMap())
+          .isEqualTo(Map.of(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, defaultBaseLocation));
+      assertThat(fetchedCatalog.getEntityVersion()).isGreaterThan(0);
+    }
+    return fetchedCatalog;
+  }
+
+  private Catalog updatePolarisCatalogEntity(
+      String catalogName,
+      String defaultBaseLocation,
+      StorageConfigInfo updatedStorageConfigModel,
+      String errorMessage) {
+    Catalog fetchedCatalog = getPolariCatalogEntity(catalogName, defaultBaseLocation);
+    UpdateCatalogRequest updateRequest =
+        new UpdateCatalogRequest(
+            fetchedCatalog.getEntityVersion(),
+            Map.of(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, defaultBaseLocation),
+            updatedStorageConfigModel);
+
+    if (errorMessage != null) {
+      assertThatThrownBy(
+              () ->
+                  services
+                      .catalogsApi()
+                      .updateCatalog(
+                          catalogName,
+                          updateRequest,
+                          services.realmContext(),
+                          services.securityContext()))
+          .isInstanceOf(BadRequestException.class)
+          .hasMessageContaining(errorMessage);
+
+    } else {
+      try (Response response =
+          services
+              .catalogsApi()
+              .updateCatalog(
+                  catalogName,
+                  updateRequest,
+                  services.realmContext(),
+                  services.securityContext())) {
+        assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
+        return (Catalog) response.getEntity();
+      }
+    }
+    return null;
   }
 }
