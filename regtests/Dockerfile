@@ -35,24 +35,24 @@ USER spark
 ENV PYTHONPATH="${SPARK_HOME}/python/:${SPARK_HOME}/python/lib/py4j-0.10.9.7-src.zip:$PYTHONPATH"
 
 # Copy and run setup.sh separately so that test sources can change, but the setup script run is still cached
-WORKDIR /home/spark/regtests
-COPY ./regtests/setup.sh /home/spark/regtests/setup.sh
-COPY ./regtests/pyspark-setup.sh /home/spark/regtests/pyspark-setup.sh
-COPY ./client/python /home/spark/regtests/client/python
-COPY ./regtests/polaris-reg-test /home/spark/polaris
+WORKDIR /home/spark/polaris
+COPY ./regtests/setup.sh /home/spark/polaris/regtests/setup.sh
+COPY ./regtests/pyspark-setup.sh /home/spark/polaris/regtests/pyspark-setup.sh
+COPY ./client/python /home/spark/polaris/client/python
+COPY ./regtests/polaris-reg-test /home/spark/polaris/polaris
 COPY ./regtests/requirements.txt /tmp/
 
-RUN python3 -m venv /home/spark/polaris-venv && \
-    . /home/spark/polaris-venv/bin/activate && \
+RUN python3 -m venv /home/spark/polaris/polaris-venv && \
+    . /home/spark/polaris/polaris-venv/bin/activate && \
     pip install -r /tmp/requirements.txt && \
     deactivate \
-    ./setup.sh
+    ./regtests/setup.sh
 
-COPY --chown=spark ./regtests /home/spark/regtests
+COPY --chown=spark ./regtests /home/spark/polaris/regtests
 
 # /home/spark/regtests might not be writable in all situations, see https://github.com/apache/polaris/pull/205
 USER root
-RUN chmod -R go+rwx /home/spark/regtests
+RUN chmod -R go+rwx /home/spark/polaris
 USER spark
 
-ENTRYPOINT ["./run.sh"]
+ENTRYPOINT ["./regtests/run.sh"]
