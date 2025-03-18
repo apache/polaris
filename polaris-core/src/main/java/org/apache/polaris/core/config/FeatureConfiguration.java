@@ -21,6 +21,7 @@ package org.apache.polaris.core.config;
 import java.util.List;
 import java.util.Optional;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.persistence.cache.EntityWeigher;
 
 /**
  * Configurations for features within Polaris. These configurations are intended to be customized
@@ -182,5 +183,12 @@ public class FeatureConfiguration<T> extends PolarisConfiguration<T> {
           .description(
               "How many times to retry refreshing metadata when the previous error was retryable")
           .defaultValue(2)
+          .buildFeatureConfiguration();
+
+  public static final FeatureConfiguration<Long> ENTITY_CACHE_WEIGHER_TARGET =
+      PolarisConfiguration.<Long>builder()
+          .key("ENTITY_CACHE_WEIGHER_TARGET")
+          .description("The target weight for the entity cache.")
+          .defaultValue(100 * EntityWeigher.WEIGHT_PER_MB)
           .buildFeatureConfiguration();
 }
