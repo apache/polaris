@@ -266,10 +266,12 @@ public class BasePolarisCatalogViewTest extends ViewCatalogTests<BasePolarisCata
     Assertions.assertThat(afterRefreshEvent.viewIdentifier()).isEqualTo(TestData.TABLE);
 
     var beforeCommitEvent = testPolarisEventListener.getLatest(BeforeViewCommitedEvent.class);
+    Assertions.assertThat(beforeCommitEvent.identifier()).isEqualTo(TestData.TABLE);
     Assertions.assertThat(beforeCommitEvent.base().properties().get(key)).isEqualTo(valOld);
     Assertions.assertThat(beforeCommitEvent.metadata().properties().get(key)).isEqualTo(valNew);
 
     var afterCommitEvent = testPolarisEventListener.getLatest(AfterViewCommitedEvent.class);
+    Assertions.assertThat(afterCommitEvent.identifier()).isEqualTo(TestData.TABLE);
     Assertions.assertThat(afterCommitEvent.base().properties().get(key)).isEqualTo(valOld);
     Assertions.assertThat(afterCommitEvent.metadata().properties().get(key)).isEqualTo(valNew);
   }

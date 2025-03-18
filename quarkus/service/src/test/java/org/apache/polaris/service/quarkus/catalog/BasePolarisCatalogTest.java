@@ -1799,10 +1799,12 @@ public abstract class BasePolarisCatalogTest extends CatalogTests<BasePolarisCat
     Assertions.assertThat(afterRefreshEvent.tableIdentifier()).isEqualTo(TestData.TABLE);
 
     var beforeTableEvent = testPolarisEventListener.getLatest(BeforeTableCommitedEvent.class);
+    Assertions.assertThat(beforeTableEvent.identifier()).isEqualTo(TestData.TABLE);
     Assertions.assertThat(beforeTableEvent.base().properties().get(key)).isEqualTo(valOld);
     Assertions.assertThat(beforeTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
 
     var afterTableEvent = testPolarisEventListener.getLatest(AfterTableCommitedEvent.class);
+    Assertions.assertThat(afterTableEvent.identifier()).isEqualTo(TestData.TABLE);
     Assertions.assertThat(afterTableEvent.base().properties().get(key)).isEqualTo(valOld);
     Assertions.assertThat(afterTableEvent.metadata().properties().get(key)).isEqualTo(valNew);
   }

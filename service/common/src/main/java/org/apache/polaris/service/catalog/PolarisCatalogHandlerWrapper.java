@@ -93,7 +93,6 @@ import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
-import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -124,7 +123,6 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   private final SecurityContext securityContext;
   private final PolarisAuthorizer authorizer;
   private final CallContextCatalogFactory catalogFactory;
-  private final PolarisEventListener polarisEventListener;
 
   // Initialized in the authorize methods.
   private PolarisResolutionManifest resolutionManifest = null;
@@ -142,8 +140,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
       SecurityContext securityContext,
       CallContextCatalogFactory catalogFactory,
       String catalogName,
-      PolarisAuthorizer authorizer,
-      PolarisEventListener polarisEventListener) {
+      PolarisAuthorizer authorizer) {
     this.callContext = callContext;
     this.entityManager = entityManager;
     this.metaStoreManager = metaStoreManager;
@@ -160,7 +157,6 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     this.authorizer = authorizer;
     this.catalogFactory = catalogFactory;
-    this.polarisEventListener = polarisEventListener;
   }
 
   /**

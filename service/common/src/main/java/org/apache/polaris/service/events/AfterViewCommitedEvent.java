@@ -18,14 +18,16 @@
  */
 package org.apache.polaris.service.events;
 
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.view.ViewMetadata;
 
 /**
  * Emitted after Polaris performs a commit to a view. This is not emitted if there's an exception
  * while committing.
  *
+ * @param identifier The identifier.
  * @param base The old metadata.
  * @param metadata The new metadata.
  */
-public record AfterViewCommitedEvent(ViewMetadata base, ViewMetadata metadata)
-    implements PolarisEvent {}
+public record AfterViewCommitedEvent(
+    TableIdentifier identifier, ViewMetadata base, ViewMetadata metadata) implements PolarisEvent {}

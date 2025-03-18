@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.service.events;
 
+import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.view.ViewMetadata;
 
 /**
@@ -25,8 +26,9 @@ import org.apache.iceberg.view.ViewMetadata;
  * this event relative to the validation checks we've performed, which means the commit may still
  * fail Polaris-side validation checks.
  *
+ * @param identifier The identifier.
  * @param base The old metadata.
  * @param metadata The new metadata.
  */
-public record BeforeViewCommitedEvent(ViewMetadata base, ViewMetadata metadata)
-    implements PolarisEvent {}
+public record BeforeViewCommitedEvent(
+    TableIdentifier identifier, ViewMetadata base, ViewMetadata metadata) implements PolarisEvent {}

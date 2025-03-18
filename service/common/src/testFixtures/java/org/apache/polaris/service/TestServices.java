@@ -189,8 +189,7 @@ public record TestServices(
               configurationStore,
               polarisDiagnostics,
               authorizer,
-              new DefaultIcebergCatalogPrefixParser(),
-              polarisEventListener);
+              new DefaultIcebergCatalogPrefixParser());
 
       IcebergRestCatalogApi restApi = new IcebergRestCatalogApi(service);
 

@@ -1249,7 +1249,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     @Override
     public void doCommit(TableMetadata base, TableMetadata metadata) {
-      polarisEventListener.onBeforeTableCommited(new BeforeTableCommitedEvent(base, metadata));
+      polarisEventListener.onBeforeTableCommited(
+          new BeforeTableCommitedEvent(tableIdentifier, base, metadata));
 
       LOGGER.debug(
           "doCommit for table {} with base {}, metadata {}", tableIdentifier, base, metadata);
@@ -1383,7 +1384,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         updateTableLike(tableIdentifier, entity);
       }
 
-      polarisEventListener.onAfterTableCommited(new AfterTableCommitedEvent(base, metadata));
+      polarisEventListener.onAfterTableCommited(
+          new AfterTableCommitedEvent(tableIdentifier, base, metadata));
     }
 
     @Override
@@ -1486,7 +1488,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     @Override
     public void doCommit(ViewMetadata base, ViewMetadata metadata) {
-      polarisEventListener.onBeforeViewCommited(new BeforeViewCommitedEvent(base, metadata));
+      polarisEventListener.onBeforeViewCommited(
+          new BeforeViewCommitedEvent(identifier, base, metadata));
 
       // TODO: Maybe avoid writing metadata if there's definitely a transaction conflict
       LOGGER.debug("doCommit for view {} with base {}, metadata {}", identifier, base, metadata);
@@ -1578,7 +1581,8 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
         updateTableLike(identifier, entity);
       }
 
-      polarisEventListener.onAfterViewCommited(new AfterViewCommitedEvent(base, metadata));
+      polarisEventListener.onAfterViewCommited(
+          new AfterViewCommitedEvent(identifier, base, metadata));
     }
 
     @Override

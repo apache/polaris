@@ -23,5 +23,5 @@ import jakarta.enterprise.context.ApplicationScoped;
 
 /** Event listener that does nothing. */
 @ApplicationScoped
-@Identifier("default")
-public class DefaultPolarisEventListener extends PolarisEventListener {}
+@Identifier("no-op")
+public class NoOpPolarisEventListener extends PolarisEventListener {}
