@@ -49,6 +49,9 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.policy.PolicyEntity;
+import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.assertj.core.api.Assertions;
 
 /** Test the Polaris persistence layer */
@@ -579,12 +582,22 @@ public class PolarisTestMetaStoreManager {
       PolarisEntityType entityType,
       PolarisEntitySubType entitySubType,
       String name) {
+    return createEntity(catalogPath, entityType, entitySubType, name, null);
+  }
+
+  public PolarisBaseEntity createEntity(
+      List<PolarisEntityCore> catalogPath,
+      PolarisEntityType entityType,
+      PolarisEntitySubType entitySubType,
+      String name,
+      Map<String, String> properties) {
     return createEntity(
         catalogPath,
         entityType,
         entitySubType,
         name,
-        polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId());
+        polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId(),
+        properties);
   }
 
   PolarisBaseEntity createEntity(
@@ -593,6 +606,16 @@ public class PolarisTestMetaStoreManager {
       PolarisEntitySubType entitySubType,
       String name,
       long entityId) {
+    return createEntity(catalogPath, entityType, entitySubType, name, entityId, null);
+  }
+
+  PolarisBaseEntity createEntity(
+      List<PolarisEntityCore> catalogPath,
+      PolarisEntityType entityType,
+      PolarisEntitySubType entitySubType,
+      String name,
+      long entityId,
+      Map<String, String> properties) {
     long parentId;
     long catalogId;
     if (catalogPath != null) {
@@ -604,6 +627,7 @@ public class PolarisTestMetaStoreManager {
     }
     PolarisBaseEntity newEntity =
         new PolarisBaseEntity(catalogId, entityId, entityType, entitySubType, parentId, name);
+    newEntity.setPropertiesAsMap(properties);
     PolarisBaseEntity entity =
         polarisMetaStoreManager
             .createEntityIfNotExists(this.polarisCallContext, catalogPath, newEntity)
@@ -644,6 +668,26 @@ public class PolarisTestMetaStoreManager {
   PolarisBaseEntity createEntity(
       List<PolarisEntityCore> catalogPath, PolarisEntityType entityType, String name) {
     return createEntity(catalogPath, entityType, PolarisEntitySubType.NULL_SUBTYPE, name);
+  }
+
+  PolarisBaseEntity createEntity(
+      List<PolarisEntityCore> catalogPath,
+      PolarisEntityType entityType,
+      String name,
+      Map<String, String> properties) {
+    return createEntity(
+        catalogPath, entityType, PolarisEntitySubType.NULL_SUBTYPE, name, properties);
+  }
+
+  /** Create a policy entity */
+  PolicyEntity createPolicy(
+      List<PolarisEntityCore> catalogPath, String name, PolicyType policyType) {
+    return PolicyEntity.of(
+        createEntity(
+            catalogPath,
+            PolarisEntityType.POLICY,
+            name,
+            Map.of("policy-type-code", Integer.toString(policyType.getCode()))));
   }
 
   /** Drop the entity if it exists. */
@@ -914,7 +958,7 @@ public class PolarisTestMetaStoreManager {
 
   /**
    * Create a test catalog. This is a new catalog which will have the following objects (N is for a
-   * namespace, T for a table, V for a view, R for a role, P for a principal):
+   * namespace, T for a table, V for a view, R for a role, P for a principal, POL for a policy):
    *
    * <pre>
    * - C
@@ -927,6 +971,9 @@ public class PolarisTestMetaStoreManager {
    * - (N1/N4)
    * - N5/N6/T5
    * - N5/N6/T6
+   * - N7/N8/POL1
+   * - N7/N8/POL2
+   * - N7/POL3
    * - R1(TABLE_READ on N1/N2, VIEW_CREATE on C, TABLE_LIST on N1/N2, TABLE_DROP on N5/N6/T5)
    * - R2(TABLE_WRITE_DATA on N5, VIEW_LIST on C)
    * - PR1(R1, R2)
@@ -992,6 +1039,14 @@ public class PolarisTestMetaStoreManager {
         PolarisEntityType.TABLE_LIKE,
         PolarisEntitySubType.TABLE,
         "T6");
+
+    PolarisBaseEntity N7 = this.createEntity(List.of(catalog), PolarisEntityType.NAMESPACE, "N7");
+    PolarisBaseEntity N7_N8 =
+        this.createEntity(List.of(catalog, N7), PolarisEntityType.NAMESPACE, "N8");
+    this.createPolicy(List.of(catalog, N7, N7_N8), "POL1", PredefinedPolicyTypes.DATA_COMPACTION);
+    this.createPolicy(
+        List.of(catalog, N7, N7_N8), "POL2", PredefinedPolicyTypes.METADATA_COMPACTION);
+    this.createPolicy(List.of(catalog, N7), "POL3", PredefinedPolicyTypes.SNAPSHOT_RETENTION);
 
     // the two catalog roles
     PolarisBaseEntity R1 =
@@ -1659,6 +1714,17 @@ public class PolarisTestMetaStoreManager {
         PolarisEntityType.TABLE_LIKE,
         PolarisEntitySubType.TABLE,
         "T6");
+    PolarisBaseEntity N7 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N7");
+    PolarisBaseEntity N7_N8 =
+        this.ensureExistsByName(
+            List.of(catalog, N7),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            "N8");
+    this.ensureExistsByName(List.of(catalog, N7, N7_N8), PolarisEntityType.POLICY, "POL1");
+    this.ensureExistsByName(List.of(catalog, N7, N7_N8), PolarisEntityType.POLICY, "POL2");
+    this.ensureExistsByName(List.of(catalog, N7), PolarisEntityType.POLICY, "POL3");
     PolarisBaseEntity R1 =
         this.ensureExistsByName(List.of(catalog), PolarisEntityType.CATALOG_ROLE, "R1");
     PolarisBaseEntity R2 =
@@ -1692,7 +1758,8 @@ public class PolarisTestMetaStoreManager {
         PolarisEntityType.NAMESPACE,
         List.of(
             ImmutablePair.of("N1", PolarisEntitySubType.NULL_SUBTYPE),
-            ImmutablePair.of("N5", PolarisEntitySubType.NULL_SUBTYPE)));
+            ImmutablePair.of("N5", PolarisEntitySubType.NULL_SUBTYPE),
+            ImmutablePair.of("N7", PolarisEntitySubType.NULL_SUBTYPE)));
 
     // should see 3 top-level catalog roles including the admin one
     this.validateListReturn(
@@ -1793,6 +1860,18 @@ public class PolarisTestMetaStoreManager {
                 PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of("PR1", PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of("PR2", PolarisEntitySubType.NULL_SUBTYPE)));
+
+    // list 2 policies under N7_N8
+    PolarisBaseEntity N7 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N7");
+    PolarisBaseEntity N7_N8 =
+        this.ensureExistsByName(List.of(catalog, N7), PolarisEntityType.NAMESPACE, "N8");
+    this.validateListReturn(
+        List.of(catalog, N7, N7_N8),
+        PolarisEntityType.POLICY,
+        List.of(
+            ImmutablePair.of("POL1", PolarisEntitySubType.NULL_SUBTYPE),
+            ImmutablePair.of("POL2", PolarisEntitySubType.NULL_SUBTYPE)));
   }
 
   /** Test that entity updates works well */
@@ -1960,6 +2039,26 @@ public class PolarisTestMetaStoreManager {
     this.dropEntity(List.of(catalog, N5, N5_N6), T5);
     this.dropEntity(List.of(catalog, N5), N5_N6);
     this.dropEntity(List.of(catalog), N5);
+
+    PolarisBaseEntity N7 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N7");
+    PolarisBaseEntity N7_N8 =
+        this.ensureExistsByName(
+            List.of(catalog, N7),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            "N8");
+    PolarisBaseEntity POL1 =
+        this.ensureExistsByName(List.of(catalog, N7, N7_N8), PolarisEntityType.POLICY, "POL1");
+    PolarisBaseEntity POL2 =
+        this.ensureExistsByName(List.of(catalog, N7, N7_N8), PolarisEntityType.POLICY, "POL2");
+    PolarisBaseEntity POL3 =
+        this.ensureExistsByName(List.of(catalog, N7), PolarisEntityType.POLICY, "POL3");
+    this.dropEntity(List.of(catalog, N7, N7_N8), POL1);
+    this.dropEntity(List.of(catalog, N7, N7_N8), POL2);
+    this.dropEntity(List.of(catalog, N7), POL3);
+    this.dropEntity(List.of(catalog, N7), N7_N8);
+    this.dropEntity(List.of(catalog), N7);
 
     // attempt to drop the catalog again, should fail because of role R1
     this.dropEntity(null, catalog);
