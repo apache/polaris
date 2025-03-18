@@ -65,6 +65,7 @@ public class ManagementServiceTest {
   private static final String GCP_BASE_LOCATION = "gs://bucket/path/to/data";
   private static final String GCP_SERVICE_ACCOUNT =
       "my-service-account@my-project.iam.gserviceaccount.com";
+  private static final String FILE_BASE_LOCATION = "file:///tmp/path/to/data";
 
   @BeforeEach
   public void setup() {
@@ -84,14 +85,14 @@ public class ManagementServiceTest {
   public void testCreateCatalogWithDisallowedStorageConfig() {
     FileStorageConfigInfo fileStorage =
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
-            .setAllowedLocations(List.of("file://"))
+            .setAllowedLocations(List.of(FILE_BASE_LOCATION))
             .build();
-    String catalogName = "my-external-catalog";
+    String catalogName = DEFAULT_CATALOG_NAME;
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
-            .setProperties(new CatalogProperties("file:///tmp/path/to/data"))
+            .setProperties(new CatalogProperties(FILE_BASE_LOCATION))
             .setStorageConfigInfo(fileStorage)
             .build();
     assertThatThrownBy(
@@ -110,18 +111,18 @@ public class ManagementServiceTest {
   public void testUpdateCatalogWithDisallowedStorageConfig() {
     AwsStorageConfigInfo awsConfigModel =
         AwsStorageConfigInfo.builder()
-            .setRoleArn("arn:aws:iam::123456789012:role/my-role")
-            .setExternalId("externalId")
-            .setUserArn("userArn")
+            .setRoleArn(S3_IAM_ROLE_ARN)
+            .setExternalId(S3_EXTERNAL_ID)
+            .setUserArn(S3_IAM_USER_ARN)
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of("s3://my-old-bucket/path/to/data"))
+            .setAllowedLocations(List.of(S3_BASE_LOCATION))
             .build();
-    String catalogName = "mycatalog";
+    String catalogName = DEFAULT_CATALOG_NAME;
     Catalog catalog =
         PolarisCatalog.builder()
             .setType(Catalog.TypeEnum.INTERNAL)
             .setName(catalogName)
-            .setProperties(new CatalogProperties("s3://bucket/path/to/data"))
+            .setProperties(new CatalogProperties(S3_BASE_LOCATION))
             .setStorageConfigInfo(awsConfigModel)
             .build();
     try (Response response =
@@ -135,28 +136,17 @@ public class ManagementServiceTest {
     }
 
     // 200 successful GET after creation
-    Catalog fetchedCatalog;
-    try (Response response =
-        services
-            .catalogsApi()
-            .getCatalog(catalogName, services.realmContext(), services.securityContext())) {
-      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
-      fetchedCatalog = (Catalog) response.getEntity();
+    Catalog fetchedCatalog = getPolariCatalogEntity(catalogName, S3_BASE_LOCATION);
 
-      assertThat(fetchedCatalog.getName()).isEqualTo(catalogName);
-      assertThat(fetchedCatalog.getProperties().toMap())
-          .isEqualTo(Map.of("default-base-location", "s3://bucket/path/to/data"));
-      assertThat(fetchedCatalog.getEntityVersion()).isGreaterThan(0);
-    }
-
+    // Update the catalog with a disallowed storage type
     FileStorageConfigInfo fileStorage =
         FileStorageConfigInfo.builder(StorageConfigInfo.StorageTypeEnum.FILE)
-            .setAllowedLocations(List.of("file://"))
+            .setAllowedLocations(List.of(FILE_BASE_LOCATION))
             .build();
     UpdateCatalogRequest updateRequest =
         new UpdateCatalogRequest(
             fetchedCatalog.getEntityVersion(),
-            Map.of("default-base-location", "file:///tmp/path/to/data/"),
+            Map.of(CatalogEntity.DEFAULT_BASE_LOCATION_KEY, FILE_BASE_LOCATION),
             fileStorage);
 
     // failure to update
