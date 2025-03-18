@@ -64,6 +64,6 @@ public class EntityWeigher implements Weigher<Long, ResolvedPolarisEntity> {
 
   /** Factory method to provide a typed Weigher */
   public static Weigher<Long, ResolvedPolarisEntity> asWeigher() {
-    return (Weigher<Long, ResolvedPolarisEntity>) getInstance();
+    return getInstance();
   }
 }
