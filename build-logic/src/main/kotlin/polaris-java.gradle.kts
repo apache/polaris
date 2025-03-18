@@ -41,6 +41,8 @@ tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
   options.errorprone.disableAllWarnings = true
   options.errorprone.disableWarningsInGeneratedCode = true
+  options.errorprone.excludedPaths =
+    ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated/.*"
   options.errorprone.error(
     "DefaultCharset",
     "FallThrough",
@@ -98,24 +100,14 @@ testing {
           }
         )
       }
-    }
-  }
-}
 
-// Special handling for test-suites with type `manual-test`, which are intended to be run on demand
-// rather than implicitly via `check`.
-afterEvaluate {
-  testing {
-    suites {
-      withType<JvmTestSuite> {
-        // Need to do this check in an afterEvaluate, because the `withType` above gets called
-        // before the configure() of a registered test suite runs.
-        if (testType.get() != "manual-test") {
-          targets.all {
-            if (testTask.name != "test") {
-              testTask.configure { shouldRunAfter("test") }
-              tasks.named("check").configure { dependsOn(testTask) }
-            }
+      // Special handling for test-suites with names containing `manualtest`, which are intended to
+      // be run on demand rather than implicitly via `check`.
+      if (!name.lowercase().contains("manualtest")) {
+        targets.all {
+          if (testTask.name != "test") {
+            testTask.configure { shouldRunAfter("test") }
+            tasks.named("check").configure { dependsOn(testTask) }
           }
         }
       }
@@ -204,6 +196,9 @@ tasks.withType<Javadoc>().configureEach {
   val opt = options as CoreJavadocOptions
   // don't spam log w/ "warning: no @param/@return"
   opt.addStringOption("Xdoclint:-reference", "-quiet")
+  if (plugins.hasPlugin("org.kordamp.gradle.jandex")) {
+    dependsOn("jandex")
+  }
 }
 
 tasks.register("printRuntimeClasspath").configure {

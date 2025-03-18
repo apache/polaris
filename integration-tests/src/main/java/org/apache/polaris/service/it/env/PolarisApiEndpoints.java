@@ -23,7 +23,7 @@ import java.net.URI;
 
 /**
  * This class contains the most fundamental information for accessing Polaris APIs, such as the base
- * URI and realm ID and provides methods for obtaining Icenberg REST API and Polaris Management
+ * URI and realm ID and provides methods for obtaining Iceberg REST API and Polaris Management
  * endpoints.
  */
 public final class PolarisApiEndpoints implements Serializable {

@@ -17,7 +17,7 @@
 # under the License.
 #
 
-FROM docker.io/apache/spark:3.5.4-java17-python3
+FROM docker.io/apache/spark:3.5.5-java17-python3
 ARG POLARIS_HOST=polaris
 ENV POLARIS_HOST=$POLARIS_HOST
 ENV SPARK_HOME=/opt/spark
@@ -46,7 +46,7 @@ RUN python3 -m venv /home/spark/polaris-venv && \
     . /home/spark/polaris-venv/bin/activate && \
     pip install -r /tmp/requirements.txt && \
     deactivate \
-RUN ./setup.sh
+    ./setup.sh
 
 COPY --chown=spark . /home/spark/regtests
 

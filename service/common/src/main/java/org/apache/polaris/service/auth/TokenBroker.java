@@ -20,11 +20,12 @@ package org.apache.polaris.service.auth;
 
 import jakarta.annotation.Nonnull;
 import java.util.Optional;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.types.TokenType;
 
 /** Generic token class intended to be extended by different token types */
@@ -34,31 +35,102 @@ public interface TokenBroker {
 
   boolean supportsRequestedTokenType(TokenType tokenType);
 
-  TokenResponse generateFromClientSecrets(
-      final String clientId, final String clientSecret, final String grantType, final String scope);
+  /**
+   * Generate a token from client secrets without specifying the requested token type
+   *
+   * @param clientId
+   * @param clientSecret
+   * @param grantType
+   * @param scope
+   * @return the response indicating an error or the requested token
+   * @deprecated - use the method with the requested token type
+   */
+  @Deprecated
+  default TokenResponse generateFromClientSecrets(
+      final String clientId,
+      final String clientSecret,
+      final String grantType,
+      final String scope,
+      PolarisCallContext polarisCallContext) {
+    return generateFromClientSecrets(
+        clientId, clientSecret, grantType, scope, polarisCallContext, TokenType.ACCESS_TOKEN);
+  }
 
+  /**
+   * Generate a token from client secrets
+   *
+   * @param clientId
+   * @param clientSecret
+   * @param grantType
+   * @param scope
+   * @param requestedTokenType
+   * @return the response indicating an error or the requested token
+   */
+  TokenResponse generateFromClientSecrets(
+      final String clientId,
+      final String clientSecret,
+      final String grantType,
+      final String scope,
+      PolarisCallContext polarisCallContext,
+      TokenType requestedTokenType);
+
+  /**
+   * Generate a token from an existing token of a specified type without specifying the requested
+   * token type
+   *
+   * @param subjectTokenType
+   * @param subjectToken
+   * @param grantType
+   * @param scope
+   * @return the response indicating an error or the requested token
+   * @deprecated - use the method with the requested token type
+   */
+  @Deprecated
+  default TokenResponse generateFromToken(
+      TokenType subjectTokenType, String subjectToken, final String grantType, final String scope) {
+    return generateFromToken(
+        subjectTokenType, subjectToken, grantType, scope, TokenType.ACCESS_TOKEN);
+  }
+
+  /**
+   * Generate a token from an existing token of a specified type
+   *
+   * @param subjectTokenType
+   * @param subjectToken
+   * @param grantType
+   * @param scope
+   * @param requestedTokenType
+   * @return the response indicating an error or the requested token
+   */
   TokenResponse generateFromToken(
-      TokenType tokenType, String subjectToken, final String grantType, final String scope);
+      TokenType subjectTokenType,
+      String subjectToken,
+      final String grantType,
+      final String scope,
+      TokenType requestedTokenType);
 
   DecodedToken verify(String token);
 
   static @Nonnull Optional<PrincipalEntity> findPrincipalEntity(
       PolarisMetaStoreManager metaStoreManager,
-      PolarisMetaStoreSession metaStoreSession,
       String clientId,
-      String clientSecret) {
+      String clientSecret,
+      PolarisCallContext polarisCallContext) {
     // Validate the principal is present and secrets match
     PrincipalSecretsResult principalSecrets =
-        metaStoreManager.loadPrincipalSecrets(metaStoreSession, clientId);
+        metaStoreManager.loadPrincipalSecrets(polarisCallContext, clientId);
     if (!principalSecrets.isSuccess()) {
       return Optional.empty();
     }
     if (!principalSecrets.getPrincipalSecrets().matchesSecret(clientSecret)) {
       return Optional.empty();
     }
-    PolarisMetaStoreManager.EntityResult result =
+    EntityResult result =
         metaStoreManager.loadEntity(
-            metaStoreSession, 0L, principalSecrets.getPrincipalSecrets().getPrincipalId());
+            polarisCallContext,
+            0L,
+            principalSecrets.getPrincipalSecrets().getPrincipalId(),
+            PolarisEntityType.PRINCIPAL);
     if (!result.isSuccess() || result.getEntity().getType() != PolarisEntityType.PRINCIPAL) {
       return Optional.empty();
     }

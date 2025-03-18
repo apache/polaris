@@ -90,10 +90,11 @@ import org.testcontainers.shaded.org.awaitility.Awaitility;
  * @implSpec @implSpec This test expects the server to be configured with the following features
  *     configured:
  *     <ul>
- *       <li>{@link org.apache.polaris.core.PolarisConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
+ *       <li>{@link
+ *           org.apache.polaris.core.config.FeatureConfiguration#ALLOW_OVERLAPPING_CATALOG_URLS}:
  *           {@code true}
  *       <li>{@link
- *           org.apache.polaris.core.PolarisConfiguration#ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING}:
+ *           org.apache.polaris.core.config.FeatureConfiguration#ENFORCE_PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_CHECKING}:
  *           {@code true}
  *     </ul>
  */

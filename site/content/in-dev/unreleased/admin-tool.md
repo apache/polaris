@@ -30,7 +30,8 @@ example, to build the tool with support for Postgres, run the following:
 ```shell
 ./gradlew clean :polaris-quarkus-admin:build \
   -Dquarkus.container-image.build=true \
-  -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
+  -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
+  --no-build-cache
 ```
 
 The above command will generate:

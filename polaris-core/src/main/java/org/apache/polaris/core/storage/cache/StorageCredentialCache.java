@@ -21,21 +21,21 @@ package org.apache.polaris.core.storage.cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
-import org.apache.polaris.core.PolarisConfiguration;
-import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
-import org.jetbrains.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,51 +46,23 @@ public class StorageCredentialCache {
 
   private static final long CACHE_MAX_NUMBER_OF_ENTRIES = 10_000L;
   private final LoadingCache<StorageCredentialCacheKey, StorageCredentialCacheEntry> cache;
-  private final PolarisDiagnostics diagnostics;
-  private final PolarisConfigurationStore configurationStore;
 
   /** Initialize the creds cache */
-  public StorageCredentialCache(
-      PolarisDiagnostics diagnostics, PolarisConfigurationStore configurationStore) {
-    this.diagnostics = diagnostics;
-    this.configurationStore = configurationStore;
+  public StorageCredentialCache() {
     cache =
         Caffeine.newBuilder()
             .maximumSize(CACHE_MAX_NUMBER_OF_ENTRIES)
             .expireAfter(
-                new Expiry<StorageCredentialCacheKey, StorageCredentialCacheEntry>() {
-                  @Override
-                  public long expireAfterCreate(
-                      StorageCredentialCacheKey key,
-                      StorageCredentialCacheEntry entry,
-                      long currentTime) {
-                    long expireAfterMillis =
-                        Math.max(
-                            0,
-                            Math.min(
-                                (entry.getExpirationTime() - System.currentTimeMillis()) / 2,
-                                maxCacheDurationMs()));
-                    return TimeUnit.MILLISECONDS.toNanos(expireAfterMillis);
-                  }
-
-                  @Override
-                  public long expireAfterUpdate(
-                      StorageCredentialCacheKey key,
-                      StorageCredentialCacheEntry entry,
-                      long currentTime,
-                      long currentDuration) {
-                    return currentDuration;
-                  }
-
-                  @Override
-                  public long expireAfterRead(
-                      StorageCredentialCacheKey key,
-                      StorageCredentialCacheEntry entry,
-                      long currentTime,
-                      long currentDuration) {
-                    return currentDuration;
-                  }
-                })
+                Expiry.creating(
+                    (StorageCredentialCacheKey key, StorageCredentialCacheEntry entry) -> {
+                      long expireAfterMillis =
+                          Math.max(
+                              0,
+                              Math.min(
+                                  (entry.getExpirationTime() - System.currentTimeMillis()) / 2,
+                                  maxCacheDurationMs()));
+                      return Duration.ofMillis(expireAfterMillis);
+                    }))
             .build(
                 key -> {
                   // the load happen at getOrGenerateSubScopeCreds()
@@ -99,21 +71,18 @@ public class StorageCredentialCache {
   }
 
   /** How long credentials should remain in the cache. */
-  private long maxCacheDurationMs() {
-    // FIXME no realm context available; in practice this means that these values are not
-    // overridable by realm-specific values
+  private static long maxCacheDurationMs() {
     var cacheDurationSeconds =
-        configurationStore.getConfiguration(
-            null, PolarisConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
+        PolarisConfiguration.loadConfig(
+            FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
     var credentialDurationSeconds =
-        configurationStore.getConfiguration(
-            null, PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+        PolarisConfiguration.loadConfig(FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
     if (cacheDurationSeconds >= credentialDurationSeconds) {
       throw new IllegalArgumentException(
           String.format(
               "%s should be less than %s",
-              PolarisConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS.key,
-              PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.key));
+              FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS.key,
+              FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.key));
     } else {
       return cacheDurationSeconds * 1000L;
     }
@@ -123,7 +92,7 @@ public class StorageCredentialCache {
    * Either get from the cache or generate a new entry for a scoped creds
    *
    * @param credentialVendor the credential vendor used to generate a new scoped creds if needed
-   * @param metaStoreSession the meta store session
+   * @param callCtx the call context
    * @param polarisEntity the polaris entity that is going to scoped creds
    * @param allowListOperation whether allow list action on the provided read and write locations
    * @param allowedReadLocations a set of allowed to read locations
@@ -132,27 +101,33 @@ public class StorageCredentialCache {
    */
   public Map<String, String> getOrGenerateSubScopeCreds(
       @Nonnull PolarisCredentialVendor credentialVendor,
-      @Nonnull PolarisMetaStoreSession metaStoreSession,
+      @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntity polarisEntity,
       boolean allowListOperation,
       @Nonnull Set<String> allowedReadLocations,
       @Nonnull Set<String> allowedWriteLocations) {
     if (!isTypeSupported(polarisEntity.getType())) {
-      diagnostics.fail(
-          "entity_type_not_suppported_to_scope_creds", "type={}", polarisEntity.getType());
+      callCtx
+          .getDiagServices()
+          .fail("entity_type_not_suppported_to_scope_creds", "type={}", polarisEntity.getType());
     }
     StorageCredentialCacheKey key =
         new StorageCredentialCacheKey(
-            polarisEntity, allowListOperation, allowedReadLocations, allowedWriteLocations);
+            polarisEntity,
+            allowListOperation,
+            allowedReadLocations,
+            allowedWriteLocations,
+            callCtx);
     LOGGER.atDebug().addKeyValue("key", key).log("subscopedCredsCache");
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {
           LOGGER.atDebug().log("StorageCredentialCache::load");
-          PolarisCredentialVendor.ScopedCredentialsResult scopedCredentialsResult =
+          ScopedCredentialsResult scopedCredentialsResult =
               credentialVendor.getSubscopedCredsForEntity(
-                  metaStoreSession,
+                  k.getCallContext(),
                   k.getCatalogId(),
                   k.getEntityId(),
+                  polarisEntity.getType(),
                   k.isAllowedListAction(),
                   k.getAllowedReadLocations(),
                   k.getAllowedWriteLocations());

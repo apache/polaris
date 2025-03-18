@@ -62,9 +62,6 @@ root:
 helm unittest helm/polaris
 ```
 
-Note: the `grep` command is used to filter out the annoying warning messages about symbolic links;
-see https://github.com/helm/helm/issues/7019.
-
 ### Running locally with a Kind cluster
 
 The below instructions assume Kind and Helm are installed.
@@ -89,9 +86,10 @@ If necessary, build and load the Docker images with support for Postgres into Mi
 ```bash
 eval $(minikube -p minikube docker-env)
 
-./gradlew :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
+./gradlew clean :polaris-quarkus-server:assemble :polaris-quarkus-admin:assemble \
     -Dquarkus.container-image.build=true \
-    -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4
+    -PeclipseLinkDeps=org.postgresql:postgresql:42.7.4 \
+    --no-build-cache
 ```
 
 ### Installing the chart locally
@@ -150,7 +148,8 @@ helm uninstall --namespace polaris polaris
 | autoscaling.targetCPUUtilizationPercentage | int | `80` | Optional; set to zero or empty to disable. |
 | autoscaling.targetMemoryUtilizationPercentage | string | `nil` | Optional; set to zero or empty to disable. |
 | configMapLabels | object | `{}` | Additional Labels to apply to polaris configmap. |
-| containerSecurityContext | object | `{}` | Security context for the polaris container. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
+| containerSecurityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"drop":["ALL"]},"runAsNonRoot":true,"runAsUser":10000,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the polaris container. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
+| containerSecurityContext.runAsUser | int | `10000` | UID 10000 is compatible with Polaris OSS default images; change this if you are using a different image. |
 | cors | object | `{"accessControlAllowCredentials":null,"accessControlMaxAge":null,"allowedHeaders":[],"allowedMethods":[],"allowedOrigins":[],"exposedHeaders":[]}` | Polaris CORS configuration. |
 | cors.accessControlAllowCredentials | string | `nil` | The `Access-Control-Allow-Credentials` response header. The value of this header will default to `true` if `allowedOrigins` property is set and there is a match with the precise `Origin` header. |
 | cors.accessControlMaxAge | string | `nil` | The `Access-Control-Max-Age` response header value indicating how long the results of a pre-flight request can be cached. Must be a valid duration. |
@@ -232,7 +231,8 @@ helm uninstall --namespace polaris polaris
 | persistence.type | string | `"eclipse-link"` | The type of persistence to use. Two built-in types are supported: in-memory and eclipse-link. |
 | podAnnotations | object | `{}` | Annotations to apply to polaris pods. |
 | podLabels | object | `{}` | Additional Labels to apply to polaris pods. |
-| podSecurityContext | object | `{}` | Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
+| podSecurityContext | object | `{"fsGroup":10001,"seccompProfile":{"type":"RuntimeDefault"}}` | Security context for the polaris pod. See https://kubernetes.io/docs/tasks/configure-pod-container/security-context/. |
+| podSecurityContext.fsGroup | int | `10001` | GID 10001 is compatible with Polaris OSS default images; change this if you are using a different image. |
 | rateLimiter | object | `{"tokenBucket":{"requestsPerSecond":9999,"type":"default","window":"PT10S"},"type":"no-op"}` | Polaris rate limiter configuration. |
 | rateLimiter.tokenBucket | object | `{"requestsPerSecond":9999,"type":"default","window":"PT10S"}` | The configuration for the default rate limiter, which uses the token bucket algorithm with one bucket per realm. |
 | rateLimiter.tokenBucket.requestsPerSecond | int | `9999` | The maximum number of requests per second allowed for each realm. |

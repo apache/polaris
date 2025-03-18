@@ -373,6 +373,20 @@ def test_update_catalog():
                      checker=lambda s: 'foo' not in s and 'prop2' not in s and
                                        '"prop3": "3333"' in s and '"prop4": "4444"' in s)
 
+        # Update to add a property whose value is a key-value list
+        check_output(root_cli(
+            'catalogs',
+            'update',
+            f'test_cli_catalog_{SALT}',
+            '--set-property',
+            'listprop=k1=v1,k2=v2'
+        ), checker=lambda s: s == '')
+
+        # Previous properties still exist, and the new property is parsed properly
+        check_output(root_cli('catalogs', 'get', f'test_cli_catalog_{SALT}'),
+                     checker=lambda s: '"prop3": "3333"' in s and '"prop4": "4444"' in s and
+                                       '"listprop": "k1=v1,k2=v2"' in s)
+
         # Update to set a region
         check_output(root_cli(
             'catalogs',

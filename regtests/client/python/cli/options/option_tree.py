@@ -123,7 +123,8 @@ class OptionTree:
                 Option(Subcommands.UPDATE, args=[
                     Argument(Arguments.SET_PROPERTY, str, Hints.SET_PROPERTY, allow_repeats=True),
                     Argument(Arguments.REMOVE_PROPERTY, str, Hints.REMOVE_PROPERTY, allow_repeats=True),
-                ], input_name=Arguments.PRINCIPAL)
+                ], input_name=Arguments.PRINCIPAL),
+                Option(Subcommands.ACCESS, input_name=Arguments.PRINCIPAL),
             ]),
             Option(Commands.PRINCIPAL_ROLES, 'manage principal roles', children=[
                 Option(Subcommands.CREATE, args=[
@@ -230,5 +231,12 @@ class OptionTree:
                 Option(Subcommands.GET, args=[
                     Argument(Arguments.CATALOG, str, Hints.CatalogRoles.CATALOG_NAME)
                 ], input_name=Arguments.NAMESPACE),
+            ]),
+            Option(Commands.PROFILES, 'manage profiles', children=[
+                Option(Subcommands.CREATE, input_name=Arguments.PROFILE),
+                Option(Subcommands.DELETE, input_name=Arguments.PROFILE),
+                Option(Subcommands.UPDATE, input_name=Arguments.PROFILE),
+                Option(Subcommands.GET, input_name=Arguments.PROFILE),
+                Option(Subcommands.LIST),
             ])
         ]

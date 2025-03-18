@@ -20,6 +20,7 @@ package org.apache.polaris.service.auth;
 
 import io.smallrye.common.annotation.Identifier;
 import jakarta.enterprise.context.ApplicationScoped;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.service.types.TokenType;
 
@@ -42,13 +43,22 @@ public class NoneTokenBrokerFactory implements TokenBrokerFactory {
 
         @Override
         public TokenResponse generateFromClientSecrets(
-            String clientId, String clientSecret, String grantType, String scope) {
+            String clientId,
+            String clientSecret,
+            String grantType,
+            String scope,
+            PolarisCallContext polarisCallContext,
+            TokenType requestedTokenType) {
           return null;
         }
 
         @Override
         public TokenResponse generateFromToken(
-            TokenType tokenType, String subjectToken, String grantType, String scope) {
+            TokenType subjectTokenType,
+            String subjectToken,
+            String grantType,
+            String scope,
+            TokenType requestedTokenType) {
           return null;
         }
 

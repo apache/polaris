@@ -16,6 +16,7 @@
 # specific language governing permissions and limitations
 # under the License.
 #
+import os
 from enum import Enum
 
 
@@ -58,6 +59,7 @@ class Commands:
     CATALOG_ROLES = 'catalog-roles'
     PRIVILEGES = 'privileges'
     NAMESPACES = 'namespaces'
+    PROFILES = 'profiles'
 
 
 class Subcommands:
@@ -78,6 +80,7 @@ class Subcommands:
     VIEW = 'view'
     GRANT = 'grant'
     REVOKE = 'revoke'
+    ACCESS = 'access'
 
 
 class Actions:
@@ -132,6 +135,8 @@ class Arguments:
     PARENT = 'parent'
     LOCATION = 'location'
     REGION = 'region'
+    PROFILE = 'profile'
+    PROXY = 'proxy'
 
 
 class Hints:
@@ -229,5 +234,10 @@ class Hints:
 UNIT_SEPARATOR = chr(0x1F)
 CLIENT_ID_ENV = 'CLIENT_ID'
 CLIENT_SECRET_ENV = 'CLIENT_SECRET'
+CLIENT_PROFILE_ENV = 'CLIENT_PROFILE'
 DEFAULT_HOSTNAME = 'localhost'
 DEFAULT_PORT = 8181
+CONFIG_DIR = os.environ.get('SCRIPT_DIR')
+if CONFIG_DIR is None:
+    raise Exception("The SCRIPT_DIR environment variable is not set. Please set it to the Polaris's script directory.")
+CONFIG_FILE = os.path.join(CONFIG_DIR, '.polaris.json')

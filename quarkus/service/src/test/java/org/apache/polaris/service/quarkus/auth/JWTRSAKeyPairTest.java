@@ -28,19 +28,23 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
+import java.util.HashMap;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.auth.JWTRSAKeyPair;
 import org.apache.polaris.service.auth.LocalRSAKeyProvider;
 import org.apache.polaris.service.auth.PemUtils;
 import org.apache.polaris.service.auth.TokenBroker;
 import org.apache.polaris.service.auth.TokenRequestValidator;
 import org.apache.polaris.service.auth.TokenResponse;
+import org.apache.polaris.service.config.DefaultConfigurationStore;
+import org.apache.polaris.service.types.TokenType;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -55,12 +59,13 @@ public class JWTRSAKeyPairTest {
     final String clientId = "test-client-id";
     final String scope = "PRINCIPAL_ROLE:TEST";
 
+    DefaultConfigurationStore store = new DefaultConfigurationStore(new HashMap<>());
+    PolarisCallContext polarisCallContext = new PolarisCallContext(null, null, store, null);
     PolarisMetaStoreManager metastoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     String mainSecret = "client-secret";
     PolarisPrincipalSecrets principalSecrets =
         new PolarisPrincipalSecrets(1L, clientId, mainSecret, "otherSecret");
-    PolarisMetaStoreSession session = Mockito.mock(PolarisMetaStoreSession.class);
-    Mockito.when(metastoreManager.loadPrincipalSecrets(session, clientId))
+    Mockito.when(metastoreManager.loadPrincipalSecrets(polarisCallContext, clientId))
         .thenReturn(new PrincipalSecretsResult(principalSecrets));
     PolarisBaseEntity principal =
         new PolarisBaseEntity(
@@ -70,13 +75,19 @@ public class JWTRSAKeyPairTest {
             PolarisEntitySubType.NULL_SUBTYPE,
             0L,
             "principal");
-    Mockito.when(metastoreManager.loadEntity(session, 0L, 1L))
-        .thenReturn(new PolarisMetaStoreManager.EntityResult(principal));
+    Mockito.when(
+            metastoreManager.loadEntity(polarisCallContext, 0L, 1L, PolarisEntityType.PRINCIPAL))
+        .thenReturn(new EntityResult(principal));
     TokenBroker tokenBroker =
-        new JWTRSAKeyPair(metastoreManager, session, 420, publicFileLocation, privateFileLocation);
+        new JWTRSAKeyPair(metastoreManager, 420, publicFileLocation, privateFileLocation);
     TokenResponse token =
         tokenBroker.generateFromClientSecrets(
-            clientId, mainSecret, TokenRequestValidator.CLIENT_CREDENTIALS, scope);
+            clientId,
+            mainSecret,
+            TokenRequestValidator.CLIENT_CREDENTIALS,
+            scope,
+            polarisCallContext,
+            TokenType.ACCESS_TOKEN);
     assertThat(token).isNotNull();
     assertThat(token.getExpiresIn()).isEqualTo(420);
 

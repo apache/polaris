@@ -26,9 +26,7 @@ import java.util.List;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.NotAuthorizedException;
-import org.apache.polaris.core.PolarisConfiguration;
-import org.apache.polaris.core.PolarisConfigurationStore;
-import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.admin.model.AddGrantRequest;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
@@ -59,18 +57,21 @@ import org.apache.polaris.core.admin.model.UpdatePrincipalRoleRequest;
 import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.CatalogRoleEntity;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.service.admin.api.PolarisCatalogsApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalRolesApiService;
 import org.apache.polaris.service.admin.api.PolarisPrincipalsApiService;
+import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,28 +82,23 @@ public class PolarisServiceImpl
         PolarisPrincipalsApiService,
         PolarisPrincipalRolesApiService {
   private static final Logger LOGGER = LoggerFactory.getLogger(PolarisServiceImpl.class);
-
-  private final PolarisEntityManager entityManager;
-  private final PolarisMetaStoreManager metaStoreManager;
-  private final PolarisMetaStoreSession session;
-  private final PolarisConfigurationStore configurationStore;
+  private final RealmEntityManagerFactory entityManagerFactory;
   private final PolarisAuthorizer polarisAuthorizer;
-  private final PolarisDiagnostics diagnostics;
+  private final MetaStoreManagerFactory metaStoreManagerFactory;
+  private final CallContext callContext;
 
   @Inject
   public PolarisServiceImpl(
-      PolarisEntityManager entityManager,
-      PolarisMetaStoreManager metaStoreManager,
-      PolarisMetaStoreSession session,
-      PolarisConfigurationStore configurationStore,
+      RealmEntityManagerFactory entityManagerFactory,
+      MetaStoreManagerFactory metaStoreManagerFactory,
       PolarisAuthorizer polarisAuthorizer,
-      PolarisDiagnostics diagnostics) {
-    this.entityManager = entityManager;
-    this.metaStoreManager = metaStoreManager;
-    this.session = session;
-    this.configurationStore = configurationStore;
+      CallContext callContext) {
+    this.entityManagerFactory = entityManagerFactory;
+    this.metaStoreManagerFactory = metaStoreManagerFactory;
     this.polarisAuthorizer = polarisAuthorizer;
-    this.diagnostics = diagnostics;
+    this.callContext = callContext;
+    // FIXME: This is a hack to set the current context for downstream calls.
+    CallContext.setCurrentContext(callContext);
   }
 
   private PolarisAdminService newAdminService(
@@ -113,15 +109,12 @@ public class PolarisServiceImpl
       throw new NotAuthorizedException("Failed to find authenticatedPrincipal in SecurityContext");
     }
 
+    PolarisEntityManager entityManager =
+        entityManagerFactory.getOrCreateEntityManager(realmContext);
+    PolarisMetaStoreManager metaStoreManager =
+        metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
     return new PolarisAdminService(
-        realmContext,
-        entityManager,
-        metaStoreManager,
-        session,
-        configurationStore,
-        diagnostics,
-        securityContext,
-        polarisAuthorizer);
+        callContext, entityManager, metaStoreManager, securityContext, polarisAuthorizer);
   }
 
   /** From PolarisCatalogsApiService */
@@ -130,7 +123,7 @@ public class PolarisServiceImpl
       CreateCatalogRequest request, RealmContext realmContext, SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     Catalog catalog = request.getCatalog();
-    validateStorageConfig(catalog.getStorageConfigInfo(), realmContext);
+    validateStorageConfig(catalog.getStorageConfigInfo());
     Catalog newCatalog =
         new CatalogEntity(adminService.createCatalog(CatalogEntity.fromCatalog(catalog)))
             .asCatalog();
@@ -138,11 +131,13 @@ public class PolarisServiceImpl
     return Response.status(Response.Status.CREATED).build();
   }
 
-  private void validateStorageConfig(
-      StorageConfigInfo storageConfigInfo, RealmContext realmContext) {
+  private void validateStorageConfig(StorageConfigInfo storageConfigInfo) {
+    PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
     List<String> allowedStorageTypes =
-        configurationStore.getConfiguration(
-            realmContext, PolarisConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
+        polarisCallContext
+            .getConfigurationStore()
+            .getConfiguration(
+                polarisCallContext, FeatureConfiguration.SUPPORTED_CATALOG_STORAGE_TYPES);
     if (!allowedStorageTypes.contains(storageConfigInfo.getStorageType().name())) {
       LOGGER
           .atWarn()
@@ -179,7 +174,7 @@ public class PolarisServiceImpl
       SecurityContext securityContext) {
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     if (updateRequest.getStorageConfigInfo() != null) {
-      validateStorageConfig(updateRequest.getStorageConfigInfo(), realmContext);
+      validateStorageConfig(updateRequest.getStorageConfigInfo());
     }
     return Response.ok(adminService.updateCatalog(catalogName, updateRequest).asCatalog()).build();
   }
