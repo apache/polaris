@@ -2336,7 +2336,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         callCtx,
         () ->
             this.doAttachPolicyToEntity(
-                callCtx, ms, target, targetCatalogPath, policy, policyCatalogPath, parameters));
+                callCtx, ms, targetCatalogPath, target, policyCatalogPath, policy, parameters));
   }
 
   /**
@@ -2346,10 +2346,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   private @Nonnull AttachmentResult doAttachPolicyToEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
-      @Nonnull PolarisEntityCore target,
       @Nonnull List<PolarisEntityCore> targetCatalogPath,
-      @Nonnull PolicyEntity policy,
+      @Nonnull PolarisEntityCore target,
       @Nonnull List<PolarisEntityCore> policyCatalogPath,
+      @Nonnull PolicyEntity policy,
       Map<String, String> parameters) {
     PolarisEntityResolver targetResolver =
         new PolarisEntityResolver(callCtx, ms, targetCatalogPath, target);
@@ -2402,7 +2402,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
         callCtx,
         () ->
             this.doDetachPolicyFromEntity(
-                callCtx, ms, target, targetCatalogPath, policy, policyCatalogPath));
+                callCtx, ms, targetCatalogPath, target, policyCatalogPath, policy));
   }
 
   /**
@@ -2412,10 +2412,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
   private AttachmentResult doDetachPolicyFromEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
-      @Nonnull PolarisEntityCore target,
       @Nonnull List<PolarisEntityCore> targetCatalogPath,
-      @Nonnull PolicyEntity policy,
-      @Nonnull List<PolarisEntityCore> policyCatalogPath) {
+      @Nonnull PolarisEntityCore target,
+      @Nonnull List<PolarisEntityCore> policyCatalogPath,
+      @Nonnull PolicyEntity policy) {
     PolarisEntityResolver targetResolver =
         new PolarisEntityResolver(callCtx, ms, targetCatalogPath, target);
     PolarisEntityResolver policyResolver =
