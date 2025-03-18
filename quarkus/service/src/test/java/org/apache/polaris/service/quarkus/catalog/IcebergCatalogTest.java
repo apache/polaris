@@ -31,7 +31,6 @@ import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
-import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
 import jakarta.annotation.Nonnull;

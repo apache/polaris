@@ -1168,8 +1168,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     public PolarisIcebergCatalogViewBuilder(TableIdentifier identifier) {
       super(identifier);
       withProperties(
-          PropertyUtil.propertiesWithPrefix(
-              IcebergCatalog.this.properties(), "table-default."));
+          PropertyUtil.propertiesWithPrefix(IcebergCatalog.this.properties(), "table-default."));
     }
 
     @Override

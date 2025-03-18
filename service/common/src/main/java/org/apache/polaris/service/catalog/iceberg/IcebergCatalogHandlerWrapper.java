@@ -681,8 +681,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
       // Even if the request provides a location, run it through the catalog's TableBuilder
       // to inherit any override behaviors if applicable.
       if (baseCatalog instanceof IcebergCatalog) {
-        location =
-            ((IcebergCatalog) baseCatalog).transformTableLikeLocation(request.location());
+        location = ((IcebergCatalog) baseCatalog).transformTableLikeLocation(request.location());
       } else {
         location = request.location();
       }
