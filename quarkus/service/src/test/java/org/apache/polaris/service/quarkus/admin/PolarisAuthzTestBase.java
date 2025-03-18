@@ -76,7 +76,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
-import org.apache.polaris.service.catalog.iceberg.PolarisIcebergCatalog;
+import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
@@ -174,7 +174,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected Clock clock;
   @Inject protected FileIOFactory fileIOFactory;
 
-  protected PolarisIcebergCatalog baseCatalog;
+  protected IcebergCatalog baseCatalog;
   protected PolarisAdminService adminService;
   protected PolarisEntityManager entityManager;
   protected PolarisMetaStoreManager metaStoreManager;
@@ -431,7 +431,7 @@ public abstract class PolarisAuthzTestBase {
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, CATALOG_NAME);
     this.baseCatalog =
-        new PolarisIcebergCatalog(
+        new IcebergCatalog(
             entityManager,
             metaStoreManager,
             callContext,
