@@ -862,7 +862,7 @@ components:
           enum:
             - ICEBERG_REST
           description: The type of remote catalog service represented by this connection
-        remoteUri:
+        uri:
           type: string
           description: URI to the remote catalog service
       required:
@@ -882,11 +882,11 @@ components:
           type: string
           description: The name of a remote catalog instance within the remote catalog service; in some older systems
             this is specified as the 'warehouse' when multiple logical catalogs are served under the same base
-            remoteUri, and often translates into a 'prefix' added to all REST resource paths
+            uri, and often translates into a 'prefix' added to all REST resource paths
         restAuthentication:
-          $ref: "#/components/schemas/RestAuthenticationInfo"
+          $ref: "#/components/schemas/AuthenticationParameters"
 
-    RestAuthenticationInfo:
+    AuthenticationParameters:
       type: object
       description: Authentication-specific information for a REST connection
       properties:
@@ -901,14 +901,14 @@ components:
       discriminator:
         propertyName: restAuthenticationType
         mapping:
-          OAUTH: "#/components/schemas/OauthRestAuthenticationInfo"
-          BEARER: "#/components/schemas/BearerRestAuthenticationInfo"
+          OAUTH: "#/components/schemas/OAuthClientCredentialsParameters"
+          BEARER: "#/components/schemas/BearerAuthenticationParameters"
 
-    OauthRestAuthenticationInfo:
+    OAuthClientCredentialsParameters:
       type: object
       description: OAuth authentication based on client_id/client_secret
       allOf:
-        - $ref: '#/components/schemas/RestAuthenticationInfo'
+        - $ref: '#/components/schemas/AuthenticationParameters'
       properties:
         tokenUri:
           type: string
@@ -926,11 +926,11 @@ components:
             type: string
           description: oauth scopes to specify when exchanging for a short-lived access token
 
-    BearerRestAuthenticationInfo:
+    BearerAuthenticationParameters:
       type: object
       description: Bearer authentication directly embedded in request auth headers
       allOf:
-        - $ref: '#/components/schemas/RestAuthenticationInfo'
+        - $ref: '#/components/schemas/AuthenticationParameters'
       properties:
         bearerToken:
           type: string
