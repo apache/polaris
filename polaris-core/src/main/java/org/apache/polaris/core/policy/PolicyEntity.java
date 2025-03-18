@@ -71,8 +71,8 @@ public class PolicyEntity extends PolarisEntity {
   }
 
   @JsonIgnore
-  public String getPolicyVersion() {
-    return getPropertiesAsMap().get(POLICY_VERSION_KEY);
+  public int getPolicyVersion() {
+    return Integer.parseInt(getPropertiesAsMap().get(POLICY_VERSION_KEY));
   }
 
   public static class Builder extends PolarisEntity.BaseBuilder<PolicyEntity, Builder> {
@@ -116,8 +116,8 @@ public class PolicyEntity extends PolarisEntity {
       return this;
     }
 
-    public Builder setPolicyVersion(long version) {
-      properties.put(POLICY_VERSION_KEY, Long.toString(version));
+    public Builder setPolicyVersion(int version) {
+      properties.put(POLICY_VERSION_KEY, Integer.toString(version));
       return this;
     }
 
