@@ -86,7 +86,6 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
 @QuarkusTest
-@TestProfile(GenericTableCatalogTest.Profile.class)
 public class GenericTableCatalogTest {
   public static class Profile implements QuarkusTestProfile {
 
