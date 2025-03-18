@@ -22,9 +22,9 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.service.TestServices;
 import org.apache.polaris.service.events.AfterTaskAttemptedEvent;
 import org.apache.polaris.service.events.BeforeTaskAttemptedEvent;
@@ -47,11 +47,10 @@ public class TaskExecutorImplTest {
     MetaStoreManagerFactory metaStoreManagerFactory = testServices.metaStoreManagerFactory();
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
-    PolarisMetaStoreSession metaStoreSession =
-        metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
+    BasePersistence bp = metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
 
     PolarisCallContext polarisCallCtx =
-        new PolarisCallContext(metaStoreSession, testServices.polarisDiagnostics());
+        new PolarisCallContext(bp, testServices.polarisDiagnostics());
     CallContext callContext = CallContext.of(realmContext, polarisCallCtx);
 
     // This task doesn't have a type so it won't be handle-able by a real handler. We register a
