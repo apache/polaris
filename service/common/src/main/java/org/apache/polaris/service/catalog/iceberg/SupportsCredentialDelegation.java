@@ -36,4 +36,8 @@ public interface SupportsCredentialDelegation {
       TableIdentifier tableIdentifier,
       TableMetadata tableMetadata,
       Set<PolarisStorageActions> storageActions);
+
+  Map<String, String> getVendedCredentialConfig(
+      TableIdentifier tableIdentifier
+  );
 }

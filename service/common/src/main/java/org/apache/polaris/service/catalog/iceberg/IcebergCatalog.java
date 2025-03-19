@@ -28,6 +28,8 @@ import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriBuilder;
+
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
@@ -51,6 +53,7 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.TableOperations;
+import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -850,6 +853,22 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         getLocationsAllowedToBeAccessed(tableMetadata),
         storageActions,
         storageInfo.get());
+  }
+
+  @Override
+  public Map<String, String> getVendedCredentialConfig(TableIdentifier tableIdentifier){
+    Map<String, String> vendedCredentialConfig = new HashMap<>();
+    UriBuilder uriBuilder =
+        UriBuilder.fromUri(callContext.getBaseUri())
+            .path(
+                String.format(
+                    "/api/catalog/v1/%s/namespaces/%s/tables/%s/credentials",
+                    catalogName,
+                    tableIdentifier.namespace().toString(),
+                    tableIdentifier.name()));
+    vendedCredentialConfig.put(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
+    vendedCredentialConfig.put(AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, uriBuilder.build().toString());
+    return vendedCredentialConfig;
   }
 
   /**

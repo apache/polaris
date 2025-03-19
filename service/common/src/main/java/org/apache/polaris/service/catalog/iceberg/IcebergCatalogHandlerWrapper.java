@@ -825,7 +825,8 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
   public LoadTableResponse loadTableWithAccessDelegation(
       TableIdentifier tableIdentifier,
-      String snapshots) {
+      String snapshots,
+      EnumSet<AccessDelegationMode> accessDelegationModes) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -887,18 +888,11 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
               responseBuilder.addAllConfig(
                   credentialDelegation.getCredentialConfig(
                       tableIdentifier, tableMetadata, actionsRequested));
-            }
-              UriBuilder uriBuilder =
-                  UriBuilder.fromUri(callContext.getBaseUri())
-                      .path(
-                          String.format(
-                              "/api/catalog/v1/%s/namespaces/%s/tables/%s/credentials",
-                              catalogName,
-                              tableIdentifier.namespace().toString(),
-                              tableIdentifier.name()));
-              responseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
-              responseBuilder.addConfig(
-                  AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, uriBuilder.build().toString());
+            if (accessDelegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)){
+             responseBuilder.addAllConfig(
+                  credentialDelegation.getVendedCredentialConfig(
+                      tableIdentifier));
+            }}
               return responseBuilder.build();
           } else if (table instanceof BaseMetadataTable) {
             // metadata tables are loaded on the client side, return NoSuchTableException for now
