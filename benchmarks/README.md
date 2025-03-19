@@ -119,7 +119,7 @@ The diagram below shows an example of a test dataset with the following properti
 -   Tables per namespace (`T`): `5`
 -   Views per namespace (`V`): `3`
 
-![Binary tree dataset example with width 2, depth 3, and 5 tables per namespace](docs/dataset-shape-2-3-5.png)
+![Binary tree dataset example with width 2, depth 3, and 5 tables per namespace](docs/dataset-shape-2-3-5.svg)
 
 Using the formula from the previous section, we can calculate the total number of namespaces and the total number of tables as follows:
 
@@ -137,7 +137,7 @@ The diagram below shows an example of a test dataset with the following properti
 -   Tables per namespace (`T`): `3`
 -   Views per namespace (`V`): `3`
 
-![10-ary tree dataset example with width 10, depth 2, and 3 tables per namespace](docs/dataset-shape-10-2-3.png)
+![10-ary tree dataset example with width 10, depth 2, and 3 tables per namespace](docs/dataset-shape-10-2-3.svg)
 
 Using the formula from the previous section, we can calculate the total number of namespaces and the total number of tables as follows:
 
@@ -155,7 +155,7 @@ The diagram below shows an example of a test dataset with the following properti
 -   Tables per namespace (`T`): `7`
 -   Views per namespace (`V`): `4`
 
-![1-ary tree dataset example with width 1, depth 1000, and 7 tables per namespace](docs/dataset-shape-1-1000-7.png)
+![1-ary tree dataset example with width 1, depth 1000, and 7 tables per namespace](docs/dataset-shape-1-1000-7.svg)
 
 Using the formula from the previous section, we can calculate the total number of namespaces and the total number of tables as follows:
 
