@@ -24,6 +24,7 @@ plugins {
   alias(libs.plugins.jandex)
 }
 
+// get version information
 val sparkMajorVersion = "3.5"
 val scalaVersion =
   if (System.getProperty("scalaVersion") != null) {
@@ -31,6 +32,11 @@ val scalaVersion =
   } else {
     System.getProperty("defaultScalaVersion")
   }
+val icebergVersion = pluginlibs.versions.iceberg.get()
+val spark35Version = pluginlibs.versions.spark35.get()
+
+// direct the build to build/<scalaVersion> to avoid potential collision problem
+project.layout.buildDirectory.set(layout.buildDirectory.dir(scalaVersion).get())
 
 dependencies {
   implementation(project(":polaris-api-iceberg-service")) {
@@ -41,10 +47,10 @@ dependencies {
   }
 
   implementation(
-    "org.apache.iceberg:iceberg-spark-runtime-3.5_${scalaVersion}:${libs.versions.icebergspark.get()}"
+    "org.apache.iceberg:iceberg-spark-runtime-${sparkMajorVersion}_${scalaVersion}:${icebergVersion}"
   )
 
-  compileOnly("org.apache.spark:spark-sql_${scalaVersion}:${libs.versions.spark35.get()}") {
+  compileOnly("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
     exclude("org.apache.logging.log4j", "log4j-api")
@@ -58,9 +64,9 @@ dependencies {
   testImplementation(libs.mockito.core)
 
   testImplementation(
-    "org.apache.iceberg:iceberg-spark-runtime-3.5_${scalaVersion}:${libs.versions.icebergspark.get()}"
+    "org.apache.iceberg:iceberg-spark-runtime-3.5_${scalaVersion}:${icebergVersion}"
   )
-  testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${libs.versions.spark35.get()}") {
+  testImplementation("org.apache.spark:spark-sql_${scalaVersion}:${spark35Version}") {
     // exclude log4j dependencies
     exclude("org.apache.logging.log4j", "log4j-slf4j2-impl")
     exclude("org.apache.logging.log4j", "log4j-api")
@@ -72,7 +78,7 @@ dependencies {
 tasks.register<ShadowJar>("createPolarisSparkJar") {
   archiveClassifier = null
   archiveBaseName =
-    "polaris-iceberg-${libs.versions.icebergspark.get()}-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
+    "polaris-iceberg-${icebergVersion}-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
 
   dependencies { exclude("META-INF/**") }
 

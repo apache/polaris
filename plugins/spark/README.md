@@ -19,17 +19,20 @@
 
 # Polaris Spark Plugin
 
-The Polaris Spark plugin provides an implementation for SparkCatalog, which communicates with the Polaris
-REST endpoints.
+The Polaris Spark plugin provides a SparkCatalog class, which communicates with the Polaris
+REST endpoints, and provides implementations for Apache Spark's 
+[TableCatalog](https://github.com/apache/spark/blob/v3.5.5/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/TableCatalog.java), 
+[SupportsNamespaces](https://github.com/apache/spark/blob/v3.5.5/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/SupportsNamespaces.java), 
+[ViewCatalog](https://github.com/apache/spark/blob/v3.5.5/sql/catalyst/src/main/java/org/apache/spark/sql/connector/catalog/ViewCatalog.java) classes.
 
-Right now, the plugin only provides support for Spark 3.5 and depends on iceberg-spark-runtime 1.8.0.
+Right now, the plugin only provides support for Spark 3.5 and depends on iceberg-spark-runtime 1.8.1.
 
 # Build Plugin Jar
 A task createPolarisSparkJar is added to build a jar for the Polaris Spark plugin, the jar is named as:
 "polaris-iceberg-<iceberg-version>-spark-runtime-<spark_major_version>_<scala_version>"
 
 The jar is built when building the Polaris project, and can also be built alone with the following command:
-- `./gradlew :polaris-spark:createPolarisSparkJar` - Build a jar for the Polaris Spark plugin, the jar also includes iceberg-spark-runtime 1.8.0.
+- `./gradlew :polaris-spark:createPolarisSparkJar` - Build a jar for the Polaris Spark plugin, the jar also includes iceberg-spark-runtime 1.8.1.
 
 The result jar is located at plugins/spark/build/libs after the build, and the default scala version is 2.12.
 To build a jar for scala 2.13, use the following command:

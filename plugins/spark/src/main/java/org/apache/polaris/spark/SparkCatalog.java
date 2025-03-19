@@ -22,15 +22,13 @@ import com.google.common.collect.ImmutableSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.iceberg.exceptions.NoSuchTableException;
-import org.apache.iceberg.spark.SupportsReplaceView;
 import org.apache.spark.sql.catalyst.analysis.*;
 import org.apache.spark.sql.connector.catalog.*;
 import org.apache.spark.sql.connector.expressions.Transform;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
 
-public class SparkCatalog
-    implements TableCatalog, SupportsNamespaces, ViewCatalog, SupportsReplaceView {
+public class SparkCatalog implements TableCatalog, SupportsNamespaces, ViewCatalog {
   private static final Set<String> DEFAULT_NS_KEYS = ImmutableSet.of(TableCatalog.PROP_OWNER);
   private String catalogName = null;
   private org.apache.iceberg.spark.SparkCatalog icebergsSparkCatalog = null;
@@ -45,8 +43,6 @@ public class SparkCatalog
   @Override
   public void initialize(String name, CaseInsensitiveStringMap options) {
     this.catalogName = name;
-    this.icebergsSparkCatalog = new org.apache.iceberg.spark.SparkCatalog();
-    this.icebergsSparkCatalog.initialize(name, options);
   }
 
   @Override
@@ -84,7 +80,7 @@ public class SparkCatalog
 
   @Override
   public String[] defaultNamespace() {
-    return this.icebergsSparkCatalog.defaultNamespace();
+    throw new UnsupportedOperationException("defaultNamespace");
   }
 
   @Override
@@ -100,7 +96,7 @@ public class SparkCatalog
   @Override
   public Map<String, String> loadNamespaceMetadata(String[] namespace)
       throws NoSuchNamespaceException {
-    return this.icebergsSparkCatalog.loadNamespaceMetadata(namespace);
+    throw new UnsupportedOperationException("loadNamespaceMetadata");
   }
 
   @Override
@@ -161,20 +157,5 @@ public class SparkCatalog
   public void renameView(Identifier fromIdentifier, Identifier toIdentifier)
       throws NoSuchViewException, ViewAlreadyExistsException {
     throw new UnsupportedOperationException("renameView");
-  }
-
-  @Override
-  public View replaceView(
-      Identifier ident,
-      String sql,
-      String currentCatalog,
-      String[] currentNamespace,
-      StructType schema,
-      String[] queryColumnNames,
-      String[] columnAliases,
-      String[] columnComments,
-      Map<String, String> properties)
-      throws NoSuchNamespaceException, NoSuchViewException {
-    throw new UnsupportedOperationException("replaceView");
   }
 }
