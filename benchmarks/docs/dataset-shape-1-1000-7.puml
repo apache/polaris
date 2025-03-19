@@ -38,9 +38,6 @@ rectangle "V 0" as V0 #FloralWhite
 rectangle "V 1" as V1 #FloralWhite
 rectangle "V 2" as V2 #FloralWhite
 rectangle "V 3" as V3 #FloralWhite
-rectangle "V 4" as V4 #FloralWhite
-rectangle "V 5" as V5 #FloralWhite
-rectangle "V 6" as V6 #FloralWhite
 T0 -- V0
 T1 -- V1
 T2 -- V2

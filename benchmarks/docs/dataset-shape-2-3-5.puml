@@ -53,15 +53,11 @@ Ns6 -- T19
 rectangle "V 0" as V0 #FloralWhite
 rectangle "V 1" as V1 #FloralWhite
 rectangle "V 2" as V2 #FloralWhite
-rectangle "V 3" as V3 #FloralWhite
-rectangle "V 4" as V4 #FloralWhite
 rectangle "..." as V5n #FloralWhite
 rectangle "..." as V6n #FloralWhite
 rectangle "V 15" as V15 #FloralWhite
 rectangle "V 16" as V16 #FloralWhite
 rectangle "V 17" as V17 #FloralWhite
-rectangle "V 18" as V18 #FloralWhite
-rectangle "V 19" as V19 #FloralWhite
 T0 -- V0
 T1 -- V1
 T2 -- V2
