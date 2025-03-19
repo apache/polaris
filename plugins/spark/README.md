@@ -31,19 +31,7 @@ Right now, the plugin only provides support for Spark 3.5 and depends on iceberg
 A task createPolarisSparkJar is added to build a jar for the Polaris Spark plugin, the jar is named as:
 "polaris-iceberg-<iceberg-version>-spark-runtime-<spark_major_version>_<scala_version>"
 
-A jar with defaultScalaVersion is built when building the Polaris project, and it can also be built a
-lone with the following command:
-- `./gradlew :polaris-spark-3.5:createPolarisSparkJar` - Build a jar for the Polaris Spark plugin, the jar also includes iceberg-spark-runtime 1.8.1.
-
-The result jar is located at plugins/spark/build/<scalaVersion>/libs after the build, and the default scala version is 2.12.
-To build a jar for scala 2.13, use the following command:
-- `./gradlew :polaris-spark-3.5:createPolarisSparkJar -DscalaVersion=2.13` 
-
-Similarly, to build a jar for scala 2.13 when building the Polaris project, we can use the following command:
-- `./gradlew assemble -DscalaVersion=2.13`
-
-Build for polaris-spark-3.5 project can also be skipped when building the whole Polaris project by providing an 
-empty scala version using -DscalaVersion=, For example:
-- `./gradlew build -DscalaVersion=`
-or
-- `./gradlew assemble -DscalaVersion=`
+Jars with all supported scala versions are built when building the Polaris project, and it can also be built alone 
+with a specific version using target `:polaris-spark-3.5_<scala_version>`. For example:
+- `./gradlew :polaris-spark-3.5_2.12:createPolarisSparkJar` - Build a jar for the Polaris Spark plugin with scala version 2.12.
+The result jar is located at plugins/spark/build/<scala_version>/libs after the build.
