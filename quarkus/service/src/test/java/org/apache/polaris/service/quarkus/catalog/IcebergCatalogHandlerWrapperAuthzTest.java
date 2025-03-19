@@ -64,7 +64,7 @@ import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
-import org.apache.polaris.service.catalog.PolarisCatalogHandlerWrapper;
+import org.apache.polaris.service.catalog.iceberg.IcebergCatalogHandlerWrapper;
 import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
@@ -78,8 +78,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 @QuarkusTest
-@TestProfile(PolarisCatalogHandlerWrapperAuthzTest.Profile.class)
-public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase {
+@TestProfile(IcebergCatalogHandlerWrapperAuthzTest.Profile.class)
+public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase {
 
   public static class Profile extends PolarisAuthzTestBase.Profile {
 
@@ -93,19 +93,19 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     }
   }
 
-  private PolarisCatalogHandlerWrapper newWrapper() {
+  private IcebergCatalogHandlerWrapper newWrapper() {
     return newWrapper(Set.of());
   }
 
-  private PolarisCatalogHandlerWrapper newWrapper(Set<String> activatedPrincipalRoles) {
+  private IcebergCatalogHandlerWrapper newWrapper(Set<String> activatedPrincipalRoles) {
     return newWrapper(activatedPrincipalRoles, CATALOG_NAME, callContextCatalogFactory);
   }
 
-  private PolarisCatalogHandlerWrapper newWrapper(
+  private IcebergCatalogHandlerWrapper newWrapper(
       Set<String> activatedPrincipalRoles, String catalogName, CallContextCatalogFactory factory) {
     final AuthenticatedPolarisPrincipal authenticatedPrincipal =
         new AuthenticatedPolarisPrincipal(principalEntity, activatedPrincipalRoles);
-    return new PolarisCatalogHandlerWrapper(
+    return new IcebergCatalogHandlerWrapper(
         callContext,
         entityManager,
         metaStoreManager,
@@ -242,8 +242,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         new AuthenticatedPolarisPrincipal(
             PrincipalEntity.of(newPrincipal.getPrincipal()),
             Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
-    PolarisCatalogHandlerWrapper wrapper =
-        new PolarisCatalogHandlerWrapper(
+    IcebergCatalogHandlerWrapper wrapper =
+        new IcebergCatalogHandlerWrapper(
             callContext,
             entityManager,
             metaStoreManager,
@@ -274,8 +274,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
     final AuthenticatedPolarisPrincipal authenticatedPrincipal1 =
         new AuthenticatedPolarisPrincipal(
             PrincipalEntity.of(refreshPrincipal), Set.of(PRINCIPAL_ROLE1, PRINCIPAL_ROLE2));
-    PolarisCatalogHandlerWrapper refreshedWrapper =
-        new PolarisCatalogHandlerWrapper(
+    IcebergCatalogHandlerWrapper refreshedWrapper =
+        new IcebergCatalogHandlerWrapper(
             callContext,
             entityManager,
             metaStoreManager,

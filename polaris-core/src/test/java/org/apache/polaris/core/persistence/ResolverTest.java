@@ -216,12 +216,12 @@ public class ResolverTest {
 
     // N1/N2/T1 which exists
     ResolverPath N1_N2_T1 =
-        new ResolverPath(List.of("N1", "N2", "T1"), PolarisEntityType.TABLE_LIKE);
+        new ResolverPath(List.of("N1", "N2", "T1"), PolarisEntityType.ICEBERG_TABLE_LIKE);
     this.resolveDriver(this.cache, "test", N1_N2_T1, null, null);
 
     // N1/N2/T1 which exists
     ResolverPath N1_N2_V1 =
-        new ResolverPath(List.of("N1", "N2", "V1"), PolarisEntityType.TABLE_LIKE);
+        new ResolverPath(List.of("N1", "N2", "V1"), PolarisEntityType.ICEBERG_TABLE_LIKE);
     this.resolveDriver(this.cache, "test", N1_N2_V1, null, null);
 
     // N5/N6 which exists
@@ -230,7 +230,7 @@ public class ResolverTest {
 
     // N5/N6/T5 which exists
     ResolverPath N5_N6_T5 =
-        new ResolverPath(List.of("N5", "N6", "T5"), PolarisEntityType.TABLE_LIKE);
+        new ResolverPath(List.of("N5", "N6", "T5"), PolarisEntityType.ICEBERG_TABLE_LIKE);
     this.resolveDriver(this.cache, "test", N5_N6_T5, null, null);
 
     // N7/N8 which exists
@@ -248,7 +248,7 @@ public class ResolverTest {
 
     // Error scenarios: N5/N6/T8 which does not exists
     ResolverPath N5_N6_T8 =
-        new ResolverPath(List.of("N5", "N6", "T8"), PolarisEntityType.TABLE_LIKE);
+        new ResolverPath(List.of("N5", "N6", "T8"), PolarisEntityType.ICEBERG_TABLE_LIKE);
     this.resolveDriver(
         this.cache,
         "test",
@@ -258,7 +258,7 @@ public class ResolverTest {
 
     // Error scenarios: N8/N6/T8 which does not exists
     ResolverPath N8_N6_T8 =
-        new ResolverPath(List.of("N8", "N6", "T8"), PolarisEntityType.TABLE_LIKE);
+        new ResolverPath(List.of("N8", "N6", "T8"), PolarisEntityType.ICEBERG_TABLE_LIKE);
     this.resolveDriver(
         this.cache,
         "test",
@@ -277,7 +277,8 @@ public class ResolverTest {
         ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED);
 
     // except if the optional flag is specified
-    N5_N6_T8 = new ResolverPath(List.of("N5", "N6", "T8"), PolarisEntityType.TABLE_LIKE, true);
+    N5_N6_T8 =
+        new ResolverPath(List.of("N5", "N6", "T8"), PolarisEntityType.ICEBERG_TABLE_LIKE, true);
     Resolver resolver =
         this.resolveDriver(this.cache, "test", null, List.of(N1, N5_N6_T8, N5_N6_T5, N1_N2), null);
     // get all the resolved paths
@@ -365,7 +366,7 @@ public class ResolverTest {
     ResolverPath N1_N2_PATH = new ResolverPath(List.of("N1", "N2"), PolarisEntityType.NAMESPACE);
     this.resolveDriver(this.cache, "test", N1_N2_PATH, null, null);
     ResolverPath N1_N2_T1_PATH =
-        new ResolverPath(List.of("N1", "N2", "T1"), PolarisEntityType.TABLE_LIKE);
+        new ResolverPath(List.of("N1", "N2", "T1"), PolarisEntityType.ICEBERG_TABLE_LIKE);
     Resolver resolver = this.resolveDriver(this.cache, "test", N1_N2_T1_PATH, null, null);
 
     // get the catalog
@@ -399,7 +400,7 @@ public class ResolverTest {
 
     // but we should be able to resolve it under N1/N3
     ResolverPath N1_N3_T1_PATH =
-        new ResolverPath(List.of("N1", "N3", "T1"), PolarisEntityType.TABLE_LIKE);
+        new ResolverPath(List.of("N1", "N3", "T1"), PolarisEntityType.ICEBERG_TABLE_LIKE);
     this.resolveDriver(this.cache, "test", N1_N3_T1_PATH, null, null);
   }
 

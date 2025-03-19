@@ -47,8 +47,8 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.*;
 import org.apache.polaris.service.TestServices;
-import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
+import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.task.TaskFileIOSupplier;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
@@ -157,7 +157,7 @@ public class FileIOFactoryTest {
 
   @Test
   public void testLoadFileIOForTableLike() {
-    BasePolarisCatalog catalog = createCatalog(testServices);
+    IcebergCatalog catalog = createCatalog(testServices);
     catalog.createNamespace(NS);
     catalog.createTable(TABLE, SCHEMA);
 
@@ -175,7 +175,7 @@ public class FileIOFactoryTest {
 
   @Test
   public void testLoadFileIOForCleanupTask() {
-    BasePolarisCatalog catalog = createCatalog(testServices);
+    IcebergCatalog catalog = createCatalog(testServices);
     catalog.createNamespace(NS);
     catalog.createTable(TABLE, SCHEMA);
     catalog.dropTable(TABLE, true);
@@ -208,7 +208,7 @@ public class FileIOFactoryTest {
             Mockito.any());
   }
 
-  BasePolarisCatalog createCatalog(TestServices services) {
+  IcebergCatalog createCatalog(TestServices services) {
     String storageLocation = "s3://my-bucket/path/to/data";
     AwsStorageConfigInfo awsStorageConfigInfo =
         AwsStorageConfigInfo.builder()
@@ -236,8 +236,8 @@ public class FileIOFactoryTest {
             services.entityManagerFactory().getOrCreateEntityManager(realmContext),
             services.securityContext(),
             CATALOG_NAME);
-    BasePolarisCatalog polarisCatalog =
-        new BasePolarisCatalog(
+    IcebergCatalog polarisCatalog =
+        new IcebergCatalog(
             services.entityManagerFactory().getOrCreateEntityManager(realmContext),
             services.metaStoreManagerFactory().getOrCreateMetaStoreManager(realmContext),
             callContext,
