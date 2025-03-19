@@ -887,7 +887,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                   UriBuilder.fromUri(callContext.getBaseUri())
                       .path(
                           String.format(
-                              "/v1/%s/namespaces/%s/tables/%s/credentials",
+                              "/api/catalog/v1/%s/namespaces/%s/tables/%s/credentials",
                               catalogName,
                               tableIdentifier.namespace().toString(),
                               tableIdentifier.name()));
