@@ -75,8 +75,8 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.service.admin.PolarisAdminService;
-import org.apache.polaris.service.catalog.BasePolarisCatalog;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
+import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
@@ -174,7 +174,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected Clock clock;
   @Inject protected FileIOFactory fileIOFactory;
 
-  protected BasePolarisCatalog baseCatalog;
+  protected IcebergCatalog baseCatalog;
   protected PolarisAdminService adminService;
   protected PolarisEntityManager entityManager;
   protected PolarisMetaStoreManager metaStoreManager;
@@ -362,8 +362,7 @@ public abstract class PolarisAuthzTestBase {
 
   protected @Nonnull Set<String> loadPrincipalRolesNames(AuthenticatedPolarisPrincipal p) {
     return metaStoreManager
-        .loadGrantsToGrantee(
-            callContext.getPolarisCallContext(), 0L, p.getPrincipalEntity().getId())
+        .loadGrantsToGrantee(callContext.getPolarisCallContext(), p.getPrincipalEntity())
         .getGrantRecords()
         .stream()
         .filter(gr -> gr.getPrivilegeCode() == PolarisPrivilege.PRINCIPAL_ROLE_USAGE.getCode())
@@ -431,7 +430,7 @@ public abstract class PolarisAuthzTestBase {
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, CATALOG_NAME);
     this.baseCatalog =
-        new BasePolarisCatalog(
+        new IcebergCatalog(
             entityManager,
             metaStoreManager,
             callContext,

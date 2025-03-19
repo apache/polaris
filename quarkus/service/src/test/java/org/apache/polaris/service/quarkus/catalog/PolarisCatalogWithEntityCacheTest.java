@@ -25,8 +25,8 @@ import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 
 @QuarkusTest
-@TestProfile(BasePolarisCatalogTest.Profile.class)
-public class PolarisCatalogWithEntityCacheTest extends BasePolarisCatalogTest {
+@TestProfile(IcebergCatalogTest.Profile.class)
+public class PolarisCatalogWithEntityCacheTest extends IcebergCatalogTest {
 
   @Nullable
   @Override

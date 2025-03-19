@@ -1003,7 +1003,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   public @Nonnull EntityResult renameEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore entityToRename,
+      @Nonnull PolarisBaseEntity entityToRename,
       @Nullable List<PolarisEntityCore> newCatalogPath,
       @Nonnull PolarisEntity renamedEntity) {
     // get metastore we should be using
@@ -1101,7 +1101,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   public @Nonnull DropEntityResult dropEntityIfExists(
       @Nonnull PolarisCallContext callCtx,
       @Nullable List<PolarisEntityCore> catalogPath,
-      @Nonnull PolarisEntityCore entityToDrop,
+      @Nonnull PolarisBaseEntity entityToDrop,
       @Nullable Map<String, String> cleanupProperties,
       boolean cleanup) {
     // get metastore we should be using
@@ -1331,6 +1331,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   /** {@inheritDoc} */
   @Override
   public @Nonnull LoadGrantsResult loadGrantsOnSecurable(
+      @Nonnull PolarisCallContext callCtx, PolarisEntityCore securable) {
+    return loadGrantsOnSecurable(callCtx, securable.getCatalogId(), securable.getId());
+  }
+
+  public @Nonnull LoadGrantsResult loadGrantsOnSecurable(
       @Nonnull PolarisCallContext callCtx, long securableCatalogId, long securableId) {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
@@ -1371,6 +1376,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
   /** {@inheritDoc} */
   @Override
+  public @Nonnull LoadGrantsResult loadGrantsToGrantee(
+      @Nonnull PolarisCallContext callCtx, PolarisEntityCore grantee) {
+    return loadGrantsToGrantee(callCtx, grantee.getCatalogId(), grantee.getId());
+  }
+
   public @Nonnull LoadGrantsResult loadGrantsToGrantee(
       @Nonnull PolarisCallContext callCtx, long granteeCatalogId, long granteeId) {
     // get metastore we should be using
