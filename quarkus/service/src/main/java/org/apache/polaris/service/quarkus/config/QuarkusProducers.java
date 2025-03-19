@@ -32,7 +32,6 @@ import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.UriBuilder;
-import java.net.URISyntaxException;
 import java.time.Clock;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -72,9 +71,6 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
 
 public class QuarkusProducers {
-
-  @ConfigProperty(name = "quarkus.http.proxy.enable-forwarded-prefix")
-  boolean enableForwardedPrefix;
 
   @Produces
   @ApplicationScoped // cannot be singleton because it is mocked in tests
@@ -128,15 +124,14 @@ public class QuarkusProducers {
   public CallContext callContext(
       RealmContext realmContext,
       PolarisCallContext polarisCallContext,
-      @Context ContainerRequestContext request)
-      throws URISyntaxException {
+      @Context ContainerRequestContext request) {
     String forwardedProto = request.getHeaderString("X-Forwarded-Proto");
+    String forwardedPrefix = request.getHeaderString("X-Forwarded-Prefix");
     UriBuilder baseUriBuilder = request.getUriInfo().getBaseUriBuilder();
     if (forwardedProto != null) {
       baseUriBuilder.scheme(forwardedProto); // default value for this is http
     }
-    if (enableForwardedPrefix) {
-      String forwardedPrefix = request.getHeaderString("X-Forwarded-Prefix");
+    if (forwardedPrefix!=null) {
       if (!forwardedPrefix.endsWith("/")) {
         forwardedPrefix += "/";
       }
