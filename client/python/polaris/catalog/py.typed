@@ -1,4 +1,4 @@
-#!/bin/bash
+#
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,15 +17,4 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-
-if [ ! -d ~/polaris/polaris-venv ]; then
-  python3 -m venv ~/polaris/polaris-venv
-fi
-
-. ~/polaris/polaris-venv/bin/activate
-
-pip install -r requirements.txt
-
-cd ../client/python
-python3 -m poetry install
-deactivate
+#
