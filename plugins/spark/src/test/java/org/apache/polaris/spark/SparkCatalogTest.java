@@ -19,22 +19,16 @@
 package org.apache.polaris.spark;
 
 import static org.apache.iceberg.CatalogProperties.CATALOG_IMPL;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Map;
 import java.util.UUID;
-import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.relocated.com.google.common.collect.Maps;
-import org.apache.iceberg.spark.SparkUtil;
-import org.apache.spark.SparkContext;
-import org.apache.spark.sql.SparkSession;
-import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
 import org.apache.spark.sql.connector.catalog.Identifier;
 import org.apache.spark.sql.types.StructType;
 import org.apache.spark.sql.util.CaseInsensitiveStringMap;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 public class SparkCatalogTest {
@@ -47,31 +41,8 @@ public class SparkCatalogTest {
     Map<String, String> catalogConfig = Maps.newHashMap();
     catalogConfig.put(CATALOG_IMPL, "org.apache.iceberg.inmemory.InMemoryCatalog");
     catalogConfig.put("cache-enabled", "false");
-    try (MockedStatic<SparkUtil> mockSparkUtil = Mockito.mockStatic(SparkUtil.class);
-        MockedStatic<SparkSession> mockSparkSession = Mockito.mockStatic(SparkSession.class)) {
-      Configuration conf = new Configuration();
-      mockSparkUtil
-          .when(() -> SparkUtil.hadoopConfCatalogOverrides(Mockito.any(), Mockito.any()))
-          .thenReturn(conf);
-      SparkSession mockActiveSession = Mockito.mock(SparkSession.class);
-      SparkContext mockContext = Mockito.mock(SparkContext.class);
-      Mockito.when(mockContext.applicationId()).thenReturn("appId");
-      Mockito.when(mockContext.sparkUser()).thenReturn("testUser");
-      Mockito.when(mockContext.version()).thenReturn("0.0.0");
-      Mockito.when(mockActiveSession.sparkContext()).thenReturn(mockContext);
-
-      mockSparkSession.when(() -> SparkSession.active()).thenReturn(mockActiveSession);
-
-      catalog = new SparkCatalog();
-      catalog.initialize(catalogName, new CaseInsensitiveStringMap(catalogConfig));
-    }
-  }
-
-  @Test
-  public void testLoadNamespaceMetadata() {
-    String[] namespace = new String[] {"ns1", "ns2"};
-    Assertions.assertThrows(
-        NoSuchNamespaceException.class, () -> catalog.loadNamespaceMetadata(namespace));
+    catalog = new SparkCatalog();
+    catalog.initialize(catalogName, new CaseInsensitiveStringMap(catalogConfig));
   }
 
   @Test
@@ -80,47 +51,47 @@ public class SparkCatalogTest {
     Identifier identifier = Identifier.of(namespace, "table1");
     Identifier new_identifier = Identifier.of(namespace, "table2");
     // table methods
-    Assertions.assertThrows(
-        UnsupportedOperationException.class, () -> catalog.loadTable(identifier));
-    Assertions.assertThrows(
-        UnsupportedOperationException.class,
-        () -> catalog.createTable(identifier, Mockito.mock(StructType.class), null, null));
-    Assertions.assertThrows(
-        UnsupportedOperationException.class, () -> catalog.alterTable(identifier));
-    Assertions.assertThrows(
-        UnsupportedOperationException.class, () -> catalog.dropTable(identifier));
-    Assertions.assertThrows(
-        UnsupportedOperationException.class, () -> catalog.renameTable(identifier, new_identifier));
-    Assertions.assertThrows(
-        UnsupportedOperationException.class, () -> catalog.listTables(namespace));
+    assertThatThrownBy(() -> catalog.loadTable(identifier))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(
+            () -> catalog.createTable(identifier, Mockito.mock(StructType.class), null, null))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> catalog.alterTable(identifier))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> catalog.dropTable(identifier))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> catalog.renameTable(identifier, new_identifier))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> catalog.listTables(namespace))
+        .isInstanceOf(UnsupportedOperationException.class);
 
     // namespace methods
-    Assertions.assertThrows(UnsupportedOperationException.class, () -> catalog.listNamespaces());
-    Assertions.assertThrows(
-        UnsupportedOperationException.class, () -> catalog.listNamespaces(namespace));
-    Assertions.assertThrows(
-        UnsupportedOperationException.class, () -> catalog.createNamespace(namespace, null));
-    Assertions.assertThrows(
-        UnsupportedOperationException.class, () -> catalog.alterNamespace(namespace));
-    Assertions.assertThrows(
-        UnsupportedOperationException.class, () -> catalog.dropNamespace(namespace, false));
+    assertThatThrownBy(() -> catalog.loadNamespaceMetadata(namespace))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> catalog.listNamespaces())
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> catalog.listNamespaces(namespace))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> catalog.createNamespace(namespace, null))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> catalog.alterNamespace(namespace))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> catalog.dropNamespace(namespace, false))
+        .isInstanceOf(UnsupportedOperationException.class);
 
     // view methods
-    Assertions.assertThrows(
-        UnsupportedOperationException.class, () -> catalog.listViews(namespace));
-    Assertions.assertThrows(
-        UnsupportedOperationException.class, () -> catalog.loadView(identifier));
-    Assertions.assertThrows(
-        UnsupportedOperationException.class,
-        () -> catalog.createView(identifier, null, null, null, null, null, null, null, null));
-    Assertions.assertThrows(
-        UnsupportedOperationException.class, () -> catalog.alterView(identifier));
-    Assertions.assertThrows(
-        UnsupportedOperationException.class, () -> catalog.dropView(identifier));
-    Assertions.assertThrows(
-        UnsupportedOperationException.class, () -> catalog.renameView(identifier, new_identifier));
-    Assertions.assertThrows(
-        UnsupportedOperationException.class,
-        () -> catalog.replaceView(identifier, null, null, null, null, null, null, null, null));
+    assertThatThrownBy(() -> catalog.listViews(namespace))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> catalog.loadView(identifier))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(
+            () -> catalog.createView(identifier, null, null, null, null, null, null, null, null))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> catalog.alterView(identifier))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> catalog.dropView(identifier))
+        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> catalog.renameView(identifier, new_identifier))
+        .isInstanceOf(UnsupportedOperationException.class);
   }
 }

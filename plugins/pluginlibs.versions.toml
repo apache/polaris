@@ -17,16 +17,6 @@
 # under the License.
 #
 
-# enable the Gradle build cache
-org.gradle.caching=true
-# enable Gradle parallel builds
-org.gradle.parallel=true
-# configure only necessary Gradle tasks
-org.gradle.configureondemand=true
-# explicitly disable the configuration cache
-org.gradle.configuration-cache=false
-#org.gradle.configuration-cache-problems=warn
-# bump the Gradle daemon heap size (you can set bigger heap sizes as well)
-org.gradle.jvmargs=-Xms2g -Xmx4g -XX:MaxMetaspaceSize=768m
-# defaultScalaVersion used for polaris spark plugin build
-systemProp.defaultScalaVersion=2.12
+[versions]
+iceberg = "1.8.1"
+spark35 = "3.5.5"
