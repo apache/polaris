@@ -31,7 +31,7 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
-import java.net.URI;
+import jakarta.ws.rs.core.UriBuilder;
 import java.net.URISyntaxException;
 import java.time.Clock;
 import org.apache.polaris.core.PolarisCallContext;
@@ -130,11 +130,19 @@ public class QuarkusProducers {
       PolarisCallContext polarisCallContext,
       @Context ContainerRequestContext request)
       throws URISyntaxException {
-    URI baseUri =
-        enableForwardedPrefix
-            ? new URI(request.getHeaderString("X-Forwarded-Prefix"))
-            : request.getUriInfo().getBaseUri();
-    return CallContext.of(realmContext, polarisCallContext, baseUri);
+    String forwardedProto = request.getHeaderString("X-Forwarded-Proto");
+    UriBuilder baseUriBuilder = request.getUriInfo().getBaseUriBuilder();
+    if (forwardedProto != null) {
+      baseUriBuilder.scheme(forwardedProto); // default value for this is http
+    }
+    if (enableForwardedPrefix) {
+      String forwardedPrefix = request.getHeaderString("X-Forwarded-Prefix");
+      if (!forwardedPrefix.endsWith("/")) {
+        forwardedPrefix += "/";
+      }
+      baseUriBuilder.path(forwardedPrefix);
+    }
+    return CallContext.of(realmContext, polarisCallContext, baseUriBuilder.build());
   }
 
   public void closeCallContext(@Disposes CallContext callContext) {

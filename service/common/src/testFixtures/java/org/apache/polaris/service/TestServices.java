@@ -21,6 +21,7 @@ package org.apache.polaris.service;
 import com.google.auth.oauth2.AccessToken;
 import com.google.auth.oauth2.GoogleCredentials;
 import jakarta.ws.rs.core.SecurityContext;
+import java.net.URI;
 import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
@@ -157,6 +158,11 @@ public record TestServices(
             @Override
             public Map<String, Object> contextVariables() {
               return new HashMap<>();
+            }
+
+            @Override
+            public URI getBaseUri() {
+              return null;
             }
           };
 

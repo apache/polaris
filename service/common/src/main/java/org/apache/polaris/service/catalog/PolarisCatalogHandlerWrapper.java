@@ -21,6 +21,7 @@ package org.apache.polaris.service.catalog;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriBuilder;
 import java.io.Closeable;
 import java.io.IOException;
 import java.time.OffsetDateTime;
@@ -882,18 +883,17 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                       tableIdentifier, tableMetadata, actionsRequested));
             }
             if (accessDelegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)) {
-              responseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
-              responseBuilder.addConfig(
-                  AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT,
-                  callContext
-                      .getBaseUri()
-                      .resolve(
+              UriBuilder uriBuilder =
+                  UriBuilder.fromUri(callContext.getBaseUri())
+                      .path(
                           String.format(
                               "/v1/%s/namespaces/%s/tables/%s/credentials",
                               catalogName,
                               tableIdentifier.namespace().toString(),
-                              tableIdentifier.name()))
-                      .toString());
+                              tableIdentifier.name()));
+              responseBuilder.addConfig(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
+              responseBuilder.addConfig(
+                  AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, uriBuilder.build().toString());
               return responseBuilder.build();
             }
           } else if (table instanceof BaseMetadataTable) {
