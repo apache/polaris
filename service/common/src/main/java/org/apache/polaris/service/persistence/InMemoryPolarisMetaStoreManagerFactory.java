@@ -34,16 +34,16 @@ import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
-import org.apache.polaris.core.persistence.transactional.PolarisTreeMapMetaStoreSessionImpl;
-import org.apache.polaris.core.persistence.transactional.PolarisTreeMapStore;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
+import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 
 @ApplicationScoped
 @Identifier("in-memory")
 public class InMemoryPolarisMetaStoreManagerFactory
-    extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
+    extends LocalPolarisMetaStoreManagerFactory<TreeMapMetaStore> {
 
   private final PolarisStorageIntegrationProvider storageIntegration;
   private final Set<String> bootstrappedRealms = new HashSet<>();
@@ -64,17 +64,17 @@ public class InMemoryPolarisMetaStoreManagerFactory
   }
 
   @Override
-  protected PolarisTreeMapStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
-    return new PolarisTreeMapStore(diagnostics);
+  protected TreeMapMetaStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
+    return new TreeMapMetaStore(diagnostics);
   }
 
   @Override
   protected TransactionalPersistence createMetaStoreSession(
-      @Nonnull PolarisTreeMapStore store,
+      @Nonnull TreeMapMetaStore store,
       @Nonnull RealmContext realmContext,
       @Nullable RootCredentialsSet rootCredentialsSet,
       @Nonnull PolarisDiagnostics diagnostics) {
-    return new PolarisTreeMapMetaStoreSessionImpl(
+    return new TreeMapTransactionalPersistenceImpl(
         store, storageIntegration, secretsGenerator(realmContext, rootCredentialsSet));
   }
 
