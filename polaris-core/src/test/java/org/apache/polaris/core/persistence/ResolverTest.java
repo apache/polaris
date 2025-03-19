@@ -50,10 +50,10 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
-import org.apache.polaris.core.persistence.transactional.PolarisTreeMapMetaStoreSessionImpl;
-import org.apache.polaris.core.persistence.transactional.PolarisTreeMapStore;
+import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
+import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -65,7 +65,7 @@ public class ResolverTest {
   private final PolarisDiagnostics diagServices;
 
   // the entity store, use treemap implementation
-  private final PolarisTreeMapStore store;
+  private final TreeMapMetaStore store;
 
   // to interact with the metastore
   private final TransactionalPersistence metaStore;
@@ -118,10 +118,10 @@ public class ResolverTest {
    */
   public ResolverTest() {
     diagServices = new PolarisDefaultDiagServiceImpl();
-    store = new PolarisTreeMapStore(diagServices);
-    metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
+    store = new TreeMapMetaStore(diagServices);
+    metaStore = new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(metaStore, diagServices);
-    metaStoreManager = new PolarisMetaStoreManagerImpl();
+    metaStoreManager = new TransactionalMetaStoreManagerImpl();
 
     // bootstrap the mata store with our test schema
     tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);

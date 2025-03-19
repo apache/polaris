@@ -74,8 +74,9 @@ import org.slf4j.LoggerFactory;
  * and retrieve all Polaris metadata
  */
 @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE")
-public class PolarisMetaStoreManagerImpl extends BaseMetaStoreManager {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisMetaStoreManagerImpl.class);
+public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
+  private static final Logger LOGGER =
+      LoggerFactory.getLogger(TransactionalMetaStoreManagerImpl.class);
 
   /**
    * A version of BaseMetaStoreManager::persistNewEntity but instead of calling the one-shot

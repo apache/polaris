@@ -33,7 +33,7 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 
 /** Implements a simple in-memory store for Polaris, using tree-map */
-public class PolarisTreeMapStore {
+public class TreeMapMetaStore {
 
   /** Slice of data, simple KV store. */
   public class Slice<T> {
@@ -68,7 +68,7 @@ public class PolarisTreeMapStore {
      * @param key key for that value
      */
     public T read(String key) {
-      PolarisTreeMapStore.this.ensureReadTr();
+      TreeMapMetaStore.this.ensureReadTr();
       T value = this.slice.getOrDefault(key, null);
       return (value != null) ? this.copyRecord.apply(value) : null;
     }
@@ -79,7 +79,7 @@ public class PolarisTreeMapStore {
      * @param prefix key prefix
      */
     public List<T> readRange(String prefix) {
-      PolarisTreeMapStore.this.ensureReadTr();
+      TreeMapMetaStore.this.ensureReadTr();
       // end of the key
       String endKey =
           prefix.substring(0, prefix.length() - 1)
@@ -95,7 +95,7 @@ public class PolarisTreeMapStore {
      * @param value value to write
      */
     public void write(T value) {
-      PolarisTreeMapStore.this.ensureReadWriteTr();
+      TreeMapMetaStore.this.ensureReadWriteTr();
       T valueToWrite = (value != null) ? this.copyRecord.apply(value) : null;
       String key = this.buildKey(valueToWrite);
       // write undo if needs be
@@ -111,7 +111,7 @@ public class PolarisTreeMapStore {
      * @param key key for the record to remove
      */
     public void delete(String key) {
-      PolarisTreeMapStore.this.ensureReadWriteTr();
+      TreeMapMetaStore.this.ensureReadWriteTr();
       if (slice.containsKey(key)) {
         // write undo if needs be
         if (!this.undoSlice.containsKey(key)) {
@@ -127,7 +127,7 @@ public class PolarisTreeMapStore {
      * @param prefix key prefix for the record to remove
      */
     public void deleteRange(String prefix) {
-      PolarisTreeMapStore.this.ensureReadWriteTr();
+      TreeMapMetaStore.this.ensureReadWriteTr();
       List<T> elements = this.readRange(prefix);
       for (T element : elements) {
         this.delete(element);
@@ -135,7 +135,7 @@ public class PolarisTreeMapStore {
     }
 
     void deleteAll() {
-      PolarisTreeMapStore.this.ensureReadWriteTr();
+      TreeMapMetaStore.this.ensureReadWriteTr();
       slice.clear();
       undoSlice.clear();
     }
@@ -151,7 +151,7 @@ public class PolarisTreeMapStore {
 
     /** Rollback all changes made to this slice since transaction started */
     private void rollback() {
-      PolarisTreeMapStore.this.ensureReadWriteTr();
+      TreeMapMetaStore.this.ensureReadWriteTr();
       undoSlice.forEach(
           (key, value) -> {
             if (value == null) {
@@ -217,7 +217,7 @@ public class PolarisTreeMapStore {
    *
    * @param diagnostics diagnostic services
    */
-  public PolarisTreeMapStore(@Nonnull PolarisDiagnostics diagnostics) {
+  public TreeMapMetaStore(@Nonnull PolarisDiagnostics diagnostics) {
 
     // the entities slice
     this.sliceEntities =
