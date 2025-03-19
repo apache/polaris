@@ -24,19 +24,22 @@ plugins {
   alias(libs.plugins.jandex)
 }
 
+fun getAndUseScalaVersionForProject(): String {
+  val sparkScala = project.name.split("-").last().split("_")
+
+  val scalaVersion = sparkScala[1]
+
+  // direct the build to build/<scalaVersion> to avoid potential collision problem
+  project.layout.buildDirectory.set(layout.buildDirectory.dir(scalaVersion).get())
+
+  return scalaVersion
+}
+
 // get version information
 val sparkMajorVersion = "3.5"
-val scalaVersion =
-  if (System.getProperty("scalaVersion") != null) {
-    System.getProperty("scalaVersion")
-  } else {
-    System.getProperty("defaultScalaVersion")
-  }
+val scalaVersion = getAndUseScalaVersionForProject()
 val icebergVersion = pluginlibs.versions.iceberg.get()
 val spark35Version = pluginlibs.versions.spark35.get()
-
-// direct the build to build/<scalaVersion> to avoid potential collision problem
-project.layout.buildDirectory.set(layout.buildDirectory.dir(scalaVersion).get())
 
 dependencies {
   implementation(project(":polaris-api-iceberg-service")) {
