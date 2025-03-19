@@ -168,15 +168,16 @@ class StaleBehaviorChangeConfigurationChecker(private val appVersion: String) : 
     expiresVersion: String?,
     polarisVersion: String,
   ): Boolean {
-    val (majorA, minorA, patchA) = annotatedVersion.split(".").map { it.toInt() }
     if (expiresVersion == null) {
-      val (majorB, minorB, _) = polarisVersion.split(".").map { it.toInt() }
-      return (majorB > majorA || (majorB == majorA && minorB > minorA + 1))
+      val (majorA, minorA, _) = annotatedVersion.split(".").map { it.toInt() }
+      return isStaleVersion(annotatedVersion, "${majorA + 1}.${minorA}.0", polarisVersion) ||
+                isStaleVersion(annotatedVersion, "${majorA}.${minorA + 2}.0", polarisVersion);
     } else {
-      val (majorB, minorB, patchB) = expiresVersion.split(".").map { it.toInt() }
+      val (majorA, minorA, patchA) = expiresVersion.split(".").map { it.toInt() }
+      val (majorB, minorB, patchB) = polarisVersion.split(".").map { it.toInt() }
       return (majorA > majorB ||
         (majorA == majorB && minorA > minorB) ||
-        (majorA == majorB && minorA == minorB && patchB > patchA))
+        (majorA == majorB && minorA == minorB && patchA > patchB))
     }
   }
 
