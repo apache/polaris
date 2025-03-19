@@ -41,7 +41,7 @@ spotless {
   }
 }
 
-if (System.getProperty("idea.sync.active").toBoolean()) {
+if (gradle.ideSyncActive()) {
   idea {
     module {
       isDownloadJavadoc = false // was 'true', but didn't work

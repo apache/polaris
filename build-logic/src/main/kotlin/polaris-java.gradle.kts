@@ -39,20 +39,25 @@ apply<PublishingHelperPlugin>()
 
 tasks.withType(JavaCompile::class.java).configureEach {
   options.compilerArgs.addAll(listOf("-Xlint:unchecked", "-Xlint:deprecation"))
-  options.errorprone.disableAllWarnings = true
-  options.errorprone.disableWarningsInGeneratedCode = true
-  options.errorprone.excludedPaths =
-    ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated/.*"
-  options.errorprone.error(
-    "DefaultCharset",
-    "FallThrough",
-    "MissingCasesInEnumSwitch",
-    "MissingOverride",
-    "ModifiedButNotUsed",
-    "OrphanedFormatString",
-    "PatternMatchingInstanceof",
-    "StringCaseLocaleUsage",
-  )
+
+  if (project.extra.has("reused-project-dir")) {
+    options.errorprone.disableAllChecks = true
+  } else {
+    options.errorprone.disableAllWarnings = true
+    options.errorprone.disableWarningsInGeneratedCode = true
+    options.errorprone.excludedPaths =
+      ".*/${project.layout.buildDirectory.get().asFile.relativeTo(projectDir)}/generated/.*"
+    options.errorprone.error(
+      "DefaultCharset",
+      "FallThrough",
+      "MissingCasesInEnumSwitch",
+      "MissingOverride",
+      "ModifiedButNotUsed",
+      "OrphanedFormatString",
+      "PatternMatchingInstanceof",
+      "StringCaseLocaleUsage",
+    )
+  }
 }
 
 tasks.register("compileAll").configure {
@@ -150,42 +155,53 @@ tasks.withType(Jar::class).configureEach {
   }
 }
 
-spotless {
-  java {
-    target("src/*/java/**/*.java")
-    googleJavaFormat()
-    licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
-    endWithNewline()
-    custom(
-      "disallowWildcardImports",
-      object : Serializable, FormatterFunc {
-        override fun apply(text: String): String {
-          val regex = "~/import .*\\.\\*;/".toRegex()
-          if (regex.matches(text)) {
-            throw GradleException("Wildcard imports disallowed - ${regex.findAll(text)}")
+if (!project.extra.has("reused-project-dir") && !gradle.ideSyncActive()) {
+  spotless {
+    java {
+      target("src/*/java/**/*.java")
+      googleJavaFormat()
+      licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
+      endWithNewline()
+      custom(
+        "disallowWildcardImports",
+        object : Serializable, FormatterFunc {
+          override fun apply(text: String): String {
+            val regex = "~/import .*\\.\\*;/".toRegex()
+            if (regex.matches(text)) {
+              throw GradleException("Wildcard imports disallowed - ${regex.findAll(text)}")
+            }
+            return text
           }
-          return text
-        }
-      },
-    )
-    toggleOffOn()
-  }
-  kotlinGradle {
-    ktfmt().googleStyle()
-    licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
-    target("*.gradle.kts")
-  }
-  format("xml") {
-    target("src/**/*.xml", "src/**/*.xsd")
-    targetExclude("codestyle/copyright-header.xml")
-    eclipseWtp(com.diffplug.spotless.extra.wtp.EclipseWtpFormatterStep.XML)
-      .configFile(rootProject.file("codestyle/org.eclipse.wst.xml.core.prefs"))
-    // getting the license-header delimiter right is a bit tricky.
-    // licenseHeaderFile(rootProject.file("codestyle/copyright-header.xml"), '<^[!?].*$')
+        },
+      )
+      toggleOffOn()
+    }
+    scala {
+      scalafmt(requiredDependencyVersion("scalafmt"))
+        .configFile(rootProject.file("codestyle/scalafmt.conf").toString())
+      licenseHeaderFile(
+        rootProject.file("codestyle/copyright-header-java.txt"),
+        "^(package|import) .*$",
+      )
+      target("src/**/scala/**/*.scala")
+    }
+    kotlinGradle {
+      ktfmt().googleStyle()
+      licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
+      target("*.gradle.kts")
+    }
+    format("xml") {
+      target("src/**/*.xml", "src/**/*.xsd")
+      targetExclude("codestyle/copyright-header.xml")
+      eclipseWtp(com.diffplug.spotless.extra.wtp.EclipseWtpFormatterStep.XML)
+        .configFile(rootProject.file("codestyle/org.eclipse.wst.xml.core.prefs"))
+      // getting the license-header delimiter right is a bit tricky.
+      // licenseHeaderFile(rootProject.file("codestyle/copyright-header.xml"), '<^[!?].*$')
+    }
   }
 }
 
-dependencies { errorprone(versionCatalogs.named("libs").findLibrary("errorprone").get()) }
+dependencies { errorprone(requiredDependency("errorprone")) }
 
 java {
   withJavadocJar()
