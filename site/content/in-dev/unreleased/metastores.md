@@ -121,9 +121,6 @@ The following shows a sample configuration for integrating Polaris with Postgres
     <property name="jakarta.persistence.jdbc.password" value="postgres"/>
     <property name="jakarta.persistence.schema-generation.database.action" value="create"/>
     <property name="eclipselink.persistence-context.flush-mode" value="auto"/>
-    <property name="eclipselink.connection-pool.default.initial" value="1" />
-    <property name="eclipselink.connection-pool.default.min" value="1" />
-    <property name="eclipselink.connection-pool.default.max" value="1" />
     <property name="eclipselink.session.customizer" value="org.apache.polaris.extension.persistence.impl.eclipselink.PolarisEclipseLinkSessionCustomizer"/>
     <property name="eclipselink.transaction.join-existing" value="true"/>
   </properties>
