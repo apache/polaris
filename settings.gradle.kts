@@ -54,18 +54,24 @@ fun polarisProject(name: String, directory: File) {
 val projects = Properties()
 
 loadProperties(file("gradle/projects.main.properties")).forEach { name, directory ->
-  if (name == "polaris-spark") {
-    // register all supported polaris-spark projects with different scala versions.
-    val sparkVersion = "3.5"
-    val sparkScalaVersions = loadProperties(file("plugins/spark/spark-scala.properties"))
-    val spark35ScalaVersions = sparkScalaVersions["sparkVersion-${sparkVersion}-scalaVersions"].toString().split(",").map {
+  polarisProject(name as String, file(directory as String))
+}
+
+// load the polaris spark plugin projects
+val polarisSparkDir = "plugins/spark"
+val sparkScalaVersions = loadProperties(file("${polarisSparkDir}/spark-scala.properties"))
+val sparkVersions = sparkScalaVersions["sparkVersions"].toString().split(",").map { it.trim() }
+
+for (sparkVersion in sparkVersions) {
+  val scalaVersions =
+    sparkScalaVersions["sparkVersion-${sparkVersion}-scalaVersions"].toString().split(",").map {
       it.trim()
     }
-    for (scalaVersion in spark35ScalaVersions) {
-      polarisProject("polaris-spark-${sparkVersion}_${scalaVersion}", file("${directory}/v${sparkVersion}"))
-    }
-  } else {
-    polarisProject(name as String, file(directory as String))
+  for (scalaVersion in scalaVersions) {
+    polarisProject(
+      "polaris-spark-${sparkVersion}_${scalaVersion}",
+      file("${polarisSparkDir}/v${sparkVersion}"),
+    )
   }
 }
 
