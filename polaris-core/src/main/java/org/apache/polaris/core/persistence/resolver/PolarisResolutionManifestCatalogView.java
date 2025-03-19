@@ -19,6 +19,7 @@
 package org.apache.polaris.core.persistence.resolver;
 
 import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 
 /**
@@ -30,9 +31,11 @@ public interface PolarisResolutionManifestCatalogView {
 
   PolarisResolvedPathWrapper getResolvedPath(Object key);
 
-  PolarisResolvedPathWrapper getResolvedPath(Object key, PolarisEntitySubType subType);
+  PolarisResolvedPathWrapper getResolvedPath(
+      Object key, PolarisEntityType entityType, PolarisEntitySubType subType);
 
   PolarisResolvedPathWrapper getPassthroughResolvedPath(Object key);
 
-  PolarisResolvedPathWrapper getPassthroughResolvedPath(Object key, PolarisEntitySubType subType);
+  PolarisResolvedPathWrapper getPassthroughResolvedPath(
+      Object key, PolarisEntityType entityType, PolarisEntitySubType subType);
 }

@@ -22,7 +22,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import org.apache.polaris.core.context.RealmContext;
 
 @ApplicationScoped
-public class DefaultIcebergCatalogPrefixParser implements IcebergCatalogPrefixParser {
+public class DefaultCatalogPrefixParser implements CatalogPrefixParser {
   @Override
   public String prefixToCatalogName(RealmContext realm, String prefix) {
     return prefix;
