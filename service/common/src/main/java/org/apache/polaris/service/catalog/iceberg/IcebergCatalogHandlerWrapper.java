@@ -95,6 +95,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -824,8 +825,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
   public LoadTableResponse loadTableWithAccessDelegation(
       TableIdentifier tableIdentifier,
-      String snapshots,
-      EnumSet<AccessDelegationMode> accessDelegationModes) {
+      String snapshots) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -888,7 +888,6 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
                   credentialDelegation.getCredentialConfig(
                       tableIdentifier, tableMetadata, actionsRequested));
             }
-            if (accessDelegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)) {
               UriBuilder uriBuilder =
                   UriBuilder.fromUri(callContext.getBaseUri())
                       .path(
@@ -901,7 +900,6 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
               responseBuilder.addConfig(
                   AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, uriBuilder.build().toString());
               return responseBuilder.build();
-            }
           } else if (table instanceof BaseMetadataTable) {
             // metadata tables are loaded on the client side, return NoSuchTableException for now
             throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());

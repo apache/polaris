@@ -344,7 +344,7 @@ public class IcebergCatalogAdapter
     } else {
       return Response.ok(
               newHandlerWrapper(realmContext, securityContext, prefix)
-                  .loadTableWithAccessDelegation(tableIdentifier, snapshots, delegationModes))
+                  .loadTableWithAccessDelegation(tableIdentifier, snapshots))
           .build();
     }
   }
@@ -469,7 +469,7 @@ public class IcebergCatalogAdapter
     LoadTableResponse loadTableResponse =
         newHandlerWrapper(realmContext, securityContext, prefix)
             .loadTableWithAccessDelegation(
-                tableIdentifier, "all", EnumSet.noneOf(AccessDelegationMode.class));
+                tableIdentifier, "all");
     return Response.ok(
             ImmutableLoadCredentialsResponse.builder()
                 .credentials(loadTableResponse.credentials())

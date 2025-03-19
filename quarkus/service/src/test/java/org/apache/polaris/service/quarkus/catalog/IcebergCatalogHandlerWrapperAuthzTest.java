@@ -877,7 +877,7 @@ public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         () ->
             newWrapper()
                 .loadTableWithAccessDelegation(
-                    TABLE_NS1A_2, "all", EnumSet.noneOf(AccessDelegationMode.class)),
+                    TABLE_NS1A_2, "all"),
         null /* cleanupAction */);
   }
 
@@ -896,7 +896,7 @@ public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         () ->
             newWrapper()
                 .loadTableWithAccessDelegation(
-                    TABLE_NS1A_2, "all", EnumSet.noneOf(AccessDelegationMode.class)));
+                    TABLE_NS1A_2, "all"));
   }
 
   @Test
@@ -912,7 +912,7 @@ public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         () ->
             newWrapper()
                 .loadTableWithAccessDelegation(
-                    TABLE_NS1A_2, "all", EnumSet.noneOf(AccessDelegationMode.class)),
+                    TABLE_NS1A_2, "all"),
         null /* cleanupAction */);
   }
 
@@ -931,7 +931,7 @@ public class IcebergCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
         () ->
             newWrapper()
                 .loadTableWithAccessDelegation(
-                    TABLE_NS1A_2, "all", EnumSet.noneOf(AccessDelegationMode.class)));
+                    TABLE_NS1A_2, "all"));
   }
 
   @Test
