@@ -27,6 +27,9 @@ public enum PolarisCredentialProperty {
       String.class,
       "s3.session-token-expires-at-ms",
       "the time the aws session token expires, in milliseconds"),
+  AWS_ENDPOINT(String.class, "s3.endpoint", "the aws s3 endpoint"),
+  AWS_PATH_STYLE_ACCESS(
+      Boolean.class, "s3.path-style-access", "whether or not to use path-style access"),
   CLIENT_REGION(
       String.class, "client.region", "region to configure client for making requests to AWS"),
 

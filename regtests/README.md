@@ -40,7 +40,7 @@ follows:
 
 ```shell
 ./gradlew clean :polaris-quarkus-server:assemble -Dquarkus.container-image.build=true --no-build-cache
-docker compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
+docker-compose -f ./regtests/docker-compose.yml up --build --exit-code-from regtest
 ```
 
 In this setup, a Polaris container will be started in a docker-compose group, using the image
