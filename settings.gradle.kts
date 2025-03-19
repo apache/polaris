@@ -54,9 +54,7 @@ fun polarisProject(name: String, directory: File) {
 val projects = Properties()
 
 loadProperties(file("gradle/projects.main.properties")).forEach { name, directory ->
-  if (name != "polaris-spark") {
-    polarisProject(name as String, file(directory as String))
-  } else {
+  if (name == "polaris-spark-3.5") {
     // check the scalar version
     val scalaVersionString =
       if (System.getProperty("scalaVersion") != null) {
@@ -66,8 +64,10 @@ loadProperties(file("gradle/projects.main.properties")).forEach { name, director
       }
 
     if (scalaVersionString != null && scalaVersionString.isNotEmpty()) {
-      polarisProject("polaris-spark_${scalaVersionString}", file(directory as String))
+      polarisProject("polaris-spark-3.5_${scalaVersionString}", file(directory as String))
     }
+  } else {
+    polarisProject(name as String, file(directory as String))
   }
 }
 
