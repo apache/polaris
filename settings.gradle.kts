@@ -54,7 +54,21 @@ fun polarisProject(name: String, directory: File) {
 val projects = Properties()
 
 loadProperties(file("gradle/projects.main.properties")).forEach { name, directory ->
-  polarisProject(name as String, file(directory as String))
+  if (name != "polaris-spark") {
+    polarisProject(name as String, file(directory as String))
+  } else {
+    // check the scalar version
+    val scalaVersionString =
+      if (System.getProperty("scalaVersion") != null) {
+        System.getProperty("scalaVersion")
+      } else {
+        System.getProperty("defaultScalaVersion")
+      }
+
+    if (scalaVersionString != null && scalaVersionString.isNotEmpty()) {
+      polarisProject("polaris-spark_${scalaVersionString}", file(directory as String))
+    }
+  }
 }
 
 pluginManagement {
@@ -70,6 +84,10 @@ dependencyResolutionManagement {
     mavenCentral()
     gradlePluginPortal()
   }
+}
+
+dependencyResolutionManagement {
+  versionCatalogs { create("pluginlibs") { from(files("plugins/pluginlibs.versions.toml")) } }
 }
 
 gradle.beforeProject {

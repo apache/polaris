@@ -24,7 +24,7 @@
 # This workflow will build a Java project with Gradle and cache/restore any dependencies to improve the workflow execution time
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-gradle
 
-name: Java CI with Gradle
+name: Spark CI with Gradle
 
 on:
   push:
@@ -33,9 +33,14 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  spark-plugin-tests:
 
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        scala: ['2.12', '2.13']
+    env:
+      SPARK_LOCAL_IP: localhost
     permissions:
       contents: read
 
@@ -50,17 +55,14 @@ jobs:
       # Configure Gradle for optimal use in GiHub Actions, including caching of downloaded dependencies.
       # See: https://github.com/gradle/actions/blob/main/setup-gradle/README.md
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@06832c7b30a0129d7fb559bcc6e43d26f6374244 # v4
+        uses: gradle/actions/setup-gradle@94baf225fe0a508e581a564467443d0e2379123b # v4
         with:
           # The setup-gradle action fails, if the wrapper is not using the right version or is not present.
           # Our `gradlew` validates the integrity of the `gradle-wrapper.jar`, so it's safe to disable this.
           validate-wrappers: false
 
-      - name: Code style checks and tests
-        run: ./gradlew -DscalaVersion= --continue check
-
-      - name: Check Maven publication
-        run: ./gradlew publishToMavenLocal sourceTarball
+      - name: Code style checks and tests for scala ${{ matrix.scala }}
+        run: ./gradlew -DscalaVersion=${{ matrix.scala }} :polaris-spark:check
 
       - name: Archive test results
         uses: actions/upload-artifact@v4
@@ -72,26 +74,3 @@ jobs:
 
       - name: Stop Gradle daemons
         run: ./gradlew --stop
-
-      # Ensure that the build works properly when building against the "latest greatest" Java version
-      - name: Set up JDK 23
-        uses: actions/setup-java@v4
-        with:
-          java-version: '23'
-          distribution: 'temurin'
-      - name: Show Java version
-        run: java -version
-      - name: Clean
-        run: ./gradlew clean
-      - name: Build
-        run: ./gradlew compileAll -DscalaVersion=
-      - name: Run selected tests
-        run: ./gradlew :polaris-quarkus-service:intTest
-
-      - name: Archive test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: upload-test-artifacts-java-23
-          path: |
-            **/build/test-results/**
