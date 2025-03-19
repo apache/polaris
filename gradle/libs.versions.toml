@@ -23,8 +23,7 @@ iceberg = "1.7.1"
 quarkus = "3.19.3"
 immutables = "2.10.1"
 picocli = "4.7.6"
-scala212 = "2.12.19"
-spark35 = "3.5.5"
+scalafmt = "3.9.4"
 slf4j = "2.0.17"
 swagger = "1.6.15"
 
@@ -82,19 +81,28 @@ picocli-codegen = { module = "info.picocli:picocli-codegen", version.ref = "pico
 postgresql = { module = "org.postgresql:postgresql", version = "42.7.5" }
 prometheus-metrics-exporter-servlet-jakarta = { module = "io.prometheus:prometheus-metrics-exporter-servlet-jakarta", version = "1.3.6" }
 quarkus-bom = { module = "io.quarkus.platform:quarkus-bom", version.ref = "quarkus" }
-scala212-lang-library = { module = "org.scala-lang:scala-library", version.ref = "scala212" }
-scala212-lang-reflect = { module = "org.scala-lang:scala-reflect", version.ref = "scala212" }
 scalafmt = { module = "org.scalameta:scalafmt-core_2.13", version = "3.9.4" }
 s3mock-testcontainers = { module = "com.adobe.testing:s3mock-testcontainers", version = "3.12.0" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 smallrye-common-annotation = { module = "io.smallrye.common:smallrye-common-annotation", version = "2.10.0" }
 smallrye-config-core = { module = "io.smallrye.config:smallrye-config-core", version = "3.12.3" }
-spark35-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version.ref = "spark35" }
 spotbugs-annotations = { module = "com.github.spotbugs:spotbugs-annotations", version = "4.9.3" }
 swagger-annotations = { module = "io.swagger:swagger-annotations", version.ref = "swagger" }
 swagger-jaxrs = { module = "io.swagger:swagger-jaxrs", version.ref = "swagger" }
 testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version = "1.20.6" }
 threeten-extra = { module = "org.threeten:threeten-extra", version = "1.8.0" }
+
+# Scala 2.12
+scala212-lang-library = { module = "org.scala-lang:scala-library", version = { strictly = "[2.12, 2.13[", prefer = "2.12.20" }}
+scala212-lang-reflect = { module = "org.scala-lang:scala-reflect", version = { strictly = "[2.12, 2.13[", prefer = "2.12.20" }}
+# Scala 2.13
+scala213-lang-library = { module = "org.scala-lang:scala-library", version = { strictly = "[2.13, 2.14[", prefer = "2.13.16" }}
+scala213-lang-reflect = { module = "org.scala-lang:scala-reflect", version = { strictly = "[2.13, 2.14[", prefer = "2.13.16" }}
+# Spark deps
+spark34-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version = { strictly = "[3.4, 3.5[", prefer = "3.4.4"}}
+spark34-sql-scala213 = { module = "org.apache.spark:spark-sql_2.13", version = { strictly = "[3.4, 3.5[", prefer = "3.4.4"}}
+spark35-sql-scala212 = { module = "org.apache.spark:spark-sql_2.12", version = { strictly = "[3.5, 3.6[", prefer = "3.5.5"}}
+spark35-sql-scala213 = { module = "org.apache.spark:spark-sql_2.13", version = { strictly = "[3.5, 3.6[", prefer = "3.5.5"}}
 
 [plugins]
 jandex = { id = "org.kordamp.gradle.jandex", version = "2.1.0" }

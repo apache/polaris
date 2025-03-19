@@ -18,6 +18,7 @@
  */
 
 import com.diffplug.spotless.FormatterFunc
+import gradle.kotlin.dsl.accessors._610c9322e0f6ac91715e46c62199c37f.spotless
 import java.io.Serializable
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.compile.JavaCompile

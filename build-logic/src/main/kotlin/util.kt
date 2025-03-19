@@ -18,10 +18,14 @@
  */
 
 import java.lang.IllegalStateException
+import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.gradle.api.artifacts.MinimalExternalModuleDependency
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.api.invocation.Gradle
+import org.gradle.api.tasks.testing.Test
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+import org.gradle.jvm.toolchain.JavaToolchainService
 import org.gradle.kotlin.dsl.getByType
 
 fun Gradle.ideSyncActive(): Boolean =
@@ -32,6 +36,9 @@ fun Gradle.ideSyncActive(): Boolean =
 fun Project.requiredDependencyVersion(dependencyName: String): String =
   requiredDependency(dependencyName).version!!
 
+fun Project.requiredDependencyPreferredVersion(dependencyName: String): String =
+  requiredDependency(dependencyName).versionConstraint.preferredVersion
+
 fun Project.requiredDependency(dependencyName: String): MinimalExternalModuleDependency {
   val versionCatalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
   val dependency =
@@ -39,4 +46,26 @@ fun Project.requiredDependency(dependencyName: String): MinimalExternalModuleDep
       IllegalStateException("No library '$dependencyName' defined in version catalog 'libs'")
     }
   return dependency.get()
+}
+
+/** Forces all [Test] tasks to use the given Java version. */
+fun Project.forceJavaVersionForTests(requestedJavaVersion: Int) {
+  if (requestedJavaVersion > 0) {
+    tasks.withType(Test::class.java).configureEach {
+      val currentJavaVersion = JavaVersion.current().majorVersion.toInt()
+      if (requestedJavaVersion != currentJavaVersion) {
+        useJavaVersion(requestedJavaVersion)
+      }
+    }
+  }
+}
+
+fun Test.useJavaVersion(requestedJavaVersion: Int) {
+  val javaToolchains = project.extensions.findByType(JavaToolchainService::class.java)
+  logger.info("Configuring Java $requestedJavaVersion for $path test execution")
+  javaLauncher.set(
+    javaToolchains!!.launcherFor {
+      languageVersion.set(JavaLanguageVersion.of(requestedJavaVersion))
+    }
+  )
 }
