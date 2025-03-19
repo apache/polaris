@@ -1217,16 +1217,30 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private class BasePolarisTableOperations extends BaseMetastoreTableOperations {
+  public class BasePolarisTableOperations extends BaseMetastoreTableOperations {
     private final TableIdentifier tableIdentifier;
     private final String fullTableName;
     private FileIO tableFileIO;
+    private TableLikeEntity tableEntity = null;
 
     BasePolarisTableOperations(FileIO defaultFileIO, TableIdentifier tableIdentifier) {
       LOGGER.debug("new BasePolarisTableOperations for {}", tableIdentifier);
       this.tableIdentifier = tableIdentifier;
       this.fullTableName = fullTableName(catalogName, tableIdentifier);
       this.tableFileIO = defaultFileIO;
+    }
+
+    /**
+     * Return the currently loaded {@link TableLikeEntity} without checking for table updates.
+     * Does not refresh the table entity if not already available, call {@link TableOperations#current()} or
+     * {@link TableOperations#refresh()} first to ensure it is resolved.
+     * NOTE: This may be mismatched with the currently loaded metadata if commits
+     * are performed between calling this method and {@link TableOperations#current()} as this
+     * entity is populated on commits, unlike the current TableMetadata.
+     * @return the currently loaded {@link TableLikeEntity}, null if the table entity has not been resolved yet
+     */
+    public TableLikeEntity currentTableEntity() {
+      return this.tableEntity;
     }
 
     @Override
@@ -1237,20 +1251,21 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedEntities =
           resolvedEntityView.getPassthroughResolvedPath(
               tableIdentifier, PolarisEntitySubType.TABLE);
-      TableLikeEntity entity = null;
 
       if (resolvedEntities != null) {
-        entity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity());
-        if (!tableIdentifier.equals(entity.getTableIdentifier())) {
+        this.tableEntity = TableLikeEntity.of(resolvedEntities.getRawLeafEntity()); // refresh the table entity as well
+        if (!tableIdentifier.equals(tableEntity.getTableIdentifier())) {
           LOGGER
               .atError()
-              .addKeyValue("entity.getTableIdentifier()", entity.getTableIdentifier())
+              .addKeyValue("entity.getTableIdentifier()", tableEntity.getTableIdentifier())
               .addKeyValue("tableIdentifier", tableIdentifier)
               .log("Stored table identifier mismatches requested identifier");
         }
+      } else {
+        this.tableEntity = null; // reset tableEntity if we failed to resolve the path, because we will be failing to resolve the metadata as well
       }
 
-      String latestLocation = entity != null ? entity.getMetadataLocation() : null;
+      String latestLocation = tableEntity != null ? tableEntity.getMetadataLocation() : null;
       LOGGER.debug("Refreshing latestLocation: {}", latestLocation);
       if (latestLocation == null) {
         disableRefresh();
@@ -1402,9 +1417,9 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             tableIdentifier, oldLocation, newLocation, existingLocation);
       }
       if (null == existingLocation) {
-        createTableLike(tableIdentifier, entity);
+        this.tableEntity = createTableLike(tableIdentifier, entity);
       } else {
-        updateTableLike(tableIdentifier, entity);
+        this.tableEntity = updateTableLike(tableIdentifier, entity);
       }
     }
 
@@ -1769,7 +1784,7 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
    * duplicate the logic to try to resolve parentIds before constructing the proposed entity. This
    * method will fill in the parentId if needed upon resolution.
    */
-  private void createTableLike(TableIdentifier identifier, PolarisEntity entity) {
+  private TableLikeEntity createTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedParent =
         resolvedEntityView.getResolvedPath(identifier.namespace());
     if (resolvedParent == null) {
@@ -1778,10 +1793,10 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
           String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
     }
 
-    createTableLike(identifier, entity, resolvedParent);
+    return createTableLike(identifier, entity, resolvedParent);
   }
 
-  private void createTableLike(
+  private TableLikeEntity createTableLike(
       TableIdentifier identifier, PolarisEntity entity, PolarisResolvedPathWrapper resolvedParent) {
     // Make sure the metadata file is valid for our allowed locations.
     String metadataLocation = TableLikeEntity.of(entity).getMetadataLocation();
@@ -1801,16 +1816,22 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
 
     PolarisEntity returnedEntity =
         PolarisEntity.of(
+                Optional.ofNullable(
             getMetaStoreManager()
                 .createEntityIfNotExists(
-                    getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity));
-    LOGGER.debug("Created TableLike entity {} with TableIdentifier {}", entity, identifier);
+                    getCurrentPolarisContext(), PolarisEntity.toCoreList(catalogPath), entity).getEntity())
+                        .map(PolarisEntity::new)
+                        .orElse(null)
+        );
     if (returnedEntity == null) {
-      // TODO: Error or retry?
+      // TODO: Add retries
+      throw new AlreadyExistsException("Table already exists: %s", identifier);
     }
+    LOGGER.debug("Created TableLike entity {} with TableIdentifier {}", entity, identifier);
+    return TableLikeEntity.of(returnedEntity);
   }
 
-  private void updateTableLike(TableIdentifier identifier, PolarisEntity entity) {
+  private TableLikeEntity updateTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(identifier, entity.getSubType());
     if (resolvedEntities == null) {
@@ -1833,8 +1854,10 @@ public class BasePolarisCatalog extends BaseMetastoreViewCatalog
             .map(PolarisEntity::new)
             .orElse(null);
     if (returnedEntity == null) {
-      // TODO: Error or retry?
+      // TODO: Add retries
+      throw new RuntimeException("Failed to update table: " + identifier);
     }
+    return TableLikeEntity.of(returnedEntity);
   }
 
   @SuppressWarnings("FormatStringAnnotation")

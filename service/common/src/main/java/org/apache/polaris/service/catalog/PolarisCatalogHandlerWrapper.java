@@ -595,10 +595,36 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     if (isExternal(catalog)) {
       throw new BadRequestException("Cannot create table on external catalogs.");
     }
-    return new ETaggedResponse<>(
-            doCatalogOperation(() -> CatalogHandlers.createTable(baseCatalog, namespace, request)),
-            generateETagValueForTable(getTableEntity(identifier))
-    );
+
+    return doCatalogOperation(() -> {
+      request.validate();
+
+      Table table =
+              baseCatalog
+                      .buildTable(identifier, request.schema())
+                      .withLocation(request.location())
+                      .withPartitionSpec(request.spec())
+                      .withSortOrder(request.writeOrder())
+                      .withProperties(request.properties())
+                      .create();
+
+      if (table instanceof BaseTable baseTable) {
+
+        LoadTableResponse.Builder responseBuilder = LoadTableResponse.builder()
+                .withTableMetadata(baseTable.operations().current());
+
+        if (baseTable.operations() instanceof BasePolarisCatalog.BasePolarisTableOperations polarisOps) {
+          return new ETaggedResponse<>(
+                  responseBuilder.build(),
+                  generateETagValueForTable(polarisOps.currentTableEntity())
+          );
+        }
+
+        return new ETaggedResponse<>(responseBuilder.build(), "");
+      }
+
+      throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+    });
   }
 
   /**
@@ -665,7 +691,15 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                           PolarisStorageActions.WRITE,
                           PolarisStorageActions.LIST)));
             }
-            return new ETaggedResponse<>(responseBuilder.build(), generateETagValueForTable(getTableEntity(tableIdentifier)));
+
+            if (baseTable.operations() instanceof BasePolarisCatalog.BasePolarisTableOperations polarisOps) {
+              return new ETaggedResponse<>(
+                      responseBuilder.build(),
+                      generateETagValueForTable(polarisOps.currentTableEntity())
+              );
+            }
+
+            return new ETaggedResponse<>(responseBuilder.build(), "");
           } else if (table instanceof BaseMetadataTable) {
             // metadata tables are loaded on the client side, return NoSuchTableException for now
             throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
@@ -791,10 +825,27 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
         op, identifier);
 
-    return new ETaggedResponse<>(
-            doCatalogOperation(() -> CatalogHandlers.registerTable(baseCatalog, namespace, request)),
-            generateETagValueForTable(getTableEntity(identifier))
-    );
+    return doCatalogOperation(() -> {
+      request.validate();
+
+      Table table = baseCatalog.registerTable(identifier, request.metadataLocation());
+
+      if (table instanceof BaseTable baseTable) {
+        LoadTableResponse.Builder responseBuilder = LoadTableResponse.builder()
+                .withTableMetadata(baseTable.operations().current());
+
+        if (baseTable.operations() instanceof BasePolarisCatalog.BasePolarisTableOperations polarisOps) {
+          return new ETaggedResponse<>(
+                  responseBuilder.build(),
+                  generateETagValueForTable(polarisOps.currentTableEntity())
+          );
+        }
+
+        return new ETaggedResponse<>(responseBuilder.build(), "");
+      }
+
+      throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+    });
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {
@@ -873,17 +924,36 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
       PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
       authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.TABLE, tableIdentifier);
 
-      TableLikeEntity tableEntity = getTableEntity(tableIdentifier);
-      String tableEntityTag = generateETagValueForTable(tableEntity);
+    TableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+    String tableEntityTag = generateETagValueForTable(tableEntity);
 
-      if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableEntityTag)) {
-        return Optional.empty();
+    if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableEntityTag)) {
+      return Optional.empty();
+    }
+
+    return Optional.of(doCatalogOperation(() -> {
+      Table table = baseCatalog.loadTable(tableIdentifier);
+
+      if (table instanceof BaseTable baseTable) {
+        LoadTableResponse.Builder responseBuilder =  LoadTableResponse.builder()
+                .withTableMetadata(baseTable.operations().current());
+
+        if (baseTable.operations() instanceof BasePolarisCatalog.BasePolarisTableOperations polarisOps) {
+          return new ETaggedResponse<>(
+                  responseBuilder.build(),
+                  // do not use ETag from the previous fetch, may be out of date by the time we load the metadata
+                  generateETagValueForTable(polarisOps.currentTableEntity())
+          );
+        }
+
+        return new ETaggedResponse<>(responseBuilder.build(), "");
+      } else if (table instanceof BaseMetadataTable) {
+        // metadata tables are loaded on the client side, return NoSuchTableException for now
+        throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
       }
 
-    return Optional.of(new ETaggedResponse<>(
-            doCatalogOperation(() -> CatalogHandlers.loadTable(baseCatalog, tableIdentifier)),
-            tableEntityTag
-    ));
+      throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+    }));
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(TableIdentifier tableIdentifier, String snapshots) {
@@ -969,7 +1039,15 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                   credentialDelegation.getCredentialConfig(
                       tableIdentifier, tableMetadata, actionsRequested));
             }
-            return new ETaggedResponse<>(responseBuilder.build(), generateETagValueForTable(tableEntity));
+
+            if (baseTable.operations() instanceof BasePolarisCatalog.BasePolarisTableOperations polarisOps) {
+              return new ETaggedResponse<>(
+                      responseBuilder.build(),
+                      generateETagValueForTable(polarisOps.currentTableEntity())
+              );
+            }
+
+            return new ETaggedResponse<>(responseBuilder.build(), "");
           } else if (table instanceof BaseMetadataTable) {
             // metadata tables are loaded on the client side, return NoSuchTableException for now
             throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());

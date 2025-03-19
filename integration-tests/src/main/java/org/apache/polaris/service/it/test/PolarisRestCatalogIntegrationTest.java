@@ -637,37 +637,42 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   }
 
   /**
-   * Register a table. Then, invoke an initial loadTable request to fetch and ensure ETag is present.
-   * Then, invoke a second loadTable to ensure that ETag is matched.
+   * Register a table. Then, invoke an initial loadTable request to fetch and ensure ETag is
+   * present. Then, invoke a second loadTable to ensure that ETag is matched.
    */
   @Test
   public void testLoadTableTwiceWithETag() {
     Namespace ns1 = Namespace.of("ns1");
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
-            TableMetadata.newTableMetadata(
-                    new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
-                    PartitionSpec.unpartitioned(),
-                    "file:///tmp/ns1/my_table",
-                    Map.of());
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
       resolvingFileIO.initialize(Map.of());
       resolvingFileIO.setConf(new Configuration());
       String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
       restCatalog.registerTable(TableIdentifier.of(ns1, "my_table_etagged"), fileLocation);
-      Invocation invocation = catalogApi.request("v1/" + currentCatalogName + "/namespaces/ns1/tables/my_table_etagged").build("GET");
+      Invocation invocation =
+          catalogApi
+              .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/my_table_etagged")
+              .build("GET");
       try (Response initialLoadTable = invocation.invoke()) {
         assertThat(initialLoadTable.getHeaders()).containsKey(HttpHeaders.ETAG);
         String etag = initialLoadTable.getHeaders().getFirst(HttpHeaders.ETAG).toString();
 
-        Invocation etaggedInvocation = catalogApi
+        Invocation etaggedInvocation =
+            catalogApi
                 .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/my_table_etagged")
                 .header(HttpHeaders.IF_NONE_MATCH, etag)
                 .build("GET");
 
         try (Response etaggedLoadTable = etaggedInvocation.invoke()) {
-          assertThat(etaggedLoadTable.getStatus()).isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
+          assertThat(etaggedLoadTable.getStatus())
+              .isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
         }
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
@@ -676,39 +681,44 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   }
 
   /**
-   * Invoke an initial registerTable request to fetch and ensure ETag is present.
-   * Then, invoke a second loadTable to ensure that ETag is matched.
+   * Invoke an initial registerTable request to fetch and ensure ETag is present. Then, invoke a
+   * second loadTable to ensure that ETag is matched.
    */
   @Test
   public void testRegisterAndLoadTableWithReturnedETag() {
     Namespace ns1 = Namespace.of("ns1");
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
-            TableMetadata.newTableMetadata(
-                    new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
-                    PartitionSpec.unpartitioned(),
-                    "file:///tmp/ns1/my_table",
-                    Map.of());
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
       resolvingFileIO.initialize(Map.of());
       resolvingFileIO.setConf(new Configuration());
       String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
 
-      Invocation registerInvocation = catalogApi
+      Invocation registerInvocation =
+          catalogApi
               .request("v1/" + currentCatalogName + "/namespaces/ns1/register")
-              .buildPost(Entity.json(Map.of("name", "my_etagged_table", "metadata-location", fileLocation)));
+              .buildPost(
+                  Entity.json(
+                      Map.of("name", "my_etagged_table", "metadata-location", fileLocation)));
       try (Response registerResponse = registerInvocation.invoke()) {
         assertThat(registerResponse.getHeaders()).containsKey(HttpHeaders.ETAG);
         String etag = registerResponse.getHeaders().getFirst(HttpHeaders.ETAG).toString();
 
-        Invocation etaggedInvocation = catalogApi
+        Invocation etaggedInvocation =
+            catalogApi
                 .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/my_etagged_table")
                 .header(HttpHeaders.IF_NONE_MATCH, etag)
                 .build("GET");
 
         try (Response etaggedLoadTable = etaggedInvocation.invoke()) {
-          assertThat(etaggedLoadTable.getStatus()).isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
+          assertThat(etaggedLoadTable.getStatus())
+              .isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
         }
 
       } finally {
@@ -722,38 +732,42 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     Namespace ns1 = Namespace.of("ns1");
     restCatalog.createNamespace(ns1);
     TableMetadata tableMetadata =
-            TableMetadata.newTableMetadata(
-                    new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
-                    PartitionSpec.unpartitioned(),
-                    "file:///tmp/ns1/my_table",
-                    Map.of());
+        TableMetadata.newTableMetadata(
+            new Schema(List.of(Types.NestedField.of(1, false, "col1", new Types.StringType()))),
+            PartitionSpec.unpartitioned(),
+            "file:///tmp/ns1/my_table",
+            Map.of());
     try (ResolvingFileIO resolvingFileIO = new ResolvingFileIO()) {
       resolvingFileIO.initialize(Map.of());
       resolvingFileIO.setConf(new Configuration());
       String fileLocation = "file:///tmp/ns1/my_table/metadata/v1.metadata.json";
       TableMetadataParser.write(tableMetadata, resolvingFileIO.newOutputFile(fileLocation));
 
-      Invocation createInvocation = catalogApi
+      Invocation createInvocation =
+          catalogApi
               .request("v1/" + currentCatalogName + "/namespaces/ns1/tables")
-              .buildPost(Entity.json(CreateTableRequest.builder()
-                      .withName("my_etagged_table")
-                      .withLocation(tableMetadata.location())
-                      .withPartitionSpec(tableMetadata.spec())
-                      .withSchema(tableMetadata.schema())
-                      .withWriteOrder(tableMetadata.sortOrder())
-                      .build()
-              ));
+              .buildPost(
+                  Entity.json(
+                      CreateTableRequest.builder()
+                          .withName("my_etagged_table")
+                          .withLocation(tableMetadata.location())
+                          .withPartitionSpec(tableMetadata.spec())
+                          .withSchema(tableMetadata.schema())
+                          .withWriteOrder(tableMetadata.sortOrder())
+                          .build()));
       try (Response createResponse = createInvocation.invoke()) {
         assertThat(createResponse.getHeaders()).containsKey(HttpHeaders.ETAG);
         String etag = createResponse.getHeaders().getFirst(HttpHeaders.ETAG).toString();
 
-        Invocation etaggedInvocation = catalogApi
+        Invocation etaggedInvocation =
+            catalogApi
                 .request("v1/" + currentCatalogName + "/namespaces/ns1/tables/my_etagged_table")
                 .header(HttpHeaders.IF_NONE_MATCH, etag)
                 .build("GET");
 
         try (Response etaggedLoadTable = etaggedInvocation.invoke()) {
-          assertThat(etaggedLoadTable.getStatus()).isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
+          assertThat(etaggedLoadTable.getStatus())
+              .isEqualTo(Response.Status.NOT_MODIFIED.getStatusCode());
         }
       } finally {
         resolvingFileIO.deleteFile(fileLocation);

@@ -348,20 +348,21 @@ public class IcebergCatalogAdapter
 
     IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(ifNoneMatchHeader);
 
-    if (ifNoneMatch.isWildcard())
+    if (ifNoneMatch.isWildcard()) {
       throw new BadRequestException("If-None-Match may not take the value of '*'");
+    }
 
-      if (delegationModes.isEmpty()) {
-          loadTableResult = newHandlerWrapper(realmContext, securityContext, prefix)
-                  .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
-                  .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
-      } else {
-          loadTableResult = newHandlerWrapper(realmContext, securityContext, prefix)
-                  .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
-                  .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
-      }
-      return Response.ok(loadTableResult.response()).header(HttpHeaders.ETAG, loadTableResult.eTag())
-          .build();
+    if (delegationModes.isEmpty()) {
+        loadTableResult = newHandlerWrapper(realmContext, securityContext, prefix)
+                .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
+                .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
+    } else {
+        loadTableResult = newHandlerWrapper(realmContext, securityContext, prefix)
+                .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
+                .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
+    }
+    return Response.ok(loadTableResult.response()).header(HttpHeaders.ETAG, loadTableResult.eTag())
+        .build();
   }
 
   @Override
