@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.catalog;
 
+import static com.google.common.base.Preconditions.checkState;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 import jakarta.ws.rs.core.SecurityContext;
@@ -184,9 +186,8 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     this.baseCatalog =
         catalogFactory.createCallContextCatalog(
             callContext, authenticatedPrincipal, securityContext, resolutionManifest);
-    this.namespaceCatalog =
-        (baseCatalog instanceof SupportsNamespaces) ? (SupportsNamespaces) baseCatalog : null;
-    this.viewCatalog = (baseCatalog instanceof ViewCatalog) ? (ViewCatalog) baseCatalog : null;
+    this.namespaceCatalog = (baseCatalog instanceof SupportsNamespaces ns) ? ns : null;
+    this.viewCatalog = (baseCatalog instanceof ViewCatalog vc) ? vc : null;
   }
 
   private void authorizeBasicNamespaceOperationOrThrow(
@@ -673,9 +674,8 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     if (request.location() != null) {
       // Even if the request provides a location, run it through the catalog's TableBuilder
       // to inherit any override behaviors if applicable.
-      if (baseCatalog instanceof BasePolarisCatalog) {
-        location =
-            ((BasePolarisCatalog) baseCatalog).transformTableLikeLocation(request.location());
+      if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
+        location = basePolarisCatalog.transformTableLikeLocation(request.location());
       } else {
         location = request.location();
       }
@@ -691,14 +691,12 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
               .location();
     }
 
-    TableMetadata metadata =
-        TableMetadata.newTableMetadata(
-            request.schema(),
-            request.spec() != null ? request.spec() : PartitionSpec.unpartitioned(),
-            request.writeOrder() != null ? request.writeOrder() : SortOrder.unsorted(),
-            location,
-            properties);
-    return metadata;
+    return TableMetadata.newTableMetadata(
+        request.schema(),
+        request.spec() != null ? request.spec() : PartitionSpec.unpartitioned(),
+        request.writeOrder() != null ? request.writeOrder() : SortOrder.unsorted(),
+        location,
+        properties);
   }
 
   public LoadTableResponse createTableStaged(Namespace namespace, CreateTableRequest request) {
@@ -896,12 +894,11 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
         request.updates().stream()
             .map(
                 update -> {
-                  if (baseCatalog instanceof BasePolarisCatalog
-                      && update instanceof MetadataUpdate.SetLocation) {
-                    String requestedLocation = ((MetadataUpdate.SetLocation) update).location();
+                  if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog
+                      && update instanceof MetadataUpdate.SetLocation setLocation) {
+                    String requestedLocation = setLocation.location();
                     String filteredLocation =
-                        ((BasePolarisCatalog) baseCatalog)
-                            .transformTableLikeLocation(requestedLocation);
+                        basePolarisCatalog.transformTableLikeLocation(requestedLocation);
                     return new MetadataUpdate.SetLocation(filteredLocation);
                   } else {
                     return update;
@@ -1019,87 +1016,85 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
       throw new BadRequestException("Cannot update table on external catalogs.");
     }
 
-    if (!(baseCatalog instanceof BasePolarisCatalog)) {
+    if (baseCatalog instanceof BasePolarisCatalog basePolarisCatalog) {
+      // Swap in TransactionWorkspaceMetaStoreManager for all mutations made by this baseCatalog to
+      // only go into an in-memory collection that we can commit as a single atomic unit after all
+      // validations.
+      TransactionWorkspaceMetaStoreManager transactionMetaStoreManager =
+          new TransactionWorkspaceMetaStoreManager(metaStoreManager);
+      basePolarisCatalog.setMetaStoreManager(transactionMetaStoreManager);
+
+      commitTransactionRequest
+          .tableChanges()
+          .forEach(
+              change -> {
+                Table table = baseCatalog.loadTable(change.identifier());
+                checkState(
+                    table instanceof BaseTable,
+                    "Cannot wrap catalog that does not produce BaseTable");
+                if (isCreate(change)) {
+                  throw new BadRequestException(
+                      "Unsupported operation: commitTranaction with updateForStagedCreate: %s",
+                      change);
+                }
+
+                TableOperations tableOps = ((BaseTable) table).operations();
+                TableMetadata currentMetadata = tableOps.current();
+
+                // Validate requirements; any CommitFailedExceptions will fail the overall request
+                change.requirements().forEach(requirement -> requirement.validate(currentMetadata));
+
+                // Apply changes
+                TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
+                change
+                    .updates()
+                    .forEach(
+                        singleUpdate -> {
+                          // Note: If location-overlap checking is refactored to be atomic, we could
+                          // support validation within a single multi-table transaction as well, but
+                          // will need to update the TransactionWorkspaceMetaStoreManager to better
+                          // expose the concept of being able to read uncommitted updates.
+                          if (singleUpdate instanceof MetadataUpdate.SetLocation setLocation) {
+                            if (!currentMetadata.location().equals(setLocation.location())
+                                && !callContext
+                                    .getPolarisCallContext()
+                                    .getConfigurationStore()
+                                    .getConfiguration(
+                                        callContext.getPolarisCallContext(),
+                                        FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
+                              throw new BadRequestException(
+                                  "Unsupported operation: commitTransaction containing SetLocation"
+                                      + " for table '%s' and new location '%s'",
+                                  change.identifier(), setLocation.location());
+                            }
+                          }
+
+                          // Apply updates to builder
+                          singleUpdate.applyTo(metadataBuilder);
+                        });
+
+                // Commit into transaction workspace we swapped the baseCatalog to use
+                TableMetadata updatedMetadata = metadataBuilder.build();
+                if (!updatedMetadata.changes().isEmpty()) {
+                  tableOps.commit(currentMetadata, updatedMetadata);
+                }
+              });
+
+      // Commit the collected updates in a single atomic operation
+      List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
+      EntitiesResult result =
+          metaStoreManager.updateEntitiesPropertiesIfNotChanged(
+              callContext.getPolarisCallContext(), pendingUpdates);
+      if (!result.isSuccess()) {
+        // TODO: Retries and server-side cleanup on failure
+        throw new CommitFailedException(
+            "Transaction commit failed with status: %s, extraInfo: %s",
+            result.getReturnStatus(), result.getExtraInformation());
+      }
+    } else {
       throw new BadRequestException(
           "Unsupported operation: commitTransaction with baseCatalog type: %s",
           baseCatalog.getClass().getName());
-    }
-
-    // Swap in TransactionWorkspaceMetaStoreManager for all mutations made by this baseCatalog to
-    // only go into an in-memory collection that we can commit as a single atomic unit after all
-    // validations.
-    TransactionWorkspaceMetaStoreManager transactionMetaStoreManager =
-        new TransactionWorkspaceMetaStoreManager(metaStoreManager);
-    ((BasePolarisCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
-
-    commitTransactionRequest.tableChanges().stream()
-        .forEach(
-            change -> {
-              Table table = baseCatalog.loadTable(change.identifier());
-              if (!(table instanceof BaseTable)) {
-                throw new IllegalStateException(
-                    "Cannot wrap catalog that does not produce BaseTable");
-              }
-              if (isCreate(change)) {
-                throw new BadRequestException(
-                    "Unsupported operation: commitTranaction with updateForStagedCreate: %s",
-                    change);
-              }
-
-              TableOperations tableOps = ((BaseTable) table).operations();
-              TableMetadata currentMetadata = tableOps.current();
-
-              // Validate requirements; any CommitFailedExceptions will fail the overall request
-              change.requirements().forEach(requirement -> requirement.validate(currentMetadata));
-
-              // Apply changes
-              TableMetadata.Builder metadataBuilder = TableMetadata.buildFrom(currentMetadata);
-              change.updates().stream()
-                  .forEach(
-                      singleUpdate -> {
-                        // Note: If location-overlap checking is refactored to be atomic, we could
-                        // support validation within a single multi-table transaction as well, but
-                        // will need to update the TransactionWorkspaceMetaStoreManager to better
-                        // expose the concept of being able to read uncommitted updates.
-                        if (singleUpdate instanceof MetadataUpdate.SetLocation) {
-                          if (!currentMetadata
-                                  .location()
-                                  .equals(((MetadataUpdate.SetLocation) singleUpdate).location())
-                              && !callContext
-                                  .getPolarisCallContext()
-                                  .getConfigurationStore()
-                                  .getConfiguration(
-                                      callContext.getPolarisCallContext(),
-                                      FeatureConfiguration.ALLOW_NAMESPACE_LOCATION_OVERLAP)) {
-                            throw new BadRequestException(
-                                "Unsupported operation: commitTransaction containing SetLocation"
-                                    + " for table '%s' and new location '%s'",
-                                change.identifier(),
-                                ((MetadataUpdate.SetLocation) singleUpdate).location());
-                          }
-                        }
-
-                        // Apply updates to builder
-                        singleUpdate.applyTo(metadataBuilder);
-                      });
-
-              // Commit into transaction workspace we swapped the baseCatalog to use
-              TableMetadata updatedMetadata = metadataBuilder.build();
-              if (!updatedMetadata.changes().isEmpty()) {
-                tableOps.commit(currentMetadata, updatedMetadata);
-              }
-            });
-
-    // Commit the collected updates in a single atomic operation
-    List<EntityWithPath> pendingUpdates = transactionMetaStoreManager.getPendingUpdates();
-    EntitiesResult result =
-        metaStoreManager.updateEntitiesPropertiesIfNotChanged(
-            callContext.getPolarisCallContext(), pendingUpdates);
-    if (!result.isSuccess()) {
-      // TODO: Retries and server-side cleanup on failure
-      throw new CommitFailedException(
-          "Transaction commit failed with status: %s, extraInfo: %s",
-          result.getReturnStatus(), result.getExtraInformation());
     }
   }
 
