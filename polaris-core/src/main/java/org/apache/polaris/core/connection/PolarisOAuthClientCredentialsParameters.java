@@ -33,11 +33,10 @@ import java.util.Map;
 import java.util.Objects;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
 import org.apache.iceberg.rest.auth.OAuth2Util;
-import org.apache.polaris.core.admin.model.OauthRestAuthenticationInfo;
-import org.apache.polaris.core.admin.model.RestAuthenticationInfo;
-import org.jetbrains.annotations.NotNull;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 
-public class PolarisOauthRestAuthenticationInfo extends PolarisRestAuthenticationInfo {
+public class PolarisOAuthClientCredentialsParameters extends PolarisAuthenticationParameters {
 
   private static final Joiner COLON_JOINER = Joiner.on(":");
 
@@ -53,7 +52,7 @@ public class PolarisOauthRestAuthenticationInfo extends PolarisRestAuthenticatio
   @JsonProperty(value = "scopes")
   private final List<String> scopes;
 
-  public PolarisOauthRestAuthenticationInfo(
+  public PolarisOAuthClientCredentialsParameters(
       @JsonProperty(value = "restAuthenticationType", required = true) @Nonnull
           RestAuthenticationType restAuthenticationType,
       @JsonProperty(value = "tokenUri", required = false) @Nullable String tokenUri,
@@ -98,7 +97,7 @@ public class PolarisOauthRestAuthenticationInfo extends PolarisRestAuthenticatio
   }
 
   @Override
-  public @NotNull Map<String, String> asIcebergCatalogProperties() {
+  public @Nonnull Map<String, String> asIcebergCatalogProperties() {
     HashMap<String, String> properties = new HashMap<>();
     if (getTokenUri() != null) {
       properties.put(OAuth2Properties.OAUTH2_SERVER_URI, getTokenUri());
@@ -109,10 +108,10 @@ public class PolarisOauthRestAuthenticationInfo extends PolarisRestAuthenticatio
   }
 
   @Override
-  public RestAuthenticationInfo asRestAuthenticationInfoModel() {
+  public AuthenticationParameters asAuthenticationParametersModel() {
     // TODO: redact secrets from the model
-    return OauthRestAuthenticationInfo.builder()
-        .setRestAuthenticationType(RestAuthenticationInfo.RestAuthenticationTypeEnum.OAUTH)
+    return OAuthClientCredentialsParameters.builder()
+        .setRestAuthenticationType(AuthenticationParameters.RestAuthenticationTypeEnum.OAUTH)
         .setTokenUri(getTokenUri())
         .setClientId(getClientId())
         .setClientSecret(getClientSecret())

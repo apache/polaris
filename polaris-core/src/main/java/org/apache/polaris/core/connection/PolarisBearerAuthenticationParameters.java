@@ -23,16 +23,15 @@ import com.google.common.base.MoreObjects;
 import jakarta.annotation.Nonnull;
 import java.util.Map;
 import org.apache.iceberg.rest.auth.OAuth2Properties;
-import org.apache.polaris.core.admin.model.BearerRestAuthenticationInfo;
-import org.apache.polaris.core.admin.model.RestAuthenticationInfo;
-import org.jetbrains.annotations.NotNull;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 
-public class PolarisBearerRestAuthenticationInfo extends PolarisRestAuthenticationInfo {
+public class PolarisBearerAuthenticationParameters extends PolarisAuthenticationParameters {
 
   @JsonProperty(value = "bearerToken")
   private final String bearerToken;
 
-  public PolarisBearerRestAuthenticationInfo(
+  public PolarisBearerAuthenticationParameters(
       @JsonProperty(value = "restAuthenticationType", required = true) @Nonnull
           RestAuthenticationType restAuthenticationType,
       @JsonProperty(value = "bearerToken", required = true) @Nonnull String bearerToken) {
@@ -45,15 +44,15 @@ public class PolarisBearerRestAuthenticationInfo extends PolarisRestAuthenticati
   }
 
   @Override
-  public @NotNull Map<String, String> asIcebergCatalogProperties() {
+  public @Nonnull Map<String, String> asIcebergCatalogProperties() {
     return Map.of(OAuth2Properties.TOKEN, getBearerToken());
   }
 
   @Override
-  public RestAuthenticationInfo asRestAuthenticationInfoModel() {
+  public AuthenticationParameters asAuthenticationParametersModel() {
     // TODO: redact secrets from the model
-    return BearerRestAuthenticationInfo.builder()
-        .setRestAuthenticationType(RestAuthenticationInfo.RestAuthenticationTypeEnum.BEARER)
+    return BearerAuthenticationParameters.builder()
+        .setRestAuthenticationType(AuthenticationParameters.RestAuthenticationTypeEnum.BEARER)
         .setBearerToken(getBearerToken())
         .build();
   }

@@ -35,16 +35,18 @@ import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
+import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.ExternalCatalog;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
+import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.connection.ConnectionType;
 import org.apache.polaris.core.connection.IcebergRestConnectionConfigurationInfo;
+import org.apache.polaris.core.connection.PolarisAuthenticationParameters;
 import org.apache.polaris.core.connection.PolarisConnectionConfigurationInfo;
-import org.apache.polaris.core.connection.PolarisRestAuthenticationInfo;
 import org.apache.polaris.core.storage.FileStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.aws.AwsStorageConfigurationInfo;
@@ -71,7 +73,7 @@ public class CatalogEntity extends PolarisEntity {
       "replace-new-location-prefix-with-catalog-default";
 
   // TODO: Refactor all these into ConnectionConfigurationInfo
-  public static final String CONNECTION_REMOTE_URI_KEY = "connection.remoteUri";
+  public static final String CONNECTION_REMOTE_URI_KEY = "connection.uri";
   public static final String CONNECTION_CLIENT_ID_KEY = "connection.clientId";
   public static final String CONNECTION_CLIENT_SECRET_KEY = "connection.clientSecret";
   public static final String CONNECTION_CATALOG_NAME_KEY = "connection.catalogName";
@@ -230,7 +232,7 @@ public class CatalogEntity extends PolarisEntity {
     return null;
   }
 
-  public String getConnectionRemoteUri() {
+  public String getConnectionUri() {
     // TODO: Refactor this to use new ConnectionConfigurationInfo
     return getPropertiesAsMap().get(CONNECTION_REMOTE_URI_KEY);
   }
@@ -363,15 +365,15 @@ public class CatalogEntity extends PolarisEntity {
           case ICEBERG_REST:
             IcebergRestConnectionConfigInfo icebergRestConfigModel =
                 (IcebergRestConnectionConfigInfo) connectionConfigurationModel;
-            PolarisRestAuthenticationInfo restAuthenticationInfo =
-                PolarisRestAuthenticationInfo.fromRestAuthenticationInfoModel(
+            PolarisAuthenticationParameters restAuthenticationParameters =
+                PolarisAuthenticationParameters.fromAuthenticationParametersModel(
                     icebergRestConfigModel.getRestAuthentication());
             config =
                 new IcebergRestConnectionConfigurationInfo(
                     ConnectionType.ICEBERG_REST,
-                    icebergRestConfigModel.getRemoteUri(),
+                    icebergRestConfigModel.getUri(),
                     icebergRestConfigModel.getRemoteCatalogName(),
-                    restAuthenticationInfo);
+                    restAuthenticationParameters);
             break;
           default:
             throw new IllegalStateException(

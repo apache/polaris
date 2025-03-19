@@ -47,21 +47,21 @@ public abstract class PolarisConnectionConfigurationInfo
   private final ConnectionType connectionType;
 
   // The URI of the remote catalog
-  private final String remoteUri;
+  private final String uri;
 
   public PolarisConnectionConfigurationInfo(
       @JsonProperty(value = "connectionType", required = true) @Nonnull
           ConnectionType connectionType,
-      @JsonProperty(value = "remoteUri", required = true) @Nonnull String remoteUri) {
-    this(connectionType, remoteUri, true);
+      @JsonProperty(value = "uri", required = true) @Nonnull String uri) {
+    this(connectionType, uri, true);
   }
 
   protected PolarisConnectionConfigurationInfo(
-      ConnectionType connectionType, String remoteUri, boolean validateRemoteUri) {
+      ConnectionType connectionType, String uri, boolean validateUri) {
     this.connectionType = connectionType;
-    this.remoteUri = remoteUri;
-    if (validateRemoteUri) {
-      validateRemoteUri(remoteUri);
+    this.uri = uri;
+    if (validateUri) {
+      validateUri(uri);
     }
   }
 
@@ -69,8 +69,8 @@ public abstract class PolarisConnectionConfigurationInfo
     return connectionType;
   }
 
-  public String getRemoteUri() {
-    return remoteUri;
+  public String getUri() {
+    return uri;
   }
 
   private static final ObjectMapper DEFAULT_MAPPER;
@@ -101,12 +101,12 @@ public abstract class PolarisConnectionConfigurationInfo
   }
 
   /** Validates the remote URI. */
-  protected void validateRemoteUri(String remoteUri) {
+  protected void validateUri(String uri) {
     try {
-      URI uri = URI.create(remoteUri);
-      URL url = uri.toURL();
+      URI uriObj = URI.create(uri);
+      URL url = uriObj.toURL();
     } catch (IllegalArgumentException | MalformedURLException e) {
-      throw new IllegalArgumentException("Invalid remote URI: " + remoteUri, e);
+      throw new IllegalArgumentException("Invalid remote URI: " + uri, e);
     }
   }
 

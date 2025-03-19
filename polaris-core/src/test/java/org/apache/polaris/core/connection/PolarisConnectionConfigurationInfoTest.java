@@ -31,12 +31,12 @@ public class PolarisConnectionConfigurationInfoTest {
   ObjectMapper objectMapper = new ObjectMapper();
 
   @Test
-  void testOauthRestAuthenticationInfo() throws JsonProcessingException {
+  void testOAuthClientCredentialsParameters() throws JsonProcessingException {
     String json =
         ""
             + "{"
             + "  \"connectionType\": \"ICEBERG_REST\","
-            + "  \"remoteUri\": \"https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog\","
+            + "  \"uri\": \"https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog\","
             + "  \"remoteCatalogName\": \"my-catalog\","
             + "  \"restAuthentication\": {"
             + "    \"restAuthenticationType\": \"OAUTH\","
@@ -56,12 +56,12 @@ public class PolarisConnectionConfigurationInfoTest {
   }
 
   @Test
-  void testBearerRestAuthenticationInfo() throws JsonProcessingException {
+  void testBearerAuthenticationParameters() throws JsonProcessingException {
     String json =
         ""
             + "{"
             + "  \"connectionType\": \"ICEBERG_REST\","
-            + "  \"remoteUri\": \"https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog\","
+            + "  \"uri\": \"https://myorg-my_account.snowflakecomputing.com/polaris/api/catalog\","
             + "  \"remoteCatalogName\": \"my-catalog\","
             + "  \"restAuthentication\": {"
             + "    \"restAuthenticationType\": \"BEARER\","

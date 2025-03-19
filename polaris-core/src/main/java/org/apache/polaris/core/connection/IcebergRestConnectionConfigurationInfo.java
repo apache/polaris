@@ -27,24 +27,23 @@ import java.util.Map;
 import org.apache.iceberg.CatalogProperties;
 import org.apache.polaris.core.admin.model.ConnectionConfigInfo;
 import org.apache.polaris.core.admin.model.IcebergRestConnectionConfigInfo;
-import org.jetbrains.annotations.NotNull;
 
 public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionConfigurationInfo
     implements IcebergCatalogPropertiesProvider {
 
   private final String remoteCatalogName;
 
-  private final PolarisRestAuthenticationInfo restAuthentication;
+  private final PolarisAuthenticationParameters restAuthentication;
 
   public IcebergRestConnectionConfigurationInfo(
       @JsonProperty(value = "connectionType", required = true) @Nonnull
           ConnectionType connectionType,
-      @JsonProperty(value = "remoteUri", required = true) @Nonnull String remoteUri,
+      @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "remoteCatalogName", required = false) @Nullable
           String remoteCatalogName,
       @JsonProperty(value = "restAuthentication", required = false) @Nonnull
-          PolarisRestAuthenticationInfo restAuthentication) {
-    super(connectionType, remoteUri);
+          PolarisAuthenticationParameters restAuthentication) {
+    super(connectionType, uri);
     this.remoteCatalogName = remoteCatalogName;
     this.restAuthentication = restAuthentication;
   }
@@ -53,14 +52,14 @@ public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionCon
     return remoteCatalogName;
   }
 
-  public PolarisRestAuthenticationInfo getRestAuthentication() {
+  public PolarisAuthenticationParameters getRestAuthentication() {
     return restAuthentication;
   }
 
   @Override
-  public @NotNull Map<String, String> asIcebergCatalogProperties() {
+  public @Nonnull Map<String, String> asIcebergCatalogProperties() {
     HashMap<String, String> properties = new HashMap<>();
-    properties.put(CatalogProperties.URI, getRemoteUri());
+    properties.put(CatalogProperties.URI, getUri());
     if (getRemoteCatalogName() != null) {
       properties.put(CatalogProperties.WAREHOUSE_LOCATION, getRemoteCatalogName());
     }
@@ -72,9 +71,9 @@ public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionCon
   public ConnectionConfigInfo asConnectionConfigInfoModel() {
     return IcebergRestConnectionConfigInfo.builder()
         .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
-        .setRemoteUri(getRemoteUri())
+        .setUri(getUri())
         .setRemoteCatalogName(getRemoteCatalogName())
-        .setRestAuthentication(restAuthentication.asRestAuthenticationInfoModel())
+        .setRestAuthentication(restAuthentication.asAuthenticationParametersModel())
         .build();
   }
 
@@ -83,7 +82,7 @@ public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionCon
     return MoreObjects.toStringHelper(this)
         .add("connectionType", getConnectionType())
         .add("connectionType", getConnectionType().name())
-        .add("remoteUri", getRemoteUri())
+        .add("uri", getUri())
         .add("remoteCatalogName", getRemoteCatalogName())
         .add("restAuthentication", getRestAuthentication().toString())
         .toString();

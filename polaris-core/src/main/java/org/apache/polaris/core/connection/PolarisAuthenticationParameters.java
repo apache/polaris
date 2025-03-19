@@ -23,22 +23,21 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.annotation.Nonnull;
 import java.util.Map;
-import org.apache.polaris.core.admin.model.BearerRestAuthenticationInfo;
-import org.apache.polaris.core.admin.model.OauthRestAuthenticationInfo;
-import org.apache.polaris.core.admin.model.RestAuthenticationInfo;
-import org.jetbrains.annotations.NotNull;
+import org.apache.polaris.core.admin.model.AuthenticationParameters;
+import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
+import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "restAuthenticationType", visible = true)
 @JsonSubTypes({
-  @JsonSubTypes.Type(value = PolarisOauthRestAuthenticationInfo.class, name = "OAUTH"),
-  @JsonSubTypes.Type(value = PolarisBearerRestAuthenticationInfo.class, name = "BEARER"),
+  @JsonSubTypes.Type(value = PolarisOAuthClientCredentialsParameters.class, name = "OAUTH"),
+  @JsonSubTypes.Type(value = PolarisBearerAuthenticationParameters.class, name = "BEARER"),
 })
-public abstract class PolarisRestAuthenticationInfo implements IcebergCatalogPropertiesProvider {
+public abstract class PolarisAuthenticationParameters implements IcebergCatalogPropertiesProvider {
 
   @JsonProperty(value = "restAuthenticationType")
   private final RestAuthenticationType restAuthenticationType;
 
-  public PolarisRestAuthenticationInfo(
+  public PolarisAuthenticationParameters(
       @JsonProperty(value = "restAuthenticationType", required = true) @Nonnull
           RestAuthenticationType restAuthenticationType) {
     this.restAuthenticationType = restAuthenticationType;
@@ -49,19 +48,19 @@ public abstract class PolarisRestAuthenticationInfo implements IcebergCatalogPro
   }
 
   @Override
-  public abstract @NotNull Map<String, String> asIcebergCatalogProperties();
+  public abstract @Nonnull Map<String, String> asIcebergCatalogProperties();
 
-  public abstract RestAuthenticationInfo asRestAuthenticationInfoModel();
+  public abstract AuthenticationParameters asAuthenticationParametersModel();
 
-  public static PolarisRestAuthenticationInfo fromRestAuthenticationInfoModel(
-      RestAuthenticationInfo restAuthenticationInfo) {
-    PolarisRestAuthenticationInfo config = null;
-    switch (restAuthenticationInfo.getRestAuthenticationType()) {
+  public static PolarisAuthenticationParameters fromAuthenticationParametersModel(
+      AuthenticationParameters restAuthenticationParameters) {
+    PolarisAuthenticationParameters config = null;
+    switch (restAuthenticationParameters.getRestAuthenticationType()) {
       case OAUTH:
-        OauthRestAuthenticationInfo oauthRestAuthenticationModel =
-            (OauthRestAuthenticationInfo) restAuthenticationInfo;
+        OAuthClientCredentialsParameters oauthRestAuthenticationModel =
+            (OAuthClientCredentialsParameters) restAuthenticationParameters;
         config =
-            new PolarisOauthRestAuthenticationInfo(
+            new PolarisOAuthClientCredentialsParameters(
                 RestAuthenticationType.OAUTH,
                 oauthRestAuthenticationModel.getTokenUri(),
                 oauthRestAuthenticationModel.getClientId(),
@@ -69,16 +68,16 @@ public abstract class PolarisRestAuthenticationInfo implements IcebergCatalogPro
                 oauthRestAuthenticationModel.getScopes());
         break;
       case BEARER:
-        BearerRestAuthenticationInfo bearerRestAuthenticationModel =
-            (BearerRestAuthenticationInfo) restAuthenticationInfo;
+        BearerAuthenticationParameters bearerRestAuthenticationModel =
+            (BearerAuthenticationParameters) restAuthenticationParameters;
         config =
-            new PolarisBearerRestAuthenticationInfo(
+            new PolarisBearerAuthenticationParameters(
                 RestAuthenticationType.BEARER, bearerRestAuthenticationModel.getBearerToken());
         break;
       default:
         throw new IllegalStateException(
             "Unsupported authentication type: "
-                + restAuthenticationInfo.getRestAuthenticationType());
+                + restAuthenticationParameters.getRestAuthenticationType());
     }
     return config;
   }
