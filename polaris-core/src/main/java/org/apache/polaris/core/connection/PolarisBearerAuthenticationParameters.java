@@ -61,7 +61,6 @@ public class PolarisBearerAuthenticationParameters extends PolarisAuthentication
   public String toString() {
     return MoreObjects.toStringHelper(this)
         .add("authenticationType", getRestAuthenticationType())
-        .add("bearerToken", getBearerToken())
         .toString();
   }
 }

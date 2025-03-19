@@ -114,7 +114,6 @@ public class PolarisOAuthClientCredentialsParameters extends PolarisAuthenticati
         .setRestAuthenticationType(AuthenticationParameters.RestAuthenticationTypeEnum.OAUTH)
         .setTokenUri(getTokenUri())
         .setClientId(getClientId())
-        .setClientSecret(getClientSecret())
         .setScopes(getScopes())
         .build();
   }

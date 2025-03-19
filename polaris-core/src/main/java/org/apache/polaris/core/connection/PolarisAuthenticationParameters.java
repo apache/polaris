@@ -22,7 +22,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.annotation.Nonnull;
-import java.util.Map;
 import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
@@ -46,9 +45,6 @@ public abstract class PolarisAuthenticationParameters implements IcebergCatalogP
   public @Nonnull RestAuthenticationType getRestAuthenticationType() {
     return restAuthenticationType;
   }
-
-  @Override
-  public abstract @Nonnull Map<String, String> asIcebergCatalogProperties();
 
   public abstract AuthenticationParameters asAuthenticationParametersModel();
 
