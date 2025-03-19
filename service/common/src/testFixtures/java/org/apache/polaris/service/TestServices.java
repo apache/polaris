@@ -54,6 +54,8 @@ import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.events.PolarisEventListener;
+import org.apache.polaris.service.events.TestPolarisEventListener;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
@@ -71,7 +73,8 @@ public record TestServices(
     RealmContext realmContext,
     SecurityContext securityContext,
     FileIOFactory fileIOFactory,
-    TaskExecutor taskExecutor) {
+    TaskExecutor taskExecutor,
+    PolarisEventListener polarisEventListener) {
 
   private static final RealmContext TEST_REALM = () -> "test-realm";
   private static final String GCP_ACCESS_TOKEN = "abc";
@@ -166,9 +169,14 @@ public record TestServices(
 
       TaskExecutor taskExecutor = Mockito.mock(TaskExecutor.class);
 
+      PolarisEventListener polarisEventListener = new TestPolarisEventListener();
       CallContextCatalogFactory callContextFactory =
           new PolarisCallContextCatalogFactory(
-              realmEntityManagerFactory, metaStoreManagerFactory, taskExecutor, fileIOFactory);
+              realmEntityManagerFactory,
+              metaStoreManagerFactory,
+              taskExecutor,
+              fileIOFactory,
+              polarisEventListener);
 
       IcebergRestCatalogApiService service =
           new IcebergCatalogAdapter(
@@ -235,7 +243,8 @@ public record TestServices(
           realmContext,
           securityContext,
           fileIOFactory,
-          taskExecutor);
+          taskExecutor,
+          polarisEventListener);
     }
   }
 }

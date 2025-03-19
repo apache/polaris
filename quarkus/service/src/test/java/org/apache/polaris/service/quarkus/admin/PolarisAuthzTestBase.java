@@ -82,6 +82,7 @@ import org.apache.polaris.service.config.DefaultConfigurationStore;
 import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.context.PolarisCallContextCatalogFactory;
+import org.apache.polaris.service.events.PolarisEventListener;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.assertj.core.api.Assertions;
@@ -173,6 +174,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected PolarisDiagnostics diagServices;
   @Inject protected Clock clock;
   @Inject protected FileIOFactory fileIOFactory;
+  @Inject protected PolarisEventListener polarisEventListener;
 
   protected BasePolarisCatalog baseCatalog;
   protected PolarisAdminService adminService;
@@ -437,7 +439,8 @@ public abstract class PolarisAuthzTestBase {
             passthroughView,
             securityContext,
             Mockito.mock(),
-            fileIOFactory);
+            fileIOFactory,
+            polarisEventListener);
     this.baseCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
@@ -450,7 +453,7 @@ public abstract class PolarisAuthzTestBase {
       extends PolarisCallContextCatalogFactory {
 
     public TestPolarisCallContextCatalogFactory() {
-      super(null, null, null, null);
+      super(null, null, null, null, null);
     }
 
     @Inject
@@ -458,8 +461,14 @@ public abstract class PolarisAuthzTestBase {
         RealmEntityManagerFactory entityManagerFactory,
         MetaStoreManagerFactory metaStoreManagerFactory,
         TaskExecutor taskExecutor,
-        FileIOFactory fileIOFactory) {
-      super(entityManagerFactory, metaStoreManagerFactory, taskExecutor, fileIOFactory);
+        FileIOFactory fileIOFactory,
+        PolarisEventListener polarisEventListener) {
+      super(
+          entityManagerFactory,
+          metaStoreManagerFactory,
+          taskExecutor,
+          fileIOFactory,
+          polarisEventListener);
     }
 
     @Override

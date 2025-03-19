@@ -1704,7 +1704,8 @@ public class PolarisCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase 
             managerFactory,
             Mockito.mock(),
             new DefaultFileIOFactory(
-                realmEntityManagerFactory, managerFactory, new PolarisConfigurationStore() {})) {
+                realmEntityManagerFactory, managerFactory, new PolarisConfigurationStore() {}),
+            polarisEventListener) {
           @Override
           public Catalog createCallContextCatalog(
               CallContext context,

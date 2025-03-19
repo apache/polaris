@@ -244,7 +244,8 @@ public class FileIOFactoryTest {
             passthroughView,
             services.securityContext(),
             services.taskExecutor(),
-            services.fileIOFactory());
+            services.fileIOFactory(),
+            services.polarisEventListener());
     polarisCatalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
