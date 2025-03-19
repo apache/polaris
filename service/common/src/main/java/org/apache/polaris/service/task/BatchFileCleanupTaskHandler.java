@@ -78,7 +78,8 @@ public class BatchFileCleanupTaskHandler extends FileCleanupTaskHandler {
       }
 
       CompletableFuture<Void> deleteFutures =
-          tryDelete(tableId, authorizedFileIO, validFiles, cleanupTask.type().getValue(), true, null, 1);
+          tryDelete(
+              tableId, authorizedFileIO, validFiles, cleanupTask.type().getValue(), true, null, 1);
 
       try {
         deleteFutures.join();

@@ -193,7 +193,9 @@ public class BatchFileCleanupTaskHandlerTest {
               .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
               .withData(
                   new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
-                      tableIdentifier, cleanupFiles, BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
+                      tableIdentifier,
+                      cleanupFiles,
+                      BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
               .setName(UUID.randomUUID().toString())
               .build();
 
@@ -244,7 +246,9 @@ public class BatchFileCleanupTaskHandlerTest {
               .withTaskType(AsyncTaskType.BATCH_FILE_CLEANUP)
               .withData(
                   new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
-                      tableIdentifier, List.of(statisticsFile.path()), BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
+                      tableIdentifier,
+                      List.of(statisticsFile.path()),
+                      BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
               .setName(UUID.randomUUID().toString())
               .build();
 
@@ -316,7 +320,7 @@ public class BatchFileCleanupTaskHandlerTest {
                   new BatchFileCleanupTaskHandler.BatchFileCleanupTask(
                       tableIdentifier,
                       List.of(statisticsFile.path()),
-                          BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
+                      BatchFileCleanupTaskHandler.BatchFileType.TABLE_METADATA))
               .setName(UUID.randomUUID().toString())
               .build();
 
