@@ -54,19 +54,15 @@ fun polarisProject(name: String, directory: File) {
 val projects = Properties()
 
 loadProperties(file("gradle/projects.main.properties")).forEach { name, directory ->
-  if (name == "polaris-spark-3.5") {
-    // get the configured scala version
-    val scalaVersionString =
-      if (System.getProperty("scalaVersion") != null) {
-        System.getProperty("scalaVersion")
-      } else {
-        System.getProperty("defaultScalaVersion")
-      }
-
-    // if an empty scalaVersionString is provided, build for polaris-spark-3.5 will
-    // be skipped
-    if (scalaVersionString != null && scalaVersionString.isNotEmpty()) {
-      polarisProject("polaris-spark-3.5_${scalaVersionString}", file(directory as String))
+  if (name == "polaris-spark") {
+    // register all supported polaris-spark projects with different scala versions.
+    val sparkVersion = "3.5"
+    val sparkScalaVersions = loadProperties(file("integrations/spark-scala.properties"))
+    val spark35ScalaVersions = sparkScalaVersions["sparkVersion-${sparkVersion}-scalaVersions"].toString().split(",").map {
+      it.trim()
+    }
+    for (scalaVersion in spark35ScalaVersions) {
+      polarisProject("polaris-spark-${sparkVersion}_${scalaVersion}", file("${directory}/v${sparkVersion}"))
     }
   } else {
     polarisProject(name as String, file(directory as String))
