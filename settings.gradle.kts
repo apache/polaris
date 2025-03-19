@@ -57,7 +57,7 @@ loadProperties(file("gradle/projects.main.properties")).forEach { name, director
   if (name == "polaris-spark") {
     // register all supported polaris-spark projects with different scala versions.
     val sparkVersion = "3.5"
-    val sparkScalaVersions = loadProperties(file("integrations/spark-scala.properties"))
+    val sparkScalaVersions = loadProperties(file("plugins/spark/spark-scala.properties"))
     val spark35ScalaVersions = sparkScalaVersions["sparkVersion-${sparkVersion}-scalaVersions"].toString().split(",").map {
       it.trim()
     }
