@@ -100,6 +100,19 @@ A message will show the location of the Gatling report:
 Reports generated in: ./benchmarks/build/reports/gatling/<simulation-name>/index.html
 ```
 
+### Example Polaris server startup
+
+For repeated testing and benchmarking purposes it's convenient to have fixed client-ID + client-secret combinations. **The following example is ONLY for testing and benchmarking against an airgapped Polaris instance**
+
+```bash
+# Start Polaris with the fixed client-ID/secret admin/admin
+# DO NEVER EVER USE THE FOLLOWING FOR ANY NON-AIRGAPPED POLARIS INSTANCE !!
+./gradlew :polaris-quarkus-server:quarkusBuild &&  java \
+  -Dpolaris.bootstrap.credentials=POLARIS,admin,admin \
+  -Djava.security.manager=allow \
+  -jar quarkus/server/build/quarkus-app/quarkus-run.jar
+
+With the above you can run the benchmarks with the environment variables `CLIENT_ID=admin` and `CLIENT_SECRET=admin` - meant only for convenience in a fully airgapped system.
 # Test Dataset
 
 The benchmarks use synthetic procedural datasets that are generated deterministically at runtime. This means that given the same input parameters, the exact same dataset structure will always be generated. This approach allows generating large volumes of test data without having to store it, while ensuring reproducible benchmark results across different runs.
