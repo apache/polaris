@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.catalog;
+package org.apache.polaris.service.catalog.iceberg;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
@@ -82,7 +82,7 @@ import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.TableLikeEntity;
+import org.apache.polaris.core.entity.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -93,6 +93,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.response.ETaggedResponse;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.http.IfNoneMatch;
@@ -104,7 +105,7 @@ import org.slf4j.LoggerFactory;
  * Authorization-aware adapter between REST stubs and shared Iceberg SDK CatalogHandlers.
  *
  * <p>We must make authorization decisions based on entity resolution at this layer instead of the
- * underlying BasePolarisCatalog layer, because this REST-adjacent layer captures intent of
+ * underlying PolarisIcebergCatalog layer, because this REST-adjacent layer captures intent of
  * different REST calls that share underlying catalog calls (e.g. updateTable will call loadTable
  * under the hood), and some features of the REST API aren't expressed at all in the underlying
  * Catalog interfaces (e.g. credential-vending in createTable/loadTable).
@@ -115,8 +116,8 @@ import org.slf4j.LoggerFactory;
  * model objects used in this layer to still benefit from the shared implementation of
  * authorization-aware catalog protocols.
  */
-public class PolarisCatalogHandlerWrapper implements AutoCloseable {
-  private static final Logger LOGGER = LoggerFactory.getLogger(PolarisCatalogHandlerWrapper.class);
+public class IcebergCatalogHandlerWrapper implements AutoCloseable {
+  private static final Logger LOGGER = LoggerFactory.getLogger(IcebergCatalogHandlerWrapper.class);
 
   private final CallContext callContext;
   private final PolarisEntityManager entityManager;
@@ -136,7 +137,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
   private SupportsNamespaces namespaceCatalog = null;
   private ViewCatalog viewCatalog = null;
 
-  public PolarisCatalogHandlerWrapper(
+  public IcebergCatalogHandlerWrapper(
       CallContext callContext,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
@@ -221,7 +222,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
         resolutionManifest.addPassthroughPath(
             new ResolverPath(
                 PolarisCatalogHelpers.tableIdentifierToList(id),
-                PolarisEntityType.TABLE_LIKE,
+                PolarisEntityType.ICEBERG_TABLE_LIKE,
                 true /* optional */),
             id);
       }
@@ -293,7 +294,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(identifier),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             true /* optional */),
         identifier);
     resolutionManifest.resolveAll();
@@ -320,12 +321,13 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     resolutionManifest.addPassthroughPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(identifier),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             true /* optional */),
         identifier);
     resolutionManifest.resolveAll();
     PolarisResolvedPathWrapper target =
-        resolutionManifest.getResolvedPath(identifier, subType, true);
+        resolutionManifest.getResolvedPath(
+            identifier, PolarisEntityType.ICEBERG_TABLE_LIKE, subType, true);
     if (target == null) {
       if (subType == PolarisEntitySubType.TABLE) {
         throw new NoSuchTableException("Table does not exist: %s", identifier);
@@ -354,7 +356,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
             resolutionManifest.addPassthroughPath(
                 new ResolverPath(
                     PolarisCatalogHelpers.tableIdentifierToList(identifier),
-                    PolarisEntityType.TABLE_LIKE),
+                    PolarisEntityType.ICEBERG_TABLE_LIKE),
                 identifier));
 
     ResolverStatus status = resolutionManifest.resolveAll();
@@ -377,7 +379,8 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
             .map(
                 identifier ->
                     Optional.ofNullable(
-                            resolutionManifest.getResolvedPath(identifier, subType, true))
+                            resolutionManifest.getResolvedPath(
+                                identifier, PolarisEntityType.ICEBERG_TABLE_LIKE, subType, true))
                         .orElseThrow(
                             () ->
                                 subType == PolarisEntitySubType.TABLE
@@ -406,7 +409,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     // Add src, dstParent, and dst(optional)
     resolutionManifest.addPath(
         new ResolverPath(
-            PolarisCatalogHelpers.tableIdentifierToList(src), PolarisEntityType.TABLE_LIKE),
+            PolarisCatalogHelpers.tableIdentifierToList(src), PolarisEntityType.ICEBERG_TABLE_LIKE),
         src);
     resolutionManifest.addPath(
         new ResolverPath(Arrays.asList(dst.namespace().levels()), PolarisEntityType.NAMESPACE),
@@ -414,14 +417,16 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     resolutionManifest.addPath(
         new ResolverPath(
             PolarisCatalogHelpers.tableIdentifierToList(dst),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             true /* optional */),
         dst);
     ResolverStatus status = resolutionManifest.resolveAll();
     if (status.getStatus() == ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED
         && status.getFailedToResolvePath().getLastEntityType() == PolarisEntityType.NAMESPACE) {
       throw new NoSuchNamespaceException("Namespace does not exist: %s", dst.namespace());
-    } else if (resolutionManifest.getResolvedPath(src, subType) == null) {
+    } else if (resolutionManifest.getResolvedPath(
+            src, PolarisEntityType.ICEBERG_TABLE_LIKE, subType)
+        == null) {
       if (subType == PolarisEntitySubType.TABLE) {
         throw new NoSuchTableException("Table does not exist: %s", src);
       } else {
@@ -443,7 +448,9 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
       throw new AlreadyExistsException("Cannot rename %s to %s. View already exists", src, dst);
     }
 
-    PolarisResolvedPathWrapper target = resolutionManifest.getResolvedPath(src, subType, true);
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getResolvedPath(
+            src, PolarisEntityType.ICEBERG_TABLE_LIKE, subType, true);
     PolarisResolvedPathWrapper secondary =
         resolutionManifest.getResolvedPath(dst.namespace(), true);
     authorizer.authorizeOrThrow(
@@ -473,7 +480,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     }
     authorizeCreateNamespaceUnderNamespaceOperationOrThrow(op, namespace);
 
-    if (namespaceCatalog instanceof BasePolarisCatalog) {
+    if (namespaceCatalog instanceof IcebergCatalog) {
       // Note: The CatalogHandlers' default implementation will non-atomically create the
       // namespace and then fetch its properties using loadNamespaceMetadata for the response.
       // However, the latest namespace metadata technically isn't the same authorized instance,
@@ -615,7 +622,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
         LoadTableResponse.Builder responseBuilder = LoadTableResponse.builder()
                 .withTableMetadata(baseTable.operations().current());
 
-        if (baseTable.operations() instanceof BasePolarisCatalog.BasePolarisTableOperations polarisOps) {
+        if (baseTable.operations() instanceof IcebergCatalog.BasePolarisTableOperations polarisOps) {
           return new ETaggedResponse<>(
                   responseBuilder.build(),
                   generateETagValueForTable(polarisOps.currentTableEntity())
@@ -694,7 +701,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                           PolarisStorageActions.LIST)));
             }
 
-            if (baseTable.operations() instanceof BasePolarisCatalog.BasePolarisTableOperations polarisOps) {
+            if (baseTable.operations() instanceof IcebergCatalog.BasePolarisTableOperations polarisOps) {
               return new ETaggedResponse<>(
                       responseBuilder.build(),
                       generateETagValueForTable(polarisOps.currentTableEntity())
@@ -727,9 +734,8 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     if (request.location() != null) {
       // Even if the request provides a location, run it through the catalog's TableBuilder
       // to inherit any override behaviors if applicable.
-      if (baseCatalog instanceof BasePolarisCatalog) {
-        location =
-            ((BasePolarisCatalog) baseCatalog).transformTableLikeLocation(request.location());
+      if (baseCatalog instanceof IcebergCatalog) {
+        location = ((IcebergCatalog) baseCatalog).transformTableLikeLocation(request.location());
       } else {
         location = request.location();
       }
@@ -836,7 +842,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
         LoadTableResponse.Builder responseBuilder = LoadTableResponse.builder()
                 .withTableMetadata(baseTable.operations().current());
 
-        if (baseTable.operations() instanceof BasePolarisCatalog.BasePolarisTableOperations polarisOps) {
+        if (baseTable.operations() instanceof IcebergCatalog.BasePolarisTableOperations polarisOps) {
           return new ETaggedResponse<>(
                   responseBuilder.build(),
                   generateETagValueForTable(polarisOps.currentTableEntity())
@@ -854,7 +860,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.SEND_NOTIFICATIONS;
 
     // For now, just require the full set of privileges on the base Catalog entity, which we can
-    // also express just as the "root" Namespace for purposes of the BasePolarisCatalog being
+    // also express just as the "root" Namespace for purposes of the PolarisIcebergCatalog being
     // able to fetch Namespace.empty() as path key.
     List<TableIdentifier> extraPassthroughTableLikes = List.of(identifier);
     List<Namespace> extraPassthroughNamespaces = new ArrayList<>();
@@ -893,10 +899,10 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
    * @param tableIdentifier The identifier of the table
    * @return the Polaris table entity for the table
    */
-  private TableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
+  private IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper target = resolutionManifest.getPassthroughResolvedPath(tableIdentifier);
 
-    return TableLikeEntity.of(target.getRawLeafEntity());
+    return IcebergTableLikeEntity.of(target.getRawLeafEntity());
   }
 
   /**
@@ -904,7 +910,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
    * @param tableLikeEntity the table to generate the ETag for
    * @return the generated ETag
    */
-  private String generateETagValueForTable(TableLikeEntity tableLikeEntity) {
+  private String generateETagValueForTable(IcebergTableLikeEntity tableLikeEntity) {
     // always issue a weak ETag since we never do a byte by byte comparisomn
     return "W/\"" + tableLikeEntity.getId() + ":" + tableLikeEntity.getEntityVersion() + "\"";
   }
@@ -926,7 +932,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
       PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
       authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.TABLE, tableIdentifier);
 
-    TableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+    IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
     String tableEntityTag = generateETagValueForTable(tableEntity);
 
     if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableEntityTag)) {
@@ -940,7 +946,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
         LoadTableResponse.Builder responseBuilder =  LoadTableResponse.builder()
                 .withTableMetadata(baseTable.operations().current());
 
-        if (baseTable.operations() instanceof BasePolarisCatalog.BasePolarisTableOperations polarisOps) {
+        if (baseTable.operations() instanceof IcebergCatalog.BasePolarisTableOperations polarisOps) {
           return new ETaggedResponse<>(
                   responseBuilder.build(),
                   // do not use ETag from the previous fetch, may be out of date by the time we load the metadata
@@ -1014,7 +1020,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
           FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
     }
 
-    TableLikeEntity tableEntity = getTableEntity(tableIdentifier);
+    IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
     String tableETag = generateETagValueForTable(tableEntity);
 
     if (ifNoneMatch != null && ifNoneMatch.anyMatch(tableETag)) {
@@ -1042,7 +1048,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
                       tableIdentifier, tableMetadata, actionsRequested));
             }
 
-            if (baseTable.operations() instanceof BasePolarisCatalog.BasePolarisTableOperations polarisOps) {
+            if (baseTable.operations() instanceof IcebergCatalog.BasePolarisTableOperations polarisOps) {
               return new ETaggedResponse<>(
                       responseBuilder.build(),
                       generateETagValueForTable(polarisOps.currentTableEntity())
@@ -1068,11 +1074,11 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
         request.updates().stream()
             .map(
                 update -> {
-                  if (baseCatalog instanceof BasePolarisCatalog
+                  if (baseCatalog instanceof IcebergCatalog
                       && update instanceof MetadataUpdate.SetLocation) {
                     String requestedLocation = ((MetadataUpdate.SetLocation) update).location();
                     String filteredLocation =
-                        ((BasePolarisCatalog) baseCatalog)
+                        ((IcebergCatalog) baseCatalog)
                             .transformTableLikeLocation(requestedLocation);
                     return new MetadataUpdate.SetLocation(filteredLocation);
                   } else {
@@ -1191,7 +1197,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
       throw new BadRequestException("Cannot update table on external catalogs.");
     }
 
-    if (!(baseCatalog instanceof BasePolarisCatalog)) {
+    if (!(baseCatalog instanceof IcebergCatalog)) {
       throw new BadRequestException(
           "Unsupported operation: commitTransaction with baseCatalog type: %s",
           baseCatalog.getClass().getName());
@@ -1202,7 +1208,7 @@ public class PolarisCatalogHandlerWrapper implements AutoCloseable {
     // validations.
     TransactionWorkspaceMetaStoreManager transactionMetaStoreManager =
         new TransactionWorkspaceMetaStoreManager(metaStoreManager);
-    ((BasePolarisCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
+    ((IcebergCatalog) baseCatalog).setMetaStoreManager(transactionMetaStoreManager);
 
     commitTransactionRequest.tableChanges().stream()
         .forEach(
