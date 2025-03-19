@@ -114,9 +114,9 @@ public class PolarisObjectMapperUtil {
     return retProperties;
   }
 
-  static class TaskExecutionState {
-    final String executor;
-    final long lastAttemptStartTime;
+  public static class TaskExecutionState {
+    public final String executor;
+    public final long lastAttemptStartTime;
     final int attemptCount;
 
     TaskExecutionState(String executor, long lastAttemptStartTime, int attemptCount) {
@@ -146,7 +146,7 @@ public class PolarisObjectMapperUtil {
    * @param entity entity
    * @return TaskExecutionState
    */
-  static @Nullable TaskExecutionState parseTaskState(PolarisBaseEntity entity) {
+  public static @Nullable TaskExecutionState parseTaskState(PolarisBaseEntity entity) {
     JsonFactory jfactory = new JsonFactory();
     try (JsonParser jParser = jfactory.createParser(entity.getProperties())) {
       String executorId = null;

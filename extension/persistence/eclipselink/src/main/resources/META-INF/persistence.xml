@@ -28,7 +28,6 @@
     <class>org.apache.polaris.jpa.models.ModelEntity</class>
     <class>org.apache.polaris.jpa.models.ModelEntityActive</class>
     <class>org.apache.polaris.jpa.models.ModelEntityChangeTracking</class>
-    <class>org.apache.polaris.jpa.models.ModelEntityDropped</class>
     <class>org.apache.polaris.jpa.models.ModelGrantRecord</class>
     <class>org.apache.polaris.jpa.models.ModelPrincipalSecrets</class>
     <class>org.apache.polaris.jpa.models.ModelSequenceId</class>

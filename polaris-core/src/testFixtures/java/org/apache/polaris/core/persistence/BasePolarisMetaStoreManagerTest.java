@@ -37,9 +37,9 @@ import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityActiveRecord;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
@@ -122,7 +122,7 @@ public abstract class BasePolarisMetaStoreManagerTest {
           .extracting(PolarisEntity::toCore)
           .containsExactly(PolarisEntity.toCore(task1), PolarisEntity.toCore(task2));
 
-      List<PolarisEntityActiveRecord> listedEntities =
+      List<EntityNameLookupRecord> listedEntities =
           metaStoreManager
               .listEntities(
                   polarisTestMetaStoreManager.polarisCallContext,
@@ -134,14 +134,14 @@ public abstract class BasePolarisMetaStoreManagerTest {
           .isNotNull()
           .hasSize(2)
           .containsExactly(
-              new PolarisEntityActiveRecord(
+              new EntityNameLookupRecord(
                   task1.getCatalogId(),
                   task1.getId(),
                   task1.getParentId(),
                   task1.getName(),
                   task1.getTypeCode(),
                   task1.getSubTypeCode()),
-              new PolarisEntityActiveRecord(
+              new EntityNameLookupRecord(
                   task2.getCatalogId(),
                   task2.getId(),
                   task2.getParentId(),
@@ -375,7 +375,6 @@ public abstract class BasePolarisMetaStoreManagerTest {
     PolarisMetaStoreManager metaStoreManager = polarisTestMetaStoreManager.polarisMetaStoreManager;
     PolarisCallContext callCtx = polarisTestMetaStoreManager.polarisCallContext;
     List<Future<Set<String>>> futureList = new ArrayList<>();
-    List<Set<String>> responses;
     ExecutorService executorService = Executors.newCachedThreadPool();
     try {
       for (int i = 0; i < 3; i++) {
@@ -399,21 +398,21 @@ public abstract class BasePolarisMetaStoreManagerTest {
                   return taskNames;
                 }));
       }
-      responses =
-          futureList.stream()
-              .map(
-                  f -> {
-                    try {
-                      return f.get();
-                    } catch (Exception e) {
-                      throw new RuntimeException(e);
-                    }
-                  })
-              .collect(Collectors.toList());
     } finally {
       executorService.shutdown();
-      Assertions.assertThat(executorService.awaitTermination(10, TimeUnit.MINUTES)).isTrue();
+      Assertions.assertThat(executorService.awaitTermination(30, TimeUnit.SECONDS)).isTrue();
     }
+    List<Set<String>> responses =
+        futureList.stream()
+            .map(
+                f -> {
+                  try {
+                    return f.get(30, TimeUnit.SECONDS);
+                  } catch (Exception e) {
+                    throw new RuntimeException(e);
+                  }
+                })
+            .collect(Collectors.toList());
     Assertions.assertThat(responses)
         .hasSize(3)
         .satisfies(l -> Assertions.assertThat(l.stream().flatMap(Set::stream)).hasSize(100));

@@ -42,9 +42,10 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.auth.TokenUtils;
 import org.junit.jupiter.api.TestInfo;
@@ -106,7 +107,7 @@ public class PolarisIntegrationTestFixture {
         helper.realmContextResolver.resolveRealmContext(
             baseUri.toString(), "GET", "/", Map.of(REALM_PROPERTY_KEY, realm));
 
-    PolarisMetaStoreSession metaStoreSession =
+    BasePersistence metaStoreSession =
         helper.metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     PolarisCallContext polarisContext =
         new PolarisCallContext(
@@ -115,7 +116,7 @@ public class PolarisIntegrationTestFixture {
       CallContext.setCurrentContext(ctx);
       PolarisMetaStoreManager metaStoreManager =
           helper.metaStoreManagerFactory.getOrCreateMetaStoreManager(ctx.getRealmContext());
-      PolarisMetaStoreManager.EntityResult principal =
+      EntityResult principal =
           metaStoreManager.readEntityByName(
               ctx.getPolarisCallContext(),
               null,
@@ -226,8 +227,7 @@ public class PolarisIntegrationTestFixture {
     }
   }
 
-  private Map<String, String> readInternalProperties(
-      PolarisMetaStoreManager.EntityResult principal) {
+  private Map<String, String> readInternalProperties(EntityResult principal) {
     try {
       return helper.objectMapper.readValue(
           principal.getEntity().getInternalProperties(), new TypeReference<>() {});

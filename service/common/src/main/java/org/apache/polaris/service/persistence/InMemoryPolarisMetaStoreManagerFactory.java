@@ -29,21 +29,21 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.polaris.core.PolarisDiagnostics;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.PolarisMetaStoreSession;
-import org.apache.polaris.core.persistence.PolarisTreeMapMetaStoreSessionImpl;
-import org.apache.polaris.core.persistence.PolarisTreeMapStore;
 import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
+import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 
 @ApplicationScoped
 @Identifier("in-memory")
 public class InMemoryPolarisMetaStoreManagerFactory
-    extends LocalPolarisMetaStoreManagerFactory<PolarisTreeMapStore> {
+    extends LocalPolarisMetaStoreManagerFactory<TreeMapMetaStore> {
 
   private final PolarisStorageIntegrationProvider storageIntegration;
   private final Set<String> bootstrappedRealms = new HashSet<>();
@@ -64,17 +64,17 @@ public class InMemoryPolarisMetaStoreManagerFactory
   }
 
   @Override
-  protected PolarisTreeMapStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
-    return new PolarisTreeMapStore(diagnostics);
+  protected TreeMapMetaStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
+    return new TreeMapMetaStore(diagnostics);
   }
 
   @Override
-  protected PolarisMetaStoreSession createMetaStoreSession(
-      @Nonnull PolarisTreeMapStore store,
+  protected TransactionalPersistence createMetaStoreSession(
+      @Nonnull TreeMapMetaStore store,
       @Nonnull RealmContext realmContext,
       @Nullable RootCredentialsSet rootCredentialsSet,
       @Nonnull PolarisDiagnostics diagnostics) {
-    return new PolarisTreeMapMetaStoreSessionImpl(
+    return new TreeMapTransactionalPersistenceImpl(
         store, storageIntegration, secretsGenerator(realmContext, rootCredentialsSet));
   }
 
@@ -89,7 +89,7 @@ public class InMemoryPolarisMetaStoreManagerFactory
   }
 
   @Override
-  public synchronized Supplier<PolarisMetaStoreSession> getOrCreateSessionSupplier(
+  public synchronized Supplier<TransactionalPersistence> getOrCreateSessionSupplier(
       RealmContext realmContext) {
     String realmId = realmContext.getRealmIdentifier();
     if (!bootstrappedRealms.contains(realmId)) {

@@ -49,9 +49,4 @@ public class StorageConfigurationOverride extends PolarisStorageConfigurationInf
   protected void validatePrefixForStorageType(String loc) {
     parentStorageConfiguration.validatePrefixForStorageType(loc);
   }
-
-  @Override
-  public void validateMaxAllowedLocations(int maxAllowedLocations) {
-    parentStorageConfiguration.validateMaxAllowedLocations(maxAllowedLocations);
-  }
 }

@@ -19,16 +19,17 @@
 package org.apache.polaris.service.exception;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.azure.core.exception.AzureException;
 import com.azure.core.exception.HttpResponseException;
-import com.azure.core.http.HttpResponse;
 import com.google.cloud.storage.StorageException;
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
+import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.stream.Stream;
+import org.apache.iceberg.exceptions.RuntimeIOException;
+import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -40,7 +41,11 @@ public class IcebergExceptionMapperTest {
     Map<Integer, Integer> cloudCodeMappings =
         Map.of(
             // Map of HTTP code returned from a cloud provider to the HTTP code Polaris is expected
-            // to return
+            // to return. We create a test case for each of these mappings for each cloud provider.
+            // We also create a test case for cloud provider exceptions wrapped as
+            // RuntimeIOExceptions,
+            // which is what the Iceberg SDK sometimes wraps them with if the error happens during
+            // IO.
             302, 422,
             400, 400,
             401, 403,
@@ -59,18 +64,36 @@ public class IcebergExceptionMapperTest {
             Arguments.of(new AzureException("Not Authorized"), 403),
             Arguments.of(new AzureException("Access Denied"), 403),
             Arguments.of(S3Exception.builder().message("Access denied").build(), 403),
-            Arguments.of(new StorageException(1, "access denied"), 403)),
+            Arguments.of(new StorageException(1, "access denied"), 403),
+            Arguments.of(
+                new FileIOUnknownHostException(
+                    "mybucket.blob.core.windows.net: Name or service not known",
+                    new RuntimeException(new UnknownHostException())),
+                404)),
         cloudCodeMappings.entrySet().stream()
             .flatMap(
                 entry ->
                     Stream.of(
-                        Arguments.of(
-                            new HttpResponseException("", mockAzureResponse(entry.getKey()), ""),
-                            entry.getValue()),
-                        Arguments.of(
-                            S3Exception.builder().message("").statusCode(entry.getKey()).build(),
-                            entry.getValue()),
-                        Arguments.of(new StorageException(entry.getKey(), ""), entry.getValue()))));
+                            Arguments.of(
+                                new HttpResponseException(
+                                    "", new FakeAzureHttpResponse(entry.getKey()), ""),
+                                entry.getValue()),
+                            Arguments.of(
+                                S3Exception.builder()
+                                    .message("")
+                                    .statusCode(entry.getKey())
+                                    .build(),
+                                entry.getValue()),
+                            Arguments.of(
+                                new StorageException(entry.getKey(), ""), entry.getValue()))
+                        .flatMap(
+                            args ->
+                                Stream.of(
+                                    args,
+                                    Arguments.of(
+                                        new RuntimeIOException(
+                                            new IOException((Throwable) args.get()[0])),
+                                        args.get()[1])))));
   }
 
   @ParameterizedTest
@@ -81,18 +104,5 @@ public class IcebergExceptionMapperTest {
       assertThat(response.getStatus()).isEqualTo(statusCode);
       assertThat(response.getEntity()).extracting("message").isEqualTo(ex.getMessage());
     }
-  }
-
-  /**
-   * Creates a mock of the Azure-specific HttpResponse object, as it's quite difficult to construct
-   * a "real" one.
-   *
-   * @param statusCode
-   * @return
-   */
-  private static HttpResponse mockAzureResponse(int statusCode) {
-    HttpResponse res = mock(HttpResponse.class);
-    when(res.getStatusCode()).thenReturn(statusCode);
-    return res;
   }
 }

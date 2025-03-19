@@ -44,11 +44,16 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.core.entity.PrincipalEntity;
 import org.apache.polaris.core.entity.PrincipalRoleEntity;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.cache.EntityCache;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
+import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
+import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -60,10 +65,10 @@ public class ResolverTest {
   private final PolarisDiagnostics diagServices;
 
   // the entity store, use treemap implementation
-  private final PolarisTreeMapStore store;
+  private final TreeMapMetaStore store;
 
   // to interact with the metastore
-  private final PolarisMetaStoreSession metaStore;
+  private final TransactionalPersistence metaStore;
 
   // polaris call context
   private final PolarisCallContext callCtx;
@@ -100,6 +105,9 @@ public class ResolverTest {
    * - (N1/N4)
    * - N5/N6/T5
    * - N5/N6/T6
+   * - N7/N8/POL1
+   * - N7/N8/POL2
+   * - N7/POL3
    * - R1(TABLE_READ on N1/N2, VIEW_CREATE on C, TABLE_LIST on N2, TABLE_DROP on N5/N6/T5)
    * - R2(TABLE_WRITE_DATA on N5, VIEW_LIST on C)
    * - PR1(R1, R2)
@@ -110,10 +118,10 @@ public class ResolverTest {
    */
   public ResolverTest() {
     diagServices = new PolarisDefaultDiagServiceImpl();
-    store = new PolarisTreeMapStore(diagServices);
-    metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
+    store = new TreeMapMetaStore(diagServices);
+    metaStore = new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(metaStore, diagServices);
-    metaStoreManager = new PolarisMetaStoreManagerImpl();
+    metaStoreManager = new TransactionalMetaStoreManagerImpl();
 
     // bootstrap the mata store with our test schema
     tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
@@ -224,6 +232,19 @@ public class ResolverTest {
     ResolverPath N5_N6_T5 =
         new ResolverPath(List.of("N5", "N6", "T5"), PolarisEntityType.TABLE_LIKE);
     this.resolveDriver(this.cache, "test", N5_N6_T5, null, null);
+
+    // N7/N8 which exists
+    ResolverPath N7_N8 = new ResolverPath(List.of("N7", "N8"), PolarisEntityType.NAMESPACE);
+    this.resolveDriver(this.cache, "test", N7_N8, null, null);
+
+    // N7/N8/POL1 which exists
+    ResolverPath N7_N8_POL1 =
+        new ResolverPath(List.of("N7", "N8", "POL1"), PolarisEntityType.POLICY);
+    this.resolveDriver(this.cache, "test", N7_N8_POL1, null, null);
+
+    // N7/POL3 which exists
+    ResolverPath N7_POL3 = new ResolverPath(List.of("N7", "POL3"), PolarisEntityType.POLICY);
+    this.resolveDriver(this.cache, "test", N7_POL3, null, null);
 
     // Error scenarios: N5/N6/T8 which does not exists
     ResolverPath N5_N6_T8 =
@@ -482,8 +503,8 @@ public class ResolverTest {
                                     PolarisEntityType.PRINCIPAL_ROLE,
                                     PolarisEntitySubType.NULL_SUBTYPE,
                                     role))
-                        .filter(PolarisMetaStoreManager.EntityResult::isSuccess)
-                        .map(PolarisMetaStoreManager.EntityResult::getEntity)
+                        .filter(EntityResult::isSuccess)
+                        .map(EntityResult::getEntity)
                         .map(PrincipalRoleEntity::of)
                         .collect(Collectors.toList()));
     AuthenticatedPolarisPrincipal authenticatedPrincipal =
@@ -771,7 +792,7 @@ public class ResolverTest {
       // the principal does not exist, check that this is the case
       if (principalName != null) {
         // see if the principal exists
-        PolarisMetaStoreManager.EntityResult result =
+        EntityResult result =
             this.metaStoreManager.readEntityByName(
                 this.callCtx,
                 null,
@@ -977,7 +998,7 @@ public class ResolverTest {
     // reload the cached entry from the backend
     ResolvedEntityResult refResolvedEntity =
         this.metaStoreManager.loadResolvedEntityById(
-            this.callCtx, refEntity.getCatalogId(), refEntity.getId());
+            this.callCtx, refEntity.getCatalogId(), refEntity.getId(), refEntity.getType());
 
     // should exist
     Assertions.assertThat(refResolvedEntity).isNotNull();

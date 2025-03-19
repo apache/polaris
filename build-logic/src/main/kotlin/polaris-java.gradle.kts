@@ -100,24 +100,14 @@ testing {
           }
         )
       }
-    }
-  }
-}
 
-// Special handling for test-suites with type `manual-test`, which are intended to be run on demand
-// rather than implicitly via `check`.
-afterEvaluate {
-  testing {
-    suites {
-      withType<JvmTestSuite> {
-        // Need to do this check in an afterEvaluate, because the `withType` above gets called
-        // before the configure() of a registered test suite runs.
-        if (testType.get() != "manual-test") {
-          targets.all {
-            if (testTask.name != "test") {
-              testTask.configure { shouldRunAfter("test") }
-              tasks.named("check").configure { dependsOn(testTask) }
-            }
+      // Special handling for test-suites with names containing `manualtest`, which are intended to
+      // be run on demand rather than implicitly via `check`.
+      if (!name.lowercase().contains("manualtest")) {
+        targets.all {
+          if (testTask.name != "test") {
+            testTask.configure { shouldRunAfter("test") }
+            tasks.named("check").configure { dependsOn(testTask) }
           }
         }
       }
@@ -162,7 +152,7 @@ tasks.withType(Jar::class).configureEach {
 
 spotless {
   java {
-    target("src/main/java/**/*.java", "src/testFixtures/java/**/*.java", "src/test/java/**/*.java")
+    target("src/*/java/**/*.java")
     googleJavaFormat()
     licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
     endWithNewline()

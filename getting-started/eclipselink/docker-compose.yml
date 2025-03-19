@@ -85,6 +85,15 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: POLARIS
       POSTGRES_INITDB_ARGS: "--encoding UTF8 --data-checksums"
+    volumes:
+      # Bind local conf file to a convenient location in the container
+      - type: bind
+        source: ./postgresql.conf
+        target: /etc/postgresql/postgresql.conf
+    command:
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
     healthcheck:
       test: "pg_isready -U postgres"
       interval: 5s
@@ -92,7 +101,7 @@ services:
       retries: 15
 
   spark-sql:
-    image: apache/spark:3.5.4-java17-python3
+    image: apache/spark:3.5.5-java17-python3
     depends_on:
       polaris-setup:
         condition: service_completed_successfully

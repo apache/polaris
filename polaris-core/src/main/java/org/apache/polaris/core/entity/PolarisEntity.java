@@ -28,7 +28,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 
 /**
  * For legacy reasons, this class is only a thin facade over PolarisBaseEntity's members/methods. No
@@ -146,7 +146,7 @@ public class PolarisEntity extends PolarisBaseEntity {
     return null;
   }
 
-  public static PolarisEntity of(PolarisMetaStoreManager.EntityResult result) {
+  public static PolarisEntity of(EntityResult result) {
     if (result.isSuccess()) {
       return new PolarisEntity(result.getEntity());
     }
@@ -172,7 +172,7 @@ public class PolarisEntity extends PolarisBaseEntity {
         .orElse(null);
   }
 
-  public static List<NameAndId> toNameAndIdList(List<PolarisEntityActiveRecord> entities) {
+  public static List<NameAndId> toNameAndIdList(List<EntityNameLookupRecord> entities) {
     return Optional.ofNullable(entities)
         .map(
             list ->
