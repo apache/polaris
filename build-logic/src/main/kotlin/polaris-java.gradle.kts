@@ -152,7 +152,7 @@ tasks.withType(Jar::class).configureEach {
 
 spotless {
   java {
-    target("src/main/java/**/*.java", "src/testFixtures/java/**/*.java", "src/test/java/**/*.java")
+    target("src/*/java/**/*.java")
     googleJavaFormat()
     licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
     endWithNewline()

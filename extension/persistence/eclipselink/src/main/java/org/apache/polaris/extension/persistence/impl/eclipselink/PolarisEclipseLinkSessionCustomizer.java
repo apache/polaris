@@ -25,7 +25,7 @@ import org.eclipse.persistence.sessions.SessionCustomizer;
 /**
  * This pattern of injecting a SessionCustomizer is taken from the EclipseLink guide documentation:
  *
- * <p>https://eclipse.dev/eclipselink/documentation/2.6/dbws/creating_dbws_services002.htm
+ * <p>https://eclipse.dev/eclipselink/documentation/4.0/dbws/dbws.html#performing-intermediate-customization
  */
 public class PolarisEclipseLinkSessionCustomizer implements SessionCustomizer {
   @Override

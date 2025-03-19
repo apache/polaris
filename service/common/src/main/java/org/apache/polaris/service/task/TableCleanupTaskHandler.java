@@ -33,10 +33,10 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
+import org.apache.polaris.core.entity.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.TableLikeEntity;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -71,7 +71,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
 
   private boolean taskEntityIsTable(TaskEntity task) {
     PolarisEntity entity = PolarisEntity.of((task.readData(PolarisBaseEntity.class)));
-    return entity.getType().equals(PolarisEntityType.TABLE_LIKE);
+    return entity.getType().equals(PolarisEntityType.ICEBERG_TABLE_LIKE);
   }
 
   @Override
@@ -79,7 +79,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
     PolarisBaseEntity entity = cleanupTask.readData(PolarisBaseEntity.class);
     PolarisMetaStoreManager metaStoreManager =
         metaStoreManagerFactory.getOrCreateMetaStoreManager(callContext.getRealmContext());
-    TableLikeEntity tableEntity = TableLikeEntity.of(entity);
+    IcebergTableLikeEntity tableEntity = IcebergTableLikeEntity.of(entity);
     PolarisCallContext polarisCallContext = callContext.getPolarisCallContext();
     LOGGER
         .atInfo()
@@ -153,7 +153,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
       TaskEntity cleanupTask,
       TableMetadata tableMetadata,
       FileIO fileIO,
-      TableLikeEntity tableEntity,
+      IcebergTableLikeEntity tableEntity,
       PolarisMetaStoreManager metaStoreManager,
       PolarisCallContext polarisCallContext) {
     // read the manifest list for each snapshot. dedupe the manifest files and schedule a
@@ -204,7 +204,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
       TaskEntity cleanupTask,
       TableMetadata tableMetadata,
       FileIO fileIO,
-      TableLikeEntity tableEntity,
+      IcebergTableLikeEntity tableEntity,
       PolarisMetaStoreManager metaStoreManager,
       PolarisCallContext polarisCallContext) {
     int batchSize =

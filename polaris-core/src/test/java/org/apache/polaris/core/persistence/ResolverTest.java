@@ -50,10 +50,10 @@ import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
 import org.apache.polaris.core.persistence.resolver.Resolver;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
-import org.apache.polaris.core.persistence.transactional.PolarisTreeMapMetaStoreSessionImpl;
-import org.apache.polaris.core.persistence.transactional.PolarisTreeMapStore;
+import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
+import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -65,7 +65,7 @@ public class ResolverTest {
   private final PolarisDiagnostics diagServices;
 
   // the entity store, use treemap implementation
-  private final PolarisTreeMapStore store;
+  private final TreeMapMetaStore store;
 
   // to interact with the metastore
   private final TransactionalPersistence metaStore;
@@ -105,6 +105,9 @@ public class ResolverTest {
    * - (N1/N4)
    * - N5/N6/T5
    * - N5/N6/T6
+   * - N7/N8/POL1
+   * - N7/N8/POL2
+   * - N7/POL3
    * - R1(TABLE_READ on N1/N2, VIEW_CREATE on C, TABLE_LIST on N2, TABLE_DROP on N5/N6/T5)
    * - R2(TABLE_WRITE_DATA on N5, VIEW_LIST on C)
    * - PR1(R1, R2)
@@ -115,10 +118,10 @@ public class ResolverTest {
    */
   public ResolverTest() {
     diagServices = new PolarisDefaultDiagServiceImpl();
-    store = new PolarisTreeMapStore(diagServices);
-    metaStore = new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
+    store = new TreeMapMetaStore(diagServices);
+    metaStore = new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(metaStore, diagServices);
-    metaStoreManager = new PolarisMetaStoreManagerImpl();
+    metaStoreManager = new TransactionalMetaStoreManagerImpl();
 
     // bootstrap the mata store with our test schema
     tm = new PolarisTestMetaStoreManager(metaStoreManager, callCtx);
@@ -213,12 +216,12 @@ public class ResolverTest {
 
     // N1/N2/T1 which exists
     ResolverPath N1_N2_T1 =
-        new ResolverPath(List.of("N1", "N2", "T1"), PolarisEntityType.TABLE_LIKE);
+        new ResolverPath(List.of("N1", "N2", "T1"), PolarisEntityType.ICEBERG_TABLE_LIKE);
     this.resolveDriver(this.cache, "test", N1_N2_T1, null, null);
 
     // N1/N2/T1 which exists
     ResolverPath N1_N2_V1 =
-        new ResolverPath(List.of("N1", "N2", "V1"), PolarisEntityType.TABLE_LIKE);
+        new ResolverPath(List.of("N1", "N2", "V1"), PolarisEntityType.ICEBERG_TABLE_LIKE);
     this.resolveDriver(this.cache, "test", N1_N2_V1, null, null);
 
     // N5/N6 which exists
@@ -227,12 +230,25 @@ public class ResolverTest {
 
     // N5/N6/T5 which exists
     ResolverPath N5_N6_T5 =
-        new ResolverPath(List.of("N5", "N6", "T5"), PolarisEntityType.TABLE_LIKE);
+        new ResolverPath(List.of("N5", "N6", "T5"), PolarisEntityType.ICEBERG_TABLE_LIKE);
     this.resolveDriver(this.cache, "test", N5_N6_T5, null, null);
+
+    // N7/N8 which exists
+    ResolverPath N7_N8 = new ResolverPath(List.of("N7", "N8"), PolarisEntityType.NAMESPACE);
+    this.resolveDriver(this.cache, "test", N7_N8, null, null);
+
+    // N7/N8/POL1 which exists
+    ResolverPath N7_N8_POL1 =
+        new ResolverPath(List.of("N7", "N8", "POL1"), PolarisEntityType.POLICY);
+    this.resolveDriver(this.cache, "test", N7_N8_POL1, null, null);
+
+    // N7/POL3 which exists
+    ResolverPath N7_POL3 = new ResolverPath(List.of("N7", "POL3"), PolarisEntityType.POLICY);
+    this.resolveDriver(this.cache, "test", N7_POL3, null, null);
 
     // Error scenarios: N5/N6/T8 which does not exists
     ResolverPath N5_N6_T8 =
-        new ResolverPath(List.of("N5", "N6", "T8"), PolarisEntityType.TABLE_LIKE);
+        new ResolverPath(List.of("N5", "N6", "T8"), PolarisEntityType.ICEBERG_TABLE_LIKE);
     this.resolveDriver(
         this.cache,
         "test",
@@ -242,7 +258,7 @@ public class ResolverTest {
 
     // Error scenarios: N8/N6/T8 which does not exists
     ResolverPath N8_N6_T8 =
-        new ResolverPath(List.of("N8", "N6", "T8"), PolarisEntityType.TABLE_LIKE);
+        new ResolverPath(List.of("N8", "N6", "T8"), PolarisEntityType.ICEBERG_TABLE_LIKE);
     this.resolveDriver(
         this.cache,
         "test",
@@ -261,7 +277,8 @@ public class ResolverTest {
         ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED);
 
     // except if the optional flag is specified
-    N5_N6_T8 = new ResolverPath(List.of("N5", "N6", "T8"), PolarisEntityType.TABLE_LIKE, true);
+    N5_N6_T8 =
+        new ResolverPath(List.of("N5", "N6", "T8"), PolarisEntityType.ICEBERG_TABLE_LIKE, true);
     Resolver resolver =
         this.resolveDriver(this.cache, "test", null, List.of(N1, N5_N6_T8, N5_N6_T5, N1_N2), null);
     // get all the resolved paths
@@ -349,7 +366,7 @@ public class ResolverTest {
     ResolverPath N1_N2_PATH = new ResolverPath(List.of("N1", "N2"), PolarisEntityType.NAMESPACE);
     this.resolveDriver(this.cache, "test", N1_N2_PATH, null, null);
     ResolverPath N1_N2_T1_PATH =
-        new ResolverPath(List.of("N1", "N2", "T1"), PolarisEntityType.TABLE_LIKE);
+        new ResolverPath(List.of("N1", "N2", "T1"), PolarisEntityType.ICEBERG_TABLE_LIKE);
     Resolver resolver = this.resolveDriver(this.cache, "test", N1_N2_T1_PATH, null, null);
 
     // get the catalog
@@ -383,7 +400,7 @@ public class ResolverTest {
 
     // but we should be able to resolve it under N1/N3
     ResolverPath N1_N3_T1_PATH =
-        new ResolverPath(List.of("N1", "N3", "T1"), PolarisEntityType.TABLE_LIKE);
+        new ResolverPath(List.of("N1", "N3", "T1"), PolarisEntityType.ICEBERG_TABLE_LIKE);
     this.resolveDriver(this.cache, "test", N1_N3_T1_PATH, null, null);
   }
 
