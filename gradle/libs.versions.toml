@@ -20,7 +20,7 @@
 [versions]
 hadoop = "3.4.1"
 iceberg = "1.7.1"
-quarkus = "3.19.3"
+quarkus = "3.21.0"
 immutables = "2.10.1"
 picocli = "4.7.6"
 scala212 = "2.12.19"
