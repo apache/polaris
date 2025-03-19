@@ -57,6 +57,7 @@ jobs:
           validate-wrappers: false
 
       - name: Code style checks and tests
+        # skip the check for polaris-spark-3.5 by adding -DscalaVersion=
         run: ./gradlew -DscalaVersion= --continue check
 
       - name: Check Maven publication
@@ -84,6 +85,7 @@ jobs:
       - name: Clean
         run: ./gradlew clean
       - name: Build
+        # skip the polaris-spark-3.5 compilation by adding -DscalaVersion=
         run: ./gradlew compileAll -DscalaVersion=
       - name: Run selected tests
         run: ./gradlew :polaris-quarkus-service:intTest
