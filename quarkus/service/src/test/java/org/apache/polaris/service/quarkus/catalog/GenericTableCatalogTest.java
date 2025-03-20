@@ -27,6 +27,7 @@ import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
 import io.quarkus.test.junit.TestProfile;
+import jakarta.annotation.Nonnull;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -286,6 +287,10 @@ public class GenericTableCatalogTest {
       public EntityCache getOrCreateEntityCache(RealmContext realmContext) {
         return new EntityCache(metaStoreManager);
       }
+
+      @Override
+      public void initializeForService(
+          @Nonnull List<String> realmIds, @Nonnull String defaultRealmId) {}
 
       @Override
       public Map<String, PrincipalSecretsResult> bootstrapRealms(
