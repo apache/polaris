@@ -37,4 +37,4 @@ if [ ! -d "${dir}"/polaris-venv ]; then
 fi
 
 cd "$dir"
-PYTHONPATH=client/python SCRIPT_DIR="$dir" "${dir}"/polaris-venv/bin/python3 client/python/cli/polaris_cli.py "$@"
+env PYTHONPATH=client/python SCRIPT_DIR="$dir" "${dir}"/polaris-venv/bin/python3 client/python/cli/polaris_cli.py "$@"
