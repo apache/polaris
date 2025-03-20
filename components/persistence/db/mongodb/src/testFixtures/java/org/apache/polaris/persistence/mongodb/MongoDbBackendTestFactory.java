@@ -57,6 +57,10 @@ public class MongoDbBackendTestFactory implements BackendTestFactory {
     return factory.buildBackend(config);
   }
 
+  public String connectionString() {
+    return connectionString;
+  }
+
   @Override
   public void start() {
     start(Optional.empty());
