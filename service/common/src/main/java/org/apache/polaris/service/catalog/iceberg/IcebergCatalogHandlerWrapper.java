@@ -78,9 +78,9 @@ import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.entity.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -553,15 +553,16 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
   /**
    * Create a table.
+   *
    * @param namespace the namespace to create the table in
    * @param request the table creation request
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
-  public ETaggedResponse<LoadTableResponse> createTableDirect(Namespace namespace, CreateTableRequest request) {
+  public ETaggedResponse<LoadTableResponse> createTableDirect(
+      Namespace namespace, CreateTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
     TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, identifier);
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
     CatalogEntity catalog =
         CatalogEntity.of(
@@ -576,24 +577,22 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     request.validate();
 
     Table table =
-            baseCatalog
-                    .buildTable(identifier, request.schema())
-                    .withLocation(request.location())
-                    .withPartitionSpec(request.spec())
-                    .withSortOrder(request.writeOrder())
-                    .withProperties(request.properties())
-                    .create();
+        baseCatalog
+            .buildTable(identifier, request.schema())
+            .withLocation(request.location())
+            .withPartitionSpec(request.spec())
+            .withSortOrder(request.writeOrder())
+            .withProperties(request.properties())
+            .create();
 
     if (table instanceof BaseTable baseTable) {
 
-      LoadTableResponse.Builder responseBuilder = LoadTableResponse.builder()
-              .withTableMetadata(baseTable.operations().current());
+      LoadTableResponse.Builder responseBuilder =
+          LoadTableResponse.builder().withTableMetadata(baseTable.operations().current());
 
       if (baseTable.operations() instanceof IcebergCatalog.BasePolarisTableOperations polarisOps) {
         return new ETaggedResponse<>(
-                responseBuilder.build(),
-                generateETagValueForTable(polarisOps.currentTableEntity())
-        );
+            responseBuilder.build(), generateETagValueForTable(polarisOps.currentTableEntity()));
       }
 
       return new ETaggedResponse<>(responseBuilder.build(), "");
@@ -604,6 +603,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
   /**
    * Create a table.
+   *
    * @param namespace the namespace to create the table in
    * @param request the table creation request
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
@@ -667,9 +667,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
       if (baseTable.operations() instanceof IcebergCatalog.BasePolarisTableOperations polarisOps) {
         return new ETaggedResponse<>(
-                responseBuilder.build(),
-                generateETagValueForTable(polarisOps.currentTableEntity())
-        );
+            responseBuilder.build(), generateETagValueForTable(polarisOps.currentTableEntity()));
       }
 
       return new ETaggedResponse<>(responseBuilder.build(), "");
@@ -779,30 +777,29 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
   /**
    * Register a table.
+   *
    * @param namespace The namespace to register the table in
    * @param request the register table request
    * @return ETagged {@link LoadTableResponse} to uniquely identify the table metadata
    */
-  public ETaggedResponse<LoadTableResponse> registerTable(Namespace namespace, RegisterTableRequest request) {
+  public ETaggedResponse<LoadTableResponse> registerTable(
+      Namespace namespace, RegisterTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REGISTER_TABLE;
     TableIdentifier identifier = TableIdentifier.of(namespace, request.name());
 
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(
-        op, identifier);
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
     request.validate();
 
     Table table = baseCatalog.registerTable(identifier, request.metadataLocation());
 
     if (table instanceof BaseTable baseTable) {
-      LoadTableResponse.Builder responseBuilder = LoadTableResponse.builder()
-              .withTableMetadata(baseTable.operations().current());
+      LoadTableResponse.Builder responseBuilder =
+          LoadTableResponse.builder().withTableMetadata(baseTable.operations().current());
 
       if (baseTable.operations() instanceof IcebergCatalog.BasePolarisTableOperations polarisOps) {
         return new ETaggedResponse<>(
-                responseBuilder.build(),
-                generateETagValueForTable(polarisOps.currentTableEntity())
-        );
+            responseBuilder.build(), generateETagValueForTable(polarisOps.currentTableEntity()));
       }
 
       return new ETaggedResponse<>(responseBuilder.build(), "");
@@ -851,17 +848,20 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
   /**
    * Fetch the metastore table entity for the given table identifier
+   *
    * @param tableIdentifier The identifier of the table
    * @return the Polaris table entity for the table
    */
   private IcebergTableLikeEntity getTableEntity(TableIdentifier tableIdentifier) {
-    PolarisResolvedPathWrapper target = resolutionManifest.getPassthroughResolvedPath(tableIdentifier);
+    PolarisResolvedPathWrapper target =
+        resolutionManifest.getPassthroughResolvedPath(tableIdentifier);
 
     return IcebergTableLikeEntity.of(target.getRawLeafEntity());
   }
 
   /**
    * Generate an ETag for a table entity
+   *
    * @param tableLikeEntity the table to generate the ETag for
    * @return the generated ETag
    */
@@ -875,17 +875,19 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
   }
 
   /**
-   * Attempt to perform a loadTable operation only when the specified set of eTags do not match the current state
-   * of the table metadata.
+   * Attempt to perform a loadTable operation only when the specified set of eTags do not match the
+   * current state of the table metadata.
+   *
    * @param tableIdentifier The identifier of the table to load
-   * @param ifNoneMatch  set of entity-tags to check the metadata against for staleness
+   * @param ifNoneMatch set of entity-tags to check the metadata against for staleness
    * @param snapshots
-   * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the load table response, otherwise
+   * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
+   *     load table response, otherwise
    */
   public Optional<ETaggedResponse<LoadTableResponse>> loadTableIfStale(
-          TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
-      PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
-      authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.TABLE, tableIdentifier);
+      TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
+    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.TABLE, tableIdentifier);
 
     IcebergTableLikeEntity tableEntity = getTableEntity(tableIdentifier);
     String tableEntityTag = generateETagValueForTable(tableEntity);
@@ -897,15 +899,16 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     Table table = baseCatalog.loadTable(tableIdentifier);
 
     if (table instanceof BaseTable baseTable) {
-      LoadTableResponse.Builder responseBuilder =  LoadTableResponse.builder()
-              .withTableMetadata(baseTable.operations().current());
+      LoadTableResponse.Builder responseBuilder =
+          LoadTableResponse.builder().withTableMetadata(baseTable.operations().current());
 
       if (baseTable.operations() instanceof IcebergCatalog.BasePolarisTableOperations polarisOps) {
-        return Optional.of(new ETaggedResponse<>(
+        return Optional.of(
+            new ETaggedResponse<>(
                 responseBuilder.build(),
-                // do not use ETag from the previous fetch, may be out of date by the time we load the metadata
-                generateETagValueForTable(polarisOps.currentTableEntity())
-        ));
+                // do not use ETag from the previous fetch, may be out of date by the time we load
+                // the metadata
+                generateETagValueForTable(polarisOps.currentTableEntity())));
       }
 
       return Optional.of(new ETaggedResponse<>(responseBuilder.build(), ""));
@@ -917,20 +920,23 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }
 
-  public LoadTableResponse loadTableWithAccessDelegation(TableIdentifier tableIdentifier, String snapshots) {
+  public LoadTableResponse loadTableWithAccessDelegation(
+      TableIdentifier tableIdentifier, String snapshots) {
     return loadTableWithAccessDelegationIfStale(tableIdentifier, null, snapshots).get().response();
   }
 
   /**
-   * Attempt to perform a loadTable operation with access delegation only when the if none of the provided eTags
-   * match the current state of the table metadata.
+   * Attempt to perform a loadTable operation with access delegation only when the if none of the
+   * provided eTags match the current state of the table metadata.
+   *
    * @param tableIdentifier The identifier of the table to load
    * @param ifNoneMatch set of entity-tags to check the metadata against for staleness
    * @param snapshots
-   * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the load table response, otherwise
+   * @return {@link Optional#empty()} if the ETag is current, an {@link Optional} containing the
+   *     load table response, otherwise
    */
   public Optional<ETaggedResponse<LoadTableResponse>> loadTableWithAccessDelegationIfStale(
-          TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
+      TableIdentifier tableIdentifier, IfNoneMatch ifNoneMatch, String snapshots) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -1000,10 +1006,10 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
       }
 
       if (baseTable.operations() instanceof IcebergCatalog.BasePolarisTableOperations polarisOps) {
-        return Optional.of(new ETaggedResponse<>(
+        return Optional.of(
+            new ETaggedResponse<>(
                 responseBuilder.build(),
-                generateETagValueForTable(polarisOps.currentTableEntity())
-        ));
+                generateETagValueForTable(polarisOps.currentTableEntity())));
       }
 
       return Optional.of(new ETaggedResponse<>(responseBuilder.build(), ""));

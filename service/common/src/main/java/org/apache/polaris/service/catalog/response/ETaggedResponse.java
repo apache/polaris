@@ -16,20 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.catalog.response;
 
 import jakarta.annotation.Nonnull;
 
 /**
- * Allows Iceberg response types to be wrapped alongside an ETag that
- * can be unwrapped into the HTTP ETag header.
+ * Allows Iceberg response types to be wrapped alongside an ETag that can be unwrapped into the HTTP
+ * ETag header.
  *
- * TODO: Remove this if ever the ETag change to the REST spec is propagated to the iceberg rest library
- *    representation of {@link org.apache.iceberg.rest.responses.LoadTableResponse}
+ * <p>TODO: Remove this if ever the ETag change to the REST spec is propagated to the iceberg rest
+ * library representation of {@link org.apache.iceberg.rest.responses.LoadTableResponse}
  *
  * @param response the iceberg response to encapsulate
  * @param eTag the eTag value
  * @param <T> The type of the encapsulated response object
  */
-public record ETaggedResponse<T> (@Nonnull T response, @Nonnull String eTag) {}
+public record ETaggedResponse<T>(@Nonnull T response, @Nonnull String eTag) {}

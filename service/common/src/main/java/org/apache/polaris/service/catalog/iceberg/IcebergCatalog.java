@@ -1191,13 +1191,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     /**
-     * Return the currently loaded {@link IcebergTableLikeEntity} without checking for table updates.
-     * Does not refresh the table entity if not already available, call {@link TableOperations#current()} or
-     * {@link TableOperations#refresh()} first to ensure it is resolved.
-     * NOTE: This may be mismatched with the currently loaded metadata if commits
-     * are performed between calling this method and {@link TableOperations#current()} as this
-     * entity is populated on commits, unlike the current TableMetadata.
-     * @return the currently loaded {@link IcebergTableLikeEntity}, null if the table entity has not been resolved yet
+     * Return the currently loaded {@link IcebergTableLikeEntity} without checking for table
+     * updates. Does not refresh the table entity if not already available, call {@link
+     * TableOperations#current()} or {@link TableOperations#refresh()} first to ensure it is
+     * resolved. NOTE: This may be mismatched with the currently loaded metadata if commits are
+     * performed between calling this method and {@link TableOperations#current()} as this entity is
+     * populated on commits, unlike the current TableMetadata.
+     *
+     * @return the currently loaded {@link IcebergTableLikeEntity}, null if the table entity has not
+     *     been resolved yet
      */
     public IcebergTableLikeEntity currentTableEntity() {
       return this.tableEntity;
@@ -1222,7 +1224,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               .log("Stored table identifier mismatches requested identifier");
         }
       } else {
-        this.tableEntity = null; // reset tableEntity if we failed to resolve the path, because we will be failing to resolve the metadata as well
+        this.tableEntity =
+            null; // reset tableEntity if we failed to resolve the path, because we will be failing
+        // to resolve the metadata as well
       }
 
       String latestLocation = tableEntity != null ? tableEntity.getMetadataLocation() : null;

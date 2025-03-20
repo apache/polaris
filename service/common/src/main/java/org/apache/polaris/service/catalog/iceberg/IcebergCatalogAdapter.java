@@ -20,7 +20,6 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
-import com.google.api.Http;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -308,11 +307,17 @@ public class IcebergCatalogAdapter
                   .build();
             }
           } else if (delegationModes.isEmpty()) {
-            ETaggedResponse<LoadTableResponse> createResult = catalog.createTableDirect(ns, createTableRequest);
-            return Response.ok(createResult.response()).header(HttpHeaders.ETAG, createResult.eTag()).build();
+            ETaggedResponse<LoadTableResponse> createResult =
+                catalog.createTableDirect(ns, createTableRequest);
+            return Response.ok(createResult.response())
+                .header(HttpHeaders.ETAG, createResult.eTag())
+                .build();
           } else {
-            ETaggedResponse<LoadTableResponse> createResult = catalog.createTableDirectWithWriteDelegation(ns, createTableRequest);
-            return Response.ok(createResult.response()).header(HttpHeaders.ETAG, createResult.eTag()).build();
+            ETaggedResponse<LoadTableResponse> createResult =
+                catalog.createTableDirectWithWriteDelegation(ns, createTableRequest);
+            return Response.ok(createResult.response())
+                .header(HttpHeaders.ETAG, createResult.eTag())
+                .build();
           }
         });
   }
@@ -345,28 +350,33 @@ public class IcebergCatalogAdapter
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
 
-      IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(ifNoneMatchHeader);
+    IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(ifNoneMatchHeader);
 
-      if (ifNoneMatch.isWildcard()) {
-          throw new BadRequestException("If-None-Match may not take the value of '*'");
-      }
+    if (ifNoneMatch.isWildcard()) {
+      throw new BadRequestException("If-None-Match may not take the value of '*'");
+    }
 
     return withCatalog(
         securityContext,
         prefix,
         catalog -> {
-            ETaggedResponse<LoadTableResponse> loadTableResult;
+          ETaggedResponse<LoadTableResponse> loadTableResult;
 
           if (delegationModes.isEmpty()) {
-              loadTableResult = catalog.loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
-                .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
+            loadTableResult =
+                catalog
+                    .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
+                    .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           } else {
-              loadTableResult = catalog.loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
+            loadTableResult =
+                catalog
+                    .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
                     .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
           }
 
-            return Response.ok(loadTableResult.response()).header(HttpHeaders.ETAG, loadTableResult.eTag())
-                    .build();
+          return Response.ok(loadTableResult.response())
+              .header(HttpHeaders.ETAG, loadTableResult.eTag())
+              .build();
         });
   }
 
@@ -423,9 +433,12 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog -> {
-            ETaggedResponse<LoadTableResponse> registerTableResult = catalog.registerTable(ns, registerTableRequest);
+          ETaggedResponse<LoadTableResponse> registerTableResult =
+              catalog.registerTable(ns, registerTableRequest);
 
-            return Response.ok(registerTableResult.response()).header(HttpHeaders.ETAG, registerTableResult.eTag()).build();
+          return Response.ok(registerTableResult.response())
+              .header(HttpHeaders.ETAG, registerTableResult.eTag())
+              .build();
         });
   }
 
