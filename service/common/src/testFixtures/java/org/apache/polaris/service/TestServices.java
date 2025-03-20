@@ -177,9 +177,6 @@ public record TestServices(
               callContextFactory,
               entityManager,
               metaStoreManager,
-              metaStoreSession,
-              configurationStore,
-              polarisDiagnostics,
               authorizer,
               new DefaultCatalogPrefixParser());
 

@@ -137,7 +137,14 @@ dependencies {
   )
 }
 
-tasks.withType(Jar::class).configureEach {
+tasks.withType<Test>().configureEach {
+  systemProperty("file.encoding", "UTF-8")
+  systemProperty("user.language", "en")
+  systemProperty("user.country", "US")
+  systemProperty("user.variant", "")
+}
+
+tasks.withType<Jar>().configureEach {
   manifest {
     attributes(
       // Do not add any (more or less) dynamic information to jars, because that makes Gradle's

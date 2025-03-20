@@ -19,6 +19,8 @@
 
 FROM jupyter/all-spark-notebook:spark-3.5.0
 
+ENV LANGUAGE='en_US:en'
+
 COPY --chown=jovyan client /home/jovyan/client
 COPY --chown=jovyan regtests/requirements.txt /tmp
 RUN pip install -r /tmp/requirements.txt && \

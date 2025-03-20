@@ -21,6 +21,7 @@ FROM docker.io/apache/spark:3.5.5-java17-python3
 ARG POLARIS_HOST=polaris
 ENV POLARIS_HOST=$POLARIS_HOST
 ENV SPARK_HOME=/opt/spark
+ENV LANGUAGE='en_US:en'
 
 USER root
 RUN apt update

@@ -20,7 +20,7 @@
 [versions]
 hadoop = "3.4.1"
 iceberg = "1.7.1"
-quarkus = "3.19.3"
+quarkus = "3.19.4"
 immutables = "2.10.1"
 picocli = "4.7.6"
 scala212 = "2.12.19"
@@ -49,7 +49,7 @@ commons-text = { module = "org.apache.commons:commons-text", version = "1.13.0" 
 eclipselink = { module = "org.eclipse.persistence:eclipselink", version = "4.0.5" }
 errorprone = { module = "com.google.errorprone:error_prone_core", version = "2.36.0" }
 google-cloud-storage-bom = { module = "com.google.cloud:google-cloud-storage-bom", version = "2.50.0" }
-guava = { module = "com.google.guava:guava", version = "33.4.0-jre" }
+guava = { module = "com.google.guava:guava", version = "33.4.5-jre" }
 h2 = { module = "com.h2database:h2", version = "2.3.232" }
 dnsjava = { module = "dnsjava:dnsjava", version = "3.6.3" }
 hadoop-client-api = { module = "org.apache.hadoop:hadoop-client-api", version.ref = "hadoop" }
@@ -71,7 +71,7 @@ jakarta-validation-api = { module = "jakarta.validation:jakarta.validation-api",
 jakarta-ws-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
 javax-servlet-api = { module = "javax.servlet:javax.servlet-api", version = "4.0.1" }
 junit-bom = { module = "org.junit:junit-bom", version = "5.12.1" }
-logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.17" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.18" }
 micrometer-bom = { module = "io.micrometer:micrometer-bom", version = "1.14.5" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.16.1" }
 mockito-junit-jupiter = { module = "org.mockito:mockito-junit-jupiter", version = "5.16.1" }

@@ -20,6 +20,7 @@ package org.apache.polaris.service.catalog.iceberg;
 
 import static org.apache.polaris.service.catalog.AccessDelegationMode.VENDED_CREDENTIALS;
 
+import com.google.api.Http;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -57,14 +58,11 @@ import org.apache.iceberg.rest.requests.UpdateNamespacePropertiesRequest;
 import org.apache.iceberg.rest.responses.ConfigResponse;
 import org.apache.iceberg.rest.responses.ImmutableLoadCredentialsResponse;
 import org.apache.iceberg.rest.responses.LoadTableResponse;
-import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
-import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.ResolvedPolarisEntity;
@@ -141,9 +139,6 @@ public class IcebergCatalogAdapter
       CallContextCatalogFactory catalogFactory,
       PolarisEntityManager entityManager,
       PolarisMetaStoreManager metaStoreManager,
-      BasePersistence session,
-      PolarisConfigurationStore configurationStore,
-      PolarisDiagnostics diagnostics,
       PolarisAuthorizer polarisAuthorizer,
       CatalogPrefixParser prefixParser) {
     this.realmContext = realmContext;
@@ -167,8 +162,7 @@ public class IcebergCatalogAdapter
       String prefix,
       Function<IcebergCatalogHandlerWrapper, Response> action) {
     String catalogName = prefixParser.prefixToCatalogName(realmContext, prefix);
-    try (IcebergCatalogHandlerWrapper wrapper =
-        newHandlerWrapper(realmContext, securityContext, catalogName)) {
+    try (IcebergCatalogHandlerWrapper wrapper = newHandlerWrapper(securityContext, catalogName)) {
       return action.apply(wrapper);
     } catch (RuntimeException e) {
       LOGGER.debug("RuntimeException while operating on catalog. Propagating to caller.", e);
@@ -180,7 +174,7 @@ public class IcebergCatalogAdapter
   }
 
   private IcebergCatalogHandlerWrapper newHandlerWrapper(
-      RealmContext realmContext, SecurityContext securityContext, String catalogName) {
+      SecurityContext securityContext, String catalogName) {
     AuthenticatedPolarisPrincipal authenticatedPrincipal =
         (AuthenticatedPolarisPrincipal) securityContext.getUserPrincipal();
     if (authenticatedPrincipal == null) {
@@ -203,10 +197,10 @@ public class IcebergCatalogAdapter
       CreateNamespaceRequest createNamespaceRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    return Response.ok(
-            newHandlerWrapper(realmContext, securityContext, prefix)
-                .createNamespace(createNamespaceRequest))
-        .build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> Response.ok(catalog.createNamespace(createNamespaceRequest)).build());
   }
 
   @Override
@@ -219,19 +213,19 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Optional<Namespace> namespaceOptional =
         Optional.ofNullable(parent).map(IcebergCatalogAdapter::decodeNamespace);
-    return Response.ok(
-            newHandlerWrapper(realmContext, securityContext, prefix)
-                .listNamespaces(namespaceOptional.orElse(Namespace.of())))
-        .build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog ->
+            Response.ok(catalog.listNamespaces(namespaceOptional.orElse(Namespace.of()))).build());
   }
 
   @Override
   public Response loadNamespaceMetadata(
       String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    return Response.ok(
-            newHandlerWrapper(realmContext, securityContext, prefix).loadNamespaceMetadata(ns))
-        .build();
+    return withCatalog(
+        securityContext, prefix, catalog -> Response.ok(catalog.loadNamespaceMetadata(ns)).build());
   }
 
   private static Namespace decodeNamespace(String namespace) {
@@ -242,16 +236,26 @@ public class IcebergCatalogAdapter
   public Response namespaceExists(
       String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    newHandlerWrapper(realmContext, securityContext, prefix).namespaceExists(ns);
-    return Response.status(Response.Status.NO_CONTENT).build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          catalog.namespaceExists(ns);
+          return Response.status(Response.Status.NO_CONTENT).build();
+        });
   }
 
   @Override
   public Response dropNamespace(
       String prefix, String namespace, RealmContext realmContext, SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    newHandlerWrapper(realmContext, securityContext, prefix).dropNamespace(ns);
-    return Response.status(Response.Status.NO_CONTENT).build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          catalog.dropNamespace(ns);
+          return Response.status(Response.Status.NO_CONTENT).build();
+        });
   }
 
   @Override
@@ -262,10 +266,12 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    return Response.ok(
-            newHandlerWrapper(realmContext, securityContext, prefix)
-                .updateNamespaceProperties(ns, updateNamespacePropertiesRequest))
-        .build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog ->
+            Response.ok(catalog.updateNamespaceProperties(ns, updateNamespacePropertiesRequest))
+                .build());
   }
 
   private EnumSet<AccessDelegationMode> parseAccessDelegationModes(String accessDelegationMode) {
@@ -289,29 +295,26 @@ public class IcebergCatalogAdapter
     EnumSet<AccessDelegationMode> delegationModes =
         parseAccessDelegationModes(accessDelegationMode);
     Namespace ns = decodeNamespace(namespace);
-    if (createTableRequest.stageCreate()) {
-      if (delegationModes.isEmpty()) {
-        return Response.ok(
-                newHandlerWrapper(realmContext, securityContext, prefix)
-                    .createTableStaged(ns, createTableRequest))
-            .build();
-      } else {
-        return Response.ok(
-                newHandlerWrapper(realmContext, securityContext, prefix)
-                    .createTableStagedWithWriteDelegation(ns, createTableRequest))
-            .build();
-      }
-    } else if (delegationModes.isEmpty()) {
-      ETaggedResponse<LoadTableResponse> createResult = newHandlerWrapper(realmContext, securityContext, prefix)
-              .createTableDirect(ns, createTableRequest);
-      return Response.ok(createResult.response()).header(HttpHeaders.ETAG, createResult.eTag())
-          .build();
-    } else {
-      ETaggedResponse<LoadTableResponse> createResult = newHandlerWrapper(realmContext, securityContext, prefix)
-              .createTableDirectWithWriteDelegation(ns, createTableRequest);
-      return Response.ok(createResult.response()).header(HttpHeaders.ETAG, createResult.eTag())
-              .build();
-    }
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          if (createTableRequest.stageCreate()) {
+            if (delegationModes.isEmpty()) {
+              return Response.ok(catalog.createTableStaged(ns, createTableRequest)).build();
+            } else {
+              return Response.ok(
+                      catalog.createTableStagedWithWriteDelegation(ns, createTableRequest))
+                  .build();
+            }
+          } else if (delegationModes.isEmpty()) {
+            ETaggedResponse<LoadTableResponse> createResult = catalog.createTableDirect(ns, createTableRequest);
+            return Response.ok(createResult.response()).header(HttpHeaders.ETAG, createResult.eTag()).build();
+          } else {
+            ETaggedResponse<LoadTableResponse> createResult = catalog.createTableDirectWithWriteDelegation(ns, createTableRequest);
+            return Response.ok(createResult.response()).header(HttpHeaders.ETAG, createResult.eTag()).build();
+          }
+        });
   }
 
   @Override
@@ -323,8 +326,8 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    return Response.ok(newHandlerWrapper(realmContext, securityContext, prefix).listTables(ns))
-        .build();
+    return withCatalog(
+        securityContext, prefix, catalog -> Response.ok(catalog.listTables(ns)).build());
   }
 
   @Override
@@ -341,25 +344,30 @@ public class IcebergCatalogAdapter
         parseAccessDelegationModes(accessDelegationMode);
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
-      ETaggedResponse<LoadTableResponse> loadTableResult;
 
-    IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(ifNoneMatchHeader);
+      IfNoneMatch ifNoneMatch = IfNoneMatch.fromHeader(ifNoneMatchHeader);
 
-    if (ifNoneMatch.isWildcard()) {
-      throw new BadRequestException("If-None-Match may not take the value of '*'");
-    }
+      if (ifNoneMatch.isWildcard()) {
+          throw new BadRequestException("If-None-Match may not take the value of '*'");
+      }
 
-    if (delegationModes.isEmpty()) {
-        loadTableResult = newHandlerWrapper(realmContext, securityContext, prefix)
-                .loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+            ETaggedResponse<LoadTableResponse> loadTableResult;
+
+          if (delegationModes.isEmpty()) {
+              loadTableResult = catalog.loadTableIfStale(tableIdentifier, ifNoneMatch, snapshots)
                 .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
-    } else {
-        loadTableResult = newHandlerWrapper(realmContext, securityContext, prefix)
-                .loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
-                .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
-    }
-    return Response.ok(loadTableResult.response()).header(HttpHeaders.ETAG, loadTableResult.eTag())
-        .build();
+          } else {
+              loadTableResult = catalog.loadTableWithAccessDelegationIfStale(tableIdentifier, ifNoneMatch, snapshots)
+                    .orElseThrow(() -> new WebApplicationException(Response.Status.NOT_MODIFIED));
+          }
+
+            return Response.ok(loadTableResult.response()).header(HttpHeaders.ETAG, loadTableResult.eTag())
+                    .build();
+        });
   }
 
   @Override
@@ -371,8 +379,13 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
-    newHandlerWrapper(realmContext, securityContext, prefix).tableExists(tableIdentifier);
-    return Response.status(Response.Status.NO_CONTENT).build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          catalog.tableExists(tableIdentifier);
+          return Response.status(Response.Status.NO_CONTENT).build();
+        });
   }
 
   @Override
@@ -385,14 +398,17 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
-
-    if (purgeRequested != null && purgeRequested) {
-      newHandlerWrapper(realmContext, securityContext, prefix).dropTableWithPurge(tableIdentifier);
-    } else {
-      newHandlerWrapper(realmContext, securityContext, prefix)
-          .dropTableWithoutPurge(tableIdentifier);
-    }
-    return Response.status(Response.Status.NO_CONTENT).build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          if (purgeRequested != null && purgeRequested) {
+            catalog.dropTableWithPurge(tableIdentifier);
+          } else {
+            catalog.dropTableWithoutPurge(tableIdentifier);
+          }
+          return Response.status(Response.Status.NO_CONTENT).build();
+        });
   }
 
   @Override
@@ -403,10 +419,14 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    ETaggedResponse<LoadTableResponse> registerTableResult = newHandlerWrapper(realmContext, securityContext, prefix)
-            .registerTable(ns, registerTableRequest);
-    return Response.ok(registerTableResult.response()).header(HttpHeaders.ETAG, registerTableResult.eTag())
-        .build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+            ETaggedResponse<LoadTableResponse> registerTableResult = catalog.registerTable(ns, registerTableRequest);
+
+            return Response.ok(registerTableResult.response()).header(HttpHeaders.ETAG, registerTableResult.eTag()).build();
+        });
   }
 
   @Override
@@ -415,8 +435,13 @@ public class IcebergCatalogAdapter
       RenameTableRequest renameTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    newHandlerWrapper(realmContext, securityContext, prefix).renameTable(renameTableRequest);
-    return Response.ok(javax.ws.rs.core.Response.Status.NO_CONTENT).build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          catalog.renameTable(renameTableRequest);
+          return Response.ok(Response.Status.NO_CONTENT).build();
+        });
   }
 
   @Override
@@ -429,18 +454,18 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
-
-    if (IcebergCatalogHandlerWrapper.isCreate(commitTableRequest)) {
-      return Response.ok(
-              newHandlerWrapper(realmContext, securityContext, prefix)
-                  .updateTableForStagedCreate(tableIdentifier, commitTableRequest))
-          .build();
-    } else {
-      return Response.ok(
-              newHandlerWrapper(realmContext, securityContext, prefix)
-                  .updateTable(tableIdentifier, commitTableRequest))
-          .build();
-    }
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          if (IcebergCatalogHandlerWrapper.isCreate(commitTableRequest)) {
+            return Response.ok(
+                    catalog.updateTableForStagedCreate(tableIdentifier, commitTableRequest))
+                .build();
+          } else {
+            return Response.ok(catalog.updateTable(tableIdentifier, commitTableRequest)).build();
+          }
+        });
   }
 
   @Override
@@ -451,10 +476,10 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    return Response.ok(
-            newHandlerWrapper(realmContext, securityContext, prefix)
-                .createView(ns, createViewRequest))
-        .build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> Response.ok(catalog.createView(ns, createViewRequest)).build());
   }
 
   @Override
@@ -466,8 +491,8 @@ public class IcebergCatalogAdapter
       RealmContext realmContext,
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
-    return Response.ok(newHandlerWrapper(realmContext, securityContext, prefix).listViews(ns))
-        .build();
+    return withCatalog(
+        securityContext, prefix, catalog -> Response.ok(catalog.listViews(ns)).build());
   }
 
   @Override
@@ -479,14 +504,18 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
-    LoadTableResponse loadTableResponse =
-        newHandlerWrapper(realmContext, securityContext, prefix)
-            .loadTableWithAccessDelegation(tableIdentifier, "all");
-    return Response.ok(
-            ImmutableLoadCredentialsResponse.builder()
-                .credentials(loadTableResponse.credentials())
-                .build())
-        .build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          LoadTableResponse loadTableResponse =
+              catalog.loadTableWithAccessDelegation(tableIdentifier, "all");
+          return Response.ok(
+                  ImmutableLoadCredentialsResponse.builder()
+                      .credentials(loadTableResponse.credentials())
+                      .build())
+              .build();
+        });
   }
 
   @Override
@@ -498,9 +527,8 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(view));
-    return Response.ok(
-            newHandlerWrapper(realmContext, securityContext, prefix).loadView(tableIdentifier))
-        .build();
+    return withCatalog(
+        securityContext, prefix, catalog -> Response.ok(catalog.loadView(tableIdentifier)).build());
   }
 
   @Override
@@ -512,8 +540,13 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(view));
-    newHandlerWrapper(realmContext, securityContext, prefix).viewExists(tableIdentifier);
-    return Response.status(Response.Status.NO_CONTENT).build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          catalog.viewExists(tableIdentifier);
+          return Response.status(Response.Status.NO_CONTENT).build();
+        });
   }
 
   @Override
@@ -525,8 +558,13 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(view));
-    newHandlerWrapper(realmContext, securityContext, prefix).dropView(tableIdentifier);
-    return Response.status(Response.Status.NO_CONTENT).build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          catalog.dropView(tableIdentifier);
+          return Response.status(Response.Status.NO_CONTENT).build();
+        });
   }
 
   @Override
@@ -535,8 +573,13 @@ public class IcebergCatalogAdapter
       RenameTableRequest renameTableRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    newHandlerWrapper(realmContext, securityContext, prefix).renameView(renameTableRequest);
-    return Response.status(Response.Status.NO_CONTENT).build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          catalog.renameView(renameTableRequest);
+          return Response.status(Response.Status.NO_CONTENT).build();
+        });
   }
 
   @Override
@@ -549,10 +592,10 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(view));
-    return Response.ok(
-            newHandlerWrapper(realmContext, securityContext, prefix)
-                .replaceView(tableIdentifier, commitViewRequest))
-        .build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> Response.ok(catalog.replaceView(tableIdentifier, commitViewRequest)).build());
   }
 
   @Override
@@ -561,9 +604,13 @@ public class IcebergCatalogAdapter
       CommitTransactionRequest commitTransactionRequest,
       RealmContext realmContext,
       SecurityContext securityContext) {
-    newHandlerWrapper(realmContext, securityContext, prefix)
-        .commitTransaction(commitTransactionRequest);
-    return Response.status(Response.Status.NO_CONTENT).build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          catalog.commitTransaction(commitTransactionRequest);
+          return Response.status(Response.Status.NO_CONTENT).build();
+        });
   }
 
   @Override
@@ -587,9 +634,13 @@ public class IcebergCatalogAdapter
       SecurityContext securityContext) {
     Namespace ns = decodeNamespace(namespace);
     TableIdentifier tableIdentifier = TableIdentifier.of(ns, RESTUtil.decodeString(table));
-    newHandlerWrapper(realmContext, securityContext, prefix)
-        .sendNotification(tableIdentifier, notificationRequest);
-    return Response.status(Response.Status.NO_CONTENT).build();
+    return withCatalog(
+        securityContext,
+        prefix,
+        catalog -> {
+          catalog.sendNotification(tableIdentifier, notificationRequest);
+          return Response.status(Response.Status.NO_CONTENT).build();
+        });
   }
 
   /** From IcebergRestConfigurationApiService. */
