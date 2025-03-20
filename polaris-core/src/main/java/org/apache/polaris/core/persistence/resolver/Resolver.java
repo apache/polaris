@@ -64,7 +64,7 @@ public class Resolver {
   private final @Nonnull PolarisMetaStoreManager polarisMetaStoreManager;
 
   // the cache of entities
-  private final EntityCache cache;
+  @Nullable private final EntityCache cache;
 
   // the id of the principal making the call or 0 if unknown
   private final @Nonnull AuthenticatedPolarisPrincipal polarisPrincipal;
@@ -373,7 +373,8 @@ public class Resolver {
 
     // validate input
     diagnostics.check(
-        entityType != PolarisEntityType.NAMESPACE && entityType != PolarisEntityType.TABLE_LIKE,
+        entityType != PolarisEntityType.NAMESPACE
+            && entityType != PolarisEntityType.ICEBERG_TABLE_LIKE,
         "cannot_be_path");
     diagnostics.check(
         entityType.isTopLevel() || this.referenceCatalogName != null, "reference_catalog_expected");
@@ -517,6 +518,10 @@ public class Resolver {
    * @return true if none of the entities has changed
    */
   private boolean bulkValidate(List<ResolvedPolarisEntity> toValidate) {
+    if (!polarisMetaStoreManager.requiresEntityReload()) {
+      return true;
+    }
+
     // assume everything is good
     boolean validationStatus = true;
 

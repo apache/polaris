@@ -36,13 +36,13 @@ import java.util.Comparator;
 import java.util.Objects;
 import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePolarisMetaStoreManagerTest;
 import org.apache.polaris.core.persistence.PolarisTestMetaStoreManager;
-import org.apache.polaris.core.persistence.transactional.PolarisMetaStoreManagerImpl;
+import org.apache.polaris.core.persistence.transactional.TransactionalMetaStoreManagerImpl;
 import org.apache.polaris.jpa.models.ModelPrincipalSecrets;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
@@ -104,7 +104,7 @@ public class PolarisEclipseLinkMetaStoreManagerTest extends BasePolarisMetaStore
         new PolarisEclipseLinkMetaStoreSessionImpl(
             store, Mockito.mock(), () -> "realm", null, "polaris", RANDOM_SECRETS);
     return new PolarisTestMetaStoreManager(
-        new PolarisMetaStoreManagerImpl(),
+        new TransactionalMetaStoreManagerImpl(),
         new PolarisCallContext(
             session,
             diagServices,

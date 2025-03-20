@@ -30,7 +30,6 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.Response.Status;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Locale;
 import java.util.Optional;
@@ -57,6 +56,7 @@ import org.apache.iceberg.exceptions.ServiceUnavailableException;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.iceberg.exceptions.ValidationException;
 import org.apache.iceberg.rest.responses.ErrorResponse;
+import org.apache.polaris.core.exceptions.FileIOUnknownHostException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -116,14 +116,6 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     return errorResp;
   }
 
-  /**
-   * @return whether any throwable in the chain case-insensitive-contains the given message
-   */
-  static boolean doesAnyThrowableContainAccessDeniedHint(Throwable t) {
-    return Arrays.stream(ExceptionUtils.getThrowables(t))
-        .anyMatch(th -> containsAnyAccessDeniedHint(th.getMessage()));
-  }
-
   public static boolean containsAnyAccessDeniedHint(String message) {
     String messageLower = message.toLowerCase(Locale.ENGLISH);
     return ACCESS_DENIED_HINTS.stream().anyMatch(messageLower::contains);
@@ -165,12 +157,12 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
   }
 
   static int mapExceptionToResponseCode(RuntimeException rex) {
-    Optional<Throwable> cloudException =
-        Arrays.stream(ExceptionUtils.getThrowables(rex))
-            .filter(IcebergExceptionMapper::isCloudException)
-            .findAny();
-    if (cloudException.isPresent()) {
-      return mapCloudExceptionToResponseCode(cloudException.get());
+    for (Throwable t : ExceptionUtils.getThrowables(rex)) {
+      // Cloud exceptions can be wrapped by the Iceberg SDK
+      Optional<Integer> code = mapCloudExceptionToResponseCode(t);
+      if (code.isPresent()) {
+        return code.get();
+      }
     }
 
     return switch (rex) {
@@ -179,6 +171,7 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       case NoSuchTableException e -> Status.NOT_FOUND.getStatusCode();
       case NoSuchViewException e -> Status.NOT_FOUND.getStatusCode();
       case NotFoundException e -> Status.NOT_FOUND.getStatusCode();
+      case FileIOUnknownHostException e -> Status.NOT_FOUND.getStatusCode();
       case AlreadyExistsException e -> Status.CONFLICT.getStatusCode();
       case CommitFailedException e -> Status.CONFLICT.getStatusCode();
       case UnprocessableEntityException e -> 422;
@@ -202,10 +195,6 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     };
   }
 
-  private static boolean isCloudException(Throwable t) {
-    return t instanceof S3Exception || t instanceof AzureException || t instanceof StorageException;
-  }
-
   /**
    * We typically call cloud providers over HTTP, so when there's an exception there's typically an
    * associated HTTP code. This extracts the HTTP code if possible.
@@ -223,9 +212,22 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     };
   }
 
-  static int mapCloudExceptionToResponseCode(Throwable t) {
-    if (doesAnyThrowableContainAccessDeniedHint(t)) {
-      return Status.FORBIDDEN.getStatusCode();
+  /**
+   * Tries mapping a cloud exception to the HTTP code that Polaris should return
+   *
+   * @param t the throwable/exception
+   * @return the HTTP code Polaris should return, if it was possible to return a suitable mapping.
+   *     Optional.empty() otherwise.
+   */
+  static Optional<Integer> mapCloudExceptionToResponseCode(Throwable t) {
+    if (!(t instanceof S3Exception
+        || t instanceof AzureException
+        || t instanceof StorageException)) {
+      return Optional.empty();
+    }
+
+    if (containsAnyAccessDeniedHint(t.getMessage())) {
+      return Optional.of(Status.FORBIDDEN.getStatusCode());
     }
 
     int httpCode = extractHttpCodeFromCloudException(t);
@@ -233,29 +235,29 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
     Status.Family httpFamily = Status.Family.familyOf(httpCode);
 
     if (httpStatus == Status.NOT_FOUND) {
-      return Status.BAD_REQUEST.getStatusCode();
+      return Optional.of(Status.BAD_REQUEST.getStatusCode());
     }
     if (httpStatus == Status.UNAUTHORIZED) {
-      return Status.FORBIDDEN.getStatusCode();
+      return Optional.of(Status.FORBIDDEN.getStatusCode());
     }
     if (httpStatus == Status.BAD_REQUEST
         || httpStatus == Status.FORBIDDEN
         || httpStatus == Status.REQUEST_TIMEOUT
         || httpStatus == Status.TOO_MANY_REQUESTS
         || httpStatus == Status.GATEWAY_TIMEOUT) {
-      return httpCode;
+      return Optional.of(httpCode);
     }
     if (httpFamily == Status.Family.REDIRECTION) {
       // Currently Polaris doesn't know how to follow redirects from cloud providers, thus clients
       // shouldn't expect it to.
       // This is a 4xx error to indicate that the client may be able to resolve this by changing
       // some data, such as their catalog's region.
-      return 422;
+      return Optional.of(422);
     }
     if (httpFamily == Status.Family.SERVER_ERROR) {
-      return Status.BAD_GATEWAY.getStatusCode();
+      return Optional.of(Status.BAD_GATEWAY.getStatusCode());
     }
 
-    return Status.INTERNAL_SERVER_ERROR.getStatusCode();
+    return Optional.of(Status.INTERNAL_SERVER_ERROR.getStatusCode());
   }
 }

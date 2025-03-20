@@ -127,12 +127,37 @@ paths:
   # /v1/{prefix}/namespaces/{namespace}/tables/{table}/tasks:
   # Not implemented in Polaris
 
-  ######################
-  # Polaris-native API #
-  ######################
+  ############################
+  # Polaris Notification API #
+  ############################
 
   /v1/{prefix}/namespaces/{namespace}/tables/{table}/notifications:
     $ref: './polaris-catalog-apis/notifications-api.yaml#/paths/~1v1~1{prefix}~1namespaces~1{namespace}~1tables~1{table}~1notifications'
+
+  #############################
+  # Polaris Generic Table API #
+  #############################
+  /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables:
+    $ref: './polaris-catalog-apis/generic-tables-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1generic-tables'
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/generic-tables/{generic-table}:
+    $ref: './polaris-catalog-apis/generic-tables-api.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1generic-tables~1{generic-table}'
+
+  ######################
+  # Polaris Policy API #
+  ######################
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/policies:
+    $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1policies'
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}:
+    $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policy-name}'
+
+  /polaris/v1/{prefix}/namespaces/{namespace}/policies/{policy-name}/mappings:
+    $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1namespaces~1{namespace}~1policies~1{policy-name}~1mappings'
+
+  /polaris/v1/{prefix}/applicable-policies:
+    $ref: './polaris-catalog-apis/policy-apis.yaml#/paths/~1polaris~1v1~1{prefix}~1applicable-policies'
 
 
 components:

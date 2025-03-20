@@ -22,8 +22,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.polaris.core.PolarisConfiguration;
-import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
@@ -31,7 +31,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
 import org.apache.polaris.core.storage.PolarisStorageActions;
-import org.apache.polaris.service.catalog.BasePolarisCatalog;
+import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -69,7 +69,7 @@ public class FileIOUtil {
    * <p>Use cases:
    *
    * <ul>
-   *   <li>In {@link BasePolarisCatalog}, subscoped credentials are generated or refreshed when the
+   *   <li>In {@link IcebergCatalog}, subscoped credentials are generated or refreshed when the
    *       client sends a loadTable request to vend credentials.
    *   <li>In {@link DefaultFileIOFactory}, subscoped credentials are obtained to access the storage
    *       and read/write metadata JSON files.
@@ -88,8 +88,8 @@ public class FileIOUtil {
     boolean skipCredentialSubscopingIndirection =
         configurationStore.getConfiguration(
             callContext.getPolarisCallContext(),
-            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
-            PolarisConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
+            FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.key,
+            FeatureConfiguration.SKIP_CREDENTIAL_SUBSCOPING_INDIRECTION.defaultValue);
     if (skipCredentialSubscopingIndirection) {
       LOGGER
           .atDebug()

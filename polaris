@@ -40,7 +40,7 @@ if [ ! -d ${SCRIPT_DIR}/polaris-venv ] || [ "$UPDATE" == true ]; then
   pip install --upgrade pip
   pip install --upgrade -r regtests/requirements.txt
 
-  cp ${SCRIPT_DIR}/regtests/client/python/pyproject.toml ${SCRIPT_DIR}
+  cp ${SCRIPT_DIR}/client/python/pyproject.toml ${SCRIPT_DIR}
   pushd $SCRIPT_DIR && poetry install ; popd
 
   deactivate
@@ -53,7 +53,7 @@ if [ ! -d ${SCRIPT_DIR}/polaris-venv ] || [ "$UPDATE" == true ]; then
 fi
 
 pushd $SCRIPT_DIR > /dev/null
-PYTHONPATH=regtests/client/python SCRIPT_DIR="$SCRIPT_DIR" ${SCRIPT_DIR}/polaris-venv/bin/python3 regtests/client/python/cli/polaris_cli.py "$@"
+PYTHONPATH=client/python SCRIPT_DIR="$SCRIPT_DIR" ${SCRIPT_DIR}/polaris-venv/bin/python3 client/python/cli/polaris_cli.py "$@"
 status=$?
 popd > /dev/null
 

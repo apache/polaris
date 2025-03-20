@@ -22,5 +22,4 @@ import io.quarkus.test.junit.QuarkusIntegrationTest;
 import org.apache.polaris.service.it.test.PolarisManagementServiceIntegrationTest;
 
 @QuarkusIntegrationTest
-public class QuarkusManagementServiceIT
-    extends PolarisManagementServiceIntegrationTest {}
+public class QuarkusManagementServiceIT extends PolarisManagementServiceIntegrationTest {}

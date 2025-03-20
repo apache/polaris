@@ -29,7 +29,6 @@ import java.util.Map;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.PolarisGrantManager.LoadGrantsResult;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisChangeTrackingVersions;
@@ -48,7 +47,11 @@ import org.apache.polaris.core.persistence.dao.entity.CreateCatalogResult;
 import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.policy.PolicyEntity;
+import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.assertj.core.api.Assertions;
 
 /** Test the Polaris persistence layer */
@@ -268,8 +271,7 @@ public class PolarisTestMetaStoreManager {
 
     // load all grant records on that securable, should not fail
     LoadGrantsResult loadGrantsOnSecurable =
-        polarisMetaStoreManager.loadGrantsOnSecurable(
-            this.polarisCallContext, securable.getCatalogId(), securable.getId());
+        polarisMetaStoreManager.loadGrantsOnSecurable(this.polarisCallContext, securable);
     // ensure entities for these grant records have been properly loaded
     this.validateLoadedGrants(loadGrantsOnSecurable, false);
 
@@ -278,8 +280,7 @@ public class PolarisTestMetaStoreManager {
 
     // load all grant records on that grantee, should not fail
     LoadGrantsResult loadGrantsOnGrantee =
-        polarisMetaStoreManager.loadGrantsToGrantee(
-            this.polarisCallContext, grantee.getCatalogId(), grantee.getId());
+        polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, grantee);
     // ensure entities for these grant records have been properly loaded
     this.validateLoadedGrants(loadGrantsOnGrantee, true);
 
@@ -355,8 +356,7 @@ public class PolarisTestMetaStoreManager {
 
     // load all grant records on that securable, should not fail
     LoadGrantsResult loadGrantsOnSecurable =
-        polarisMetaStoreManager.loadGrantsOnSecurable(
-            this.polarisCallContext, securable.getCatalogId(), securable.getId());
+        polarisMetaStoreManager.loadGrantsOnSecurable(this.polarisCallContext, securable);
     // ensure entities for these grant records have been properly loaded
     this.validateLoadedGrants(loadGrantsOnSecurable, false);
 
@@ -365,8 +365,7 @@ public class PolarisTestMetaStoreManager {
 
     // load all grant records on that grantee, should not fail
     LoadGrantsResult loadGrantsOnGrantee =
-        polarisMetaStoreManager.loadGrantsToGrantee(
-            this.polarisCallContext, grantee.getCatalogId(), grantee.getId());
+        polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, grantee);
     this.validateLoadedGrants(loadGrantsOnGrantee, true);
 
     // check that the grant record has been removed
@@ -583,12 +582,22 @@ public class PolarisTestMetaStoreManager {
       PolarisEntityType entityType,
       PolarisEntitySubType entitySubType,
       String name) {
+    return createEntity(catalogPath, entityType, entitySubType, name, null);
+  }
+
+  public PolarisBaseEntity createEntity(
+      List<PolarisEntityCore> catalogPath,
+      PolarisEntityType entityType,
+      PolarisEntitySubType entitySubType,
+      String name,
+      Map<String, String> properties) {
     return createEntity(
         catalogPath,
         entityType,
         entitySubType,
         name,
-        polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId());
+        polarisMetaStoreManager.generateNewEntityId(this.polarisCallContext).getId(),
+        properties);
   }
 
   PolarisBaseEntity createEntity(
@@ -597,6 +606,16 @@ public class PolarisTestMetaStoreManager {
       PolarisEntitySubType entitySubType,
       String name,
       long entityId) {
+    return createEntity(catalogPath, entityType, entitySubType, name, entityId, null);
+  }
+
+  PolarisBaseEntity createEntity(
+      List<PolarisEntityCore> catalogPath,
+      PolarisEntityType entityType,
+      PolarisEntitySubType entitySubType,
+      String name,
+      long entityId,
+      Map<String, String> properties) {
     long parentId;
     long catalogId;
     if (catalogPath != null) {
@@ -608,6 +627,7 @@ public class PolarisTestMetaStoreManager {
     }
     PolarisBaseEntity newEntity =
         new PolarisBaseEntity(catalogId, entityId, entityType, entitySubType, parentId, name);
+    newEntity.setPropertiesAsMap(properties);
     PolarisBaseEntity entity =
         polarisMetaStoreManager
             .createEntityIfNotExists(this.polarisCallContext, catalogPath, newEntity)
@@ -650,8 +670,28 @@ public class PolarisTestMetaStoreManager {
     return createEntity(catalogPath, entityType, PolarisEntitySubType.NULL_SUBTYPE, name);
   }
 
+  PolarisBaseEntity createEntity(
+      List<PolarisEntityCore> catalogPath,
+      PolarisEntityType entityType,
+      String name,
+      Map<String, String> properties) {
+    return createEntity(
+        catalogPath, entityType, PolarisEntitySubType.NULL_SUBTYPE, name, properties);
+  }
+
+  /** Create a policy entity */
+  PolicyEntity createPolicy(
+      List<PolarisEntityCore> catalogPath, String name, PolicyType policyType) {
+    return PolicyEntity.of(
+        createEntity(
+            catalogPath,
+            PolarisEntityType.POLICY,
+            name,
+            Map.of("policy-type-code", Integer.toString(policyType.getCode()))));
+  }
+
   /** Drop the entity if it exists. */
-  void dropEntity(List<PolarisEntityCore> catalogPath, PolarisEntityCore entityToDrop) {
+  void dropEntity(List<PolarisEntityCore> catalogPath, PolarisBaseEntity entityToDrop) {
     // see if the entity exists
     final boolean exists;
     boolean hasChildren = false;
@@ -702,7 +742,7 @@ public class PolarisTestMetaStoreManager {
                   .listEntities(
                       this.polarisCallContext,
                       path,
-                      PolarisEntityType.TABLE_LIKE,
+                      PolarisEntityType.ICEBERG_TABLE_LIKE,
                       PolarisEntitySubType.ANY_SUBTYPE)
                   .getEntities();
           Assertions.assertThat(children).isNotNull();
@@ -734,14 +774,12 @@ public class PolarisTestMetaStoreManager {
       granteeEntities =
           new ArrayList<>(
               polarisMetaStoreManager
-                  .loadGrantsOnSecurable(
-                      this.polarisCallContext, entity.getCatalogId(), entity.getId())
+                  .loadGrantsOnSecurable(this.polarisCallContext, entity)
                   .getEntities());
       securableEntities =
           new ArrayList<>(
               polarisMetaStoreManager
-                  .loadGrantsToGrantee(
-                      this.polarisCallContext, entity.getCatalogId(), entity.getId())
+                  .loadGrantsToGrantee(this.polarisCallContext, entity)
                   .getEntities());
     } else {
       granteeEntities = List.of();
@@ -831,8 +869,7 @@ public class PolarisTestMetaStoreManager {
       // of the entity it was connected with before being dropped
       for (PolarisBaseEntity connectedEntity : granteeEntities) {
         LoadGrantsResult grantResult =
-            polarisMetaStoreManager.loadGrantsToGrantee(
-                this.polarisCallContext, connectedEntity.getCatalogId(), connectedEntity.getId());
+            polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, connectedEntity);
         if (grantResult.isSuccess()) {
           long cnt =
               grantResult.getGrantRecords().stream()
@@ -853,8 +890,7 @@ public class PolarisTestMetaStoreManager {
       }
       for (PolarisBaseEntity connectedEntity : securableEntities) {
         LoadGrantsResult grantResult =
-            polarisMetaStoreManager.loadGrantsOnSecurable(
-                this.polarisCallContext, connectedEntity.getCatalogId(), connectedEntity.getId());
+            polarisMetaStoreManager.loadGrantsOnSecurable(this.polarisCallContext, connectedEntity);
         long cnt =
             grantResult.getGrantRecords().stream()
                 .filter(gr -> gr.getGranteeId() == entityToDrop.getId())
@@ -922,7 +958,7 @@ public class PolarisTestMetaStoreManager {
 
   /**
    * Create a test catalog. This is a new catalog which will have the following objects (N is for a
-   * namespace, T for a table, V for a view, R for a role, P for a principal):
+   * namespace, T for a table, V for a view, R for a role, P for a principal, POL for a policy):
    *
    * <pre>
    * - C
@@ -935,6 +971,9 @@ public class PolarisTestMetaStoreManager {
    * - (N1/N4)
    * - N5/N6/T5
    * - N5/N6/T6
+   * - N7/N8/POL1
+   * - N7/N8/POL2
+   * - N7/POL3
    * - R1(TABLE_READ on N1/N2, VIEW_CREATE on C, TABLE_LIST on N1/N2, TABLE_DROP on N5/N6/T5)
    * - R2(TABLE_WRITE_DATA on N5, VIEW_LIST on C)
    * - PR1(R1, R2)
@@ -964,27 +1003,36 @@ public class PolarisTestMetaStoreManager {
         this.createEntity(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N2");
     this.createEntity(
         List.of(catalog, N1, N1_N2),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.TABLE,
         "T1");
     this.createEntity(
         List.of(catalog, N1, N1_N2),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.TABLE,
         "T2");
     this.createEntity(
-        List.of(catalog, N1, N1_N2), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.VIEW, "V1");
+        List.of(catalog, N1, N1_N2),
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
+        PolarisEntitySubType.VIEW,
+        "V1");
     PolarisBaseEntity N1_N3 =
         this.createEntity(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N3");
     this.createEntity(
         List.of(catalog, N1, N1_N3),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.TABLE,
         "T3");
     this.createEntity(
-        List.of(catalog, N1, N1_N3), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.VIEW, "V2");
+        List.of(catalog, N1, N1_N3),
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
+        PolarisEntitySubType.VIEW,
+        "V2");
     this.createEntity(
-        List.of(catalog, N1), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.TABLE, "T4");
+        List.of(catalog, N1),
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
+        PolarisEntitySubType.TABLE,
+        "T4");
     this.createEntity(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N4");
     PolarisBaseEntity N5 = this.createEntity(List.of(catalog), PolarisEntityType.NAMESPACE, "N5");
     PolarisBaseEntity N5_N6 =
@@ -992,14 +1040,22 @@ public class PolarisTestMetaStoreManager {
     PolarisBaseEntity N5_N6_T5 =
         this.createEntity(
             List.of(catalog, N5, N5_N6),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.TABLE,
             "T5");
     this.createEntity(
         List.of(catalog, N5, N5_N6),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.TABLE,
         "T6");
+
+    PolarisBaseEntity N7 = this.createEntity(List.of(catalog), PolarisEntityType.NAMESPACE, "N7");
+    PolarisBaseEntity N7_N8 =
+        this.createEntity(List.of(catalog, N7), PolarisEntityType.NAMESPACE, "N8");
+    this.createPolicy(List.of(catalog, N7, N7_N8), "POL1", PredefinedPolicyTypes.DATA_COMPACTION);
+    this.createPolicy(
+        List.of(catalog, N7, N7_N8), "POL2", PredefinedPolicyTypes.METADATA_COMPACTION);
+    this.createPolicy(List.of(catalog, N7), "POL3", PredefinedPolicyTypes.SNAPSHOT_RETENTION);
 
     // the two catalog roles
     PolarisBaseEntity R1 =
@@ -1294,8 +1350,7 @@ public class PolarisTestMetaStoreManager {
     List<PolarisGrantRecord> refGrantRecords = new ArrayList<>();
     if (refEntity.getType().isGrantee()) {
       LoadGrantsResult loadGrantResult =
-          this.polarisMetaStoreManager.loadGrantsToGrantee(
-              this.polarisCallContext, refEntity.getCatalogId(), refEntity.getId());
+          this.polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, refEntity);
       this.validateLoadedGrants(loadGrantResult, true);
 
       // same version
@@ -1306,8 +1361,7 @@ public class PolarisTestMetaStoreManager {
     }
 
     LoadGrantsResult loadGrantResult =
-        this.polarisMetaStoreManager.loadGrantsOnSecurable(
-            this.polarisCallContext, refEntity.getCatalogId(), refEntity.getId());
+        this.polarisMetaStoreManager.loadGrantsOnSecurable(this.polarisCallContext, refEntity);
     this.validateLoadedGrants(loadGrantResult, false);
 
     // same version
@@ -1347,10 +1401,9 @@ public class PolarisTestMetaStoreManager {
     // reload the grants
     LoadGrantsResult loadGrantResult =
         refEntity.getType().isGrantee()
-            ? this.polarisMetaStoreManager.loadGrantsToGrantee(
-                this.polarisCallContext, catalogId, entityId)
+            ? this.polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, refEntity)
             : this.polarisMetaStoreManager.loadGrantsOnSecurable(
-                this.polarisCallContext, catalogId, entityId);
+                this.polarisCallContext, refEntity);
     this.validateLoadedGrants(loadGrantResult, refEntity.getType().isGrantee());
     Assertions.assertThat(cacheEntry.getGrantRecordsVersion())
         .isEqualTo(loadGrantResult.getGrantsVersion());
@@ -1611,40 +1664,46 @@ public class PolarisTestMetaStoreManager {
         this.ensureExistsByName(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N2");
     this.ensureExistsByName(
         List.of(catalog, N1, N1_N2),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.TABLE,
         "T1");
     this.ensureExistsByName(
         List.of(catalog, N1, N1_N2),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.TABLE,
         "T2");
     this.ensureExistsByName(
         List.of(catalog, N1, N1_N2),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.ANY_SUBTYPE,
         "T2");
     this.ensureExistsByName(
-        List.of(catalog, N1, N1_N2), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.VIEW, "V1");
+        List.of(catalog, N1, N1_N2),
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
+        PolarisEntitySubType.VIEW,
+        "V1");
     this.ensureExistsByName(
         List.of(catalog, N1, N1_N2),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.ANY_SUBTYPE,
         "V1");
     PolarisBaseEntity N1_N3 =
         this.ensureExistsByName(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N3");
     this.ensureExistsByName(
         List.of(catalog, N1, N1_N3),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.TABLE,
         "T3");
     this.ensureExistsByName(
         List.of(catalog, N1, N1_N3),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.ANY_SUBTYPE,
         "V2");
     this.ensureExistsByName(
-        List.of(catalog, N1), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.TABLE, "T4");
+        List.of(catalog, N1),
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
+        PolarisEntitySubType.TABLE,
+        "T4");
     this.ensureExistsByName(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N4");
     PolarisBaseEntity N5 =
         this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N5");
@@ -1656,20 +1715,31 @@ public class PolarisTestMetaStoreManager {
             "N6");
     this.ensureExistsByName(
         List.of(catalog, N5, N5_N6),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.TABLE,
         "T5");
     PolarisBaseEntity N5_N6_T5 =
         this.ensureExistsByName(
             List.of(catalog, N5, N5_N6),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.ANY_SUBTYPE,
             "T5");
     this.ensureExistsByName(
         List.of(catalog, N5, N5_N6),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.TABLE,
         "T6");
+    PolarisBaseEntity N7 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N7");
+    PolarisBaseEntity N7_N8 =
+        this.ensureExistsByName(
+            List.of(catalog, N7),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            "N8");
+    this.ensureExistsByName(List.of(catalog, N7, N7_N8), PolarisEntityType.POLICY, "POL1");
+    this.ensureExistsByName(List.of(catalog, N7, N7_N8), PolarisEntityType.POLICY, "POL2");
+    this.ensureExistsByName(List.of(catalog, N7), PolarisEntityType.POLICY, "POL3");
     PolarisBaseEntity R1 =
         this.ensureExistsByName(List.of(catalog), PolarisEntityType.CATALOG_ROLE, "R1");
     PolarisBaseEntity R2 =
@@ -1703,7 +1773,8 @@ public class PolarisTestMetaStoreManager {
         PolarisEntityType.NAMESPACE,
         List.of(
             ImmutablePair.of("N1", PolarisEntitySubType.NULL_SUBTYPE),
-            ImmutablePair.of("N5", PolarisEntitySubType.NULL_SUBTYPE)));
+            ImmutablePair.of("N5", PolarisEntitySubType.NULL_SUBTYPE),
+            ImmutablePair.of("N7", PolarisEntitySubType.NULL_SUBTYPE)));
 
     // should see 3 top-level catalog roles including the admin one
     this.validateListReturn(
@@ -1750,7 +1821,7 @@ public class PolarisTestMetaStoreManager {
             ImmutablePair.of("N4", PolarisEntitySubType.NULL_SUBTYPE)));
     this.validateListReturn(
         List.of(catalog, N1),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.ANY_SUBTYPE,
         List.of(ImmutablePair.of("T4", PolarisEntitySubType.TABLE)));
     PolarisBaseEntity N5 =
@@ -1766,7 +1837,7 @@ public class PolarisTestMetaStoreManager {
     // table or view object
     this.validateListReturn(
         List.of(catalog, N1, N1_N2),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.ANY_SUBTYPE,
         List.of(
             ImmutablePair.of("T1", PolarisEntitySubType.TABLE),
@@ -1775,7 +1846,7 @@ public class PolarisTestMetaStoreManager {
     // table object only
     this.validateListReturn(
         List.of(catalog, N1, N1_N2),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.TABLE,
         List.of(
             ImmutablePair.of("T1", PolarisEntitySubType.TABLE),
@@ -1783,7 +1854,7 @@ public class PolarisTestMetaStoreManager {
     // view object only
     this.validateListReturn(
         List.of(catalog, N1, N1_N2),
-        PolarisEntityType.TABLE_LIKE,
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
         PolarisEntitySubType.VIEW,
         List.of(ImmutablePair.of("V1", PolarisEntitySubType.VIEW)));
     // list all principals
@@ -1804,6 +1875,18 @@ public class PolarisTestMetaStoreManager {
                 PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of("PR1", PolarisEntitySubType.NULL_SUBTYPE),
             ImmutablePair.of("PR2", PolarisEntitySubType.NULL_SUBTYPE)));
+
+    // list 2 policies under N7_N8
+    PolarisBaseEntity N7 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N7");
+    PolarisBaseEntity N7_N8 =
+        this.ensureExistsByName(List.of(catalog, N7), PolarisEntityType.NAMESPACE, "N8");
+    this.validateListReturn(
+        List.of(catalog, N7, N7_N8),
+        PolarisEntityType.POLICY,
+        List.of(
+            ImmutablePair.of("POL1", PolarisEntitySubType.NULL_SUBTYPE),
+            ImmutablePair.of("POL2", PolarisEntitySubType.NULL_SUBTYPE)));
   }
 
   /** Test that entity updates works well */
@@ -1820,7 +1903,7 @@ public class PolarisTestMetaStoreManager {
     PolarisBaseEntity T6v1 =
         this.ensureExistsByName(
             List.of(catalog, N5, N5_N6),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.TABLE,
             "T6");
     Assertions.assertThat(T6v1).isNotNull();
@@ -1857,7 +1940,7 @@ public class PolarisTestMetaStoreManager {
     PolarisBaseEntity T5v1 =
         this.ensureExistsByName(
             List.of(catalog, N5, N5_N6),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.TABLE,
             "T5");
     T5v1.setId(100000L);
@@ -1898,7 +1981,7 @@ public class PolarisTestMetaStoreManager {
     PolarisBaseEntity T6 =
         this.ensureExistsByName(
             List.of(catalog, N5, N5_N6),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.TABLE,
             "T6");
     Assertions.assertThat(T6).isNotNull();
@@ -1918,21 +2001,21 @@ public class PolarisTestMetaStoreManager {
     PolarisBaseEntity T1 =
         this.ensureExistsByName(
             List.of(catalog, N1, N1_N2),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.TABLE,
             "T1");
     this.dropEntity(List.of(catalog, N1, N1_N2), T1);
     PolarisBaseEntity T2 =
         this.ensureExistsByName(
             List.of(catalog, N1, N1_N2),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.TABLE,
             "T2");
     this.dropEntity(List.of(catalog, N1, N1_N2), T2);
     PolarisBaseEntity V1 =
         this.ensureExistsByName(
             List.of(catalog, N1, N1_N2),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.VIEW,
             "V1");
     this.dropEntity(List.of(catalog, N1, N1_N2), V1);
@@ -1943,14 +2026,14 @@ public class PolarisTestMetaStoreManager {
     PolarisBaseEntity T3 =
         this.ensureExistsByName(
             List.of(catalog, N1, N1_N3),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.TABLE,
             "T3");
     this.dropEntity(List.of(catalog, N1, N1_N3), T3);
     PolarisBaseEntity V2 =
         this.ensureExistsByName(
             List.of(catalog, N1, N1_N3),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.VIEW,
             "V2");
     this.dropEntity(List.of(catalog, N1, N1_N3), V2);
@@ -1958,19 +2041,42 @@ public class PolarisTestMetaStoreManager {
 
     PolarisBaseEntity T4 =
         this.ensureExistsByName(
-            List.of(catalog, N1), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.TABLE, "T4");
+            List.of(catalog, N1),
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
+            PolarisEntitySubType.TABLE,
+            "T4");
     this.dropEntity(List.of(catalog, N1), T4);
     this.dropEntity(List.of(catalog), N1);
 
     PolarisBaseEntity T5 =
         this.ensureExistsByName(
             List.of(catalog, N5, N5_N6),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.TABLE,
             "T5");
     this.dropEntity(List.of(catalog, N5, N5_N6), T5);
     this.dropEntity(List.of(catalog, N5), N5_N6);
     this.dropEntity(List.of(catalog), N5);
+
+    PolarisBaseEntity N7 =
+        this.ensureExistsByName(List.of(catalog), PolarisEntityType.NAMESPACE, "N7");
+    PolarisBaseEntity N7_N8 =
+        this.ensureExistsByName(
+            List.of(catalog, N7),
+            PolarisEntityType.NAMESPACE,
+            PolarisEntitySubType.ANY_SUBTYPE,
+            "N8");
+    PolarisBaseEntity POL1 =
+        this.ensureExistsByName(List.of(catalog, N7, N7_N8), PolarisEntityType.POLICY, "POL1");
+    PolarisBaseEntity POL2 =
+        this.ensureExistsByName(List.of(catalog, N7, N7_N8), PolarisEntityType.POLICY, "POL2");
+    PolarisBaseEntity POL3 =
+        this.ensureExistsByName(List.of(catalog, N7), PolarisEntityType.POLICY, "POL3");
+    this.dropEntity(List.of(catalog, N7, N7_N8), POL1);
+    this.dropEntity(List.of(catalog, N7, N7_N8), POL2);
+    this.dropEntity(List.of(catalog, N7), POL3);
+    this.dropEntity(List.of(catalog, N7), N7_N8);
+    this.dropEntity(List.of(catalog), N7);
 
     // attempt to drop the catalog again, should fail because of role R1
     this.dropEntity(null, catalog);
@@ -2065,7 +2171,7 @@ public class PolarisTestMetaStoreManager {
     PolarisBaseEntity N5_N6_T5 =
         this.ensureExistsByName(
             List.of(catalog, N5, N5_N6),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.ANY_SUBTYPE,
             "T5");
 
@@ -2099,7 +2205,7 @@ public class PolarisTestMetaStoreManager {
     grantToGrantee(catalog, R1, PR9000, PolarisPrivilege.CATALOG_ROLE_USAGE);
 
     LoadGrantsResult loadGrantsResult =
-        polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, 0L, PR9000.getId());
+        polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, PR9000);
     this.validateLoadedGrants(loadGrantsResult, true);
     Assertions.assertThat(loadGrantsResult.getGrantRecords()).hasSize(1);
     Assertions.assertThat(loadGrantsResult.getGrantRecords().get(0).getSecurableCatalogId())
@@ -2107,8 +2213,7 @@ public class PolarisTestMetaStoreManager {
     Assertions.assertThat(loadGrantsResult.getGrantRecords().get(0).getSecurableId())
         .isEqualTo(R1.getId());
 
-    loadGrantsResult =
-        polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, 0L, PR900.getId());
+    loadGrantsResult = polarisMetaStoreManager.loadGrantsToGrantee(this.polarisCallContext, PR900);
     Assertions.assertThat(loadGrantsResult).isNotNull();
     Assertions.assertThat(loadGrantsResult.getGrantRecords()).hasSize(0);
   }
@@ -2236,7 +2341,7 @@ public class PolarisTestMetaStoreManager {
     PolarisBaseEntity N1_N2_T1 =
         this.ensureExistsByName(
             List.of(catalog, N1, N1_N2),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.ANY_SUBTYPE,
             "T1");
     // view with the same name exists, should fail
@@ -2331,11 +2436,15 @@ public class PolarisTestMetaStoreManager {
 
     // now validate that load something which does not exist, will also work
     this.loadCacheEntryByName(
-        N1.getCatalogId(), N1.getId(), PolarisEntityType.TABLE_LIKE, "do_not_exists", false);
+        N1.getCatalogId(),
+        N1.getId(),
+        PolarisEntityType.ICEBERG_TABLE_LIKE,
+        "do_not_exists",
+        false);
     this.loadCacheEntryById(N1.getCatalogId() + 1000, N1.getId(), N1.getType(), false);
 
     // refresh a purged entity
     this.refreshCacheEntry(
-        1, 1, PolarisEntityType.TABLE_LIKE, N1.getCatalogId() + 1000, N1.getId(), false);
+        1, 1, PolarisEntityType.ICEBERG_TABLE_LIKE, N1.getCatalogId() + 1000, N1.getId(), false);
   }
 }
