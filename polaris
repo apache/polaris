@@ -19,17 +19,37 @@
 #
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
-  echo "Performing first-time setup for the Python client..."
-  python3 -m venv ${SCRIPT_DIR}/polaris-venv
+UPDATE=false
+for arg in "$@"; do
+  if [ "$arg" == "--update" ]; then
+    UPDATE=true
+    shift
+    break
+  fi
+done
+
+if [ ! -d ${SCRIPT_DIR}/polaris-venv ] || [ "$UPDATE" == true ]; then
+  if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
+    echo "Performing first-time setup for the Python client..."
+    python3 -m venv ${SCRIPT_DIR}/polaris-venv
+  else
+    echo "Updating dependencies for the Python client..."
+  fi
+
   . ${SCRIPT_DIR}/polaris-venv/bin/activate
-  pip install -r regtests/requirements.txt
+  pip install --upgrade pip
+  pip install --upgrade -r regtests/requirements.txt
 
   cp ${SCRIPT_DIR}/regtests/client/python/pyproject.toml ${SCRIPT_DIR}
   pushd $SCRIPT_DIR && poetry install ; popd
 
   deactivate
-  echo "First time setup complete."
+
+  if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
+    echo "First time setup complete."
+  else
+    echo "Dependencies updated."
+  fi
 fi
 
 pushd $SCRIPT_DIR > /dev/null

@@ -31,13 +31,28 @@ if [ $(basename ${SCRIPT_DIR}) == "regtests" ]; then
   exit 1
 fi
 
+UPDATE=false
+for arg in "$@"; do
+  if [ "$arg" == "--update" ]; then
+    UPDATE=true
+    shift
+    break
+  fi
+done
+
 # Check if the virtual environment directory 'polaris-venv' exists.
 # If it does not, perform the first-time setup for the Python client
-if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
-  echo "Performing first-time setup for the Python client..."
-  python3 -m venv ${SCRIPT_DIR}/polaris-venv
+if [ ! -d ${SCRIPT_DIR}/polaris-venv ] || [ "$UPDATE" == true ]; then
+  if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
+    echo "Performing first-time setup for the Python client..."
+    python3 -m venv ${SCRIPT_DIR}/polaris-venv
+  else
+    echo "Updating dependencies for the Python client..."
+  fi
+
   . ${SCRIPT_DIR}/polaris-venv/bin/activate
-  pip install -f requirements.txt
+  pip install --upgrade pip
+  pip install --upgrade -r regtests/requirements.txt
 
   cp ${SCRIPT_DIR}/regtests/client/python/pyproject.toml ${SCRIPT_DIR}
 
@@ -47,7 +62,12 @@ if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
   cd $CURRENT_DIR
 
   deactivate
-  echo "First time setup complete."
+
+  if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
+    echo "First time setup complete."
+  else
+    echo "Dependencies updated."
+  fi
 fi
 
 # Save the current directory
