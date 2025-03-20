@@ -55,7 +55,6 @@ import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
-import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.apache.polaris.service.quarkus.auth.QuarkusAuthenticationConfiguration;
 import org.apache.polaris.service.quarkus.catalog.io.QuarkusFileIOConfiguration;
 import org.apache.polaris.service.quarkus.context.QuarkusRealmContextConfiguration;
@@ -68,8 +67,11 @@ import org.apache.polaris.service.task.TaskHandlerConfiguration;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class QuarkusProducers {
+  private static final Logger LOGGER = LoggerFactory.getLogger(QuarkusProducers.class);
 
   @Produces
   @ApplicationScoped // cannot be singleton because it is mocked in tests
@@ -151,16 +153,18 @@ public class QuarkusProducers {
   }
 
   /**
-   * Eagerly initialize the in-memory default realm on startup, so that users can check the
-   * credentials printed to stdout immediately.
+   * Eagerly initialize the {@link MetaStoreManagerFactory} on startup, to give the implementation
+   * the opportunity to auto-bootstrap.
    */
-  public void maybeInitializeInMemoryRealm(
-      @Observes StartupEvent event,
-      MetaStoreManagerFactory factory,
+  public void eagerInitMetaStoreManagerFactory(
+      @Observes StartupEvent startupEvent,
+      MetaStoreManagerFactory metaStoreManagerFactory,
       RealmContextConfiguration realmContextConfiguration) {
-    if (factory instanceof InMemoryPolarisMetaStoreManagerFactory) {
-      ((InMemoryPolarisMetaStoreManagerFactory) factory).onStartup(realmContextConfiguration);
-    }
+    LOGGER.trace("Eagerly initializing meta-store manager factory ...");
+    // Need to call some function on MetaStoreManagerFactory to let it initialize...
+    metaStoreManagerFactory.initializeForService(
+        realmContextConfiguration.realms(), realmContextConfiguration.defaultRealm());
+    LOGGER.debug("Eagerly initialized meta-store manager factory {} ...", metaStoreManagerFactory);
   }
 
   @Produces

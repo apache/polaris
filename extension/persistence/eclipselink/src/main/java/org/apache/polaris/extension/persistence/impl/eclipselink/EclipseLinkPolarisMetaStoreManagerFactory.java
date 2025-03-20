@@ -24,6 +24,7 @@ import jakarta.annotation.Nullable;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.nio.file.Path;
+import java.util.List;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.persistence.LocalPolarisMetaStoreManagerFactory;
@@ -53,6 +54,10 @@ public class EclipseLinkPolarisMetaStoreManagerFactory
   protected EclipseLinkPolarisMetaStoreManagerFactory(PolarisDiagnostics diagnostics) {
     super(diagnostics);
   }
+
+  @Override
+  public void initializeForService(
+      @Nonnull List<String> realmIds, @Nonnull String defaultRealmId) {}
 
   @Override
   protected PolarisEclipseLinkStore createBackingStore(@Nonnull PolarisDiagnostics diagnostics) {
