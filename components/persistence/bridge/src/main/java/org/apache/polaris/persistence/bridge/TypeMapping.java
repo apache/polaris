@@ -19,13 +19,15 @@
 package org.apache.polaris.persistence.bridge;
 
 import static com.google.common.base.Preconditions.checkArgument;
-import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 import static org.apache.polaris.core.entity.CatalogEntity.CATALOG_TYPE_PROPERTY;
 import static org.apache.polaris.core.entity.CatalogEntity.DEFAULT_BASE_LOCATION_KEY;
 import static org.apache.polaris.core.entity.CatalogEntity.REMOTE_URL;
 import static org.apache.polaris.core.entity.IcebergTableLikeEntity.METADATA_LOCATION_KEY;
 import static org.apache.polaris.core.entity.PolarisEntityConstants.PRINCIPAL_CREDENTIAL_ROTATION_REQUIRED_STATE;
+import static org.apache.polaris.persistence.coretypes.refs.References.catalogReferenceNames;
+import static org.apache.polaris.persistence.coretypes.refs.References.perCatalogReferenceName;
+import static org.apache.polaris.persistence.coretypes.refs.References.realmReferenceNames;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -60,7 +62,6 @@ import org.apache.polaris.persistence.api.obj.ObjType;
 import org.apache.polaris.persistence.api.obj.ObjTypes;
 import org.apache.polaris.persistence.coretypes.ContainerObj;
 import org.apache.polaris.persistence.coretypes.ObjBase;
-import org.apache.polaris.persistence.coretypes.catalog.CatalogGrantsObj;
 import org.apache.polaris.persistence.coretypes.catalog.CatalogObj;
 import org.apache.polaris.persistence.coretypes.catalog.CatalogObjBase;
 import org.apache.polaris.persistence.coretypes.catalog.CatalogRoleObj;
@@ -83,7 +84,6 @@ import org.apache.polaris.persistence.coretypes.principals.PrincipalRolesObj;
 import org.apache.polaris.persistence.coretypes.principals.PrincipalsObj;
 import org.apache.polaris.persistence.coretypes.realm.ImmediateTaskObj;
 import org.apache.polaris.persistence.coretypes.realm.ImmediateTasksObj;
-import org.apache.polaris.persistence.coretypes.realm.RealmGrantsObj;
 import org.apache.polaris.persistence.coretypes.realm.RootObj;
 
 class TypeMapping {
@@ -583,29 +583,12 @@ class TypeMapping {
     };
   }
 
-  static String perCatalogReferenceName(String refNamePattern, long catalogStableId) {
-    return format(refNamePattern, catalogStableId);
-  }
-
   static void initializeRealmIfNecessary(Persistence persistence) {
-    persistence.createReferenceSilent(RootObj.ROOT_REF_NAME);
-    persistence.createReferenceSilent(CatalogsObj.CATALOGS_REF_NAME);
-    persistence.createReferenceSilent(PrincipalsObj.PRINCIPALS_REF_NAME);
-    persistence.createReferenceSilent(PrincipalRolesObj.PRINCIPAL_ROLES_REF_NAME);
-    persistence.createReferenceSilent(RealmGrantsObj.REALM_GRANTS_REF_NAME);
-    persistence.createReferenceSilent(ImmediateTasksObj.IMMEDIATE_TASKS_REF_NAME);
+    realmReferenceNames().forEach(persistence::createReferenceSilent);
   }
 
   static void initializeCatalogIfNecessary(Persistence persistence, CatalogObj catalog) {
-    persistence.createReferenceSilent(
-        perCatalogReferenceName(
-            CatalogRolesObj.CATALOG_ROLES_REF_NAME_PATTERN, catalog.stableId()));
-    persistence.createReferenceSilent(
-        perCatalogReferenceName(
-            CatalogStateObj.CATALOG_STATE_REF_NAME_PATTERN, catalog.stableId()));
-    persistence.createReferenceSilent(
-        perCatalogReferenceName(
-            CatalogGrantsObj.CATALOG_GRANTS_REF_NAME_PATTERN, catalog.stableId()));
+    catalogReferenceNames(catalog.stableId()).forEach(persistence::createReferenceSilent);
   }
 
   static void catalogMandatory(long catalogStableId) {

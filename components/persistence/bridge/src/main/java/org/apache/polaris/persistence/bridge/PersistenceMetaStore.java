@@ -41,11 +41,11 @@ import static org.apache.polaris.persistence.bridge.TypeMapping.mapToObj;
 import static org.apache.polaris.persistence.bridge.TypeMapping.maybeObjToPolarisPrincipalSecrets;
 import static org.apache.polaris.persistence.bridge.TypeMapping.newContainerBuilderForEntityType;
 import static org.apache.polaris.persistence.bridge.TypeMapping.objTypeForPolarisTypeForFiltering;
-import static org.apache.polaris.persistence.bridge.TypeMapping.perCatalogReferenceName;
 import static org.apache.polaris.persistence.bridge.TypeMapping.polarisPrincipalSecretsToPrincipal;
 import static org.apache.polaris.persistence.bridge.TypeMapping.principalObjToPolarisPrincipalSecrets;
 import static org.apache.polaris.persistence.bridge.TypeMapping.referenceName;
 import static org.apache.polaris.persistence.coretypes.realm.RealmGrantsObj.REALM_GRANTS_REF_NAME;
+import static org.apache.polaris.persistence.coretypes.refs.References.perCatalogReferenceName;
 
 import com.google.common.collect.Streams;
 import jakarta.annotation.Nonnull;

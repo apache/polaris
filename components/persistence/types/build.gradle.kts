@@ -26,6 +26,7 @@ description = "Polaris persistence core types"
 
 dependencies {
   implementation(project(":polaris-core"))
+  implementation(project(":polaris-realms-id"))
   implementation(project(":polaris-persistence-api"))
   implementation(project(":polaris-authz-api"))
   implementation(project(":polaris-varint"))

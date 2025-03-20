@@ -26,6 +26,7 @@ import static org.apache.polaris.persistence.bridge.Identifier.identifierToIndex
 import static org.apache.polaris.persistence.bridge.Identifier.indexKeyToIdentifierBuilder;
 import static org.apache.polaris.persistence.bridge.TypeMapping.catalogMandatory;
 import static org.apache.polaris.persistence.bridge.TypeMapping.realmMandatory;
+import static org.apache.polaris.persistence.coretypes.refs.References.perCatalogReferenceName;
 
 import com.google.common.base.Suppliers;
 import jakarta.annotation.Nonnull;
@@ -58,8 +59,7 @@ abstract class IndexedContainerAccess<C extends ContainerObj> {
       Persistence persistence, long catalogStableId) {
     return new IndexedContainerAccessImpl<>(
         persistence,
-        TypeMapping.perCatalogReferenceName(
-            CatalogStateObj.CATALOG_STATE_REF_NAME_PATTERN, catalogStableId),
+        perCatalogReferenceName(CatalogStateObj.CATALOG_STATE_REF_NAME_PATTERN, catalogStableId),
         CatalogStateObj.class,
         catalogStableId);
   }
