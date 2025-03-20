@@ -62,7 +62,6 @@ import org.apache.polaris.persistence.api.obj.Obj;
 import org.apache.polaris.persistence.api.obj.ObjRef;
 import org.apache.polaris.persistence.api.ref.Reference;
 import org.apache.polaris.realms.id.RealmId;
-import org.checkerframework.checker.index.qual.NonNegative;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,7 +116,7 @@ class CaffeineCacheBackend implements CacheBackend {
                       @Nonnull CacheKeyValue key,
                       @Nonnull CacheKeyValue value,
                       long currentTimeNanos,
-                      @NonNegative long currentDurationNanos) {
+                      long currentDurationNanos) {
                     return expireAfterCreate(key, value, currentTimeNanos);
                   }
 
@@ -126,7 +125,7 @@ class CaffeineCacheBackend implements CacheBackend {
                       @Nonnull CacheKeyValue key,
                       @Nonnull CacheKeyValue value,
                       long currentTimeNanos,
-                      @NonNegative long currentDurationNanos) {
+                      long currentDurationNanos) {
                     return currentDurationNanos;
                   }
                 })
