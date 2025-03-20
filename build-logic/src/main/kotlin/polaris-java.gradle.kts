@@ -157,6 +157,46 @@ tasks.withType<Jar>().configureEach {
   }
 }
 
+class StaleBehaviorChangeConfigurationChecker(private val appVersion: String) : FormatterFunc {
+
+  // Helper function for spotless to check for stale BehaviorChangeConfigurations
+  fun isStaleVersion(
+    annotatedVersion: String,
+    expiresVersion: String?,
+    polarisVersion: String,
+  ): Boolean {
+    if (expiresVersion == null) {
+      val (majorA, minorA, _) = annotatedVersion.split(".").map { it.toInt() }
+      return isStaleVersion(annotatedVersion, "${majorA + 1}.${minorA}.0", polarisVersion) ||
+                isStaleVersion(annotatedVersion, "${majorA}.${minorA + 2}.0", polarisVersion);
+    } else {
+      val (majorA, minorA, patchA) = expiresVersion.split(".").map { it.toInt() }
+      val (majorB, minorB, patchB) = polarisVersion.split(".").map { it.toInt() }
+      return (majorA > majorB ||
+        (majorA == majorB && minorA > minorB) ||
+        (majorA == majorB && minorA == minorB && patchA > patchB))
+    }
+  }
+
+  override fun apply(input: String): String {
+    val versionRegex =
+      """@BehaviorChangeScope\s*\(\s*since\s*=\s*"(\d+\.\d+\.\d+)"(?:\s*,\s*expires\s*=\s*"(\d+\.\d+\.\d+)")?\s*\)"""
+        .toRegex()
+    val matcher = versionRegex.findAll(input)
+    matcher.forEach { matchResult ->
+      val sinceVersion = matchResult.groupValues[1]
+      val expiresVersion = matchResult.groupValues.getOrNull(2)
+      if (isStaleVersion(sinceVersion, expiresVersion, appVersion)) {
+        throw GradleException(
+          "Outdated behavior change annotation detected. Consider removing the configuration, " +
+            " promoting it to a feature configuration, or disabling this check for the configuration."
+        )
+      }
+    }
+    return input
+  }
+}
+
 spotless {
   java {
     target("src/*/java/**/*.java")
@@ -175,6 +215,16 @@ spotless {
         }
       },
     )
+    val polarisVersion =
+      File(rootProject.projectDir, "version.txt").readText().trim().substringBefore("-")
+    custom(
+      "checkStaleBehaviorChangeFlags",
+      object : Serializable, FormatterFunc {
+        override fun apply(text: String): String {
+          return StaleBehaviorChangeConfigurationChecker(polarisVersion).apply(text)
+        }
+      },
+    )
     toggleOffOn()
   }
   kotlinGradle {
@@ -189,6 +239,23 @@ spotless {
       .configFile(rootProject.file("codestyle/org.eclipse.wst.xml.core.prefs"))
     // getting the license-header delimiter right is a bit tricky.
     // licenseHeaderFile(rootProject.file("codestyle/copyright-header.xml"), '<^[!?].*$')
+  }
+  format("enforceBehaviorChangeFlagLocations") {
+    target("**/*.java")
+    targetExclude("**/BehaviorChangeConfiguration.java", "**/PolarisConfigurationStoreTest.java")
+    custom(
+      "enforceBehaviorChangeFlags",
+      object : Serializable, FormatterFunc {
+        override fun apply(text: String): String {
+          if (".buildBehaviorChangeConfiguration()" in text) {
+            throw GradleException(
+              "Usage of buildBehaviorChangeConfiguration() is restricted to BehaviorChangeConfiguration.java"
+            )
+          }
+          return text
+        }
+      },
+    )
   }
 }
 
