@@ -23,13 +23,14 @@ import static com.google.common.base.Preconditions.checkState;
 import static org.apache.polaris.persistence.bridge.TypeMapping.initializeRealmIfNecessary;
 
 import io.smallrye.common.annotation.Identifier;
-import jakarta.annotation.PostConstruct;
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
@@ -63,7 +64,6 @@ import org.apache.polaris.persistence.api.RealmPersistenceFactory;
 import org.apache.polaris.realms.api.RealmDefinition;
 import org.apache.polaris.realms.api.RealmManagement;
 import org.apache.polaris.realms.id.RealmId;
-import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,7 +81,6 @@ class PersistenceMetaStoreManagerFactory implements MetaStoreManagerFactory {
   private final Privileges privileges;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final PolarisConfigurationStore configurationStore;
-  private final RealmContextConfiguration realmContextConfiguration;
   private final Clock clock;
 
   @Inject
@@ -93,7 +92,6 @@ class PersistenceMetaStoreManagerFactory implements MetaStoreManagerFactory {
       Privileges privileges,
       PolarisStorageIntegrationProvider storageIntegrationProvider,
       PolarisConfigurationStore configurationStore,
-      RealmContextConfiguration realmContextConfiguration,
       Clock clock) {
     this.realmManagement = realmManagement;
     this.scheduled =
@@ -103,7 +101,6 @@ class PersistenceMetaStoreManagerFactory implements MetaStoreManagerFactory {
     this.privileges = privileges;
     this.storageIntegrationProvider = storageIntegrationProvider;
     this.configurationStore = configurationStore;
-    this.realmContextConfiguration = realmContextConfiguration;
     this.clock = clock;
 
     realmManagement
@@ -114,9 +111,8 @@ class PersistenceMetaStoreManagerFactory implements MetaStoreManagerFactory {
             });
   }
 
-  @PostConstruct
-  void initialize() {
-    var realmIds = realmContextConfiguration.realms();
+  @Override
+  public void initializeForService(@Nonnull List<String> realmIds, @Nonnull String defaultRealm) {
     var rootCredentialsSet = RootCredentialsSet.fromEnvironment();
     var rootCredentials = rootCredentialsSet.credentials();
 

@@ -27,9 +27,6 @@ description = "Polaris persistence bridge to meta-store"
 dependencies {
   implementation(project(":polaris-core"))
 
-  // Only needed for `RealmContextConfiguration`
-  implementation(project(":polaris-service-common"))
-
   implementation(project(":polaris-persistence-api"))
   implementation(project(":polaris-persistence-types"))
   implementation(project(":polaris-async-api"))
