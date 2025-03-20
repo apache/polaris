@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.core.persistence;
 
+import jakarta.annotation.Nonnull;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.polaris.core.context.RealmContext;
@@ -43,4 +45,6 @@ public interface MetaStoreManagerFactory {
 
   /** Purge all metadata for the realms provided */
   Map<String, BaseResult> purgeRealms(Iterable<String> realms);
+
+  void initializeForService(@Nonnull List<String> realmIds, @Nonnull String defaultRealmId);
 }
