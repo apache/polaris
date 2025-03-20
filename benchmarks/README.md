@@ -111,6 +111,7 @@ For repeated testing and benchmarking purposes it's convenient to have fixed cli
   -Dpolaris.bootstrap.credentials=POLARIS,admin,admin \
   -Djava.security.manager=allow \
   -jar quarkus/server/build/quarkus-app/quarkus-run.jar
+```
 
 With the above you can run the benchmarks with the environment variables `CLIENT_ID=admin` and `CLIENT_SECRET=admin` - meant only for convenience in a fully airgapped system.
 # Test Dataset
