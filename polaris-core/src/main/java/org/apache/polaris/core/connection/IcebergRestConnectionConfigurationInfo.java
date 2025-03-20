@@ -33,7 +33,7 @@ public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionCon
 
   private final String remoteCatalogName;
 
-  private final PolarisAuthenticationParameters restAuthentication;
+  private final PolarisAuthenticationParameters authenticationParameters;
 
   public IcebergRestConnectionConfigurationInfo(
       @JsonProperty(value = "connectionType", required = true) @Nonnull
@@ -41,19 +41,19 @@ public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionCon
       @JsonProperty(value = "uri", required = true) @Nonnull String uri,
       @JsonProperty(value = "remoteCatalogName", required = false) @Nullable
           String remoteCatalogName,
-      @JsonProperty(value = "restAuthentication", required = false) @Nonnull
-          PolarisAuthenticationParameters restAuthentication) {
+      @JsonProperty(value = "authenticationParameters", required = false) @Nonnull
+          PolarisAuthenticationParameters authenticationParameters) {
     super(connectionType, uri);
     this.remoteCatalogName = remoteCatalogName;
-    this.restAuthentication = restAuthentication;
+    this.authenticationParameters = authenticationParameters;
   }
 
   public String getRemoteCatalogName() {
     return remoteCatalogName;
   }
 
-  public PolarisAuthenticationParameters getRestAuthentication() {
-    return restAuthentication;
+  public PolarisAuthenticationParameters getAuthenticationParameters() {
+    return authenticationParameters;
   }
 
   @Override
@@ -63,7 +63,7 @@ public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionCon
     if (getRemoteCatalogName() != null) {
       properties.put(CatalogProperties.WAREHOUSE_LOCATION, getRemoteCatalogName());
     }
-    properties.putAll(restAuthentication.asIcebergCatalogProperties());
+    properties.putAll(authenticationParameters.asIcebergCatalogProperties());
     return properties;
   }
 
@@ -73,7 +73,7 @@ public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionCon
         .setConnectionType(ConnectionConfigInfo.ConnectionTypeEnum.ICEBERG_REST)
         .setUri(getUri())
         .setRemoteCatalogName(getRemoteCatalogName())
-        .setRestAuthentication(restAuthentication.asAuthenticationParametersModel())
+        .setAuthenticationParameters(authenticationParameters.asAuthenticationParametersModel())
         .build();
   }
 
@@ -84,7 +84,7 @@ public class IcebergRestConnectionConfigurationInfo extends PolarisConnectionCon
         .add("connectionType", getConnectionType().name())
         .add("uri", getUri())
         .add("remoteCatalogName", getRemoteCatalogName())
-        .add("restAuthentication", getRestAuthentication().toString())
+        .add("authenticationParameters", getAuthenticationParameters().toString())
         .toString();
   }
 }

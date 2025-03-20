@@ -18,7 +18,7 @@
  */
 package org.apache.polaris.core.connection;
 
-public enum RestAuthenticationType {
+public enum AuthenticationType {
   OAUTH,
   BEARER
 }

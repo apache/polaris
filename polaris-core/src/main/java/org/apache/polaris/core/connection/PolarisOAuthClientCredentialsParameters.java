@@ -53,13 +53,13 @@ public class PolarisOAuthClientCredentialsParameters extends PolarisAuthenticati
   private final List<String> scopes;
 
   public PolarisOAuthClientCredentialsParameters(
-      @JsonProperty(value = "restAuthenticationType", required = true) @Nonnull
-          RestAuthenticationType restAuthenticationType,
+      @JsonProperty(value = "authenticationType", required = true) @Nonnull
+          AuthenticationType authenticationType,
       @JsonProperty(value = "tokenUri", required = false) @Nullable String tokenUri,
       @JsonProperty(value = "clientId", required = true) @Nonnull String clientId,
       @JsonProperty(value = "clientSecret", required = true) @Nonnull String clientSecret,
       @JsonProperty(value = "scopes", required = false) @Nullable List<String> scopes) {
-    super(restAuthenticationType);
+    super(authenticationType);
 
     this.tokenUri = tokenUri;
     this.clientId = clientId;
@@ -111,7 +111,7 @@ public class PolarisOAuthClientCredentialsParameters extends PolarisAuthenticati
   public AuthenticationParameters asAuthenticationParametersModel() {
     // TODO: redact secrets from the model
     return OAuthClientCredentialsParameters.builder()
-        .setRestAuthenticationType(AuthenticationParameters.RestAuthenticationTypeEnum.OAUTH)
+        .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.OAUTH)
         .setTokenUri(getTokenUri())
         .setClientId(getClientId())
         .setScopes(getScopes())

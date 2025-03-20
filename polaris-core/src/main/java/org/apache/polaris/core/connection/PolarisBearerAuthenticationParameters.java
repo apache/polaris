@@ -32,10 +32,10 @@ public class PolarisBearerAuthenticationParameters extends PolarisAuthentication
   private final String bearerToken;
 
   public PolarisBearerAuthenticationParameters(
-      @JsonProperty(value = "restAuthenticationType", required = true) @Nonnull
-          RestAuthenticationType restAuthenticationType,
+      @JsonProperty(value = "authenticationType", required = true) @Nonnull
+          AuthenticationType authenticationType,
       @JsonProperty(value = "bearerToken", required = true) @Nonnull String bearerToken) {
-    super(restAuthenticationType);
+    super(authenticationType);
     this.bearerToken = bearerToken;
   }
 
@@ -52,7 +52,7 @@ public class PolarisBearerAuthenticationParameters extends PolarisAuthentication
   public AuthenticationParameters asAuthenticationParametersModel() {
     // TODO: redact secrets from the model
     return BearerAuthenticationParameters.builder()
-        .setRestAuthenticationType(AuthenticationParameters.RestAuthenticationTypeEnum.BEARER)
+        .setAuthenticationType(AuthenticationParameters.AuthenticationTypeEnum.BEARER)
         .setBearerToken(getBearerToken())
         .build();
   }
@@ -60,7 +60,7 @@ public class PolarisBearerAuthenticationParameters extends PolarisAuthentication
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this)
-        .add("authenticationType", getRestAuthenticationType())
+        .add("authenticationType", getAuthenticationType())
         .toString();
   }
 }

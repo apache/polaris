@@ -365,15 +365,15 @@ public class CatalogEntity extends PolarisEntity {
           case ICEBERG_REST:
             IcebergRestConnectionConfigInfo icebergRestConfigModel =
                 (IcebergRestConnectionConfigInfo) connectionConfigurationModel;
-            PolarisAuthenticationParameters restAuthenticationParameters =
+            PolarisAuthenticationParameters authenticationParameters =
                 PolarisAuthenticationParameters.fromAuthenticationParametersModel(
-                    icebergRestConfigModel.getRestAuthentication());
+                    icebergRestConfigModel.getAuthenticationParameters());
             config =
                 new IcebergRestConnectionConfigurationInfo(
                     ConnectionType.ICEBERG_REST,
                     icebergRestConfigModel.getUri(),
                     icebergRestConfigModel.getRemoteCatalogName(),
-                    restAuthenticationParameters);
+                    authenticationParameters);
             break;
           default:
             throw new IllegalStateException(

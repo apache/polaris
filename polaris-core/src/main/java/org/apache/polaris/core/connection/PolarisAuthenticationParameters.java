@@ -26,54 +26,53 @@ import org.apache.polaris.core.admin.model.AuthenticationParameters;
 import org.apache.polaris.core.admin.model.BearerAuthenticationParameters;
 import org.apache.polaris.core.admin.model.OAuthClientCredentialsParameters;
 
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "restAuthenticationType", visible = true)
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "authenticationType", visible = true)
 @JsonSubTypes({
   @JsonSubTypes.Type(value = PolarisOAuthClientCredentialsParameters.class, name = "OAUTH"),
   @JsonSubTypes.Type(value = PolarisBearerAuthenticationParameters.class, name = "BEARER"),
 })
 public abstract class PolarisAuthenticationParameters implements IcebergCatalogPropertiesProvider {
 
-  @JsonProperty(value = "restAuthenticationType")
-  private final RestAuthenticationType restAuthenticationType;
+  @JsonProperty(value = "authenticationType")
+  private final AuthenticationType authenticationType;
 
   public PolarisAuthenticationParameters(
-      @JsonProperty(value = "restAuthenticationType", required = true) @Nonnull
-          RestAuthenticationType restAuthenticationType) {
-    this.restAuthenticationType = restAuthenticationType;
+      @JsonProperty(value = "authenticationType", required = true) @Nonnull
+          AuthenticationType authenticationType) {
+    this.authenticationType = authenticationType;
   }
 
-  public @Nonnull RestAuthenticationType getRestAuthenticationType() {
-    return restAuthenticationType;
+  public @Nonnull AuthenticationType getAuthenticationType() {
+    return authenticationType;
   }
 
   public abstract AuthenticationParameters asAuthenticationParametersModel();
 
   public static PolarisAuthenticationParameters fromAuthenticationParametersModel(
-      AuthenticationParameters restAuthenticationParameters) {
+      AuthenticationParameters authenticationParameters) {
     PolarisAuthenticationParameters config = null;
-    switch (restAuthenticationParameters.getRestAuthenticationType()) {
+    switch (authenticationParameters.getAuthenticationType()) {
       case OAUTH:
-        OAuthClientCredentialsParameters oauthRestAuthenticationModel =
-            (OAuthClientCredentialsParameters) restAuthenticationParameters;
+        OAuthClientCredentialsParameters oauthClientCredentialsModel =
+            (OAuthClientCredentialsParameters) authenticationParameters;
         config =
             new PolarisOAuthClientCredentialsParameters(
-                RestAuthenticationType.OAUTH,
-                oauthRestAuthenticationModel.getTokenUri(),
-                oauthRestAuthenticationModel.getClientId(),
-                oauthRestAuthenticationModel.getClientSecret(),
-                oauthRestAuthenticationModel.getScopes());
+                AuthenticationType.OAUTH,
+                oauthClientCredentialsModel.getTokenUri(),
+                oauthClientCredentialsModel.getClientId(),
+                oauthClientCredentialsModel.getClientSecret(),
+                oauthClientCredentialsModel.getScopes());
         break;
       case BEARER:
-        BearerAuthenticationParameters bearerRestAuthenticationModel =
-            (BearerAuthenticationParameters) restAuthenticationParameters;
+        BearerAuthenticationParameters bearerAuthenticationParametersModel =
+            (BearerAuthenticationParameters) authenticationParameters;
         config =
             new PolarisBearerAuthenticationParameters(
-                RestAuthenticationType.BEARER, bearerRestAuthenticationModel.getBearerToken());
+                AuthenticationType.BEARER, bearerAuthenticationParametersModel.getBearerToken());
         break;
       default:
         throw new IllegalStateException(
-            "Unsupported authentication type: "
-                + restAuthenticationParameters.getRestAuthenticationType());
+            "Unsupported authentication type: " + authenticationParameters.getAuthenticationType());
     }
     return config;
   }
