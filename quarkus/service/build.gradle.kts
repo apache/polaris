@@ -32,7 +32,6 @@ dependencies {
 
   runtimeOnly(project(":polaris-persistence-bridge"))
   runtimeOnly(project(":polaris-persistence-cdi-quarkus"))
-  runtimeOnly(project(":polaris-persistence-cache"))
 
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
