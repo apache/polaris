@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.azure.core.exception.AzureException;
 import com.azure.core.exception.HttpResponseException;
 import com.google.cloud.storage.StorageException;
-import jakarta.persistence.PersistenceException;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.net.UnknownHostException;
@@ -70,8 +69,7 @@ public class IcebergExceptionMapperTest {
                 new FileIOUnknownHostException(
                     "mybucket.blob.core.windows.net: Name or service not known",
                     new RuntimeException(new UnknownHostException())),
-                404),
-            Arguments.of(new PersistenceException(), 401)),
+                404)),
         cloudCodeMappings.entrySet().stream()
             .flatMap(
                 entry ->

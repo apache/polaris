@@ -24,7 +24,6 @@ import com.google.cloud.BaseServiceException;
 import com.google.cloud.storage.StorageException;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
-import jakarta.persistence.PersistenceException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -192,7 +191,6 @@ public class IcebergExceptionMapper implements ExceptionMapper<RuntimeException>
       case IllegalArgumentException e -> Status.BAD_REQUEST.getStatusCode();
       case UnsupportedOperationException e -> Status.NOT_ACCEPTABLE.getStatusCode();
       case WebApplicationException e -> e.getResponse().getStatus();
-      case PersistenceException e -> Status.UNAUTHORIZED.getStatusCode();
       default -> Status.INTERNAL_SERVER_ERROR.getStatusCode();
     };
   }

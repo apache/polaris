@@ -25,6 +25,7 @@ import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.core.JsonLocation;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import jakarta.persistence.EntityExistsException;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -88,7 +89,11 @@ public class ExceptionMapperTest {
         Arguments.of(
             new PolarisExceptionMapper(),
             new AlreadyExistsException(MESSAGE, new RuntimeException(CAUSE)),
-            Level.DEBUG));
+            Level.DEBUG),
+        Arguments.of(
+            new IcebergPersistenceExceptionMapper(),
+            new EntityExistsException(MESSAGE, new RuntimeException(CAUSE)),
+            Level.INFO));
   }
 
   private static class TestJsonProcessingException extends JsonProcessingException {
