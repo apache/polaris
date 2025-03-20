@@ -123,7 +123,6 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
             endpoints,
             principalCredentials,
             catalogName,
-            catalogName,
             Map.of(
                 org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key1",
                 "catalog-default-key1",
