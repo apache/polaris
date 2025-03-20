@@ -40,6 +40,8 @@ public interface RealmPersistenceFactory {
 
     RealmPersistenceBuilder realmId(@Nonnull String realmId);
 
+    RealmPersistenceBuilder skipDecorators();
+
     Persistence build();
   }
 }

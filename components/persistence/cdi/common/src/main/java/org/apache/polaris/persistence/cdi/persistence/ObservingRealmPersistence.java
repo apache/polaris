@@ -57,6 +57,7 @@ class ObservingRealmPersistence implements RealmPersistenceFactory {
   @Override
   public RealmPersistenceBuilder newBuilder() {
     return new RealmPersistenceBuilder() {
+      private boolean skipDecorators;
       private RealmId realmId;
       private boolean consumed;
 
@@ -73,6 +74,12 @@ class ObservingRealmPersistence implements RealmPersistenceFactory {
       }
 
       @Override
+      public RealmPersistenceBuilder skipDecorators() {
+        this.skipDecorators = true;
+        return this;
+      }
+
+      @Override
       public Persistence build() {
         checkState(!consumed, "RealmPersistenceBuilder can only be used once");
         checkState(realmId != null, "Must call RealmPersistenceBuilder.setRealmId() before .build");
@@ -80,7 +87,8 @@ class ObservingRealmPersistence implements RealmPersistenceFactory {
 
         var persistence =
             backend.newPersistence(persistenceConfig, realmId, monotonicClock, idGenerator);
-        var notObserved = persistenceDecorators.decorate(persistence);
+        var notObserved =
+            skipDecorators ? persistence : persistenceDecorators.decorate(persistence);
         return new ObservingPersistence() {
           @Override
           Persistence delegate() {
