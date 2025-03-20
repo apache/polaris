@@ -2650,7 +2650,7 @@ public class PolarisTestMetaStoreManager {
     PolarisBaseEntity N1_N2_T1 =
         this.ensureExistsByName(
             List.of(catalog, N1, N1_N2),
-            PolarisEntityType.TABLE_LIKE,
+            PolarisEntityType.ICEBERG_TABLE_LIKE,
             PolarisEntitySubType.ANY_SUBTYPE,
             "T1");
 
