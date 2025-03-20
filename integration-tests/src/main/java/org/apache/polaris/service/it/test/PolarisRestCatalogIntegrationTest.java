@@ -255,7 +255,6 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
         client,
         endpoints,
         principalCredentials,
-        catalogName,
         currentCatalogName,
         extraPropertiesBuilder.buildKeepingLast());
   }

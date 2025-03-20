@@ -34,7 +34,6 @@ public final class IcebergHelper {
       PolarisApiEndpoints endpoints,
       PrincipalWithCredentials credentials,
       String catalog,
-      String warehouse,
       Map<String, String> extraProperties) {
     String authToken = client.obtainToken(credentials);
     SessionCatalog.SessionContext context = SessionCatalog.SessionContext.createEmpty();
@@ -54,11 +53,11 @@ public final class IcebergHelper {
             .put(
                 org.apache.iceberg.CatalogProperties.FILE_IO_IMPL,
                 "org.apache.iceberg.inmemory.InMemoryFileIO")
-            .put("warehouse", warehouse)
+            .put("warehouse", catalog)
             .put("header." + endpoints.realmHeaderName(), endpoints.realmId())
             .putAll(extraProperties);
 
-    restCatalog.initialize(catalog, propertiesBuilder.buildKeepingLast());
+    restCatalog.initialize("polaris", propertiesBuilder.buildKeepingLast());
     return restCatalog;
   }
 }
