@@ -44,18 +44,81 @@ fun loadProperties(file: File): Properties {
   return props
 }
 
-fun polarisProject(name: String, directory: File) {
+fun listFromProperty(props: Properties, key: String): List<String> {
+  val prop = props[key]
+  return prop.toString().split(',').filter { it.isNotBlank() }.map { it.trim() }
+}
+
+fun polarisProject(name: String, directory: File): ProjectDescriptor {
   include(name)
   val prj = project(":${name}")
   prj.name = name
   prj.projectDir = file(directory)
+  return prj
 }
-
-val projects = Properties()
 
 loadProperties(file("gradle/projects.main.properties")).forEach { name, directory ->
   polarisProject(name as String, file(directory as String))
 }
+
+val ideSyncActive =
+  System.getProperty("idea.sync.active").toBoolean() ||
+    System.getProperty("eclipse.product") != null ||
+    gradle.startParameter.taskNames.any { it.startsWith("eclipse") }
+
+// Setup Spark/Scala projects
+
+val projectsWithReusedSourceDirs = mutableSetOf<String>()
+val sparkScala = loadProperties(file("integrations/spark-scala.properties"))
+
+val sparkVersions = listFromProperty(sparkScala, "sparkVersions")
+
+for (sparkVersion in sparkVersions) {
+  val scalaVersions =
+    sparkScala["sparkVersion-${sparkVersion}-scalaVersions"].toString().split(",").map { it.trim() }
+  var first = true
+  for (scalaVersion in scalaVersions) {
+    for (prj in listFromProperty(sparkScala, "sparkProjects")) {
+      val artifactIdPrefix = sparkScala["project.$prj.artifact-id-prefix"].toString()
+      val artifactId = "$artifactIdPrefix-${sparkVersion}_$scalaVersion"
+      if (first) {
+        first = false
+      } else {
+        projectsWithReusedSourceDirs.add(":$artifactId")
+      }
+      polarisProject(artifactId, file("integrations/$prj/v${sparkVersion}")).buildFileName =
+        "../build.gradle.kts"
+    }
+    if (ideSyncActive) {
+      break
+    }
+  }
+}
+
+// Setup Spark/Scala and "pure" Scala projects
+
+val allScalaVersions = listFromProperty(sparkScala, "allScalaVersions")
+
+var first = true
+
+for (scalaVersion in allScalaVersions) {
+  for (prj in listFromProperty(sparkScala, "scalaProjects")) {
+    val name = sparkScala["project.$prj.artifact-id-prefix"].toString()
+    val artifactId = "${name}_$scalaVersion"
+    if (!first) {
+      projectsWithReusedSourceDirs.add(":$artifactId")
+    }
+    polarisProject(artifactId, file("integrations/$prj"))
+  }
+  if (first) {
+    first = false
+  }
+  if (ideSyncActive) {
+    break
+  }
+}
+
+// Plugin, dependency management, etc
 
 pluginManagement {
   repositories {
@@ -75,4 +138,9 @@ dependencyResolutionManagement {
 gradle.beforeProject {
   version = baseVersion
   group = "org.apache.polaris"
+
+  // Mark projects that reuse source directories, so those do not re-run spotless, errorprone, etc
+  if (projectsWithReusedSourceDirs.contains(this.path)) {
+    project.extra["reused-project-dir"] = true
+  }
 }
