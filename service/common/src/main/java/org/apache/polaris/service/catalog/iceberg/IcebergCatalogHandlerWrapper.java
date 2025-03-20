@@ -639,7 +639,13 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
           if (table instanceof BaseTable baseTable) {
             TableMetadata tableMetadata = baseTable.operations().current();
             return buildLoadTableResponseWithDelegationCredentials(
-                tableIdentifier, tableMetadata, Set.of(PolarisStorageActions.READ, PolarisStorageActions.WRITE, PolarisStorageActions.LIST)).build();
+                    tableIdentifier,
+                    tableMetadata,
+                    Set.of(
+                        PolarisStorageActions.READ,
+                        PolarisStorageActions.WRITE,
+                        PolarisStorageActions.LIST))
+                .build();
           } else if (table instanceof BaseMetadataTable) {
             // metadata tables are loaded on the client side, return NoSuchTableException for now
             throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
@@ -737,7 +743,9 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
           LoadTableResponse.Builder responseBuilder =
               LoadTableResponse.builder().withTableMetadata(metadata);
 
-          return buildLoadTableResponseWithDelegationCredentials(ident, metadata, Set.of(PolarisStorageActions.ALL)).build();
+          return buildLoadTableResponseWithDelegationCredentials(
+                  ident, metadata, Set.of(PolarisStorageActions.ALL))
+              .build();
         });
   }
 
@@ -846,7 +854,9 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
           if (table instanceof BaseTable baseTable) {
             TableMetadata tableMetadata = baseTable.operations().current();
-            return buildLoadTableResponseWithDelegationCredentials(tableIdentifier, tableMetadata, Set.of(PolarisStorageActions.ALL)).build();
+            return buildLoadTableResponseWithDelegationCredentials(
+                    tableIdentifier, tableMetadata, Set.of(PolarisStorageActions.ALL))
+                .build();
           } else if (table instanceof BaseMetadataTable) {
             // metadata tables are loaded on the client side, return NoSuchTableException for now
             throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
@@ -857,9 +867,11 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
   }
 
   private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
-      TableIdentifier tableIdentifier, TableMetadata tableMetadata, Set<PolarisStorageActions> actions) {
-    LoadTableResponse.Builder responseBuilder = LoadTableResponse.builder()
-        .withTableMetadata(tableMetadata);
+      TableIdentifier tableIdentifier,
+      TableMetadata tableMetadata,
+      Set<PolarisStorageActions> actions) {
+    LoadTableResponse.Builder responseBuilder =
+        LoadTableResponse.builder().withTableMetadata(tableMetadata);
     if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
       LOGGER
           .atDebug()
@@ -867,8 +879,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
           .addKeyValue("tableLocation", tableMetadata.location())
           .log("Fetching client credentials for table");
       Map<String, String> credentialConfig =
-          credentialDelegation.getCredentialConfig(
-              tableIdentifier, tableMetadata, actions);
+          credentialDelegation.getCredentialConfig(tableIdentifier, tableMetadata, actions);
       responseBuilder.addAllConfig(credentialConfig);
       responseBuilder.addCredential(
           ImmutableCredential.builder()
