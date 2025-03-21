@@ -19,6 +19,7 @@
 package org.apache.polaris.core.policy.validator;
 
 import com.google.common.base.Preconditions;
+import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
 import org.slf4j.Logger;
@@ -48,7 +49,7 @@ public class GenericPolicyValidator {
 
     switch (type) {
       case DATA_COMPACTION:
-        new DataCompactionPolicyValidator().parse(policy.getContent());
+        DataCompactionPolicyValidator.INSTANCE.parse(policy.getContent());
         break;
 
       // To support additional policy types in the future, add cases here.
@@ -56,9 +57,38 @@ public class GenericPolicyValidator {
       case SNAPSHOT_RETENTION:
       case ORPHAN_FILE_REMOVAL:
       default:
-        throw new InvalidPolicyException("Unsupported policy type: " + policy.getPolicyTypeCode());
+        throw new InvalidPolicyException("Unsupported policy type: " + type.getName());
     }
 
     LOGGER.info("Policy validated successfully: {}", type.getName());
+  }
+
+  /**
+   * Determines whether the given policy can be attached to the specified target entity.
+   *
+   * @param policy the policy entity to check
+   * @param targetEntity the target Polaris entity to attach the policy to
+   * @return {@code true} if the policy is attachable to the target entity; {@code false} otherwise
+   */
+  public static boolean canAttach(PolicyEntity policy, PolarisEntity targetEntity) {
+    Preconditions.checkNotNull(policy, "Policy must not be null");
+    Preconditions.checkNotNull(targetEntity, "Target entity must not be null");
+
+    var policyType = PredefinedPolicyTypes.fromCode(policy.getPolicyTypeCode());
+    Preconditions.checkArgument(
+        policyType != null, "Unknown policy type: " + policy.getPolicyTypeCode());
+
+    switch (policyType) {
+      case DATA_COMPACTION:
+        return DataCompactionPolicyValidator.INSTANCE.canAttach(
+            targetEntity.getType(), targetEntity.getSubType());
+      // To support additional policy types in the future, add cases here.
+      case METADATA_COMPACTION:
+      case SNAPSHOT_RETENTION:
+      case ORPHAN_FILE_REMOVAL:
+      default:
+        LOGGER.warn("Attachment not supported for policy type: {}", policyType.getName());
+        return false;
+    }
   }
 }

@@ -18,6 +18,14 @@
  */
 package org.apache.polaris.core.policy.validator;
 
+import static org.apache.polaris.core.entity.PolarisEntitySubType.ANY_SUBTYPE;
+import static org.apache.polaris.core.entity.PolarisEntitySubType.TABLE;
+import static org.apache.polaris.core.entity.PolarisEntitySubType.VIEW;
+import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG;
+import static org.apache.polaris.core.entity.PolarisEntityType.ICEBERG_TABLE_LIKE;
+import static org.apache.polaris.core.entity.PolarisEntityType.NAMESPACE;
+import static org.apache.polaris.core.entity.PolarisEntityType.PRINCIPAL;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
@@ -27,14 +35,14 @@ public class DataCompactionPolicyValidatorTest {
 
   @Test
   public void testValidPolicies() {
-    validator.parse("{\"enable\": false}");
-    validator.parse("{\"enable\": true}");
+    assertThat(validator.parse("{\"enable\": false}").enabled()).isFalse();
+    assertThat(validator.parse("{\"enable\": true}").enabled()).isTrue();
 
     var validJson = "{\"version\":\"2025-02-03\", \"enable\": true}";
-    validator.parse(validJson);
+    assertThat(validator.parse(validJson).getVersion()).isEqualTo("2025-02-03");
 
     validJson = "{\"enable\": true, \"config\": {\"key1\": \"value1\", \"key2\": true}}";
-    validator.parse(validJson);
+    assertThat(validator.parse(validJson).getConfig().get("key1")).isEqualTo("value1");
   }
 
   @Test
@@ -93,5 +101,46 @@ public class DataCompactionPolicyValidatorTest {
     assertThatThrownBy(() -> validator.parse(invalidPolicy))
         .isInstanceOf(InvalidPolicyException.class)
         .hasMessageContaining("Invalid policy");
+  }
+
+  @Test
+  public void testCanAttachReturnsTrueForCatalogType() {
+    var result = validator.canAttach(CATALOG, ANY_SUBTYPE); // using any valid subtype
+    assertThat(result).isTrue().as("Expected canAttach() to return true for CATALOG type");
+  }
+
+  @Test
+  public void testCanAttachReturnsTrueForNamespaceType() {
+    var result = validator.canAttach(NAMESPACE, ANY_SUBTYPE); // using any valid subtype
+    assertThat(result).isTrue().as("Expected canAttach() to return true for CATALOG type");
+  }
+
+  @Test
+  public void testCanAttachReturnsTrueForIcebergTableLikeWithTableSubtype() {
+    var result = validator.canAttach(ICEBERG_TABLE_LIKE, TABLE);
+    assertThat(result)
+        .isTrue()
+        .as("Expected canAttach() to return true for ICEBERG_TABLE_LIKE with TABLE subtype");
+  }
+
+  @Test
+  public void testCanAttachReturnsFalseForIcebergTableLikeWithNonTableSubtype() {
+    // For ICEBERG_TABLE_LIKE, any subtype other than TABLE should return false.
+    boolean result = validator.canAttach(ICEBERG_TABLE_LIKE, VIEW);
+    assertThat(result)
+        .isFalse()
+        .as("Expected canAttach() to return false for ICEBERG_TABLE_LIKE with non-TABLE subtype");
+  }
+
+  @Test
+  public void testCanAttachReturnsFalseForNull() {
+    var result = validator.canAttach(null, null); // using any valid subtype
+    assertThat(result).isFalse().as("Expected canAttach() to return false for null");
+  }
+
+  @Test
+  public void testCanAttachReturnsFalseForUnattachableType() {
+    var result = validator.canAttach(PRINCIPAL, null); // using any valid subtype
+    assertThat(result).isFalse().as("Expected canAttach() to return false for null");
   }
 }

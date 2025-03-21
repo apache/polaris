@@ -18,6 +18,9 @@
  */
 package org.apache.polaris.core.policy.validator;
 
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
+
 /**
  * Validates and parses a given policy content string against its defined schema.
  *
@@ -33,4 +36,6 @@ public interface PolicyValidator<T> {
    * @throws InvalidPolicyException if the content does not meet the required policy rules
    */
   T parse(String content) throws InvalidPolicyException;
+
+  boolean canAttach(PolarisEntityType entityType, PolarisEntitySubType entitySubType);
 }
