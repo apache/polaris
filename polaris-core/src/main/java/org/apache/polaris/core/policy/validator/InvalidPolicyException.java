@@ -18,19 +18,19 @@
  */
 package org.apache.polaris.core.policy.validator;
 
-/**
- * Validates and parses a given policy content string against its defined schema.
- *
- * @param <T> the type of policy object to be returned after validation
- */
-public interface PolicyValidator<T> {
+import org.apache.polaris.core.exceptions.PolarisException;
 
-  /**
-   * Parses and validates the provided policy content.
-   *
-   * @param content the policy content to parse and validate
-   * @return a policy object of type T if the content is valid
-   * @throws InvalidPolicyException if the content does not meet the required policy rules
-   */
-  T parse(String content) throws InvalidPolicyException;
+/** Exception thrown when a policy is invalid or violates defined rules. */
+public class InvalidPolicyException extends PolarisException {
+  public InvalidPolicyException(String message) {
+    super(message);
+  }
+
+  public InvalidPolicyException(String message, Throwable cause) {
+    super(message, cause);
+  }
+
+  public InvalidPolicyException(Throwable cause) {
+    super("Invalid policy", cause);
+  }
 }

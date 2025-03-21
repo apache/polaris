@@ -18,19 +18,18 @@
  */
 package org.apache.polaris.core.policy.validator;
 
-/**
- * Validates and parses a given policy content string against its defined schema.
- *
- * @param <T> the type of policy object to be returned after validation
- */
-public interface PolicyValidator<T> {
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-  /**
-   * Parses and validates the provided policy content.
-   *
-   * @param content the policy content to parse and validate
-   * @return a policy object of type T if the content is valid
-   * @throws InvalidPolicyException if the content does not meet the required policy rules
-   */
-  T parse(String content) throws InvalidPolicyException;
+class PolicyValidatorUtil {
+  static final ObjectMapper MAPPER = configureMapper();
+
+  private static ObjectMapper configureMapper() {
+    ObjectMapper mapper = new ObjectMapper();
+    // Fails if a required field (in the constructor) is missing
+    mapper.configure(DeserializationFeature.FAIL_ON_MISSING_CREATOR_PROPERTIES, true);
+    // Fails if a required field is present but explicitly null, e.g., {"enable": null}
+    mapper.configure(DeserializationFeature.FAIL_ON_NULL_CREATOR_PROPERTIES, true);
+    return mapper;
+  }
 }

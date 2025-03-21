@@ -18,19 +18,21 @@
  */
 package org.apache.polaris.core.policy.validator;
 
-/**
- * Validates and parses a given policy content string against its defined schema.
- *
- * @param <T> the type of policy object to be returned after validation
- */
-public interface PolicyValidator<T> {
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import java.io.IOException;
 
-  /**
-   * Parses and validates the provided policy content.
-   *
-   * @param content the policy content to parse and validate
-   * @return a policy object of type T if the content is valid
-   * @throws InvalidPolicyException if the content does not meet the required policy rules
-   */
-  T parse(String content) throws InvalidPolicyException;
+public class StrictBooleanDeserializer extends JsonDeserializer<Boolean> {
+  @Override
+  public Boolean deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+    String text = p.getText();
+    if ("true".equals(text)) {
+      return Boolean.TRUE;
+    } else if ("false".equals(text)) {
+      return Boolean.FALSE;
+    } else {
+      throw new InvalidPolicyException("Invalid boolean value: " + text);
+    }
+  }
 }
