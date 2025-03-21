@@ -858,7 +858,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     Map<String, String> vendedCredentialConfig = new HashMap<>();
     String credentialsEndpoint =
         String.format(
-            "/api/catalog/v1/%s/namespaces/%s/tables/%s/credentials",
+            "/v1/%s/namespaces/%s/tables/%s/credentials",
             catalogName, tableIdentifier.namespace().toString(), tableIdentifier.name());
     vendedCredentialConfig.put(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
     vendedCredentialConfig.put(
