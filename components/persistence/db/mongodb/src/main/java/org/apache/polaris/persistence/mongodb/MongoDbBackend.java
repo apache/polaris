@@ -19,6 +19,8 @@
 package org.apache.polaris.persistence.mongodb;
 
 import static com.mongodb.client.model.Filters.in;
+import static com.mongodb.client.model.Projections.fields;
+import static com.mongodb.client.model.Projections.include;
 import static org.apache.polaris.persistence.api.backend.PersistId.persistId;
 import static org.apache.polaris.persistence.base.util.Identifiers.COL_OBJ_CREATED_AT;
 import static org.apache.polaris.persistence.base.util.Identifiers.COL_OBJ_ID;
@@ -32,6 +34,7 @@ import static org.apache.polaris.persistence.base.util.Identifiers.TABLE_REFS;
 import static org.apache.polaris.persistence.mongodb.MongoDbPersistence.ID_PROPERTY_NAME;
 import static org.apache.polaris.persistence.mongodb.MongoDbPersistence.unhandledException;
 
+import com.mongodb.CursorType;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -204,7 +207,13 @@ final class MongoDbBackend implements Backend {
   @Override
   public void scanBackend(
       @Nonnull ReferenceScanCallback referenceConsumer, @Nonnull ObjScanCallback objConsumer) {
-    try (var cursor = refs.find().cursor()) {
+    try (var cursor =
+        refs.find()
+            .batchSize(50)
+            .cursorType(CursorType.NonTailable)
+            .projection(
+                fields(include(ID_PROPERTY_NAME, COL_REALM, COL_REF_NAME, COL_REF_CREATED_AT)))
+            .cursor()) {
       while (cursor.hasNext()) {
         var d = cursor.next();
         var id = d.get(ID_PROPERTY_NAME, Document.class);
@@ -216,7 +225,20 @@ final class MongoDbBackend implements Backend {
     } catch (RuntimeException e) {
       throw unhandledException(e);
     }
-    try (var cursor = objs.find().cursor()) {
+    try (var cursor =
+        objs.find()
+            .batchSize(50)
+            .cursorType(CursorType.NonTailable)
+            .projection(
+                fields(
+                    include(
+                        ID_PROPERTY_NAME,
+                        COL_OBJ_TYPE,
+                        COL_REALM,
+                        COL_OBJ_ID,
+                        COL_OBJ_PART,
+                        COL_OBJ_CREATED_AT)))
+            .cursor()) {
       while (cursor.hasNext()) {
         var d = cursor.next();
         var t = d.getString(COL_OBJ_TYPE);
