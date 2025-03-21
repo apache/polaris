@@ -1177,16 +1177,32 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
   }
 
-  private class BasePolarisTableOperations extends BaseMetastoreTableOperations {
+  public class BasePolarisTableOperations extends BaseMetastoreTableOperations {
     private final TableIdentifier tableIdentifier;
     private final String fullTableName;
     private FileIO tableFileIO;
+    private IcebergTableLikeEntity tableEntity = null;
 
     BasePolarisTableOperations(FileIO defaultFileIO, TableIdentifier tableIdentifier) {
       LOGGER.debug("new BasePolarisTableOperations for {}", tableIdentifier);
       this.tableIdentifier = tableIdentifier;
       this.fullTableName = fullTableName(catalogName, tableIdentifier);
       this.tableFileIO = defaultFileIO;
+    }
+
+    /**
+     * Return the currently loaded {@link IcebergTableLikeEntity} without checking for table
+     * updates. Does not refresh the table entity if not already available, call {@link
+     * TableOperations#current()} or {@link TableOperations#refresh()} first to ensure it is
+     * resolved. NOTE: This may be mismatched with the currently loaded metadata if commits are
+     * performed between calling this method and {@link TableOperations#current()} as this entity is
+     * populated on commits, unlike the current TableMetadata.
+     *
+     * @return the currently loaded {@link IcebergTableLikeEntity}, null if the table entity has not
+     *     been resolved yet
+     */
+    public IcebergTableLikeEntity currentTableEntity() {
+      return this.tableEntity;
     }
 
     @Override
@@ -1197,20 +1213,23 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       PolarisResolvedPathWrapper resolvedEntities =
           resolvedEntityView.getPassthroughResolvedPath(
               tableIdentifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.TABLE);
-      IcebergTableLikeEntity entity = null;
 
       if (resolvedEntities != null) {
-        entity = IcebergTableLikeEntity.of(resolvedEntities.getRawLeafEntity());
-        if (!tableIdentifier.equals(entity.getTableIdentifier())) {
+        this.tableEntity = IcebergTableLikeEntity.of(resolvedEntities.getRawLeafEntity());
+        if (!tableIdentifier.equals(tableEntity.getTableIdentifier())) {
           LOGGER
               .atError()
-              .addKeyValue("entity.getTableIdentifier()", entity.getTableIdentifier())
+              .addKeyValue("entity.getTableIdentifier()", tableEntity.getTableIdentifier())
               .addKeyValue("tableIdentifier", tableIdentifier)
               .log("Stored table identifier mismatches requested identifier");
         }
+      } else {
+        this.tableEntity =
+            null; // reset tableEntity if we failed to resolve the path, because we will be failing
+        // to resolve the metadata as well
       }
 
-      String latestLocation = entity != null ? entity.getMetadataLocation() : null;
+      String latestLocation = tableEntity != null ? tableEntity.getMetadataLocation() : null;
       LOGGER.debug("Refreshing latestLocation: {}", latestLocation);
       if (latestLocation == null) {
         disableRefresh();
@@ -1374,9 +1393,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             tableIdentifier, oldLocation, newLocation, existingLocation);
       }
       if (null == existingLocation) {
-        createTableLike(tableIdentifier, entity);
+        this.tableEntity = createTableLike(tableIdentifier, entity);
       } else {
-        updateTableLike(tableIdentifier, entity);
+        this.tableEntity = updateTableLike(tableIdentifier, entity);
       }
     }
 
@@ -1752,7 +1771,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
    * duplicate the logic to try to resolve parentIds before constructing the proposed entity. This
    * method will fill in the parentId if needed upon resolution.
    */
-  private void createTableLike(TableIdentifier identifier, PolarisEntity entity) {
+  private IcebergTableLikeEntity createTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedParent =
         resolvedEntityView.getResolvedPath(identifier.namespace());
     if (resolvedParent == null) {
@@ -1761,10 +1780,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           String.format("Failed to fetch resolved parent for TableIdentifier '%s'", identifier));
     }
 
-    createTableLike(identifier, entity, resolvedParent);
+    return createTableLike(identifier, entity, resolvedParent);
   }
 
-  private void createTableLike(
+  private IcebergTableLikeEntity createTableLike(
       TableIdentifier identifier, PolarisEntity entity, PolarisResolvedPathWrapper resolvedParent) {
     // Make sure the metadata file is valid for our allowed locations.
     String metadataLocation = IcebergTableLikeEntity.of(entity).getMetadataLocation();
@@ -1803,9 +1822,10 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
     PolarisEntity resultEntity = PolarisEntity.of(res);
     LOGGER.debug("Created TableLike entity {} with TableIdentifier {}", resultEntity, identifier);
+    return IcebergTableLikeEntity.of(resultEntity);
   }
 
-  private void updateTableLike(TableIdentifier identifier, PolarisEntity entity) {
+  private IcebergTableLikeEntity updateTableLike(TableIdentifier identifier, PolarisEntity entity) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(identifier, entity.getType(), entity.getSubType());
     if (resolvedEntities == null) {
@@ -1841,6 +1861,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
     PolarisEntity resultEntity = PolarisEntity.of(res);
     LOGGER.debug("Updated TableLike entity {} with TableIdentifier {}", resultEntity, identifier);
+    return IcebergTableLikeEntity.of(resultEntity);
   }
 
   @SuppressWarnings("FormatStringAnnotation")
