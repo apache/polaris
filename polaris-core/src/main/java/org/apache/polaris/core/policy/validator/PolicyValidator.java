@@ -37,5 +37,16 @@ public interface PolicyValidator<T> {
    */
   T parse(String content) throws InvalidPolicyException;
 
+  /**
+   * Determines whether the policy is attachable to a target entity.
+   * <p>
+   * This method examines the provided {@link PolarisEntityType} and {@link PolarisEntitySubType}
+   * to decide if a policy is applicable for attachment to the target entity.
+   * </p>
+   *
+   * @param entityType    the type of the target entity
+   * @param entitySubType the subtype of the target entity
+   * @return {@code true} if the policy can be attached to the target entity; {@code false} otherwise
+   */
   boolean canAttach(PolarisEntityType entityType, PolarisEntitySubType entitySubType);
 }
