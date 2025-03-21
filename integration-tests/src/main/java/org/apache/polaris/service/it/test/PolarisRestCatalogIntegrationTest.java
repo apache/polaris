@@ -76,7 +76,6 @@ import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.admin.model.ViewPrivilege;
 import org.apache.polaris.core.config.FeatureConfiguration;
-import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.CatalogApi;
@@ -107,7 +106,7 @@ import org.junit.jupiter.api.io.TempDir;
  * @implSpec @implSpec This test expects the server to be configured with the following features
  *     configured:
  *     <ul>
- *       <li>{@link PolarisConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING}: {@code false}
+ *       <li>{@link FeatureConfiguration#ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING}: {@code false}
  *     </ul>
  */
 @ExtendWith(PolarisIntegrationTestExtension.class)
@@ -177,8 +176,8 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @BeforeEach
   public void before(TestInfo testInfo) {
     this.testInfo = testInfo;
-    String principalName = "snowman-rest-" + UUID.randomUUID();
-    String principalRoleName = "rest-admin-" + UUID.randomUUID();
+    String principalName = client.newEntityName("snowman-rest");
+    String principalRoleName = client.newEntityName("rest-admin");
     principalCredentials = managementApi.createPrincipalWithRole(principalName, principalRoleName);
 
     catalogApi = client.catalogApi(principalCredentials);
@@ -233,6 +232,13 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     return restCatalog;
   }
 
+  /**
+   * Initialize a RESTCatalog for testing.
+   *
+   * @param catalogName this parameter is currently unused.
+   * @param additionalProperties additional properties to apply on top of the default test settings
+   * @return a configured instance of RESTCatalog
+   */
   @Override
   protected RESTCatalog initCatalog(String catalogName, Map<String, String> additionalProperties) {
     Optional<PolarisRestCatalogIntegrationTest.RestCatalogConfig> restCatalogConfig =

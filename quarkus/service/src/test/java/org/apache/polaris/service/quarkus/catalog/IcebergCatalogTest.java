@@ -153,8 +153,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
           "true",
           "polaris.features.defaults.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
           "true",
-          "polaris.features.defaults.\"ALLOW_OVERLAPPING_CATALOG_URLS\"",
-          "true",
           "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
           "[\"FILE\"]");
     }
@@ -178,14 +176,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
   private IcebergCatalog catalog;
   private CallContext callContext;
-  private AwsStorageConfigInfo storageConfigModel;
   private String realmName;
   private PolarisMetaStoreManager metaStoreManager;
   private PolarisCallContext polarisContext;
   private PolarisAdminService adminService;
   private PolarisEntityManager entityManager;
   private FileIOFactory fileIOFactory;
-  private AuthenticatedPolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
 
@@ -236,7 +232,8 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
                         "root")
                     .getEntity()));
 
-    authenticatedRoot = new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
+    AuthenticatedPolarisPrincipal authenticatedRoot =
+        new AuthenticatedPolarisPrincipal(rootEntity, Set.of());
 
     securityContext = Mockito.mock(SecurityContext.class);
     when(securityContext.getUserPrincipal()).thenReturn(authenticatedRoot);
@@ -248,6 +245,28 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             metaStoreManager,
             securityContext,
             new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
+
+    String storageLocation = "s3://my-bucket/path/to/data";
+    AwsStorageConfigInfo storageConfigModel =
+        AwsStorageConfigInfo.builder()
+            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
+            .setExternalId("externalId")
+            .setUserArn("aws::a:user:arn")
+            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
+            .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
+            .build();
+    catalogEntity =
+        adminService.createCatalog(
+            new CatalogEntity.Builder()
+                .setName(CATALOG_NAME)
+                .setDefaultBaseLocation(storageLocation)
+                .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+                .addProperty(
+                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                .addProperty(
+                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                .build());
 
     RealmEntityManagerFactory realmEntityManagerFactory =
         new RealmEntityManagerFactory(createMockMetaStoreManagerFactory());
@@ -271,7 +290,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             isA(AwsStorageConfigurationInfo.class)))
         .thenReturn((PolarisStorageIntegration) storageIntegration);
 
-    this.catalog = initCatalog(CATALOG_NAME, ImmutableMap.of());
+    this.catalog = initCatalog("my-catalog", ImmutableMap.of());
   }
 
   @AfterEach
@@ -285,33 +304,19 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     return catalog;
   }
 
+  /**
+   * Initialize a IcebergCatalog for testing.
+   *
+   * @param catalogName this parameter is currently unused.
+   * @param additionalProperties additional properties to apply on top of the default test settings
+   * @return a configured instance of IcebergCatalog
+   */
   @Override
   protected IcebergCatalog initCatalog(
       String catalogName, Map<String, String> additionalProperties) {
-    String storageLocation = "s3://my-bucket/path/to/data";
-    storageConfigModel =
-        AwsStorageConfigInfo.builder()
-            .setRoleArn("arn:aws:iam::012345678901:role/jdoe")
-            .setExternalId("externalId")
-            .setUserArn("aws::a:user:arn")
-            .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
-            .setAllowedLocations(List.of(storageLocation, "s3://externally-owned-bucket"))
-            .build();
-    catalogEntity =
-        adminService.createCatalog(
-            new CatalogEntity.Builder()
-                .setName(catalogName)
-                .setDefaultBaseLocation(storageLocation)
-                .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
-                .build());
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
-            callContext, entityManager, securityContext, catalogName);
+            callContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
     IcebergCatalog icebergCatalog =
         new IcebergCatalog(
@@ -322,12 +327,11 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             securityContext,
             taskExecutor,
             fileIOFactory);
-
     ImmutableMap.Builder<String, String> propertiesBuilder =
         ImmutableMap.<String, String>builder()
             .put(CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO")
             .putAll(additionalProperties);
-    icebergCatalog.initialize(catalogName, propertiesBuilder.buildKeepingLast());
+    icebergCatalog.initialize(CATALOG_NAME, propertiesBuilder.buildKeepingLast());
     return icebergCatalog;
   }
 
