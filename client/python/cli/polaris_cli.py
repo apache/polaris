@@ -118,7 +118,7 @@ class PolarisCli:
         # Validates
         has_access_token = options.access_token is not None
         has_client_secret = client_id is not None and client_secret is not None
-        if has_access_token and has_client_secret:
+        if options.client_id and options.client_secret:
             raise Exception(f'Please provide credentials via either {Argument.to_flag_name(Arguments.CLIENT_ID)} &'
                             f' {Argument.to_flag_name(Arguments.CLIENT_SECRET)} or'
                             f' {Argument.to_flag_name(Arguments.ACCESS_TOKEN)}, but not both')
