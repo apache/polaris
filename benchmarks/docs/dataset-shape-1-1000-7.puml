@@ -1,0 +1,64 @@
+/'
+ ' Licensed to the Apache Software Foundation (ASF) under one
+ ' or more contributor license agreements.  See the NOTICE file
+ ' distributed with this work for additional information
+ ' regarding copyright ownership.  The ASF licenses this file
+ ' to you under the Apache License, Version 2.0 (the
+ ' "License"); you may not use this file except in compliance
+ ' with the License.  You may obtain a copy of the License at
+ '
+ '   http://www.apache.org/licenses/LICENSE-2.0
+ '
+ ' Unless required by applicable law or agreed to in writing,
+ ' software distributed under the License is distributed on an
+ ' "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ ' KIND, either express or implied.  See the License for the
+ ' specific language governing permissions and limitations
+ ' under the License.
+'/
+@startuml
+
+rectangle Realm
+rectangle "C 0" as C0 #AntiqueWhite
+Realm -- C0
+
+rectangle "NS 0" as Ns0 #Lavender
+C0 -- Ns0
+
+rectangle "NS 1" as Ns1 #Lavender
+Ns0 -- Ns1
+
+rectangle "NS 2" as Ns2 #Lavender
+Ns1 -- Ns2
+
+rectangle "..." as Ns3 #Lavender
+Ns2 -[dotted]- Ns3
+
+rectangle "NS 999" as Ns999 #Lavender
+Ns3 -[dotted]- Ns999
+
+rectangle "T 0" as T0 #LightCyan
+rectangle "T 1" as T1 #LightCyan
+rectangle "T 2" as T2 #LightCyan
+rectangle "T 3" as T3 #LightCyan
+rectangle "T 4" as T4 #LightCyan
+rectangle "T 5" as T5 #LightCyan
+rectangle "T 6" as T6 #LightCyan
+Ns999 -- T0
+Ns999 -- T1
+Ns999 -- T2
+Ns999 -- T3
+Ns999 -- T4
+Ns999 -- T5
+Ns999 -- T6
+
+rectangle "V 0" as V0 #FloralWhite
+rectangle "V 1" as V1 #FloralWhite
+rectangle "V 2" as V2 #FloralWhite
+rectangle "V 3" as V3 #FloralWhite
+T0 -- V0
+T1 -- V1
+T2 -- V2
+T3 -- V3
+
+@enduml

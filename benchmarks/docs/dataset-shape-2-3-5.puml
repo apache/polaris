@@ -1,0 +1,88 @@
+/'
+ ' Licensed to the Apache Software Foundation (ASF) under one
+ ' or more contributor license agreements.  See the NOTICE file
+ ' distributed with this work for additional information
+ ' regarding copyright ownership.  The ASF licenses this file
+ ' to you under the Apache License, Version 2.0 (the
+ ' "License"); you may not use this file except in compliance
+ ' with the License.  You may obtain a copy of the License at
+ '
+ '   http://www.apache.org/licenses/LICENSE-2.0
+ '
+ ' Unless required by applicable law or agreed to in writing,
+ ' software distributed under the License is distributed on an
+ ' "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ ' KIND, either express or implied.  See the License for the
+ ' specific language governing permissions and limitations
+ ' under the License.
+'/
+@startuml
+
+rectangle Realm
+rectangle "C 0" as C0 #AntiqueWhite
+rectangle "C 1" as C1 #AntiqueWhite
+rectangle "C 2" as C2 #AntiqueWhite
+Realm -- C0
+Realm -- C1
+Realm -- C2
+
+rectangle "NS 0" as Ns0 #Lavender
+C0 -- Ns0
+
+rectangle "NS 1" as Ns1 #Lavender
+rectangle "NS 2" as Ns2 #Lavender
+Ns0 -- Ns1
+Ns0 -- Ns2
+
+rectangle "NS 3" as Ns3 #Lavender
+rectangle "NS 4" as Ns4 #Lavender
+rectangle "NS 5" as Ns5 #Lavender
+rectangle "NS 6" as Ns6 #Lavender
+Ns1 -- Ns3
+Ns1 -- Ns4
+Ns2 -- Ns5
+Ns2 -- Ns6
+
+rectangle "T 0" as T0 #LightCyan
+rectangle "T 1" as T1 #LightCyan
+rectangle "T 2" as T2 #LightCyan
+rectangle "T 3" as T3 #LightCyan
+rectangle "T 4" as T4 #LightCyan
+rectangle "..." as T5n #LightCyan
+rectangle "..." as T6n #LightCyan
+rectangle "T 15" as T15 #LightCyan
+rectangle "T 16" as T16 #LightCyan
+rectangle "T 17" as T17 #LightCyan
+rectangle "T 18" as T18 #LightCyan
+rectangle "T 19" as T19 #LightCyan
+Ns3 -- T0
+Ns3 -- T1
+Ns3 -- T2
+Ns3 -- T3
+Ns3 -- T4
+Ns4 -[dotted]- T5n
+Ns5 -[dotted]- T6n
+Ns6 -- T15
+Ns6 -- T16
+Ns6 -- T17
+Ns6 -- T18
+Ns6 -- T19
+
+rectangle "V 0" as V0 #FloralWhite
+rectangle "V 1" as V1 #FloralWhite
+rectangle "V 2" as V2 #FloralWhite
+rectangle "..." as V5n #FloralWhite
+rectangle "..." as V6n #FloralWhite
+rectangle "V 15" as V15 #FloralWhite
+rectangle "V 16" as V16 #FloralWhite
+rectangle "V 17" as V17 #FloralWhite
+T0 -- V0
+T1 -- V1
+T2 -- V2
+T5n -[dotted]- V5n
+T6n -[dotted]- V6n
+T15 -- V15
+T16 -- V16
+T17 -- V17
+
+@enduml

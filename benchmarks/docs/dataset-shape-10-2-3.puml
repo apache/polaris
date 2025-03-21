@@ -1,0 +1,108 @@
+/'
+ ' Licensed to the Apache Software Foundation (ASF) under one
+ ' or more contributor license agreements.  See the NOTICE file
+ ' distributed with this work for additional information
+ ' regarding copyright ownership.  The ASF licenses this file
+ ' to you under the Apache License, Version 2.0 (the
+ ' "License"); you may not use this file except in compliance
+ ' with the License.  You may obtain a copy of the License at
+ '
+ '   http://www.apache.org/licenses/LICENSE-2.0
+ '
+ ' Unless required by applicable law or agreed to in writing,
+ ' software distributed under the License is distributed on an
+ ' "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ ' KIND, either express or implied.  See the License for the
+ ' specific language governing permissions and limitations
+ ' under the License.
+'/
+@startuml
+skinparam linetype polyline
+
+rectangle Realm
+rectangle "C 0" as C0 #AntiqueWhite
+Realm -- C0
+
+rectangle "NS 0" as Ns0 #Lavender
+C0 -- Ns0
+
+rectangle "NS 1" as Ns1 #Lavender
+rectangle "NS 2" as Ns2 #Lavender
+rectangle "NS 3" as Ns3 #Lavender
+rectangle "NS 4" as Ns4 #Lavender
+rectangle "NS 5" as Ns5 #Lavender
+rectangle "NS 6" as Ns6 #Lavender
+rectangle "NS 7" as Ns7 #Lavender
+rectangle "NS 8" as Ns8 #Lavender
+rectangle "NS 9" as Ns9 #Lavender
+rectangle "NS 10" as Ns10 #Lavender
+Ns0 -- Ns1
+Ns0 -- Ns2
+Ns0 -- Ns3
+Ns0 -- Ns4
+Ns0 -- Ns5
+Ns0 -- Ns6
+Ns0 -- Ns7
+Ns0 -- Ns8
+Ns0 -- Ns9
+Ns0 -- Ns10
+
+rectangle "T 0" as T0 #LightCyan
+rectangle "T 1" as T1 #LightCyan
+rectangle "T 2" as T2 #LightCyan
+rectangle "..." as T2n #LightCyan
+rectangle "..." as T3n #LightCyan
+rectangle "..." as T4n #LightCyan
+rectangle "..." as T5n #LightCyan
+rectangle "..." as T6n #LightCyan
+rectangle "..." as T7n #LightCyan
+rectangle "..." as T8n #LightCyan
+rectangle "..." as T9n #LightCyan
+rectangle "T 27" as T27 #LightCyan
+rectangle "T 28" as T28 #LightCyan
+rectangle "T 29" as T29 #LightCyan
+Ns1 -- T0
+Ns1 -- T1
+Ns1 -- T2
+Ns2 -[dotted]- T2n
+Ns3 -[dotted]- T3n
+Ns4 -[dotted]- T4n
+Ns5 -[dotted]- T5n
+Ns6 -[dotted]- T6n
+Ns7 -[dotted]- T7n
+Ns8 -[dotted]- T8n
+Ns9 -[dotted]- T9n
+Ns10 -- T27
+Ns10 -- T28
+Ns10 -- T29
+
+rectangle "V 0" as V0 #FloralWhite
+rectangle "V 1" as V1 #FloralWhite
+rectangle "V 2" as V2 #FloralWhite
+rectangle "..." as V2n #FloralWhite
+rectangle "..." as V3n #FloralWhite
+rectangle "..." as V4n #FloralWhite
+rectangle "..." as V5n #FloralWhite
+rectangle "..." as V6n #FloralWhite
+rectangle "..." as V7n #FloralWhite
+rectangle "..." as V8n #FloralWhite
+rectangle "..." as V9n #FloralWhite
+rectangle "V 27" as V27 #FloralWhite
+rectangle "V 28" as V28 #FloralWhite
+rectangle "V 29" as V29 #FloralWhite
+T0 -- V0
+T1 -- V1
+T2 -- V2
+T2n -[dotted]- V2n
+T3n -[dotted]- V3n
+T4n -[dotted]- V4n
+T5n -[dotted]- V5n
+T6n -[dotted]- V6n
+T7n -[dotted]- V7n
+T8n -[dotted]- V8n
+T9n -[dotted]- V9n
+T27 -- V27
+T28 -- V28
+T29 -- V29
+
+@enduml
