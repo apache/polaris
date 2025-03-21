@@ -162,6 +162,7 @@ public class GenericTableCatalog {
     }
   }
 
+  @SuppressWarnings("FormatStringAnnotation")
   public boolean dropGenericTable(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
@@ -182,14 +183,7 @@ public class GenericTableCatalog {
             Map.of(),
             false);
 
-    if (!dropEntityResult.isSuccess()) {
-      if (dropEntityResult.failedBecauseNotEmpty()) {
-        throw new IllegalStateException("Cannot drop entity because it has children");
-      } else {
-        throw new BadRequestException("Failed to drop");
-      }
-    }
-    return true;
+    return dropEntityResult.isSuccess();
   }
 
   public List<TableIdentifier> listGenericTables(Namespace namespace) {
