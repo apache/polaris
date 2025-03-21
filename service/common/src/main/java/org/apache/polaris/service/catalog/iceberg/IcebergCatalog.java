@@ -28,8 +28,6 @@ import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.SecurityContext;
-import jakarta.ws.rs.core.UriBuilder;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Arrays;
@@ -856,15 +854,15 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   }
 
   @Override
-  public Map<String, String> getVendedCredentialConfig(TableIdentifier tableIdentifier){
+  public Map<String, String> getVendedCredentialConfig(TableIdentifier tableIdentifier) {
     Map<String, String> vendedCredentialConfig = new HashMap<>();
-                String credentialsEndpoint = String.format(
-                    "/api/catalog/v1/%s/namespaces/%s/tables/%s/credentials",
-                    catalogName,
-                    tableIdentifier.namespace().toString(),
-                    tableIdentifier.name());
+    String credentialsEndpoint =
+        String.format(
+            "/api/catalog/v1/%s/namespaces/%s/tables/%s/credentials",
+            catalogName, tableIdentifier.namespace().toString(), tableIdentifier.name());
     vendedCredentialConfig.put(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
-    vendedCredentialConfig.put(AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, credentialsEndpoint);
+    vendedCredentialConfig.put(
+        AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, credentialsEndpoint);
     return vendedCredentialConfig;
   }
 

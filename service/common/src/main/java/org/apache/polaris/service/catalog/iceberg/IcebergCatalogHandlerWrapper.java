@@ -42,7 +42,6 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.UpdateRequirement;
-import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
@@ -831,29 +830,29 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     // when data-access is specified but access delegation grants are not found.
     Table table = baseCatalog.loadTable(tableIdentifier);
 
-          if (table instanceof BaseTable baseTable) {
-            TableMetadata tableMetadata = baseTable.operations().current();
-            LoadTableResponse.Builder responseBuilder =
-                LoadTableResponse.builder().withTableMetadata(tableMetadata);
-            if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
-              LOGGER
-                  .atDebug()
-                  .addKeyValue("tableIdentifier", tableIdentifier)
-                  .addKeyValue("tableLocation", tableMetadata.location())
-                  .log("Fetching client credentials for table");
-              responseBuilder.addAllConfig(
-                  credentialDelegation.getCredentialConfig(
-                      tableIdentifier, tableMetadata, actionsRequested));
-            if (accessDelegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)){
-             responseBuilder.addAllConfig(
-                  credentialDelegation.getVendedCredentialConfig(
-                      tableIdentifier));
-            }}
-              return responseBuilder.build();
-          } else if (table instanceof BaseMetadataTable) {
-            // metadata tables are loaded on the client side, return NoSuchTableException for now
-            throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
-          }
+    if (table instanceof BaseTable baseTable) {
+      TableMetadata tableMetadata = baseTable.operations().current();
+      LoadTableResponse.Builder responseBuilder =
+          LoadTableResponse.builder().withTableMetadata(tableMetadata);
+      if (baseCatalog instanceof SupportsCredentialDelegation credentialDelegation) {
+        LOGGER
+            .atDebug()
+            .addKeyValue("tableIdentifier", tableIdentifier)
+            .addKeyValue("tableLocation", tableMetadata.location())
+            .log("Fetching client credentials for table");
+        responseBuilder.addAllConfig(
+            credentialDelegation.getCredentialConfig(
+                tableIdentifier, tableMetadata, actionsRequested));
+        if (accessDelegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)) {
+          responseBuilder.addAllConfig(
+              credentialDelegation.getVendedCredentialConfig(tableIdentifier));
+        }
+      }
+      return responseBuilder.build();
+    } else if (table instanceof BaseMetadataTable) {
+      // metadata tables are loaded on the client side, return NoSuchTableException for now
+      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
+    }
 
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }

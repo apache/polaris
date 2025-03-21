@@ -31,7 +31,6 @@ import jakarta.enterprise.inject.Produces;
 import jakarta.inject.Singleton;
 import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
-import jakarta.ws.rs.core.UriBuilder;
 import java.time.Clock;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
@@ -121,9 +120,7 @@ public class QuarkusProducers {
 
   @Produces
   @RequestScoped
-  public CallContext callContext(
-      RealmContext realmContext,
-      PolarisCallContext polarisCallContext) {
+  public CallContext callContext(RealmContext realmContext, PolarisCallContext polarisCallContext) {
     return CallContext.of(realmContext, polarisCallContext);
   }
 

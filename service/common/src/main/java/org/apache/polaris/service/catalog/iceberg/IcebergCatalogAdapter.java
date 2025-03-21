@@ -344,7 +344,9 @@ public class IcebergCatalogAdapter
           if (delegationModes.isEmpty()) {
             return Response.ok(catalog.loadTable(tableIdentifier, snapshots)).build();
           } else {
-            return Response.ok(catalog.loadTableWithAccessDelegation(tableIdentifier, snapshots, delegationModes))
+            return Response.ok(
+                    catalog.loadTableWithAccessDelegation(
+                        tableIdentifier, snapshots, delegationModes))
                 .build();
           }
         });
@@ -485,7 +487,8 @@ public class IcebergCatalogAdapter
         prefix,
         catalog -> {
           LoadTableResponse loadTableResponse =
-              catalog.loadTableWithAccessDelegation(tableIdentifier, "all", EnumSet.noneOf(AccessDelegationMode.class));
+              catalog.loadTableWithAccessDelegation(
+                  tableIdentifier, "all", EnumSet.noneOf(AccessDelegationMode.class));
           return Response.ok(
                   ImmutableLoadCredentialsResponse.builder()
                       .credentials(loadTableResponse.credentials())
