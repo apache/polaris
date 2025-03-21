@@ -77,7 +77,12 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   private static final ConcurrentHashMap<String, EntityManagerFactory> realmFactories =
       new ConcurrentHashMap<>();
   private final EntityManagerFactory emf;
+
+  // TODO this has to be refactored, see https://github.com/apache/polaris/issues/463 and
+  //  https://errorprone.info/bugpattern/ThreadLocalUsage
+  @SuppressWarnings("ThreadLocalUsage")
   private final ThreadLocal<EntityManager> localSession = new ThreadLocal<>();
+
   private final PolarisEclipseLinkStore store;
   private final PolarisStorageIntegrationProvider storageIntegrationProvider;
   private final PrincipalSecretsGenerator secretsGenerator;
