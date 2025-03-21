@@ -17,8 +17,6 @@
  * under the License.
  */
 
-import com.diffplug.spotless.FormatterFunc
-import java.io.Serializable
 import net.ltgt.gradle.errorprone.errorprone
 import org.gradle.api.tasks.compile.JavaCompile
 import org.gradle.api.tasks.testing.Test
@@ -30,7 +28,7 @@ plugins {
   `java-library`
   `java-test-fixtures`
   `jvm-test-suite`
-  id("com.diffplug.spotless")
+  id("polaris-spotless")
   id("jacoco-report-aggregation")
   id("net.ltgt.errorprone")
 }
@@ -137,7 +135,14 @@ dependencies {
   )
 }
 
-tasks.withType(Jar::class).configureEach {
+tasks.withType<Test>().configureEach {
+  systemProperty("file.encoding", "UTF-8")
+  systemProperty("user.language", "en")
+  systemProperty("user.country", "US")
+  systemProperty("user.variant", "")
+}
+
+tasks.withType<Jar>().configureEach {
   manifest {
     attributes(
       // Do not add any (more or less) dynamic information to jars, because that makes Gradle's
@@ -147,41 +152,6 @@ tasks.withType(Jar::class).configureEach {
       "Implementation-Vendor" to "Apache Software Foundation",
       "Implementation-URL" to "https://polaris.apache.org/",
     )
-  }
-}
-
-spotless {
-  java {
-    target("src/*/java/**/*.java")
-    googleJavaFormat()
-    licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"))
-    endWithNewline()
-    custom(
-      "disallowWildcardImports",
-      object : Serializable, FormatterFunc {
-        override fun apply(text: String): String {
-          val regex = "~/import .*\\.\\*;/".toRegex()
-          if (regex.matches(text)) {
-            throw GradleException("Wildcard imports disallowed - ${regex.findAll(text)}")
-          }
-          return text
-        }
-      },
-    )
-    toggleOffOn()
-  }
-  kotlinGradle {
-    ktfmt().googleStyle()
-    licenseHeaderFile(rootProject.file("codestyle/copyright-header-java.txt"), "$")
-    target("*.gradle.kts")
-  }
-  format("xml") {
-    target("src/**/*.xml", "src/**/*.xsd")
-    targetExclude("codestyle/copyright-header.xml")
-    eclipseWtp(com.diffplug.spotless.extra.wtp.EclipseWtpFormatterStep.XML)
-      .configFile(rootProject.file("codestyle/org.eclipse.wst.xml.core.prefs"))
-    // getting the license-header delimiter right is a bit tricky.
-    // licenseHeaderFile(rootProject.file("codestyle/copyright-header.xml"), '<^[!?].*$')
   }
 }
 
