@@ -70,7 +70,7 @@ public interface RetryConfig {
   @WithDefault("SLEEPING")
   FairRetriesType fairRetries();
 
-  String DEFAULT_TIMEOUT = "PT5S";
+  String DEFAULT_TIMEOUT = "PT15S";
   String DEFAULT_RETRIES = "10000";
   String DEFAULT_RETRY_INITIAL_SLEEP_LOWER = "PT0.010S";
   String DEFAULT_RETRY_INITIAL_SLEEP_UPPER = "PT0.020S";
