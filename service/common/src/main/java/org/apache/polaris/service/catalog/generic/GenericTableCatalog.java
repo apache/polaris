@@ -21,9 +21,11 @@ package org.apache.polaris.service.catalog.generic;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import java.util.Map;
+import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
+import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.GenericTableEntity;
@@ -34,6 +36,7 @@ import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
@@ -97,7 +100,6 @@ public class GenericTableCatalog {
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
 
-    // TODO we need to filter by type here?
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
             tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
@@ -146,7 +148,6 @@ public class GenericTableCatalog {
   }
 
   public GenericTableEntity loadGenericTable(TableIdentifier tableIdentifier) {
-    // TODO we need to filter by type here?
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
             tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
@@ -158,5 +159,45 @@ public class GenericTableCatalog {
     } else {
       return entity;
     }
+  }
+
+  @SuppressWarnings("FormatStringAnnotation")
+  public boolean dropGenericTable(TableIdentifier tableIdentifier) {
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getPassthroughResolvedPath(
+            tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
+
+    if (resolvedEntities == null) {
+      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier);
+    }
+
+    List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
+    PolarisEntity leafEntity = resolvedEntities.getRawLeafEntity();
+
+    DropEntityResult dropEntityResult =
+        this.metaStoreManager.dropEntityIfExists(
+            this.callContext.getPolarisCallContext(),
+            PolarisEntity.toCoreList(catalogPath),
+            leafEntity,
+            Map.of(),
+            false);
+
+    return dropEntityResult.isSuccess();
+  }
+
+  public List<TableIdentifier> listGenericTables(Namespace namespace) {
+    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+
+    List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
+    List<PolarisEntity.NameAndId> entities =
+        PolarisEntity.toNameAndIdList(
+            this.metaStoreManager
+                .listEntities(
+                    this.callContext.getPolarisCallContext(),
+                    PolarisEntity.toCoreList(catalogPath),
+                    PolarisEntityType.GENERIC_TABLE,
+                    PolarisEntitySubType.ANY_SUBTYPE)
+                .getEntities());
+    return PolarisCatalogHelpers.nameAndIdToTableIdentifiers(catalogPath, entities);
   }
 }
