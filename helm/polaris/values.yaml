@@ -585,7 +585,7 @@ authentication:
 
 # -- Polaris CORS configuration.
 cors:
-  # -- Origins allowed for CORS, e.g. http://polaris.io, http://localhost:8181. In case an entry of the list is surrounded by forward slashes, it is interpreted as a regular expression.
+  # -- Origins allowed for CORS, e.g. https://polaris.apache.org, http://localhost:8181. In case an entry of the list is surrounded by forward slashes, it is interpreted as a regular expression.
   allowedOrigins: []
   # -- HTTP methods allowed for CORS, ex: GET, PUT, POST. If this is not set or empty, all requested methods are considered allowed.
   allowedMethods: []
