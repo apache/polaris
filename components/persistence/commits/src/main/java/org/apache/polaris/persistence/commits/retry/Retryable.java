@@ -31,5 +31,5 @@ public interface Retryable<RESULT> {
    *     {@linkplain Optional#empty() empty optional} indicates that a retry should be attempted.
    * @throws CommitException Instances of this class let the whole commit operation abort.
    */
-  Optional<RESULT> attempt() throws CommitException;
+  Optional<RESULT> attempt(long nanosRemaining) throws CommitException;
 }

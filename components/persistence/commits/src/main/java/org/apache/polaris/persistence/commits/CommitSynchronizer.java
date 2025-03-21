@@ -19,14 +19,14 @@
 package org.apache.polaris.persistence.commits;
 
 interface CommitSynchronizer {
-  void before();
+  void before(long nanosRemaining);
 
   void after();
 
   CommitSynchronizer NON_SYNCHRONIZING =
       new CommitSynchronizer() {
         @Override
-        public void before() {}
+        public void before(long nanosRemaining) {}
 
         @Override
         public void after() {}

@@ -96,7 +96,7 @@ public class TestRetryLoopConcurrency {
                                   totalSleepTime.addAndGet(sleepTimeMillis);
                                 }))
                             .retryLoop(
-                                () -> {
+                                (long nanosRemaining) -> {
                                   int v = value.get();
                                   // Let other thread(s) continue to cause CAS failures.
                                   Thread.yield();

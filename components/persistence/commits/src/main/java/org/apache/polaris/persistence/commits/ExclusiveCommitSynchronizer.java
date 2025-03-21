@@ -21,6 +21,7 @@ package org.apache.polaris.persistence.commits;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import org.apache.polaris.realms.id.RealmId;
 
 final class ExclusiveCommitSynchronizer implements CommitSynchronizer {
@@ -41,10 +42,11 @@ final class ExclusiveCommitSynchronizer implements CommitSynchronizer {
     semaphore.release();
   }
 
+  @SuppressWarnings("ResultOfMethodCallIgnored") // fine in this case, it'll time out
   @Override
-  public void before() {
+  public void before(long nanosRemaining) {
     try {
-      semaphore.acquire();
+      semaphore.tryAcquire(nanosRemaining, TimeUnit.NANOSECONDS);
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }

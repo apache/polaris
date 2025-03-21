@@ -66,7 +66,7 @@ public class TestRetryLoopImpl {
     soft.assertThatThrownBy(
             () ->
                 tryLoopState.retryLoop(
-                    () -> {
+                    (long nanosRemaining) -> {
                       retryCounter.incrementAndGet();
                       return Optional.empty();
                     }))
@@ -92,7 +92,7 @@ public class TestRetryLoopImpl {
             () ->
                 result.set(
                     tryLoopState.retryLoop(
-                        () -> {
+                        (long nanosRemaining) -> {
                           retryCounter.incrementAndGet();
                           return Optional.of("foo");
                         })))
@@ -117,7 +117,7 @@ public class TestRetryLoopImpl {
             () ->
                 result.set(
                     tryLoopState.retryLoop(
-                        () -> {
+                        (long nanosRemaining) -> {
                           if (retryCounter.incrementAndGet() == 1) {
                             return Optional.empty();
                           }
@@ -143,7 +143,7 @@ public class TestRetryLoopImpl {
             () ->
                 result.set(
                     tryLoopState.retryLoop(
-                        () -> {
+                        (long nanosRemaining) -> {
                           if (retryCounter.incrementAndGet() == 1) {
                             return Optional.empty();
                           }

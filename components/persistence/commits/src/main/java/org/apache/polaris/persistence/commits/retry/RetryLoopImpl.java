@@ -64,13 +64,14 @@ final class RetryLoopImpl<RESULT> implements RetryLoop<RESULT> {
   public RESULT retryLoop(Retryable<RESULT> retryable)
       throws CommitException, RetryTimeoutException {
     var timeLoopStarted = currentNanos();
+    var timeoutAt = timeLoopStarted + maxTime;
     var timeAttemptStarted = timeLoopStarted;
     var prio = -1;
     try {
       for (var attempt = 0; true; attempt++, timeAttemptStarted = currentNanos()) {
         prio = fairRetries.beforeAttempt(attempt, prio);
         try {
-          var r = retryable.attempt();
+          var r = retryable.attempt(timeoutAt - timeAttemptStarted);
           if (r.isPresent()) {
             reportEnd(SUCCESS, timeAttemptStarted);
             return r.get();

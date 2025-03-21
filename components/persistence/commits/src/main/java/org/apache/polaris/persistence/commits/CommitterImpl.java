@@ -109,16 +109,16 @@ class CommitterImpl<REF_OBJ extends BaseCommitObj, RESULT>
             : CommitSynchronizer.NON_SYNCHRONIZING;
 
     try {
-      var config = persistence.params();
-      var loop = RetryLoop.<RESULT>newRetryLoop(config.retryConfig(), persistence.monotonicClock());
+      var retryConfig = persistence.params().retryConfig();
+      var loop = RetryLoop.<RESULT>newRetryLoop(retryConfig, persistence.monotonicClock());
       if (retryStatsConsumer != null) {
         loop.setRetryStatsConsumer(retryStatsConsumer);
       }
       var result =
           loop.retryLoop(
-              () -> {
+              nanosRemaining -> {
                 try {
-                  sync.before();
+                  sync.before(nanosRemaining);
                   return commitAttempt(committerState, commitRetryable);
                 } finally {
                   sync.after();
