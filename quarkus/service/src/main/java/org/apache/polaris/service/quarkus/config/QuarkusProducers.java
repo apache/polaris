@@ -123,21 +123,8 @@ public class QuarkusProducers {
   @RequestScoped
   public CallContext callContext(
       RealmContext realmContext,
-      PolarisCallContext polarisCallContext,
-      @Context ContainerRequestContext request) {
-    String forwardedProto = request.getHeaderString("X-Forwarded-Proto");
-    String forwardedPrefix = request.getHeaderString("X-Forwarded-Prefix");
-    UriBuilder baseUriBuilder = request.getUriInfo().getBaseUriBuilder();
-    if (forwardedProto != null) {
-      baseUriBuilder.scheme(forwardedProto); // default value for this is http
-    }
-    if (forwardedPrefix!=null) {
-      if (!forwardedPrefix.endsWith("/")) {
-        forwardedPrefix += "/";
-      }
-      baseUriBuilder.path(forwardedPrefix);
-    }
-    return CallContext.of(realmContext, polarisCallContext, baseUriBuilder.build());
+      PolarisCallContext polarisCallContext) {
+    return CallContext.of(realmContext, polarisCallContext);
   }
 
   public void closeCallContext(@Disposes CallContext callContext) {

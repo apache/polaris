@@ -74,34 +74,6 @@ public interface CallContext extends AutoCloseable {
   }
 
   static CallContext of(
-      final RealmContext realmContext,
-      final PolarisCallContext polarisCallContext,
-      final URI baseUri) {
-    Map<String, Object> map = new HashMap<>();
-    return new CallContext() {
-      @Override
-      public RealmContext getRealmContext() {
-        return realmContext;
-      }
-
-      @Override
-      public PolarisCallContext getPolarisCallContext() {
-        return polarisCallContext;
-      }
-
-      @Override
-      public Map<String, Object> contextVariables() {
-        return map;
-      }
-
-      @Override
-      public URI getBaseUri() {
-        return baseUri;
-      }
-    };
-  }
-
-  static CallContext of(
       final RealmContext realmContext, final PolarisCallContext polarisCallContext) {
     Map<String, Object> map = new HashMap<>();
     return new CallContext() {
@@ -118,11 +90,6 @@ public interface CallContext extends AutoCloseable {
       @Override
       public Map<String, Object> contextVariables() {
         return map;
-      }
-
-      @Override
-      public URI getBaseUri() {
-        return null;
       }
     };
   }
@@ -156,11 +123,6 @@ public interface CallContext extends AutoCloseable {
       public Map<String, Object> contextVariables() {
         return contextVariables;
       }
-
-      @Override
-      public URI getBaseUri() {
-        return base.getBaseUri();
-      }
     };
   }
 
@@ -172,8 +134,6 @@ public interface CallContext extends AutoCloseable {
   PolarisCallContext getPolarisCallContext();
 
   Map<String, Object> contextVariables();
-
-  URI getBaseUri();
 
   default @Nonnull CloseableGroup closeables() {
     return (CloseableGroup)
