@@ -19,30 +19,20 @@
 package org.apache.polaris.service.catalog.generic;
 
 import jakarta.ws.rs.core.SecurityContext;
-
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-
-import org.apache.iceberg.CatalogProperties;
-import org.apache.iceberg.TableMetadata;
-import org.apache.iceberg.TableOperations;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
 import org.apache.iceberg.exceptions.BadRequestException;
-import org.apache.iceberg.exceptions.ForbiddenException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
-import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.GenericTableEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -173,14 +163,19 @@ public class GenericTableCatalog {
   }
 
   public boolean dropGenericTable(TableIdentifier tableIdentifier) {
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getPassthroughResolvedPath(
-        tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getPassthroughResolvedPath(
+            tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
+
+    if (resolvedEntities == null) {
+      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier);
+    }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
     PolarisEntity leafEntity = resolvedEntities.getRawLeafEntity();
 
-    DropEntityResult dropEntityResult = this.metaStoreManager
-        .dropEntityIfExists(
+    DropEntityResult dropEntityResult =
+        this.metaStoreManager.dropEntityIfExists(
             this.callContext.getPolarisCallContext(),
             PolarisEntity.toCoreList(catalogPath),
             leafEntity,
@@ -191,7 +186,7 @@ public class GenericTableCatalog {
       if (dropEntityResult.failedBecauseNotEmpty()) {
         throw new IllegalStateException("Cannot drop entity because it has children");
       } else {
-        throw new BadRequestException("Failed to drop " + tableIdentifier.toString());
+        throw new BadRequestException("Failed to drop");
       }
     }
     return true;
@@ -211,6 +206,5 @@ public class GenericTableCatalog {
                     PolarisEntitySubType.ANY_SUBTYPE)
                 .getEntities());
     return PolarisCatalogHelpers.nameAndIdToTableIdentifiers(catalogPath, entities);
-
   }
 }
