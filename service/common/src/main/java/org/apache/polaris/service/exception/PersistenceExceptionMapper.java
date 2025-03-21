@@ -23,17 +23,15 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import jakarta.ws.rs.ext.Provider;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.event.Level;
-
 
 @Provider
-public class IcebergPersistenceExceptionMapper
-    implements ExceptionMapper<PersistenceException> {
+public class PersistenceExceptionMapper implements ExceptionMapper<PersistenceException> {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(IcebergPersistenceExceptionMapper.class);
+  private static final Logger LOGGER = LoggerFactory.getLogger(PersistenceExceptionMapper.class);
 
   @Override
   public Response toResponse(PersistenceException exception) {
@@ -43,7 +41,7 @@ public class IcebergPersistenceExceptionMapper
         ErrorResponse.builder()
             .responseCode(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode())
             .withType(exception.getClass().getSimpleName())
-            .withMessage(exception.getMessage())
+            .withMessage(ExceptionUtils.getRootCause(exception).getMessage())
             .build();
 
     return Response.status(Response.Status.INTERNAL_SERVER_ERROR)

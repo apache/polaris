@@ -91,7 +91,7 @@ public class ExceptionMapperTest {
             new AlreadyExistsException(MESSAGE, new RuntimeException(CAUSE)),
             Level.DEBUG),
         Arguments.of(
-            new IcebergPersistenceExceptionMapper(),
+            new PersistenceExceptionMapper(),
             new EntityExistsException(MESSAGE, new RuntimeException(CAUSE)),
             Level.INFO));
   }

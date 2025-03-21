@@ -18,6 +18,8 @@
  */
 package org.apache.polaris.service.exception;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.persistence.PersistenceException;
 import jakarta.ws.rs.core.Response;
@@ -25,25 +27,24 @@ import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
-import static org.assertj.core.api.Assertions.assertThat;
+public class PersistenceExceptionMapperTest {
 
-
-public class IcebergPersistenceExceptionMapperTest {
+  private static final String MESSAGE = "The reason";
 
   static Stream<PersistenceException> persistenceExceptionMapping() {
     return Stream.of(
-        new EntityNotFoundException("Entity not found")
-    );
+        new EntityNotFoundException(MESSAGE),
+        new EntityNotFoundException(new RuntimeException(MESSAGE)));
   }
 
   @ParameterizedTest
   @MethodSource
   void persistenceExceptionMapping(PersistenceException ex) {
-    IcebergPersistenceExceptionMapper mapper = new IcebergPersistenceExceptionMapper();
+    PersistenceExceptionMapper mapper = new PersistenceExceptionMapper();
 
     try (Response response = mapper.toResponse(ex)) {
       assertThat(response.getStatus()).isEqualTo(500);
-      assertThat(response.getEntity()).extracting("message").isEqualTo(ex.getMessage());
+      assertThat(response.getEntity()).extracting("message").isEqualTo(MESSAGE);
     }
   }
 }
