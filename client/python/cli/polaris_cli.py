@@ -118,7 +118,7 @@ class PolarisCli:
         # Validates
         has_access_token = options.access_token is not None
         has_client_secret = client_id is not None and client_secret is not None
-        if options.client_id and options.client_secret:
+        if has_access_token and (options.client_id or options.client_secret):
             raise Exception(f'Please provide credentials via either {Argument.to_flag_name(Arguments.CLIENT_ID)} &'
                             f' {Argument.to_flag_name(Arguments.CLIENT_SECRET)} or'
                             f' {Argument.to_flag_name(Arguments.ACCESS_TOKEN)}, but not both')
@@ -128,7 +128,6 @@ class PolarisCli:
                             f' {Argument.to_flag_name(Arguments.ACCESS_TOKEN)}.'
                             f' Alternatively, you may set the environment variables {CLIENT_ID_ENV} &'
                             f' {CLIENT_SECRET_ENV}.')
-        # Authenticate accordingly
         if options.base_url:
             if options.host is not None or options.port is not None:
                 raise Exception(f'Please provide either {Argument.to_flag_name(Arguments.BASE_URL)} or'
