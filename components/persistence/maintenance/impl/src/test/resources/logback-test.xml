@@ -26,7 +26,9 @@
       <pattern>%date{ISO8601} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </encoder>
   </appender>
-  <root level="${test.log.level:-WARN}">
+  <root level="DEBUG">
     <appender-ref ref="console"/>
   </root>
+  <logger name="org.jboss" level="INFO"/>
+  <logger name="org.apache.polaris" level="DEBUG"/>
 </configuration>
