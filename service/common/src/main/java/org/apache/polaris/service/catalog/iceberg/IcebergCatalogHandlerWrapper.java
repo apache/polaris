@@ -26,6 +26,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -90,6 +91,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 import org.apache.polaris.core.storage.PolarisStorageActions;
+import org.apache.polaris.service.catalog.AccessDelegationMode;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.context.CallContextCatalogFactory;
 import org.apache.polaris.service.types.NotificationRequest;
@@ -779,7 +781,9 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
-      TableIdentifier tableIdentifier, String snapshots) {
+      TableIdentifier tableIdentifier,
+      String snapshots,
+      EnumSet<AccessDelegationMode> accessDelegationModes) {
     // Here we have a single method that falls through multiple candidate
     // PolarisAuthorizableOperations because instead of identifying the desired operation up-front
     // and
@@ -839,6 +843,10 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
         responseBuilder.addAllConfig(
             credentialDelegation.getCredentialConfig(
                 tableIdentifier, tableMetadata, actionsRequested));
+        if (accessDelegationModes.contains(AccessDelegationMode.VENDED_CREDENTIALS)) {
+          responseBuilder.addAllConfig(
+              credentialDelegation.getVendedCredentialConfig(tableIdentifier));
+        }
       }
       return responseBuilder.build();
     } else if (table instanceof BaseMetadataTable) {

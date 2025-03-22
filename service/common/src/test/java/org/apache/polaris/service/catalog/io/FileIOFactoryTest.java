@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import com.google.common.collect.ImmutableMap;
 import jakarta.annotation.Nonnull;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.time.Clock;
 import java.util.HashMap;
 import java.util.List;
@@ -148,6 +149,11 @@ public class FileIOFactoryTest {
           @Override
           public Map<String, Object> contextVariables() {
             return new HashMap<>();
+          }
+
+          @Override
+          public URI getBaseUri() {
+            return null;
           }
         };
   }

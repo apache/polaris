@@ -51,6 +51,7 @@ import org.apache.iceberg.Table;
 import org.apache.iceberg.TableMetadata;
 import org.apache.iceberg.TableMetadataParser;
 import org.apache.iceberg.TableOperations;
+import org.apache.iceberg.aws.AwsClientProperties;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.SupportsNamespaces;
 import org.apache.iceberg.catalog.TableIdentifier;
@@ -850,6 +851,19 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         getLocationsAllowedToBeAccessed(tableMetadata),
         storageActions,
         storageInfo.get());
+  }
+
+  @Override
+  public Map<String, String> getVendedCredentialConfig(TableIdentifier tableIdentifier) {
+    Map<String, String> vendedCredentialConfig = new HashMap<>();
+    String credentialsEndpoint =
+        String.format(
+            "/v1/%s/namespaces/%s/tables/%s/credentials",
+            catalogName, tableIdentifier.namespace().toString(), tableIdentifier.name());
+    vendedCredentialConfig.put(AwsClientProperties.REFRESH_CREDENTIALS_ENABLED, "true");
+    vendedCredentialConfig.put(
+        AwsClientProperties.REFRESH_CREDENTIALS_ENDPOINT, credentialsEndpoint);
+    return vendedCredentialConfig;
   }
 
   /**
