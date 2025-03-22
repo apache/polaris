@@ -32,6 +32,7 @@ public final class VarInt {
 
   private VarInt() {}
 
+  /** Var-int encoded length in bytes. */
   public static int varIntLen(long v) {
     checkArgument(v >= 0);
     int l = 0;

@@ -19,10 +19,10 @@
 
 plugins { id("polaris-server") }
 
+description = "Provides variable length integer encoding"
+
 dependencies {
   implementation(libs.guava)
 
-  testFixturesApi(libs.assertj.core)
+  testImplementation(libs.assertj.core)
 }
-
-description = "Provides variable length integer encoding"
