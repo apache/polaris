@@ -100,8 +100,7 @@ public class TaskTestUtils {
     tmBuilder
         .setLocation("path/to/table")
         .addSchema(
-            new Schema(List.of(Types.NestedField.of(1, false, "field1", Types.StringType.get()))),
-            1)
+            new Schema(List.of(Types.NestedField.of(1, false, "field1", Types.StringType.get()))))
         .addSortOrder(SortOrder.unsorted())
         .assignUUID(UUID.randomUUID().toString())
         .addPartitionSpec(PartitionSpec.unpartitioned());
@@ -110,7 +109,7 @@ public class TaskTestUtils {
     for (Snapshot snapshot : snapshots) {
       tmBuilder.addSnapshot(snapshot);
       if (statisticsFiles != null) {
-        tmBuilder.setStatistics(snapshot.snapshotId(), statisticsFiles.get(statisticsFileIndex++));
+        tmBuilder.setStatistics(statisticsFiles.get(statisticsFileIndex++));
       }
     }
     TableMetadata tableMetadata = tmBuilder.build();
