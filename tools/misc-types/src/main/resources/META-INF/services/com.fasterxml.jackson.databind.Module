@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -18,23 +17,4 @@
 # under the License.
 #
 
-set -e
-
-dir=${0%/*}
-
-if [ ! -d "${dir}"/polaris-venv ]; then
-  echo "Performing first-time setup for the Python client..."
-  rm -f "${dir}"/poetry.lock
-  python3 -m venv "${dir}"/polaris-venv
-  . "${dir}"/polaris-venv/bin/activate
-  pip install -r regtests/requirements.txt
-
-  cp "${dir}"/client/python/pyproject.toml "${dir}"
-  pushd "$dir" && poetry install ; popd
-
-  deactivate
-  echo "First time setup complete."
-fi
-
-cd "$dir"
-env PYTHONPATH=client/python SCRIPT_DIR="$dir" "${dir}"/polaris-venv/bin/python3 client/python/cli/polaris_cli.py "$@"
+org.apache.polaris.misc.types.memorysize.MemorySizeJackson
