@@ -602,20 +602,20 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
             .withProperties(properties)
             .create();
 
-          if (table instanceof BaseTable baseTable) {
-            TableMetadata tableMetadata = baseTable.operations().current();
-            return buildLoadTableResponseWithDelegationCredentials(
-                    tableIdentifier,
-                    tableMetadata,
-                    Set.of(
-                        PolarisStorageActions.READ,
-                        PolarisStorageActions.WRITE,
-                        PolarisStorageActions.LIST))
-                .build();
-          } else if (table instanceof BaseMetadataTable) {
-            // metadata tables are loaded on the client side, return NoSuchTableException for now
-            throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
-          }
+    if (table instanceof BaseTable baseTable) {
+      TableMetadata tableMetadata = baseTable.operations().current();
+      return buildLoadTableResponseWithDelegationCredentials(
+              tableIdentifier,
+              tableMetadata,
+              Set.of(
+                  PolarisStorageActions.READ,
+                  PolarisStorageActions.WRITE,
+                  PolarisStorageActions.LIST))
+          .build();
+    } else if (table instanceof BaseMetadataTable) {
+      // metadata tables are loaded on the client side, return NoSuchTableException for now
+      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
+    }
 
     throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }
@@ -700,9 +700,9 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     TableIdentifier ident = TableIdentifier.of(namespace, request.name());
     TableMetadata metadata = stageTableCreateHelper(namespace, request);
 
-          return buildLoadTableResponseWithDelegationCredentials(
-                  ident, metadata, Set.of(PolarisStorageActions.ALL))
-              .build();
+    return buildLoadTableResponseWithDelegationCredentials(
+            ident, metadata, Set.of(PolarisStorageActions.ALL))
+        .build();
   }
 
   public LoadTableResponse registerTable(Namespace namespace, RegisterTableRequest request) {
@@ -806,17 +806,17 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     // when data-access is specified but access delegation grants are not found.
     Table table = baseCatalog.loadTable(tableIdentifier);
 
-          if (table instanceof BaseTable baseTable) {
-            TableMetadata tableMetadata = baseTable.operations().current();
-            return buildLoadTableResponseWithDelegationCredentials(
-                    tableIdentifier, tableMetadata, Set.of(PolarisStorageActions.ALL))
-                .build();
-          } else if (table instanceof BaseMetadataTable) {
-            // metadata tables are loaded on the client side, return NoSuchTableException for now
-            throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
-          }
+    if (table instanceof BaseTable baseTable) {
+      TableMetadata tableMetadata = baseTable.operations().current();
+      return buildLoadTableResponseWithDelegationCredentials(
+              tableIdentifier, tableMetadata, Set.of(PolarisStorageActions.ALL))
+          .build();
+    } else if (table instanceof BaseMetadataTable) {
+      // metadata tables are loaded on the client side, return NoSuchTableException for now
+      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
+    }
 
-          throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
+    throw new IllegalStateException("Cannot wrap catalog that does not produce BaseTable");
   }
 
   private LoadTableResponse.Builder buildLoadTableResponseWithDelegationCredentials(
