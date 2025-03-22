@@ -64,3 +64,9 @@ target/
 
 #Ipython Notebook
 .ipynb_checkpoints
+
+# Generated Python client files
+client/python/**/*.py
+
+#Exclude api_response.py in both catalog and management service
+!client/python/**/api_response.py
