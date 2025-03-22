@@ -56,6 +56,7 @@ dependencies {
   implementation(libs.jakarta.servlet.api)
   implementation(libs.jakarta.validation.api)
   implementation(libs.jakarta.ws.rs.api)
+  implementation(libs.jakarta.persistence.api)
 
   implementation(libs.smallrye.common.annotation)
 
