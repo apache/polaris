@@ -68,6 +68,15 @@ public class TestVarInt {
     }
   }
 
+  @Test
+  public void notVarInt() {
+    var buf = new byte[] {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+    soft.assertThatIllegalArgumentException()
+        .isThrownBy(() -> VarInt.readVarInt(ByteBuffer.wrap(buf)));
+    soft.assertThatIllegalArgumentException()
+        .isThrownBy(() -> VarInt.skipVarInt(ByteBuffer.wrap(buf)));
+  }
+
   static Stream<Arguments> varInt() {
     return Stream.of(
         // one byte

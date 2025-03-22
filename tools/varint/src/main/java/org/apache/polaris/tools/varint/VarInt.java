@@ -25,6 +25,11 @@ import java.nio.ByteBuffer;
 
 /** Utility class to de-serialize <em>positive</em> integer values in a space efficient way. */
 public final class VarInt {
+  // var-int encoded length of Long.MAX_VALUE
+  private static final int MAX_LEN = 9;
+  // 7 bits
+  private static final int MAX_SHIFT_LEN = 7 * MAX_LEN;
+
   private VarInt() {}
 
   public static int varIntLen(long v) {
@@ -63,6 +68,7 @@ public final class VarInt {
   public static long readVarLong(ByteBuffer b) {
     long r = 0;
     for (int shift = 0; ; shift += 7) {
+      checkArgument(shift < MAX_SHIFT_LEN, "Illegal variable length integer representation");
       long v = b.get() & 0xff;
       r |= (v & 0x7f) << shift;
       if ((v & 0x80) == 0) {
@@ -73,7 +79,8 @@ public final class VarInt {
   }
 
   public static void skipVarInt(ByteBuffer b) {
-    for (; ; ) {
+    for (int shift = 0; ; shift += 7) {
+      checkArgument(shift < MAX_SHIFT_LEN, "Illegal variable length integer representation");
       int v = b.get() & 0xff;
       if ((v & 0x80) == 0) {
         break;
