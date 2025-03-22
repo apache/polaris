@@ -33,7 +33,7 @@ dependencies {
   runtimeOnly(project(":polaris-nodes-store"))
   runtimeOnly(project(":polaris-realms-impl"))
   runtimeOnly(project(":polaris-realms-store"))
-  runtimeOnly(project(":polaris-async-java"))
+  runtimeOnly(project(":polaris-async-vertx"))
   runtimeOnly(project(":polaris-idgen-impl"))
   runtimeOnly(project(":polaris-authz-impl"))
   runtimeOnly(project(":polaris-authz-store"))
