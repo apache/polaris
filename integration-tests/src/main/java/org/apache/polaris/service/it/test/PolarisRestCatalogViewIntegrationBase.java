@@ -37,7 +37,6 @@ import org.apache.polaris.service.it.env.ManagementApi;
 import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
-import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
@@ -66,10 +65,6 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
 
   @BeforeAll
   static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
-    // Set preferredAssumptionException as Quarkus does not suppress JUnit4's
-    // AssumptionViolatedException
-    org.assertj.core.api.Assumptions.setPreferredAssumptionException(
-        PreferredAssumptionException.JUNIT5);
     adminCredentials = credentials;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);
