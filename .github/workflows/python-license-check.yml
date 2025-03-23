@@ -30,11 +30,11 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - 'regtests/client/python/**'
+      - 'client/python/**'
   pull_request:
     branches: [ "main" ]
     paths:
-      - 'regtests/client/python/**'
+      - 'client/python/**'
 
 jobs:
   build:
@@ -55,7 +55,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pypoetry
-          key: ${{ runner.os }}-poetry-${{ hashFiles('regtests/client/python/poetry.lock') }}
+          key: ${{ runner.os }}-poetry-${{ hashFiles('client/python/poetry.lock') }}
           restore-keys: |
             ${{ runner.os }}-poetry-
 
@@ -66,12 +66,12 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
 
       - name: Install dependencies and pip-licenses
-        working-directory: regtests/client/python
+        working-directory: client/python
         run: |
           poetry install
           pip install pip-licenses
 
       - name: Check Licenses
-        working-directory: regtests/client/python
+        working-directory: client/python
         run: |
           pip-licenses --partial-match --fail-on="GPL;AGPL;LGPL;SSPL;EPL"
