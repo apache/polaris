@@ -58,7 +58,6 @@ import org.apache.iceberg.io.ResolvingFileIO;
 import org.apache.iceberg.rest.RESTCatalog;
 import org.apache.iceberg.rest.responses.ErrorResponse;
 import org.apache.iceberg.types.Types;
-import org.apache.polaris.core.PolarisConfiguration;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogGrant;
@@ -76,6 +75,8 @@ import org.apache.polaris.core.admin.model.TableGrant;
 import org.apache.polaris.core.admin.model.TablePrivilege;
 import org.apache.polaris.core.admin.model.ViewGrant;
 import org.apache.polaris.core.admin.model.ViewPrivilege;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.CatalogEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.service.it.env.CatalogApi;
@@ -449,7 +450,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     Catalog catalog = managementApi.getCatalog(currentCatalogName);
     Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
     catalogProps.put(
-        PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
+        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
     managementApi.updateCatalog(catalog, catalogProps);
 
     restCatalog.createNamespace(Namespace.of("ns1"));
@@ -477,7 +478,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     Catalog catalog = managementApi.getCatalog(currentCatalogName);
     Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
     catalogProps.put(
-        PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
+        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
     managementApi.updateCatalog(catalog, catalogProps);
 
     restCatalog.createNamespace(Namespace.of("ns1"));
@@ -514,7 +515,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
     Catalog catalog = managementApi.getCatalog(currentCatalogName);
     Map<String, String> catalogProps = new HashMap<>(catalog.getProperties().toMap());
     catalogProps.put(
-        PolarisConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
+        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "false");
     managementApi.updateCatalog(catalog, catalogProps);
 
     restCatalog.createNamespace(Namespace.of("ns1"));
@@ -563,7 +564,7 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
             .isInstanceOf(ForbiddenException.class)
             .hasMessageContaining("Access Delegation is not enabled for this catalog")
             .hasMessageContaining(
-                PolarisConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
+                FeatureConfiguration.ALLOW_EXTERNAL_CATALOG_CREDENTIAL_VENDING.catalogConfig());
       } finally {
         resolvingFileIO.deleteFile(fileLocation);
       }
@@ -1010,6 +1011,25 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
                 Map.of("cat", currentCatalogName, "ns", namespace.toString(), "view", newViewName))
             .head()) {
       assertThat(response).returns(Response.Status.NO_CONTENT.getStatusCode(), Response::getStatus);
+    }
+  }
+
+  @Test
+  public void testLoadCredentials() {
+    String tableName = "tbl1";
+    Namespace namespace = Namespace.of("ns1");
+    TableIdentifier identifier = TableIdentifier.of(namespace, tableName);
+
+    catalog().createNamespace(namespace);
+    catalog().buildTable(identifier, SCHEMA).create();
+
+    try (Response response =
+        catalogApi
+            .request(
+                "v1/{cat}/namespaces/{ns}/tables/{table}/credentials",
+                Map.of("cat", currentCatalogName, "ns", namespace.toString(), "table", tableName))
+            .head()) {
+      assertThat(response).returns(Response.Status.OK.getStatusCode(), Response::getStatus);
     }
   }
 }

@@ -19,6 +19,8 @@
 package org.apache.polaris.service.quarkus.entity;
 
 import java.util.List;
+import org.apache.polaris.core.PolarisCallContext;
+import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
 import org.apache.polaris.core.admin.model.AzureStorageConfigInfo;
 import org.apache.polaris.core.admin.model.Catalog;
@@ -26,13 +28,28 @@ import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.GcpStorageConfigInfo;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
+import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
+import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
+import org.apache.polaris.service.persistence.InMemoryPolarisMetaStoreManagerFactory;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 public class CatalogEntityTest {
+
+  @BeforeAll
+  public static void setup() {
+    MetaStoreManagerFactory metaStoreManagerFactory = new InMemoryPolarisMetaStoreManagerFactory();
+    PolarisCallContext polarisCallContext =
+        new PolarisCallContext(
+            metaStoreManagerFactory.getOrCreateSessionSupplier(() -> "realm").get(),
+            new PolarisDefaultDiagServiceImpl());
+    CallContext callContext = CallContext.of(() -> "realm", polarisCallContext);
+    CallContext.setCurrentContext(callContext);
+  }
 
   @Test
   public void testInvalidAllowedLocationPrefix() {
@@ -123,9 +140,8 @@ public class CatalogEntityTest {
             .setProperties(prop)
             .setStorageConfigInfo(awsStorageConfigModel)
             .build();
-    Assertions.assertThatThrownBy(() -> CatalogEntity.fromCatalog(awsCatalog))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("Number of allowed locations exceeds 5");
+    Assertions.assertThatCode(() -> CatalogEntity.fromCatalog(awsCatalog))
+        .doesNotThrowAnyException();
   }
 
   @Test

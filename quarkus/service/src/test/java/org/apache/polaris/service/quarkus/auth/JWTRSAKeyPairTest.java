@@ -30,12 +30,13 @@ import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.HashMap;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.auth.PolarisSecretsManager.PrincipalSecretsResult;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
+import org.apache.polaris.core.persistence.dao.entity.EntityResult;
+import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.service.auth.JWTRSAKeyPair;
 import org.apache.polaris.service.auth.LocalRSAKeyProvider;
 import org.apache.polaris.service.auth.PemUtils;
@@ -74,8 +75,9 @@ public class JWTRSAKeyPairTest {
             PolarisEntitySubType.NULL_SUBTYPE,
             0L,
             "principal");
-    Mockito.when(metastoreManager.loadEntity(polarisCallContext, 0L, 1L))
-        .thenReturn(new PolarisMetaStoreManager.EntityResult(principal));
+    Mockito.when(
+            metastoreManager.loadEntity(polarisCallContext, 0L, 1L, PolarisEntityType.PRINCIPAL))
+        .thenReturn(new EntityResult(principal));
     TokenBroker tokenBroker =
         new JWTRSAKeyPair(metastoreManager, 420, publicFileLocation, privateFileLocation);
     TokenResponse token =

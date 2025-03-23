@@ -31,7 +31,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.iceberg.CatalogUtil;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
-import org.apache.polaris.core.PolarisConfigurationStore;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.PolarisEntity;
@@ -114,6 +114,7 @@ public class DefaultFileIOFactory implements FileIOFactory {
   @VisibleForTesting
   FileIO loadFileIOInternal(
       @Nonnull String ioImplClassName, @Nonnull Map<String, String> properties) {
-    return CatalogUtil.loadFileIO(ioImplClassName, properties, new Configuration());
+    return new ExceptionMappingFileIO(
+        CatalogUtil.loadFileIO(ioImplClassName, properties, new Configuration()));
   }
 }

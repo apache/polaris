@@ -19,6 +19,8 @@
 
 FROM ubuntu:24.04 AS hugo
 
+ENV LANGUAGE='en_US:en'
+
 RUN apt-get update
 RUN apt-get install --yes golang hugo asciidoctor npm curl
 RUN apt-get clean

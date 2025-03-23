@@ -19,8 +19,8 @@
 package org.apache.polaris.version;
 
 import static java.lang.String.format;
-import static org.apache.polaris.version.PolarisVersion.getBuildGitTag;
 import static org.apache.polaris.version.PolarisVersion.getBuildGitHead;
+import static org.apache.polaris.version.PolarisVersion.getBuildGitTag;
 import static org.apache.polaris.version.PolarisVersion.getBuildJavaVersion;
 import static org.apache.polaris.version.PolarisVersion.getBuildReleasedVersion;
 import static org.apache.polaris.version.PolarisVersion.getBuildSystem;
@@ -108,6 +108,7 @@ public class TestPolarisVersion {
     return Stream.of(
         Arguments.arguments("NOTICE", (Supplier<String>) PolarisVersion::readNoticeFile),
         Arguments.arguments("LICENSE", (Supplier<String>) PolarisVersion::readSourceLicenseFile));
-        //Arguments.arguments(//   "LICENSE-BINARY-DIST", (Supplier<String>) PolarisVersion::readBinaryLicenseFile));
+    // Arguments.arguments(//   "LICENSE-BINARY-DIST", (Supplier<String>)
+    // PolarisVersion::readBinaryLicenseFile));
   }
 }

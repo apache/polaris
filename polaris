@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,28 +17,24 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-if [ ! -d ${SCRIPT_DIR}/polaris-venv ]; then
+set -e
+
+dir=${0%/*}
+
+if [ ! -d "${dir}"/polaris-venv ]; then
   echo "Performing first-time setup for the Python client..."
-  python3 -m venv ${SCRIPT_DIR}/polaris-venv
-  . ${SCRIPT_DIR}/polaris-venv/bin/activate
+  rm -f "${dir}"/poetry.lock
+  python3 -m venv "${dir}"/polaris-venv
+  . "${dir}"/polaris-venv/bin/activate
   pip install -r regtests/requirements.txt
 
-  cp ${SCRIPT_DIR}/regtests/client/python/pyproject.toml ${SCRIPT_DIR}
-  pushd $SCRIPT_DIR && poetry install ; popd
+  cp "${dir}"/client/python/pyproject.toml "${dir}"
+  pushd "$dir" && poetry install ; popd
 
   deactivate
   echo "First time setup complete."
 fi
 
-pushd $SCRIPT_DIR > /dev/null
-PYTHONPATH=regtests/client/python SCRIPT_DIR="$SCRIPT_DIR" ${SCRIPT_DIR}/polaris-venv/bin/python3 regtests/client/python/cli/polaris_cli.py "$@"
-status=$?
-popd > /dev/null
-
-if [ $status -ne 0 ]; then
-  exit 1
-fi
-
-exit 0
+cd "$dir"
+env PYTHONPATH=client/python SCRIPT_DIR="$dir" "${dir}"/polaris-venv/bin/python3 client/python/cli/polaris_cli.py "$@"

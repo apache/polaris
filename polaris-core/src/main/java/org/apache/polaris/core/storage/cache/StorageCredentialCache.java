@@ -21,19 +21,21 @@ package org.apache.polaris.core.storage.cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
 import com.github.benmanes.caffeine.cache.LoadingCache;
+import com.google.common.annotations.VisibleForTesting;
 import jakarta.annotation.Nonnull;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.apache.iceberg.exceptions.UnprocessableEntityException;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfiguration;
+import org.apache.polaris.core.config.FeatureConfiguration;
+import org.apache.polaris.core.config.PolarisConfiguration;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.storage.PolarisCredentialVendor;
-import org.jetbrains.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,39 +53,16 @@ public class StorageCredentialCache {
         Caffeine.newBuilder()
             .maximumSize(CACHE_MAX_NUMBER_OF_ENTRIES)
             .expireAfter(
-                new Expiry<StorageCredentialCacheKey, StorageCredentialCacheEntry>() {
-                  @Override
-                  public long expireAfterCreate(
-                      StorageCredentialCacheKey key,
-                      StorageCredentialCacheEntry entry,
-                      long currentTime) {
-                    long expireAfterMillis =
-                        Math.max(
-                            0,
-                            Math.min(
-                                (entry.getExpirationTime() - System.currentTimeMillis()) / 2,
-                                maxCacheDurationMs()));
-                    return TimeUnit.MILLISECONDS.toNanos(expireAfterMillis);
-                  }
-
-                  @Override
-                  public long expireAfterUpdate(
-                      StorageCredentialCacheKey key,
-                      StorageCredentialCacheEntry entry,
-                      long currentTime,
-                      long currentDuration) {
-                    return currentDuration;
-                  }
-
-                  @Override
-                  public long expireAfterRead(
-                      StorageCredentialCacheKey key,
-                      StorageCredentialCacheEntry entry,
-                      long currentTime,
-                      long currentDuration) {
-                    return currentDuration;
-                  }
-                })
+                Expiry.creating(
+                    (StorageCredentialCacheKey key, StorageCredentialCacheEntry entry) -> {
+                      long expireAfterMillis =
+                          Math.max(
+                              0,
+                              Math.min(
+                                  (entry.getExpirationTime() - System.currentTimeMillis()) / 2,
+                                  maxCacheDurationMs()));
+                      return Duration.ofMillis(expireAfterMillis);
+                    }))
             .build(
                 key -> {
                   // the load happen at getOrGenerateSubScopeCreds()
@@ -95,15 +74,15 @@ public class StorageCredentialCache {
   private static long maxCacheDurationMs() {
     var cacheDurationSeconds =
         PolarisConfiguration.loadConfig(
-            PolarisConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
+            FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS);
     var credentialDurationSeconds =
-        PolarisConfiguration.loadConfig(PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
+        PolarisConfiguration.loadConfig(FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS);
     if (cacheDurationSeconds >= credentialDurationSeconds) {
       throw new IllegalArgumentException(
           String.format(
               "%s should be less than %s",
-              PolarisConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS.key,
-              PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.key));
+              FeatureConfiguration.STORAGE_CREDENTIAL_CACHE_DURATION_SECONDS.key,
+              FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS.key));
     } else {
       return cacheDurationSeconds * 1000L;
     }
@@ -143,11 +122,12 @@ public class StorageCredentialCache {
     Function<StorageCredentialCacheKey, StorageCredentialCacheEntry> loader =
         k -> {
           LOGGER.atDebug().log("StorageCredentialCache::load");
-          PolarisCredentialVendor.ScopedCredentialsResult scopedCredentialsResult =
+          ScopedCredentialsResult scopedCredentialsResult =
               credentialVendor.getSubscopedCredsForEntity(
                   k.getCallContext(),
                   k.getCatalogId(),
                   k.getEntityId(),
+                  polarisEntity.getType(),
                   k.isAllowedListAction(),
                   k.getAllowedReadLocations(),
                   k.getAllowedWriteLocations());
@@ -174,7 +154,7 @@ public class StorageCredentialCache {
   private boolean isTypeSupported(PolarisEntityType type) {
     return type == PolarisEntityType.CATALOG
         || type == PolarisEntityType.NAMESPACE
-        || type == PolarisEntityType.TABLE_LIKE
+        || type == PolarisEntityType.ICEBERG_TABLE_LIKE
         || type == PolarisEntityType.TASK;
   }
 
