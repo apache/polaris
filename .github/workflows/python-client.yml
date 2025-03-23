@@ -30,11 +30,11 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - 'regtests/client/python/**'
+      - 'client/python/**'
   pull_request:
     branches: [ "main" ]
     paths:
-      - 'regtests/client/python/**'
+      - 'client/python/**'
 
 jobs:
   build:
@@ -58,7 +58,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pypoetry
-          key: ${{ runner.os }}-poetry-${{ hashFiles('regtests/client/python/poetry.lock') }}
+          key: ${{ runner.os }}-poetry-${{ hashFiles('client/python/poetry.lock') }}
           restore-keys: |
             ${{ runner.os }}-poetry-
 
@@ -69,16 +69,16 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
 
       - name: Install dependencies
-        working-directory: regtests/client/python
+        working-directory: client/python
         run: poetry install
 
       - name: Lint with flake8
-        working-directory: regtests/client/python
+        working-directory: client/python
         run: |
           poetry run flake8 --select=E9,F63,F7,F82 --max-line-length=127 --statistics
 
       - name: Test with pytest
-        working-directory: regtests/client/python
+        working-directory: client/python
         run: |
           export SCRIPT_DIR="non-existing-mock-directory"
           poetry run pytest
