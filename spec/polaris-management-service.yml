@@ -935,7 +935,7 @@ components:
 
     FileStorageConfigInfo:
       type: object
-      description: gcp storage configuration info
+      description: file storage configuration info
       allOf:
         - $ref: '#/components/schemas/StorageConfigInfo'
 

@@ -17,7 +17,6 @@
  * under the License.
  */
 
-import org.gradle.api.attributes.TestSuiteType
 import org.gradle.api.plugins.jvm.JvmTestSuite
 import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withType
@@ -41,7 +40,6 @@ testing {
       }
     }
     register<JvmTestSuite>("intTest") {
-      testType = TestSuiteType.INTEGRATION_TEST
       targets.all {
         tasks.named("compileIntTestJava").configure {
           dependsOn(tasks.named("compileQuarkusTestGeneratedSourcesJava"))

@@ -24,12 +24,12 @@ import jakarta.inject.Inject;
 import java.time.Clock;
 import java.util.Map;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
-import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +64,7 @@ public class DefaultCallContextResolver implements CallContextResolver {
     // pushed down for the metaStoreManagerFactory to inject Transactional-DB specific things
     // (including the MetaStoreSession" into the PolarisCallContext. The non-transactional
     // factories would then inject something else instead if needed.
-    TransactionalPersistence metaStoreSession =
+    BasePersistence metaStoreSession =
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     PolarisCallContext polarisContext =
         new PolarisCallContext(metaStoreSession, diagnostics, configurationStore, clock);

@@ -27,8 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusIntegrationTest
-public class QuarkusRestCatalogViewAwsIT
-    extends PolarisRestCatalogViewAwsIntegrationTest {
+public class QuarkusRestCatalogViewAwsIT extends PolarisRestCatalogViewAwsIntegrationTest {
 
   @BeforeEach
   public void setUpTempDir(@TempDir Path tempDir) throws Exception {

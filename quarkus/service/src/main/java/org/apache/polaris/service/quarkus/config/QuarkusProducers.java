@@ -33,24 +33,25 @@ import jakarta.ws.rs.container.ContainerRequestContext;
 import jakarta.ws.rs.core.Context;
 import java.time.Clock;
 import org.apache.polaris.core.PolarisCallContext;
-import org.apache.polaris.core.PolarisConfigurationStore;
 import org.apache.polaris.core.PolarisDefaultDiagServiceImpl;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
+import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
+import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
-import org.apache.polaris.core.persistence.cache.EntityCache;
-import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.cache.StorageCredentialCache;
+import org.apache.polaris.service.auth.ActiveRolesProvider;
 import org.apache.polaris.service.auth.Authenticator;
 import org.apache.polaris.service.auth.TokenBrokerFactory;
 import org.apache.polaris.service.catalog.api.IcebergRestOAuth2ApiService;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.context.RealmContextConfiguration;
 import org.apache.polaris.service.context.RealmContextFilter;
 import org.apache.polaris.service.context.RealmContextResolver;
@@ -64,6 +65,7 @@ import org.apache.polaris.service.quarkus.ratelimiter.QuarkusTokenBucketConfigur
 import org.apache.polaris.service.ratelimiter.RateLimiter;
 import org.apache.polaris.service.ratelimiter.TokenBucketFactory;
 import org.apache.polaris.service.task.TaskHandlerConfiguration;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 import org.eclipse.microprofile.context.ThreadContext;
 
@@ -111,7 +113,7 @@ public class QuarkusProducers {
       PolarisConfigurationStore configurationStore,
       MetaStoreManagerFactory metaStoreManagerFactory,
       Clock clock) {
-    TransactionalPersistence metaStoreSession =
+    BasePersistence metaStoreSession =
         metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
     return new PolarisCallContext(metaStoreSession, diagServices, configurationStore, clock);
   }
@@ -211,13 +213,6 @@ public class QuarkusProducers {
 
   @Produces
   @RequestScoped
-  public EntityCache entityCache(
-      RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
-    return metaStoreManagerFactory.getOrCreateEntityCache(realmContext);
-  }
-
-  @Produces
-  @RequestScoped
   public PolarisMetaStoreManager polarisMetaStoreManager(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
     return metaStoreManagerFactory.getOrCreateMetaStoreManager(realmContext);
@@ -225,7 +220,7 @@ public class QuarkusProducers {
 
   @Produces
   @RequestScoped
-  public TransactionalPersistence polarisMetaStoreSession(
+  public BasePersistence polarisMetaStoreSession(
       RealmContext realmContext, MetaStoreManagerFactory metaStoreManagerFactory) {
     return metaStoreManagerFactory.getOrCreateSessionSupplier(realmContext).get();
   }
@@ -233,10 +228,15 @@ public class QuarkusProducers {
   @Produces
   @RequestScoped
   public PolarisEntityManager polarisEntityManager(
-      PolarisMetaStoreManager polarisMetaStoreManager,
-      StorageCredentialCache credentialCache,
-      EntityCache entityCache) {
-    return new PolarisEntityManager(polarisMetaStoreManager, credentialCache, entityCache);
+      RealmContext realmContext, RealmEntityManagerFactory factory) {
+    return factory.getOrCreateEntityManager(realmContext);
+  }
+
+  @Produces
+  public ActiveRolesProvider activeRolesProvider(
+      @ConfigProperty(name = "polaris.active-roles-provider.type") String persistenceType,
+      @Any Instance<ActiveRolesProvider> activeRolesProviders) {
+    return activeRolesProviders.select(Identifier.Literal.of(persistenceType)).get();
   }
 
   public void closeTaskExecutor(@Disposes @Identifier("task-executor") ManagedExecutor executor) {

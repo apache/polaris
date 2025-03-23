@@ -37,14 +37,14 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.persistence.BaseResult;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisObjectMapperUtil;
-import org.apache.polaris.core.persistence.transactional.PolarisTreeMapMetaStoreSessionImpl;
-import org.apache.polaris.core.persistence.transactional.PolarisTreeMapStore;
+import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
+import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
+import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
-import org.apache.polaris.core.storage.PolarisCredentialVendor.ScopedCredentialsResult;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -64,10 +64,10 @@ public class StorageCredentialCacheTest {
     // diag services
     PolarisDiagnostics diagServices = new PolarisDefaultDiagServiceImpl();
     // the entity store, use treemap implementation
-    PolarisTreeMapStore store = new PolarisTreeMapStore(diagServices);
+    TreeMapMetaStore store = new TreeMapMetaStore(diagServices);
     // to interact with the metastore
     TransactionalPersistence metaStore =
-        new PolarisTreeMapMetaStoreSessionImpl(store, Mockito.mock(), RANDOM_SECRETS);
+        new TreeMapTransactionalPersistenceImpl(store, Mockito.mock(), RANDOM_SECRETS);
     callCtx = new PolarisCallContext(metaStore, diagServices);
     metaStoreManager = Mockito.mock(PolarisMetaStoreManager.class);
     storageCredentialCache = new StorageCredentialCache();
@@ -84,6 +84,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -115,6 +116,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -157,6 +159,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -214,6 +217,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -301,6 +305,7 @@ public class StorageCredentialCacheTest {
                 Mockito.any(),
                 Mockito.anyLong(),
                 Mockito.anyLong(),
+                Mockito.any(),
                 Mockito.anyBoolean(),
                 Mockito.anySet(),
                 Mockito.anySet()))
@@ -392,6 +397,7 @@ public class StorageCredentialCacheTest {
                   ImmutableMap.<PolarisCredentialProperty, String>builder()
                       .put(PolarisCredentialProperty.AWS_KEY_ID, "key_id_" + finalI)
                       .put(PolarisCredentialProperty.AWS_SECRET_KEY, "key_secret_" + finalI)
+                      .put(PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS, expireTime)
                       .put(PolarisCredentialProperty.EXPIRATION_TIME, expireTime)
                       .buildOrThrow())));
       if (res.size() == number) return res;

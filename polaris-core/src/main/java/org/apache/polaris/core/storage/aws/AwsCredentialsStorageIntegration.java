@@ -18,8 +18,8 @@
  */
 package org.apache.polaris.core.storage.aws;
 
-import static org.apache.polaris.core.PolarisConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
-import static org.apache.polaris.core.PolarisConfiguration.loadConfig;
+import static org.apache.polaris.core.config.FeatureConfiguration.STORAGE_CREDENTIAL_DURATION_SECONDS;
+import static org.apache.polaris.core.config.PolarisConfiguration.loadConfig;
 
 import jakarta.annotation.Nonnull;
 import java.net.URI;
@@ -83,9 +83,13 @@ public class AwsCredentialsStorageIntegration
     credentialMap.put(PolarisCredentialProperty.AWS_TOKEN, response.credentials().sessionToken());
     Optional.ofNullable(response.credentials().expiration())
         .ifPresent(
-            i ->
-                credentialMap.put(
-                    PolarisCredentialProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli())));
+            i -> {
+              credentialMap.put(
+                  PolarisCredentialProperty.EXPIRATION_TIME, String.valueOf(i.toEpochMilli()));
+              credentialMap.put(
+                  PolarisCredentialProperty.AWS_SESSION_TOKEN_EXPIRES_AT_MS,
+                  String.valueOf(i.toEpochMilli()));
+            });
 
     if (storageConfig.getRegion() != null) {
       credentialMap.put(PolarisCredentialProperty.CLIENT_REGION, storageConfig.getRegion());

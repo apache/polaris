@@ -20,7 +20,7 @@
 # Run without args to run all tests, or single arg for single test.
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-export SPARK_VERSION=spark-3.5.4
+export SPARK_VERSION=spark-3.5.5
 export SPARK_DISTRIBUTION=${SPARK_VERSION}-bin-hadoop3
 
 if [ -z "${SPARK_HOME}" ]; then
@@ -49,11 +49,11 @@ cd ${REGTEST_HOME}
 ./setup.sh
 
 # start the python venv
-. ~/polaris-venv/bin/activate
+. ~/polaris/polaris-venv/bin/activate
 
 if [ -z "${1}" ]; then
   loginfo 'Running all tests'
-  TEST_LIST="client/python/test $(find t_* -wholename '*t_*/src/*')"
+  TEST_LIST="../client/python/test $(find t_* -wholename '*t_*/src/*')"
 else
   loginfo "Running single test ${1}"
   TEST_LIST=${1}
@@ -67,29 +67,32 @@ NUM_SUCCESSES=0
 export AWS_ACCESS_KEY_ID=''
 export AWS_SECRET_ACCESS_KEY=''
 
-if ! output=$(curl -X POST -H "Polaris-Realm: POLARIS" "http://${POLARIS_HOST:-localhost}:8181/api/catalog/v1/oauth/tokens" \
-  -d "grant_type=client_credentials" \
-  -d "client_id=root" \
-  -d "client_secret=secret" \
-  -d "scope=PRINCIPAL_ROLE:ALL"); then
-  logred "Error: Failed to retrieve bearer token"
-  exit 1
+# Allow bearer token to be provided if desired
+if [[ -z "$REGTEST_ROOT_BEARER_TOKEN" ]]; then
+  if ! output=$(curl -X POST -H "Polaris-Realm: POLARIS" "http://${POLARIS_HOST:-localhost}:8181/api/catalog/v1/oauth/tokens" \
+    -d "grant_type=client_credentials" \
+    -d "client_id=root" \
+    -d "client_secret=secret" \
+    -d "scope=PRINCIPAL_ROLE:ALL"); then
+    logred "Error: Failed to retrieve bearer token"
+    exit 1
+  fi
+
+  token=$(echo "$output" | awk -F\" '{print $4}')
+
+  if [ "$token" == "unauthorized_client" ]; then
+    logred "Error: Failed to retrieve bearer token"
+    exit 1
+  fi
+
+  export REGTEST_ROOT_BEARER_TOKEN=$token
 fi
-
-token=$(echo "$output" | awk -F\" '{print $4}')
-
-if [ "$token" == "unauthorized_client" ]; then
-  logred "Error: Failed to retrieve bearer token"
-  exit 1
-fi
-
-export REGTEST_ROOT_BEARER_TOKEN=$token
 
 echo "Root bearer token: ${REGTEST_ROOT_BEARER_TOKEN}"
 
 for TEST_FILE in ${TEST_LIST}; do
   # Special-case running all client pytests
-  if [ "${TEST_FILE}" == 'client/python/test' ]; then
+  if [ "${TEST_FILE}" == '../client/python/test' ]; then
     loginfo "Starting pytest for entire client suite"
     SCRIPT_DIR="$SCRIPT_DIR" python3 -m pytest ${TEST_FILE}
     CODE=$?
@@ -98,6 +101,7 @@ for TEST_FILE in ${TEST_LIST}; do
       NUM_FAILURES=$(( NUM_FAILURES + 1 ))
     else
       loggreen "Test SUCCEEDED: ${TEST_FILE}"
+      NUM_SUCCESSES=$(( NUM_SUCCESSES + 1 ))
     fi
     continue
   fi
@@ -118,6 +122,7 @@ for TEST_FILE in ${TEST_LIST}; do
       NUM_FAILURES=$(( NUM_FAILURES + 1 ))
     else
       loggreen "Test SUCCEEDED: ${TEST_SUITE}:${TEST_SHORTNAME}"
+      NUM_SUCCESSES=$(( NUM_SUCCESSES + 1 ))
     fi
     continue
   fi
