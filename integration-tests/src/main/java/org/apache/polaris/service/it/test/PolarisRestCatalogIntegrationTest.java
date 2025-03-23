@@ -87,9 +87,7 @@ import org.apache.polaris.service.it.env.PolarisApiEndpoints;
 import org.apache.polaris.service.it.env.PolarisClient;
 import org.apache.polaris.service.it.ext.PolarisIntegrationTestExtension;
 import org.assertj.core.api.Assertions;
-import org.assertj.core.api.Assumptions;
 import org.assertj.core.api.InstanceOfAssertFactories;
-import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -156,9 +154,6 @@ public class PolarisRestCatalogIntegrationTest extends CatalogTests<RESTCatalog>
   @BeforeAll
   static void setup(
       PolarisApiEndpoints apiEndpoints, ClientCredentials credentials, @TempDir Path tempDir) {
-    // Set preferredAssumptionException as Quarkus does not suppress JUnit4's
-    // AssumptionViolatedException
-    Assumptions.setPreferredAssumptionException(PreferredAssumptionException.JUNIT5);
     adminCredentials = credentials;
     endpoints = apiEndpoints;
     client = polarisClient(endpoints);

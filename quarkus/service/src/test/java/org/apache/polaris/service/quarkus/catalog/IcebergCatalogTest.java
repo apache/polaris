@@ -123,7 +123,6 @@ import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
 import org.apache.polaris.service.types.TableUpdateNotification;
 import org.assertj.core.api.Assertions;
-import org.assertj.core.configuration.PreferredAssumptionException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
@@ -190,10 +189,6 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     PolarisStorageIntegrationProviderImpl mock =
         Mockito.mock(PolarisStorageIntegrationProviderImpl.class);
     QuarkusMock.installMockForType(mock, PolarisStorageIntegrationProviderImpl.class);
-    // Set preferredAssumptionException as Quarkus does not suppress JUnit4's
-    // AssumptionViolatedException
-    org.assertj.core.api.Assumptions.setPreferredAssumptionException(
-        PreferredAssumptionException.JUNIT5);
   }
 
   @Nullable
