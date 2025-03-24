@@ -1423,7 +1423,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
         .as("Table should not exist after drop")
         .rejects(TABLE);
     List<PolarisBaseEntity> tasks =
-        metaStoreManager.loadTasks(polarisContext, "testExecutor", 1).getEntities();
+        metaStoreManager
+            .loadTasks(
+                polarisContext,
+                "testExecutor",
+                callContext.getPolarisCallContext().getMetaStore().pageTokenBuilder().fromLimit(1))
+            .getEntities();
     Assertions.assertThat(tasks).hasSize(1);
     TaskEntity taskEntity = TaskEntity.of(tasks.get(0));
     EnumMap<PolarisCredentialProperty, String> credentials =
@@ -1625,7 +1630,14 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     TaskEntity taskEntity =
         TaskEntity.of(
             metaStoreManager
-                .loadTasks(callContext.getPolarisCallContext(), "testExecutor", 1)
+                .loadTasks(
+                    callContext.getPolarisCallContext(),
+                    "testExecutor",
+                    callContext
+                        .getPolarisCallContext()
+                        .getMetaStore()
+                        .pageTokenBuilder()
+                        .fromLimit(1))
                 .getEntities()
                 .getFirst());
     Map<String, String> properties = taskEntity.getInternalPropertiesAsMap();

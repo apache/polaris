@@ -49,6 +49,7 @@ import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
+import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
@@ -733,7 +734,8 @@ public class PolarisTestMetaStoreManager {
                     this.polarisCallContext,
                     path,
                     PolarisEntityType.NAMESPACE,
-                    PolarisEntitySubType.NULL_SUBTYPE)
+                    PolarisEntitySubType.NULL_SUBTYPE,
+                    ReadEverythingPageToken.get())
                 .getEntities();
         Assertions.assertThat(children).isNotNull();
         if (children.isEmpty() && entity.getType() == PolarisEntityType.NAMESPACE) {
@@ -743,7 +745,8 @@ public class PolarisTestMetaStoreManager {
                       this.polarisCallContext,
                       path,
                       PolarisEntityType.ICEBERG_TABLE_LIKE,
-                      PolarisEntitySubType.ANY_SUBTYPE)
+                      PolarisEntitySubType.ANY_SUBTYPE,
+                      ReadEverythingPageToken.get())
                   .getEntities();
           Assertions.assertThat(children).isNotNull();
         } else if (children.isEmpty()) {
@@ -753,7 +756,8 @@ public class PolarisTestMetaStoreManager {
                       this.polarisCallContext,
                       path,
                       PolarisEntityType.CATALOG_ROLE,
-                      PolarisEntitySubType.ANY_SUBTYPE)
+                      PolarisEntitySubType.ANY_SUBTYPE,
+                      ReadEverythingPageToken.get())
                   .getEntities();
           Assertions.assertThat(children).isNotNull();
           // if only one left, it can be dropped.
@@ -1286,7 +1290,12 @@ public class PolarisTestMetaStoreManager {
     // list the entities under the specified path
     List<EntityNameLookupRecord> result =
         polarisMetaStoreManager
-            .listEntities(this.polarisCallContext, path, entityType, entitySubType)
+            .listEntities(
+                this.polarisCallContext,
+                path,
+                entityType,
+                entitySubType,
+                ReadEverythingPageToken.get())
             .getEntities();
     Assertions.assertThat(result).isNotNull();
 
@@ -1603,7 +1612,8 @@ public class PolarisTestMetaStoreManager {
                 this.polarisCallContext,
                 null,
                 PolarisEntityType.PRINCIPAL,
-                PolarisEntitySubType.NULL_SUBTYPE)
+                PolarisEntitySubType.NULL_SUBTYPE,
+                ReadEverythingPageToken.get())
             .getEntities();
 
     // ensure not null, one element only
@@ -1629,7 +1639,8 @@ public class PolarisTestMetaStoreManager {
                 this.polarisCallContext,
                 null,
                 PolarisEntityType.PRINCIPAL_ROLE,
-                PolarisEntitySubType.NULL_SUBTYPE)
+                PolarisEntitySubType.NULL_SUBTYPE,
+                ReadEverythingPageToken.get())
             .getEntities();
 
     // ensure not null, one element only
