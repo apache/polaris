@@ -88,6 +88,17 @@ public class GenericTableCatalog {
     this.metaStoreManager = metaStoreManager;
   }
 
+  private PolarisResolvedPathWrapper getTablePath(TableIdentifier tableIdentifier) {
+    PolarisResolvedPathWrapper genericTableResult = resolvedEntityView.getPassthroughResolvedPath(
+        tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
+    if (genericTableResult == null) {
+      return resolvedEntityView.getPassthroughResolvedPath(
+          tableIdentifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
+    } else {
+      return genericTableResult;
+    }
+  }
+
   public void createGenericTable(
       TableIdentifier tableIdentifier, String format, Map<String, String> properties) {
     PolarisResolvedPathWrapper resolvedParent =
@@ -101,9 +112,7 @@ public class GenericTableCatalog {
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
 
-    PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getPassthroughResolvedPath(
-            tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
+    PolarisResolvedPathWrapper resolvedEntities = getTablePath(tableIdentifier);
     GenericTableEntity entity =
         GenericTableEntity.of(
             resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());

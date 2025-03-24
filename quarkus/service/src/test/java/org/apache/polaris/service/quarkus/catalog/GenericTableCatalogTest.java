@@ -319,6 +319,36 @@ public class GenericTableCatalogTest {
   }
 
   @Test
+  public void testGenericTableAlreadyExists() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format1", Map.of());
+
+    Assertions.assertThatCode(
+        () -> genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format2", Map.of()))
+        .hasMessageContaining("already exists");
+
+    Assertions.assertThatCode(
+            () -> icebergCatalog.createTable(TableIdentifier.of("ns", "t1"), SCHEMA))
+        .hasMessageContaining("already exists");
+  }
+
+  @Test
+  public void testIcebergTableAlreadyExists() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createTable(TableIdentifier.of("ns", "t1"), SCHEMA);
+
+    Assertions.assertThatCode(
+            () -> genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format2", Map.of()))
+        .hasMessageContaining("already exists");
+
+    Assertions.assertThatCode(
+            () -> icebergCatalog.createTable(TableIdentifier.of("ns", "t1"), SCHEMA))
+        .hasMessageContaining("already exists");
+  }
+
+  @Test
   public void testGenericTableRoundTrip() {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
@@ -452,6 +482,23 @@ public class GenericTableCatalogTest {
         .isEqualTo(listResult.stream().map(TableIdentifier::toString).sorted().toList());
 
     Assertions.assertThat(genericTableCatalog.listGenericTables(namespace)).isEmpty();
+  }
+
+  @Test
+  public void testListMixedTables() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    for (int i = 0; i < 10; i++) {
+      icebergCatalog.createTable(TableIdentifier.of("ns", "i" + i), SCHEMA);
+    }
+
+    for (int i = 0; i < 10; i++) {
+      genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "g" + i), "format", Map.of());
+    }
+
+    Assertions.assertThat(genericTableCatalog.listGenericTables(namespace).size()).isEqualTo(10);
+    Assertions.assertThat(icebergCatalog.listTables(namespace).size()).isEqualTo(10);
   }
 
   @Test
