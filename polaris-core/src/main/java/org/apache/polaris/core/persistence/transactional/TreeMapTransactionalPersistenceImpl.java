@@ -334,7 +334,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
                 entity.getName(),
                 entity.getTypeCode(),
                 entity.getSubTypeCode()),
-        ReadEverythingPageToken.get());
+        pageToken);
   }
 
   @Override
