@@ -21,8 +21,8 @@ package org.apache.polaris.core.policy.validator;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-class PolicyValidatorUtil {
-  static final ObjectMapper MAPPER = configureMapper();
+public class PolicyValidatorUtil {
+  public static final ObjectMapper MAPPER = configureMapper();
 
   private static ObjectMapper configureMapper() {
     ObjectMapper mapper = new ObjectMapper();

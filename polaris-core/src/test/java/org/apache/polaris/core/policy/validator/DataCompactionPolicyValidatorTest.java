@@ -28,6 +28,7 @@ import static org.apache.polaris.core.entity.PolarisEntityType.PRINCIPAL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.apache.polaris.core.policy.validator.datacompaction.DataCompactionPolicyValidator;
 import org.junit.jupiter.api.Test;
 
 public class DataCompactionPolicyValidatorTest {

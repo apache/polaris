@@ -16,14 +16,15 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.policy.validator;
+package org.apache.polaris.core.policy.validator.datacompaction;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.util.Map;
+import org.apache.polaris.core.policy.validator.StrictBooleanDeserializer;
 
-public class DataCompactionPolicy {
+public class DataCompactionPolicyContent {
   @JsonDeserialize(using = StrictBooleanDeserializer.class)
   private Boolean enable;
 
@@ -31,7 +32,8 @@ public class DataCompactionPolicy {
   private Map<String, String> config;
 
   @JsonCreator
-  public DataCompactionPolicy(@JsonProperty(value = "enable", required = true) boolean enable) {
+  public DataCompactionPolicyContent(
+      @JsonProperty(value = "enable", required = true) boolean enable) {
     this.enable = enable;
   }
 

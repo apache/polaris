@@ -22,6 +22,7 @@ import com.google.common.base.Preconditions;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
+import org.apache.polaris.core.policy.validator.datacompaction.DataCompactionPolicyValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

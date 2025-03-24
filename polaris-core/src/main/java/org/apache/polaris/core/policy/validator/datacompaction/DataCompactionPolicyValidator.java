@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.policy.validator;
+package org.apache.polaris.core.policy.validator.datacompaction;
 
 import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG;
 import static org.apache.polaris.core.entity.PolarisEntityType.ICEBERG_TABLE_LIKE;
@@ -26,9 +26,12 @@ import com.google.common.base.Strings;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.policy.validator.InvalidPolicyException;
+import org.apache.polaris.core.policy.validator.PolicyValidator;
+import org.apache.polaris.core.policy.validator.PolicyValidatorUtil;
 
-public class DataCompactionPolicyValidator implements PolicyValidator<DataCompactionPolicy> {
-  static final DataCompactionPolicyValidator INSTANCE = new DataCompactionPolicyValidator();
+public class DataCompactionPolicyValidator implements PolicyValidator<DataCompactionPolicyContent> {
+  public static final DataCompactionPolicyValidator INSTANCE = new DataCompactionPolicyValidator();
 
   private static final String DEFAULT_POLICY_SCHEMA_VERSION = "2025-02-03";
   private static final Set<String> POLICY_SCHEMA_VERSIONS = Set.of(DEFAULT_POLICY_SCHEMA_VERSION);
@@ -36,13 +39,14 @@ public class DataCompactionPolicyValidator implements PolicyValidator<DataCompac
       Set.of(CATALOG, NAMESPACE, ICEBERG_TABLE_LIKE);
 
   @Override
-  public DataCompactionPolicy parse(String content) {
+  public DataCompactionPolicyContent parse(String content) {
     if (Strings.isNullOrEmpty(content)) {
       throw new InvalidPolicyException("Policy is empty");
     }
 
     try {
-      var policy = PolicyValidatorUtil.MAPPER.readValue(content, DataCompactionPolicy.class);
+      DataCompactionPolicyContent policy =
+          PolicyValidatorUtil.MAPPER.readValue(content, DataCompactionPolicyContent.class);
       if (policy == null) {
         throw new InvalidPolicyException("Invalid policy");
       }
