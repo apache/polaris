@@ -558,7 +558,7 @@ public class PolarisApplicationIntegrationTest {
       sessionCatalog.dropTable(sessionContext, tableIdentifier);
       assertThatThrownBy(() -> sessionCatalog.loadTable(sessionContext, tableIdentifier))
           .isInstanceOf(NoSuchTableException.class)
-          .hasMessage("Table does not exist: db1.the_table");
+          .hasMessage("Iceberg table does not exist: db1.the_table");
     }
   }
 

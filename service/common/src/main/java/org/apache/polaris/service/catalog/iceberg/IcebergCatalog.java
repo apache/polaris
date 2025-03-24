@@ -1365,7 +1365,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         }
 
         if (null == existingLocation) {
-          throw new NoSuchTableException("Iceberg table does not exist: %s", tableName());
+          throw new NoSuchTableException("Table does not exist: %s", tableName());
         }
 
         throw new CommitFailedException(
@@ -1642,8 +1642,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       if (subType == PolarisEntitySubType.VIEW) {
         throw new NoSuchViewException("Cannot rename %s to %s. View does not exist", from, to);
       } else {
-        throw new NoSuchTableException(
-            "Cannot rename %s to %s. Iceberg table does not exist", from, to);
+        throw new NoSuchTableException("Cannot rename %s to %s. Table does not exist", from, to);
       }
     }
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
