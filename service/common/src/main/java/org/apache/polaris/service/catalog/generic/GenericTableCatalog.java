@@ -89,8 +89,9 @@ public class GenericTableCatalog {
   }
 
   private PolarisResolvedPathWrapper getTablePath(TableIdentifier tableIdentifier) {
-    PolarisResolvedPathWrapper genericTableResult = resolvedEntityView.getPassthroughResolvedPath(
-        tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
+    PolarisResolvedPathWrapper genericTableResult =
+        resolvedEntityView.getPassthroughResolvedPath(
+            tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
     if (genericTableResult == null) {
       return resolvedEntityView.getPassthroughResolvedPath(
           tableIdentifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);

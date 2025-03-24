@@ -325,7 +325,9 @@ public class GenericTableCatalogTest {
     genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format1", Map.of());
 
     Assertions.assertThatCode(
-        () -> genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format2", Map.of()))
+            () ->
+                genericTableCatalog.createGenericTable(
+                    TableIdentifier.of("ns", "t1"), "format2", Map.of()))
         .hasMessageContaining("already exists");
 
     Assertions.assertThatCode(
@@ -340,7 +342,9 @@ public class GenericTableCatalogTest {
     icebergCatalog.createTable(TableIdentifier.of("ns", "t1"), SCHEMA);
 
     Assertions.assertThatCode(
-            () -> genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format2", Map.of()))
+            () ->
+                genericTableCatalog.createGenericTable(
+                    TableIdentifier.of("ns", "t1"), "format2", Map.of()))
         .hasMessageContaining("already exists");
 
     Assertions.assertThatCode(

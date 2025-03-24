@@ -1190,8 +1190,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     }
 
     protected PolarisResolvedPathWrapper getTablePath(TableIdentifier tableIdentifier) {
-      PolarisResolvedPathWrapper icebergTableResult = resolvedEntityView.getPassthroughResolvedPath(
-          tableIdentifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
+      PolarisResolvedPathWrapper icebergTableResult =
+          resolvedEntityView.getPassthroughResolvedPath(
+              tableIdentifier,
+              PolarisEntityType.ICEBERG_TABLE_LIKE,
+              PolarisEntitySubType.ANY_SUBTYPE);
       if (icebergTableResult == null) {
         return resolvedEntityView.getPassthroughResolvedPath(
             tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
@@ -1499,8 +1502,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             identifier, identifier.namespace());
       }
 
-      PolarisResolvedPathWrapper resolvedTable = resolvedEntityView.getPassthroughResolvedPath(
-          identifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.TABLE);
+      PolarisResolvedPathWrapper resolvedTable =
+          resolvedEntityView.getPassthroughResolvedPath(
+              identifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.TABLE);
       if (resolvedTable != null) {
         throw new AlreadyExistsException("Table with same name already exists: %s", identifier);
       }
