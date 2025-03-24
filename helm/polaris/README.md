@@ -131,6 +131,9 @@ helm upgrade --install --namespace polaris \
 
 #### Persistent backend
 
+[!WARNING]
+The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
+
 Install the chart with a persistent backend. From Polaris repo root:
 
 ```bash
@@ -140,8 +143,6 @@ helm upgrade --install --namespace polaris \
 
 kubectl wait --namespace polaris --for=condition=ready pod --selector=app.kubernetes.io/name=polaris --timeout=120s
 ```
-
-:warning: The Postgres deployment set up in the fixtures directory is intended for testing purposes only and is not suitable for production use. For production deployments, use a managed Postgres service or a properly configured and secured Postgres instance.
 
 After deploying the chart with a persistent backend, the `persistence.xml` file, originally loaded into the Kubernetes pod via a secret, can be accessed locally if needed. This file contains the persistence configuration required for the next steps. Use the following command to retrieve it:
 
