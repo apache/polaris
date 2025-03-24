@@ -36,6 +36,8 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BasePersistence;
 import org.apache.polaris.core.persistence.IntegrationPersistence;
+import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PolarisPage;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 
@@ -199,31 +201,33 @@ public interface TransactionalPersistence extends BasePersistence, IntegrationPe
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#listEntities} */
   @Nonnull
-  List<EntityNameLookupRecord> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType);
-
-  /** See {@link org.apache.polaris.core.persistence.BasePersistence#listEntities} */
-  @Nonnull
-  List<EntityNameLookupRecord> listEntitiesInCurrentTxn(
+  PolarisPage<EntityNameLookupRecord> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter);
+      @Nonnull PageToken pageToken);
 
   /** See {@link org.apache.polaris.core.persistence.BasePersistence#listEntities} */
   @Nonnull
-  <T> List<T> listEntitiesInCurrentTxn(
+  PolarisPage<EntityNameLookupRecord> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      int limit,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer);
+      @Nonnull PageToken pageToken);
+
+  /** See {@link org.apache.polaris.core.persistence.BasePersistence#listEntities} */
+  @Nonnull
+  <T> PolarisPage<T> listEntitiesInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
+      @Nonnull PageToken pageToken);
 
   /**
    * See {@link org.apache.polaris.core.persistence.BasePersistence#lookupEntityGrantRecordsVersion}

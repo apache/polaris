@@ -189,9 +189,7 @@ public class IcebergCatalogAdapter
   }
 
   /** Build a {@link PageToken} from a string and page size. */
-  private PageToken buildPageToken(
-      @Nullable String tokenString,
-      @Nullable Integer pageSize) {
+  private PageToken buildPageToken(@Nullable String tokenString, @Nullable Integer pageSize) {
     if (tokenString != null) {
       return callContext
           .getPolarisCallContext()
@@ -200,7 +198,11 @@ public class IcebergCatalogAdapter
           .fromString(tokenString)
           .withPageSize(pageSize);
     } else {
-      return callContext.getPolarisCallContext().getMetaStore().pageTokenBuilder().fromLimit(pageSize);
+      return callContext
+          .getPolarisCallContext()
+          .getMetaStore()
+          .pageTokenBuilder()
+          .fromLimit(pageSize);
     }
   }
 
@@ -231,7 +233,8 @@ public class IcebergCatalogAdapter
         securityContext,
         prefix,
         catalog ->
-            Response.ok(catalog.listNamespaces(namespaceOptional.orElse(Namespace.of()), token)).build());
+            Response.ok(catalog.listNamespaces(namespaceOptional.orElse(Namespace.of()), token))
+                .build());
   }
 
   @Override

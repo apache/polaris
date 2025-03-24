@@ -53,6 +53,7 @@ import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PolarisPage;
 import org.apache.polaris.core.persistence.transactional.AbstractTransactionalPersistence;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -412,29 +413,30 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<EntityNameLookupRecord> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType) {
-    return this.listEntitiesInCurrentTxn(
-        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue());
-  }
-
-  @Override
-  public @Nonnull List<EntityNameLookupRecord> listEntitiesInCurrentTxn(
+  public @Nonnull PolarisPage<EntityNameLookupRecord> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter) {
+      @Nonnull PageToken pageToken) {
+    return this.listEntitiesInCurrentTxn(
+        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue(), pageToken);
+  }
+
+  @Override
+  public @Nonnull PolarisPage<EntityNameLookupRecord> listEntitiesInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull PageToken pageToken) {
     // full range scan under the parent for that type
     return this.listEntitiesInCurrentTxn(
         callCtx,
         catalogId,
         parentId,
         entityType,
-        Integer.MAX_VALUE,
         entityFilter,
         entity ->
             new EntityNameLookupRecord(
@@ -443,27 +445,57 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
                 entity.getParentId(),
                 entity.getName(),
                 entity.getTypeCode(),
-                entity.getSubTypeCode()));
+                entity.getSubTypeCode()),
+        pageToken);
   }
 
   @Override
-  public @Nonnull <T> List<T> listEntitiesInCurrentTxn(
+  public @Nonnull <T> PolarisPage<T> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      int limit,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer) {
-    // full range scan under the parent for that type
-    return this.store
-        .lookupFullEntitiesActive(localSession.get(), catalogId, parentId, entityType)
-        .stream()
-        .map(ModelEntity::toEntity)
-        .filter(entityFilter)
-        .limit(limit)
-        .map(transformer)
-        .collect(Collectors.toList());
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
+      @Nonnull PageToken pageToken) {
+    List<T> data;
+    if (entityFilter.equals(Predicates.alwaysTrue())) {
+      // In this case, we can push the filter down into the query
+      data =
+          this.store
+              .lookupFullEntitiesActive(
+                  localSession.get(), catalogId, parentId, entityType, pageToken)
+              .stream()
+              .map(ModelEntity::toEntity)
+              .filter(entityFilter)
+              .map(transformer)
+              .collect(Collectors.toList());
+    } else {
+      // In this case, we cannot push the filter down into the query. We must therefore remove
+      // the page size limit from the PageToken and filter on the client side.
+      // TODO Implement a generic predicate that can be pushed down into different metastores
+      PageToken unlimitedPageSizeToken = pageToken.withPageSize(Integer.MAX_VALUE);
+      List<ModelEntity> rawData =
+          this.store.lookupFullEntitiesActive(
+              localSession.get(), catalogId, parentId, entityType, unlimitedPageSizeToken);
+      if (pageToken.pageSize < Integer.MAX_VALUE && rawData.size() > pageToken.pageSize) {
+        LOGGER.info(
+            "A page token could not be respected due to a predicate. "
+                + "{} records were read but the client was asked to return {}.",
+            rawData.size(),
+            pageToken.pageSize);
+      }
+
+      data =
+          rawData.stream()
+              .map(ModelEntity::toEntity)
+              .filter(entityFilter)
+              .limit(pageToken.pageSize)
+              .map(transformer)
+              .collect(Collectors.toList());
+    }
+
+    return pageToken.buildNextPage(data);
   }
 
   /** {@inheritDoc} */

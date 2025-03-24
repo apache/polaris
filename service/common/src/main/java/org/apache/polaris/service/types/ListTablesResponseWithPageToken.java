@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.types;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -34,40 +33,40 @@ import org.apache.polaris.core.persistence.pagination.PolarisPage;
  * more results.
  */
 public class ListTablesResponseWithPageToken extends ListTablesResponse {
-    private final PageToken pageToken;
+  private final PageToken pageToken;
 
-    private final List<TableIdentifier> identifiers;
+  private final List<TableIdentifier> identifiers;
 
-    public ListTablesResponseWithPageToken(PageToken pageToken, List<TableIdentifier> identifiers) {
-        this.pageToken = pageToken;
-        this.identifiers = identifiers;
-        Preconditions.checkArgument(this.identifiers != null, "Invalid identifier list: null");
+  public ListTablesResponseWithPageToken(PageToken pageToken, List<TableIdentifier> identifiers) {
+    this.pageToken = pageToken;
+    this.identifiers = identifiers;
+    Preconditions.checkArgument(this.identifiers != null, "Invalid identifier list: null");
+  }
+
+  public static ListTablesResponseWithPageToken fromPolarisPage(
+      PolarisPage<TableIdentifier> polarisPage) {
+    return new ListTablesResponseWithPageToken(polarisPage.pageToken, polarisPage.data);
+  }
+
+  @JsonProperty("next-page-token")
+  public String getPageToken() {
+    if (pageToken == null) {
+      return null;
+    } else {
+      return pageToken.toString();
     }
+  }
 
-    public static ListTablesResponseWithPageToken fromPolarisPage(
-        PolarisPage<TableIdentifier> polarisPage) {
-        return new ListTablesResponseWithPageToken(polarisPage.pageToken, polarisPage.data);
-    }
+  @Override
+  public List<TableIdentifier> identifiers() {
+    return this.identifiers != null ? this.identifiers : List.of();
+  }
 
-    @JsonProperty("next-page-token")
-    public String getPageToken() {
-        if (pageToken == null) {
-            return null;
-        } else {
-            return pageToken.toString();
-        }
-    }
-
-    @Override
-    public List<TableIdentifier> identifiers() {
-        return this.identifiers != null ? this.identifiers : List.of();
-    }
-
-    @Override
-    public String toString() {
-        return MoreObjects.toStringHelper(this)
-            .add("identifiers", this.identifiers)
-            .add("pageToken", this.pageToken)
-            .toString();
-    }
+  @Override
+  public String toString() {
+    return MoreObjects.toStringHelper(this)
+        .add("identifiers", this.identifiers)
+        .add("pageToken", this.pageToken)
+        .toString();
+  }
 }

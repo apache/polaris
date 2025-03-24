@@ -21,11 +21,13 @@ package org.apache.polaris.core.persistence.transactional;
 import com.google.common.base.Predicates;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import java.util.Comparator;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.EntityNameLookupRecord;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
@@ -40,6 +42,8 @@ import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.pagination.OffsetPageToken;
 import org.apache.polaris.core.persistence.pagination.PageToken;
+import org.apache.polaris.core.persistence.pagination.PolarisPage;
+import org.apache.polaris.core.persistence.pagination.ReadEverythingPageToken;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -297,29 +301,30 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<EntityNameLookupRecord> listEntitiesInCurrentTxn(
-      @Nonnull PolarisCallContext callCtx,
-      long catalogId,
-      long parentId,
-      @Nonnull PolarisEntityType entityType) {
-    return this.listEntitiesInCurrentTxn(
-        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue());
-  }
-
-  @Override
-  public @Nonnull List<EntityNameLookupRecord> listEntitiesInCurrentTxn(
+  public @Nonnull PolarisPage<EntityNameLookupRecord> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      @Nonnull Predicate<PolarisBaseEntity> entityFilter) {
+      @Nonnull PageToken pageToken) {
+    return this.listEntitiesInCurrentTxn(
+        callCtx, catalogId, parentId, entityType, Predicates.alwaysTrue(), pageToken);
+  }
+
+  @Override
+  public @Nonnull PolarisPage<EntityNameLookupRecord> listEntitiesInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx,
+      long catalogId,
+      long parentId,
+      @Nonnull PolarisEntityType entityType,
+      @Nonnull Predicate<PolarisBaseEntity> entityFilter,
+      @Nonnull PageToken pageToken) {
     // full range scan under the parent for that type
     return this.listEntitiesInCurrentTxn(
         callCtx,
         catalogId,
         parentId,
         entityType,
-        Integer.MAX_VALUE,
         entityFilter,
         entity ->
             new EntityNameLookupRecord(
@@ -328,31 +333,42 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
                 entity.getParentId(),
                 entity.getName(),
                 entity.getTypeCode(),
-                entity.getSubTypeCode()));
+                entity.getSubTypeCode()),
+        ReadEverythingPageToken.get());
   }
 
   @Override
-  public @Nonnull <T> List<T> listEntitiesInCurrentTxn(
+  public @Nonnull <T> PolarisPage<T> listEntitiesInCurrentTxn(
       @Nonnull PolarisCallContext callCtx,
       long catalogId,
       long parentId,
       @Nonnull PolarisEntityType entityType,
-      int limit,
       @Nonnull Predicate<PolarisBaseEntity> entityFilter,
-      @Nonnull Function<PolarisBaseEntity, T> transformer) {
-    // full range scan under the parent for that type
-    return this.store
-        .getSliceEntitiesActive()
-        .readRange(this.store.buildPrefixKeyComposite(catalogId, parentId, entityType.getCode()))
-        .stream()
-        .map(
-            nameRecord ->
-                this.lookupEntityInCurrentTxn(
-                    callCtx, catalogId, nameRecord.getId(), entityType.getCode()))
-        .filter(entityFilter)
-        .limit(limit)
-        .map(transformer)
-        .collect(Collectors.toList());
+      @Nonnull Function<PolarisBaseEntity, T> transformer,
+      @Nonnull PageToken pageToken) {
+    if (!(pageToken instanceof ReadEverythingPageToken)
+        && !(pageToken instanceof OffsetPageToken)) {
+      throw new IllegalArgumentException("Unexpected pageToken: " + pageToken);
+    }
+
+    Stream<PolarisBaseEntity> partialResults =
+        this.store
+            .getSliceEntitiesActive()
+            .readRange(
+                this.store.buildPrefixKeyComposite(catalogId, parentId, entityType.getCode()))
+            .stream()
+            .filter(entityFilter);
+
+    if (pageToken instanceof OffsetPageToken) {
+      partialResults =
+          partialResults
+              .sorted(Comparator.comparingLong(PolarisEntityCore::getId))
+              .skip(((OffsetPageToken) pageToken).offset)
+              .limit(pageToken.pageSize);
+    }
+
+    List<T> entities = partialResults.map(transformer).collect(Collectors.toList());
+    return pageToken.buildNextPage(entities);
   }
 
   /** {@inheritDoc} */

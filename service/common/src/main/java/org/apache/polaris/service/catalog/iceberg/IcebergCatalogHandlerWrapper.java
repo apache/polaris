@@ -462,13 +462,13 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     initializeCatalog();
   }
 
-
   public ListNamespacesResponseWithPageToken listNamespaces(Namespace parent, PageToken pageToken) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_NAMESPACES;
     authorizeBasicNamespaceOperationOrThrow(op, parent);
 
     if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
-      return ListNamespacesResponseWithPageToken.fromPolarisPage(polarisCatalog.listNamespaces(parent, pageToken));
+      return ListNamespacesResponseWithPageToken.fromPolarisPage(
+          polarisCatalog.listNamespaces(parent, pageToken));
     } else {
       return ListNamespacesResponseWithPageToken.fromPolarisPage(
           PolarisPage.fromData(
@@ -564,7 +564,8 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
     if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
-      return ListTablesResponseWithPageToken.fromPolarisPage(polarisCatalog.listTables(namespace, pageToken));
+      return ListTablesResponseWithPageToken.fromPolarisPage(
+          polarisCatalog.listTables(namespace, pageToken));
     } else {
       return ListTablesResponseWithPageToken.fromPolarisPage(
           PolarisPage.fromData(CatalogHandlers.listTables(baseCatalog, namespace).identifiers()));
@@ -1096,11 +1097,11 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     authorizeBasicNamespaceOperationOrThrow(op, namespace);
 
     if (baseCatalog instanceof IcebergCatalog polarisCatalog) {
-      return ListTablesResponseWithPageToken.fromPolarisPage(polarisCatalog.listViews(namespace, pageToken));
+      return ListTablesResponseWithPageToken.fromPolarisPage(
+          polarisCatalog.listViews(namespace, pageToken));
     } else {
       return ListTablesResponseWithPageToken.fromPolarisPage(
-          PolarisPage.fromData(CatalogHandlers.listTables(baseCatalog, namespace)
-                  .identifiers()));
+          PolarisPage.fromData(CatalogHandlers.listTables(baseCatalog, namespace).identifiers()));
     }
   }
 
