@@ -52,6 +52,7 @@ import org.apache.polaris.core.exceptions.AlreadyExistsException;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.persistence.transactional.AbstractTransactionalPersistence;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
@@ -670,5 +671,10 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
     if (session != null) {
       session.getTransaction().rollback();
     }
+  }
+
+  @Override
+  public PageToken.PageTokenBuilder<?> pageTokenBuilder() {
+    return EntityIdPageToken.builder();
   }
 }

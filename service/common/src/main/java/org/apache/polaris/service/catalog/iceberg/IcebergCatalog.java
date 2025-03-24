@@ -111,6 +111,7 @@ import org.apache.polaris.core.storage.StorageLocation;
 import org.apache.polaris.service.catalog.SupportsNotifications;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOUtil;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.apache.polaris.service.types.NotificationRequest;
 import org.apache.polaris.service.types.NotificationType;
@@ -169,6 +170,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
   private Map<String, String> tableDefaultProperties;
   private FileIOFactory fileIOFactory;
   private PolarisMetaStoreManager metaStoreManager;
+  private final PageToken.PageTokenBuilder<?> pageTokenBuilder;
 
   /**
    * @param entityManager provides handle to underlying PolarisMetaStoreManager with which to

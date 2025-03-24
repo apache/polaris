@@ -31,6 +31,7 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
 import org.apache.polaris.core.entity.PolarisEntityId;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 
 /**
  * Interface to the Polaris persistence backend, with which to persist and retrieve all the data
@@ -403,4 +404,6 @@ public interface BasePersistence {
   default BasePersistence detach() {
     return this;
   }
+
+  PageToken.PageTokenBuilder<?> pageTokenBuilder();
 }
