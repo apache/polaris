@@ -104,7 +104,6 @@ dependencies {
   testFixturesImplementation(project(":polaris-api-iceberg-service"))
   testFixturesImplementation(project(":polaris-jpa-model"))
 
-
   testFixturesImplementation(libs.jakarta.enterprise.cdi.api)
   testFixturesImplementation(libs.jakarta.annotation.api)
   testFixturesImplementation(libs.jakarta.ws.rs.api)

@@ -57,6 +57,7 @@ import org.apache.polaris.core.persistence.transactional.AbstractTransactionalPe
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
+import org.apache.polaris.jpa.models.EntityIdPageToken;
 import org.apache.polaris.jpa.models.ModelEntity;
 import org.apache.polaris.jpa.models.ModelEntityActive;
 import org.apache.polaris.jpa.models.ModelEntityChangeTracking;
@@ -674,7 +675,7 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   }
 
   @Override
-  public PageToken.PageTokenBuilder<?> pageTokenBuilder() {
+  public @Nonnull PageToken.PageTokenBuilder<?> pageTokenBuilder() {
     return EntityIdPageToken.builder();
   }
 }

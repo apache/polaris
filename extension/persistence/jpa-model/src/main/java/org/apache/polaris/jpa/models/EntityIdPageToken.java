@@ -16,12 +16,11 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.service.persistence.pagination;
+package org.apache.polaris.jpa.models;
 
 import java.util.List;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.persistence.pagination.PageToken;
-import org.apache.polaris.jpa.models.ModelEntity;
 
 /**
  * A {@link PageToken} implementation that tracks the greatest ID from either {@link

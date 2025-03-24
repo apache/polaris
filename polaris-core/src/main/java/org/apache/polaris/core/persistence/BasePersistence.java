@@ -405,5 +405,6 @@ public interface BasePersistence {
     return this;
   }
 
+  @Nonnull
   PageToken.PageTokenBuilder<?> pageTokenBuilder();
 }

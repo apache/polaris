@@ -38,6 +38,8 @@ import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.BaseMetaStoreManager;
 import org.apache.polaris.core.persistence.PrincipalSecretsGenerator;
+import org.apache.polaris.core.persistence.pagination.OffsetPageToken;
+import org.apache.polaris.core.persistence.pagination.PageToken;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
@@ -550,5 +552,10 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
   @Override
   public void rollback() {
     this.store.rollback();
+  }
+
+  @Override
+  public @Nonnull PageToken.PageTokenBuilder<?> pageTokenBuilder() {
+    return OffsetPageToken.builder();
   }
 }
