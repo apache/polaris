@@ -24,6 +24,7 @@ import java.util.Map;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.exceptions.AlreadyExistsException;
+import org.apache.iceberg.exceptions.NoSuchNamespaceException;
 import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
@@ -155,20 +156,19 @@ public class GenericTableCatalog {
         GenericTableEntity.of(
             resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
     if (null == entity) {
-      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier);
+      throw new NoSuchTableException("Generic table does not exist: %s", tableIdentifier);
     } else {
       return entity;
     }
   }
 
-  @SuppressWarnings("FormatStringAnnotation")
   public boolean dropGenericTable(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
             tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
 
     if (resolvedEntities == null) {
-      throw new NoSuchTableException("Table does not exist: %s", tableIdentifier);
+      throw new NoSuchTableException("Generic table does not exist: %s", tableIdentifier);
     }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawParentPath();
@@ -187,6 +187,9 @@ public class GenericTableCatalog {
 
   public List<TableIdentifier> listGenericTables(Namespace namespace) {
     PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getResolvedPath(namespace);
+    if (resolvedEntities == null) {
+      throw new NoSuchNamespaceException("Namespace '%s' does not exist", namespace);
+    }
 
     List<PolarisEntity> catalogPath = resolvedEntities.getRawFullPath();
     List<PolarisEntity.NameAndId> entities =

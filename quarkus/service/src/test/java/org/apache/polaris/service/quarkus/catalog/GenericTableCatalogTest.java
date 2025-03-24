@@ -429,6 +429,14 @@ public class GenericTableCatalogTest {
   }
 
   @Test
+  public void testListTablesNoNamespace() {
+    Namespace namespace = Namespace.of("ns");
+
+    Assertions.assertThatCode(() -> genericTableCatalog.listGenericTables(namespace))
+        .hasMessageContaining("Namespace");
+  }
+
+  @Test
   public void testListIcebergTables() {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
@@ -453,7 +461,7 @@ public class GenericTableCatalogTest {
 
     Assertions.assertThatCode(
             () -> genericTableCatalog.dropGenericTable(TableIdentifier.of("ns", "t1")))
-        .hasMessageContaining("Table does not exist: ns.t1");
+        .hasMessageContaining("Generic table does not exist: ns.t1");
   }
 
   @Test
@@ -463,7 +471,7 @@ public class GenericTableCatalogTest {
 
     Assertions.assertThatCode(
             () -> genericTableCatalog.dropGenericTable(TableIdentifier.of("ns2", "t1")))
-        .hasMessageContaining("Table does not exist: ns2.t1");
+        .hasMessageContaining("Generic table does not exist: ns2.t1");
   }
 
   @Test
@@ -474,7 +482,7 @@ public class GenericTableCatalogTest {
 
     Assertions.assertThatCode(
             () -> genericTableCatalog.dropGenericTable(TableIdentifier.of("ns", "t1")))
-        .hasMessageContaining("Table does not exist: ns.t1");
+        .hasMessageContaining("Generic table does not exist: ns.t1");
   }
 
   @Test
