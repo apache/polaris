@@ -866,6 +866,8 @@ components:
         uri:
           type: string
           description: URI to the remote catalog service
+        authenticationParameters:
+          $ref: "#/components/schemas/AuthenticationParameters"
       required:
         - connectionType
       discriminator:
@@ -884,8 +886,6 @@ components:
           description: The name of a remote catalog instance within the remote catalog service; in some older systems
             this is specified as the 'warehouse' when multiple logical catalogs are served under the same base
             uri, and often translates into a 'prefix' added to all REST resource paths
-        authenticationParameters:
-          $ref: "#/components/schemas/AuthenticationParameters"
 
     AuthenticationParameters:
       type: object
