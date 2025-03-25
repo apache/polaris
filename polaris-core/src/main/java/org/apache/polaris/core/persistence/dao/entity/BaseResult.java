@@ -111,6 +111,7 @@ public class BaseResult {
 
     // error caught while sub-scoping credentials. Error message will be returned
     SUBSCOPE_CREDS_ERROR(13),
+
     // policy mapping not found
     POLICY_MAPPING_NOT_FOUND(14),
 
