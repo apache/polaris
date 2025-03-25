@@ -24,7 +24,7 @@ import java.util.List;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityCore;
 
-public interface TransactionalPolicyMappingPersistence extends PolicyMappingPersistence {
+public interface TransactionalPolicyMappingPersistence {
   /** See {@link PolicyMappingPersistence#writeToPolicyMappingRecords} */
   default void writeToPolicyMappingRecordsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
