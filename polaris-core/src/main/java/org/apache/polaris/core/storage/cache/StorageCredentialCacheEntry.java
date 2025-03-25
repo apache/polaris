@@ -64,13 +64,13 @@ public class StorageCredentialCacheEntry {
 
       // Iceberg 1.7.x may expect the credenetial to _not_ be suffixed with endpoint
       if (host.endsWith(AzureLocation.ADLS_ENDPOINT)) {
-        int suffixIndex = host.lastIndexOf(AzureLocation.ADLS_ENDPOINT);
+        int suffixIndex = host.lastIndexOf(AzureLocation.ADLS_ENDPOINT) - 1;
         String withSuffixStripped = host.substring(0, suffixIndex);
         results.put(credentialProperty.getPropertyName() + withSuffixStripped, value);
       }
 
       if (host.endsWith(AzureLocation.BLOB_ENDPOINT)) {
-        int suffixIndex = host.lastIndexOf(AzureLocation.BLOB_ENDPOINT);
+        int suffixIndex = host.lastIndexOf(AzureLocation.BLOB_ENDPOINT) - 1;
         String withSuffixStripped = host.substring(0, suffixIndex);
         results.put(credentialProperty.getPropertyName() + withSuffixStripped, value);
       }
