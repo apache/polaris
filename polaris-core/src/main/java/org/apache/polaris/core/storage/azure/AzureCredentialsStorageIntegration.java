@@ -43,6 +43,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.EnumMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import org.apache.polaris.core.PolarisDiagnostics;
@@ -59,8 +60,6 @@ public class AzureCredentialsStorageIntegration
 
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AzureCredentialsStorageIntegration.class);
-
-  public static String AZURE_ACCOUNT_HOST_SUFFIX = "dfs.windows.net";
 
   final DefaultAzureCredential defaultAzureCredential;
 
