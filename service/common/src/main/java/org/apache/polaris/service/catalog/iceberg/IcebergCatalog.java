@@ -1112,9 +1112,11 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 new ResolverPath(Arrays.asList(ns.levels()), PolarisEntityType.NAMESPACE), ns));
     ResolverStatus status = resolutionManifest.resolveAll();
     if (!status.getStatus().equals(ResolverStatus.StatusEnum.SUCCESS)) {
-      throw new IllegalStateException(
-          "Unable to resolve sibling entities to validate location - could not resolve"
-              + status.getFailedToResolvedEntityName());
+      String message = "Unable to resolve sibling entities to validate location - " + status.getStatus();
+      if (status.getStatus().equals(ResolverStatus.StatusEnum.ENTITY_COULD_NOT_BE_RESOLVED)) {
+        message += ". Entity = " + status.getFailedToResolvedEntityName();
+      }
+      throw new IllegalStateException(message);
     }
 
     StorageLocation targetLocation = StorageLocation.of(location);
