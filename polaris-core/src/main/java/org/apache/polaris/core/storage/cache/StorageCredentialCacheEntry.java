@@ -69,7 +69,8 @@ public class StorageCredentialCacheEntry {
               resCredsMap.put(key.getPropertyName() + host, value);
               // Iceberg 1.7.x may expect this to _not_ be suffixed with .dfs.windows.net
               if (host.endsWith(AzureCredentialsStorageIntegration.AZURE_ACCOUNT_HOST_SUFFIX)) {
-                int suffixIndex = host.lastIndexOf(AzureCredentialsStorageIntegration.AZURE_ACCOUNT_HOST_SUFFIX);
+                int suffixIndex =
+                    host.lastIndexOf(AzureCredentialsStorageIntegration.AZURE_ACCOUNT_HOST_SUFFIX);
                 String withSuffixStripped = host.substring(0, suffixIndex);
                 resCredsMap.put(key.getPropertyName() + withSuffixStripped, value);
               }
