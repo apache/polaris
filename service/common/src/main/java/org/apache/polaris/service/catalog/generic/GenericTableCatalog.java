@@ -29,7 +29,7 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.GenericTableEntity;
+import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
@@ -88,18 +88,6 @@ public class GenericTableCatalog {
     this.metaStoreManager = metaStoreManager;
   }
 
-  private PolarisResolvedPathWrapper getTablePath(TableIdentifier tableIdentifier) {
-    PolarisResolvedPathWrapper genericTableResult =
-        resolvedEntityView.getPassthroughResolvedPath(
-            tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
-    if (genericTableResult == null) {
-      return resolvedEntityView.getPassthroughResolvedPath(
-          tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
-    } else {
-      return genericTableResult;
-    }
-  }
-
   public void createGenericTable(
       TableIdentifier tableIdentifier, String format, Map<String, String> properties) {
     PolarisResolvedPathWrapper resolvedParent =
@@ -113,7 +101,8 @@ public class GenericTableCatalog {
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
 
-    PolarisResolvedPathWrapper resolvedEntities = getTablePath(tableIdentifier);
+    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getPassthroughResolvedPath(
+        tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
     GenericTableEntity entity =
         GenericTableEntity.of(
             resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
@@ -161,7 +150,7 @@ public class GenericTableCatalog {
   public GenericTableEntity loadGenericTable(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
-            tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
+            tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.GENERIC_TABLE);
     GenericTableEntity entity =
         GenericTableEntity.of(
             resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
@@ -175,7 +164,7 @@ public class GenericTableCatalog {
   public boolean dropGenericTable(TableIdentifier tableIdentifier) {
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getPassthroughResolvedPath(
-            tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
+            tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.GENERIC_TABLE);
 
     if (resolvedEntities == null) {
       throw new NoSuchTableException("Generic table does not exist: %s", tableIdentifier);
@@ -208,8 +197,8 @@ public class GenericTableCatalog {
                 .listEntities(
                     this.callContext.getPolarisCallContext(),
                     PolarisEntity.toCoreList(catalogPath),
-                    PolarisEntityType.GENERIC_TABLE,
-                    PolarisEntitySubType.ANY_SUBTYPE)
+                    PolarisEntityType.TABLE_LIKE,
+                    PolarisEntitySubType.GENERIC_TABLE)
                 .getEntities());
     return PolarisCatalogHelpers.nameAndIdToTableIdentifiers(catalogPath, entities);
   }

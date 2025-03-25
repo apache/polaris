@@ -29,7 +29,7 @@ import org.apache.iceberg.CatalogProperties;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.context.CallContext;
-import org.apache.polaris.core.entity.IcebergTableLikeEntity;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
 import org.apache.polaris.core.entity.TaskEntity;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;

@@ -43,7 +43,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
-import org.apache.polaris.core.entity.IcebergTableLikeEntity;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;

@@ -16,15 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.entity;
+package org.apache.polaris.core.entity.table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Optional;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
+import org.apache.polaris.core.entity.NamespaceEntity;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntityConstants;
+import org.apache.polaris.core.entity.PolarisEntityType;
 
-public class IcebergTableLikeEntity extends PolarisEntity {
+/**
+ * An entity type for {@link TableLikeEntity} instances that conform to iceberg semantics
+ * around locations. This includes both Iceberg tables and Iceberg views.
+ */
+public class IcebergTableLikeEntity extends TableLikeEntity {
   // For applicable types, this key on the "internalProperties" map will return the location
   // of the internalProperties JSON file.
   public static final String METADATA_LOCATION_KEY = "metadata-location";
@@ -44,22 +53,6 @@ public class IcebergTableLikeEntity extends PolarisEntity {
       return new IcebergTableLikeEntity(sourceEntity);
     }
     return null;
-  }
-
-  @JsonIgnore
-  public TableIdentifier getTableIdentifier() {
-    Namespace parent = getParentNamespace();
-    return TableIdentifier.of(parent, getName());
-  }
-
-  @JsonIgnore
-  public Namespace getParentNamespace() {
-    String encodedNamespace =
-        getInternalPropertiesAsMap().get(NamespaceEntity.PARENT_NAMESPACE_KEY);
-    if (encodedNamespace == null) {
-      return Namespace.empty();
-    }
-    return RESTUtil.decodeNamespace(encodedNamespace);
   }
 
   @JsonIgnore
