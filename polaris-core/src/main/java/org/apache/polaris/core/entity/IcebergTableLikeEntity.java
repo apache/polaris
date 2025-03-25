@@ -82,7 +82,7 @@ public class IcebergTableLikeEntity extends PolarisEntity {
   public static class Builder extends PolarisEntity.BaseBuilder<IcebergTableLikeEntity, Builder> {
     public Builder(TableIdentifier identifier, String metadataLocation) {
       super();
-      setType(PolarisEntityType.ICEBERG_TABLE_LIKE);
+      setType(PolarisEntityType.TABLE_LIKE);
       setTableIdentifier(identifier);
       setMetadataLocation(metadataLocation);
     }

@@ -71,7 +71,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
 
   private boolean taskEntityIsTable(TaskEntity task) {
     PolarisEntity entity = PolarisEntity.of((task.readData(PolarisBaseEntity.class)));
-    return entity.getType().equals(PolarisEntityType.ICEBERG_TABLE_LIKE);
+    return entity.getType().equals(PolarisEntityType.TABLE_LIKE);
   }
 
   @Override

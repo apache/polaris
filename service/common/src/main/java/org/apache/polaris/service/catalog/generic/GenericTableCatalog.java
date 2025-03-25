@@ -94,7 +94,7 @@ public class GenericTableCatalog {
             tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
     if (genericTableResult == null) {
       return resolvedEntityView.getPassthroughResolvedPath(
-          tableIdentifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
+          tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
     } else {
       return genericTableResult;
     }

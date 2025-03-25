@@ -92,7 +92,7 @@ public class StorageCredentialCacheTest {
     PolarisEntity polarisEntity =
         new PolarisEntity(
             new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.TABLE, 0, "name"));
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
     Assertions.assertThatThrownBy(
             () ->
                 storageCredentialCache.getOrGenerateSubScopeCreds(
@@ -125,7 +125,7 @@ public class StorageCredentialCacheTest {
         .thenReturn(mockedScopedCreds.get(1));
     PolarisBaseEntity baseEntity =
         new PolarisBaseEntity(
-            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.TABLE, 0, "name");
+            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
     PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
 
     // add an item to the cache
@@ -168,7 +168,7 @@ public class StorageCredentialCacheTest {
         .thenReturn(mockedScopedCreds.get(2));
     PolarisBaseEntity baseEntity =
         new PolarisBaseEntity(
-            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.TABLE, 0, "name");
+            1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name");
     PolarisEntity polarisEntity = new PolarisEntity(baseEntity);
     StorageCredentialCacheKey cacheKey =
         new StorageCredentialCacheKey(
@@ -426,15 +426,15 @@ public class StorageCredentialCacheTest {
     PolarisEntity polarisEntity1 =
         new PolarisEntity(
             new PolarisBaseEntity(
-                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.TABLE, 0, "name"));
+                1, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
     PolarisEntity polarisEntity2 =
         new PolarisEntity(
             new PolarisBaseEntity(
-                2, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.TABLE, 0, "name"));
+                2, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
     PolarisEntity polarisEntity3 =
         new PolarisEntity(
             new PolarisBaseEntity(
-                3, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.TABLE, 0, "name"));
+                3, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
     return Arrays.asList(polarisEntity1, polarisEntity2, polarisEntity3);
   }
