@@ -26,7 +26,6 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -771,7 +770,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
         PolarisAuthorizableOperation.LOAD_TABLE_WITH_WRITE_DELEGATION;
 
     Set<PolarisStorageActions> actionsRequested =
-        new HashSet<>(Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST));
+        Set.of(PolarisStorageActions.READ, PolarisStorageActions.LIST);
     try {
       // TODO: Refactor to have a boolean-return version of the helpers so we can fallthrough
       // easily.
