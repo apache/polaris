@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 #
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
@@ -17,21 +18,22 @@
 # under the License.
 #
 
----
-jobs:
-  stale:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/stale@ba23c1cb02e5cb8f885b0994d870e6032be00186
-        with:
-          days-before-close: 5
-          days-before-stale: 30
-          stale-issue-message: "This issue is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 5 days."
-          stale-pr-message: "This PR is stale because it has been open 30 days with no activity. Remove stale label or comment or this will be closed in 5 days."
-name: "Close stale issues and PRs"
-on:
-  schedule:
-    - cron: "30 1 * * *"
-permissions:
-  issues: read
-  pull-requests: write
+# Linux Quarkus fast-jar run script for Apache Polaris
+
+set -e
+
+script_dir="$(dirname "$0")"
+
+if [ -z "$JAVA_HOME" ] ; then
+  JAVACMD="`\\unset -f command; \\command -v java`"
+else
+  JAVACMD="$JAVA_HOME/bin/java"
+fi
+
+if [ ! -x "$JAVACMD" ] ; then
+  echo "The JAVA_HOME environment variable is not defined correctly," >&2
+  echo "this environment variable is needed to run this program." >&2
+  exit 1
+fi
+
+exec "${JAVACMD}" -jar "${script_dir}/quarkus-run.jar"
