@@ -68,6 +68,10 @@ public class StorageCredentialCacheEntry {
                   key.getPropertyName()
                       + credsMap.get(PolarisCredentialProperty.AZURE_ACCOUNT_HOST),
                   value);
+              resCredsMap.put(
+                  key.getPropertyName()
+                      + credsMap.get(PolarisCredentialProperty.AZURE_ACCOUNT_HOST) + ".dfs.windows.net",
+                  value);
             } else if (!key.equals(PolarisCredentialProperty.AZURE_ACCOUNT_HOST)) {
               resCredsMap.put(key.getPropertyName(), value);
             }
