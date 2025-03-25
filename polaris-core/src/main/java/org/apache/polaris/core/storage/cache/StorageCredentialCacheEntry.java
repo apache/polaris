@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
-import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 import org.apache.polaris.core.storage.azure.AzureLocation;
 
 /** A storage credential cached entry. */
@@ -54,13 +53,11 @@ public class StorageCredentialCacheEntry {
   }
 
   /**
-   * Azure needs special handling, the credential key is dynamically generated based on
-   * the storage account endpoint
+   * Azure needs special handling, the credential key is dynamically generated based on the storage
+   * account endpoint
    */
   private void handleAzureCredential(
-      HashMap<String, String> results,
-      PolarisCredentialProperty credentialProperty,
-      String value) {
+      HashMap<String, String> results, PolarisCredentialProperty credentialProperty, String value) {
     if (credentialProperty.equals(PolarisCredentialProperty.AZURE_SAS_TOKEN)) {
       String host = credsMap.get(PolarisCredentialProperty.AZURE_ACCOUNT_HOST);
       results.put(credentialProperty.getPropertyName() + host, value);
