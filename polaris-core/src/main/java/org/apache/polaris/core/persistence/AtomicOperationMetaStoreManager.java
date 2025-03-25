@@ -1933,7 +1933,8 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     }
 
     final List<PolarisPolicyMappingRecord> policyMappingRecords =
-        ms.loadAllPoliciesOnTarget(callCtx, target.getCatalogId(), target.getId());
+        ms.loadPoliciesOnTargetByType(
+            callCtx, target.getCatalogId(), target.getId(), policyType.getCode());
 
     List<PolicyEntity> policyEntities =
         loadPoliciesFromMappingRecords(callCtx, ms, policyMappingRecords);
