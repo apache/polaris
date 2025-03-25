@@ -62,7 +62,7 @@ public class StorageCredentialCacheEntry {
       String host = credsMap.get(PolarisCredentialProperty.AZURE_ACCOUNT_HOST);
       results.put(credentialProperty.getPropertyName() + host, value);
 
-      // Iceberg 1.7.x may expect the credenetial to _not_ be suffixed with endpoint
+      // Iceberg 1.7.x may expect the credential key to _not_ be suffixed with endpoint
       if (host.endsWith(AzureLocation.ADLS_ENDPOINT)) {
         int suffixIndex = host.lastIndexOf(AzureLocation.ADLS_ENDPOINT) - 1;
         if (suffixIndex > 0) {
