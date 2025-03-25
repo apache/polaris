@@ -61,27 +61,28 @@ internal fun configureOnRootProject(project: Project) =
       workingDir(project.projectDir)
     }
 
-    val digestSourceTarball = tasks.register("digestSourceTarball")
-    digestSourceTarball.configure {
-      mustRunAfter(sourceTarball)
-
-      doFirst {
-        val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-        generateDigest(e.sourceTarball.get().asFile, e.sourceTarballDigest.get().asFile, "SHA-512")
+    val digestSourceTarball =
+      tasks.register<GenerateDigest>("digestSourceTarball") {
+        description = "Generate the source tarball digest"
+        mustRunAfter(sourceTarball)
+        file.set {
+          val e = project.extensions.getByType(PublishingHelperExtension::class.java)
+          e.sourceTarball.get().asFile
+        }
       }
-    }
 
     sourceTarball.configure { finalizedBy(digestSourceTarball) }
 
     if (isSigning) {
-      val signSourceTarball = tasks.register<Sign>("signSourceTarball")
-      signSourceTarball.configure {
-        mustRunAfter(sourceTarball)
-        doFirst {
-          val e = project.extensions.getByType(PublishingHelperExtension::class.java)
-          sign(e.sourceTarball.get().asFile)
+      val signSourceTarball =
+        tasks.register<Sign>("signSourceTarball") {
+          description = "Sign the source tarball"
+          mustRunAfter(sourceTarball)
+          doFirst {
+            val e = project.extensions.getByType(PublishingHelperExtension::class.java)
+            sign(e.sourceTarball.get().asFile)
+          }
         }
-      }
       sourceTarball.configure { finalizedBy(signSourceTarball) }
     }
 
