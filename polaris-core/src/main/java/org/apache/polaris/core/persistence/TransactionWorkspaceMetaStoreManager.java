@@ -44,6 +44,8 @@ import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.GenerateEntityIdResult;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
@@ -398,7 +400,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public @Nonnull AttachmentResult attachPolicyToEntity(
+  public @Nonnull PolicyAttachmentResult attachPolicyToEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntityCore> targetCatalogPath,
       @Nonnull PolarisEntityCore target,
@@ -412,7 +414,7 @@ public class TransactionWorkspaceMetaStoreManager implements PolarisMetaStoreMan
   }
 
   @Override
-  public @Nonnull AttachmentResult detachPolicyFromEntity(
+  public @Nonnull PolicyAttachmentResult detachPolicyFromEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore target,

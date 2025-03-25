@@ -18,17 +18,13 @@
  */
 package org.apache.polaris.core.policy;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.entity.PolarisEntityCore;
-import org.apache.polaris.core.persistence.dao.entity.BaseResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 
 public interface PolarisPolicyMappingManager {
 
@@ -50,7 +46,7 @@ public interface PolarisPolicyMappingManager {
    *     attached and the policy is inheritable.
    */
   @Nonnull
-  AttachmentResult attachPolicyToEntity(
+  PolicyAttachmentResult attachPolicyToEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntityCore> targetCatalogPath,
       @Nonnull PolarisEntityCore target,
@@ -71,7 +67,7 @@ public interface PolarisPolicyMappingManager {
    *     be found
    */
   @Nonnull
-  AttachmentResult detachPolicyFromEntity(
+  PolicyAttachmentResult detachPolicyFromEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore target,
@@ -104,108 +100,4 @@ public interface PolarisPolicyMappingManager {
       @Nonnull PolarisCallContext callCtx,
       @Nonnull PolarisEntityCore target,
       @Nonnull PolicyType policyType);
-
-  /** result of an attach/detach operation */
-  class AttachmentResult extends BaseResult {
-    // null if not success
-    private final PolarisPolicyMappingRecord mappingRecord;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public AttachmentResult(
-        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.mappingRecord = null;
-    }
-
-    /**
-     * Constructor for success
-     *
-     * @param mappingRecord policy mapping record being attached/detached
-     */
-    public AttachmentResult(@Nonnull PolarisPolicyMappingRecord mappingRecord) {
-      super(BaseResult.ReturnStatus.SUCCESS);
-      this.mappingRecord = mappingRecord;
-    }
-
-    @JsonCreator
-    private AttachmentResult(
-        @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") String extraInformation,
-        @JsonProperty("policyMappingRecord") PolarisPolicyMappingRecord mappingRecord) {
-      super(returnStatus, extraInformation);
-      this.mappingRecord = mappingRecord;
-    }
-
-    public PolarisPolicyMappingRecord getPolicyMappingRecord() {
-      return mappingRecord;
-    }
-  }
-
-  /** result of a load policy mapping call */
-  class LoadPolicyMappingsResult extends BaseResult {
-    // null if not success. Else set of policy mapping records on a target or from a policy
-    private final List<PolarisPolicyMappingRecord> mappingRecords;
-
-    // null if not success. Else set of policy entities in the mapping records.
-    private final List<PolicyEntity> policyEntities;
-
-    /**
-     * Constructor for an error
-     *
-     * @param errorCode error code, cannot be SUCCESS
-     * @param extraInformation extra information
-     */
-    public LoadPolicyMappingsResult(
-        @Nonnull BaseResult.ReturnStatus errorCode, @Nullable String extraInformation) {
-      super(errorCode, extraInformation);
-      this.mappingRecords = null;
-      this.policyEntities = null;
-    }
-
-    /**
-     * Constructor for success
-     *
-     * @param mappingRecords policy mapping records
-     * @param policyEntities policy entities
-     */
-    public LoadPolicyMappingsResult(
-        @Nonnull List<PolarisPolicyMappingRecord> mappingRecords,
-        @Nonnull List<PolicyEntity> policyEntities) {
-      super(BaseResult.ReturnStatus.SUCCESS);
-      this.mappingRecords = mappingRecords;
-      this.policyEntities = policyEntities;
-    }
-
-    @JsonCreator
-    private LoadPolicyMappingsResult(
-        @JsonProperty("returnStatus") @Nonnull BaseResult.ReturnStatus returnStatus,
-        @JsonProperty("extraInformation") String extraInformation,
-        @JsonProperty("policyMappingRecords") List<PolarisPolicyMappingRecord> mappingRecords,
-        @JsonProperty("policyEntities") List<PolicyEntity> policyEntities) {
-      super(returnStatus, extraInformation);
-      this.mappingRecords = mappingRecords;
-      this.policyEntities = policyEntities;
-    }
-
-    public List<PolarisPolicyMappingRecord> getPolicyMappingRecords() {
-      return mappingRecords;
-    }
-
-    public List<PolicyEntity> getPolicyEntities() {
-      return policyEntities;
-    }
-
-    @JsonIgnore
-    public Map<Long, PolicyEntity> getPolicyEntitiesAsMap() {
-      return policyEntities == null
-          ? null
-          : policyEntities.stream()
-              .collect(Collectors.toMap(PolicyEntity::getId, entity -> entity));
-    }
-  }
 }

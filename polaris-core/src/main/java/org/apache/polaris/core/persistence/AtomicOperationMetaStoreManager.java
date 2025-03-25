@@ -56,6 +56,8 @@ import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityWithPath;
 import org.apache.polaris.core.persistence.dao.entity.ListEntitiesResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
 import org.apache.polaris.core.persistence.dao.entity.PrivilegeResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
@@ -1826,7 +1828,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
   }
 
   @Override
-  public @Nonnull AttachmentResult attachPolicyToEntity(
+  public @Nonnull PolicyAttachmentResult attachPolicyToEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntityCore> targetCatalogPath,
       @Nonnull PolarisEntityCore target,
@@ -1839,7 +1841,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     PolicyType policyType = PolicyType.fromCode(policy.getPolicyTypeCode());
     if (policyType == null) {
       // This should never happen
-      return new AttachmentResult(
+      return new PolicyAttachmentResult(
           BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, "Unknown policy type");
     }
 
@@ -1850,13 +1852,13 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
           ms.loadPoliciesOnTargetByType(
               callCtx, target.getCatalogId(), target.getId(), policy.getPolicyTypeCode());
       if (existingRecordsOfSameType.size() > 1) {
-        return new AttachmentResult(
+        return new PolicyAttachmentResult(
             BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS, null);
       } else if (existingRecordsOfSameType.size() == 1) {
         PolarisPolicyMappingRecord existingRecord = existingRecordsOfSameType.get(0);
         if (existingRecord.getPolicyId() != policy.getId()
             || existingRecord.getPolicyCatalogId() != policy.getCatalogId()) {
-          return new AttachmentResult(
+          return new PolicyAttachmentResult(
               BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS, null);
         }
       }
@@ -1864,11 +1866,11 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
 
     PolarisPolicyMappingRecord mappingRecord =
         this.persistNewPolicyMappingRecord(callCtx, ms, target, policy, parameters);
-    return new AttachmentResult(mappingRecord);
+    return new PolicyAttachmentResult(mappingRecord);
   }
 
   @Override
-  public @Nonnull AttachmentResult detachPolicyFromEntity(
+  public @Nonnull PolicyAttachmentResult detachPolicyFromEntity(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull List<PolarisEntityCore> catalogPath,
       @Nonnull PolarisEntityCore target,
@@ -1886,12 +1888,12 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
             policy.getCatalogId(),
             policy.getId());
     if (mappingRecord == null) {
-      return new AttachmentResult(BaseResult.ReturnStatus.POLICY_MAPPING_NOT_FOUND, null);
+      return new PolicyAttachmentResult(BaseResult.ReturnStatus.POLICY_MAPPING_NOT_FOUND, null);
     }
 
     ms.deleteFromPolicyMappingRecords(callCtx, mappingRecord);
 
-    return new AttachmentResult(mappingRecord);
+    return new PolicyAttachmentResult(mappingRecord);
   }
 
   @Override

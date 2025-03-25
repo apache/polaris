@@ -48,8 +48,9 @@ import org.apache.polaris.core.persistence.dao.entity.CreatePrincipalResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.dao.entity.LoadGrantsResult;
+import org.apache.polaris.core.persistence.dao.entity.LoadPolicyMappingsResult;
+import org.apache.polaris.core.persistence.dao.entity.PolicyAttachmentResult;
 import org.apache.polaris.core.persistence.dao.entity.ResolvedEntityResult;
-import org.apache.polaris.core.policy.PolarisPolicyMappingManager;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PolicyType;
@@ -1005,7 +1006,7 @@ public class PolarisTestMetaStoreManager {
                 .getEntity());
     Assertions.assertThat(policy).isNotNull();
 
-    PolarisPolicyMappingManager.LoadPolicyMappingsResult loadPolicyMappingsResult =
+    LoadPolicyMappingsResult loadPolicyMappingsResult =
         polarisMetaStoreManager.loadPoliciesOnEntity(this.polarisCallContext, target);
 
     validateLoadedPolicyMappings(loadPolicyMappingsResult);
@@ -1014,7 +1015,7 @@ public class PolarisTestMetaStoreManager {
         loadPolicyMappingsResult.getPolicyMappingRecords(), target, policy);
 
     // also try load by specific type
-    PolarisPolicyMappingManager.LoadPolicyMappingsResult loadPolicyMappingsResultByType =
+    LoadPolicyMappingsResult loadPolicyMappingsResultByType =
         polarisMetaStoreManager.loadPoliciesOnEntityByType(
             this.polarisCallContext, target, policy.getPolicyType());
     validateLoadedPolicyMappings(loadPolicyMappingsResultByType);
@@ -1047,7 +1048,7 @@ public class PolarisTestMetaStoreManager {
                 .getEntity());
     Assertions.assertThat(policy).isNotNull();
 
-    PolarisPolicyMappingManager.LoadPolicyMappingsResult loadPolicyMappingsResult =
+    LoadPolicyMappingsResult loadPolicyMappingsResult =
         polarisMetaStoreManager.loadPoliciesOnEntity(this.polarisCallContext, target);
 
     validateLoadedPolicyMappings(loadPolicyMappingsResult);
@@ -1056,7 +1057,7 @@ public class PolarisTestMetaStoreManager {
         loadPolicyMappingsResult.getPolicyMappingRecords(), target, policy);
 
     // also try load by specific type
-    PolarisPolicyMappingManager.LoadPolicyMappingsResult loadPolicyMappingsResultByType =
+    LoadPolicyMappingsResult loadPolicyMappingsResultByType =
         polarisMetaStoreManager.loadPoliciesOnEntityByType(
             this.polarisCallContext, target, policy.getPolicyType());
     validateLoadedPolicyMappings(loadPolicyMappingsResultByType);
@@ -1070,8 +1071,7 @@ public class PolarisTestMetaStoreManager {
    * @param loadPolicyMappingRecords return from calling
    *     loadPoliciesOnEntity()/LoadPoliciesOnEntityByType()
    */
-  void validateLoadedPolicyMappings(
-      PolarisPolicyMappingManager.LoadPolicyMappingsResult loadPolicyMappingRecords) {
+  void validateLoadedPolicyMappings(LoadPolicyMappingsResult loadPolicyMappingRecords) {
     Assertions.assertThat(loadPolicyMappingRecords).isNotNull();
 
     Map<Long, PolicyEntity> policyEntities = loadPolicyMappingRecords.getPolicyEntitiesAsMap();
@@ -2667,7 +2667,7 @@ public class PolarisTestMetaStoreManager {
     attachPolicyToTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N5), N5_P3);
 
     // attach a different policy of same inheritable type to the same target, should fail
-    PolarisPolicyMappingManager.AttachmentResult attachmentResult =
+    PolicyAttachmentResult policyAttachmentResult =
         polarisMetaStoreManager.attachPolicyToEntity(
             polarisCallContext,
             List.of(catalog, N1, N1_N2),
@@ -2676,8 +2676,8 @@ public class PolarisTestMetaStoreManager {
             N1_P2,
             null);
 
-    Assertions.assertThat(attachmentResult.isSuccess()).isFalse();
-    Assertions.assertThat(attachmentResult.getReturnStatus())
+    Assertions.assertThat(policyAttachmentResult.isSuccess()).isFalse();
+    Assertions.assertThat(policyAttachmentResult.getReturnStatus())
         .isEqualTo(BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS);
     detachPolicyFromTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N1), N1_P1);
     detachPolicyFromTarget(List.of(catalog, N1, N1_N2), N1_N2_T1, List.of(catalog, N5), N5_P3);
