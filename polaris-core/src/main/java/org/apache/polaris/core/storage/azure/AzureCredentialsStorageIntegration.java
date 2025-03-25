@@ -60,6 +60,8 @@ public class AzureCredentialsStorageIntegration
   private static final Logger LOGGER =
       LoggerFactory.getLogger(AzureCredentialsStorageIntegration.class);
 
+  public static String AZURE_ACCOUNT_HOST_SUFFIX = "dfs.windows.net";
+
   final DefaultAzureCredential defaultAzureCredential;
 
   public AzureCredentialsStorageIntegration() {

@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.polaris.core.persistence.dao.entity.ScopedCredentialsResult;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
+import org.apache.polaris.core.storage.azure.AzureCredentialsStorageIntegration;
 
 /** A storage credential cached entry. */
 public class StorageCredentialCacheEntry {
@@ -64,15 +65,14 @@ public class StorageCredentialCacheEntry {
             // only Azure needs special handle, the target key is dynamically with storageaccount
             // endpoint appended
             if (key.equals(PolarisCredentialProperty.AZURE_SAS_TOKEN)) {
-              resCredsMap.put(
-                  key.getPropertyName()
-                      + credsMap.get(PolarisCredentialProperty.AZURE_ACCOUNT_HOST),
-                  value);
-              resCredsMap.put(
-                  key.getPropertyName()
-                      + credsMap.get(PolarisCredentialProperty.AZURE_ACCOUNT_HOST)
-                      + ".dfs.windows.net",
-                  value);
+              String host = credsMap.get(PolarisCredentialProperty.AZURE_ACCOUNT_HOST);
+              resCredsMap.put(key.getPropertyName() + host, value);
+              // Iceberg 1.7.x may expect this to _not_ be suffixed with .dfs.windows.net
+              if (host.endsWith(AzureCredentialsStorageIntegration.AZURE_ACCOUNT_HOST_SUFFIX)) {
+                int suffixIndex = host.lastIndexOf(AzureCredentialsStorageIntegration.AZURE_ACCOUNT_HOST_SUFFIX);
+                String withSuffixStripped = host.substring(0, suffixIndex);
+                resCredsMap.put(key.getPropertyName() + withSuffixStripped, value);
+              }
             } else if (!key.equals(PolarisCredentialProperty.AZURE_ACCOUNT_HOST)) {
               resCredsMap.put(key.getPropertyName(), value);
             }
