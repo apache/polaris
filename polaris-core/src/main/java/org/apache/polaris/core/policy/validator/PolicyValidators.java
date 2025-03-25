@@ -32,8 +32,8 @@ import org.slf4j.LoggerFactory;
  * <p>This class maps the policy type code from the {@code PolicyEntity} to a predefined policy
  * type, then delegates parsing/validation to a specific validator implementation.
  */
-public class GenericPolicyValidator {
-  private static final Logger LOGGER = LoggerFactory.getLogger(GenericPolicyValidator.class);
+public class PolicyValidators {
+  private static final Logger LOGGER = LoggerFactory.getLogger(PolicyValidators.class);
 
   /**
    * Validates the given policy.

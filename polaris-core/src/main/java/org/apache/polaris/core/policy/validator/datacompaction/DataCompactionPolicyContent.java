@@ -22,9 +22,10 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import java.util.Map;
+import org.apache.polaris.core.policy.PolicyContent;
 import org.apache.polaris.core.policy.validator.StrictBooleanDeserializer;
 
-public class DataCompactionPolicyContent {
+public class DataCompactionPolicyContent implements PolicyContent {
   @JsonDeserialize(using = StrictBooleanDeserializer.class)
   private Boolean enable;
 
