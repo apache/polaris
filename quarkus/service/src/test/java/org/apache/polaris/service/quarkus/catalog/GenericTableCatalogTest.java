@@ -535,9 +535,8 @@ public class GenericTableCatalogTest {
             () -> genericTableCatalog.dropGenericTable(TableIdentifier.of("ns", "t1")))
         .hasMessageContaining("Generic table does not exist: ns.t1");
 
-    Assertions.assertThatCode(
-            () -> icebergCatalog.dropTable(TableIdentifier.of("ns", "t1"))).
-        doesNotThrowAnyException();
+    Assertions.assertThatCode(() -> icebergCatalog.dropTable(TableIdentifier.of("ns", "t1")))
+        .doesNotThrowAnyException();
   }
 
   @Test
