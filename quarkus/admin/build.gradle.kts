@@ -18,6 +18,7 @@
  */
 
 import io.quarkus.gradle.tasks.QuarkusBuild
+import publishing.GenerateDigest
 
 plugins {
   alias(libs.plugins.quarkus)
@@ -110,11 +111,38 @@ val distZip =
     inputs.files(runScript)
   }
 
+val digestDistTar =
+  tasks.register<GenerateDigest>("digestDistTar") {
+    description = "Generate the distribution tar digest"
+    mustRunAfter(distTar)
+    file.set { distTar.get().archiveFile.get().asFile }
+  }
+
+val digestDistZip =
+  tasks.register<GenerateDigest>("digestDistZip") {
+    description = "Generate the distribution zip digest"
+    mustRunAfter(distZip)
+    file.set { distZip.get().archiveFile.get().asFile }
+  }
+
+distTar.configure { finalizedBy(digestDistTar) }
+
+distZip.configure { finalizedBy(digestDistZip) }
+
+if (project.hasProperty("release") || project.hasProperty("signArtifacts")) {
+  signing {
+    sign(distTar.get())
+    sign(distZip.get())
+  }
+}
+
 // Expose runnable jar via quarkusRunner configuration for integration-tests that require the
 // server.
 artifacts {
   add(distributionTar.name, provider { distTar.get().archiveFile }) { builtBy(distTar) }
+  add(distributionTar.name, provider { digestDistTar.get().outputFile }) { builtBy(digestDistTar) }
   add(distributionZip.name, provider { distZip.get().archiveFile }) { builtBy(distZip) }
+  add(distributionZip.name, provider { digestDistZip.get().outputFile }) { builtBy(digestDistZip) }
 }
 
 afterEvaluate {
