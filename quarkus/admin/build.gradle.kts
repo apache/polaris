@@ -87,8 +87,8 @@ distributions {
     contents {
       from(runScript)
       from(project.layout.buildDirectory.dir("quarkus-app"))
-      from("../../NOTICE")
-      from("../../LICENSE-BINARY-DIST").rename("LICENSE-BINARY-DIST", "LICENSE")
+      from("distribution/NOTICE")
+      from("distribution/LICENSE")
     }
   }
 }
