@@ -19,8 +19,8 @@
 package org.apache.polaris.core.policy.validator.datacompaction;
 
 import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG;
-import static org.apache.polaris.core.entity.PolarisEntityType.ICEBERG_TABLE_LIKE;
 import static org.apache.polaris.core.entity.PolarisEntityType.NAMESPACE;
+import static org.apache.polaris.core.entity.PolarisEntityType.TABLE_LIKE;
 
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
@@ -32,7 +32,7 @@ public class DataCompactionPolicyValidator implements PolicyValidator {
   public static final DataCompactionPolicyValidator INSTANCE = new DataCompactionPolicyValidator();
 
   private static final Set<PolarisEntityType> ATTACHABLE_ENTITY_TYPES =
-      Set.of(CATALOG, NAMESPACE, ICEBERG_TABLE_LIKE);
+      Set.of(CATALOG, NAMESPACE, TABLE_LIKE);
 
   @Override
   public void validate(String content) throws InvalidPolicyException {
@@ -49,7 +49,7 @@ public class DataCompactionPolicyValidator implements PolicyValidator {
       return false;
     }
 
-    if (entityType == ICEBERG_TABLE_LIKE && entitySubType != PolarisEntitySubType.TABLE) {
+    if (entityType == TABLE_LIKE && entitySubType != PolarisEntitySubType.ICEBERG_TABLE) {
       return false;
     }
 
