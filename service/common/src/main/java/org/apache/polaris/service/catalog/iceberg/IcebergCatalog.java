@@ -83,13 +83,13 @@ import org.apache.polaris.core.config.BehaviorChangeConfiguration;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisTaskConstants;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -440,7 +440,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 })
             .orElse(Map.of());
     DropEntityResult dropEntityResult =
-        dropTableLike(PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, storageProperties, purge);
+        dropTableLike(
+            PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, storageProperties, purge);
     if (!dropEntityResult.isSuccess()) {
       return false;
     }
@@ -1023,7 +1024,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             catalog,
             FeatureConfiguration.ALLOW_TABLE_LOCATION_OVERLAP)) {
       LOGGER.debug("Skipping location overlap validation for identifier '{}'", identifier);
-    } else if (validateViewOverlap || entity.getSubType().equals(PolarisEntitySubType.ICEBERG_TABLE)) {
+    } else if (validateViewOverlap
+        || entity.getSubType().equals(PolarisEntitySubType.ICEBERG_TABLE)) {
       LOGGER.debug("Validating no overlap with sibling tables or namespaces");
       validateNoLocationOverlap(location, resolvedNamespace, identifier.name());
     }
@@ -1103,8 +1105,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         tbl ->
             resolutionManifest.addPath(
                 new ResolverPath(
-                    PolarisCatalogHelpers.tableIdentifierToList(tbl),
-                    PolarisEntityType.TABLE_LIKE),
+                    PolarisCatalogHelpers.tableIdentifierToList(tbl), PolarisEntityType.TABLE_LIKE),
                 tbl));
     siblingNamespaces.forEach(
         ns ->
@@ -1334,10 +1335,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       // concurrent
       // modification between our checking of unchanged metadataLocation here and actual
       // persistence-layer commit).
-      PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getPassthroughResolvedPath(
-          tableIdentifier,
-          PolarisEntityType.TABLE_LIKE,
-          PolarisEntitySubType.ANY_SUBTYPE);
+      PolarisResolvedPathWrapper resolvedEntities =
+          resolvedEntityView.getPassthroughResolvedPath(
+              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
       IcebergTableLikeEntity entity =
           IcebergTableLikeEntity.of(
               resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
@@ -1853,8 +1853,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       Map<String, String> storageProperties,
       boolean purge) {
     PolarisResolvedPathWrapper resolvedEntities =
-        resolvedEntityView.getResolvedPath(
-            identifier, PolarisEntityType.TABLE_LIKE, subType);
+        resolvedEntityView.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType);
     if (resolvedEntities == null) {
       // TODO: Error?
       return new DropEntityResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
@@ -1906,7 +1905,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     Preconditions.checkNotNull(notificationType, "Expected a valid notification type.");
 
     if (notificationType == NotificationType.DROP) {
-      return dropTableLike(PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, Map.of(), false /* purge */)
+      return dropTableLike(
+              PolarisEntitySubType.ICEBERG_TABLE, tableIdentifier, Map.of(), false /* purge */)
           .isSuccess();
     } else if (notificationType == NotificationType.VALIDATE) {
       // In this mode we don't want to make any mutations, so we won't auto-create non-existing

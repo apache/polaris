@@ -34,7 +34,6 @@ public enum PolarisEntitySubType {
   VIEW(3, PolarisEntityType.TABLE_LIKE),
   GENERIC_TABLE(4, PolarisEntityType.TABLE_LIKE);
 
-
   // to efficiently map the code of a subtype to its corresponding subtype enum, use a reverse
   // array which is initialized below
   private static final PolarisEntitySubType[] REVERSE_MAPPING_ARRAY;

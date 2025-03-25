@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.core.entity.table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -27,36 +26,31 @@ import org.apache.iceberg.rest.RESTUtil;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
-import org.apache.polaris.core.entity.PolarisEntityConstants;
-import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
-import java.util.Map;
-import java.util.Optional;
-
 /**
- * An entity type for all table-like entities including Iceberg tables, Iceberg views,
- * and generic tables. This entity maps to {@link PolarisEntityType#TABLE_LIKE}
+ * An entity type for all table-like entities including Iceberg tables, Iceberg views, and generic
+ * tables. This entity maps to {@link PolarisEntityType#TABLE_LIKE}
  */
 public abstract class TableLikeEntity extends PolarisEntity {
 
-    public TableLikeEntity(@Nonnull PolarisBaseEntity sourceEntity) {
-        super(sourceEntity);
-    }
+  public TableLikeEntity(@Nonnull PolarisBaseEntity sourceEntity) {
+    super(sourceEntity);
+  }
 
-    @JsonIgnore
-    public TableIdentifier getTableIdentifier() {
-        Namespace parent = getParentNamespace();
-        return TableIdentifier.of(parent, getName());
-    }
+  @JsonIgnore
+  public TableIdentifier getTableIdentifier() {
+    Namespace parent = getParentNamespace();
+    return TableIdentifier.of(parent, getName());
+  }
 
-    @JsonIgnore
-    public Namespace getParentNamespace() {
-        String encodedNamespace =
-            getInternalPropertiesAsMap().get(NamespaceEntity.PARENT_NAMESPACE_KEY);
-        if (encodedNamespace == null) {
-            return Namespace.empty();
-        }
-        return RESTUtil.decodeNamespace(encodedNamespace);
+  @JsonIgnore
+  public Namespace getParentNamespace() {
+    String encodedNamespace =
+        getInternalPropertiesAsMap().get(NamespaceEntity.PARENT_NAMESPACE_KEY);
+    if (encodedNamespace == null) {
+      return Namespace.empty();
     }
+    return RESTUtil.decodeNamespace(encodedNamespace);
+  }
 }

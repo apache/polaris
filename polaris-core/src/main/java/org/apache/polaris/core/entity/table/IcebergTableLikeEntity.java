@@ -30,8 +30,8 @@ import org.apache.polaris.core.entity.PolarisEntityConstants;
 import org.apache.polaris.core.entity.PolarisEntityType;
 
 /**
- * An entity type for {@link TableLikeEntity} instances that conform to iceberg semantics
- * around locations. This includes both Iceberg tables and Iceberg views.
+ * An entity type for {@link TableLikeEntity} instances that conform to iceberg semantics around
+ * locations. This includes both Iceberg tables and Iceberg views.
  */
 public class IcebergTableLikeEntity extends TableLikeEntity {
   // For applicable types, this key on the "internalProperties" map will return the location

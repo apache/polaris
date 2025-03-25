@@ -1012,10 +1012,7 @@ public class PolarisTestMetaStoreManager {
         PolarisEntitySubType.ICEBERG_TABLE,
         "T2");
     this.createEntity(
-        List.of(catalog, N1, N1_N2),
-        PolarisEntityType.TABLE_LIKE,
-        PolarisEntitySubType.VIEW,
-        "V1");
+        List.of(catalog, N1, N1_N2), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.VIEW, "V1");
     PolarisBaseEntity N1_N3 =
         this.createEntity(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N3");
     this.createEntity(
@@ -1024,10 +1021,7 @@ public class PolarisTestMetaStoreManager {
         PolarisEntitySubType.ICEBERG_TABLE,
         "T3");
     this.createEntity(
-        List.of(catalog, N1, N1_N3),
-        PolarisEntityType.TABLE_LIKE,
-        PolarisEntitySubType.VIEW,
-        "V2");
+        List.of(catalog, N1, N1_N3), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.VIEW, "V2");
     this.createEntity(
         List.of(catalog, N1),
         PolarisEntityType.TABLE_LIKE,
@@ -1678,10 +1672,7 @@ public class PolarisTestMetaStoreManager {
         PolarisEntitySubType.ANY_SUBTYPE,
         "T2");
     this.ensureExistsByName(
-        List.of(catalog, N1, N1_N2),
-        PolarisEntityType.TABLE_LIKE,
-        PolarisEntitySubType.VIEW,
-        "V1");
+        List.of(catalog, N1, N1_N2), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.VIEW, "V1");
     this.ensureExistsByName(
         List.of(catalog, N1, N1_N2),
         PolarisEntityType.TABLE_LIKE,
@@ -2436,11 +2427,7 @@ public class PolarisTestMetaStoreManager {
 
     // now validate that load something which does not exist, will also work
     this.loadCacheEntryByName(
-        N1.getCatalogId(),
-        N1.getId(),
-        PolarisEntityType.TABLE_LIKE,
-        "do_not_exists",
-        false);
+        N1.getCatalogId(), N1.getId(), PolarisEntityType.TABLE_LIKE, "do_not_exists", false);
     this.loadCacheEntryById(N1.getCatalogId() + 1000, N1.getId(), N1.getType(), false);
 
     // refresh a purged entity

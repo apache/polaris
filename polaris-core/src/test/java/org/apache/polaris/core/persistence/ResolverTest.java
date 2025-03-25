@@ -277,8 +277,7 @@ public class ResolverTest {
         ResolverStatus.StatusEnum.PATH_COULD_NOT_BE_FULLY_RESOLVED);
 
     // except if the optional flag is specified
-    N5_N6_T8 =
-        new ResolverPath(List.of("N5", "N6", "T8"), PolarisEntityType.TABLE_LIKE, true);
+    N5_N6_T8 = new ResolverPath(List.of("N5", "N6", "T8"), PolarisEntityType.TABLE_LIKE, true);
     Resolver resolver =
         this.resolveDriver(this.cache, "test", null, List.of(N1, N5_N6_T8, N5_N6_T5, N1_N2), null);
     // get all the resolved paths

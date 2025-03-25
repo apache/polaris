@@ -435,8 +435,7 @@ public class EntityCacheTest {
     Assertions.assertThat(lookup).isNotNull();
 
     EntityCacheByNameKey T4_name =
-        new EntityCacheByNameKey(
-            N1.getCatalogId(), N1.getId(), PolarisEntityType.TABLE_LIKE, "T4");
+        new EntityCacheByNameKey(N1.getCatalogId(), N1.getId(), PolarisEntityType.TABLE_LIKE, "T4");
     lookup = cache.getOrLoadEntityByName(callCtx, T4_name);
     Assertions.assertThat(lookup).isNotNull();
     ResolvedPolarisEntity cacheEntry_T4 = lookup.getCacheEntry();

@@ -29,10 +29,10 @@ import org.apache.iceberg.exceptions.NoSuchTableException;
 import org.apache.polaris.core.catalog.PolarisCatalogHelpers;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
@@ -101,8 +101,9 @@ public class GenericTableCatalog {
 
     List<PolarisEntity> catalogPath = resolvedParent.getRawFullPath();
 
-    PolarisResolvedPathWrapper resolvedEntities = resolvedEntityView.getPassthroughResolvedPath(
-        tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
+    PolarisResolvedPathWrapper resolvedEntities =
+        resolvedEntityView.getPassthroughResolvedPath(
+            tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
     GenericTableEntity entity =
         GenericTableEntity.of(
             resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
