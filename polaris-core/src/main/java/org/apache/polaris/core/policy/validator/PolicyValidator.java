@@ -20,23 +20,17 @@ package org.apache.polaris.core.policy.validator;
 
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
-import org.apache.polaris.core.policy.PolicyContent;
 
-/**
- * Validates and parses a given policy content string against its defined schema.
- *
- * @param <T> the type of policy object to be returned after validation
- */
-public interface PolicyValidator<T extends PolicyContent> {
+/** Validates and parses a given policy content string against its defined schema. */
+public interface PolicyValidator {
 
   /**
-   * Parses and validates the provided policy content.
+   * Validates the provided policy content.
    *
    * @param content the policy content to parse and validate
-   * @return a policy object of type T if the content is valid
-   * @throws InvalidPolicyException if the content does not meet the required policy rules
+   * @throws InvalidPolicyException if the content is not valid
    */
-  T parse(String content) throws InvalidPolicyException;
+  void validate(String content) throws InvalidPolicyException;
 
   /**
    * Determines whether the policy is attachable to a target entity.

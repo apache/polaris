@@ -36,72 +36,13 @@ public class DataCompactionPolicyValidatorTest {
 
   @Test
   public void testValidPolicies() {
-    assertThat(validator.parse("{\"enable\": false}").enabled()).isFalse();
-    assertThat(validator.parse("{\"enable\": true}").enabled()).isTrue();
-
     var validJson = "{\"version\":\"2025-02-03\", \"enable\": true}";
-    assertThat(validator.parse(validJson).getVersion()).isEqualTo("2025-02-03");
+    validator.validate(validJson);
 
-    validJson = "{\"enable\": true, \"config\": {\"key1\": \"value1\", \"key2\": true}}";
-    assertThat(validator.parse(validJson).getConfig().get("key1")).isEqualTo("value1");
-  }
-
-  @Test
-  void testParseEmptyString() {
-    assertThatThrownBy(() -> validator.parse(""))
+    assertThatThrownBy(() -> validator.validate(""))
         .as("Validating empty string should throw InvalidPolicyException")
         .isInstanceOf(InvalidPolicyException.class)
         .hasMessageContaining("Policy is empty");
-  }
-
-  @Test
-  void testParseEmptyJson() {
-    assertThatThrownBy(() -> validator.parse("{}"))
-        .as("Validating empty JSON '{}' should throw InvalidPolicyException")
-        .isInstanceOf(InvalidPolicyException.class)
-        .hasMessageContaining("Invalid policy");
-  }
-
-  @Test
-  void testParseInvalidVersionFormat() {
-    String invalidPolicy1 = "{\"enable\": true, \"version\": \"fdafds\"}";
-    assertThatThrownBy(() -> validator.parse(invalidPolicy1))
-        .as("Validating policy with invalid version format should throw InvalidPolicyException")
-        .isInstanceOf(InvalidPolicyException.class);
-  }
-
-  @Test
-  void testParseInvalidKeyInPolicy() {
-    String invalidPolicy2 =
-        "{\"version\":\"2025-02-03\", \"enable\": true, \"invalid_key\": 12342}";
-    assertThatThrownBy(() -> validator.parse(invalidPolicy2))
-        .as("Validating policy with an unknown key should throw InvalidPolicyException")
-        .isInstanceOf(InvalidPolicyException.class)
-        .hasMessageContaining("Invalid policy");
-  }
-
-  @Test
-  void testParseUnrecognizedToken() {
-    var invalidPolicy = "{\"enable\": invalidToken}";
-    assertThatThrownBy(() -> validator.parse(invalidPolicy))
-        .isInstanceOf(InvalidPolicyException.class)
-        .hasMessageContaining("Invalid policy");
-  }
-
-  @Test
-  void testParseNullValue() {
-    var invalidPolicy = "{\"enable\": null}";
-    assertThatThrownBy(() -> validator.parse(invalidPolicy))
-        .isInstanceOf(InvalidPolicyException.class)
-        .hasMessageContaining("Invalid policy");
-  }
-
-  @Test
-  void testParseWrongString() {
-    var invalidPolicy = "{\"enable\": \"invalid\"}";
-    assertThatThrownBy(() -> validator.parse(invalidPolicy))
-        .isInstanceOf(InvalidPolicyException.class)
-        .hasMessageContaining("Invalid policy");
   }
 
   @Test

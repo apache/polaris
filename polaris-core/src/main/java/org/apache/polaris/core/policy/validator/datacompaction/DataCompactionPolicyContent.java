@@ -21,11 +21,18 @@ package org.apache.polaris.core.policy.validator.datacompaction;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.google.common.base.Strings;
 import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.core.policy.PolicyContent;
+import org.apache.polaris.core.policy.validator.InvalidPolicyException;
+import org.apache.polaris.core.policy.validator.PolicyValidatorUtil;
 import org.apache.polaris.core.policy.validator.StrictBooleanDeserializer;
 
 public class DataCompactionPolicyContent implements PolicyContent {
+  private static final String DEFAULT_POLICY_SCHEMA_VERSION = "2025-02-03";
+  private static final Set<String> POLICY_SCHEMA_VERSIONS = Set.of(DEFAULT_POLICY_SCHEMA_VERSION);
+
   @JsonDeserialize(using = StrictBooleanDeserializer.class)
   private Boolean enable;
 
@@ -60,5 +67,31 @@ public class DataCompactionPolicyContent implements PolicyContent {
 
   public void setConfig(Map<String, String> config) {
     this.config = config;
+  }
+
+  public static DataCompactionPolicyContent fromString(String content) {
+    if (Strings.isNullOrEmpty(content)) {
+      throw new InvalidPolicyException("Policy is empty");
+    }
+
+    try {
+      DataCompactionPolicyContent policy =
+          PolicyValidatorUtil.MAPPER.readValue(content, DataCompactionPolicyContent.class);
+      if (policy == null) {
+        throw new InvalidPolicyException("Invalid policy");
+      }
+
+      if (Strings.isNullOrEmpty(policy.getVersion())) {
+        policy.setVersion(DEFAULT_POLICY_SCHEMA_VERSION);
+      }
+
+      if (!POLICY_SCHEMA_VERSIONS.contains(policy.getVersion())) {
+        throw new InvalidPolicyException("Invalid policy version: " + policy.getVersion());
+      }
+
+      return policy;
+    } catch (Exception e) {
+      throw new InvalidPolicyException(e);
+    }
   }
 }

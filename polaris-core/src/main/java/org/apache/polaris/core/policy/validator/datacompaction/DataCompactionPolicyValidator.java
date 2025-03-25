@@ -22,47 +22,21 @@ import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG;
 import static org.apache.polaris.core.entity.PolarisEntityType.ICEBERG_TABLE_LIKE;
 import static org.apache.polaris.core.entity.PolarisEntityType.NAMESPACE;
 
-import com.google.common.base.Strings;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 import org.apache.polaris.core.policy.validator.PolicyValidator;
-import org.apache.polaris.core.policy.validator.PolicyValidatorUtil;
 
-public class DataCompactionPolicyValidator implements PolicyValidator<DataCompactionPolicyContent> {
+public class DataCompactionPolicyValidator implements PolicyValidator {
   public static final DataCompactionPolicyValidator INSTANCE = new DataCompactionPolicyValidator();
 
-  private static final String DEFAULT_POLICY_SCHEMA_VERSION = "2025-02-03";
-  private static final Set<String> POLICY_SCHEMA_VERSIONS = Set.of(DEFAULT_POLICY_SCHEMA_VERSION);
   private static final Set<PolarisEntityType> ATTACHABLE_ENTITY_TYPES =
       Set.of(CATALOG, NAMESPACE, ICEBERG_TABLE_LIKE);
 
   @Override
-  public DataCompactionPolicyContent parse(String content) {
-    if (Strings.isNullOrEmpty(content)) {
-      throw new InvalidPolicyException("Policy is empty");
-    }
-
-    try {
-      DataCompactionPolicyContent policy =
-          PolicyValidatorUtil.MAPPER.readValue(content, DataCompactionPolicyContent.class);
-      if (policy == null) {
-        throw new InvalidPolicyException("Invalid policy");
-      }
-
-      if (Strings.isNullOrEmpty(policy.getVersion())) {
-        policy.setVersion(DEFAULT_POLICY_SCHEMA_VERSION);
-      }
-
-      if (!POLICY_SCHEMA_VERSIONS.contains(policy.getVersion())) {
-        throw new InvalidPolicyException("Invalid policy version: " + policy.getVersion());
-      }
-
-      return policy;
-    } catch (Exception e) {
-      throw new InvalidPolicyException(e);
-    }
+  public void validate(String content) throws InvalidPolicyException {
+    DataCompactionPolicyContent.fromString(content);
   }
 
   @Override

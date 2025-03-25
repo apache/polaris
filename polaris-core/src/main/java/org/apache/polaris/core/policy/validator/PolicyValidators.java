@@ -50,7 +50,7 @@ public class PolicyValidators {
 
     switch (type) {
       case DATA_COMPACTION:
-        DataCompactionPolicyValidator.INSTANCE.parse(policy.getContent());
+        DataCompactionPolicyValidator.INSTANCE.validate(policy.getContent());
         break;
 
       // To support additional policy types in the future, add cases here.
