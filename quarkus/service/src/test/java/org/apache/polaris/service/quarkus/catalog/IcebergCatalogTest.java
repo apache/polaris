@@ -127,6 +127,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -385,12 +386,16 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     };
   }
 
-  @Test
   @Override
+  @Test
+  @Disabled(
+      """
+      Disabled because the behavior is not applicable to Polaris.
+      To unblock:
+      1) Align Polaris behavior with the superclass by handling empty namespaces the same way, or
+      2) Modify this test to expect an exception and add a Polaris-specific version.
+      """)
   public void listNamespacesWithEmptyNamespace() {
-    // TODO: remove this override test once Polaris handles empty namespaces the same as the
-    // superclass expectation.
-    Assumptions.assumeTrue(supportsEmptyNamespace());
     super.listNamespacesWithEmptyNamespace();
   }
 
