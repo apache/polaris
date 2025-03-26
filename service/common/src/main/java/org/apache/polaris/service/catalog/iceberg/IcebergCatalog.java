@@ -1333,7 +1333,8 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           resolvedEntityView.getPassthroughResolvedPath(
               tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.GENERIC_TABLE);
       if (resolvedGenericTable != null) {
-        throw new AlreadyExistsException("Generic table with same name already exists: %s", tableIdentifier);
+        throw new AlreadyExistsException(
+            "Generic table with same name already exists: %s", tableIdentifier);
       }
 
       // TODO: Consider using the entity from doRefresh() directly to do the conflict detection

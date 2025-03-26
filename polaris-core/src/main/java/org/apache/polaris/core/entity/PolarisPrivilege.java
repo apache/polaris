@@ -76,7 +76,8 @@ public enum PolarisPrivilege {
   NAMESPACE_MANAGE_GRANTS_ON_SECURABLE(41, PolarisEntityType.NAMESPACE),
   TABLE_MANAGE_GRANTS_ON_SECURABLE(
       42, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE),
-  VIEW_MANAGE_GRANTS_ON_SECURABLE(43, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW),
+  VIEW_MANAGE_GRANTS_ON_SECURABLE(
+      43, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW),
   PRINCIPAL_CREATE(44, PolarisEntityType.ROOT),
   PRINCIPAL_DROP(45, PolarisEntityType.PRINCIPAL),
   PRINCIPAL_LIST(46, PolarisEntityType.ROOT),

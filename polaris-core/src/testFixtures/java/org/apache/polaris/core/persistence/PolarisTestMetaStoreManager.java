@@ -1012,7 +1012,10 @@ public class PolarisTestMetaStoreManager {
         PolarisEntitySubType.ICEBERG_TABLE,
         "T2");
     this.createEntity(
-        List.of(catalog, N1, N1_N2), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW, "V1");
+        List.of(catalog, N1, N1_N2),
+        PolarisEntityType.TABLE_LIKE,
+        PolarisEntitySubType.ICEBERG_VIEW,
+        "V1");
     PolarisBaseEntity N1_N3 =
         this.createEntity(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N3");
     this.createEntity(
@@ -1021,7 +1024,10 @@ public class PolarisTestMetaStoreManager {
         PolarisEntitySubType.ICEBERG_TABLE,
         "T3");
     this.createEntity(
-        List.of(catalog, N1, N1_N3), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW, "V2");
+        List.of(catalog, N1, N1_N3),
+        PolarisEntityType.TABLE_LIKE,
+        PolarisEntitySubType.ICEBERG_VIEW,
+        "V2");
     this.createEntity(
         List.of(catalog, N1),
         PolarisEntityType.TABLE_LIKE,
@@ -1672,7 +1678,10 @@ public class PolarisTestMetaStoreManager {
         PolarisEntitySubType.ANY_SUBTYPE,
         "T2");
     this.ensureExistsByName(
-        List.of(catalog, N1, N1_N2), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW, "V1");
+        List.of(catalog, N1, N1_N2),
+        PolarisEntityType.TABLE_LIKE,
+        PolarisEntitySubType.ICEBERG_VIEW,
+        "V1");
     this.ensureExistsByName(
         List.of(catalog, N1, N1_N2),
         PolarisEntityType.TABLE_LIKE,
