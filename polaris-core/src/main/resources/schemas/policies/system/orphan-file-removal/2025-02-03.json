@@ -40,7 +40,7 @@
       "version": "2025-02-03",
       "enable": true,
       "max_orphan_file_age_in_days": 30,
-      "location": "s3://my-bucket/my-table-location",
+      "location": ["s3://my-bucket/my-table-location"],
       "config": {
         "prefix_mismatch_mode": "ignore",
         "key1": "value1"

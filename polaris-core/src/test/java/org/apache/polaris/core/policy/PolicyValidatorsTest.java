@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.policy.validator;
+package org.apache.polaris.core.policy;
 
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_VIEW;
@@ -27,18 +27,22 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.NamespaceEntity;
 import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.policy.PolicyEntity;
-import org.apache.polaris.core.policy.PolicyType;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
+import org.apache.polaris.core.policy.validator.InvalidPolicyException;
+import org.apache.polaris.core.policy.validator.PolicyValidators;
 import org.junit.jupiter.api.Test;
 
 public class PolicyValidatorsTest {
+  Namespace ns = Namespace.of("NS1");
+  TableIdentifier tableIdentifier = TableIdentifier.of(ns, "table1");
+  PolicyEntity policyEntity = new PolicyEntity.Builder(ns, "pn", DATA_COMPACTION).build();
+
   @Test
   public void testInvalidPolicy() {
     var policyEntity =
-        new PolicyEntity.Builder(Namespace.of("NS1"), "testPolicy", DATA_COMPACTION)
+        new PolicyEntity.Builder(ns, "testPolicy", DATA_COMPACTION)
             .setContent("InvalidContent")
             .setPolicyVersion(0)
             .build();
@@ -78,16 +82,12 @@ public class PolicyValidatorsTest {
   @Test
   public void testValidPolicy() {
     var policyEntity =
-        new PolicyEntity.Builder(Namespace.of("NS1"), "testPolicy", DATA_COMPACTION)
+        new PolicyEntity.Builder(ns, "testPolicy", DATA_COMPACTION)
             .setContent("{\"enable\": false}")
             .setPolicyVersion(0)
             .build();
     PolicyValidators.validate(policyEntity);
   }
-
-  Namespace ns = Namespace.of("NS1");
-  TableIdentifier tableIdentifier = TableIdentifier.of(ns, "table1");
-  PolicyEntity policyEntity = new PolicyEntity.Builder(ns, "pn", DATA_COMPACTION).build();
 
   @Test
   public void testCanAttachReturnsTrueForCatalogType() {

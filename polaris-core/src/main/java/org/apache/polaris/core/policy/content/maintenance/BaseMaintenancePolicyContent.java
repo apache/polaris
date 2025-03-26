@@ -25,7 +25,7 @@ import java.util.Map;
 import org.apache.polaris.core.policy.content.PolicyContent;
 import org.apache.polaris.core.policy.content.StrictBooleanDeserializer;
 
-public class BaseMaintenancePolicyContent implements PolicyContent {
+public abstract class BaseMaintenancePolicyContent implements PolicyContent {
   @JsonDeserialize(using = StrictBooleanDeserializer.class)
   private Boolean enable;
 

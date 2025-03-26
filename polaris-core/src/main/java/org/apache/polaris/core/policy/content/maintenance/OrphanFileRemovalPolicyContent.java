@@ -21,6 +21,7 @@ package org.apache.polaris.core.policy.content.maintenance;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Strings;
+import java.util.List;
 import java.util.Set;
 import org.apache.polaris.core.policy.content.PolicyContentUtil;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
@@ -29,7 +30,10 @@ public class OrphanFileRemovalPolicyContent extends BaseMaintenancePolicyContent
   private static final String DEFAULT_POLICY_SCHEMA_VERSION = "2025-02-03";
   private static final Set<String> POLICY_SCHEMA_VERSIONS = Set.of(DEFAULT_POLICY_SCHEMA_VERSION);
 
+  @JsonProperty(value = "max_orphan_file_age_in_days")
   private int maxOrphanFileAgeInDays;
+
+  private List<String> locations;
 
   @JsonCreator
   public OrphanFileRemovalPolicyContent(
@@ -43,6 +47,14 @@ public class OrphanFileRemovalPolicyContent extends BaseMaintenancePolicyContent
 
   public void setMaxOrphanFileAgeInDays(int maxOrphanFileAgeInDays) {
     this.maxOrphanFileAgeInDays = maxOrphanFileAgeInDays;
+  }
+
+  public List<String> getLocations() {
+    return locations;
+  }
+
+  public void setLocations(List<String> locations) {
+    this.locations = locations;
   }
 
   public static OrphanFileRemovalPolicyContent fromString(String content) {
