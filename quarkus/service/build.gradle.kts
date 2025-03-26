@@ -32,6 +32,10 @@ dependencies {
   implementation(project(":polaris-service-common"))
   implementation(project(":polaris-quarkus-defaults"))
 
+  runtimeOnly(project(":polaris-persistence-nosql-metastore"))
+  runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
+  runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
+
   implementation(platform(libs.iceberg.bom))
   implementation("org.apache.iceberg:iceberg-api")
   implementation("org.apache.iceberg:iceberg-core")
@@ -131,6 +135,10 @@ dependencies {
   testImplementation("org.testcontainers:testcontainers")
   testImplementation("org.testcontainers:postgresql")
   testImplementation("org.postgresql:postgresql")
+
+  testImplementation(project(":polaris-persistence-nosql-api"))
+  testImplementation(testFixtures(project(":polaris-persistence-nosql-api")))
+  testImplementation(project(":polaris-persistence-nosql-impl"))
 }
 
 tasks.withType(Test::class.java).configureEach {
@@ -140,7 +148,10 @@ tasks.withType(Test::class.java).configureEach {
   }
   // Note: the test secrets are referenced in
   // org.apache.polaris.service.quarkus.it.QuarkusServerManager
-  environment("POLARIS_BOOTSTRAP_CREDENTIALS", "POLARIS,test-admin,test-secret")
+  environment(
+    "POLARIS_BOOTSTRAP_CREDENTIALS",
+    "POLARIS,test-admin,test-secret;OTHER,test-admin,test-secret",
+  )
   jvmArgs("--add-exports", "java.base/sun.nio.ch=ALL-UNNAMED")
   // Need to allow a java security manager after Java 21, for Subject.getSubject to work
   // "getSubject is supported only if a security manager is allowed".
@@ -149,8 +160,7 @@ tasks.withType(Test::class.java).configureEach {
 
 tasks.named<Test>("test").configure {
   maxParallelForks = 4
-  // enlarge the max heap size to avoid out of memory error
-  maxHeapSize = "4g"
+  forkEvery = 1
 }
 
 tasks.named<Test>("intTest").configure {

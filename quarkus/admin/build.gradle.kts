@@ -45,18 +45,30 @@ dependencies {
 
   compileOnly("com.fasterxml.jackson.core:jackson-annotations")
 
+  implementation(project(":polaris-persistence-nosql-api"))
+  implementation(project(":polaris-persistence-nosql-maintenance-api"))
+  runtimeOnly(project(":polaris-persistence-nosql-metastore"))
+  runtimeOnly(project(":polaris-persistence-nosql-cdi-quarkus"))
+  runtimeOnly(project(":polaris-persistence-nosql-maintenance-impl"))
+  runtimeOnly(project(":polaris-authz-store-nosql"))
+
   runtimeOnly(project(":polaris-eclipselink"))
   runtimeOnly(project(":polaris-relational-jdbc"))
   runtimeOnly("org.postgresql:postgresql")
 
   implementation("io.quarkus:quarkus-jdbc-postgresql")
+
   implementation(enforcedPlatform(libs.quarkus.bom))
   implementation("io.quarkus:quarkus-picocli")
   implementation("io.quarkus:quarkus-container-image-docker")
 
   implementation("org.jboss.slf4j:slf4j-jboss-logmanager")
 
+  compileOnly("com.fasterxml.jackson.core:jackson-annotations")
+  compileOnly("com.fasterxml.jackson.core:jackson-databind")
+
   testImplementation(project(":polaris-quarkus-test-commons"))
+
   testFixturesApi(project(":polaris-core"))
 
   testFixturesApi(enforcedPlatform(libs.quarkus.bom))
@@ -65,6 +77,7 @@ dependencies {
   testFixturesApi(platform(libs.testcontainers.bom))
   testFixturesApi("org.testcontainers:testcontainers")
   testFixturesApi("org.testcontainers:postgresql")
+  testFixturesImplementation(testFixtures(project(":polaris-persistence-nosql-mongodb")))
 
   testRuntimeOnly(project(":polaris-eclipselink"))
   testRuntimeOnly("org.postgresql:postgresql")
