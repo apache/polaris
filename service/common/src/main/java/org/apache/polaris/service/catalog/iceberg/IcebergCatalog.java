@@ -1322,33 +1322,25 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       String newLocation = writeNewMetadataIfRequired(base == null, metadata);
       String oldLocation = base == null ? null : base.metadataFileLocation();
 
-      PolarisResolvedPathWrapper resolvedView =
-          resolvedEntityView.getPassthroughResolvedPath(
-              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW);
-      if (resolvedView != null) {
-        throw new AlreadyExistsException("View with same name already exists: %s", tableIdentifier);
-      }
-
-      PolarisResolvedPathWrapper resolvedGenericTable =
-          resolvedEntityView.getPassthroughResolvedPath(
-              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.GENERIC_TABLE);
-      if (resolvedGenericTable != null) {
-        throw new AlreadyExistsException(
-            "Generic table with same name already exists: %s", tableIdentifier);
-      }
-
       // TODO: Consider using the entity from doRefresh() directly to do the conflict detection
       // instead of a two-layer CAS (checking metadataLocation to detect concurrent modification
       // between doRefresh() and doCommit(), and then updateEntityPropertiesIfNotChanged to detect
       // concurrent
       // modification between our checking of unchanged metadataLocation here and actual
       // persistence-layer commit).
-      PolarisResolvedPathWrapper resolvedEntities =
+      PolarisResolvedPathWrapper resolvedPath =
           resolvedEntityView.getPassthroughResolvedPath(
-              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
+              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
+      if (resolvedPath != null && resolvedPath.getRawLeafEntity() != null) {
+        if (resolvedPath.getRawLeafEntity().getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
+          throw new AlreadyExistsException("View with same name already exists: %s", tableIdentifier);
+        } else if (resolvedPath.getRawLeafEntity().getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
+          throw new AlreadyExistsException("Generic table with same name already exists: %s", tableIdentifier);
+        }
+      }
       IcebergTableLikeEntity entity =
           IcebergTableLikeEntity.of(
-              resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
+              resolvedPath == null ? null : resolvedPath.getRawLeafEntity());
       String existingLocation;
       if (null == entity) {
         existingLocation = null;
