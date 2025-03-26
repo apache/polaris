@@ -31,12 +31,15 @@ RUN groupadd --gid 10001 polaris \
       && chown -R polaris:polaris /deployments
 
 USER polaris
-WORKDIR /deployments
+WORKDIR /home/polaris
 ENV USER=polaris
 ENV UID=10000
 ENV HOME=/home/polaris
-ENV PWD=/deployments
 
-COPY --chown=polaris:polaris build/*-runner.jar /deployments/polaris-server-admin-tool.jar
+# We make four distinct layers so if there are application changes the library layers can be re-used
+COPY --chown=polaris:polaris build/quarkus-app/lib/ /deployments/lib/
+COPY --chown=polaris:polaris build/quarkus-app/quarkus-run.jar /deployments/polaris-admin-tool.jar
+COPY --chown=polaris:polaris build/quarkus-app/app/ /deployments/app/
+COPY --chown=polaris:polaris build/quarkus-app/quarkus/ /deployments/quarkus/
 
-ENTRYPOINT [ "java", "-jar", "/deployments/polaris-server-admin-tool.jar" ]
+ENTRYPOINT [ "java", "-jar", "/deployments/polaris-admin-tool.jar" ]
