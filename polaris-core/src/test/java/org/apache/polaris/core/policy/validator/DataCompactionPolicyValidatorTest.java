@@ -19,15 +19,15 @@
 package org.apache.polaris.core.policy.validator;
 
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ANY_SUBTYPE;
-import static org.apache.polaris.core.entity.PolarisEntitySubType.TABLE;
-import static org.apache.polaris.core.entity.PolarisEntitySubType.VIEW;
+import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
+import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_VIEW;
 import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG;
-import static org.apache.polaris.core.entity.PolarisEntityType.ICEBERG_TABLE_LIKE;
 import static org.apache.polaris.core.entity.PolarisEntityType.NAMESPACE;
 import static org.apache.polaris.core.entity.PolarisEntityType.PRINCIPAL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.policy.validator.datacompaction.DataCompactionPolicyValidator;
 import org.junit.jupiter.api.Test;
 
@@ -59,7 +59,7 @@ public class DataCompactionPolicyValidatorTest {
 
   @Test
   public void testCanAttachReturnsTrueForIcebergTableLikeWithTableSubtype() {
-    var result = validator.canAttach(ICEBERG_TABLE_LIKE, TABLE);
+    var result = validator.canAttach(PolarisEntityType.TABLE_LIKE, ICEBERG_TABLE);
     assertThat(result)
         .isTrue()
         .as("Expected canAttach() to return true for ICEBERG_TABLE_LIKE with TABLE subtype");
@@ -68,7 +68,7 @@ public class DataCompactionPolicyValidatorTest {
   @Test
   public void testCanAttachReturnsFalseForIcebergTableLikeWithNonTableSubtype() {
     // For ICEBERG_TABLE_LIKE, any subtype other than TABLE should return false.
-    boolean result = validator.canAttach(ICEBERG_TABLE_LIKE, VIEW);
+    boolean result = validator.canAttach(PolarisEntityType.TABLE_LIKE, ICEBERG_VIEW);
     assertThat(result)
         .isFalse()
         .as("Expected canAttach() to return false for ICEBERG_TABLE_LIKE with non-TABLE subtype");
