@@ -22,7 +22,10 @@ import com.google.common.base.Preconditions;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.policy.PolicyEntity;
 import org.apache.polaris.core.policy.PredefinedPolicyTypes;
-import org.apache.polaris.core.policy.validator.datacompaction.DataCompactionPolicyValidator;
+import org.apache.polaris.core.policy.validator.maintenance.DataCompactionPolicyValidator;
+import org.apache.polaris.core.policy.validator.maintenance.MetadataCompactionPolicyValidator;
+import org.apache.polaris.core.policy.validator.maintenance.OrphanFileRemovalPolicyValidator;
+import org.apache.polaris.core.policy.validator.maintenance.SnapshotRetentionPolicyValidator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,13 +55,17 @@ public class PolicyValidators {
       case DATA_COMPACTION:
         DataCompactionPolicyValidator.INSTANCE.validate(policy.getContent());
         break;
-
-      // To support additional policy types in the future, add cases here.
       case METADATA_COMPACTION:
+        MetadataCompactionPolicyValidator.INSTANCE.validate(policy.getContent());
+        break;
       case SNAPSHOT_RETENTION:
+        SnapshotRetentionPolicyValidator.INSTANCE.validate(policy.getContent());
+        break;
       case ORPHAN_FILE_REMOVAL:
+        OrphanFileRemovalPolicyValidator.INSTANCE.validate(policy.getContent());
+        break;
       default:
-        throw new InvalidPolicyException("Unsupported policy type: " + type.getName());
+        throw new IllegalArgumentException("Unsupported policy type: " + type.getName());
     }
 
     LOGGER.info("Policy validated successfully: {}", type.getName());
@@ -79,14 +86,19 @@ public class PolicyValidators {
     Preconditions.checkArgument(
         policyType != null, "Unknown policy type: " + policy.getPolicyTypeCode());
 
+    var entityType = targetEntity.getType();
+    var entitySubType = targetEntity.getSubType();
+
     switch (policyType) {
       case DATA_COMPACTION:
-        return DataCompactionPolicyValidator.INSTANCE.canAttach(
-            targetEntity.getType(), targetEntity.getSubType());
-      // To support additional policy types in the future, add cases here.
+        return DataCompactionPolicyValidator.INSTANCE.canAttach(entityType, entitySubType);
       case METADATA_COMPACTION:
+        return MetadataCompactionPolicyValidator.INSTANCE.canAttach(entityType, entitySubType);
       case SNAPSHOT_RETENTION:
+        return SnapshotRetentionPolicyValidator.INSTANCE.canAttach(entityType, entitySubType);
       case ORPHAN_FILE_REMOVAL:
+        return OrphanFileRemovalPolicyValidator.INSTANCE.canAttach(entityType, entitySubType);
+
       default:
         LOGGER.warn("Attachment not supported for policy type: {}", policyType.getName());
         return false;

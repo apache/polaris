@@ -18,13 +18,13 @@
  */
 package org.apache.polaris.core.policy.validator;
 
-import static org.apache.polaris.core.policy.content.maintenance.DataCompactionPolicyContent.fromString;
+import static org.apache.polaris.core.policy.content.maintenance.MetadataCompactionPolicyContent.fromString;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
-public class DataCompactionPolicyContentTest {
+public class MetadataCompactionPolicyContentTest {
   @Test
   public void testValidPolicies() {
     assertThat(fromString("{\"enable\": false}").enabled()).isFalse();

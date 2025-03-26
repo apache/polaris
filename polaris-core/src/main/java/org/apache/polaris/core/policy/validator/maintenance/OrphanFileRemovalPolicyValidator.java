@@ -16,23 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.policy.validator;
+package org.apache.polaris.core.policy.validator.maintenance;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.databind.DeserializationContext;
-import com.fasterxml.jackson.databind.JsonDeserializer;
-import java.io.IOException;
+import org.apache.polaris.core.policy.content.maintenance.OrphanFileRemovalPolicyContent;
+import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 
-public class StrictBooleanDeserializer extends JsonDeserializer<Boolean> {
+public class OrphanFileRemovalPolicyValidator extends BaseMaintenancePolicyValidator {
+  public static final OrphanFileRemovalPolicyValidator INSTANCE =
+      new OrphanFileRemovalPolicyValidator();
+
   @Override
-  public Boolean deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
-    String text = p.getText();
-    if ("true".equals(text)) {
-      return Boolean.TRUE;
-    } else if ("false".equals(text)) {
-      return Boolean.FALSE;
-    } else {
-      throw new InvalidPolicyException("Invalid boolean value: " + text);
-    }
+  public void validate(String content) throws InvalidPolicyException {
+    OrphanFileRemovalPolicyContent.fromString(content);
   }
 }
