@@ -830,11 +830,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
    * @return the hashed metadata file location
    */
   private String hashMetadataFileLocation(String metadataFileLocation) {
-    // only need MD5 since we don't care about something like a collision attack
-    // since this isn't a secret, we just want to obfuscate the metadata file location
-    // enough to give it a reasonably low chance of collision but still not being usable
-    // to retrieve the original metadata location
-    return DigestUtils.md5Hex(metadataFileLocation);
+    return DigestUtils.sha256Hex(metadataFileLocation);
   }
 
   /**
