@@ -1333,14 +1333,16 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
               tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
       if (resolvedPath != null && resolvedPath.getRawLeafEntity() != null) {
         if (resolvedPath.getRawLeafEntity().getSubType() == PolarisEntitySubType.ICEBERG_VIEW) {
-          throw new AlreadyExistsException("View with same name already exists: %s", tableIdentifier);
-        } else if (resolvedPath.getRawLeafEntity().getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
-          throw new AlreadyExistsException("Generic table with same name already exists: %s", tableIdentifier);
+          throw new AlreadyExistsException(
+              "View with same name already exists: %s", tableIdentifier);
+        } else if (resolvedPath.getRawLeafEntity().getSubType()
+            == PolarisEntitySubType.GENERIC_TABLE) {
+          throw new AlreadyExistsException(
+              "Generic table with same name already exists: %s", tableIdentifier);
         }
       }
       IcebergTableLikeEntity entity =
-          IcebergTableLikeEntity.of(
-              resolvedPath == null ? null : resolvedPath.getRawLeafEntity());
+          IcebergTableLikeEntity.of(resolvedPath == null ? null : resolvedPath.getRawLeafEntity());
       String existingLocation;
       if (null == entity) {
         existingLocation = null;
