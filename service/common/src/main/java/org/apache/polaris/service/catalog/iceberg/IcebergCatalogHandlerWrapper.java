@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.iceberg.BaseMetadataTable;
 import org.apache.iceberg.BaseTable;
@@ -576,8 +575,10 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
       throw new BadRequestException("Cannot create table on external catalogs.");
     }
 
-    LoadTableResponse loadTableResponse = CatalogHandlers.createTable(baseCatalog, namespace, request);
-    return new ETaggedResponse<>(loadTableResponse, generateETagValueForResponse(loadTableResponse));
+    LoadTableResponse loadTableResponse =
+        CatalogHandlers.createTable(baseCatalog, namespace, request);
+    return new ETaggedResponse<>(
+        loadTableResponse, generateETagValueForResponse(loadTableResponse));
   }
 
   /**
@@ -645,7 +646,8 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
       }
 
       LoadTableResponse loadTableResponse = responseBuilder.build();
-      return new ETaggedResponse<>(responseBuilder.build(), generateETagValueForResponse(loadTableResponse));
+      return new ETaggedResponse<>(
+          responseBuilder.build(), generateETagValueForResponse(loadTableResponse));
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
@@ -764,8 +766,10 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
     authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
-    LoadTableResponse loadTableResponse = CatalogHandlers.registerTable(baseCatalog, namespace, request);
-    return new ETaggedResponse<>(loadTableResponse, generateETagValueForResponse(loadTableResponse));
+    LoadTableResponse loadTableResponse =
+        CatalogHandlers.registerTable(baseCatalog, namespace, request);
+    return new ETaggedResponse<>(
+        loadTableResponse, generateETagValueForResponse(loadTableResponse));
   }
 
   public boolean sendNotification(TableIdentifier identifier, NotificationRequest request) {
@@ -821,6 +825,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
   /**
    * Hashes the provided metadata file location
+   *
    * @param metadataFileLocation
    * @return the hashed metadata file location
    */
@@ -829,7 +834,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     // since this isn't a secret, we just want to obfuscate the metadata file location
     // enough to give it a reasonably low chance of collision but still not being usable
     // to retrieve the original metadata location
-     return DigestUtils.md5Hex(metadataFileLocation);
+    return DigestUtils.md5Hex(metadataFileLocation);
   }
 
   /**
@@ -843,9 +848,9 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
   }
 
   /**
-   * Generate an ETag from a {@link IcebergTableLikeEntity}. Useful when
-   * it is desired to generate an ETag without loading the entire metadata
-   * from storage.
+   * Generate an ETag from a {@link IcebergTableLikeEntity}. Useful when it is desired to generate
+   * an ETag without loading the entire metadata from storage.
+   *
    * @param tableEntity the entity to use to generate the ETag
    * @return the generated ETag
    */
@@ -855,6 +860,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
   /**
    * Generate an ETag from an Iceberg metadata file location
+   *
    * @param metadataFileLocation
    * @return the generated ETag
    */
@@ -894,7 +900,8 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     }
 
     LoadTableResponse loadTableResponse = CatalogHandlers.loadTable(baseCatalog, tableIdentifier);
-    return Optional.of(new ETaggedResponse<>(loadTableResponse, generateETagValueForResponse(loadTableResponse)));
+    return Optional.of(
+        new ETaggedResponse<>(loadTableResponse, generateETagValueForResponse(loadTableResponse)));
   }
 
   public LoadTableResponse loadTableWithAccessDelegation(
@@ -983,7 +990,9 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
       }
 
       LoadTableResponse loadTableResponse = responseBuilder.build();
-      return Optional.of(new ETaggedResponse<>(loadTableResponse, generateETagValueForResponse(loadTableResponse)));
+      return Optional.of(
+          new ETaggedResponse<>(
+              loadTableResponse, generateETagValueForResponse(loadTableResponse)));
     } else if (table instanceof BaseMetadataTable) {
       // metadata tables are loaded on the client side, return NoSuchTableException for now
       throw new NoSuchTableException("Table does not exist: %s", tableIdentifier.toString());
