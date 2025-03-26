@@ -293,7 +293,7 @@ def test_spark_credentials(root_client, snowflake_catalog, polaris_catalog_url, 
                            polaris_url=polaris_catalog_url) as spark:
     spark.sql(f'USE {snowflake_catalog.name}')
     spark.sql('USE db1.schema')
-    spark.sql('DROP TABLE iceberg_table')
+    spark.sql('DROP TABLE iceberg_table PURGE')
     spark.sql(f'USE {snowflake_catalog.name}')
     spark.sql('DROP NAMESPACE db1.schema')
     spark.sql('DROP NAMESPACE db1')
@@ -359,6 +359,14 @@ def test_spark_creates_table_in_custom_namespace_dir(root_client, snowflake_cata
     entries = spark.sql(
       f"SELECT file FROM db1.schema.table_in_custom_namespace_location.metadata_log_entries").collect()
     assert namespace_location in entries[0][0]
+    try:
+        assert spark.sql("SELECT * FROM table_in_custom_namespace_location").count() == 0
+        # check the metadata and assert the custom namespace location is used
+        entries = spark.sql(
+            f"SELECT file FROM db1.schema.table_in_custom_namespace_location.metadata_log_entries").collect()
+        assert namespace_location in entries[0][0]
+    finally:
+        spark.sql('drop table table_in_custom_namespace_location PURGE')
 
 
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
@@ -388,6 +396,7 @@ def test_spark_can_create_table_in_custom_allowed_dir(root_client, snowflake_cat
     spark.sql('USE db1.schema')
     # this is supported because it is inside of the custom namespace location
     spark.sql(f"CREATE TABLE iceberg_table_outside_namespace (col1 int, col2 string) LOCATION '{table_location}'")
+    spark.sql("drop table iceberg_table_outside_namespace PURGE")
 
 
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
@@ -421,6 +430,7 @@ def test_spark_cannot_create_view_overlapping_table(root_client, snowflake_catal
       pytest.fail("Expected to fail when creating table outside of namespace directory")
     except Py4JJavaError as e:
       assert "conflicts with existing table or namespace at location" in e.java_exception.getMessage()
+    spark.sql("drop table my_iceberg_table PURGE")
 
 
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
@@ -789,6 +799,7 @@ def test_spark_credentials_can_create_views(snowflake_catalog, polaris_catalog_u
     view_records = spark.sql(f"SELECT * FROM {table_name}_view").collect()
     assert len(view_records) == 6
     assert view_records[5][0] == 'changed string'
+    spark.sql(f"drop table {table_name} PURGE")
 
 
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
@@ -876,8 +887,8 @@ def test_spark_credentials_s3_direct_with_write(root_client, snowflake_catalog, 
                            polaris_url=polaris_catalog_url) as spark:
     spark.sql(f'USE {snowflake_catalog.name}')
     spark.sql('USE db1.schema')
-    spark.sql('DROP TABLE iceberg_table')
-    spark.sql('DROP TABLE iceberg_table_2')
+    spark.sql('DROP TABLE iceberg_table PURGE')
+    spark.sql('DROP TABLE iceberg_table_2 PURGE')
     spark.sql(f'USE {snowflake_catalog.name}')
     spark.sql('DROP NAMESPACE db1.schema')
     spark.sql('DROP NAMESPACE db1')
@@ -1134,6 +1145,8 @@ def test_spark_ctas(snowflake_catalog, polaris_catalog_url, snowman):
 
     # Run CTAS
     spark.sql(f"CREATE TABLE {table_name}_t2 AS SELECT * FROM {table_name}_t1")
+    spark.sql(f"drop table {table_name}_t1 PURGE")
+    spark.sql(f"drop table {table_name}_t2 PURGE")
 
 
 def create_catalog_role(api, catalog, role_name):

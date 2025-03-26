@@ -84,7 +84,8 @@ def aws_bucket_base_location_prefix():
   """
   default_val = 'polaris_test'
   bucket_prefix = os.getenv('AWS_BUCKET_BASE_LOCATION_PREFIX', default_val)
-  return default_val if bucket_prefix == '' else bucket_prefix
+  # Add random string to prefix to prevent base location overlaps
+  return f"{default_val if bucket_prefix == '' else bucket_prefix}_{str(uuid.uuid4())[-5:]}"
 
 @pytest.fixture
 def catalog_client(polaris_catalog_url):
