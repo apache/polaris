@@ -800,7 +800,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
           "Cannot list views for namespace. Namespace does not exist: %s", namespace);
     }
 
-    return listTableLike(PolarisEntitySubType.VIEW, namespace);
+    return listTableLike(PolarisEntitySubType.ICEBERG_VIEW, namespace);
   }
 
   @Override
@@ -810,7 +810,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
   @Override
   public boolean dropView(TableIdentifier identifier) {
-    return dropTableLike(PolarisEntitySubType.VIEW, identifier, Map.of(), true).isSuccess();
+    return dropTableLike(PolarisEntitySubType.ICEBERG_VIEW, identifier, Map.of(), true).isSuccess();
   }
 
   @Override
@@ -819,7 +819,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       return;
     }
 
-    renameTableLike(PolarisEntitySubType.VIEW, from, to);
+    renameTableLike(PolarisEntitySubType.ICEBERG_VIEW, from, to);
   }
 
   @Override
@@ -1324,9 +1324,16 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       PolarisResolvedPathWrapper resolvedView =
           resolvedEntityView.getPassthroughResolvedPath(
-              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.VIEW);
+              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW);
       if (resolvedView != null) {
         throw new AlreadyExistsException("View with same name already exists: %s", tableIdentifier);
+      }
+
+      PolarisResolvedPathWrapper resolvedGenericTable =
+          resolvedEntityView.getPassthroughResolvedPath(
+              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.GENERIC_TABLE);
+      if (resolvedGenericTable != null) {
+        throw new AlreadyExistsException("Generic table with same name already exists: %s", tableIdentifier);
       }
 
       // TODO: Consider using the entity from doRefresh() directly to do the conflict detection
@@ -1337,7 +1344,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       // persistence-layer commit).
       PolarisResolvedPathWrapper resolvedEntities =
           resolvedEntityView.getPassthroughResolvedPath(
-              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ANY_SUBTYPE);
+              tableIdentifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_TABLE);
       IcebergTableLikeEntity entity =
           IcebergTableLikeEntity.of(
               resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
@@ -1360,9 +1367,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 .setMetadataLocation(newLocation)
                 .build();
       }
-      if (entity.getSubType() == PolarisEntitySubType.GENERIC_TABLE) {
-        throw new AlreadyExistsException("Table already exists: %s", tableName());
-      } else if (!Objects.equal(existingLocation, oldLocation)) {
+      if (!Objects.equal(existingLocation, oldLocation)) {
         if (null == base) {
           throw new AlreadyExistsException("Table already exists: %s", tableName());
         }
@@ -1437,7 +1442,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     public void doRefresh() {
       PolarisResolvedPathWrapper resolvedEntities =
           resolvedEntityView.getPassthroughResolvedPath(
-              identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.VIEW);
+              identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW);
       IcebergTableLikeEntity entity = null;
 
       if (resolvedEntities != null) {
@@ -1499,7 +1504,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
 
       PolarisResolvedPathWrapper resolvedEntities =
           resolvedEntityView.getPassthroughResolvedPath(
-              identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.VIEW);
+              identifier, PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW);
 
       // Fetch credentials for the resolved entity. The entity could be the view itself (if it has
       // already been stored and credentials have been configured directly) or it could be the
@@ -1547,7 +1552,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
         entity =
             new IcebergTableLikeEntity.Builder(identifier, newLocation)
                 .setCatalogId(getCatalogId())
-                .setSubType(PolarisEntitySubType.VIEW)
+                .setSubType(PolarisEntitySubType.ICEBERG_VIEW)
                 .setId(
                     getMetaStoreManager().generateNewEntityId(getCurrentPolarisContext()).getId())
                 .build();
@@ -1642,7 +1647,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
     PolarisResolvedPathWrapper resolvedEntities =
         resolvedEntityView.getResolvedPath(from, PolarisEntityType.TABLE_LIKE, subType);
     if (resolvedEntities == null) {
-      if (subType == PolarisEntitySubType.VIEW) {
+      if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
         throw new NoSuchViewException("Cannot rename %s to %s. View does not exist", from, to);
       } else {
         throw new NoSuchTableException("Cannot rename %s to %s. Table does not exist", from, to);
@@ -1704,7 +1709,7 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
             } else if (existingEntitySubType == PolarisEntitySubType.ICEBERG_TABLE) {
               throw new AlreadyExistsException(
                   "Cannot rename %s to %s. Table already exists", from, to);
-            } else if (existingEntitySubType == PolarisEntitySubType.VIEW) {
+            } else if (existingEntitySubType == PolarisEntitySubType.ICEBERG_VIEW) {
               throw new AlreadyExistsException(
                   "Cannot rename %s to %s. View already exists", from, to);
             }

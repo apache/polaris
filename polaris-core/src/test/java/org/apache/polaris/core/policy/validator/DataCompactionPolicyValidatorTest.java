@@ -20,7 +20,7 @@ package org.apache.polaris.core.policy.validator;
 
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ANY_SUBTYPE;
 import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_TABLE;
-import static org.apache.polaris.core.entity.PolarisEntitySubType.VIEW;
+import static org.apache.polaris.core.entity.PolarisEntitySubType.ICEBERG_VIEW;
 import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG;
 import static org.apache.polaris.core.entity.PolarisEntityType.NAMESPACE;
 import static org.apache.polaris.core.entity.PolarisEntityType.PRINCIPAL;
@@ -68,7 +68,7 @@ public class DataCompactionPolicyValidatorTest {
   @Test
   public void testCanAttachReturnsFalseForIcebergTableLikeWithNonTableSubtype() {
     // For ICEBERG_TABLE_LIKE, any subtype other than TABLE should return false.
-    boolean result = validator.canAttach(PolarisEntityType.TABLE_LIKE, VIEW);
+    boolean result = validator.canAttach(PolarisEntityType.TABLE_LIKE, ICEBERG_VIEW);
     assertThat(result)
         .isFalse()
         .as("Expected canAttach() to return false for ICEBERG_TABLE_LIKE with non-TABLE subtype");

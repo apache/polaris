@@ -1524,10 +1524,10 @@ public class PolarisAdminService {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.ADD_VIEW_GRANT_TO_CATALOG_ROLE;
 
     authorizeGrantOnTableLikeOperationOrThrow(
-        op, catalogName, PolarisEntitySubType.VIEW, identifier, catalogRoleName);
+        op, catalogName, PolarisEntitySubType.ICEBERG_VIEW, identifier, catalogRoleName);
 
     return grantPrivilegeOnTableLikeToRole(
-        catalogName, catalogRoleName, identifier, PolarisEntitySubType.VIEW, privilege);
+        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ICEBERG_VIEW, privilege);
   }
 
   public boolean revokePrivilegeOnViewFromRole(
@@ -1539,10 +1539,10 @@ public class PolarisAdminService {
         PolarisAuthorizableOperation.REVOKE_VIEW_GRANT_FROM_CATALOG_ROLE;
 
     authorizeGrantOnTableLikeOperationOrThrow(
-        op, catalogName, PolarisEntitySubType.VIEW, identifier, catalogRoleName);
+        op, catalogName, PolarisEntitySubType.ICEBERG_VIEW, identifier, catalogRoleName);
 
     return revokePrivilegeOnTableLikeFromRole(
-        catalogName, catalogRoleName, identifier, PolarisEntitySubType.VIEW, privilege);
+        catalogName, catalogRoleName, identifier, PolarisEntitySubType.ICEBERG_VIEW, privilege);
   }
 
   public List<PolarisEntity> listAssigneePrincipalRolesForCatalogRole(
@@ -1706,7 +1706,7 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper resolvedPathWrapper =
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType);
     if (resolvedPathWrapper == null) {
-      if (subType == PolarisEntitySubType.VIEW) {
+      if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
         throw new NotFoundException("View %s not found", identifier);
       } else {
         throw new NotFoundException("Table %s not found", identifier);
@@ -1744,7 +1744,7 @@ public class PolarisAdminService {
     PolarisResolvedPathWrapper resolvedPathWrapper =
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType);
     if (resolvedPathWrapper == null) {
-      if (subType == PolarisEntitySubType.VIEW) {
+      if (subType == PolarisEntitySubType.ICEBERG_VIEW) {
         throw new NotFoundException("View %s not found", identifier);
       } else {
         throw new NotFoundException("Table %s not found", identifier);

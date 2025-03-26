@@ -1012,7 +1012,7 @@ public class PolarisTestMetaStoreManager {
         PolarisEntitySubType.ICEBERG_TABLE,
         "T2");
     this.createEntity(
-        List.of(catalog, N1, N1_N2), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.VIEW, "V1");
+        List.of(catalog, N1, N1_N2), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW, "V1");
     PolarisBaseEntity N1_N3 =
         this.createEntity(List.of(catalog, N1), PolarisEntityType.NAMESPACE, "N3");
     this.createEntity(
@@ -1021,7 +1021,7 @@ public class PolarisTestMetaStoreManager {
         PolarisEntitySubType.ICEBERG_TABLE,
         "T3");
     this.createEntity(
-        List.of(catalog, N1, N1_N3), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.VIEW, "V2");
+        List.of(catalog, N1, N1_N3), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW, "V2");
     this.createEntity(
         List.of(catalog, N1),
         PolarisEntityType.TABLE_LIKE,
@@ -1672,7 +1672,7 @@ public class PolarisTestMetaStoreManager {
         PolarisEntitySubType.ANY_SUBTYPE,
         "T2");
     this.ensureExistsByName(
-        List.of(catalog, N1, N1_N2), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.VIEW, "V1");
+        List.of(catalog, N1, N1_N2), PolarisEntityType.TABLE_LIKE, PolarisEntitySubType.ICEBERG_VIEW, "V1");
     this.ensureExistsByName(
         List.of(catalog, N1, N1_N2),
         PolarisEntityType.TABLE_LIKE,
@@ -1833,7 +1833,7 @@ public class PolarisTestMetaStoreManager {
         List.of(
             ImmutablePair.of("T1", PolarisEntitySubType.ICEBERG_TABLE),
             ImmutablePair.of("T2", PolarisEntitySubType.ICEBERG_TABLE),
-            ImmutablePair.of("V1", PolarisEntitySubType.VIEW)));
+            ImmutablePair.of("V1", PolarisEntitySubType.ICEBERG_VIEW)));
     // table object only
     this.validateListReturn(
         List.of(catalog, N1, N1_N2),
@@ -1846,8 +1846,8 @@ public class PolarisTestMetaStoreManager {
     this.validateListReturn(
         List.of(catalog, N1, N1_N2),
         PolarisEntityType.TABLE_LIKE,
-        PolarisEntitySubType.VIEW,
-        List.of(ImmutablePair.of("V1", PolarisEntitySubType.VIEW)));
+        PolarisEntitySubType.ICEBERG_VIEW,
+        List.of(ImmutablePair.of("V1", PolarisEntitySubType.ICEBERG_VIEW)));
     // list all principals
     this.validateListReturn(
         null,
@@ -2007,7 +2007,7 @@ public class PolarisTestMetaStoreManager {
         this.ensureExistsByName(
             List.of(catalog, N1, N1_N2),
             PolarisEntityType.TABLE_LIKE,
-            PolarisEntitySubType.VIEW,
+            PolarisEntitySubType.ICEBERG_VIEW,
             "V1");
     this.dropEntity(List.of(catalog, N1, N1_N2), V1);
     this.dropEntity(List.of(catalog, N1), N1_N2);
@@ -2025,7 +2025,7 @@ public class PolarisTestMetaStoreManager {
         this.ensureExistsByName(
             List.of(catalog, N1, N1_N3),
             PolarisEntityType.TABLE_LIKE,
-            PolarisEntitySubType.VIEW,
+            PolarisEntitySubType.ICEBERG_VIEW,
             "V2");
     this.dropEntity(List.of(catalog, N1, N1_N3), V2);
     this.dropEntity(List.of(catalog, N1), N1_N3);

@@ -31,7 +31,7 @@ public enum PolarisEntitySubType {
   // the NULL value is used when an entity has no subtype, i.e. NOT_APPLICABLE really
   NULL_SUBTYPE(0, null),
   ICEBERG_TABLE(2, PolarisEntityType.TABLE_LIKE),
-  VIEW(3, PolarisEntityType.TABLE_LIKE),
+  ICEBERG_VIEW(3, PolarisEntityType.TABLE_LIKE),
   GENERIC_TABLE(4, PolarisEntityType.TABLE_LIKE);
 
   // to efficiently map the code of a subtype to its corresponding subtype enum, use a reverse

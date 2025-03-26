@@ -437,7 +437,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
     PolarisEntitySubType dstLeafSubType = resolutionManifest.getLeafSubType(dst);
     if (dstLeafSubType == PolarisEntitySubType.ICEBERG_TABLE) {
       throw new AlreadyExistsException("Cannot rename %s to %s. Table already exists", src, dst);
-    } else if (dstLeafSubType == PolarisEntitySubType.VIEW) {
+    } else if (dstLeafSubType == PolarisEntitySubType.ICEBERG_VIEW) {
       throw new AlreadyExistsException("Cannot rename %s to %s. View already exists", src, dst);
     }
 
@@ -1091,14 +1091,14 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
   public LoadViewResponse loadView(TableIdentifier viewIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_VIEW;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.VIEW, viewIdentifier);
+    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
     return CatalogHandlers.loadView(viewCatalog, viewIdentifier);
   }
 
   public LoadViewResponse replaceView(TableIdentifier viewIdentifier, UpdateTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.REPLACE_VIEW;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.VIEW, viewIdentifier);
+    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
     CatalogEntity catalog =
         CatalogEntity.of(
@@ -1114,14 +1114,14 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
 
   public void dropView(TableIdentifier viewIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_VIEW;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.VIEW, viewIdentifier);
+    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
     CatalogHandlers.dropView(viewCatalog, viewIdentifier);
   }
 
   public void viewExists(TableIdentifier viewIdentifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.VIEW_EXISTS;
-    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.VIEW, viewIdentifier);
+    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.ICEBERG_VIEW, viewIdentifier);
 
     // TODO: Just skip CatalogHandlers for this one maybe
     CatalogHandlers.loadView(viewCatalog, viewIdentifier);
@@ -1130,7 +1130,7 @@ public class IcebergCatalogHandlerWrapper implements AutoCloseable {
   public void renameView(RenameTableRequest request) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.RENAME_VIEW;
     authorizeRenameTableLikeOperationOrThrow(
-        op, PolarisEntitySubType.VIEW, request.source(), request.destination());
+        op, PolarisEntitySubType.ICEBERG_VIEW, request.source(), request.destination());
 
     CatalogEntity catalog =
         CatalogEntity.of(
