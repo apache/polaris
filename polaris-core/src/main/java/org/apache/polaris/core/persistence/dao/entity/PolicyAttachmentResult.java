@@ -32,12 +32,23 @@ public class PolicyAttachmentResult extends BaseResult {
   /**
    * Constructor for an error
    *
-   * @param errorCode error code, cannot be SUCCESS
+   * @param errorStatus error code, cannot be SUCCESS
    * @param extraInformation extra information
    */
   public PolicyAttachmentResult(
-      @Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
-    super(errorCode, extraInformation);
+      @Nonnull ReturnStatus errorStatus, @Nullable String extraInformation) {
+    super(errorStatus, extraInformation);
+    this.mappingRecord = null;
+  }
+
+  /**
+   * Constructor for an error
+   *
+   * @param errorStatus error code, cannot be SUCCESS
+   * @param policyTypeCode existing policy mapping record's policy type code
+   */
+  public PolicyAttachmentResult(@Nonnull ReturnStatus errorStatus, int policyTypeCode) {
+    super(errorStatus, Integer.toString(policyTypeCode));
     this.mappingRecord = null;
   }
 

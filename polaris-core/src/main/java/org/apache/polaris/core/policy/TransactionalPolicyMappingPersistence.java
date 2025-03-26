@@ -31,6 +31,20 @@ public interface TransactionalPolicyMappingPersistence {
     throw new UnsupportedOperationException("Not Implemented");
   }
 
+  /**
+   * Helpers to check conditions for writing new PolicyMappingRecords in current transaction.
+   *
+   * <p>It should throw a PolicyMappingAlreadyExistsException if the new record conflicts with an
+   * exising record with same policy type but different policy.
+   *
+   * @param callCtx call context
+   * @param record policy mapping record to write.
+   */
+  default void checkConditionsForWriteToPolicyMappingRecordsInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+    throw new UnsupportedOperationException("Not Implemented");
+  }
+
   /** See {@link PolicyMappingPersistence#deleteFromPolicyMappingRecords} */
   default void deleteFromPolicyMappingRecordsInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {

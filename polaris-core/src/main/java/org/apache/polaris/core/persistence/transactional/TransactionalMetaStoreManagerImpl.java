@@ -2361,34 +2361,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       return new PolicyAttachmentResult(BaseResult.ReturnStatus.ENTITY_CANNOT_BE_RESOLVED, null);
     }
 
-    PolicyType policyType = PolicyType.fromCode(policy.getPolicyTypeCode());
-    if (policyType == null) {
-      // This should never happen
-      return new PolicyAttachmentResult(
-          BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, "Unknown policy type");
-    }
-
-    if (policyType.isInheritable()) {
-      // Verify that there is no other mapping of the same type but different entity
-      List<PolarisPolicyMappingRecord> existingRecordsOfSameType =
-          ms.loadPoliciesOnTargetByTypeInCurrentTxn(
-              callCtx, target.getCatalogId(), target.getId(), policy.getPolicyTypeCode());
-      if (existingRecordsOfSameType.size() > 1) {
-        return new PolicyAttachmentResult(
-            BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS, null);
-      } else if (existingRecordsOfSameType.size() == 1) {
-        PolarisPolicyMappingRecord existingRecord = existingRecordsOfSameType.get(0);
-        if (existingRecord.getPolicyId() != policy.getId()
-            || existingRecord.getPolicyCatalogId() != policy.getCatalogId()) {
-          return new PolicyAttachmentResult(
-              BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS, null);
-        }
-      }
-    }
-
-    PolarisPolicyMappingRecord mappingRecord =
-        this.persistNewPolicyMappingRecord(callCtx, ms, target, policy, parameters);
-    return new PolicyAttachmentResult(mappingRecord);
+    return this.persistNewPolicyMappingRecord(callCtx, ms, target, policy, parameters);
   }
 
   /** {@inheritDoc} */
@@ -2515,7 +2488,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
    * @param parameters optional parameters
    * @return new policy mapping record which was created and persisted
    */
-  private @Nonnull PolarisPolicyMappingRecord persistNewPolicyMappingRecord(
+  private @Nonnull PolicyAttachmentResult persistNewPolicyMappingRecord(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisEntityCore target,
@@ -2533,9 +2506,19 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
             policy.getPolicyTypeCode(),
             parameters);
 
-    ms.writeToPolicyMappingRecordsInCurrentTxn(callCtx, mappingRecord);
+    try {
+      ms.checkConditionsForWriteToPolicyMappingRecordsInCurrentTxn(callCtx, mappingRecord);
+      ms.writeToPolicyMappingRecordsInCurrentTxn(callCtx, mappingRecord);
+    } catch (IllegalArgumentException e) {
+      return new PolicyAttachmentResult(
+          BaseResult.ReturnStatus.UNEXPECTED_ERROR_SIGNALED, "Unknown policy type");
+    } catch (PolicyMappingAlreadyExistsException e) {
+      return new PolicyAttachmentResult(
+          BaseResult.ReturnStatus.POLICY_MAPPING_OF_SAME_TYPE_ALREADY_EXISTS,
+          e.getExistingRecord().getPolicyTypeCode());
+    }
 
-    return mappingRecord;
+    return new PolicyAttachmentResult(mappingRecord);
   }
 
   /**

@@ -18,6 +18,7 @@
  */
 package org.apache.polaris.core.persistence.transactional;
 
+import com.google.common.base.Preconditions;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import java.util.List;
@@ -34,8 +35,10 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PolarisGrantRecord;
 import org.apache.polaris.core.entity.PolarisPrincipalSecrets;
 import org.apache.polaris.core.persistence.EntityAlreadyExistsException;
+import org.apache.polaris.core.persistence.PolicyMappingAlreadyExistsException;
 import org.apache.polaris.core.persistence.RetryOnConcurrencyException;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
+import org.apache.polaris.core.policy.PolicyType;
 import org.apache.polaris.core.storage.PolarisStorageConfigurationInfo;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 
@@ -667,7 +670,38 @@ public abstract class AbstractTransactionalPersistence implements TransactionalP
   public void writeToPolicyMappingRecords(
       @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
     this.runActionInTransaction(
-        callCtx, () -> this.writeToPolicyMappingRecordsInCurrentTxn(callCtx, record));
+        callCtx,
+        () -> {
+          this.checkConditionsForWriteToPolicyMappingRecordsInCurrentTxn(callCtx, record);
+          this.writeToPolicyMappingRecordsInCurrentTxn(callCtx, record);
+        });
+  }
+
+  /** {@inheritDoc} */
+  @Override
+  public void checkConditionsForWriteToPolicyMappingRecordsInCurrentTxn(
+      @Nonnull PolarisCallContext callCtx, @Nonnull PolarisPolicyMappingRecord record) {
+
+    PolicyType policyType = PolicyType.fromCode(record.getPolicyTypeCode());
+    Preconditions.checkArgument(
+        policyType != null, "Invalid policy type code: %s", record.getPolicyTypeCode());
+
+    if (!policyType.isInheritable()) {
+      return;
+    }
+
+    List<PolarisPolicyMappingRecord> existingRecords =
+        this.loadPoliciesOnTargetByTypeInCurrentTxn(
+            callCtx, record.getTargetCatalogId(), record.getTargetId(), record.getPolicyTypeCode());
+    if (existingRecords.size() > 1) {
+      throw new PolicyMappingAlreadyExistsException(existingRecords.get(0));
+    } else if (existingRecords.size() == 1) {
+      PolarisPolicyMappingRecord existingRecord = existingRecords.get(0);
+      if (existingRecord.getPolicyCatalogId() != record.getPolicyCatalogId()
+          || existingRecord.getPolicyId() != record.getPolicyId()) {
+        throw new PolicyMappingAlreadyExistsException(existingRecord);
+      }
+    }
   }
 
   /** {@inheritDoc} */
