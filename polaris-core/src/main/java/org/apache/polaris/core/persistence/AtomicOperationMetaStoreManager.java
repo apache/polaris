@@ -1884,7 +1884,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     final List<PolarisPolicyMappingRecord> policyMappingRecords =
         ms.loadAllPoliciesOnTarget(callCtx, target.getCatalogId(), target.getId());
 
-    List<PolicyEntity> policyEntities =
+    List<PolarisBaseEntity> policyEntities =
         loadPoliciesFromMappingRecords(callCtx, ms, policyMappingRecords);
     return new LoadPolicyMappingsResult(policyMappingRecords, policyEntities);
   }
@@ -1908,7 +1908,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
         ms.loadPoliciesOnTargetByType(
             callCtx, target.getCatalogId(), target.getId(), policyType.getCode());
 
-    List<PolicyEntity> policyEntities =
+    List<PolarisBaseEntity> policyEntities =
         loadPoliciesFromMappingRecords(callCtx, ms, policyMappingRecords);
     return new LoadPolicyMappingsResult(policyMappingRecords, policyEntities);
   }
@@ -1962,7 +1962,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
    * @param policyMappingRecords a list of policy mapping records
    * @return a list of policy entities
    */
-  private List<PolicyEntity> loadPoliciesFromMappingRecords(
+  private List<PolarisBaseEntity> loadPoliciesFromMappingRecords(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull BasePersistence ms,
       @Nonnull List<PolarisPolicyMappingRecord> policyMappingRecords) {
@@ -1975,8 +1975,6 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
                         policyMappingRecord.getPolicyId()))
             .distinct()
             .collect(Collectors.toList());
-    return ms.lookupEntities(callCtx, policyEntityIds).stream()
-        .map(PolicyEntity::of)
-        .collect(Collectors.toList());
+    return ms.lookupEntities(callCtx, policyEntityIds);
   }
 }

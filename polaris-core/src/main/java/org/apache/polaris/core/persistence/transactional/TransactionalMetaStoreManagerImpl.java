@@ -2440,7 +2440,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     final List<PolarisPolicyMappingRecord> policyMappingRecords =
         ms.loadAllPoliciesOnTargetInCurrentTxn(callCtx, target.getCatalogId(), target.getId());
 
-    List<PolicyEntity> policyEntities =
+    List<PolarisBaseEntity> policyEntities =
         loadPoliciesFromMappingRecords(callCtx, ms, policyMappingRecords);
     return new LoadPolicyMappingsResult(policyMappingRecords, policyEntities);
   }
@@ -2473,7 +2473,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
     final List<PolarisPolicyMappingRecord> policyMappingRecords =
         ms.loadPoliciesOnTargetByTypeInCurrentTxn(
             callCtx, target.getCatalogId(), target.getId(), policyType.getCode());
-    List<PolicyEntity> policyEntities =
+    List<PolarisBaseEntity> policyEntities =
         loadPoliciesFromMappingRecords(callCtx, ms, policyMappingRecords);
     return new LoadPolicyMappingsResult(policyMappingRecords, policyEntities);
   }
@@ -2529,7 +2529,7 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
    * @param policyMappingRecords a list of policy mapping records
    * @return a list of policy entities
    */
-  private List<PolicyEntity> loadPoliciesFromMappingRecords(
+  private List<PolarisBaseEntity> loadPoliciesFromMappingRecords(
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nonnull List<PolarisPolicyMappingRecord> policyMappingRecords) {
@@ -2542,8 +2542,6 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
                         policyMappingRecord.getPolicyId()))
             .distinct()
             .collect(Collectors.toList());
-    return ms.lookupEntitiesInCurrentTxn(callCtx, policyEntityIds).stream()
-        .map(PolicyEntity::of)
-        .collect(Collectors.toList());
+    return ms.lookupEntitiesInCurrentTxn(callCtx, policyEntityIds);
   }
 }

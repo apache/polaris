@@ -1074,7 +1074,7 @@ public class PolarisTestMetaStoreManager {
   void validateLoadedPolicyMappings(LoadPolicyMappingsResult loadPolicyMappingRecords) {
     Assertions.assertThat(loadPolicyMappingRecords).isNotNull();
 
-    Map<Long, PolicyEntity> policyEntities = loadPolicyMappingRecords.getPolicyEntitiesAsMap();
+    Map<Long, PolarisBaseEntity> policyEntities = loadPolicyMappingRecords.getEntitiesAsMap();
     Assertions.assertThat(policyEntities).isNotNull();
 
     for (PolarisPolicyMappingRecord policyMappingRecord :
@@ -2684,8 +2684,8 @@ public class PolarisTestMetaStoreManager {
         polarisMetaStoreManager.loadPoliciesOnEntityByType(
             polarisCallContext, N1_N2_T1, PredefinedPolicyTypes.DATA_COMPACTION);
     Assertions.assertThat(loadPolicyMappingsResult.isSuccess()).isTrue();
-    Assertions.assertThat(loadPolicyMappingsResult.getPolicyEntities()).hasSize(1);
-    PolicyEntity policyEntity = loadPolicyMappingsResult.getPolicyEntities().get(0);
+    Assertions.assertThat(loadPolicyMappingsResult.getEntities()).hasSize(1);
+    PolicyEntity policyEntity = PolicyEntity.of(loadPolicyMappingsResult.getEntities().get(0));
     Assertions.assertThat(policyEntity.getId()).isEqualTo(N1_P1.getId());
     Assertions.assertThat(policyEntity.getPolicyType())
         .isEqualTo(PredefinedPolicyTypes.DATA_COMPACTION);

@@ -26,16 +26,16 @@ import jakarta.annotation.Nullable;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.policy.PolarisPolicyMappingRecord;
-import org.apache.polaris.core.policy.PolicyEntity;
 
 /** result of a load policy mapping call */
 public class LoadPolicyMappingsResult extends BaseResult {
   // null if not success. Else set of policy mapping records on a target or from a policy
   private final List<PolarisPolicyMappingRecord> mappingRecords;
 
-  // null if not success. Else set of policy entities in the mapping records.
-  private final List<PolicyEntity> policyEntities;
+  // null if not success. Else, for each policy mapping record, list of target or policy entities
+  private final List<PolarisBaseEntity> entities;
 
   /**
    * Constructor for an error
@@ -47,21 +47,21 @@ public class LoadPolicyMappingsResult extends BaseResult {
       @Nonnull ReturnStatus errorCode, @Nullable String extraInformation) {
     super(errorCode, extraInformation);
     this.mappingRecords = null;
-    this.policyEntities = null;
+    this.entities = null;
   }
 
   /**
    * Constructor for success
    *
    * @param mappingRecords policy mapping records
-   * @param policyEntities policy entities
+   * @param entities policy entities
    */
   public LoadPolicyMappingsResult(
       @Nonnull List<PolarisPolicyMappingRecord> mappingRecords,
-      @Nonnull List<PolicyEntity> policyEntities) {
+      @Nonnull List<PolarisBaseEntity> entities) {
     super(ReturnStatus.SUCCESS);
     this.mappingRecords = mappingRecords;
-    this.policyEntities = policyEntities;
+    this.entities = entities;
   }
 
   @JsonCreator
@@ -69,24 +69,34 @@ public class LoadPolicyMappingsResult extends BaseResult {
       @JsonProperty("returnStatus") @Nonnull ReturnStatus returnStatus,
       @JsonProperty("extraInformation") String extraInformation,
       @JsonProperty("policyMappingRecords") List<PolarisPolicyMappingRecord> mappingRecords,
-      @JsonProperty("policyEntities") List<PolicyEntity> policyEntities) {
+      @JsonProperty("policyEntities") List<PolarisBaseEntity> entities) {
     super(returnStatus, extraInformation);
     this.mappingRecords = mappingRecords;
-    this.policyEntities = policyEntities;
+    this.entities = entities;
   }
 
   public List<PolarisPolicyMappingRecord> getPolicyMappingRecords() {
     return mappingRecords;
   }
 
-  public List<PolicyEntity> getPolicyEntities() {
-    return policyEntities;
+  public List<PolarisBaseEntity> getEntities() {
+    return entities;
   }
 
   @JsonIgnore
-  public Map<Long, PolicyEntity> getPolicyEntitiesAsMap() {
-    return policyEntities == null
+  public Map<Long, PolarisBaseEntity> getEntitiesAsMap() {
+    return entities == null
         ? null
-        : policyEntities.stream().collect(Collectors.toMap(PolicyEntity::getId, entity -> entity));
+        : entities.stream().collect(Collectors.toMap(PolarisBaseEntity::getId, entity -> entity));
+  }
+
+  @Override
+  public String toString() {
+    return "LoadPolicyMappingsResult{"
+        + "mappingRecords="
+        + mappingRecords
+        + ", entities="
+        + entities
+        + '}';
   }
 }
