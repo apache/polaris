@@ -31,7 +31,7 @@ import org.apache.polaris.core.entity.PolarisEntityCore;
  *
  * <p>Note that APIs to the actual persistence store are very basic, often point read or write to
  * the underlying data store. The goal is to make it really easy to back this using databases like
- * Postgres or simpler KV store.
+ * Postgres or simpler KV store. Each API in this interface need to be atomic.
  */
 public interface PolicyMappingPersistence {
 

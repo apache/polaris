@@ -1874,9 +1874,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
-    int grantRecordVersion =
-        ms.lookupEntityGrantRecordsVersion(callCtx, target.getCatalogId(), target.getId());
-    if (grantRecordVersion == 0) {
+    PolarisBaseEntity entity =
+        ms.lookupEntity(callCtx, target.getCatalogId(), target.getId(), target.getTypeCode());
+    if (entity == null) {
       // Target entity does not exists
       return new LoadPolicyMappingsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
@@ -1897,9 +1897,9 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     // get metastore we should be using
     BasePersistence ms = callCtx.getMetaStore();
 
-    int grantRecordVersion =
-        ms.lookupEntityGrantRecordsVersion(callCtx, target.getCatalogId(), target.getId());
-    if (grantRecordVersion == 0) {
+    PolarisBaseEntity entity =
+        ms.lookupEntity(callCtx, target.getCatalogId(), target.getId(), target.getTypeCode());
+    if (entity == null) {
       // Target entity does not exists
       return new LoadPolicyMappingsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }

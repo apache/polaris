@@ -2429,10 +2429,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull PolarisCallContext callCtx,
       @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisEntityCore target) {
-    int grantRecordVersion =
-        ms.lookupEntityGrantRecordsVersionInCurrentTxn(
-            callCtx, target.getCatalogId(), target.getId());
-    if (grantRecordVersion == 0) {
+    PolarisBaseEntity entity =
+        ms.lookupEntityInCurrentTxn(
+            callCtx, target.getCatalogId(), target.getId(), target.getTypeCode());
+    if (entity == null) {
       // Target entity does not exists
       return new LoadPolicyMappingsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
@@ -2462,10 +2462,10 @@ public class TransactionalMetaStoreManagerImpl extends BaseMetaStoreManager {
       @Nonnull TransactionalPersistence ms,
       @Nonnull PolarisEntityCore target,
       @Nonnull PolicyType policyType) {
-    int grantRecordVersion =
-        ms.lookupEntityGrantRecordsVersionInCurrentTxn(
-            callCtx, target.getCatalogId(), target.getId());
-    if (grantRecordVersion == 0) {
+    PolarisBaseEntity entity =
+        ms.lookupEntityInCurrentTxn(
+            callCtx, target.getCatalogId(), target.getId(), target.getTypeCode());
+    if (entity == null) {
       // Target entity does not exists
       return new LoadPolicyMappingsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
