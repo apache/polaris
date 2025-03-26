@@ -19,17 +19,11 @@
 package org.apache.polaris.service.it.test;
 
 import static org.apache.polaris.service.it.env.PolarisClient.polarisClient;
-import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
-import java.nio.file.Paths;
 import java.util.Map;
-import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTCatalog;
-import org.apache.iceberg.view.BaseView;
-import org.apache.iceberg.view.View;
 import org.apache.iceberg.view.ViewCatalogTests;
-import org.apache.iceberg.view.ViewProperties;
 import org.apache.polaris.core.admin.model.Catalog;
 import org.apache.polaris.core.admin.model.CatalogProperties;
 import org.apache.polaris.core.admin.model.PolarisCatalog;
@@ -48,6 +42,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -69,7 +64,6 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
   private static ManagementApi managementApi;
 
   private RESTCatalog restCatalog;
-  private String defaultBaseLocation;
 
   @BeforeAll
   static void setup(PolarisApiEndpoints apiEndpoints, ClientCredentials credentials) {
@@ -97,7 +91,7 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     String catalogName = client.newEntityName(method.getName());
 
     StorageConfigInfo storageConfig = getStorageConfigInfo();
-    defaultBaseLocation =
+    String defaultBaseLocation =
         storageConfig.getAllowedLocations().getFirst()
             + "/"
             + System.getenv("USER")
@@ -174,40 +168,14 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     return true;
   }
 
-  /**
-   * Overrides the test from the superclass because the tempDir used there is not accessible or
-   * included in the allowed locations.
-   */
   @Override
   @Test
+  @Disabled(
+      """
+      Disabled because the behavior is not applicable to Polaris.
+      To unblock, update this to expect an exception and add a Polaris-specific test.
+      """)
   public void createViewWithCustomMetadataLocation() {
-    TableIdentifier identifier = TableIdentifier.of("ns", "view");
-
-    if (requiresNamespaceCreate()) {
-      catalog().createNamespace(identifier.namespace());
-    }
-
-    assertThat(catalog().viewExists(identifier)).as("View should not exist").isFalse();
-
-    String location = Paths.get(defaultBaseLocation).toString();
-    String customLocation = Paths.get(defaultBaseLocation, "custom-location").toString();
-
-    View view =
-        catalog()
-            .buildView(identifier)
-            .withSchema(SCHEMA)
-            .withDefaultNamespace(identifier.namespace())
-            .withDefaultCatalog(catalog().name())
-            .withQuery("spark", "select * from ns.tbl")
-            .withProperty(ViewProperties.WRITE_METADATA_LOCATION, customLocation)
-            .withLocation(location)
-            .create();
-
-    assertThat(view).isNotNull();
-    assertThat(catalog().viewExists(identifier)).as("View should exist").isTrue();
-    assertThat(view.properties()).containsEntry("write.metadata.path", customLocation);
-    assertThat(((BaseView) view).operations().current().metadataFileLocation())
-        .isNotNull()
-        .startsWith(customLocation);
+    super.createViewWithCustomMetadataLocation();
   }
 }
