@@ -106,7 +106,7 @@ public class GenericTableCatalogHandlerWrapper extends CatalogHandlerWrapper {
   }
 
   public LoadGenericTableResponse loadGenericTable(TableIdentifier identifier) {
-    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
     authorizeBasicTableLikeOperationOrThrow(
         op, PolarisEntitySubType.GENERIC_TABLE, identifier);
 

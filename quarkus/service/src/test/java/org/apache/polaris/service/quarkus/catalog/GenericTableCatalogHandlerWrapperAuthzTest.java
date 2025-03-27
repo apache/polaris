@@ -245,20 +245,17 @@ public class GenericTableCatalogHandlerWrapperAuthzTest extends PolarisAuthzTest
                 CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE))
         .isTrue();
 
-    newWrapper(Set.of(PRINCIPAL_ROLE2)).createGenericTable(
-        TableIdentifier.of(NS2, "generic_table"), "format", "doc", Map.of());
-
     doTestSufficientPrivileges(
         List.of(
             PolarisPrivilege.TABLE_DROP,
             PolarisPrivilege.TABLE_FULL_METADATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
         () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TableIdentifier.of(NS2, "generic_table"));
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1_GENERIC);
         },
         () -> {
             newWrapper(Set.of(PRINCIPAL_ROLE2)).createGenericTable(
-                TableIdentifier.of(NS2, "generic_table"), "format", "doc", Map.of());
+                TABLE_NS1_1_GENERIC, "format", "doc", Map.of());
         });
   }
 
@@ -275,7 +272,7 @@ public class GenericTableCatalogHandlerWrapperAuthzTest extends PolarisAuthzTest
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.TABLE_LIST),
         () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1);
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1_GENERIC);
         });
   }
 
