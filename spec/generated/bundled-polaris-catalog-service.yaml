@@ -4006,21 +4006,25 @@ components:
         target:
           $ref: '#/components/schemas/PolicyAttachmentTarget'
     ApplicablePolicy:
-      type: object
-      required:
-        - inherited
-        - namespaces
-        - policy
-      properties:
-        inherited:
-          type: boolean
-        namespaces:
-          type: array
-          description: A list representing the hierarchical parent path to the policy, ordered from higher level namespace to lower.
-          items:
-            type: string
-        policy:
-          $ref: '#/components/schemas/Policy'
+      allOf:
+        - type: object
+          description: |
+            For policies returned by GetApplicablePolicies, there are 2 additional fields
+
+            - **inherited:** A boolean flag indicating whether the policy is inherited from target's parents
+            - **namespaces:** A list representing the hierarchical parent path to the policy, ordered from higher level namespace to lower.
+          required:
+            - inherited
+            - namespaces
+          properties:
+            inherited:
+              type: boolean
+            namespaces:
+              type: array
+              description: A list representing the hierarchical parent path to the policy, ordered from higher level namespace to lower.
+              items:
+                type: string
+        - $ref: '#/components/schemas/Policy'
     GetApplicablePoliciesResponse:
       type: object
       required:
@@ -4028,7 +4032,7 @@ components:
       properties:
         next-page-token:
           $ref: '#/components/schemas/PageToken'
-        applicable-policies:
+        policies:
           type: array
           uniqueItems: true
           items:
