@@ -4005,6 +4005,22 @@ components:
       properties:
         target:
           $ref: '#/components/schemas/PolicyAttachmentTarget'
+    ApplicablePolicy:
+      type: object
+      required:
+        - inherited
+        - namespaces
+        - policy
+      properties:
+        inherited:
+          type: boolean
+        namespaces:
+          type: array
+          description: A list representing the hierarchical parent path to the policy, ordered from higher level namespace to lower.
+          items:
+            type: string
+        policy:
+          $ref: '#/components/schemas/Policy'
     GetApplicablePoliciesResponse:
       type: object
       required:
@@ -4012,11 +4028,11 @@ components:
       properties:
         next-page-token:
           $ref: '#/components/schemas/PageToken'
-        policies:
+        applicable-policies:
           type: array
           uniqueItems: true
           items:
-            $ref: '#/components/schemas/Policy'
+            $ref: '#/components/schemas/ApplicablePolicy'
   responses:
     BadRequestErrorResponse:
       description: Indicates a bad request error. It could be caused by an unexpected request body format or other forms of request validation failure, such as invalid json. Usually serves application/json content, although in some cases simple text/plain content might be returned by the server's middleware.
