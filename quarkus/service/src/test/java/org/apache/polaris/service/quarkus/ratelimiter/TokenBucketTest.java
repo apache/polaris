@@ -57,6 +57,7 @@ public class TokenBucketTest {
    * only allow "maxTokens" requests
    */
   @Test
+  @SuppressWarnings("FutureReturnValueIgnored") // implementation looks okay
   void testConcurrent() throws InterruptedException {
     int maxTokens = 100;
     int numTasks = 50000;

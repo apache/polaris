@@ -82,6 +82,7 @@ public class TaskExecutorImpl implements TaskExecutor {
    * asynchronously with a clone of the provided {@link CallContext}.
    */
   @Override
+  @SuppressWarnings("FutureReturnValueIgnored") // it _should_ be okay in this particular case
   public void addTaskHandlerContext(long taskEntityId, CallContext callContext) {
     // Unfortunately CallContext is a request-scoped bean and must be cloned now,
     // because its usage inside the TaskExecutor thread pool will outlive its

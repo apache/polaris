@@ -36,6 +36,8 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
   @JsonIgnore
   public static final String ROLE_ARN_PATTERN = "^arn:(aws|aws-us-gov):iam::(\\d{12}):role/.+$";
 
+  private static final Pattern ROLE_ARN_PATTERN_COMPILED = Pattern.compile(ROLE_ARN_PATTERN);
+
   // AWS role to be assumed
   private final @Nonnull String roleARN;
 
@@ -131,8 +133,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
 
   private static String parseAwsAccountId(String arn) {
     validateArn(arn);
-    Pattern pattern = Pattern.compile(ROLE_ARN_PATTERN);
-    Matcher matcher = pattern.matcher(arn);
+    Matcher matcher = ROLE_ARN_PATTERN_COMPILED.matcher(arn);
     if (matcher.matches()) {
       return matcher.group(2);
     } else {
@@ -142,8 +143,7 @@ public class AwsStorageConfigurationInfo extends PolarisStorageConfigurationInfo
 
   private static String parseAwsPartition(String arn) {
     validateArn(arn);
-    Pattern pattern = Pattern.compile(ROLE_ARN_PATTERN);
-    Matcher matcher = pattern.matcher(arn);
+    Matcher matcher = ROLE_ARN_PATTERN_COMPILED.matcher(arn);
     if (matcher.matches()) {
       return matcher.group(1);
     } else {
