@@ -36,7 +36,6 @@ import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
 
-import java.util.HashSet;
 import java.util.Map;
 import java.util.TreeSet;
 

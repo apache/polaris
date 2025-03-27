@@ -33,16 +33,12 @@ import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
-import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.apache.polaris.core.persistence.PolarisResolvedPathWrapper;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.DropEntityResult;
 import org.apache.polaris.core.persistence.dao.entity.EntityResult;
 import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifestCatalogView;
-import org.apache.polaris.service.catalog.io.FileIOFactory;
-import org.apache.polaris.service.task.TaskExecutor;
-import org.apache.polaris.service.types.GenericTable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

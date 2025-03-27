@@ -83,7 +83,7 @@ public abstract class CatalogHandlerWrapper {
         this.authorizer = authorizer;
     }
 
-    /** Initialize the catalog once authorized */
+    /** Initialize the catalog once authorized. Called after all `authorize...` methods. */
     protected abstract void initializeCatalog();
 
     protected void authorizeBasicNamespaceOperationOrThrow(
