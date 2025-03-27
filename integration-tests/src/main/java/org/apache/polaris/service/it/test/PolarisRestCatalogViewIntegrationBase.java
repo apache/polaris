@@ -168,6 +168,7 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     return true;
   }
 
+  /** TODO: Unblock this test, see: https://github.com/apache/polaris/issues/1273 */
   @Override
   @Test
   @Disabled(
