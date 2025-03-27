@@ -48,6 +48,7 @@ import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.CatalogGrant;
 import org.apache.polaris.core.admin.model.CatalogPrivilege;
+import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.GrantResource;
 import org.apache.polaris.core.admin.model.NamespaceGrant;
 import org.apache.polaris.core.admin.model.NamespacePrivilege;
@@ -559,7 +560,9 @@ public class PolarisAdminService {
             });
   }
 
-  public PolarisEntity createCatalog(PolarisEntity entity) {
+  public PolarisEntity createCatalog(CreateCatalogRequest catalogRequest) {
+    PolarisEntity entity = CatalogEntity.fromCatalog(catalogRequest.getCatalog());
+
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_CATALOG;
     authorizeBasicRootOperationOrThrow(op);
 

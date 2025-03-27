@@ -40,6 +40,7 @@ import org.apache.iceberg.catalog.Catalog;
 import org.apache.iceberg.view.ViewCatalogTests;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
+import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.FileStorageConfigInfo;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
@@ -169,17 +170,20 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
             securityContext,
             new PolarisAuthorizerImpl(new PolarisConfigurationStore() {}));
     adminService.createCatalog(
-        new CatalogEntity.Builder()
-            .setName(CATALOG_NAME)
-            .addProperty(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-            .addProperty(
-                FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-            .setDefaultBaseLocation("file://tmp")
-            .setStorageConfigurationInfo(
-                new FileStorageConfigInfo(
-                    StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
-                "file://tmp")
-            .build());
+        new CreateCatalogRequest(
+            new CatalogEntity.Builder()
+                .setName(CATALOG_NAME)
+                .addProperty(
+                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                .addProperty(
+                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+                .setDefaultBaseLocation("file://tmp")
+                .setStorageConfigurationInfo(
+                    new FileStorageConfigInfo(
+                        StorageConfigInfo.StorageTypeEnum.FILE, List.of("file://", "/", "*")),
+                    "file://tmp")
+                .build()
+                .asCatalog()));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(

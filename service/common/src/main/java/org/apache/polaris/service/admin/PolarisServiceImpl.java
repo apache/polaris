@@ -124,9 +124,7 @@ public class PolarisServiceImpl
     PolarisAdminService adminService = newAdminService(realmContext, securityContext);
     Catalog catalog = request.getCatalog();
     validateStorageConfig(catalog.getStorageConfigInfo());
-    Catalog newCatalog =
-        new CatalogEntity(adminService.createCatalog(CatalogEntity.fromCatalog(catalog)))
-            .asCatalog();
+    Catalog newCatalog = new CatalogEntity(adminService.createCatalog(request)).asCatalog();
     LOGGER.info("Created new catalog {}", newCatalog);
     return Response.status(Response.Status.CREATED).build();
   }

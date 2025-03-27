@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRequest;
 import org.apache.polaris.core.admin.model.UpdateCatalogRoleRequest;
 import org.apache.polaris.core.admin.model.UpdatePrincipalRequest;
@@ -130,13 +131,14 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 PRINCIPAL_ROLE2, PolarisPrivilege.CATALOG_DROP))
         .isTrue();
     final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
+    final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
 
     doTestSufficientPrivileges(
         List.of(
             PolarisPrivilege.SERVICE_MANAGE_ACCESS,
             PolarisPrivilege.CATALOG_CREATE,
             PolarisPrivilege.CATALOG_FULL_METADATA),
-        () -> newTestAdminService(Set.of(PRINCIPAL_ROLE1)).createCatalog(newCatalog),
+        () -> newTestAdminService(Set.of(PRINCIPAL_ROLE1)).createCatalog(createRequest),
         () -> newTestAdminService(Set.of(PRINCIPAL_ROLE2)).deleteCatalog(newCatalog.getName()),
         (privilege) ->
             adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
@@ -148,6 +150,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testCreateCatalogInsufficientPrivileges() {
     final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
+    final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
 
     doTestInsufficientPrivileges(
         List.of(
@@ -164,7 +167,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.CATALOG_MANAGE_METADATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT,
             PolarisPrivilege.CATALOG_MANAGE_ACCESS),
-        () -> newTestAdminService(Set.of(PRINCIPAL_ROLE1)).createCatalog(newCatalog),
+        () -> newTestAdminService(Set.of(PRINCIPAL_ROLE1)).createCatalog(createRequest),
         (privilege) ->
             adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
         (privilege) ->
@@ -283,7 +286,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
                 PRINCIPAL_ROLE2, PolarisPrivilege.CATALOG_CREATE))
         .isTrue();
     final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
-    adminService.createCatalog(newCatalog);
+    final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
+    adminService.createCatalog(createRequest);
 
     doTestSufficientPrivileges(
         List.of(
@@ -291,7 +295,7 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
             PolarisPrivilege.CATALOG_DROP,
             PolarisPrivilege.CATALOG_FULL_METADATA),
         () -> newTestAdminService(Set.of(PRINCIPAL_ROLE1)).deleteCatalog(newCatalog.getName()),
-        () -> newTestAdminService(Set.of(PRINCIPAL_ROLE2)).createCatalog(newCatalog),
+        () -> newTestAdminService(Set.of(PRINCIPAL_ROLE2)).createCatalog(createRequest),
         (privilege) ->
             adminService.grantPrivilegeOnRootContainerToPrincipalRole(PRINCIPAL_ROLE1, privilege),
         (privilege) ->
@@ -302,7 +306,8 @@ public class PolarisAdminServiceAuthzTest extends PolarisAuthzTestBase {
   @Test
   public void testDeleteCatalogInsufficientPrivileges() {
     final CatalogEntity newCatalog = new CatalogEntity.Builder().setName("new_catalog").build();
-    adminService.createCatalog(newCatalog);
+    final CreateCatalogRequest createRequest = new CreateCatalogRequest(newCatalog.asCatalog());
+    adminService.createCatalog(createRequest);
 
     doTestInsufficientPrivileges(
         List.of(

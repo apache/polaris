@@ -74,6 +74,7 @@ import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
+import org.apache.polaris.core.admin.model.CreateCatalogRequest;
 import org.apache.polaris.core.admin.model.StorageConfigInfo;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.auth.PolarisAuthorizerImpl;
@@ -253,16 +254,19 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .build();
     catalogEntity =
         adminService.createCatalog(
-            new CatalogEntity.Builder()
-                .setName(CATALOG_NAME)
-                .setDefaultBaseLocation(storageLocation)
-                .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-                .addProperty(
-                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-                .setStorageConfigurationInfo(storageConfigModel, storageLocation)
-                .build());
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setName(CATALOG_NAME)
+                    .setDefaultBaseLocation(storageLocation)
+                    .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                    .addProperty(
+                        FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(),
+                        "true")
+                    .setStorageConfigurationInfo(storageConfigModel, storageLocation)
+                    .build()
+                    .asCatalog()));
 
     RealmEntityManagerFactory realmEntityManagerFactory =
         new RealmEntityManagerFactory(createMockMetaStoreManagerFactory());
@@ -893,10 +897,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     String catalogWithoutStorage = "catalogWithoutStorage";
     PolarisEntity catalogEntity =
         adminService.createCatalog(
-            new CatalogEntity.Builder()
-                .setDefaultBaseLocation("file://")
-                .setName(catalogWithoutStorage)
-                .build());
+            new CreateCatalogRequest(
+                new CatalogEntity.Builder()
+                    .setDefaultBaseLocation("file://")
+                    .setName(catalogWithoutStorage)
+                    .build()
+                    .asCatalog()));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
@@ -957,10 +963,12 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
 
     String catalogName = "catalogForMaliciousDomain";
     adminService.createCatalog(
-        new CatalogEntity.Builder()
-            .setDefaultBaseLocation("http://maliciousdomain.com")
-            .setName(catalogName)
-            .build());
+        new CreateCatalogRequest(
+            new CatalogEntity.Builder()
+                .setDefaultBaseLocation("http://maliciousdomain.com")
+                .setName(catalogName)
+                .build()
+                .asCatalog()));
 
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
@@ -1496,16 +1504,19 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
             .setStorageType(StorageConfigInfo.StorageTypeEnum.S3)
             .build();
     adminService.createCatalog(
-        new CatalogEntity.Builder()
-            .setName(noPurgeCatalogName)
-            .setDefaultBaseLocation(storageLocation)
-            .setReplaceNewLocationPrefixWithCatalogDefault("file:")
-            .addProperty(FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
-            .addProperty(
-                FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
-            .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
-            .setStorageConfigurationInfo(noPurgeStorageConfigModel, storageLocation)
-            .build());
+        new CreateCatalogRequest(
+            new CatalogEntity.Builder()
+                .setName(noPurgeCatalogName)
+                .setDefaultBaseLocation(storageLocation)
+                .setReplaceNewLocationPrefixWithCatalogDefault("file:")
+                .addProperty(
+                    FeatureConfiguration.ALLOW_EXTERNAL_TABLE_LOCATION.catalogConfig(), "true")
+                .addProperty(
+                    FeatureConfiguration.ALLOW_UNSTRUCTURED_TABLE_LOCATION.catalogConfig(), "true")
+                .addProperty(FeatureConfiguration.DROP_WITH_PURGE_ENABLED.catalogConfig(), "false")
+                .setStorageConfigurationInfo(noPurgeStorageConfigModel, storageLocation)
+                .build()
+                .asCatalog()));
     PolarisPassthroughResolutionView passthroughView =
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, noPurgeCatalogName);
