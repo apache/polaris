@@ -28,6 +28,7 @@ dependencies {
   implementation(project(":polaris-api-management-model"))
   implementation(project(":polaris-api-management-service"))
   implementation(project(":polaris-api-iceberg-service"))
+  implementation(project(":polaris-api-catalog-service"))
   implementation(project(":polaris-jpa-model"))
 
   implementation(platform(libs.iceberg.bom))

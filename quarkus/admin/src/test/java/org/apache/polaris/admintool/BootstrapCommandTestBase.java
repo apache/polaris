@@ -20,12 +20,8 @@ package org.apache.polaris.admintool;
 
 import static org.apache.polaris.admintool.BaseCommand.EXIT_CODE_BOOTSTRAP_ERROR;
 import static org.apache.polaris.admintool.BaseCommand.EXIT_CODE_USAGE;
-import static org.apache.polaris.admintool.PostgresTestResourceLifecycleManager.INIT_SCRIPT;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.quarkus.test.common.ResourceArg;
-import io.quarkus.test.common.TestResourceScope;
-import io.quarkus.test.common.WithTestResource;
 import io.quarkus.test.junit.main.Launch;
 import io.quarkus.test.junit.main.LaunchResult;
 import io.quarkus.test.junit.main.QuarkusMainLauncher;
@@ -41,11 +37,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 @QuarkusMainTest
-@WithTestResource(
-    value = PostgresTestResourceLifecycleManager.class,
-    scope = TestResourceScope.GLOBAL,
-    initArgs = @ResourceArg(name = INIT_SCRIPT, value = "org/apache/polaris/admintool/init.sql"))
-class BootstrapCommandTest {
+public abstract class BootstrapCommandTestBase {
 
   private static Path json;
   private static Path yaml;
@@ -172,7 +164,7 @@ class BootstrapCommandTest {
   }
 
   private static Path copyResource(Path temp, String resource) throws IOException {
-    URL source = Objects.requireNonNull(BootstrapCommandTest.class.getResource(resource));
+    URL source = Objects.requireNonNull(BootstrapCommandTestBase.class.getResource(resource));
     Path dest = temp.resolve(resource);
     try (InputStream in = source.openStream()) {
       Files.copy(in, dest);

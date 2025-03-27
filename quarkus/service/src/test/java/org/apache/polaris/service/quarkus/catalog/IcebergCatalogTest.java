@@ -1725,7 +1725,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     doReturn(
             new EntityResult(
                 BaseResult.ReturnStatus.ENTITY_ALREADY_EXISTS,
-                PolarisEntitySubType.TABLE.getCode()))
+                PolarisEntitySubType.ICEBERG_TABLE.getCode()))
         .when(spyMetaStore)
         .createEntityIfNotExists(any(), any(), any());
     Assertions.assertThatThrownBy(() -> catalog.createTable(table, SCHEMA))
