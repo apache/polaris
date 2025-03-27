@@ -1877,7 +1877,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     PolarisBaseEntity entity =
         ms.lookupEntity(callCtx, target.getCatalogId(), target.getId(), target.getTypeCode());
     if (entity == null) {
-      // Target entity does not exists
+      // Target entity does not exist
       return new LoadPolicyMappingsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
@@ -1900,7 +1900,7 @@ public class AtomicOperationMetaStoreManager extends BaseMetaStoreManager {
     PolarisBaseEntity entity =
         ms.lookupEntity(callCtx, target.getCatalogId(), target.getId(), target.getTypeCode());
     if (entity == null) {
-      // Target entity does not exists
+      // Target entity does not exist
       return new LoadPolicyMappingsResult(BaseResult.ReturnStatus.ENTITY_NOT_FOUND, null);
     }
 
