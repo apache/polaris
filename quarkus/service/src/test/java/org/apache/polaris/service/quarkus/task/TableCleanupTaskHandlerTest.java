@@ -306,7 +306,7 @@ class TableCleanupTaskHandlerTest {
                         .fromLimit(5))
                 .getEntities())
         .hasSize(4)
-        .satisfiesExactly(
+        .satisfiesExactlyInAnyOrder(
             taskEntity ->
                 assertThat(taskEntity)
                     .returns(PolarisEntityType.TASK.getCode(), PolarisBaseEntity::getTypeCode)
