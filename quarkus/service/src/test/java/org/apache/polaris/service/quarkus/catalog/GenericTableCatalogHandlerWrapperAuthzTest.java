@@ -19,13 +19,10 @@
 package org.apache.polaris.service.quarkus.catalog;
 
 import io.quarkus.test.junit.QuarkusTest;
-import io.quarkus.test.junit.TestProfile;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandlerWrapper;
@@ -188,7 +185,8 @@ public class GenericTableCatalogHandlerWrapperAuthzTest extends PolarisAuthzTest
             PolarisPrivilege.TABLE_FULL_METADATA,
             PolarisPrivilege.CATALOG_MANAGE_CONTENT),
         () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).createGenericTable(newtable, "format", "doc", Map.of());
+          newWrapper(Set.of(PRINCIPAL_ROLE1))
+              .createGenericTable(newtable, "format", "doc", Map.of());
         },
         () -> {
           newWrapper(Set.of(PRINCIPAL_ROLE2)).dropGenericTable(newtable);
@@ -208,7 +206,8 @@ public class GenericTableCatalogHandlerWrapperAuthzTest extends PolarisAuthzTest
             PolarisPrivilege.TABLE_WRITE_DATA,
             PolarisPrivilege.TABLE_LIST),
         () -> {
-          newWrapper(Set.of(PRINCIPAL_ROLE1)).createGenericTable(TableIdentifier.of(NS2, "newtable"), "format", "doc", Map.of());
+          newWrapper(Set.of(PRINCIPAL_ROLE1))
+              .createGenericTable(TableIdentifier.of(NS2, "newtable"), "format", "doc", Map.of());
         });
   }
 
@@ -254,8 +253,8 @@ public class GenericTableCatalogHandlerWrapperAuthzTest extends PolarisAuthzTest
           newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1_GENERIC);
         },
         () -> {
-            newWrapper(Set.of(PRINCIPAL_ROLE2)).createGenericTable(
-                TABLE_NS1_1_GENERIC, "format", "doc", Map.of());
+          newWrapper(Set.of(PRINCIPAL_ROLE2))
+              .createGenericTable(TABLE_NS1_1_GENERIC, "format", "doc", Map.of());
         });
   }
 
@@ -275,5 +274,4 @@ public class GenericTableCatalogHandlerWrapperAuthzTest extends PolarisAuthzTest
           newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1_GENERIC);
         });
   }
-
 }

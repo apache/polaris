@@ -214,7 +214,8 @@ public abstract class CatalogHandlerWrapper {
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
     if (target == null) {
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE || subType == PolarisEntitySubType.GENERIC_TABLE) {
+      if (subType == PolarisEntitySubType.ICEBERG_TABLE
+          || subType == PolarisEntitySubType.GENERIC_TABLE) {
         throw new NoSuchTableException("Table does not exist: %s", identifier);
       } else {
         throw new NoSuchViewException("View does not exist: %s", identifier);

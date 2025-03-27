@@ -107,8 +107,7 @@ public class GenericTableCatalogHandlerWrapper extends CatalogHandlerWrapper {
 
   public LoadGenericTableResponse loadGenericTable(TableIdentifier identifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LOAD_TABLE;
-    authorizeBasicTableLikeOperationOrThrow(
-        op, PolarisEntitySubType.GENERIC_TABLE, identifier);
+    authorizeBasicTableLikeOperationOrThrow(op, PolarisEntitySubType.GENERIC_TABLE, identifier);
 
     GenericTableEntity loadedEntity = this.genericTableCatalog.loadGenericTable(identifier);
     GenericTable loadedTable =
