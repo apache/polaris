@@ -386,6 +386,7 @@ public abstract class IcebergCatalogTest extends CatalogTests<IcebergCatalog> {
     };
   }
 
+  /** TODO: Unblock this test, see: https://github.com/apache/polaris/issues/1272 */
   @Override
   @Test
   @Disabled(
