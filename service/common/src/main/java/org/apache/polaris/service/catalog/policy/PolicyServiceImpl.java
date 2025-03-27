@@ -16,13 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.catalog.policy;
 
 import jakarta.enterprise.context.RequestScoped;
 import org.apache.polaris.service.catalog.api.PolarisCatalogPolicyApiService;
 
 @RequestScoped
-public class PolicyServiceImpl implements PolarisCatalogPolicyApiService {
-
-}
+public class PolicyServiceImpl implements PolarisCatalogPolicyApiService {}

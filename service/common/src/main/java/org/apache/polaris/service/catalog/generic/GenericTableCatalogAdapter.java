@@ -16,13 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.catalog.generic;
 
 import jakarta.enterprise.context.RequestScoped;
 import org.apache.polaris.service.catalog.api.PolarisCatalogGenericTableApiService;
 
 @RequestScoped
-public class GenericTableCatalogAdapter implements PolarisCatalogGenericTableApiService {
-    
-}
+public class GenericTableCatalogAdapter implements PolarisCatalogGenericTableApiService {}
