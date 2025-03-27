@@ -132,7 +132,7 @@ public abstract class PolarisAuthzTestBase {
   // One table directly under ns1
   protected static final TableIdentifier TABLE_NS1_1 = TableIdentifier.of(NS1, "layer1_table");
 
-  // A generic table in the same location
+  // A generic table directly under ns1
   protected static final TableIdentifier TABLE_NS1_1_GENERIC =
       TableIdentifier.of(NS1, "layer1_table_generic");
 

@@ -42,6 +42,11 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.resolver.ResolverPath;
 import org.apache.polaris.core.persistence.resolver.ResolverStatus;
 
+/**
+ * An ABC for catalog wrappers which provides authorize methods that should be called before a
+ * request is actually forwarded to a catalog. Child types must implement `initializeCatalog` which
+ * will be called after a successful authorization.
+ */
 public abstract class CatalogHandlerWrapper {
 
   // Initialized in the authorize methods.
