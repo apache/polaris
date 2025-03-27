@@ -16,12 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.policy.validator;
+package org.apache.polaris.core.policy.content;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import java.io.IOException;
+import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 
 public class StrictBooleanDeserializer extends JsonDeserializer<Boolean> {
   @Override

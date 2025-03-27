@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.policy.validator.datacompaction;
+package org.apache.polaris.core.policy.validator.maintenance;
 
 import static org.apache.polaris.core.entity.PolarisEntityType.CATALOG;
 import static org.apache.polaris.core.entity.PolarisEntityType.NAMESPACE;
@@ -28,16 +28,15 @@ import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 import org.apache.polaris.core.policy.validator.PolicyValidator;
 
-public class DataCompactionPolicyValidator implements PolicyValidator {
-  public static final DataCompactionPolicyValidator INSTANCE = new DataCompactionPolicyValidator();
+public class BaseMaintenancePolicyValidator implements PolicyValidator {
+  public static final BaseMaintenancePolicyValidator INSTANCE =
+      new BaseMaintenancePolicyValidator();
 
   private static final Set<PolarisEntityType> ATTACHABLE_ENTITY_TYPES =
       Set.of(CATALOG, NAMESPACE, TABLE_LIKE);
 
   @Override
-  public void validate(String content) throws InvalidPolicyException {
-    DataCompactionPolicyContent.fromString(content);
-  }
+  public void validate(String content) throws InvalidPolicyException {}
 
   @Override
   public boolean canAttach(PolarisEntityType entityType, PolarisEntitySubType entitySubType) {
