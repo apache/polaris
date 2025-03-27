@@ -118,7 +118,7 @@ public class GenericTableCatalog {
                   tableIdentifier, res.getReturnStatus(), res.getExtraInformation()));
       }
     }
-    GenericTableEntity resultEntity = (GenericTableEntity) GenericTableEntity.of(res);
+    GenericTableEntity resultEntity = GenericTableEntity.of(res.getEntity());
     LOGGER.debug(
         "Created GenericTable entity {} with TableIdentifier {}", resultEntity, tableIdentifier);
     return resultEntity;

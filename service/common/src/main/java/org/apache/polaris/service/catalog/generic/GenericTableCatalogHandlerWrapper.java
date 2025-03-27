@@ -27,6 +27,7 @@ import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
 import org.apache.polaris.core.context.CallContext;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -106,7 +107,8 @@ public class GenericTableCatalogHandlerWrapper extends CatalogHandlerWrapper {
 
   public LoadGenericTableResponse loadGenericTable(TableIdentifier identifier) {
     PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
-    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+    authorizeBasicTableLikeOperationOrThrow(
+        op, PolarisEntitySubType.GENERIC_TABLE, identifier);
 
     GenericTableEntity loadedEntity = this.genericTableCatalog.loadGenericTable(identifier);
     GenericTable loadedTable =

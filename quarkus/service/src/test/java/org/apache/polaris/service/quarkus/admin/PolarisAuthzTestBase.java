@@ -76,6 +76,7 @@ import org.apache.polaris.core.persistence.resolver.PolarisResolutionManifest;
 import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
+import org.apache.polaris.service.catalog.generic.GenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
 import org.apache.polaris.service.config.DefaultConfigurationStore;
@@ -131,6 +132,10 @@ public abstract class PolarisAuthzTestBase {
   // One table directly under ns1
   protected static final TableIdentifier TABLE_NS1_1 = TableIdentifier.of(NS1, "layer1_table");
 
+  // A generic table in the same location
+  protected static final TableIdentifier TABLE_NS1_1_GENERIC =
+      TableIdentifier.of(NS1, "layer1_table_generic");
+
   // Two tables under ns1a
   protected static final TableIdentifier TABLE_NS1A_1 = TableIdentifier.of(NS1A, "table1");
   protected static final TableIdentifier TABLE_NS1A_2 = TableIdentifier.of(NS1A, "table2");
@@ -175,6 +180,7 @@ public abstract class PolarisAuthzTestBase {
   @Inject protected FileIOFactory fileIOFactory;
 
   protected IcebergCatalog baseCatalog;
+  protected GenericTableCatalog genericTableCatalog;
   protected PolarisAdminService adminService;
   protected PolarisEntityManager entityManager;
   protected PolarisMetaStoreManager metaStoreManager;
@@ -201,7 +207,9 @@ public abstract class PolarisAuthzTestBase {
 
     Map<String, Object> configMap =
         Map.of(
-            "ALLOW_SPECIFYING_FILE_IO_IMPL", true, "ALLOW_EXTERNAL_METADATA_FILE_LOCATION", true);
+            "ALLOW_SPECIFYING_FILE_IO_IMPL", true,
+            "ALLOW_EXTERNAL_METADATA_FILE_LOCATION", true,
+            "ENABLE_GENERIC_TABLES", true);
     polarisContext =
         new PolarisCallContext(
             managerFactory.getOrCreateSessionSupplier(realmContext).get(),
@@ -301,6 +309,8 @@ public abstract class PolarisAuthzTestBase {
     baseCatalog.buildTable(TABLE_NS1A_2, SCHEMA).create();
     baseCatalog.buildTable(TABLE_NS1B_1, SCHEMA).create();
     baseCatalog.buildTable(TABLE_NS2_1, SCHEMA).create();
+
+    genericTableCatalog.createGenericTable(TABLE_NS1_1_GENERIC, "format", "doc", Map.of());
 
     baseCatalog
         .buildView(VIEW_NS1_1)
@@ -442,6 +452,7 @@ public abstract class PolarisAuthzTestBase {
         CATALOG_NAME,
         ImmutableMap.of(
             CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+    this.genericTableCatalog = new GenericTableCatalog(metaStoreManager, callContext, passthroughView);
   }
 
   @Alternative

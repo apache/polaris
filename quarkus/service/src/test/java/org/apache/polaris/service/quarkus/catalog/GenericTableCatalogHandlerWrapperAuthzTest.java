@@ -23,23 +23,18 @@ import io.quarkus.test.junit.TestProfile;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.rest.requests.CreateTableRequest;
 import org.apache.polaris.core.auth.AuthenticatedPolarisPrincipal;
 import org.apache.polaris.core.entity.PolarisPrivilege;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalogHandlerWrapper;
 import org.apache.polaris.service.quarkus.admin.PolarisAuthzTestBase;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-@TestProfile(GenericTableCatalogHandlerWrapperAuthzTest.Profile.class)
 public class GenericTableCatalogHandlerWrapperAuthzTest extends PolarisAuthzTestBase {
-
-  public static class Profile extends PolarisAuthzTestBase.Profile {
-
-    @Override
-    public Map<String, String> getConfigOverrides() {
-      return Map.of("polaris.features.defaults.\"ENABLE_GENERIC_TABLES\"", "true");
-    }
-  }
 
   private GenericTableCatalogHandlerWrapper newWrapper() {
     return newWrapper(Set.of());
@@ -148,7 +143,7 @@ public class GenericTableCatalogHandlerWrapperAuthzTest extends PolarisAuthzTest
   }
 
   @Test
-  public void testListTablesAllSufficientPrivileges() {
+  public void testListGenericTablesAllSufficientPrivileges() {
     doTestSufficientPrivileges(
         List.of(
             PolarisPrivilege.TABLE_LIST,
@@ -162,4 +157,126 @@ public class GenericTableCatalogHandlerWrapperAuthzTest extends PolarisAuthzTest
         () -> newWrapper().listGenericTables(NS1A),
         null /* cleanupAction */);
   }
+
+  @Test
+  public void testListGenericTablesInsufficientPermissions() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_DROP),
+        () -> newWrapper().listGenericTables(NS1A));
+  }
+
+  @Test
+  public void testCreateGenericTableAllSufficientPrivileges() {
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_DROP))
+        .isTrue();
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_WRITE_DATA))
+        .isTrue();
+
+    final TableIdentifier newtable = TableIdentifier.of(NS2, "newtable");
+
+    // Use PRINCIPAL_ROLE1 for privilege-testing, PRINCIPAL_ROLE2 for cleanup.
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).createGenericTable(newtable, "format", "doc", Map.of());
+        },
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE2)).dropGenericTable(newtable);
+        });
+  }
+
+  @Test
+  public void testCreateGenericTableInsufficientPermissions() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_DROP,
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_LIST),
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).createGenericTable(TableIdentifier.of(NS2, "newtable"), "format", "doc", Map.of());
+        });
+  }
+
+  @Test
+  public void testLoadGenericTableSufficientPrivileges() {
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> newWrapper().loadGenericTable(TABLE_NS1_1_GENERIC),
+        null /* cleanupAction */);
+  }
+
+  @Test
+  public void testLoadTableInsufficientPermissions() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_LIST,
+            PolarisPrivilege.TABLE_DROP),
+        () -> newWrapper().loadGenericTable(TABLE_NS1_1_GENERIC));
+  }
+
+  @Test
+  public void testDropGenericTableAllSufficientPrivileges() {
+    Assertions.assertThat(
+            adminService.grantPrivilegeOnCatalogToRole(
+                CATALOG_NAME, CATALOG_ROLE2, PolarisPrivilege.TABLE_CREATE))
+        .isTrue();
+
+    newWrapper(Set.of(PRINCIPAL_ROLE2)).createGenericTable(
+        TableIdentifier.of(NS2, "generic_table"), "format", "doc", Map.of());
+
+    doTestSufficientPrivileges(
+        List.of(
+            PolarisPrivilege.TABLE_DROP,
+            PolarisPrivilege.TABLE_FULL_METADATA,
+            PolarisPrivilege.CATALOG_MANAGE_CONTENT),
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TableIdentifier.of(NS2, "generic_table"));
+        },
+        () -> {
+            newWrapper(Set.of(PRINCIPAL_ROLE2)).createGenericTable(
+                TableIdentifier.of(NS2, "generic_table"), "format", "doc", Map.of());
+        });
+  }
+
+  @Test
+  public void testDropGenericTableInsufficientPermissions() {
+    doTestInsufficientPrivileges(
+        List.of(
+            PolarisPrivilege.NAMESPACE_FULL_METADATA,
+            PolarisPrivilege.VIEW_FULL_METADATA,
+            PolarisPrivilege.TABLE_CREATE,
+            PolarisPrivilege.TABLE_READ_PROPERTIES,
+            PolarisPrivilege.TABLE_WRITE_PROPERTIES,
+            PolarisPrivilege.TABLE_READ_DATA,
+            PolarisPrivilege.TABLE_WRITE_DATA,
+            PolarisPrivilege.TABLE_LIST),
+        () -> {
+          newWrapper(Set.of(PRINCIPAL_ROLE1)).dropGenericTable(TABLE_NS1_1);
+        });
+  }
+
 }
