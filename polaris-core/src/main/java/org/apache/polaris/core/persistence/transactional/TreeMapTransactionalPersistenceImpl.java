@@ -357,13 +357,17 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
             .readRange(
                 this.store.buildPrefixKeyComposite(catalogId, parentId, entityType.getCode()))
             .stream()
+            .map(
+                nameRecord ->
+                    this.lookupEntityInCurrentTxn(
+                        callCtx, catalogId, nameRecord.getId(), entityType.getCode()))
             .filter(entityFilter);
 
     if (pageToken instanceof OffsetPageToken) {
       partialResults =
           partialResults
-              //.sorted(Comparator.comparingLong(PolarisEntityCore::getId))
-              //.skip(((OffsetPageToken) pageToken).offset)
+              .sorted(Comparator.comparingLong(PolarisEntityCore::getId))
+              .skip(((OffsetPageToken) pageToken).offset)
               .limit(pageToken.pageSize);
     }
 
