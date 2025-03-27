@@ -69,17 +69,7 @@ public class OrphanFileRemovalPolicyContent extends BaseMaintenancePolicyContent
       throw new InvalidPolicyException(e);
     }
 
-    if (policy == null) {
-      throw new InvalidPolicyException("Invalid policy: " + content);
-    }
-
-    if (Strings.isNullOrEmpty(policy.getVersion())) {
-      policy.setVersion(DEFAULT_POLICY_SCHEMA_VERSION);
-    }
-
-    if (!POLICY_SCHEMA_VERSIONS.contains(policy.getVersion())) {
-      throw new InvalidPolicyException("Invalid policy version: " + policy.getVersion());
-    }
+    validateVersion(content, policy, DEFAULT_POLICY_SCHEMA_VERSION, POLICY_SCHEMA_VERSIONS);
 
     int maxAge = policy.getMaxOrphanFileAgeInDays();
     if (maxAge < 0) {

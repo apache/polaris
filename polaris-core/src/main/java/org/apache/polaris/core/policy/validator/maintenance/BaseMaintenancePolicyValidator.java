@@ -25,11 +25,18 @@ import static org.apache.polaris.core.entity.PolarisEntityType.TABLE_LIKE;
 import java.util.Set;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
+import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 import org.apache.polaris.core.policy.validator.PolicyValidator;
 
-public abstract class BaseMaintenancePolicyValidator implements PolicyValidator {
+public class BaseMaintenancePolicyValidator implements PolicyValidator {
+  public static final BaseMaintenancePolicyValidator INSTANCE =
+      new BaseMaintenancePolicyValidator();
+
   private static final Set<PolarisEntityType> ATTACHABLE_ENTITY_TYPES =
       Set.of(CATALOG, NAMESPACE, TABLE_LIKE);
+
+  @Override
+  public void validate(String content) throws InvalidPolicyException {}
 
   @Override
   public boolean canAttach(PolarisEntityType entityType, PolarisEntitySubType entitySubType) {

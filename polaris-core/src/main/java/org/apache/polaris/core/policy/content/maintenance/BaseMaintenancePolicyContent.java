@@ -21,9 +21,12 @@ package org.apache.polaris.core.policy.content.maintenance;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.google.common.base.Strings;
 import java.util.Map;
+import java.util.Set;
 import org.apache.polaris.core.policy.content.PolicyContent;
 import org.apache.polaris.core.policy.content.StrictBooleanDeserializer;
+import org.apache.polaris.core.policy.validator.InvalidPolicyException;
 
 public abstract class BaseMaintenancePolicyContent implements PolicyContent {
   @JsonDeserialize(using = StrictBooleanDeserializer.class)
@@ -60,5 +63,23 @@ public abstract class BaseMaintenancePolicyContent implements PolicyContent {
 
   public void setConfig(Map<String, String> config) {
     this.config = config;
+  }
+
+  static void validateVersion(
+      String content,
+      BaseMaintenancePolicyContent policy,
+      String defaultVersion,
+      Set<String> allVersions) {
+    if (policy == null) {
+      throw new InvalidPolicyException("Invalid policy: " + content);
+    }
+
+    if (Strings.isNullOrEmpty(policy.getVersion())) {
+      policy.setVersion(defaultVersion);
+    }
+
+    if (!allVersions.contains(policy.getVersion())) {
+      throw new InvalidPolicyException("Invalid policy version: " + policy.getVersion());
+    }
   }
 }
