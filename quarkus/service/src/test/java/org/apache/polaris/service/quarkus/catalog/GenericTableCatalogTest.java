@@ -244,13 +244,9 @@ public class GenericTableCatalogTest {
 
     this.genericTableCatalog =
         new GenericTableCatalog(
-            entityManager,
             metaStoreManager,
             callContext,
-            passthroughView,
-            securityContext,
-            taskExecutor,
-            fileIOFactory);
+            passthroughView);
     this.icebergCatalog =
         new IcebergCatalog(
             entityManager,
@@ -314,7 +310,7 @@ public class GenericTableCatalogTest {
     Assertions.assertThatCode(
             () ->
                 genericTableCatalog.createGenericTable(
-                    TableIdentifier.of("ns", "t1"), "test-format", Map.of()))
+                    TableIdentifier.of("ns", "t1"), "test-format", "doc", Map.of()))
         .doesNotThrowAnyException();
   }
 
@@ -322,12 +318,12 @@ public class GenericTableCatalogTest {
   public void testGenericTableAlreadyExists() {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
-    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format1", Map.of());
+    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format1", "doc", Map.of());
 
     Assertions.assertThatCode(
             () ->
                 genericTableCatalog.createGenericTable(
-                    TableIdentifier.of("ns", "t1"), "format2", Map.of()))
+                    TableIdentifier.of("ns", "t1"), "format2", "doc", Map.of()))
         .hasMessageContaining("already exists");
 
     Assertions.assertThatCode(
@@ -344,7 +340,7 @@ public class GenericTableCatalogTest {
     Assertions.assertThatCode(
             () ->
                 genericTableCatalog.createGenericTable(
-                    TableIdentifier.of("ns", "t1"), "format2", Map.of()))
+                    TableIdentifier.of("ns", "t1"), "format2", "doc", Map.of()))
         .hasMessageContaining("already exists");
 
     Assertions.assertThatCode(
@@ -360,8 +356,9 @@ public class GenericTableCatalogTest {
     String tableName = "t1";
     Map<String, String> properties = Map.of("a", "b", "c", "d");
     String format = "round-trip-format";
+    String doc = "round-trip-doc";
 
-    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", tableName), format, properties);
+    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", tableName), format, doc, properties);
 
     GenericTableEntity resultEntity =
         genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", tableName));
@@ -414,7 +411,7 @@ public class GenericTableCatalogTest {
 
     String tableName = "t1";
 
-    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", tableName), "format", Map.of());
+    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", tableName), "format", "doc", Map.of());
     Assertions.assertThatCode(() -> icebergCatalog.loadTable(TableIdentifier.of("ns", tableName)))
         .hasMessageContaining("does not exist: ns.t1");
   }
@@ -426,7 +423,7 @@ public class GenericTableCatalogTest {
 
     String tableName = "t1";
 
-    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", tableName), "format", Map.of());
+    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", tableName), "format", "doc", Map.of());
     Assertions.assertThatCode(() -> icebergCatalog.loadView(TableIdentifier.of("ns", tableName)))
         .hasMessageContaining("does not exist: ns.t1");
   }
@@ -437,7 +434,7 @@ public class GenericTableCatalogTest {
     icebergCatalog.createNamespace(namespace);
 
     for (int i = 0; i < 10; i++) {
-      genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t" + i), "format", Map.of());
+      genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t" + i), "format", "doc", Map.of());
     }
 
     List<TableIdentifier> listResult = genericTableCatalog.listGenericTables(namespace);
@@ -498,7 +495,7 @@ public class GenericTableCatalogTest {
     }
 
     for (int i = 0; i < 10; i++) {
-      genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "g" + i), "format", Map.of());
+      genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "g" + i), "format", "doc", Map.of());
     }
 
     Assertions.assertThat(genericTableCatalog.listGenericTables(namespace).size()).isEqualTo(10);
@@ -543,7 +540,7 @@ public class GenericTableCatalogTest {
   public void testDropViaIceberg() {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
-    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format", Map.of());
+    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format", "doc", Map.of());
 
     Assertions.assertThat(icebergCatalog.dropTable(TableIdentifier.of("ns", "t1"))).isFalse();
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
@@ -554,7 +551,7 @@ public class GenericTableCatalogTest {
   public void testDropViaIcebergView() {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
-    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format", Map.of());
+    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format", "doc", Map.of());
 
     Assertions.assertThat(icebergCatalog.dropView(TableIdentifier.of("ns", "t1"))).isFalse();
     Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
