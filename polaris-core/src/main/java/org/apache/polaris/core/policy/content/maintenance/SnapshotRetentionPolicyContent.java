@@ -40,24 +40,25 @@ public class SnapshotRetentionPolicyContent extends BaseMaintenancePolicyContent
       throw new InvalidPolicyException("Policy is empty");
     }
 
+    SnapshotRetentionPolicyContent policy;
     try {
-      SnapshotRetentionPolicyContent policy =
-          PolicyContentUtil.MAPPER.readValue(content, SnapshotRetentionPolicyContent.class);
-      if (policy == null) {
-        throw new InvalidPolicyException("Invalid policy");
-      }
-
-      if (Strings.isNullOrEmpty(policy.getVersion())) {
-        policy.setVersion(DEFAULT_POLICY_SCHEMA_VERSION);
-      }
-
-      if (!POLICY_SCHEMA_VERSIONS.contains(policy.getVersion())) {
-        throw new InvalidPolicyException("Invalid policy version: " + policy.getVersion());
-      }
-
-      return policy;
+      policy = PolicyContentUtil.MAPPER.readValue(content, SnapshotRetentionPolicyContent.class);
     } catch (Exception e) {
       throw new InvalidPolicyException(e);
     }
+
+    if (policy == null) {
+      throw new InvalidPolicyException("Invalid policy: " + content);
+    }
+
+    if (Strings.isNullOrEmpty(policy.getVersion())) {
+      policy.setVersion(DEFAULT_POLICY_SCHEMA_VERSION);
+    }
+
+    if (!POLICY_SCHEMA_VERSIONS.contains(policy.getVersion())) {
+      throw new InvalidPolicyException("Invalid policy version: " + policy.getVersion());
+    }
+
+    return policy;
   }
 }

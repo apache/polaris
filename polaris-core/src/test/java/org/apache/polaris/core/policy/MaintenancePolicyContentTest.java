@@ -86,6 +86,15 @@ public class MaintenancePolicyContentTest {
 
   @ParameterizedTest
   @MethodSource("policyTypes")
+  void testIsValidJSONLiteralNull(PredefinedPolicyTypes policyTypes) {
+    var parser = getParser(policyTypes);
+    assertThatThrownBy(() -> parser.apply("null"))
+        .isInstanceOf(InvalidPolicyException.class)
+        .hasMessageContaining("Invalid policy: null");
+  }
+
+  @ParameterizedTest
+  @MethodSource("policyTypes")
   void testIsValidEmptyJson(PredefinedPolicyTypes policyTypes) {
     var parser = getParser(policyTypes);
     assertThatThrownBy(() -> parser.apply("{}"))
@@ -161,5 +170,12 @@ public class MaintenancePolicyContentTest {
                 .getLocations()
                 .get(0))
         .isEqualTo("s3://my-bucket/ns/my_table/");
+  }
+
+  @Test
+  public void testInvalidOrphanFileRemovalPolicyContent() {
+    assertThatThrownBy(() -> fromString("{\"enable\": true, \"max_orphan_file_age_in_days\": -3}"))
+        .isInstanceOf(InvalidPolicyException.class)
+        .hasMessageContaining("Invalid max_orphan_file_age_in_days");
   }
 }

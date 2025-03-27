@@ -37,11 +37,11 @@ public abstract class BaseMaintenancePolicyValidator implements PolicyValidator 
       return false;
     }
 
-    if (entityType == TABLE_LIKE && entitySubType != PolarisEntitySubType.ICEBERG_TABLE) {
+    if (!ATTACHABLE_ENTITY_TYPES.contains(entityType)) {
       return false;
     }
 
-    if (!ATTACHABLE_ENTITY_TYPES.contains(entityType)) {
+    if (entityType == TABLE_LIKE && entitySubType != PolarisEntitySubType.ICEBERG_TABLE) {
       return false;
     }
 
