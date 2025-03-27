@@ -366,7 +366,7 @@ def test_spark_creates_table_in_custom_namespace_dir(root_client, snowflake_cata
             f"SELECT file FROM db1.schema.table_in_custom_namespace_location.metadata_log_entries").collect()
         assert namespace_location in entries[0][0]
     finally:
-        spark.sql('drop table table_in_custom_namespace_location PURGE')
+        spark.sql('DROP TABLE table_in_custom_namespace_location PURGE')
 
 
 @pytest.mark.skipif(os.environ.get('AWS_TEST_ENABLED', 'False').lower() != 'true',
