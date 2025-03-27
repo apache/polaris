@@ -16,14 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.polaris.service.catalog.generic;
 
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.Map;
+import java.util.TreeSet;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
-import org.apache.iceberg.rest.CatalogHandlers;
-import org.apache.iceberg.rest.responses.ListNamespacesResponse;
 import org.apache.polaris.core.auth.PolarisAuthorizableOperation;
 import org.apache.polaris.core.auth.PolarisAuthorizer;
 import org.apache.polaris.core.config.FeatureConfiguration;
@@ -36,94 +35,87 @@ import org.apache.polaris.service.types.GenericTable;
 import org.apache.polaris.service.types.ListGenericTablesResponse;
 import org.apache.polaris.service.types.LoadGenericTableResponse;
 
-import java.util.Map;
-import java.util.TreeSet;
-
 public class GenericTableCatalogHandlerWrapper extends CatalogHandlerWrapper {
 
-    private PolarisMetaStoreManager metaStoreManager;
+  private PolarisMetaStoreManager metaStoreManager;
 
-    private GenericTableCatalog genericTableCatalog;
+  private GenericTableCatalog genericTableCatalog;
 
-    public GenericTableCatalogHandlerWrapper(
-            CallContext callContext,
-            PolarisEntityManager entityManager,
-            PolarisMetaStoreManager metaStoreManager,
-            SecurityContext securityContext,
-            String catalogName,
-            PolarisAuthorizer authorizer) {
-        super(callContext, entityManager, securityContext, catalogName, authorizer);
-        this.metaStoreManager = metaStoreManager;
-    }
+  public GenericTableCatalogHandlerWrapper(
+      CallContext callContext,
+      PolarisEntityManager entityManager,
+      PolarisMetaStoreManager metaStoreManager,
+      SecurityContext securityContext,
+      String catalogName,
+      PolarisAuthorizer authorizer) {
+    super(callContext, entityManager, securityContext, catalogName, authorizer);
+    this.metaStoreManager = metaStoreManager;
+  }
 
-    public void enforceGenericTablesEnabledOrThrow() {
-        boolean enabled = callContext
+  public void enforceGenericTablesEnabledOrThrow() {
+    boolean enabled =
+        callContext
             .getPolarisCallContext()
             .getConfigurationStore()
             .getConfiguration(
-                callContext.getPolarisCallContext(),
-                FeatureConfiguration.ENABLE_GENERIC_TABLES);
-        if (!enabled) {
-            throw new UnsupportedOperationException("Generic table support is not enabled");
-        }
+                callContext.getPolarisCallContext(), FeatureConfiguration.ENABLE_GENERIC_TABLES);
+    if (!enabled) {
+      throw new UnsupportedOperationException("Generic table support is not enabled");
     }
+  }
 
-    @Override
-    protected void initializeCatalog() {
-        enforceGenericTablesEnabledOrThrow();
-        this.genericTableCatalog = new GenericTableCatalog(metaStoreManager, callContext, this.resolutionManifest);
-    }
+  @Override
+  protected void initializeCatalog() {
+    enforceGenericTablesEnabledOrThrow();
+    this.genericTableCatalog =
+        new GenericTableCatalog(metaStoreManager, callContext, this.resolutionManifest);
+  }
 
-    public ListGenericTablesResponse listGenericTables(Namespace parent) {
-        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
-        authorizeBasicNamespaceOperationOrThrow(op, parent);
+  public ListGenericTablesResponse listGenericTables(Namespace parent) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.LIST_TABLES;
+    authorizeBasicNamespaceOperationOrThrow(op, parent);
 
-        return ListGenericTablesResponse
-            .builder()
-            .setIdentifiers(new TreeSet<>(genericTableCatalog.listGenericTables(parent)))
-            .build();
-    }
+    return ListGenericTablesResponse.builder()
+        .setIdentifiers(new TreeSet<>(genericTableCatalog.listGenericTables(parent)))
+        .build();
+  }
 
-    public LoadGenericTableResponse createGenericTable(
-            TableIdentifier identifier, String format, String doc, Map<String, String> properties) {
-        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
-        authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+  public LoadGenericTableResponse createGenericTable(
+      TableIdentifier identifier, String format, String doc, Map<String, String> properties) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.CREATE_TABLE_DIRECT;
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
-        GenericTableEntity createdEntity =
-            this.genericTableCatalog.createGenericTable(identifier, format, doc, properties);
-        GenericTable createdTable = new GenericTable(
+    GenericTableEntity createdEntity =
+        this.genericTableCatalog.createGenericTable(identifier, format, doc, properties);
+    GenericTable createdTable =
+        new GenericTable(
             createdEntity.getName(),
             createdEntity.getFormat(),
             createdEntity.getDoc(),
             createdEntity.getPropertiesAsMap());
 
-        return LoadGenericTableResponse
-            .builder()
-            .setTable(createdTable)
-            .build();
-    }
+    return LoadGenericTableResponse.builder().setTable(createdTable).build();
+  }
 
-    public boolean dropGenericTable(TableIdentifier identifier) {
-        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
-        authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+  public boolean dropGenericTable(TableIdentifier identifier) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
-        return this.genericTableCatalog.dropGenericTable(identifier);
-    }
+    return this.genericTableCatalog.dropGenericTable(identifier);
+  }
 
-    public LoadGenericTableResponse loadGenericTable(TableIdentifier identifier) {
-        PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
-        authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
+  public LoadGenericTableResponse loadGenericTable(TableIdentifier identifier) {
+    PolarisAuthorizableOperation op = PolarisAuthorizableOperation.DROP_TABLE_WITHOUT_PURGE;
+    authorizeCreateTableLikeUnderNamespaceOperationOrThrow(op, identifier);
 
-        GenericTableEntity loadedEntity = this.genericTableCatalog.loadGenericTable(identifier);
-        GenericTable loadedTable = new GenericTable(
+    GenericTableEntity loadedEntity = this.genericTableCatalog.loadGenericTable(identifier);
+    GenericTable loadedTable =
+        new GenericTable(
             loadedEntity.getName(),
             loadedEntity.getFormat(),
             loadedEntity.getDoc(),
             loadedEntity.getPropertiesAsMap());
 
-        return LoadGenericTableResponse
-            .builder()
-            .setTable(loadedTable)
-            .build();
-    }
+    return LoadGenericTableResponse.builder().setTable(loadedTable).build();
+  }
 }

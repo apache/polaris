@@ -37,7 +37,6 @@ public class GenericTableEntity extends TableLikeEntity {
   public static final String FORMAT_KEY = "format";
   public static final String DOC_KEY = "doc";
 
-
   public GenericTableEntity(PolarisBaseEntity sourceEntity) {
     super(sourceEntity);
   }
