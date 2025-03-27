@@ -362,8 +362,8 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
     if (pageToken instanceof OffsetPageToken) {
       partialResults =
           partialResults
-              .sorted(Comparator.comparingLong(PolarisEntityCore::getId))
-              .skip(((OffsetPageToken) pageToken).offset)
+              //.sorted(Comparator.comparingLong(PolarisEntityCore::getId))
+              //.skip(((OffsetPageToken) pageToken).offset)
               .limit(pageToken.pageSize);
     }
 

@@ -1239,20 +1239,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       this.tableFileIO = defaultFileIO;
     }
 
-    protected PolarisResolvedPathWrapper getTablePath(TableIdentifier tableIdentifier) {
-      PolarisResolvedPathWrapper icebergTableResult =
-          resolvedEntityView.getPassthroughResolvedPath(
-              tableIdentifier,
-              PolarisEntityType.ICEBERG_TABLE_LIKE,
-              PolarisEntitySubType.ANY_SUBTYPE);
-      if (icebergTableResult == null) {
-        return resolvedEntityView.getPassthroughResolvedPath(
-            tableIdentifier, PolarisEntityType.GENERIC_TABLE, PolarisEntitySubType.ANY_SUBTYPE);
-      } else {
-        return icebergTableResult;
-      }
-    }
-
     @Override
     public void doRefresh() {
       LOGGER.debug("doRefresh for tableIdentifier {}", tableIdentifier);
@@ -1398,7 +1384,9 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
       // concurrent
       // modification between our checking of unchanged metadataLocation here and actual
       // persistence-layer commit).
-      PolarisResolvedPathWrapper resolvedEntities = getTablePath(tableIdentifier);
+      PolarisResolvedPathWrapper resolvedEntities =
+          resolvedEntityView.getPassthroughResolvedPath(
+              tableIdentifier, PolarisEntityType.ICEBERG_TABLE_LIKE, PolarisEntitySubType.TABLE);
       IcebergTableLikeEntity entity =
           IcebergTableLikeEntity.of(
               resolvedEntities == null ? null : resolvedEntities.getRawLeafEntity());
@@ -1420,9 +1408,6 @@ public class IcebergCatalog extends BaseMetastoreViewCatalog
                 .setBaseLocation(metadata.location())
                 .setMetadataLocation(newLocation)
                 .build();
-      }
-      if (entity.getType() == PolarisEntityType.GENERIC_TABLE) {
-        throw new AlreadyExistsException("Table already exists: %s", tableName());
       }
       if (!Objects.equal(existingLocation, oldLocation)) {
         if (null == base) {
