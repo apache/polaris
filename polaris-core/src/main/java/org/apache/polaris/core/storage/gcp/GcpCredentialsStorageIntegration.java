@@ -78,7 +78,7 @@ public class GcpCredentialsStorageIntegration
                     sourceCredentials.createScoped("https://www.googleapis.com/auth/cloud-platform", "https://www.googleapis.com/auth/iam");
             GoogleCredentials targetCredentials = ImpersonatedCredentials.create(scopedSourceCredentials,
                     serviceAccount , null,
-                    List.of("https://www.googleapis.com/auth/cloud-platform"), 300);
+                    List.of("https://www.googleapis.com/auth/cloud-platform"), 3600);
             this.sourceCredentials = targetCredentials;
         }
         this.transportFactory = transportFactory;
