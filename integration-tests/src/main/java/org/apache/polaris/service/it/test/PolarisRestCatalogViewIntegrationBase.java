@@ -42,6 +42,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -113,7 +115,16 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
     managementApi.createCatalog(principalRoleName, catalog);
 
     restCatalog =
-        IcebergHelper.restCatalog(client, endpoints, principalCredentials, catalogName, Map.of());
+        IcebergHelper.restCatalog(
+            client,
+            endpoints,
+            principalCredentials,
+            catalogName,
+            Map.of(
+                org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key1",
+                "catalog-default-key1",
+                org.apache.iceberg.CatalogProperties.VIEW_DEFAULT_PREFIX + "key2",
+                "catalog-default-key2"));
   }
 
   @AfterEach
@@ -155,5 +166,17 @@ public abstract class PolarisRestCatalogViewIntegrationBase extends ViewCatalogT
   @Override
   protected boolean overridesRequestedLocation() {
     return true;
+  }
+
+  /** TODO: Unblock this test, see: https://github.com/apache/polaris/issues/1273 */
+  @Override
+  @Test
+  @Disabled(
+      """
+      Disabled because the behavior is not applicable to Polaris.
+      To unblock, update this to expect an exception and add a Polaris-specific test.
+      """)
+  public void createViewWithCustomMetadataLocation() {
+    super.createViewWithCustomMetadataLocation();
   }
 }

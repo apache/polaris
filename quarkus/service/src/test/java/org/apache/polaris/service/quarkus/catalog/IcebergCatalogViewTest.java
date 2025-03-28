@@ -199,7 +199,12 @@ public class IcebergCatalogViewTest extends ViewCatalogTests<IcebergCatalog> {
     this.catalog.initialize(
         CATALOG_NAME,
         ImmutableMap.of(
-            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
+            CatalogProperties.FILE_IO_IMPL,
+            "org.apache.iceberg.inmemory.InMemoryFileIO",
+            CatalogProperties.VIEW_DEFAULT_PREFIX + "key1",
+            "catalog-default-key1",
+            CatalogProperties.VIEW_DEFAULT_PREFIX + "key2",
+            "catalog-default-key2"));
   }
 
   @AfterEach

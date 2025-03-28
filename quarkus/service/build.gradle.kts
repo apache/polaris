@@ -94,6 +94,9 @@ dependencies {
     exclude(group = "org.apache.spark", module = "spark-sql_2.12")
   }
 
+  testFixturesImplementation(platform(libs.quarkus.bom))
+  testFixturesImplementation("io.quarkus:quarkus-junit5")
+
   testImplementation(project(":polaris-api-management-model"))
   testImplementation(testFixtures(project(":polaris-service-common")))
 
