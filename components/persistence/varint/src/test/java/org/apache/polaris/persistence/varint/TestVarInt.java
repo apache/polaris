@@ -88,6 +88,14 @@ public class TestVarInt {
         arguments(128L, new byte[] {(byte) 0x80, 1}),
         // 21 bite -> 3 x 7 bits
         arguments(0x1fffff, new byte[] {-1, -1, 127}),
+        // 28 bits -> 4 x 7 bits
+        arguments(0xfffffff, new byte[] {-1, -1, -1, 127}),
+        // 35 bits -> 5 x 7 bits
+        arguments(0x7ffffffffL, new byte[] {-1, -1, -1, -1, 127}),
+        // 42 bits -> 6 x 7 bits
+        arguments(0x3ffffffffffL, new byte[] {-1, -1, -1, -1, -1, 127}),
+        // 49 bits -> 7 x 7 bits
+        arguments(0x1ffffffffffffL, new byte[] {-1, -1, -1, -1, -1, -1, 127}),
         // 56 bits -> 8 x 7 bits
         arguments(0xffffffffffffffL, new byte[] {-1, -1, -1, -1, -1, -1, -1, 127}),
         // 63 bits -> 9 x 7 bits
