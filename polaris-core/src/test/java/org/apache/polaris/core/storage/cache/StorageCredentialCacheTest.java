@@ -45,6 +45,7 @@ import org.apache.polaris.core.persistence.transactional.TransactionalPersistenc
 import org.apache.polaris.core.persistence.transactional.TreeMapMetaStore;
 import org.apache.polaris.core.persistence.transactional.TreeMapTransactionalPersistenceImpl;
 import org.apache.polaris.core.storage.PolarisCredentialProperty;
+import org.apache.polaris.core.storage.azure.AzureLocation;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
@@ -437,5 +438,94 @@ public class StorageCredentialCacheTest {
                 3, 2, PolarisEntityType.CATALOG, PolarisEntitySubType.ICEBERG_TABLE, 0, "name"));
 
     return Arrays.asList(polarisEntity1, polarisEntity2, polarisEntity3);
+  }
+
+  @Test
+  public void testAzureCredentialFormatting() {
+    storageCredentialCache = new StorageCredentialCache();
+    List<ScopedCredentialsResult> mockedScopedCreds =
+        List.of(
+            new ScopedCredentialsResult(
+                new EnumMap<>(
+                    ImmutableMap.<PolarisCredentialProperty, String>builder()
+                        .put(PolarisCredentialProperty.AZURE_SAS_TOKEN, "sas_token_azure_1")
+                        .put(PolarisCredentialProperty.AZURE_ACCOUNT_HOST, "some_account")
+                        .put(
+                            PolarisCredentialProperty.EXPIRATION_TIME,
+                            String.valueOf(Long.MAX_VALUE))
+                        .buildOrThrow())),
+            new ScopedCredentialsResult(
+                new EnumMap<>(
+                    ImmutableMap.<PolarisCredentialProperty, String>builder()
+                        .put(PolarisCredentialProperty.AZURE_SAS_TOKEN, "sas_token_azure_2")
+                        .put(
+                            PolarisCredentialProperty.AZURE_ACCOUNT_HOST,
+                            "some_account." + AzureLocation.ADLS_ENDPOINT)
+                        .put(
+                            PolarisCredentialProperty.EXPIRATION_TIME,
+                            String.valueOf(Long.MAX_VALUE))
+                        .buildOrThrow())),
+            new ScopedCredentialsResult(
+                new EnumMap<>(
+                    ImmutableMap.<PolarisCredentialProperty, String>builder()
+                        .put(PolarisCredentialProperty.AZURE_SAS_TOKEN, "sas_token_azure_3")
+                        .put(
+                            PolarisCredentialProperty.AZURE_ACCOUNT_HOST,
+                            "some_account." + AzureLocation.BLOB_ENDPOINT)
+                        .put(
+                            PolarisCredentialProperty.EXPIRATION_TIME,
+                            String.valueOf(Long.MAX_VALUE))
+                        .buildOrThrow())));
+
+    Mockito.when(
+            metaStoreManager.getSubscopedCredsForEntity(
+                Mockito.any(),
+                Mockito.anyLong(),
+                Mockito.anyLong(),
+                Mockito.any(),
+                Mockito.anyBoolean(),
+                Mockito.anySet(),
+                Mockito.anySet()))
+        .thenReturn(mockedScopedCreds.get(0))
+        .thenReturn(mockedScopedCreds.get(1))
+        .thenReturn(mockedScopedCreds.get(2));
+    List<PolarisEntity> entityList = getPolarisEntities();
+
+    Map<String, String> noSuffixResult =
+        storageCredentialCache.getOrGenerateSubScopeCreds(
+            metaStoreManager,
+            callCtx,
+            entityList.get(0),
+            true,
+            new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
+            new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
+    Assertions.assertThat(noSuffixResult.size()).isEqualTo(2);
+    Assertions.assertThat(noSuffixResult).containsKey("adls.sas-token.some_account");
+
+    Map<String, String> adlsSuffixResult =
+        storageCredentialCache.getOrGenerateSubScopeCreds(
+            metaStoreManager,
+            callCtx,
+            entityList.get(1),
+            true,
+            new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
+            new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
+    Assertions.assertThat(adlsSuffixResult.size()).isEqualTo(3);
+    Assertions.assertThat(adlsSuffixResult).containsKey("adls.sas-token.some_account");
+    Assertions.assertThat(adlsSuffixResult)
+        .containsKey("adls.sas-token.some_account." + AzureLocation.ADLS_ENDPOINT);
+
+    Map<String, String> blobSuffixResult =
+        storageCredentialCache.getOrGenerateSubScopeCreds(
+            metaStoreManager,
+            callCtx,
+            entityList.get(2),
+            true,
+            new HashSet<>(Arrays.asList("s3://bucket1/path", "s3://bucket2/path")),
+            new HashSet<>(Arrays.asList("s3://bucket3/path", "s3://bucket4/path")));
+    Assertions.assertThat(blobSuffixResult.size()).isEqualTo(3);
+    Assertions.assertThat(blobSuffixResult).containsKey("adls.sas-token.some_account");
+    Assertions.assertThat(blobSuffixResult)
+        .containsKey("adls.sas-token.some_account." + AzureLocation.BLOB_ENDPOINT);
   }
 }
