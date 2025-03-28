@@ -32,8 +32,8 @@ and depends on iceberg-spark-runtime 1.8.1.
 A task createPolarisSparkJar is added to build a jar for the Polaris Spark plugin, the jar is named as:
 "polaris-iceberg-<iceberg_version>-spark-runtime-<spark_major_version>_<scala_version>.jar"
 
-Jars with all supported scala versions (2.12, 2.13) are built when building the Polaris project, and the
-client tests also runs both version in the CI.
+Building the Polaris project produces client jars for both Scala 2.12 and 2.13, and CI runs the Spark 
+client tests for both Scala versions as well.
 
 The Jar can also be built alone with a specific version using target `:polaris-spark-3.5_<scala_version>`. For example:
 - `./gradlew :polaris-spark-3.5_2.12:createPolarisSparkJar` - Build a jar for the Polaris Spark plugin with scala version 2.12.
