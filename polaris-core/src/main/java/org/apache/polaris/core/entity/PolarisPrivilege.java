@@ -22,7 +22,6 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-
 import java.util.List;
 
 /** List of privileges */
@@ -181,7 +180,11 @@ public enum PolarisPrivilege {
    * @param securableType securable type
    */
   PolarisPrivilege(int code, @Nonnull PolarisEntityType securableType) {
-    this(code, securableType, List.of(PolarisEntitySubType.NULL_SUBTYPE), PolarisEntityType.CATALOG_ROLE);
+    this(
+        code,
+        securableType,
+        List.of(PolarisEntitySubType.NULL_SUBTYPE),
+        PolarisEntityType.CATALOG_ROLE);
   }
 
   /**
