@@ -338,7 +338,8 @@ public abstract class CatalogHandlerWrapper {
     } else if (dstLeafSubType == PolarisEntitySubType.ICEBERG_VIEW) {
       throw new AlreadyExistsException("Cannot rename %s to %s. View already exists", src, dst);
     } else if (dstLeafSubType == PolarisEntitySubType.GENERIC_TABLE) {
-      throw new AlreadyExistsException("Cannot rename %s to %s. Generic table already exists", src, dst);
+      throw new AlreadyExistsException(
+          "Cannot rename %s to %s. Generic table already exists", src, dst);
     }
 
     PolarisResolvedPathWrapper target =
