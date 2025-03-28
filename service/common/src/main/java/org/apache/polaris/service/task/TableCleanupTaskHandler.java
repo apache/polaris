@@ -33,11 +33,11 @@ import org.apache.iceberg.io.FileIO;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.entity.AsyncTaskType;
-import org.apache.polaris.core.entity.IcebergTableLikeEntity;
 import org.apache.polaris.core.entity.PolarisBaseEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.TaskEntity;
+import org.apache.polaris.core.entity.table.IcebergTableLikeEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
 import org.slf4j.Logger;
@@ -71,7 +71,7 @@ public class TableCleanupTaskHandler implements TaskHandler {
 
   private boolean taskEntityIsTable(TaskEntity task) {
     PolarisEntity entity = PolarisEntity.of((task.readData(PolarisBaseEntity.class)));
-    return entity.getType().equals(PolarisEntityType.ICEBERG_TABLE_LIKE);
+    return entity.getType().equals(PolarisEntityType.TABLE_LIKE);
   }
 
   @Override

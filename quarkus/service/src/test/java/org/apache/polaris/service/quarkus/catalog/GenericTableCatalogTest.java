@@ -18,12 +18,15 @@
  */
 package org.apache.polaris.service.quarkus.catalog;
 
+import static org.apache.iceberg.types.Types.NestedField.required;
 import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.when;
 
+import com.google.common.collect.ImmutableMap;
 import io.quarkus.test.junit.QuarkusMock;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.test.junit.QuarkusTestProfile;
+import io.quarkus.test.junit.TestProfile;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
@@ -34,8 +37,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.NotImplementedException;
+import org.apache.iceberg.CatalogProperties;
+import org.apache.iceberg.Schema;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
+import org.apache.iceberg.types.Types;
 import org.apache.polaris.core.PolarisCallContext;
 import org.apache.polaris.core.PolarisDiagnostics;
 import org.apache.polaris.core.admin.model.AwsStorageConfigInfo;
@@ -47,12 +53,11 @@ import org.apache.polaris.core.config.PolarisConfigurationStore;
 import org.apache.polaris.core.context.CallContext;
 import org.apache.polaris.core.context.RealmContext;
 import org.apache.polaris.core.entity.CatalogEntity;
-import org.apache.polaris.core.entity.GenericTableEntity;
 import org.apache.polaris.core.entity.PolarisEntity;
 import org.apache.polaris.core.entity.PolarisEntitySubType;
 import org.apache.polaris.core.entity.PolarisEntityType;
 import org.apache.polaris.core.entity.PrincipalEntity;
-import org.apache.polaris.core.persistence.BasePersistence;
+import org.apache.polaris.core.entity.table.GenericTableEntity;
 import org.apache.polaris.core.persistence.MetaStoreManagerFactory;
 import org.apache.polaris.core.persistence.PolarisEntityManager;
 import org.apache.polaris.core.persistence.PolarisMetaStoreManager;
@@ -60,6 +65,7 @@ import org.apache.polaris.core.persistence.bootstrap.RootCredentialsSet;
 import org.apache.polaris.core.persistence.cache.EntityCache;
 import org.apache.polaris.core.persistence.dao.entity.BaseResult;
 import org.apache.polaris.core.persistence.dao.entity.PrincipalSecretsResult;
+import org.apache.polaris.core.persistence.transactional.TransactionalPersistence;
 import org.apache.polaris.core.storage.PolarisStorageIntegration;
 import org.apache.polaris.core.storage.PolarisStorageIntegrationProvider;
 import org.apache.polaris.core.storage.aws.AwsCredentialsStorageIntegration;
@@ -69,7 +75,9 @@ import org.apache.polaris.service.admin.PolarisAdminService;
 import org.apache.polaris.service.catalog.PolarisPassthroughResolutionView;
 import org.apache.polaris.service.catalog.generic.GenericTableCatalog;
 import org.apache.polaris.service.catalog.iceberg.IcebergCatalog;
+import org.apache.polaris.service.catalog.io.DefaultFileIOFactory;
 import org.apache.polaris.service.catalog.io.FileIOFactory;
+import org.apache.polaris.service.config.RealmEntityManagerFactory;
 import org.apache.polaris.service.storage.PolarisStorageIntegrationProviderImpl;
 import org.apache.polaris.service.task.TaskExecutor;
 import org.assertj.core.api.Assertions;
@@ -85,12 +93,20 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleResponse;
 import software.amazon.awssdk.services.sts.model.Credentials;
 
 @QuarkusTest
+@TestProfile(GenericTableCatalogTest.Profile.class)
 public class GenericTableCatalogTest {
+
   public static class Profile implements QuarkusTestProfile {
 
     @Override
     public Map<String, String> getConfigOverrides() {
-      return Map.of();
+      return Map.of(
+          "polaris.features.defaults.\"ALLOW_SPECIFYING_FILE_IO_IMPL\"",
+          "true",
+          "polaris.features.defaults.\"INITIALIZE_DEFAULT_CATALOG_FILEIO_FOR_TEST\"",
+          "true",
+          "polaris.features.defaults.\"SUPPORTED_CATALOG_STORAGE_TYPES\"",
+          "[\"FILE\"]");
     }
   }
 
@@ -119,6 +135,11 @@ public class GenericTableCatalogTest {
   private AuthenticatedPolarisPrincipal authenticatedRoot;
   private PolarisEntity catalogEntity;
   private SecurityContext securityContext;
+
+  protected static final Schema SCHEMA =
+      new Schema(
+          required(3, "id", Types.IntegerType.get(), "unique ID 🤪"),
+          required(4, "data", Types.StringType.get()));
 
   @BeforeAll
   public static void setUpMocks() {
@@ -199,6 +220,10 @@ public class GenericTableCatalogTest {
         new PolarisPassthroughResolutionView(
             callContext, entityManager, securityContext, CATALOG_NAME);
     TaskExecutor taskExecutor = Mockito.mock();
+    RealmEntityManagerFactory realmEntityManagerFactory =
+        new RealmEntityManagerFactory(createMockMetaStoreManagerFactory());
+    this.fileIOFactory =
+        new DefaultFileIOFactory(realmEntityManagerFactory, managerFactory, configurationStore);
 
     StsClient stsClient = Mockito.mock(StsClient.class);
     when(stsClient.assumeRole(isA(AssumeRoleRequest.class)))
@@ -235,6 +260,10 @@ public class GenericTableCatalogTest {
             securityContext,
             taskExecutor,
             fileIOFactory);
+    this.icebergCatalog.initialize(
+        CATALOG_NAME,
+        ImmutableMap.of(
+            CatalogProperties.FILE_IO_IMPL, "org.apache.iceberg.inmemory.InMemoryFileIO"));
   }
 
   @AfterEach
@@ -250,8 +279,9 @@ public class GenericTableCatalogTest {
       }
 
       @Override
-      public Supplier<BasePersistence> getOrCreateSessionSupplier(RealmContext realmContext) {
-        return () -> polarisContext.getMetaStore();
+      public Supplier<TransactionalPersistence> getOrCreateSessionSupplier(
+          RealmContext realmContext) {
+        return () -> ((TransactionalPersistence) polarisContext.getMetaStore());
       }
 
       @Override
@@ -289,6 +319,40 @@ public class GenericTableCatalogTest {
   }
 
   @Test
+  public void testGenericTableAlreadyExists() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format1", Map.of());
+
+    Assertions.assertThatCode(
+            () ->
+                genericTableCatalog.createGenericTable(
+                    TableIdentifier.of("ns", "t1"), "format2", Map.of()))
+        .hasMessageContaining("already exists");
+
+    Assertions.assertThatCode(
+            () -> icebergCatalog.createTable(TableIdentifier.of("ns", "t1"), SCHEMA))
+        .hasMessageContaining("already exists");
+  }
+
+  @Test
+  public void testIcebergTableAlreadyExists() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createTable(TableIdentifier.of("ns", "t1"), SCHEMA);
+
+    Assertions.assertThatCode(
+            () ->
+                genericTableCatalog.createGenericTable(
+                    TableIdentifier.of("ns", "t1"), "format2", Map.of()))
+        .hasMessageContaining("already exists");
+
+    Assertions.assertThatCode(
+            () -> icebergCatalog.createTable(TableIdentifier.of("ns", "t1"), SCHEMA))
+        .hasMessageContaining("already exists");
+  }
+
+  @Test
   public void testGenericTableRoundTrip() {
     Namespace namespace = Namespace.of("ns");
     icebergCatalog.createNamespace(namespace);
@@ -305,5 +369,195 @@ public class GenericTableCatalogTest {
     Assertions.assertThat(resultEntity.getFormat()).isEqualTo(format);
     Assertions.assertThat(resultEntity.getPropertiesAsMap()).isEqualTo(properties);
     Assertions.assertThat(resultEntity.getName()).isEqualTo(tableName);
+  }
+
+  @Test
+  public void testLoadNonExistentTable() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    Assertions.assertThatCode(
+            () -> genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
+        .hasMessageContaining("does not exist: ns.t1");
+  }
+
+  @Test
+  public void testReadIcebergTableAsGeneric() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    String tableName = "t1";
+
+    icebergCatalog.createTable(TableIdentifier.of("ns", tableName), SCHEMA);
+    Assertions.assertThatCode(
+            () -> genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", tableName)))
+        .hasMessageContaining("does not exist: ns.t1");
+  }
+
+  @Test
+  public void testReadIcebergViewAsGeneric() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    String tableName = "t1";
+
+    icebergCatalog.buildView(TableIdentifier.of("ns", tableName));
+    Assertions.assertThatCode(
+            () -> genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", tableName)))
+        .hasMessageContaining("does not exist: ns.t1");
+  }
+
+  @Test
+  public void testReadGenericAsIcebergTable() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    String tableName = "t1";
+
+    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", tableName), "format", Map.of());
+    Assertions.assertThatCode(() -> icebergCatalog.loadTable(TableIdentifier.of("ns", tableName)))
+        .hasMessageContaining("does not exist: ns.t1");
+  }
+
+  @Test
+  public void testReadGenericAsIcebergView() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    String tableName = "t1";
+
+    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", tableName), "format", Map.of());
+    Assertions.assertThatCode(() -> icebergCatalog.loadView(TableIdentifier.of("ns", tableName)))
+        .hasMessageContaining("does not exist: ns.t1");
+  }
+
+  @Test
+  public void testListTables() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    for (int i = 0; i < 10; i++) {
+      genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t" + i), "format", Map.of());
+    }
+
+    List<TableIdentifier> listResult = genericTableCatalog.listGenericTables(namespace);
+
+    Assertions.assertThat(listResult.size()).isEqualTo(10);
+    Assertions.assertThat(listResult.stream().map(TableIdentifier::toString).toList())
+        .isEqualTo(listResult.stream().map(TableIdentifier::toString).sorted().toList());
+
+    Assertions.assertThat(icebergCatalog.listTables(namespace)).isEmpty();
+  }
+
+  @Test
+  public void testListTablesEmpty() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    for (int i = 0; i < 10; i++) {
+      icebergCatalog.createTable(TableIdentifier.of("ns", "t" + i), SCHEMA);
+    }
+
+    Assertions.assertThat(icebergCatalog.listTables(namespace).size()).isEqualTo(10);
+    Assertions.assertThat(genericTableCatalog.listGenericTables(namespace)).isEmpty();
+  }
+
+  @Test
+  public void testListTablesNoNamespace() {
+    Namespace namespace = Namespace.of("ns");
+
+    Assertions.assertThatCode(() -> genericTableCatalog.listGenericTables(namespace))
+        .hasMessageContaining("Namespace");
+  }
+
+  @Test
+  public void testListIcebergTables() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    for (int i = 0; i < 10; i++) {
+      icebergCatalog.createTable(TableIdentifier.of("ns", "t" + i), SCHEMA);
+    }
+
+    List<TableIdentifier> listResult = icebergCatalog.listTables(namespace);
+
+    Assertions.assertThat(listResult.size()).isEqualTo(10);
+    Assertions.assertThat(listResult.stream().map(TableIdentifier::toString).toList())
+        .isEqualTo(listResult.stream().map(TableIdentifier::toString).sorted().toList());
+
+    Assertions.assertThat(genericTableCatalog.listGenericTables(namespace)).isEmpty();
+  }
+
+  @Test
+  public void testListMixedTables() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    for (int i = 0; i < 10; i++) {
+      icebergCatalog.createTable(TableIdentifier.of("ns", "i" + i), SCHEMA);
+    }
+
+    for (int i = 0; i < 10; i++) {
+      genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "g" + i), "format", Map.of());
+    }
+
+    Assertions.assertThat(genericTableCatalog.listGenericTables(namespace).size()).isEqualTo(10);
+    Assertions.assertThat(icebergCatalog.listTables(namespace).size()).isEqualTo(10);
+  }
+
+  @Test
+  public void testDropNonExistentTable() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    Assertions.assertThatCode(
+            () -> genericTableCatalog.dropGenericTable(TableIdentifier.of("ns", "t1")))
+        .hasMessageContaining("Generic table does not exist: ns.t1");
+  }
+
+  @Test
+  public void testDropNonExistentNamespace() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+
+    Assertions.assertThatCode(
+            () -> genericTableCatalog.dropGenericTable(TableIdentifier.of("ns2", "t1")))
+        .hasMessageContaining("Generic table does not exist: ns2.t1");
+  }
+
+  @Test
+  public void testDropIcebergTable() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+    icebergCatalog.createTable(TableIdentifier.of("ns", "t1"), SCHEMA);
+
+    Assertions.assertThatCode(
+            () -> genericTableCatalog.dropGenericTable(TableIdentifier.of("ns", "t1")))
+        .hasMessageContaining("Generic table does not exist: ns.t1");
+
+    Assertions.assertThatCode(() -> icebergCatalog.dropTable(TableIdentifier.of("ns", "t1")))
+        .doesNotThrowAnyException();
+  }
+
+  @Test
+  public void testDropViaIceberg() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format", Map.of());
+
+    Assertions.assertThat(icebergCatalog.dropTable(TableIdentifier.of("ns", "t1"))).isFalse();
+    Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
+        .isNotNull();
+  }
+
+  @Test
+  public void testDropViaIcebergView() {
+    Namespace namespace = Namespace.of("ns");
+    icebergCatalog.createNamespace(namespace);
+    genericTableCatalog.createGenericTable(TableIdentifier.of("ns", "t1"), "format", Map.of());
+
+    Assertions.assertThat(icebergCatalog.dropView(TableIdentifier.of("ns", "t1"))).isFalse();
+    Assertions.assertThat(genericTableCatalog.loadGenericTable(TableIdentifier.of("ns", "t1")))
+        .isNotNull();
   }
 }

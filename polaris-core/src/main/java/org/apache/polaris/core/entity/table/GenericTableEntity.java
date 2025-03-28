@@ -16,19 +16,23 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.core.entity;
+package org.apache.polaris.core.entity.table;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import org.apache.iceberg.catalog.Namespace;
 import org.apache.iceberg.catalog.TableIdentifier;
 import org.apache.iceberg.rest.RESTUtil;
+import org.apache.polaris.core.entity.NamespaceEntity;
+import org.apache.polaris.core.entity.PolarisBaseEntity;
+import org.apache.polaris.core.entity.PolarisEntity;
+import org.apache.polaris.core.entity.PolarisEntitySubType;
+import org.apache.polaris.core.entity.PolarisEntityType;
 
 /**
- * A {@link PolarisEntity} implementation for generic tables. These tables are not Iceberg-like in
- * that they may not have a schema or base location. Similarly to {@link IcebergTableLikeEntity}
- * however, these tables have an identifier and a parent namespace.
+ * A {@link TableLikeEntity} implementation for generic tables. These tables are not Iceberg-like in
+ * that they may not have a schema or base location.
  */
-public class GenericTableEntity extends PolarisEntity {
+public class GenericTableEntity extends TableLikeEntity {
 
   public static final String FORMAT_KEY = "format";
 
@@ -52,7 +56,8 @@ public class GenericTableEntity extends PolarisEntity {
       extends PolarisEntity.BaseBuilder<GenericTableEntity, GenericTableEntity.Builder> {
     public Builder(TableIdentifier tableIdentifier, String format) {
       super();
-      setType(PolarisEntityType.GENERIC_TABLE);
+      setType(PolarisEntityType.TABLE_LIKE);
+      setSubType(PolarisEntitySubType.GENERIC_TABLE);
       setTableIdentifier(tableIdentifier);
       setFormat(format);
     }

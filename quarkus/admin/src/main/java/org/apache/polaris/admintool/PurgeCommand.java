@@ -19,6 +19,7 @@
 package org.apache.polaris.admintool;
 
 import java.util.List;
+import java.util.Map;
 import picocli.CommandLine;
 
 @CommandLine.Command(
@@ -37,9 +38,26 @@ public class PurgeCommand extends BaseCommand {
   @Override
   public Integer call() {
     try {
-      metaStoreManagerFactory.purgeRealms(realms);
-      spec.commandLine().getOut().println("Purge completed successfully.");
-      return 0;
+      var result = metaStoreManagerFactory.purgeRealms(realms);
+      var failed =
+          result.entrySet().stream()
+              .filter(e -> !e.getValue().isSuccess())
+              .map(Map.Entry::getKey)
+              .toList();
+      if (failed.isEmpty()) {
+        spec.commandLine().getOut().println("Purge completed successfully.");
+        return 0;
+      }
+
+      var out = spec.commandLine().getOut();
+      failed.forEach(
+          r ->
+              out.printf(
+                  "Realm %s is not bootstrapped, could not load root principal. Please run Bootstrap command.%n",
+                  r));
+
+      spec.commandLine().getErr().printf("Purge encountered errors during operation.");
+      return EXIT_CODE_PURGE_ERROR;
     } catch (Exception e) {
       spec.commandLine().getErr().println("Purge encountered errors during operation.");
       return EXIT_CODE_PURGE_ERROR;
