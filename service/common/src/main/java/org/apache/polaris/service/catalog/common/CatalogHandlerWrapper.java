@@ -219,9 +219,10 @@ public abstract class CatalogHandlerWrapper {
     PolarisResolvedPathWrapper target =
         resolutionManifest.getResolvedPath(identifier, PolarisEntityType.TABLE_LIKE, subType, true);
     if (target == null) {
-      if (subType == PolarisEntitySubType.ICEBERG_TABLE
-          || subType == PolarisEntitySubType.GENERIC_TABLE) {
+      if (subType == PolarisEntitySubType.ICEBERG_TABLE) {
         throw new NoSuchTableException("Table does not exist: %s", identifier);
+      } else if (subType == PolarisEntitySubType.GENERIC_TABLE) {
+        throw new NoSuchTableException("Generic table does not exist: %s", identifier);
       } else {
         throw new NoSuchViewException("View does not exist: %s", identifier);
       }
@@ -336,6 +337,8 @@ public abstract class CatalogHandlerWrapper {
       throw new AlreadyExistsException("Cannot rename %s to %s. Table already exists", src, dst);
     } else if (dstLeafSubType == PolarisEntitySubType.ICEBERG_VIEW) {
       throw new AlreadyExistsException("Cannot rename %s to %s. View already exists", src, dst);
+    } else if (dstLeafSubType == PolarisEntitySubType.GENERIC_TABLE) {
+      throw new AlreadyExistsException("Cannot rename %s to %s. Generic table already exists", src, dst);
     }
 
     PolarisResolvedPathWrapper target =
