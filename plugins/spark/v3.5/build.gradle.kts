@@ -82,6 +82,7 @@ tasks.register<ShadowJar>("createPolarisSparkJar") {
   archiveClassifier = null
   archiveBaseName =
     "polaris-iceberg-${icebergVersion}-spark-runtime-${sparkMajorVersion}_${scalaVersion}"
+  isZip64 = true
 
   dependencies { exclude("META-INF/**") }
 
