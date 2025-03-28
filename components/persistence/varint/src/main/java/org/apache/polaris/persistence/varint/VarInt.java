@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.polaris.tools.varint;
+package org.apache.polaris.persistence.varint;
 
 import static com.google.common.base.Preconditions.checkArgument;
 
