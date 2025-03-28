@@ -443,7 +443,7 @@ public class PolarisEclipseLinkStore {
     diagnosticServices.check(session != null, "session_is_null");
     checkInitialized();
 
-    loadAllPoliciesOnPolicy(session, entity.getCatalogId(), entity.getId())
+    loadAllTargetsOnPolicy(session, entity.getCatalogId(), entity.getId())
         .forEach(session::remove);
     loadAllPoliciesOnTarget(session, entity.getCatalogId(), entity.getId())
         .forEach(session::remove);
@@ -512,7 +512,7 @@ public class PolarisEclipseLinkStore {
         .getResultList();
   }
 
-  List<ModelPolicyMappingRecord> loadAllPoliciesOnPolicy(
+  List<ModelPolicyMappingRecord> loadAllTargetsOnPolicy(
       EntityManager session, long policyCatalogId, long policyId) {
     diagnosticServices.check(session != null, "session_is_null");
     checkInitialized();

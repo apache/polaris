@@ -89,9 +89,9 @@ public interface TransactionalPolicyMappingPersistence {
     throw new UnsupportedOperationException("Not Implemented");
   }
 
-  /** See {@link PolicyMappingPersistence#loadAllPoliciesOnPolicy} */
+  /** See {@link PolicyMappingPersistence#loadAllTargetsOnPolicy} */
   @Nonnull
-  default List<PolarisPolicyMappingRecord> loadAllPoliciesOnPolicyInCurrentTxn(
+  default List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicyInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
     throw new UnsupportedOperationException("Not Implemented");
   }

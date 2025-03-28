@@ -741,10 +741,10 @@ public class PolarisEclipseLinkMetaStoreSessionImpl extends AbstractTransactiona
   /** {@inheritDoc} */
   @Nonnull
   @Override
-  public List<PolarisPolicyMappingRecord> loadAllPoliciesOnPolicyInCurrentTxn(
+  public List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicyInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
     return this.store
-        .loadAllPoliciesOnPolicy(localSession.get(), policyCatalogId, policyId)
+        .loadAllTargetsOnPolicy(localSession.get(), policyCatalogId, policyId)
         .stream()
         .map(ModelPolicyMappingRecord::toPolicyMappingRecord)
         .toList();

@@ -144,7 +144,7 @@ public interface PolicyMappingPersistence {
    * @return the list of policy mapping records for the specified policy entity
    */
   @Nonnull
-  default List<PolarisPolicyMappingRecord> loadAllPoliciesOnPolicy(
+  default List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicy(
       @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
     throw new UnsupportedOperationException("Not Implemented");
   }

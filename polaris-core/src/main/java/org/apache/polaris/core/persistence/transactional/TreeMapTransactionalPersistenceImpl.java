@@ -628,7 +628,7 @@ public class TreeMapTransactionalPersistenceImpl extends AbstractTransactionalPe
 
   /** {@inheritDoc} */
   @Override
-  public @Nonnull List<PolarisPolicyMappingRecord> loadAllPoliciesOnPolicyInCurrentTxn(
+  public @Nonnull List<PolarisPolicyMappingRecord> loadAllTargetsOnPolicyInCurrentTxn(
       @Nonnull PolarisCallContext callCtx, long policyCatalogId, long policyId) {
     return this.store
         .getSlicePolicyMappingRecordsByPolicy()
